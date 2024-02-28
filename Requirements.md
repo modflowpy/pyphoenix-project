@@ -37,3 +37,6 @@ standpoint.
        - load the data from file
      - `.plottable`
        - if the data is attached to a model, it is plottable
+     - `.dtype`
+       - array data type
+     
