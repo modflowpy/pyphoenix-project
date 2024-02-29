@@ -7,3 +7,8 @@ from flopy.datbase import DataType, DataInterface
 class MFArray(DataInterface):
     def __init__(self):
         self.x = None
+
+
+    @classmethod
+    def load(cls):
+        pass

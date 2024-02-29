@@ -8,3 +8,7 @@ from flopy.datbase import DataType, DataListInterface
 class MFList(DataListInterface):
     def __init__(self):
         self.x = None
+
+    @classmethod
+    def load(cls):
+        pass
