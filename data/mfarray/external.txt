@@ -1,0 +1,1 @@
+OPEN/CLOSE ../external/array_ext.txt 
