@@ -135,7 +135,9 @@ class MFArray(DataInterface, MFArrayMixins):
         if len(inputs) == 1:
             result = raw.__array_ufunc__(ufunc, method, raw, **kwargs)
         else:
-            result = raw.__array_ufunc__(ufunc, method, raw, *inputs[1:], kwargs)
+            result = raw.__array_ufunc__(
+                ufunc, method, raw, *inputs[1:], kwargs
+            )
         if not isinstance(result, np.ndarray):
             raise NotImplementedError(f"{str(ufunc)} has not been implemented")
 

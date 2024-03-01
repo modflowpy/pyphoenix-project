@@ -6,7 +6,6 @@ class MFArrayMixins:
     Class containing standard python mathematical mixin functions for the
     MFArray Class.
 
-    # todo: think about how to handle, min(), mean(), median(), max(), sum()
     """
     def __init__(self):
         self._is_layered = None
