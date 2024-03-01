@@ -115,7 +115,8 @@ class MFArray(DataInterface):
         if self._is_layered:
             for ix, mfa in enumerate(self._flat):
                 mfa[:] = values[ix]
-
+            return
+            
         if self._how == How.constant:
             if not np.all(values == values[0]):
                 self._how = How.internal
