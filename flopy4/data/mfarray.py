@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 from io import StringIO
-from .constants import How
+from .constants import How, CommonNames
 from .mixins import MFArrayMixins
 from flopy.datbase import DataType, DataInterface
 from flopy.utils.flopy_io import multi_line_strip, line_strip
@@ -203,6 +203,12 @@ class MFArray(DataInterface, MFArrayMixins):
 
         """
         control_line = multi_line_strip(f).split()
+
+        if CommonNames.iprn.lower() in control_line:
+            idx = control_line.index(CommonNames.iprn.lower())
+            control_line.pop(idx + 1)
+            control_line.pop(idx)
+
         how = How.from_string(control_line[0])
         clpos = 1
 
@@ -237,7 +243,16 @@ def f_to_array(f):
         pos = f.tell()
         line = f.readline()
         line = line_strip(line)
-        if line in ("", "INTERNAL", "OPEN/CLOSE"):
+        if line in (
+                CommonNames.empty,
+                CommonNames.internal,
+                CommonNames.external,
+                CommonNames.constant
+        ):
+            f.seek(pos, 0)
+            break
+        elif CommonNames.internal in line or CommonNames.external in line \
+                or CommonNames.constant in line:
             f.seek(pos, 0)
             break
         astr.append(line)

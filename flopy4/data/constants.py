@@ -15,3 +15,15 @@ class How(Enum):
         for e in How:
             if string.upper() == e.value:
                 return e
+
+
+class CommonNames:
+    iprn = "IPRN"
+    internal = "INTERNAL"
+    constant = "CONSTANT"
+    external = "OPEN/CLOSE"
+    format = "FORMAT"
+    structured = "structured"
+    vertex = "vertex"
+    unstructured = "unstructured"
+    empty = ""
