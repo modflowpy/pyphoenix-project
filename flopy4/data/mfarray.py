@@ -2,14 +2,17 @@ import numpy as np
 from pathlib import Path
 from io import StringIO
 from .constants import How
+from .mixins import MFArrayMixins
 from flopy.datbase import DataType, DataInterface
 from flopy.utils.flopy_io import multi_line_strip, line_strip
 
-class MFArray(DataInterface):
+
+class MFArray(DataInterface, MFArrayMixins):
     """
 
     """
     def __init__(self, array, shape, how, factor=None, layered=False):
+        super().__init__()
         self._flat = array
         self._shape = shape
         self._how = how
@@ -127,44 +130,14 @@ class MFArray(DataInterface):
         else:
             self._flat = values
 
-    def __add__(self, other):
-        if self._is_layered:
-            for mfa in self._flat:
-                mfa += other
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        raw = self.raw_values
+        result = raw.__array_ufunc__(ufunc, method, raw, **kwargs)
+        if not isinstance(result, np.ndarray):
+            raise NotImplementedError(f"{str(ufunc)} has not been implemented")
 
-        self._flat += other
-        return self
-
-    def __mul__(self, other):
-        if self._is_layered:
-            for mfa in self._flat:
-                mfa *= other
-
-        self._flat *= other
-        return self
-
-    def __sub__(self, other):
-        if self._is_layered:
-            for mfa in self._flat:
-                mfa -= other
-
-        self._flat -= other
-        return self
-
-    def __truediv__(self, other):
-        if self._is_layered:
-            for mfa in self._flat:
-                mfa /= other
-
-        self._flat /= other
-        return self
-
-    def __pow__(self, other):
-        if self._is_layered:
-            for mfa in self._flat:
-                mfa /= other
-
-        self._flat **= other
+        tmp = [None for _ in self._shape]
+        self.__setitem__(slice(*tmp), result)
         return self
 
     def _check_if_compatible(self):
