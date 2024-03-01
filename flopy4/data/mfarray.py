@@ -136,6 +136,12 @@ class MFArray(DataInterface, MFArrayMixins):
         if not isinstance(result, np.ndarray):
             raise NotImplementedError(f"{str(ufunc)} has not been implemented")
 
+        if result.shape != self._shape:
+            raise AssertionError(
+                f"{str(ufunc)} is not supported for inplace operations on "
+                f"MFArray objects"
+            )
+
         tmp = [None for _ in self._shape]
         self.__setitem__(slice(*tmp), result)
         return self
