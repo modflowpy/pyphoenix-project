@@ -1,17 +1,27 @@
+import numpy as np
 
 
 class MFArrayMixins:
     """
     Class containing standard python mathematical mixin functions for the
     MFArray Class.
+
+    # todo: think about how to handle, min(), mean(), median(), max(), sum()
     """
     def __init__(self):
         self._is_layered = None
         self._flat = None
 
+    @property
     def raw_values(self):
         raise NotImplementedError(
             "raw_values must be implemented in child class"
+        )
+
+    @property
+    def values(self):
+        raise NotImplementedError(
+            "values must be implemented in child class"
         )
 
     def __iadd__(self, other):
@@ -126,3 +136,20 @@ class MFArrayMixins:
         for i in self.raw_values.ravel():
             yield i
 
+    def min(self):
+        return np.nanmin(self.values)
+
+    def mean(self):
+        return np.nanmean(self.values)
+
+    def median(self):
+        return np.nanmedian(self.values)
+
+    def max(self):
+        return np.nanmax(self.values)
+
+    def std(self):
+        return np.nanstd(self.values)
+
+    def sum(self):
+        return np.nansum(self.values)
