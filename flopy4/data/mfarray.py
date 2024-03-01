@@ -116,15 +116,16 @@ class MFArray(DataInterface):
             for ix, mfa in enumerate(self._flat):
                 mfa[:] = values[ix]
             return
-            
+
+        values = values.ravel()
         if self._how == How.constant:
-            if not np.all(values == values[0]):
+            if not np.allclose(values, values[0]):
                 self._how = How.internal
-                self._flat = values.ravel()
+                self._flat = values
             else:
                 self._flat = values[0]
         else:
-            self._flat = values.ravel()
+            self._flat = values
 
     def __add__(self, other):
         if self._is_layered:
