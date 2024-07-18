@@ -1,5 +1,5 @@
-from flopy.utils.binaryfile import BinaryHeader
 import numpy as np
+from flopy.utils.binaryfile import BinaryHeader
 
 
 # todo: clean this up to not need model information beyond grid_type,
@@ -11,7 +11,8 @@ class BinaryException(Exception):
     def __init__(self, *args):
         super.__init__(*args)
 
-class BinaryArray():
+
+class BinaryArray:
     def __init__(self):
         self._pos = 0
 
@@ -270,7 +271,7 @@ class BinaryArray():
         fd.close()
 
 
-class BinaryList():
+class BinaryList:
     def __init__(self):
         pass
 
