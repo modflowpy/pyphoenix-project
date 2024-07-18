@@ -1,0 +1,96 @@
+[build-system]
+requires = [
+    "setuptools >=61",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flopy4"
+description = "Development project to reimplement MF6 support for FloPy"
+authors = [
+    {name = "Joe Hughes", email = "jdhughes@usgs.gov"},
+    {name = "Chris Langevin", email = "langevin@usgs.gov"},
+    {name = "Josh Larsen", email = "jlarsen@usgs.gov"},
+    {name = "Michael Reno", email = "mreno@ucar.edu"},
+    {name = "Wes Bonelli", email = "wbonelli@ucar.edu"},
+]
+maintainers = [
+    {name = "Joe Hughes", email = "jdhughes@usgs.gov"},
+    {name = "Chris Langevin", email = "langevin@usgs.gov"},
+    {name = "Josh Larsen", email = "jlarsen@usgs.gov"},
+    {name = "Michael Reno", email = "mreno@ucar.edu"},
+    {name = "Wes Bonelli", email = "wbonelli@ucar.edu"},
+]
+keywords = ["MODFLOW", "groundwater", "hydrogeology"]
+license = {text = "CC0"}
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Science/Research",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Hydrology",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.20.3",
+    "pandas>=2.0.0",
+    "flopy>=3.7.0",
+    "Jinja2>=3.0"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+lint = [
+    "ruff"
+]
+test = [
+    "flopy4[lint]",
+    "coverage",
+    "jupyter",
+    "jupytext",
+    "pytest!=8.1.0",
+    "pytest-dotenv",
+    "pytest-xdist",
+]
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.dynamic]
+version = {attr = "flopy4.version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["flopy4", "flopy4.*"]
+
+[tool.setuptools.package-data]
+"flopy4.dfns" = ["dfns/*.dfn"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py38"
+include = [
+    "pyproject.toml",
+    "flopy4/**/*.py",
+    "test/**/*.py",
+    "docs/**/*.py",
+]
+extend-include = [
+    "docs/**/*.ipynb"
+]
+
+[tool.ruff.lint]
+select = [
+    "D409", # pydocstyle - section-underline-matches-section-length
+    "E",    # pycodestyle error
+    "F",    # Pyflakes
+    "I001", # isort - unsorted-imports
+]
+ignore = [
+    "F821", # undefined name TODO FIXME
+    "E722"  # do not use bare `except`
+]
