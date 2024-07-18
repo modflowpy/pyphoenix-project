@@ -39,7 +39,7 @@ dependencies = [
     "numpy>=1.20.3",
     "pandas>=2.0.0",
     "flopy>=3.7.0",
-    "Jinja2>=3.0"
+    "Jinja2>=3.0",
 ]
 dynamic = ["version"]
 
@@ -50,8 +50,11 @@ lint = [
 test = [
     "flopy4[lint]",
     "coverage",
+    "GitPython",
     "jupyter",
     "jupytext",
+    "modflow-devtools",
+    "pooch>=1.8",
     "pytest!=8.1.0",
     "pytest-dotenv",
     "pytest-xdist",
