@@ -40,6 +40,7 @@ dependencies = [
     "pandas>=2.0.0",
     "flopy>=3.7.0",
     "Jinja2>=3.0",
+    "toml>=0.10",
 ]
 dynamic = ["version"]
 
