@@ -72,6 +72,7 @@ include = ["flopy4", "flopy4.*"]
 
 [tool.setuptools.package-data]
 "flopy4.dfns" = ["dfns/*.dfn"]
+"flopy4.toml" = ["dfns/toml/*.toml"]
 
 [tool.ruff]
 line-length = 79
