@@ -1,5 +1,5 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from abc import abstractmethod
+from dataclasses import dataclass, fields
 from enum import Enum
 from typing import Any, Optional
 
@@ -9,14 +9,14 @@ class MFReader(Enum):
     MF6 procedure with which to read input.
     """
 
-    urword = "URWORD"
-    u1ddbl = "U1DDBL"
-    readarray = "READARRAY"
+    urword = "urword"
+    u1ddbl = "u1dbl"
+    readarray = "readarray"
 
     @classmethod
-    def from_string(cls, string):
+    def from_str(cls, value):
         for e in cls:
-            if string.upper() == e.value:
+            if value.lower() == e.value:
                 return e
 
 
@@ -35,10 +35,15 @@ class MFParamSpec:
     layered: bool = False
     optional: bool = True
     numeric_index: bool = False
+    preserve_case: bool = False
     repeating: bool = False
     tagged: bool = True
     reader: MFReader = MFReader.urword
     default_value: Optional[Any] = None
+
+    @classmethod
+    def fields(cls):
+        return fields(cls)
 
     @classmethod
     def load(cls, f) -> "MFParamSpec":
@@ -52,30 +57,17 @@ class MFParamSpec:
             val = " ".join(words[1:])
             # todo dynamically load properties and
             # filter by type instead of hardcoding
-            if key in [
-                "block",
-                "name",
-                "longname",
-                "description",
-                "reader",
-            ]:
-                spec[key] = val
-            elif key in [
-                "deprecated",
-                "in_record",
-                "layered",
-                "optional",
-                "numeric_index",
-                "repeating",
-                "tagged",
-            ]:
+            kw_fields = [f.name for f in cls.fields() if f.type is bool]
+            if key in kw_fields:
                 spec[key] = val == "true"
             elif key == "reader":
-                spec[key] = MFReader.from_string(val)
+                spec[key] = MFReader.from_str(val)
+            else:
+                spec[key] = val
         return cls(**spec)
 
 
-class MFParameter(ABC):
+class MFParameter(MFParamSpec):
     """
     MODFLOW 6 input parameter. Can be a scalar or compound of
     scalars, an array, or a list (i.e. a table). `MFParameter`
@@ -105,6 +97,7 @@ class MFParameter(ABC):
     @abstractmethod
     def __init__(
         self,
+        block=None,
         name=None,
         longname=None,
         description=None,
@@ -113,20 +106,23 @@ class MFParameter(ABC):
         layered=False,
         optional=True,
         numeric_index=False,
+        preserve_case=False,
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
         default_value=None,
     ):
-        self.spec = MFParamSpec(
+        super().__init__(
+            block=block,
             name=name,
-            longname=None,
+            longname=longname,
             description=description,
             deprecated=deprecated,
             in_record=in_record,
             layered=layered,
             optional=optional,
             numeric_index=numeric_index,
+            preserve_case=preserve_case,
             repeating=repeating,
             tagged=tagged,
             reader=reader,
@@ -134,12 +130,7 @@ class MFParameter(ABC):
         )
 
     @property
-    def name(self):
-        """Get the parameter's name."""
-        return self.spec.name
-
-    @property
     @abstractmethod
-    def value(self):
-        """Get the parameter's value."""
+    def value(self) -> Optional[Any]:
+        """Get the parameter's value, if loaded."""
         pass

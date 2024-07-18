@@ -7,7 +7,7 @@ import numpy as np
 from flopy.utils.flopy_io import line_strip, multi_line_strip
 
 from flopy4.constants import CommonNames
-from flopy4.parameter import MFParameter
+from flopy4.parameter import MFParameter, MFReader
 
 
 class NumPyArrayMixin:
@@ -23,7 +23,7 @@ class NumPyArrayMixin:
     """
 
     def __iadd__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa += other
             return self
@@ -32,7 +32,7 @@ class NumPyArrayMixin:
         return self
 
     def __imul__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa *= other
             return self
@@ -41,7 +41,7 @@ class NumPyArrayMixin:
         return self
 
     def __isub__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa -= other
             return self
@@ -50,7 +50,7 @@ class NumPyArrayMixin:
         return self
 
     def __itruediv__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa /= other
             return self
@@ -59,7 +59,7 @@ class NumPyArrayMixin:
         return self
 
     def __ifloordiv__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa /= other
             return self
@@ -68,7 +68,7 @@ class NumPyArrayMixin:
         return self
 
     def __ipow__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa /= other
             return self
@@ -77,7 +77,7 @@ class NumPyArrayMixin:
         return self
 
     def __add__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa += other
             return self
@@ -86,7 +86,7 @@ class NumPyArrayMixin:
         return self
 
     def __mul__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa *= other
             return self
@@ -95,7 +95,7 @@ class NumPyArrayMixin:
         return self
 
     def __sub__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa -= other
             return self
@@ -104,7 +104,7 @@ class NumPyArrayMixin:
         return self
 
     def __truediv__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa /= other
             return self
@@ -113,7 +113,7 @@ class NumPyArrayMixin:
         return self
 
     def __floordiv__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa /= other
             return self
@@ -122,7 +122,7 @@ class NumPyArrayMixin:
         return self
 
     def __pow__(self, other):
-        if self._layered:
+        if self.layered:
             for mfa in self._value:
                 mfa /= other
             return self
@@ -187,18 +187,42 @@ class MFArray(MFParameter, NumPyArrayMixin):
         shape,
         how=MFArrayType.internal,
         factor=None,
-        layered=False,
+        block=None,
         name=None,
         longname=None,
         description=None,
+        deprecated=False,
+        in_record=False,
+        layered=False,
         optional=True,
+        numeric_index=False,
+        preserve_case=False,
+        repeating=False,
+        tagged=False,
+        reader=MFReader.urword,
+        default_value=None,
     ):
-        MFParameter.__init__(self, name, longname, description, optional)
+        MFParameter.__init__(
+            self,
+            block=block,
+            name=name,
+            longname=longname,
+            description=description,
+            deprecated=deprecated,
+            in_record=in_record,
+            layered=layered,
+            optional=optional,
+            numeric_index=numeric_index,
+            preserve_case=preserve_case,
+            repeating=repeating,
+            tagged=tagged,
+            reader=reader,
+            default_value=default_value,
+        )
         self._value = array
         self._shape = shape
         self._how = how
         self._factor = factor
-        self._layered = layered
 
     def __getitem__(self, item):
         return self.raw[item]
@@ -206,7 +230,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
     def __setitem__(self, key, value):
         values = self.raw
         values[key] = value
-        if self._layered:
+        if self.layered:
             for ix, mfa in enumerate(self._value):
                 mfa[:] = values[ix]
             return
@@ -247,7 +271,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
         """
         Return the array.
         """
-        if self._layered:
+        if self.layered:
             arr = []
             for mfa in self._value:
                 arr.append(mfa.value)
@@ -263,7 +287,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
         """
         Return the array without multiplying by `self.factor`.
         """
-        if self._layered:
+        if self.layered:
             arr = []
             for mfa in self._value:
                 arr.append(mfa.raw)
@@ -279,7 +303,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
         """
         Optional factor by which to multiply array elements.
         """
-        if self._layered:
+        if self.layered:
             factor = [mfa.factor for mfa in self._value]
             return factor
 
@@ -293,7 +317,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
         """
         How the array is to be written to the input file.
         """
-        if self._layered:
+        if self.layered:
             how = [mfa.how for mfa in self._value]
             return how
 
