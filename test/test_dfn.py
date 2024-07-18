@@ -2,15 +2,17 @@ from pathlib import Path
 
 from flopy4.dfn import Dfn, DfnSet
 
+PROJ_ROOT_PATH = Path(__file__).parents[1]
+
 
 class TestDfn(Dfn):
     __test__ = False  # tell pytest not to collect
 
 
 def test_dfn_load(tmp_path):
-    name = "prt-prp"
+    key = "prt-prp"
 
-    f = Path(f"../dfn/toml/{name}.toml")
+    f = Path(PROJ_ROOT_PATH / "dfn" / "toml" / f"{key}.toml")
     dfn = Dfn.load(f.absolute(), {})
 
     assert dfn.component == "prt"
@@ -79,7 +81,8 @@ particle's release "
 
 def test_dfn_container(tmp_path):
     key = "prt-prp"
-    f = Path(f"../dfn/toml/{key}.toml")
+
+    f = Path(PROJ_ROOT_PATH / "dfn" / "toml" / f"{key}.toml")
     dfn = Dfn.load(f.absolute(), {})
 
     dfns = DfnSet()
