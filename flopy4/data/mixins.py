@@ -7,6 +7,7 @@ class MFArrayMixins:
     MFArray Class.
 
     """
+
     def __init__(self):
         self._is_layered = None
         self._flat = None
@@ -19,9 +20,7 @@ class MFArrayMixins:
 
     @property
     def values(self):
-        raise NotImplementedError(
-            "values must be implemented in child class"
-        )
+        raise NotImplementedError("values must be implemented in child class")
 
     def __iadd__(self, other):
         if self._is_layered:

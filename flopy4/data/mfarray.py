@@ -1,16 +1,17 @@
-import numpy as np
-from pathlib import Path
 from io import StringIO
-from .constants import How, CommonNames
+from pathlib import Path
+
+import numpy as np
+from flopy.datbase import DataInterface
+from flopy.utils.flopy_io import line_strip, multi_line_strip
+
+from .constants import CommonNames, How
 from .mixins import MFArrayMixins
-from flopy.datbase import DataType, DataInterface
-from flopy.utils.flopy_io import multi_line_strip, line_strip
 
 
 class MFArray(DataInterface, MFArrayMixins):
-    """
+    """ """
 
-    """
     def __init__(self, array, shape, how, factor=None, layered=False):
         super().__init__()
         self._flat = array
@@ -71,7 +72,7 @@ class MFArray(DataInterface, MFArrayMixins):
 
         factor = self._factor
         if self._factor is None:
-            factor = 1.
+            factor = 1.0
         return factor
 
     @property
@@ -179,7 +180,7 @@ class MFArray(DataInterface, MFArrayMixins):
                 shape,
                 how=None,
                 factor=None,
-                layered=True
+                layered=True,
             )
 
         else:
@@ -244,15 +245,18 @@ def f_to_array(f):
         line = f.readline()
         line = line_strip(line)
         if line in (
-                CommonNames.empty,
-                CommonNames.internal,
-                CommonNames.external,
-                CommonNames.constant
+            CommonNames.empty,
+            CommonNames.internal,
+            CommonNames.external,
+            CommonNames.constant,
         ):
             f.seek(pos, 0)
             break
-        elif CommonNames.internal in line or CommonNames.external in line \
-                or CommonNames.constant in line:
+        elif (
+            CommonNames.internal in line
+            or CommonNames.external in line
+            or CommonNames.constant in line
+        ):
             f.seek(pos, 0)
             break
         astr.append(line)
@@ -260,4 +264,3 @@ def f_to_array(f):
     astr = StringIO(" ".join(astr))
     array = np.genfromtxt(astr).ravel()
     return array
-
