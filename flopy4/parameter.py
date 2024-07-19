@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections.abc import MutableMapping
 from dataclasses import dataclass, fields
 from enum import Enum
 from typing import Any, Optional
@@ -129,8 +130,37 @@ class MFParameter(MFParamSpec):
             default_value=default_value,
         )
 
+    def __get__(self, instance, _):
+        if instance is None:
+            return self
+        else:
+            return self.value
+
     @property
     @abstractmethod
     def value(self) -> Optional[Any]:
         """Get the parameter's value, if loaded."""
         pass
+
+
+class MFParameters(MutableMapping):
+    def __init__(self, *args, **kwargs):
+        self.params = dict()
+        self.update(dict(*args, **kwargs))
+        for key, param in self.items():
+            setattr(self, key, param)
+
+    def __getitem__(self, key):
+        return self.params[key]
+
+    def __setitem__(self, key, value):
+        self.params[key] = value
+
+    def __delitem__(self, key):
+        del self.params[key]
+
+    def __iter__(self):
+        return iter(self.params)
+
+    def __len__(self):
+        return len(self.params)

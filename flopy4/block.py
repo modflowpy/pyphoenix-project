@@ -1,7 +1,7 @@
 from collections.abc import MutableMapping
 from typing import Any, Dict
 
-from flopy4.parameter import MFParameter
+from flopy4.parameter import MFParameter, MFParameters
 from flopy4.utils import strip
 
 
@@ -20,7 +20,7 @@ class MFBlock(MutableMapping):
     def __init__(self, name=None, index=None, *args, **kwargs):
         self.name = name
         self.index = index
-        self.params = dict()
+        self.params = MFParameters()
         self.update(dict(*args, **kwargs))
         for key, param in self.items():
             setattr(self, key, param)
@@ -50,12 +50,13 @@ class MFBlock(MutableMapping):
         return len(self.params)
 
     @classmethod
-    def load(cls, f):
+    def load(cls, f, strict=False):
         name = None
         index = None
         found = False
         params = dict()
         members = get_member_params(cls)
+
         while True:
             pos = f.tell()
             line = strip(f.readline()).lower()
@@ -69,7 +70,7 @@ class MFBlock(MutableMapping):
             elif key == "end":
                 break
             elif found:
-                if key in members:
+                if not strict or key in members:
                     f.seek(pos)
                     param = members[key]
                     param.block = name
@@ -86,3 +87,7 @@ class MFBlock(MutableMapping):
         for param in self.values():
             param.write(f)
         f.write(end)
+
+
+class MFBlocks:
+    pass

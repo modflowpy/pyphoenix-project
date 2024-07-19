@@ -13,7 +13,7 @@ class TestBlock(MFBlock):
     # a = MFArray(description="array")
 
 
-def test_get_member_params():
+def test_params():
     params = get_member_params(TestBlock)
     assert len(params) == 5
 
@@ -48,7 +48,7 @@ def test_get_member_params():
     # assert not f.optional
 
 
-def test_block_load_write_no_index(tmp_path):
+def test_load_write(tmp_path):
     name = "options"
     fpth = tmp_path / f"{name}.txt"
     with open(fpth, "w") as f:
