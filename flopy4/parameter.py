@@ -1,8 +1,9 @@
 from abc import abstractmethod
+from ast import literal_eval
 from collections import UserDict
 from dataclasses import dataclass, fields
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 
 class MFReader(Enum):
@@ -40,6 +41,7 @@ class MFParamSpec:
     repeating: bool = False
     tagged: bool = True
     reader: MFReader = MFReader.urword
+    shape: Optional[Tuple[int]] = None
     default_value: Optional[Any] = None
 
     @classmethod
@@ -74,6 +76,8 @@ class MFParamSpec:
                 spec[key] = val == "true"
             elif key == "reader":
                 spec[key] = MFReader.from_str(val)
+            elif key == "shape":
+                spec[key] = literal_eval(val)
             else:
                 spec[key] = val
         return cls(**spec)
@@ -134,6 +138,7 @@ class MFParameter(MFParamSpec):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         super().__init__(
@@ -150,6 +155,7 @@ class MFParameter(MFParamSpec):
             repeating=repeating,
             tagged=tagged,
             reader=reader,
+            shape=shape,
             default_value=default_value,
         )
 
@@ -161,7 +167,10 @@ class MFParameter(MFParamSpec):
 
 
 class MFParameters(UserDict):
-    """Mapping of parameter names to parameters."""
+    """
+    Mapping of parameter names to parameters.
+    Supports dictionary and attribute access.
+    """
 
     def __init__(self, params=None):
         super().__init__(params)

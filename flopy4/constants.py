@@ -8,3 +8,4 @@ class CommonNames:
     vertex = "vertex"
     unstructured = "unstructured"
     empty = ""
+    end = "END"

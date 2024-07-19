@@ -1,3 +1,4 @@
+from flopy4.array import MFArray
 from flopy4.block import MFBlock
 from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
@@ -20,12 +21,12 @@ class TestPackage(MFPackage):
     )
     s = MFString(block="options", description="string", optional=False)
     f = MFFilename(block="options", description="filename", optional=False)
-    # a = MFArray(block="packagedata", description="array")
+    a = MFArray(block="packagedata", description="array", shape=(3))
 
 
 def test_member_params():
     params = TestPackage.params
-    assert len(params) == 5
+    assert len(params) == 6
 
     k = params["k"]
     assert isinstance(k, MFKeyword)
@@ -57,15 +58,15 @@ def test_member_params():
     assert f.description == "filename"
     assert not f.optional
 
-    # a = params["a"]
-    # assert isinstance(f, MFArray)
-    # assert a.block == "packagedata"
-    # assert a.description == "array"
+    a = params["a"]
+    assert isinstance(a, MFArray)
+    assert a.block == "packagedata"
+    assert a.description == "array"
 
 
 def test_member_blocks():
     blocks = TestPackage.blocks
-    assert len(blocks) == 1
+    assert len(blocks) == 2
 
     block = blocks["options"]
     assert isinstance(block, MFBlock)
@@ -96,14 +97,19 @@ def test_member_blocks():
     assert f.description == "filename"
     assert not f.optional
 
-    # a = block["a"]
-    # assert isinstance(f, MFArray)
-    # assert a.description == "array"
+    block = blocks["packagedata"]
+    assert isinstance(block, MFBlock)
+    assert len(block.params) == 1
+
+    a = block["a"]
+    assert isinstance(a, MFArray)
+    assert a.description == "array"
 
 
 def test_load_write(tmp_path):
     name = "test"
     fpth = tmp_path / f"{name}.txt"
+    array = " ".join(str(x) for x in [1.0, 2.0, 3.0])
     with open(fpth, "w") as f:
         f.write("BEGIN OPTIONS\n")
         f.write("  K\n")
@@ -111,15 +117,19 @@ def test_load_write(tmp_path):
         f.write("  D 1.0\n")
         f.write("  S value\n")
         f.write(f"  F FILEIN {fpth}\n")
+        f.write(f"  A\nINTERNAL\n{array}\n")
         f.write("END OPTIONS\n")
-        # todo another block
+        f.write("\n")
+        f.write("BEGIN PACKAGEDATA\n")
+        f.write(f"  A\nINTERNAL\n{array}\n")
+        f.write("END PACKAGEDATA\n")
 
     # test package load
     with open(fpth, "r") as f:
         package = TestPackage.load(f)
 
-        assert len(package.blocks) == 1
-        assert len(package.params) == 5
+        assert len(package.blocks) == 2
+        assert len(package.params) == 6
 
         # class attributes: param specifications
         assert isinstance(TestPackage.k, MFKeyword)
@@ -147,4 +157,5 @@ def test_load_write(tmp_path):
         assert "  D 1.0\n" in lines
         assert "  S value\n" in lines
         assert f"  F FILEIN {fpth}\n" in lines
+        # todo check array
         assert "END OPTIONS\n" in lines
