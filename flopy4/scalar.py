@@ -1,21 +1,11 @@
 from abc import abstractmethod
-from dataclasses import asdict
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
-from flopy4.parameter import MFParameter, MFParamSpec, MFReader
+from flopy4.parameter import MFParameter, MFReader
 from flopy4.utils import strip
 
 PAD = "  "
-
-
-def _as_dict(spec: Optional[MFParamSpec]) -> dict:
-    return dict() if spec is None else asdict(spec)
-
-
-def _or_empty(spec: Optional[MFParamSpec]) -> MFParamSpec:
-    return MFParamSpec() if spec is None else spec
 
 
 class MFScalar(MFParameter):
@@ -99,7 +89,7 @@ class MFKeyword(MFScalar):
         )
 
     @classmethod
-    def load(cls, f, spec: Optional[MFParamSpec] = None) -> "MFKeyword":
+    def load(cls, f, **kwargs) -> "MFKeyword":
         line = strip(f.readline()).lower()
 
         if not any(line):
@@ -107,9 +97,8 @@ class MFKeyword(MFScalar):
         if " " in line:
             raise ValueError("Keyword may not contain spaces")
 
-        spec = _or_empty(spec)
-        spec.name = line
-        return cls(value=True, **_as_dict(spec))
+        kwargs["name"] = line
+        return cls(value=True, **kwargs)
 
     def write(self, f):
         if self.value:
@@ -154,16 +143,15 @@ class MFInteger(MFScalar):
         )
 
     @classmethod
-    def load(cls, f, spec: Optional[MFParamSpec] = None) -> "MFInteger":
+    def load(cls, f, **kwargs) -> "MFInteger":
         line = strip(f.readline()).lower()
         words = line.split()
 
         if len(words) != 2:
             raise ValueError("Expected space-separated: 1) keyword, 2) value")
 
-        spec = _or_empty(spec)
-        spec.name = words[0]
-        return cls(value=int(words[1]), **_as_dict(spec))
+        kwargs["name"] = words[0]
+        return cls(value=int(words[1]), **kwargs)
 
     def write(self, f):
         f.write(f"{PAD}{self.name.upper()} {self.value}\n")
@@ -207,16 +195,15 @@ class MFDouble(MFScalar):
         )
 
     @classmethod
-    def load(cls, f, spec: Optional[MFParamSpec] = None) -> "MFDouble":
+    def load(cls, f, **kwargs) -> "MFDouble":
         line = strip(f.readline()).lower()
         words = line.split()
 
         if len(words) != 2:
             raise ValueError("Expected space-separated: 1) keyword, 2) value")
 
-        spec = _or_empty(spec)
-        spec.name = words[0]
-        return cls(value=float(words[1]), **_as_dict(spec))
+        kwargs["name"] = words[0]
+        return cls(value=float(words[1]), **kwargs)
 
     def write(self, f):
         f.write(f"{PAD}{self.name.upper()} {self.value}\n")
@@ -260,16 +247,15 @@ class MFString(MFScalar):
         )
 
     @classmethod
-    def load(cls, f, spec: Optional[MFParamSpec] = None) -> "MFString":
+    def load(cls, f, **kwargs) -> "MFString":
         line = strip(f.readline()).lower()
         words = line.split()
 
         if len(words) != 2:
             raise ValueError("Expected space-separated: 1) keyword, 2) value")
 
-        spec = _or_empty(spec)
-        spec.name = words[0]
-        return cls(value=words[1], **_as_dict(spec))
+        kwargs["name"] = words[0]
+        return cls(value=words[1], **kwargs)
 
     def write(self, f):
         f.write(f"{PAD}{self.name.upper()} {self.value}\n")
@@ -326,7 +312,7 @@ class MFFilename(MFScalar):
         )
 
     @classmethod
-    def load(cls, f, spec: Optional[MFParamSpec] = None) -> "MFFilename":
+    def load(cls, f, **kwargs) -> "MFFilename":
         line = strip(f.readline())
         words = line.split()
         inout = [io.name for io in MFFileInout]
@@ -339,12 +325,11 @@ class MFFilename(MFScalar):
                 "3) file path"
             )
 
-        spec = _or_empty(spec)
-        spec.name = words[0].lower()
+        kwargs["name"] = words[0].lower()
         return cls(
             inout=MFFileInout.from_str(words[1]),
             value=Path(words[2]),
-            **_as_dict(spec),
+            **kwargs,
         )
 
     def write(self, f):

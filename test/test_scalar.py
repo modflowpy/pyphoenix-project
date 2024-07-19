@@ -1,6 +1,5 @@
 import pytest
 
-from flopy4.parameter import MFParamSpec
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword
 
 
@@ -13,11 +12,9 @@ def test_keyword_load(tmp_path):
     with open(fpth, "r") as f:
         scalar = MFKeyword.load(
             f,
-            MFParamSpec(
-                block="options",
-                description="test keyword parameter",
-                optional=False,
-            ),
+            block="options",
+            description="test keyword parameter",
+            optional=False,
         )
         assert scalar.name == name
         assert scalar.value

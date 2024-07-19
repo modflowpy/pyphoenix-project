@@ -1,4 +1,4 @@
-from flopy4.block import MFBlock, get_member_params
+from flopy4.block import MFBlock
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 
 
@@ -13,8 +13,8 @@ class TestBlock(MFBlock):
     # a = MFArray(description="array")
 
 
-def test_params():
-    params = get_member_params(TestBlock)
+def test_members():
+    params = TestBlock.params
     assert len(params) == 5
 
     k = params["k"]
@@ -44,8 +44,7 @@ def test_params():
 
     # a = params["a"]
     # assert isinstance(f, MFArray)
-    # assert f.description == "array"
-    # assert not f.optional
+    # assert a.description == "array"
 
 
 def test_load_write(tmp_path):

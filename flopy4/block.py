@@ -1,61 +1,60 @@
-from collections.abc import MutableMapping
-from typing import Any, Dict
+from abc import ABCMeta
+from collections import UserDict
+from dataclasses import asdict
+from typing import Any
 
 from flopy4.parameter import MFParameter, MFParameters
 from flopy4.utils import strip
 
 
-def get_member_params(cls) -> Dict[str, MFParameter]:
-    if not issubclass(cls, MFBlock):
-        raise ValueError(f"Expected MFBlock, got {cls}")
+class MFBlockMeta(type):
+    def __new__(cls, clsname, bases, attrs):
+        new = super().__new__(cls, clsname, bases, attrs)
+        if clsname == "MFBlock":
+            return new
 
-    return {
-        k: v
-        for k, v in cls.__dict__.items()
-        if issubclass(type(v), MFParameter)
-    }
+        # add parameter specification as class attribute
+        new.params = MFParameters(
+            {
+                k: v
+                for k, v in attrs.items()
+                if issubclass(type(v), MFParameter)
+            }
+        )
+        return new
 
 
-class MFBlock(MutableMapping):
-    def __init__(self, name=None, index=None, *args, **kwargs):
+class MFBlockMappingMeta(MFBlockMeta, ABCMeta):
+    # http://www.phyast.pitt.edu/~micheles/python/metatype.html
+    pass
+
+
+class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
+    def __init__(self, name=None, index=None, params=None):
         self.name = name
         self.index = index
-        self.params = MFParameters()
-        self.update(dict(*args, **kwargs))
+        super().__init__(params)
         for key, param in self.items():
             setattr(self, key, param)
 
     def __getattribute__(self, name: str) -> Any:
+        # shortcut to parameter value for instance attribute.
+        # the class attribute is the full parameter instance.
         attr = super().__getattribute__(name)
-        if isinstance(attr, MFParameter):
-            # shortcut to parameter value for instance attributes.
-            # the class attribute is the full param specification.
-            return attr.value
-        else:
-            return attr
+        return attr.value if isinstance(attr, MFParameter) else attr
 
-    def __getitem__(self, key):
-        return self.params[key]
-
-    def __setitem__(self, key, value):
-        self.params[key] = value
-
-    def __delitem__(self, key):
-        del self.params[key]
-
-    def __iter__(self):
-        return iter(self.params)
-
-    def __len__(self):
-        return len(self.params)
+    @property
+    def params(self) -> MFParameters:
+        """Block parameters."""
+        return self.data
 
     @classmethod
-    def load(cls, f, strict=False):
+    def load(cls, f):
         name = None
         index = None
         found = False
         params = dict()
-        members = get_member_params(cls)
+        members = cls.params
 
         while True:
             pos = f.tell()
@@ -70,13 +69,14 @@ class MFBlock(MutableMapping):
             elif key == "end":
                 break
             elif found:
-                if not strict or key in members:
+                param = members.get(key)
+                if param is not None:
                     f.seek(pos)
-                    param = members[key]
-                    param.block = name
-                    params[key] = type(param).load(f, spec=param)
+                    params[key] = type(param).load(
+                        f, **asdict(param.with_name(key).with_block(name))
+                    )
 
-        return cls(name, index, **params)
+        return cls(name, index, params)
 
     def write(self, f):
         index = self.index if self.index is not None else ""
@@ -89,5 +89,8 @@ class MFBlock(MutableMapping):
         f.write(end)
 
 
-class MFBlocks:
-    pass
+class MFBlocks(UserDict):
+    """Mapping of block names to blocks."""
+
+    def __init__(self, blocks=None):
+        super().__init__(blocks)
