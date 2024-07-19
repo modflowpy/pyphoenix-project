@@ -4,26 +4,25 @@ import toml
 
 
 class Dfn:
-    def __init__(self, component, subcomponent, dfns, *args, **kwargs):
+    def __init__(self, component, subcomponent, dfn, *args, **kwargs):
         self._component = component
         self._subcomponent = subcomponent
-        self._dfn = dfns
-        self._blocks = dfns["block"]
+        self._dfn = dfn
 
     def __getitem__(self, key):
-        return self._blocks[key]
+        return self._dfn["block"][key]
 
     def __setitem__(self, key, value):
-        self._blocks[key] = value
+        self._dfn["block"][key] = value
 
     def __delitem__(self, key):
-        del self._blocks[key]
+        del self._dfn["block"][key]
 
     def __iter__(self):
-        return iter(self._blocks)
+        return iter(self._dfn["block"])
 
     def __len__(self):
-        return len(self._blocks)
+        return len(self._dfn["block"])
 
     @property
     def component(self):
@@ -93,3 +92,10 @@ class DfnSet:
             raise ValueError("DFN does not exist in container")
 
         return self._dfns[key]
+
+    #def get(self, component, subcomponent):
+    #    key = f"{component.lower()}-{subcomponent.lower()}"
+    #    if key not in self._dfns:
+    #        raise ValueError("DFN does not exist in container")
+    #
+    #    return self._dfns[key]
