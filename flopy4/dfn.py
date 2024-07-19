@@ -93,7 +93,7 @@ class DfnSet:
 
         return self._dfns[key]
 
-    #def get(self, component, subcomponent):
+    # def get(self, component, subcomponent):
     #    key = f"{component.lower()}-{subcomponent.lower()}"
     #    if key not in self._dfns:
     #        raise ValueError("DFN does not exist in container")

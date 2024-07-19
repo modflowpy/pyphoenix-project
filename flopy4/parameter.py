@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import MutableMapping
+from collections import UserDict
 from dataclasses import dataclass, fields
 from enum import Enum
 from typing import Any, Optional
@@ -44,11 +44,25 @@ class MFParamSpec:
 
     @classmethod
     def fields(cls):
+        """
+        Get the MF6 input parameter field specification.
+        These uniquely describe the MF6 input parameter.
+
+        Notes
+        -----
+        This is equivalent to `dataclasses.fields(MFParamSpec)`.
+        """
         return fields(cls)
 
     @classmethod
     def load(cls, f) -> "MFParamSpec":
+        """
+        Load an MF6 input input parameter specification
+        from a definition file.
+        """
         spec = dict()
+        members = cls.fields()
+        keywords = [f.name for f in members if f.type is bool]
         while True:
             line = f.readline()
             if not line or line == "\n":
@@ -56,16 +70,23 @@ class MFParamSpec:
             words = line.strip().lower().split()
             key = words[0]
             val = " ".join(words[1:])
-            # todo dynamically load properties and
-            # filter by type instead of hardcoding
-            kw_fields = [f.name for f in cls.fields() if f.type is bool]
-            if key in kw_fields:
+            if key in keywords:
                 spec[key] = val == "true"
             elif key == "reader":
                 spec[key] = MFReader.from_str(val)
             else:
                 spec[key] = val
         return cls(**spec)
+
+    def with_name(self, name) -> "MFParamSpec":
+        """Set the parameter name and return the parameter."""
+        self.name = name
+        return self
+
+    def with_block(self, block) -> "MFParamSpec":
+        """Set the parameter block and return the parameter."""
+        self.block = block
+        return self
 
 
 class MFParameter(MFParamSpec):
@@ -77,20 +98,22 @@ class MFParameter(MFParamSpec):
     as a data access layer by which higher components (blocks,
     packages, etc) can read/write parameters. The former is a
     developer task (though it may be automated as classes are
-    generated from DFNs) while the latter are user-facing APIs.
+    generated from DFNs) while the latter happens at runtime,
+    but both APIs are user-facing; the user can first inspect
+    a package's specification via class attributes, then load
+    an input file and inspect the package data.
 
     Notes
     -----
     Specification attributes are set at import time. A parent
-    block, when defining parameters as class attributes, will
-    supply a description, whether the parameter is mandatory,
-    and other information comprising the input specification.
+    block or package defines parameters as class attributes,
+    including a description, whether the parameter is optional,
+    and other information specifying the parameter.
 
     The parameter's value is an instance attribute that is set
-    at load time. The parameter's parent block will introspect
-    its constituent parameters, then load each parameter value
-    from the input file and assign an eponymous attribute with
-    a value property. This is akin to "hydrating" a definition
+    at load time. The parameter's parent component introspects
+    its constituent parameters then loads each parameter value
+    from the input file. This is like "hydrating" a definition
     from a data store as in single-page web applications (e.g.
     React, Vue) or ORM frameworks (Django).
     """
@@ -130,12 +153,6 @@ class MFParameter(MFParamSpec):
             default_value=default_value,
         )
 
-    def __get__(self, instance, _):
-        if instance is None:
-            return self
-        else:
-            return self.value
-
     @property
     @abstractmethod
     def value(self) -> Optional[Any]:
@@ -143,24 +160,10 @@ class MFParameter(MFParamSpec):
         pass
 
 
-class MFParameters(MutableMapping):
-    def __init__(self, *args, **kwargs):
-        self.params = dict()
-        self.update(dict(*args, **kwargs))
+class MFParameters(UserDict):
+    """Mapping of parameter names to parameters."""
+
+    def __init__(self, params=None):
+        super().__init__(params)
         for key, param in self.items():
             setattr(self, key, param)
-
-    def __getitem__(self, key):
-        return self.params[key]
-
-    def __setitem__(self, key, value):
-        self.params[key] = value
-
-    def __delitem__(self, key):
-        del self.params[key]
-
-    def __iter__(self):
-        return iter(self.params)
-
-    def __len__(self):
-        return len(self.params)
