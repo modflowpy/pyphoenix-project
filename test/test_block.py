@@ -1,3 +1,6 @@
+import numpy as np
+
+from flopy4.array import MFArray
 from flopy4.block import MFBlock
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 
@@ -10,12 +13,12 @@ class TestBlock(MFBlock):
     d = MFDouble(description="double")
     s = MFString(description="string", optional=False)
     f = MFFilename(description="filename", optional=False)
-    # a = MFArray(description="array")
+    a = MFArray(description="array", shape=(3))
 
 
 def test_members():
     params = TestBlock.params
-    assert len(params) == 5
+    assert len(params) == 6
 
     k = params["k"]
     assert isinstance(k, MFKeyword)
@@ -42,9 +45,10 @@ def test_members():
     assert f.description == "filename"
     assert not f.optional
 
-    # a = params["a"]
-    # assert isinstance(f, MFArray)
-    # assert a.description == "array"
+    a = params["a"]
+    assert isinstance(a, MFArray)
+    assert a.description == "array"
+    assert a.optional
 
 
 def test_load_write(tmp_path):
@@ -57,6 +61,7 @@ def test_load_write(tmp_path):
         f.write("  D 1.0\n")
         f.write("  S value\n")
         f.write(f"  F FILEIN {fpth}\n")
+        f.write("  A\n    INTERNAL\n      1.0 2.0 3.0\n")
         f.write(f"END {name.upper()}\n")
 
     # test block load
@@ -76,6 +81,7 @@ def test_load_write(tmp_path):
         assert block.d == 1.0
         assert block.s == "value"
         assert block.f == fpth
+        assert np.allclose(block.a, np.array([1.0, 2.0, 3.0]))
 
     # test block write
     fpth2 = tmp_path / f"{name}2.txt"
@@ -88,3 +94,4 @@ def test_load_write(tmp_path):
         assert "  D 1.0\n" in lines
         assert "  S value\n" in lines
         assert f"  F FILEIN {fpth}\n" in lines
+        # assert "  A\n    INTERNAL\n      1.0 2.0 3.0\n" in lines

@@ -3,6 +3,7 @@ from collections import UserDict
 from dataclasses import asdict
 from typing import Any
 
+from flopy4.array import MFArray
 from flopy4.parameter import MFParameter, MFParameters
 from flopy4.utils import strip
 
@@ -30,6 +31,21 @@ class MFBlockMappingMeta(MFBlockMeta, ABCMeta):
 
 
 class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
+    """
+    MF6 input block. Maps parameter names to parameters.
+
+    Notes
+    -----
+    This class is dynamically subclassed by `MFPackage`
+    to match each block within a package parameter set.
+
+    Supports dictionary and attribute access. The class
+    attributes specify the block's parameters. Instance
+    attributes contain both the specification and value.
+
+    The block's name and index are discovered upon load.
+    """
+
     def __init__(self, name=None, index=None, params=None):
         self.name = name
         self.index = index
@@ -49,7 +65,7 @@ class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
         return self.data
 
     @classmethod
-    def load(cls, f):
+    def load(cls, f, **kwargs):
         name = None
         index = None
         found = False
@@ -72,9 +88,13 @@ class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
                 param = members.get(key)
                 if param is not None:
                     f.seek(pos)
-                    params[key] = type(param).load(
-                        f, **asdict(param.with_name(key).with_block(name))
-                    )
+                    spec = asdict(param.with_name(key).with_block(name))
+                    kwargs = {**kwargs, **spec}
+                    if type(param) is MFArray:
+                        # TODO: inject from model somehow?
+                        # and remove special handling here
+                        kwargs["cwd"] = ""
+                    params[key] = type(param).load(f, **kwargs)
 
         return cls(name, index, params)
 

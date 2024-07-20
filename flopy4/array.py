@@ -183,8 +183,8 @@ class MFArray(MFParameter, NumPyArrayMixin):
 
     def __init__(
         self,
-        array,
         shape,
+        array=None,
         how=MFArrayType.internal,
         factor=None,
         block=None,
@@ -328,53 +328,42 @@ class MFArray(MFParameter, NumPyArrayMixin):
         pass
 
     @classmethod
-    def load(cls, f, cwd, shape, layered=False):
-        """
+    def load(cls, f, cwd, shape, header=True, **kwargs):
+        layered = kwargs.pop("layered", False)
 
-        Parameters
-        ----------
-        f
+        if header:
+            tokens = multi_line_strip(f).split()
+            name = tokens[0]
+            kwargs.pop("name", None)
+            if len(tokens) > 1 and tokens[1] == "layered":
+                layered = True
+        else:
+            name = kwargs.pop("name", None)
 
-        Returns
-        -------
-            MFArray
-        """
         if layered:
             nlay = shape[0]
-            lay_shape = shape[1:]
+            lshp = shape[1:]
             objs = []
             for _ in range(nlay):
-                mfa = cls._load(f, cwd, lay_shape)
+                mfa = cls._load(f, cwd, lshp, name)
                 objs.append(mfa)
 
-            mfa = MFArray(
-                np.array(objs, dtype=object),
+            return MFArray(
                 shape,
+                array=np.array(objs, dtype=object),
                 how=None,
                 factor=None,
+                name=name,
                 layered=True,
             )
-
         else:
-            mfa = cls._load(f, cwd, shape, layered=layered)
-
-        return mfa
+            kwargs.pop("layered", None)
+            return cls._load(
+                f, cwd, shape, layered=layered, name=name, **kwargs
+            )
 
     @classmethod
-    def _load(cls, f, cwd, shape, layered=False):
-        """
-
-        Parameters
-        ----------
-        f
-        cwd
-        shape
-        layered
-
-        Returns
-        -------
-
-        """
+    def _load(cls, f, cwd, shape, layered=False, **kwargs):
         control_line = multi_line_strip(f).split()
 
         if CommonNames.iprn.lower() in control_line:
@@ -392,7 +381,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
             array = float(control_line[clpos])
             clpos += 1
 
-        elif how == how.external:
+        elif how == MFArrayType.external:
             ext_path = Path(control_line[clpos])
             fpath = cwd / ext_path
             with open(fpath) as foo:
@@ -406,8 +395,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
         if len(control_line) > 2:
             factor = float(control_line[clpos + 1])
 
-        mfa = cls(array, shape, how, factor=factor)
-        return mfa
+        return cls(shape, array=array, how=how, factor=factor, **kwargs)
 
     @staticmethod
     def read_array(f):
@@ -433,6 +421,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
                 CommonNames.internal in line
                 or CommonNames.external in line
                 or CommonNames.constant in line
+                or CommonNames.end in line.upper()
             ):
                 f.seek(pos, 0)
                 break

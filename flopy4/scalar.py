@@ -26,6 +26,7 @@ class MFScalar(MFParameter):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         self._value = value
@@ -43,6 +44,7 @@ class MFScalar(MFParameter):
             repeating,
             tagged,
             reader,
+            shape,
             default_value,
         )
 
@@ -68,6 +70,7 @@ class MFKeyword(MFScalar):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         super().__init__(
@@ -85,6 +88,7 @@ class MFKeyword(MFScalar):
             repeating,
             tagged,
             reader,
+            shape,
             default_value,
         )
 
@@ -122,6 +126,7 @@ class MFInteger(MFScalar):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         super().__init__(
@@ -139,6 +144,7 @@ class MFInteger(MFScalar):
             repeating,
             tagged,
             reader,
+            shape,
             default_value,
         )
 
@@ -174,6 +180,7 @@ class MFDouble(MFScalar):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         super().__init__(
@@ -191,6 +198,7 @@ class MFDouble(MFScalar):
             repeating,
             tagged,
             reader,
+            shape,
             default_value,
         )
 
@@ -226,6 +234,7 @@ class MFString(MFScalar):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         super().__init__(
@@ -243,6 +252,7 @@ class MFString(MFScalar):
             repeating,
             tagged,
             reader,
+            shape,
             default_value,
         )
 
@@ -290,6 +300,7 @@ class MFFilename(MFScalar):
         repeating=False,
         tagged=False,
         reader=MFReader.urword,
+        shape=None,
         default_value=None,
     ):
         self.inout = inout
@@ -308,6 +319,7 @@ class MFFilename(MFScalar):
             repeating,
             tagged,
             reader,
+            shape,
             default_value,
         )
 

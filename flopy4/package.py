@@ -51,7 +51,8 @@ class MFPackageMappingMeta(MFPackageMeta, ABCMeta):
 
 class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
     """
-    MF6 package base class.
+    MF6 model or simulation component package.
+
 
     TODO: reimplement with `ChainMap`?
     """
@@ -93,6 +94,8 @@ class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
             line = f.readline()
             if line == "":
                 break
+            if line == "\n":
+                continue
             line = strip(line).lower()
             words = line.split()
             key = words[0]
