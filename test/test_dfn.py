@@ -12,7 +12,7 @@ class TestDfn(Dfn):
 def test_dfn_load(tmp_path):
     key = "prt-prp"
 
-    f = Path(PROJ_ROOT_PATH / "dfn" / "toml" / f"{key}.toml")
+    f = Path(PROJ_ROOT_PATH / "spec" / "toml" / f"{key}.toml")
     dfn = Dfn.load(f.absolute(), {})
 
     assert dfn.component == "prt"
@@ -54,35 +54,32 @@ def test_dfn_load(tmp_path):
     ]
 
     assert dfn.param("options", "drape") == {
+        "type": "KEYWORD",
         "block_variable": False,
-        "deprecated": "",
-        "description": "is a text keyword to indicate that if a \
-particle's release "
-        "point is in a cell that happens to be inactive at release "
-        "time, the particle is to be moved to the topmost active "
-        "cell below it, if any. By default, a particle is not "
-        "released into the simulation if its release point's cell "
-        "is inactive at release time.",
-        "in_record": False,
-        "layered": False,
-        "longname": "drape",
-        "mf6internal": "drape",
-        "numeric_index": False,
-        "optional": "true",
-        "preserve_case": False,
-        "reader": "urword",
+        "valid": [],
         "shape": "",
         "tagged": True,
+        "in_record": False,
+        "layered": False,
         "time_series": False,
-        "type": "keyword",
-        "valid": [],
+        "reader": "urword",
+        "optional": True,
+        "preserve_case": False,
+        "numeric_index": False,
+        "longname": "drape",
+        "description": "is a text keyword to indicate that if a particle's "
+        "release point is in a cell that happens to be inactive at release "
+        "time, the particle is to be moved to the topmost active cell below "
+        "it, if any. By default, a particle is not released into the "
+        "simulation if its release point's cell is inactive at release time.",
+        "deprecated": "",
     }
 
 
 def test_dfn_container(tmp_path):
     key = "prt-prp"
 
-    f = Path(PROJ_ROOT_PATH / "dfn" / "toml" / f"{key}.toml")
+    f = Path(PROJ_ROOT_PATH / "spec" / "toml" / f"{key}.toml")
     dfn = Dfn.load(f.absolute(), {})
 
     dfns = DfnSet()

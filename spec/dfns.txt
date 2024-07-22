@@ -1,0 +1,22 @@
+# Add a new DFN parameter set to MF6
+# by adding a new entry to this list
+# ----------------------------------
+
+# simulation
+
+# gwf model
+gwf-dis.dfn
+
+# gwt model
+gwt-dis.dfn
+
+# gwe model
+gwe-dis.dfn
+
+# prt model
+prt-dis.dfn
+prt-prp.dfn
+
+# exchanges
+
+# utils
