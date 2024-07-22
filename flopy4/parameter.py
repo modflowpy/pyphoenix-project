@@ -30,6 +30,7 @@ class MFParamSpec:
 
     block: Optional[str] = None
     name: Optional[str] = None
+    type: Optional[str] = None
     longname: Optional[str] = None
     description: Optional[str] = None
     deprecated: bool = False
@@ -127,6 +128,7 @@ class MFParameter(MFParamSpec):
         self,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -144,6 +146,7 @@ class MFParameter(MFParamSpec):
         super().__init__(
             block=block,
             name=name,
+            type=type,
             longname=longname,
             description=description,
             deprecated=deprecated,
@@ -163,6 +166,11 @@ class MFParameter(MFParamSpec):
     @abstractmethod
     def value(self) -> Optional[Any]:
         """Get the parameter's value, if loaded."""
+        pass
+
+    @abstractmethod
+    def value(self, value):
+        """Set the parameter's value."""
         pass
 
 

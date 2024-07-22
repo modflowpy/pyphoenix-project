@@ -2,6 +2,7 @@ import numpy as np
 
 from flopy4.array import MFArray
 from flopy4.block import MFBlock
+from flopy4.compound import MFRecord
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 
 
@@ -14,6 +15,12 @@ class TestBlock(MFBlock):
     s = MFString(description="string", optional=False)
     f = MFFilename(description="filename", optional=False)
     a = MFArray(description="array", shape=(3))
+    r = MFRecord(
+        MFKeyword(name="rk", description="keyword"),
+        MFInteger(name="ri", description="int"),
+        description="record",
+        optional=False,
+    )
 
 
 def test_members():

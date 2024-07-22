@@ -8,7 +8,7 @@ from flopy4.utils import strip
 PAD = "  "
 
 
-class MFScalar(MFParameter):
+class MFScalar[T](MFParameter):
     @abstractmethod
     def __init__(
         self,
@@ -49,11 +49,15 @@ class MFScalar(MFParameter):
         )
 
     @property
-    def value(self):
+    def value(self) -> T:
         return self._value
 
+    @value.setter
+    def value(self, value: T):
+        self._value = value
 
-class MFKeyword(MFScalar):
+
+class MFKeyword(MFScalar[bool]):
     def __init__(
         self,
         value=None,
@@ -109,7 +113,7 @@ class MFKeyword(MFScalar):
             f.write(f"{PAD}{self.name.upper()}\n")
 
 
-class MFInteger(MFScalar):
+class MFInteger(MFScalar[int]):
     def __init__(
         self,
         value=None,
@@ -163,7 +167,7 @@ class MFInteger(MFScalar):
         f.write(f"{PAD}{self.name.upper()} {self.value}\n")
 
 
-class MFDouble(MFScalar):
+class MFDouble(MFScalar[float]):
     def __init__(
         self,
         value=None,
@@ -217,7 +221,7 @@ class MFDouble(MFScalar):
         f.write(f"{PAD}{self.name.upper()} {self.value}\n")
 
 
-class MFString(MFScalar):
+class MFString(MFScalar[str]):
     def __init__(
         self,
         value=None,
@@ -282,7 +286,7 @@ class MFFileInout(Enum):
                 return e
 
 
-class MFFilename(MFScalar):
+class MFFilename(MFScalar[Path]):
     def __init__(
         self,
         inout=MFFileInout.filein,
