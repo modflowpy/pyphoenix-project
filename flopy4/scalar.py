@@ -15,6 +15,7 @@ class MFScalar[T](MFParameter):
         value=None,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -33,6 +34,7 @@ class MFScalar[T](MFParameter):
         super().__init__(
             block,
             name,
+            type,
             longname,
             description,
             deprecated,
@@ -63,6 +65,7 @@ class MFKeyword(MFScalar[bool]):
         value=None,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -81,6 +84,7 @@ class MFKeyword(MFScalar[bool]):
             value,
             block,
             name,
+            type,
             longname,
             description,
             deprecated,
@@ -95,6 +99,9 @@ class MFKeyword(MFScalar[bool]):
             shape,
             default_value,
         )
+
+    def __len__(self):
+        return 1
 
     @classmethod
     def load(cls, f, **kwargs) -> "MFKeyword":
@@ -108,9 +115,11 @@ class MFKeyword(MFScalar[bool]):
         kwargs["name"] = line
         return cls(value=True, **kwargs)
 
-    def write(self, f):
+    def write(self, f, newline=True):
         if self.value:
-            f.write(f"{PAD}{self.name.upper()}\n")
+            f.write(
+                f"{PAD}" f"{self.name.upper()}" f"{'\n' if newline else ''}"
+            )
 
 
 class MFInteger(MFScalar[int]):
@@ -119,6 +128,7 @@ class MFInteger(MFScalar[int]):
         value=None,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -137,6 +147,7 @@ class MFInteger(MFScalar[int]):
             value,
             block,
             name,
+            type,
             longname,
             description,
             deprecated,
@@ -151,6 +162,9 @@ class MFInteger(MFScalar[int]):
             shape,
             default_value,
         )
+
+    def __len__(self):
+        return 2
 
     @classmethod
     def load(cls, f, **kwargs) -> "MFInteger":
@@ -163,8 +177,13 @@ class MFInteger(MFScalar[int]):
         kwargs["name"] = words[0]
         return cls(value=int(words[1]), **kwargs)
 
-    def write(self, f):
-        f.write(f"{PAD}{self.name.upper()} {self.value}\n")
+    def write(self, f, newline=True):
+        f.write(
+            f"{PAD}"
+            f"{self.name.upper()} "
+            f"{self.value}"
+            f"{'\n' if newline else ''}"
+        )
 
 
 class MFDouble(MFScalar[float]):
@@ -173,6 +192,7 @@ class MFDouble(MFScalar[float]):
         value=None,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -191,6 +211,7 @@ class MFDouble(MFScalar[float]):
             value,
             block,
             name,
+            type,
             longname,
             description,
             deprecated,
@@ -205,6 +226,9 @@ class MFDouble(MFScalar[float]):
             shape,
             default_value,
         )
+
+    def __len__(self):
+        return 2
 
     @classmethod
     def load(cls, f, **kwargs) -> "MFDouble":
@@ -217,8 +241,13 @@ class MFDouble(MFScalar[float]):
         kwargs["name"] = words[0]
         return cls(value=float(words[1]), **kwargs)
 
-    def write(self, f):
-        f.write(f"{PAD}{self.name.upper()} {self.value}\n")
+    def write(self, f, newline=True):
+        f.write(
+            f"{PAD}"
+            f"{self.name.upper()} "
+            f"{self.value}"
+            f"{'\n' if newline else ''}"
+        )
 
 
 class MFString(MFScalar[str]):
@@ -227,6 +256,7 @@ class MFString(MFScalar[str]):
         value=None,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -245,6 +275,7 @@ class MFString(MFScalar[str]):
             value,
             block,
             name,
+            type,
             longname,
             description,
             deprecated,
@@ -260,6 +291,9 @@ class MFString(MFScalar[str]):
             default_value,
         )
 
+    def __len__(self):
+        return None if self._value is None else len(self._value.split())
+
     @classmethod
     def load(cls, f, **kwargs) -> "MFString":
         line = strip(f.readline()).lower()
@@ -271,8 +305,13 @@ class MFString(MFScalar[str]):
         kwargs["name"] = words[0]
         return cls(value=words[1], **kwargs)
 
-    def write(self, f):
-        f.write(f"{PAD}{self.name.upper()} {self.value}\n")
+    def write(self, f, newline=True):
+        f.write(
+            f"{PAD}"
+            f"{self.name.upper()} "
+            f"{self.value}"
+            f"{'\n' if newline else ''}"
+        )
 
 
 class MFFileInout(Enum):
@@ -293,6 +332,7 @@ class MFFilename(MFScalar[Path]):
         value=None,
         block=None,
         name=None,
+        type=None,
         longname=None,
         description=None,
         deprecated=False,
@@ -312,6 +352,7 @@ class MFFilename(MFScalar[Path]):
             value,
             block,
             name,
+            type,
             longname,
             description,
             deprecated,
@@ -326,6 +367,9 @@ class MFFilename(MFScalar[Path]):
             shape,
             default_value,
         )
+
+    def __len__(self):
+        return 3
 
     @classmethod
     def load(cls, f, **kwargs) -> "MFFilename":
@@ -348,9 +392,10 @@ class MFFilename(MFScalar[Path]):
             **kwargs,
         )
 
-    def write(self, f):
+    def write(self, f, newline=True):
         f.write(
             f"{PAD}{self.name.upper()} "
             f"{self.inout.value.upper()} "
-            f"{self.value}\n"
+            f"{self.value}"
+            f"{'\n' if newline else ''}"
         )

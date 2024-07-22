@@ -4,6 +4,7 @@ from dataclasses import asdict
 from typing import Any
 
 from flopy4.array import MFArray
+from flopy4.compound import MFKeystring, MFRecord
 from flopy4.parameter import MFParameter, MFParameters
 from flopy4.utils import strip
 
@@ -89,12 +90,15 @@ class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
                 if param is not None:
                     f.seek(pos)
                     spec = asdict(param.with_name(key).with_block(name))
-                    kwargs = {**kwargs, **spec}
-                    if type(param) is MFArray:
+                    kwrgs = {**kwargs, **spec}
+                    ptype = type(param)
+                    if ptype is MFArray:
                         # TODO: inject from model somehow?
                         # and remove special handling here
-                        kwargs["cwd"] = ""
-                    params[key] = type(param).load(f, **kwargs)
+                        kwrgs["cwd"] = ""
+                    if ptype is MFRecord or ptype is MFKeystring:
+                        kwrgs["scalars"] = param.data
+                    params[key] = ptype.load(f, **kwrgs)
 
         return cls(name, index, params)
 
