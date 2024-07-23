@@ -1,20 +1,22 @@
-from abc import abstractmethod
-from collections import UserList
+from abc import abstractmethod, ABCMeta
+from collections.abc import Iterable, Mapping
+from dataclasses import asdict
 from io import StringIO
-from typing import Any, Iterator, List, Tuple
+from pprint import pformat
+from typing import Any, List
 
-from flopy4.parameter import MFParameter, MFReader
+from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
 from flopy4.utils import strip
 
 PAD = "  "
 
 
-class MFCompound(MFParameter, UserList):
+class MFCompound(MFParam, MFParams):
     @abstractmethod
     def __init__(
         self,
-        scalars,
+        params,
         block=None,
         name=None,
         type=None,
@@ -32,7 +34,8 @@ class MFCompound(MFParameter, UserList):
         shape=None,
         default_value=None,
     ):
-        MFParameter.__init__(
+        MFParams.__init__(self, {k: p.with_name(k) for k, p in params.items()})
+        MFParam.__init__(
             self,
             block,
             name,
@@ -51,13 +54,35 @@ class MFCompound(MFParameter, UserList):
             shape,
             default_value,
         )
-        UserList.__init__(self, scalars)
+
+    # def __repr__(self):
+    #     return pformat(self.data)
+    
+    # def __str__(self):
+    #     buffer = StringIO()
+    #     self.write(buffer)
+    #     return buffer.getvalue()
+    
+    @property
+    def value(self) -> Mapping[str, Any]:
+        """Get component names/values."""
+        return {k: s.value for k, s in self.data.items() if s.value is not None}
+
+    @value.setter
+    def value(self, **kwargs):
+        """Set component names/values by keyword arguments."""
+        val_len = len(kwargs)
+        exp_len = len(self.data)
+        if exp_len != val_len:
+            raise ValueError(f"Expected {exp_len} values, got {val_len}")
+        for key in self.data.keys():
+            self.data[key].value = kwargs[key]
 
 
 class MFRecord(MFCompound):
     def __init__(
         self,
-        scalars,
+        params,
         block=None,
         name=None,
         type=None,
@@ -76,7 +101,7 @@ class MFRecord(MFCompound):
         default_value=None,
     ):
         super().__init__(
-            scalars,
+            params,
             block=block,
             name=name,
             type=type,
@@ -96,21 +121,17 @@ class MFRecord(MFCompound):
         )
 
     @property
-    def scalars(self) -> Tuple[MFScalar]:
-        return tuple(self.data.copy())
-
-    @property
-    def value(self) -> Tuple[Any]:
-        return tuple([s.value for s in self.data])
+    def value(self) -> List[Any]:
+        return [s.value for s in self.data]
 
     @value.setter
-    def value(self, value: Tuple[Any]):
+    def value(self, value: Iterable[Any]):
         assert len(value) == len(self.data)
         for i in range(len(self.data)):
             self.data[i].value = value[i]
 
     @classmethod
-    def load(cls, f, scalars, **kwargs) -> "MFRecord":
+    def load(cls, f, params, **kwargs) -> "MFRecord":
         line = strip(f.readline()).lower()
 
         if not any(line):
@@ -119,19 +140,24 @@ class MFRecord(MFCompound):
         split = line.split()
         kwargs["name"] = split.pop(0).lower()
         line = " ".join(split)
-        return cls(list(MFRecord.parse(line, scalars, **kwargs)), **kwargs)
+        return cls(MFRecord.parse(line, params, **kwargs), **kwargs)
 
     @staticmethod
-    def parse(line, scalars, **kwargs) -> Iterator[MFScalar]:
-        for scalar in scalars:
+    def parse(line, params, **kwargs) -> List[MFScalar]:
+        loaded = []
+
+        for param in params:
             split = line.split()
-            stype = type(scalar)
-            words = len(scalar)
+            stype = type(param)
+            words = len(param)
             head = " ".join(split[:words])
             tail = " ".join(split[words:])
             line = tail
+            kwrgs = {**kwargs, **asdict(param)}
             with StringIO(head) as f:
-                yield stype.load(f, **kwargs)
+                loaded.append(stype.load(f, **kwrgs))
+
+        return loaded
 
     def write(self, f):
         f.write(f"{PAD}{self.name.upper()}")
@@ -143,7 +169,7 @@ class MFRecord(MFCompound):
 class MFKeystring(MFCompound):
     def __init__(
         self,
-        scalars,
+        params,
         block=None,
         name=None,
         type=None,
@@ -162,7 +188,7 @@ class MFKeystring(MFCompound):
         default_value=None,
     ):
         super().__init__(
-            scalars,
+            params,
             block=block,
             name=name,
             type=type,
@@ -181,36 +207,32 @@ class MFKeystring(MFCompound):
             default_value=default_value,
         )
 
-    @property
-    def scalars(self) -> List[MFScalar]:
-        return self.data.copy()
-
-    @property
-    def value(self) -> List[Any]:
-        return [s.value for s in self.data]
-
-    @value.setter
-    def value(self, value: List[Any]):
-        assert len(value) == len(self.data)
-        for i in range(len(self.data)):
-            self.data[i].value = value[i]
-
     @classmethod
-    def load(cls, f, scalars, **kwargs) -> "MFKeystring":
+    def load(cls, f, params, **kwargs) -> "MFKeystring":
+        """Load the keystring from file."""
         loaded = []
 
         while True:
             line = strip(f.readline()).lower()
             if line == "":
-                raise ValueError("Early EOF, aborting")
+                raise ValueError("Early EOF")
             if line == "\n":
+                continue
+            
+            split = line.split()
+            first = split[0]
+
+            if first == "end":
                 break
 
-            scalar = scalars.pop()
-            loaded.append(type(scalar).load(line, **kwargs))
+            param = params.pop(first)
+            kwrgs = {**kwargs, **asdict(param)}
+            with StringIO(line) as ff:
+                loaded.append(type(param).load(ff, **kwrgs))
 
         return cls(loaded, **kwargs)
 
     def write(self, f):
+        """Write the keystring to file."""
         for param in self.data:
             param.write(f)

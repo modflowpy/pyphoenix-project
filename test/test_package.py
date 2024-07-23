@@ -28,37 +28,37 @@ def test_member_params():
     params = TestPackage.params
     assert len(params) == 6
 
-    k = params["k"]
+    k = params.k
     assert isinstance(k, MFKeyword)
     assert k.block == "options"
     assert k.description == "keyword"
     assert k.optional
 
-    i = params["i"]
+    i = params.i
     assert isinstance(i, MFInteger)
     assert i.block == "options"
     assert i.description == "int"
     assert i.optional
 
-    d = params["d"]
+    d = params.d
     assert isinstance(d, MFDouble)
     assert d.block == "options"
     assert d.description == "double"
     assert d.optional
 
-    s = params["s"]
+    s = params.s
     assert isinstance(s, MFString)
     assert s.block == "options"
     assert s.description == "string"
     assert not s.optional
 
-    f = params["f"]
+    f = params.f
     assert isinstance(f, MFFilename)
     assert f.block == "options"
     assert f.description == "filename"
     assert not f.optional
 
-    a = params["a"]
+    a = params.a
     assert isinstance(a, MFArray)
     assert a.block == "packagedata"
     assert a.description == "array"
@@ -68,40 +68,40 @@ def test_member_blocks():
     blocks = TestPackage.blocks
     assert len(blocks) == 2
 
-    block = blocks["options"]
+    block = blocks.options
     assert isinstance(block, MFBlock)
     assert len(block.params) == 5
 
-    k = block["k"]
+    k = block.k
     assert isinstance(k, MFKeyword)
     assert k.description == "keyword"
     assert k.optional
 
-    i = block["i"]
+    i = block.i
     assert isinstance(i, MFInteger)
     assert i.description == "int"
     assert i.optional
 
-    d = block["d"]
+    d = block.d
     assert isinstance(d, MFDouble)
     assert d.description == "double"
     assert d.optional
 
-    s = block["s"]
+    s = block.s
     assert isinstance(s, MFString)
     assert s.description == "string"
     assert not s.optional
 
-    f = block["f"]
+    f = block.f
     assert isinstance(f, MFFilename)
     assert f.description == "filename"
     assert not f.optional
 
-    block = blocks["packagedata"]
+    block = blocks.packagedata
     assert isinstance(block, MFBlock)
     assert len(block.params) == 1
 
-    a = block["a"]
+    a = block.a
     assert isinstance(a, MFArray)
     assert a.description == "array"
 
@@ -131,13 +131,13 @@ def test_load_write(tmp_path):
         assert len(package.blocks) == 2
         assert len(package.params) == 6
 
-        # class attributes: param specifications
+        # class attribute as param specification
         assert isinstance(TestPackage.k, MFKeyword)
         assert TestPackage.k.name == "k"
         assert TestPackage.k.block == "options"
         assert TestPackage.k.description == "keyword"
 
-        # instance attributes: shortcut access to param values
+        # instance attribute as shortcut to param value
         assert isinstance(package.k, bool)
         assert package.k
         assert package.i == 1

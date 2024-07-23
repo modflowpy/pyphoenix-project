@@ -1,14 +1,14 @@
 from abc import abstractmethod
-from enum import Enum
 from pathlib import Path
 
-from flopy4.parameter import MFParameter, MFReader
+from flopy4.constants import MFFileInout
+from flopy4.param import MFParam, MFReader
 from flopy4.utils import strip
 
 PAD = "  "
 
 
-class MFScalar[T](MFParameter):
+class MFScalar[T](MFParam):
     @abstractmethod
     def __init__(
         self,
@@ -49,6 +49,9 @@ class MFScalar[T](MFParameter):
             shape,
             default_value,
         )
+
+    # def __repr__(self):
+    #     return f"{self.name}: {self.value}"
 
     @property
     def value(self) -> T:
@@ -312,17 +315,6 @@ class MFString(MFScalar[str]):
             f"{self.value}"
             f"{'\n' if newline else ''}"
         )
-
-
-class MFFileInout(Enum):
-    filein = "filein"
-    fileout = "fileout"
-
-    @classmethod
-    def from_str(cls, value):
-        for e in cls:
-            if value.lower() == e.value:
-                return e
 
 
 class MFFilename(MFScalar[Path]):

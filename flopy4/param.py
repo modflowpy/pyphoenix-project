@@ -2,24 +2,10 @@ from abc import abstractmethod
 from ast import literal_eval
 from collections import UserDict
 from dataclasses import dataclass, fields
-from enum import Enum
+from io import StringIO
 from typing import Any, Optional, Tuple
 
-
-class MFReader(Enum):
-    """
-    MF6 procedure with which to read input.
-    """
-
-    urword = "urword"
-    u1ddbl = "u1dbl"
-    readarray = "readarray"
-
-    @classmethod
-    def from_str(cls, value):
-        for e in cls:
-            if value.lower() == e.value:
-                return e
+from flopy4.constants import MFReader
 
 
 @dataclass
@@ -94,7 +80,7 @@ class MFParamSpec:
         return self
 
 
-class MFParameter(MFParamSpec):
+class MFParam(MFParamSpec):
     """
     MODFLOW 6 input parameter. Can be a scalar or compound of
     scalars, an array, or a list (i.e. a table). `MFParameter`
@@ -162,6 +148,11 @@ class MFParameter(MFParamSpec):
             default_value=default_value,
         )
 
+    def __str__(self):
+        buffer = StringIO()
+        self.write(buffer)
+        return buffer.getvalue()
+
     @property
     @abstractmethod
     def value(self) -> Optional[Any]:
@@ -174,7 +165,7 @@ class MFParameter(MFParamSpec):
         pass
 
 
-class MFParameters(UserDict):
+class MFParams(UserDict):
     """
     Mapping of parameter names to parameters.
     Supports dictionary and attribute access.
@@ -184,3 +175,16 @@ class MFParameters(UserDict):
         super().__init__(params)
         for key, param in self.items():
             setattr(self, key, param)
+
+    def __getattribute__(self, name: str) -> Any:
+        # shortcut to parameter value for instance attribute.
+        # the class attribute is the full parameter instance.
+        attr = super().__getattribute__(name)
+        return attr.value if isinstance(attr, MFParam) else attr
+    
+    def write(self, f):
+        for param in self.values():
+            param.write(f)
+
+
+

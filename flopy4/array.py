@@ -7,7 +7,7 @@ import numpy as np
 from flopy.utils.flopy_io import line_strip, multi_line_strip
 
 from flopy4.constants import CommonNames
-from flopy4.parameter import MFParameter, MFReader
+from flopy4.param import MFParam, MFReader
 
 
 class NumPyArrayMixin:
@@ -174,7 +174,7 @@ class MFArrayType(Enum):
                 return e
 
 
-class MFArray(MFParameter, NumPyArrayMixin):
+class MFArray(MFParam, NumPyArrayMixin):
     """
     A MODFLOW 6 array backed by a 1-dimensional NumPy array,
     which is reshaped as needed for various views. Supports
@@ -203,7 +203,7 @@ class MFArray(MFParameter, NumPyArrayMixin):
         reader=MFReader.urword,
         default_value=None,
     ):
-        MFParameter.__init__(
+        MFParam.__init__(
             self,
             block=block,
             name=name,

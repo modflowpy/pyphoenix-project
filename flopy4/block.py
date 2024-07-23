@@ -1,28 +1,42 @@
 from abc import ABCMeta
 from collections import UserDict
 from dataclasses import asdict
-from typing import Any
+from io import StringIO
 
 from flopy4.array import MFArray
 from flopy4.compound import MFKeystring, MFRecord
-from flopy4.parameter import MFParameter, MFParameters
+from flopy4.param import MFParam, MFParams
 from flopy4.utils import strip
+
+
+def single_keystring(members):
+    params = list(members.values())
+    return len(params) == 1 and isinstance(params[0], MFKeystring)
+
+
+def get_param(members, key):
+    return list(members.values())[0] if single_keystring(members) else members.get(key)
 
 
 class MFBlockMeta(type):
     def __new__(cls, clsname, bases, attrs):
         new = super().__new__(cls, clsname, bases, attrs)
-        if clsname == "MFBlock":
+        if clsname.startswith("MF"):
             return new
 
         # add parameter specification as class attribute
-        new.params = MFParameters(
+        block_name = clsname.replace("Block", "").lower()
+        params = MFParams(
             {
-                k: v
+                k: v.with_name(k).with_block(block_name)
                 for k, v in attrs.items()
-                if issubclass(type(v), MFParameter)
+                if issubclass(type(v), MFParam)
             }
         )
+        new.params = params
+        keystrings = [p for p in params if isinstance(p, MFKeystring)]
+        if len(keystrings) > 1:
+            raise ValueError("Only one keystring allowed per block")
         return new
 
 
@@ -31,7 +45,7 @@ class MFBlockMappingMeta(MFBlockMeta, ABCMeta):
     pass
 
 
-class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
+class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
     """
     MF6 input block. Maps parameter names to parameters.
 
@@ -51,22 +65,20 @@ class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
         self.name = name
         self.index = index
         super().__init__(params)
-        for key, param in self.items():
-            setattr(self, key, param)
 
-    def __getattribute__(self, name: str) -> Any:
-        # shortcut to parameter value for instance attribute.
-        # the class attribute is the full parameter instance.
-        attr = super().__getattribute__(name)
-        return attr.value if isinstance(attr, MFParameter) else attr
+    def __str__(self):
+        buffer = StringIO()
+        self.write(buffer)
+        return buffer.getvalue()
 
     @property
-    def params(self) -> MFParameters:
+    def params(self) -> MFParams:
         """Block parameters."""
         return self.data
 
     @classmethod
     def load(cls, f, **kwargs):
+        """Load the block from file."""
         name = None
         index = None
         found = False
@@ -75,18 +87,23 @@ class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
 
         while True:
             pos = f.tell()
-            line = strip(f.readline()).lower()
-            words = line.split()
+            line = f.readline()
+            if line == "":
+                raise ValueError("Early EOF, aborting")
+            if line == "\n":
+                continue
+            words = strip(line).lower().split()
             key = words[0]
             if key == "begin":
                 found = True
                 name = words[1]
                 if len(words) > 2 and str.isdigit(words[2]):
-                    index = words[2]
+                    index = int(words[2])
             elif key == "end":
                 break
             elif found:
-                param = members.get(key)
+
+                param = get_param(members, key)
                 if param is not None:
                     f.seek(pos)
                     spec = asdict(param.with_name(key).with_block(name))
@@ -96,20 +113,22 @@ class MFBlock(MFParameters, metaclass=MFBlockMappingMeta):
                         # TODO: inject from model somehow?
                         # and remove special handling here
                         kwrgs["cwd"] = ""
-                    if ptype is MFRecord or ptype is MFKeystring:
-                        kwrgs["scalars"] = param.data
+                    if ptype is MFRecord:
+                        kwrgs["params"] = param.data
+                    if ptype is MFKeystring:
+                        kwrgs["params"] = param.data
                     params[key] = ptype.load(f, **kwrgs)
 
         return cls(name, index, params)
 
     def write(self, f):
+        """Write the block to file."""
         index = self.index if self.index is not None else ""
         begin = f"BEGIN {self.name.upper()} {index}\n"
         end = f"END {self.name.upper()}\n"
 
         f.write(begin)
-        for param in self.values():
-            param.write(f)
+        super().write(f)
         f.write(end)
 
 

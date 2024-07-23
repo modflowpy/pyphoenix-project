@@ -1,15 +1,16 @@
 from abc import ABCMeta
 from collections import UserDict
 from itertools import groupby
+from io import StringIO
 from typing import Any
 
 from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
-from flopy4.parameter import MFParameter, MFParameters
+from flopy4.param import MFParam, MFParams
 from flopy4.utils import strip
 
 
-def get_block(clsname, params):
-    return MFBlockMeta(clsname, (MFBlock,), params)(params=params)
+def get_block(pkg_name, block_name, params):
+    return MFBlockMeta(f"{pkg_name.title()}{block_name.title()}Block", (MFBlock,), params)(params=params, name=block_name)
 
 
 class MFPackageMeta(type):
@@ -22,18 +23,19 @@ class MFPackageMeta(type):
         # attributes. subclass mfblock dynamically based
         # on each block parameter specification.
         pkg_name = clsname.replace("Package", "")
-        params = MFParameters(
+        params = MFParams(
             {
                 k: v.with_name(k)
                 for k, v in attrs.items()
-                if issubclass(type(v), MFParameter)
+                if issubclass(type(v), MFParam)
             }
         )
         new.params = params
         new.blocks = MFBlocks(
             {
                 block_name: get_block(
-                    clsname=f"{pkg_name.title()}{block_name.title()}Block",
+                    pkg_name=pkg_name,
+                    block_name=block_name,
                     params={p.name: p for p in block},
                 )
                 for block_name, block in groupby(
@@ -57,6 +59,11 @@ class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
     TODO: reimplement with `ChainMap`?
     """
 
+    def __str__(self):
+        buffer = StringIO()
+        self.write(buffer)
+        return buffer.getvalue()
+
     def __getattribute__(self, name: str) -> Any:
         value = super().__getattribute__(name)
         if name == "data":
@@ -73,9 +80,9 @@ class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
         return params[name].value if param is not None else value
 
     @property
-    def params(self) -> MFParameters:
+    def params(self) -> MFParams:
         """Package parameters."""
-        return MFParameters(
+        return MFParams(
             {
                 name: param
                 for block in self.data

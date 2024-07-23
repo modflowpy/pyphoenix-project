@@ -2,7 +2,7 @@ import numpy as np
 
 from flopy4.array import MFArray
 from flopy4.block import MFBlock
-from flopy4.compound import MFRecord
+from flopy4.compound import MFRecord, MFKeystring
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 
 
@@ -16,11 +16,11 @@ class TestBlock(MFBlock):
     f = MFFilename(description="filename", optional=False)
     a = MFArray(description="array", shape=(3))
     r = MFRecord(
-        scalars=[
-            MFKeyword(name="rk", description="keyword"),
-            MFInteger(name="ri", description="int"),
-            MFDouble(name="rd", description="double"),
-        ],
+        params={
+            "rk": MFKeyword(),
+            "ri": MFInteger(),
+            "rd": MFDouble(),
+        },
         description="record",
         optional=False,
     )
@@ -30,37 +30,37 @@ def test_members():
     params = TestBlock.params
     assert len(params) == 7
 
-    k = params["k"]
+    k = params.k
     assert isinstance(k, MFKeyword)
     assert k.description == "keyword"
     assert k.optional
 
-    i = params["i"]
+    i = params.i
     assert isinstance(i, MFInteger)
     assert i.description == "int"
     assert i.optional
 
-    d = params["d"]
+    d = params.d
     assert isinstance(d, MFDouble)
     assert d.description == "double"
     assert d.optional
 
-    s = params["s"]
+    s = params.s
     assert isinstance(s, MFString)
     assert s.description == "string"
     assert not s.optional
 
-    f = params["f"]
+    f = params.f
     assert isinstance(f, MFFilename)
     assert f.description == "filename"
     assert not f.optional
 
-    a = params["a"]
+    a = params.a
     assert isinstance(a, MFArray)
     assert a.description == "array"
     assert a.optional
 
-    r = params["r"]
+    r = params.r
     assert isinstance(r, MFRecord)
     assert r.description == "record"
     assert not r.optional
@@ -84,13 +84,13 @@ def test_load_write(tmp_path):
     with open(fpth, "r") as f:
         block = TestBlock.load(f)
 
-        # class attributes: param specifications
+        # class attribute as param specification
         assert isinstance(TestBlock.k, MFKeyword)
         assert TestBlock.k.name == "k"
         assert TestBlock.k.block == "options"
         assert TestBlock.k.description == "keyword"
 
-        # instance attributes: shortcut access to param values
+        # instance attribute as shortcut to param valu
         assert isinstance(block.k, bool)
         assert block.k
         assert block.i == 1
@@ -101,10 +101,10 @@ def test_load_write(tmp_path):
 
         assert isinstance(TestBlock.r, MFRecord)
         assert TestBlock.r.name == "r"
-        assert len(TestBlock.r.scalars) == 3
-        assert isinstance(TestBlock.r.scalars[0], MFKeyword)
-        assert isinstance(TestBlock.r.scalars[1], MFInteger)
-        assert isinstance(TestBlock.r.scalars[2], MFDouble)
+        assert len(TestBlock.r.params) == 3
+        assert isinstance(TestBlock.r.params[0], MFKeyword)
+        assert isinstance(TestBlock.r.params[1], MFInteger)
+        assert isinstance(TestBlock.r.params[2], MFDouble)
 
         assert isinstance(block.r, tuple)
         assert block.r == (True, 2, 2.0)
@@ -124,3 +124,43 @@ def test_load_write(tmp_path):
         # assert "  A\n    INTERNAL\n      1.0 2.0 3.0\n" in lines
         assert "  R  RK  RI 2  RD 2.0\n" in lines
         assert "END OPTIONS\n" in lines
+
+
+class IndexedBlock(MFBlock):
+    ks = MFKeystring(
+        params={
+            "first": MFKeyword(),
+            "frequency": MFInteger(),
+        },
+        description="keystring",
+        optional=False,
+    )
+
+
+def test_load_write_indexed(tmp_path):
+    name = "indexed"
+    fpth = tmp_path / f"{name}.txt"
+    with open(fpth, "w") as f:
+        f.write(f"BEGIN {name.upper()} 1\n")
+        f.write("  FIRST\n")
+        f.write(f"END {name.upper()}\n")
+        f.write("\n")
+        f.write(f"BEGIN {name.upper()} 2\n")
+        f.write("  FIRST\n")
+        f.write("  FREQUENCY 2\n")
+        f.write(f"END {name.upper()}\n")
+    
+    with open(fpth, "r") as f:
+        period1 = IndexedBlock.load(f)
+        period2 = IndexedBlock.load(f)
+
+        assert period1.index == 1
+        assert period2.index == 2
+
+        # class attributes as param specification
+        assert isinstance(IndexedBlock.ks, MFKeystring)
+        assert IndexedBlock.ks.name == "ks"
+        assert IndexedBlock.ks.block == name
+
+        # instance attribute as shortcut to param value
+        assert period1.ks == ["first"]
