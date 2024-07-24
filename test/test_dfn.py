@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from flopy4.dfn import Dfn, DfnSet
+from conftest import PROJ_ROOT_PATH
 
-PROJ_ROOT_PATH = Path(__file__).parents[1]
+from flopy4.dfn import Dfn, DfnSet
 
 
 class TestDfn(Dfn):

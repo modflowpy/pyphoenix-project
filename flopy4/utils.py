@@ -1,3 +1,9 @@
+def find_upper(s):
+    for i in range(len(s)):
+        if s[i].isupper():
+            yield i
+
+
 def strip(line):
     """
     Remove comments and replace commas from input text
