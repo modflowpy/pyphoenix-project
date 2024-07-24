@@ -2,6 +2,7 @@ from abc import ABCMeta
 from collections import UserDict
 from io import StringIO
 from itertools import groupby
+from pprint import pformat
 from typing import Any
 
 from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
@@ -57,9 +58,11 @@ class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
     """
     MF6 model or simulation component package.
 
-
     TODO: reimplement with `ChainMap`?
     """
+
+    def __repr__(self):
+        return pformat(self.data)
 
     def __str__(self):
         buffer = StringIO()

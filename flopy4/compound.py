@@ -2,6 +2,7 @@ from abc import abstractmethod
 from collections.abc import Mapping
 from dataclasses import asdict
 from io import StringIO
+from pprint import pformat
 from typing import Any, Dict
 
 from flopy4.param import MFParam, MFParams, MFReader
@@ -54,6 +55,9 @@ class MFCompound(MFParam, MFParams):
             default_value,
         )
 
+    def __repr__(self):
+        return pformat(self.data)
+
     @property
     def params(self) -> MFParams:
         """Component parameters."""
@@ -67,14 +71,10 @@ class MFCompound(MFParam, MFParams):
         }
 
     @value.setter
-    def value(self, **kwargs):
+    def value(self, value):
         """Set component names/values by keyword arguments."""
-        val_len = len(kwargs)
-        exp_len = len(self.data)
-        if exp_len != val_len:
-            raise ValueError(f"Expected {exp_len} values, got {val_len}")
-        for key in self.data.keys():
-            self.data[key].value = kwargs[key]
+        for key, val in value.items():
+            self.data[key].value = val
 
 
 class MFRecord(MFCompound):
@@ -224,5 +224,4 @@ class MFKeystring(MFCompound):
 
     def write(self, f):
         """Write the keystring to file."""
-        for param in self.data:
-            param.write(f)
+        super().write(f)

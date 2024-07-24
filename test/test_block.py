@@ -165,3 +165,5 @@ def test_load_write_indexed(tmp_path):
         # instance attribute as shortcut to param value
         assert period1.ks == {"first": True}
         assert period2.ks == {"first": True, "frequency": 2}
+
+        assert str(period1)

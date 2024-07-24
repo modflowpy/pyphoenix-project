@@ -2,6 +2,7 @@ from abc import ABCMeta
 from collections import UserDict
 from dataclasses import asdict
 from io import StringIO
+from pprint import pformat
 from typing import Any
 
 from flopy4.array import MFArray
@@ -85,6 +86,9 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         # the class attribute is the full parameter instance.
         attr = super().__getattribute__(name)
         return attr.value if isinstance(attr, MFParam) else attr
+
+    def __repr__(self):
+        return pformat(self.data)
 
     def __str__(self):
         buffer = StringIO()
