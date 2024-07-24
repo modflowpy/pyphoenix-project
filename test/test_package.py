@@ -72,27 +72,27 @@ def test_member_blocks():
     assert isinstance(block, MFBlock)
     assert len(block.params) == 5
 
-    k = block.k
+    k = block["k"]
     assert isinstance(k, MFKeyword)
     assert k.description == "keyword"
     assert k.optional
 
-    i = block.i
+    i = block["i"]
     assert isinstance(i, MFInteger)
     assert i.description == "int"
     assert i.optional
 
-    d = block.d
+    d = block["d"]
     assert isinstance(d, MFDouble)
     assert d.description == "double"
     assert d.optional
 
-    s = block.s
+    s = block["s"]
     assert isinstance(s, MFString)
     assert s.description == "string"
     assert not s.optional
 
-    f = block.f
+    f = block["f"]
     assert isinstance(f, MFFilename)
     assert f.description == "filename"
     assert not f.optional
@@ -101,7 +101,7 @@ def test_member_blocks():
     assert isinstance(block, MFBlock)
     assert len(block.params) == 1
 
-    a = block.a
+    a = block["a"]
     assert isinstance(a, MFArray)
     assert a.description == "array"
 

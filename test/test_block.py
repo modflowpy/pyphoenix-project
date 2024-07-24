@@ -2,7 +2,7 @@ import numpy as np
 
 from flopy4.array import MFArray
 from flopy4.block import MFBlock
-from flopy4.compound import MFRecord, MFKeystring
+from flopy4.compound import MFKeystring, MFRecord
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 
 
@@ -102,12 +102,12 @@ def test_load_write(tmp_path):
         assert isinstance(TestBlock.r, MFRecord)
         assert TestBlock.r.name == "r"
         assert len(TestBlock.r.params) == 3
-        assert isinstance(TestBlock.r.params[0], MFKeyword)
-        assert isinstance(TestBlock.r.params[1], MFInteger)
-        assert isinstance(TestBlock.r.params[2], MFDouble)
+        assert isinstance(TestBlock.r.params["rk"], MFKeyword)
+        assert isinstance(TestBlock.r.params["ri"], MFInteger)
+        assert isinstance(TestBlock.r.params["rd"], MFDouble)
 
-        assert isinstance(block.r, tuple)
-        assert block.r == (True, 2, 2.0)
+        assert isinstance(block.r, list)
+        assert block.r == [True, 2, 2.0]
 
     # test block write
     fpth2 = tmp_path / f"{name}2.txt"
@@ -149,7 +149,7 @@ def test_load_write_indexed(tmp_path):
         f.write("  FIRST\n")
         f.write("  FREQUENCY 2\n")
         f.write(f"END {name.upper()}\n")
-    
+
     with open(fpth, "r") as f:
         period1 = IndexedBlock.load(f)
         period2 = IndexedBlock.load(f)

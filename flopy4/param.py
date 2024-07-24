@@ -159,11 +159,6 @@ class MFParam(MFParamSpec):
         """Get the parameter's value, if loaded."""
         pass
 
-    @abstractmethod
-    def value(self, value):
-        """Set the parameter's value."""
-        pass
-
 
 class MFParams(UserDict):
     """
@@ -176,15 +171,6 @@ class MFParams(UserDict):
         for key, param in self.items():
             setattr(self, key, param)
 
-    def __getattribute__(self, name: str) -> Any:
-        # shortcut to parameter value for instance attribute.
-        # the class attribute is the full parameter instance.
-        attr = super().__getattribute__(name)
-        return attr.value if isinstance(attr, MFParam) else attr
-    
     def write(self, f):
         for param in self.values():
             param.write(f)
-
-
-

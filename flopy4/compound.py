@@ -1,9 +1,8 @@
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict
 from io import StringIO
-from pprint import pformat
-from typing import Any, List
+from typing import Any, Dict, List
 
 from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
@@ -55,18 +54,17 @@ class MFCompound(MFParam, MFParams):
             default_value,
         )
 
-    # def __repr__(self):
-    #     return pformat(self.data)
-    
-    # def __str__(self):
-    #     buffer = StringIO()
-    #     self.write(buffer)
-    #     return buffer.getvalue()
-    
+    @property
+    def params(self) -> MFParams:
+        """Component parameters."""
+        return self.data
+
     @property
     def value(self) -> Mapping[str, Any]:
         """Get component names/values."""
-        return {k: s.value for k, s in self.data.items() if s.value is not None}
+        return {
+            k: s.value for k, s in self.data.items() if s.value is not None
+        }
 
     @value.setter
     def value(self, **kwargs):
@@ -122,7 +120,7 @@ class MFRecord(MFCompound):
 
     @property
     def value(self) -> List[Any]:
-        return [s.value for s in self.data]
+        return [s.value for s in self.data.values()]
 
     @value.setter
     def value(self, value: Iterable[Any]):
@@ -143,10 +141,10 @@ class MFRecord(MFCompound):
         return cls(MFRecord.parse(line, params, **kwargs), **kwargs)
 
     @staticmethod
-    def parse(line, params, **kwargs) -> List[MFScalar]:
-        loaded = []
+    def parse(line, params, **kwargs) -> Dict[str, MFScalar]:
+        loaded = dict()
 
-        for param in params:
+        for param_name, param in params.items():
             split = line.split()
             stype = type(param)
             words = len(param)
@@ -155,14 +153,14 @@ class MFRecord(MFCompound):
             line = tail
             kwrgs = {**kwargs, **asdict(param)}
             with StringIO(head) as f:
-                loaded.append(stype.load(f, **kwrgs))
+                loaded[param_name] = stype.load(f, **kwrgs)
 
         return loaded
 
     def write(self, f):
         f.write(f"{PAD}{self.name.upper()}")
         last = len(self) - 1
-        for i, param in enumerate(self.data):
+        for i, param in enumerate(self.data.values()):
             param.write(f, newline=i == last)
 
 
@@ -210,7 +208,7 @@ class MFKeystring(MFCompound):
     @classmethod
     def load(cls, f, params, **kwargs) -> "MFKeystring":
         """Load the keystring from file."""
-        loaded = []
+        loaded = dict()
 
         while True:
             line = strip(f.readline()).lower()
@@ -218,17 +216,17 @@ class MFKeystring(MFCompound):
                 raise ValueError("Early EOF")
             if line == "\n":
                 continue
-            
-            split = line.split()
-            first = split[0]
 
-            if first == "end":
+            split = line.split()
+            key = split[0]
+
+            if key == "end":
                 break
 
-            param = params.pop(first)
+            param = params.pop(key)
             kwrgs = {**kwargs, **asdict(param)}
             with StringIO(line) as ff:
-                loaded.append(type(param).load(ff, **kwrgs))
+                loaded[key] = type(param).load(ff, **kwrgs)
 
         return cls(loaded, **kwargs)
 

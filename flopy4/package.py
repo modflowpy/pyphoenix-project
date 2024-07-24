@@ -1,7 +1,7 @@
 from abc import ABCMeta
 from collections import UserDict
-from itertools import groupby
 from io import StringIO
+from itertools import groupby
 from typing import Any
 
 from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
@@ -10,7 +10,9 @@ from flopy4.utils import strip
 
 
 def get_block(pkg_name, block_name, params):
-    return MFBlockMeta(f"{pkg_name.title()}{block_name.title()}Block", (MFBlock,), params)(params=params, name=block_name)
+    return MFBlockMeta(
+        f"{pkg_name.title()}{block_name.title()}Block", (MFBlock,), params
+    )(params=params, name=block_name)
 
 
 class MFPackageMeta(type):

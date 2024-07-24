@@ -2,11 +2,12 @@ from abc import ABCMeta
 from collections import UserDict
 from dataclasses import asdict
 from io import StringIO
+from typing import Any
 
 from flopy4.array import MFArray
 from flopy4.compound import MFKeystring, MFRecord
 from flopy4.param import MFParam, MFParams
-from flopy4.utils import strip
+from flopy4.utils import find_upper, strip
 
 
 def single_keystring(members):
@@ -15,28 +16,38 @@ def single_keystring(members):
 
 
 def get_param(members, key):
-    return list(members.values())[0] if single_keystring(members) else members.get(key)
+    return (
+        list(members.values())[0]
+        if single_keystring(members)
+        else members.get(key)
+    )
 
 
 class MFBlockMeta(type):
     def __new__(cls, clsname, bases, attrs):
         new = super().__new__(cls, clsname, bases, attrs)
-        if clsname.startswith("MF"):
+        if clsname == "MFBlock":
             return new
 
-        # add parameter specification as class attribute
-        block_name = clsname.replace("Block", "").lower()
-        params = MFParams(
-            {
-                k: v.with_name(k).with_block(block_name)
-                for k, v in attrs.items()
-                if issubclass(type(v), MFParam)
-            }
+        # detect block name
+        block_name = (
+            clsname[list(find_upper(clsname))[1] :]
+            .replace("Block", "")
+            .lower()
         )
-        new.params = params
-        keystrings = [p for p in params if isinstance(p, MFKeystring)]
-        if len(keystrings) > 1:
+
+        # add parameter specification class attributes
+        params = {
+            k: v.with_name(k).with_block(block_name)
+            for k, v in attrs.items()
+            if issubclass(type(v), MFParam)
+        }
+        if len([p for p in params if isinstance(p, MFKeystring)]) > 1:
             raise ValueError("Only one keystring allowed per block")
+        for key, param in params.items():
+            setattr(new, key, param)
+        new.params = MFParams(params)
+
         return new
 
 
@@ -65,6 +76,12 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         self.name = name
         self.index = index
         super().__init__(params)
+
+    def __getattribute__(self, name: str) -> Any:
+        # shortcut to parameter value for instance attribute.
+        # the class attribute is the full parameter instance.
+        attr = super().__getattribute__(name)
+        return attr.value if isinstance(attr, MFParam) else attr
 
     def __str__(self):
         buffer = StringIO()
@@ -102,7 +119,6 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             elif key == "end":
                 break
             elif found:
-
                 param = get_param(members, key)
                 if param is not None:
                     f.seek(pos)
@@ -114,9 +130,9 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                         # and remove special handling here
                         kwrgs["cwd"] = ""
                     if ptype is MFRecord:
-                        kwrgs["params"] = param.data
+                        kwrgs["params"] = param.data.copy()
                     if ptype is MFKeystring:
-                        kwrgs["params"] = param.data
+                        kwrgs["params"] = param.data.copy()
                     params[key] = ptype.load(f, **kwrgs)
 
         return cls(name, index, params)
@@ -137,3 +153,5 @@ class MFBlocks(UserDict):
 
     def __init__(self, blocks=None):
         super().__init__(blocks)
+        for key, block in self.items():
+            setattr(self, key, block)

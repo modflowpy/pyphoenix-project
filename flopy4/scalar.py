@@ -50,9 +50,6 @@ class MFScalar[T](MFParam):
             default_value,
         )
 
-    # def __repr__(self):
-    #     return f"{self.name}: {self.value}"
-
     @property
     def value(self) -> T:
         return self._value
