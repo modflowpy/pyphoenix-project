@@ -17,9 +17,8 @@ def get_block(pkg_name, block_name, params):
 
 class MFPackageMeta(type):
     def __new__(cls, clsname, bases, attrs):
-        new = super().__new__(cls, clsname, bases, attrs)
         if clsname == "MFPackage":
-            return new
+            return super().__new__(cls, clsname, bases, attrs)
 
         # detect package name
         pkg_name = clsname.replace("Package", "")
@@ -34,8 +33,7 @@ class MFPackageMeta(type):
                 if issubclass(type(v), MFParam)
             }
         )
-        new.params = params
-        new.blocks = MFBlocks(
+        blocks = MFBlocks(
             {
                 block_name: get_block(
                     pkg_name=pkg_name,
@@ -47,7 +45,13 @@ class MFPackageMeta(type):
                 )
             }
         )
-        return new
+
+        attrs["params"] = params
+        attrs["blocks"] = blocks
+        for block_name, block in blocks.items():
+            attrs[block_name] = block
+
+        return super().__new__(cls, clsname, bases, attrs)
 
 
 class MFPackageMappingMeta(MFPackageMeta, ABCMeta):
