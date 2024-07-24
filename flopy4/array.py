@@ -219,12 +219,16 @@ class MFArray(MFParam, NumPyArrayMixin):
             repeating=repeating,
             tagged=tagged,
             reader=reader,
+            shape=shape,
             default_value=default_value,
         )
         self._value = array
         self._shape = shape
         self._how = how
         self._factor = factor
+
+    def __get__(self, obj, type=None):
+        return self if self.value is None else self.value
 
     def __getitem__(self, item):
         return self.raw[item]
@@ -269,10 +273,13 @@ class MFArray(MFParam, NumPyArrayMixin):
         return self
 
     @property
-    def value(self) -> np.ndarray:
+    def value(self) -> Optional[np.ndarray]:
         """
         Return the array.
         """
+        if self._value is None:
+            return None
+
         if self.layered:
             arr = []
             for mfa in self._value:
@@ -283,6 +290,11 @@ class MFArray(MFParam, NumPyArrayMixin):
             return np.ones(self._shape) * self._value * self.factor
         else:
             return self._value.reshape(self._shape) * self.factor
+
+    @value.setter
+    def value(self, value: np.ndarray):
+        assert value.shape == self.shape
+        self._value = value
 
     @property
     def raw(self):

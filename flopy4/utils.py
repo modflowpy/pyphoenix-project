@@ -22,3 +22,7 @@ def strip(line):
         line = line.split(comment_flag)[0]
     line = line.strip()
     return line.replace(",", " ")
+
+
+class hybridproperty:
+    pass

@@ -127,16 +127,15 @@ def test_load_write(tmp_path):
     with open(fpth, "r") as f:
         package = TestPackage.load(f)
 
+        # check block and parameter specifications
         assert len(package.blocks) == 2
         assert len(package.params) == 6
-
-        # class attribute as param specification
         assert isinstance(TestPackage.k, MFKeyword)
         assert TestPackage.k.name == "k"
         assert TestPackage.k.block == "options"
         assert TestPackage.k.description == "keyword"
 
-        # instance attribute as shortcut to param value
+        # check parameter values
         assert isinstance(package.k, bool)
         assert package.k
         assert package.i == 1

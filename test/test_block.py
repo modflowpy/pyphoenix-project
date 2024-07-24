@@ -14,7 +14,7 @@ class TestBlock(MFBlock):
     d = MFDouble(description="double")
     s = MFString(description="string", optional=False)
     f = MFFilename(description="filename", optional=False)
-    a = MFArray(description="array", shape=(3))
+    a = MFArray(description="array", shape=(3,))
     r = MFRecord(
         params={
             "rk": MFKeyword(),
@@ -84,20 +84,11 @@ def test_load_write(tmp_path):
     with open(fpth, "r") as f:
         block = TestBlock.load(f)
 
-        # class attribute as param specification
+        # check parameter specification
         assert isinstance(TestBlock.k, MFKeyword)
         assert TestBlock.k.name == "k"
         assert TestBlock.k.block == "options"
         assert TestBlock.k.description == "keyword"
-
-        # instance attribute as shortcut to param valu
-        assert isinstance(block.k, bool)
-        assert block.k
-        assert block.i == 1
-        assert block.d == 1.0
-        assert block.s == "value"
-        assert block.f == fpth
-        assert np.allclose(block.a, np.array([1.0, 2.0, 3.0]))
 
         assert isinstance(TestBlock.r, MFRecord)
         assert TestBlock.r.name == "r"
@@ -106,7 +97,13 @@ def test_load_write(tmp_path):
         assert isinstance(TestBlock.r.params["ri"], MFInteger)
         assert isinstance(TestBlock.r.params["rd"], MFDouble)
 
-        assert isinstance(block.r, dict)
+        # check parameter values (via descriptors)
+        assert block.k
+        assert block.i == 1
+        assert block.d == 1.0
+        assert block.s == "value"
+        assert block.f == fpth
+        assert np.allclose(block.a, np.array([1.0, 2.0, 3.0]))
         assert block.r == {"rd": 2.0, "ri": 2, "rk": True}
 
     # test block write

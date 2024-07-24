@@ -1,7 +1,7 @@
 from abc import ABCMeta
-from collections import UserDict
 from io import StringIO
 from itertools import groupby
+from pprint import pformat
 from typing import Any
 
 from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
@@ -17,14 +17,15 @@ def get_block(pkg_name, block_name, params):
 
 class MFPackageMeta(type):
     def __new__(cls, clsname, bases, attrs):
-        new = super().__new__(cls, clsname, bases, attrs)
         if clsname == "MFPackage":
-            return new
+            return super().__new__(cls, clsname, bases, attrs)
+
+        # detect package name
+        pkg_name = clsname.replace("Package", "")
 
         # add parameter and block specification as class
         # attributes. subclass mfblock dynamically based
         # on each block parameter specification.
-        pkg_name = clsname.replace("Package", "")
         params = MFParams(
             {
                 k: v.with_name(k)
@@ -32,8 +33,7 @@ class MFPackageMeta(type):
                 if issubclass(type(v), MFParam)
             }
         )
-        new.params = params
-        new.blocks = MFBlocks(
+        blocks = MFBlocks(
             {
                 block_name: get_block(
                     pkg_name=pkg_name,
@@ -45,7 +45,13 @@ class MFPackageMeta(type):
                 )
             }
         )
-        return new
+
+        attrs["params"] = params
+        attrs["blocks"] = blocks
+        for block_name, block in blocks.items():
+            attrs[block_name] = block
+
+        return super().__new__(cls, clsname, bases, attrs)
 
 
 class MFPackageMappingMeta(MFPackageMeta, ABCMeta):
@@ -53,13 +59,18 @@ class MFPackageMappingMeta(MFPackageMeta, ABCMeta):
     pass
 
 
-class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
+class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     """
     MF6 model or simulation component package.
 
-
     TODO: reimplement with `ChainMap`?
     """
+
+    def __init__(self, blocks=None):
+        super().__init__(blocks)
+
+    def __repr__(self):
+        return pformat(self.data)
 
     def __str__(self):
         buffer = StringIO()
@@ -67,29 +78,25 @@ class MFPackage(UserDict, metaclass=MFPackageMappingMeta):
         return buffer.getvalue()
 
     def __getattribute__(self, name: str) -> Any:
-        value = super().__getattribute__(name)
         if name == "data":
-            return value
+            return super().__getattribute__(name)
+
+        block = self.data.get(name)
+        if block is not None:
+            return block
 
         # shortcut to parameter value for instance attribute.
-        # the class attribute is the full parameter instance.
+        # the class attribute is the parameter specification.
         params = {
             param_name: param
             for block in self.data.values()
             for param_name, param in block.items()
         }
         param = params.get(name)
-        return params[name].value if param is not None else value
-
-    @property
-    def params(self) -> MFParams:
-        """Package parameters."""
-        return MFParams(
-            {
-                name: param
-                for block in self.data
-                for name, param in block.items()
-            }
+        return (
+            param.value
+            if param is not None
+            else super().__getattribute__(name)
         )
 
     @classmethod

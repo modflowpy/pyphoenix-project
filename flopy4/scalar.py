@@ -50,6 +50,9 @@ class MFScalar(MFParam):
             default_value,
         )
 
+    def __get__(self, obj, type=None):
+        return self if self.value is None else self.value
+
     @property
     def value(self):
         return self._value
