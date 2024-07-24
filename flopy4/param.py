@@ -3,7 +3,6 @@ from ast import literal_eval
 from collections import UserDict
 from dataclasses import dataclass, fields
 from io import StringIO
-from pprint import pformat
 from typing import Any, Optional, Tuple
 
 from flopy4.constants import MFReader
@@ -153,7 +152,7 @@ class MFParam(MFParamSpec):
         buffer = StringIO()
         self.write(buffer)
         return buffer.getvalue()
-    
+
     @property
     @abstractmethod
     def value(self) -> Optional[Any]:
