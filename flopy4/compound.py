@@ -1,8 +1,8 @@
 from abc import abstractmethod
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from dataclasses import asdict
 from io import StringIO
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
