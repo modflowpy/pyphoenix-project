@@ -40,7 +40,8 @@ class MFBlockMeta(type):
             .lower()
         )
 
-        # add parameter specification class attributes
+        # add parameter specification as class attribute.
+        # dynamically set the parameters' name and block.
         params = {
             k: v.with_name(k).with_block(block_name)
             for k, v in attrs.items()
@@ -71,7 +72,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
 
     Supports dictionary and attribute access. The class
     attributes specify the block's parameters. Instance
-    attributes contain both the specification and value.
+    attributes expose the parameter value.
 
     The block's name and index are discovered upon load.
     """
@@ -82,23 +83,23 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         super().__init__(params)
 
     def __getattribute__(self, name: str) -> Any:
-        # shortcut to parameter value for instance attribute.
-        # the class attribute is the full parameter instance.
-        attr = super().__getattribute__(name)
-        return attr.value if isinstance(attr, MFParam) else attr
+        if name == "data":
+            return super().__getattribute__(name)
+
+        param = self.data.get(name)
+        return (
+            param.value
+            if param is not None
+            else super().__getattribute__(name)
+        )
 
     def __repr__(self):
-        return pformat(self.data)
+        return pformat({k: v for k, v in self.data.items()})
 
     def __str__(self):
         buffer = StringIO()
         self.write(buffer)
         return buffer.getvalue()
-
-    @property
-    def params(self) -> MFParams:
-        """Block parameters."""
-        return self.data
 
     @classmethod
     def load(cls, f, **kwargs):
@@ -162,3 +163,6 @@ class MFBlocks(UserDict):
         super().__init__(blocks)
         for key, block in self.items():
             setattr(self, key, block)
+
+    def __repr__(self):
+        return pformat({k: repr(v) for k, v in self.data.items()})

@@ -55,6 +55,9 @@ class MFCompound(MFParam, MFParams):
             default_value,
         )
 
+    def __get__(self, obj, type=None):
+        return self
+
     def __repr__(self):
         return pformat(self.data)
 

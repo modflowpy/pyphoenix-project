@@ -3,6 +3,7 @@ from ast import literal_eval
 from collections import UserDict
 from dataclasses import dataclass, fields
 from io import StringIO
+from pprint import pformat
 from typing import Any, Optional, Tuple
 
 from flopy4.constants import MFReader
@@ -146,6 +147,11 @@ class MFParam(MFParamSpec):
             reader=reader,
             shape=shape,
             default_value=default_value,
+        )
+
+    def __repr__(self):
+        return (
+            super().__repr__() if self.value is None else pformat(self.value)
         )
 
     def __str__(self):
