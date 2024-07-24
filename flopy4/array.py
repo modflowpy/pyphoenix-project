@@ -1,10 +1,10 @@
+import re
 from enum import Enum
 from io import StringIO
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import re
 from flopy.utils.flopy_io import line_strip, multi_line_strip
 
 from flopy4.constants import CommonNames
