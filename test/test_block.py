@@ -138,17 +138,17 @@ class IndexedBlock(MFBlock):
 
 
 def test_load_write_indexed(tmp_path):
-    name = "indexed"
-    fpth = tmp_path / f"{name}.txt"
+    block_name = "indexed"
+    fpth = tmp_path / f"{block_name}.txt"
     with open(fpth, "w") as f:
-        f.write(f"BEGIN {name.upper()} 1\n")
+        f.write(f"BEGIN {block_name.upper()} 1\n")
         f.write("  FIRST\n")
-        f.write(f"END {name.upper()}\n")
+        f.write(f"END {block_name.upper()}\n")
         f.write("\n")
-        f.write(f"BEGIN {name.upper()} 2\n")
+        f.write(f"BEGIN {block_name.upper()} 2\n")
         f.write("  FIRST\n")
         f.write("  FREQUENCY 2\n")
-        f.write(f"END {name.upper()}\n")
+        f.write(f"END {block_name.upper()}\n")
 
     with open(fpth, "r") as f:
         period1 = IndexedBlock.load(f)
@@ -160,7 +160,8 @@ def test_load_write_indexed(tmp_path):
         # class attributes as param specification
         assert isinstance(IndexedBlock.ks, MFKeystring)
         assert IndexedBlock.ks.name == "ks"
-        assert IndexedBlock.ks.block == name
+        assert IndexedBlock.ks.block == block_name
 
         # instance attribute as shortcut to param value
-        assert period1.ks == ["first"]
+        assert period1.ks == {"first": True}
+        assert period2.ks == {"first": True, "frequency": 2}

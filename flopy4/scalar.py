@@ -1,11 +1,13 @@
 from abc import abstractmethod
 from pathlib import Path
+from typing import TypeVar
 
 from flopy4.constants import MFFileInout
 from flopy4.param import MFParam, MFReader
 from flopy4.utils import strip
 
 PAD = "  "
+T = TypeVar("T")
 
 
 class MFScalar[T](MFParam):

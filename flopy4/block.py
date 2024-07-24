@@ -15,12 +15,15 @@ def single_keystring(members):
     return len(params) == 1 and isinstance(params[0], MFKeystring)
 
 
-def get_param(members, key):
-    return (
-        list(members.values())[0]
-        if single_keystring(members)
-        else members.get(key)
-    )
+def get_param(members, key, block):
+    ks = [m for m in members.values() if isinstance(m, MFKeystring)]
+    if len(ks) == 1:
+        param = ks[0]
+    else:
+        param = members.get(key)
+        param.name = key
+    param.block = block
+    return param
 
 
 class MFBlockMeta(type):
@@ -119,10 +122,10 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             elif key == "end":
                 break
             elif found:
-                param = get_param(members, key)
+                param = get_param(members, key, name)
                 if param is not None:
                     f.seek(pos)
-                    spec = asdict(param.with_name(key).with_block(name))
+                    spec = asdict(param)
                     kwrgs = {**kwargs, **spec}
                     ptype = type(param)
                     if ptype is MFArray:
@@ -133,7 +136,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                         kwrgs["params"] = param.data.copy()
                     if ptype is MFKeystring:
                         kwrgs["params"] = param.data.copy()
-                    params[key] = ptype.load(f, **kwrgs)
+                    params[param.name] = ptype.load(f, **kwrgs)
 
         return cls(name, index, params)
 

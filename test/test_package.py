@@ -117,7 +117,6 @@ def test_load_write(tmp_path):
         f.write("  D 1.0\n")
         f.write("  S value\n")
         f.write(f"  F FILEIN {fpth}\n")
-        f.write(f"  A\nINTERNAL\n{array}\n")
         f.write("END OPTIONS\n")
         f.write("\n")
         f.write("BEGIN PACKAGEDATA\n")

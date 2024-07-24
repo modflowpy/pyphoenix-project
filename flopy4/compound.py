@@ -211,6 +211,7 @@ class MFKeystring(MFCompound):
         loaded = dict()
 
         while True:
+            pos = f.tell()
             line = strip(f.readline()).lower()
             if line == "":
                 raise ValueError("Early EOF")
@@ -221,6 +222,7 @@ class MFKeystring(MFCompound):
             key = split[0]
 
             if key == "end":
+                f.seek(pos)
                 break
 
             param = params.pop(key)
