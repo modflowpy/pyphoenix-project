@@ -1,16 +1,14 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import TypeVar
 
 from flopy4.constants import MFFileInout
 from flopy4.param import MFParam, MFReader
 from flopy4.utils import strip
 
 PAD = "  "
-T = TypeVar("T")
 
 
-class MFScalar[T](MFParam):
+class MFScalar(MFParam):
     @abstractmethod
     def __init__(
         self,
@@ -53,15 +51,15 @@ class MFScalar[T](MFParam):
         )
 
     @property
-    def value(self) -> T:
+    def value(self):
         return self._value
 
     @value.setter
-    def value(self, value: T):
+    def value(self, value):
         self._value = value
 
 
-class MFKeyword(MFScalar[bool]):
+class MFKeyword(MFScalar):
     def __init__(
         self,
         value=None,
@@ -124,7 +122,7 @@ class MFKeyword(MFScalar[bool]):
             )
 
 
-class MFInteger(MFScalar[int]):
+class MFInteger(MFScalar):
     def __init__(
         self,
         value=None,
@@ -188,7 +186,7 @@ class MFInteger(MFScalar[int]):
         )
 
 
-class MFDouble(MFScalar[float]):
+class MFDouble(MFScalar):
     def __init__(
         self,
         value=None,
@@ -252,7 +250,7 @@ class MFDouble(MFScalar[float]):
         )
 
 
-class MFString(MFScalar[str]):
+class MFString(MFScalar):
     def __init__(
         self,
         value=None,
@@ -316,7 +314,7 @@ class MFString(MFScalar[str]):
         )
 
 
-class MFFilename(MFScalar[Path]):
+class MFFilename(MFScalar):
     def __init__(
         self,
         inout=MFFileInout.filein,

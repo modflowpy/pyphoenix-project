@@ -2,6 +2,7 @@ from abc import ABCMeta
 from collections import UserDict
 from dataclasses import asdict
 from io import StringIO
+from pprint import pformat
 from typing import Any
 
 from flopy4.array import MFArray
