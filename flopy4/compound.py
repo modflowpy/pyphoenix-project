@@ -118,16 +118,6 @@ class MFRecord(MFCompound):
             default_value=default_value,
         )
 
-    @property
-    def value(self) -> List[Any]:
-        return [s.value for s in self.data.values()]
-
-    @value.setter
-    def value(self, value: Iterable[Any]):
-        assert len(value) == len(self.data)
-        for i in range(len(self.data)):
-            self.data[i].value = value[i]
-
     @classmethod
     def load(cls, f, params, **kwargs) -> "MFRecord":
         line = strip(f.readline()).lower()
