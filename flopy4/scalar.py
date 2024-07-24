@@ -118,7 +118,7 @@ class MFKeyword(MFScalar):
     def write(self, f, newline=True):
         if self.value:
             f.write(
-                f"{PAD}" f"{self.name.upper()}" f"{'\n' if newline else ''}"
+                f"{PAD}" f"{self.name.upper()}" + ("\n" if newline else "")
             )
 
 
@@ -181,8 +181,7 @@ class MFInteger(MFScalar):
         f.write(
             f"{PAD}"
             f"{self.name.upper()} "
-            f"{self.value}"
-            f"{'\n' if newline else ''}"
+            f"{self.value}" + ("\n" if newline else "")
         )
 
 
@@ -245,8 +244,7 @@ class MFDouble(MFScalar):
         f.write(
             f"{PAD}"
             f"{self.name.upper()} "
-            f"{self.value}"
-            f"{'\n' if newline else ''}"
+            f"{self.value}" + ("\n" if newline else "")
         )
 
 
@@ -309,8 +307,7 @@ class MFString(MFScalar):
         f.write(
             f"{PAD}"
             f"{self.name.upper()} "
-            f"{self.value}"
-            f"{'\n' if newline else ''}"
+            f"{self.value}" + ("\n" if newline else "")
         )
 
 
@@ -385,6 +382,5 @@ class MFFilename(MFScalar):
         f.write(
             f"{PAD}{self.name.upper()} "
             f"{self.inout.value.upper()} "
-            f"{self.value}"
-            f"{'\n' if newline else ''}"
+            f"{self.value}" + ("\n" if newline else "")
         )
