@@ -106,8 +106,8 @@ def test_load_write(tmp_path):
         assert isinstance(TestBlock.r.params["ri"], MFInteger)
         assert isinstance(TestBlock.r.params["rd"], MFDouble)
 
-        assert isinstance(block.r, list)
-        assert block.r == [True, 2, 2.0]
+        assert isinstance(block.r, dict)
+        assert block.r == {"rd": 2.0, "ri": 2, "rk": True}
 
     # test block write
     fpth2 = tmp_path / f"{name}2.txt"
