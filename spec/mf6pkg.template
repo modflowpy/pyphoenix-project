@@ -1,0 +1,51 @@
+import numpy as np
+
+from flopy4.array import MFArray
+from flopy4.block import MFBlock
+from flopy4.package import MFPackage
+from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
+from flopy4.compound import MFRecord
+
+# generated file
+class {{c}}{{s}}(MFPackage):
+{%- for blocks in block_list %}
+  {%- for blkname, params in blocks.items() %}
+    {%- for pname, attr in params.items() %}
+      {%- if 'keyword' == params[pname].type %}
+    {{pname}} = MFKeyword(
+      {%- elif 'string' == params[pname].type %}
+    {{pname}} = MFString(
+      {%- elif 'double' == params[pname].type %}
+        {%- if '' == params[pname].shape %}
+    {{pname}} = MFDouble(
+        {%- else %}
+    {{pname}} = MFArray(
+        {%- endif %}
+      {%- elif 'integer' == params[pname].type %}
+        {%- if '' == params[pname].shape %}
+    {{pname}} = MFInteger(
+        {%- else %}
+    {{pname}} = MFArray(
+        {%- endif %}
+      {%- else %}
+        {%- set tokens = params[pname].type.split(' ') %}
+        {%- if 'record' == tokens[0] %}
+        {%- set rec = tokens.pop(0) %}
+    {{pname}} = MFRecord(
+        params = {
+        {%- for token in tokens %}
+            "{{token}}": {{params[pname].rectypes[loop.index-1]}},
+        {%- endfor %}
+        },
+        {%- endif %}
+      {%- endif %}
+        block = "{{blkname}}",
+        shape = "{{params[pname].shape}}",
+        reader = "{{params[pname].reader}}",
+        optional = {{params[pname].optional}},
+        longname = "{{params[pname].longname}}",
+        description = "{{params[pname].description}}",
+    )
+    {%- endfor %}
+  {%- endfor %}
+{%- endfor %}
