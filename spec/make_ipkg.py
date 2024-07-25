@@ -103,14 +103,14 @@ class Toml2IPkg:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog="Convert DFN files to TOML files",
+        prog="Convert TOML files to FloPy package files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
-            Generate TOML from DFN files. This script converts
-            definition (DFN) files to TOML specification files,
-            each representing a parameter set for a particular
-            input definition.
+            Generate FloPy package files from TOML files. This
+            script converts TOML files to package specification
+            files, each representing a parameter set for a
+            particular input definition.
             """
         ),
     )
@@ -119,8 +119,7 @@ if __name__ == "__main__":
         "--toml",
         required=False,
         default=TOML_PATH,
-        help="Path to a toml file, or to a text or YAML file "
-        "listing DFN files (one per line)",
+        help="Path to a toml file or directory containing toml files",
     )
     parser.add_argument(
         "-o",
@@ -151,7 +150,7 @@ if __name__ == "__main__":
 
     assert all(
         p.is_file() for p in tomls
-    ), f"DFNs not found: {[p for p in dfns if not p.is_file()]}"
+    ), f"TOMLs not found: {[p for p in tomls if not p.is_file()]}"
 
     if verbose:
         print("Converting TOMLs:")
