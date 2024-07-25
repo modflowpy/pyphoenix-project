@@ -31,7 +31,6 @@ class TestGwfIc(MFPackage):
 
     export_array_ascii = MFKeyword(
         block="options",
-        name="export_array_ascii",
         longname="export array variables to layered ascii files.",
         description="keyword that specifies input griddata arrays should be"
         "written to layered ascii output files.",
@@ -40,7 +39,6 @@ class TestGwfIc(MFPackage):
     )
     export_array_netcdf = MFKeyword(
         block="options",
-        name="export_array_netcdf",
         longname="export array variables to netcdf output files.",
         description="keyword that specifies input griddata arrays should be"
         "written to the model output netcdf file.",
@@ -49,7 +47,6 @@ class TestGwfIc(MFPackage):
     )
     strt = MFArray(
         block="griddata",
-        name="strt",
         longname="starting head",
         description="is the initial (starting) head---that is, head at the"
         "beginning of the GWF Model simulation.  STRT must be specified for"
@@ -73,7 +70,6 @@ class TestGwfDis(MFPackage):
 
     export_array_ascii = MFKeyword(
         block="options",
-        name="export_array_ascii",
         longname="export array variables to layered ascii files.",
         description="keyword that specifies input griddata arrays should be"
         "written to layered ascii output files.",
@@ -82,28 +78,24 @@ class TestGwfDis(MFPackage):
     )
     nlay = MFInteger(
         block="dimensions",
-        name="nlay",
         longname="number of layers",
         description="is the number of layers in the model grid.",
         optional=False,
     )
     nrow = MFInteger(
         block="dimensions",
-        name="nrow",
         longname="number of rows",
         description="is the number of rows in the model grid.",
         optional=False,
     )
     ncol = MFInteger(
         block="dimensions",
-        name="ncol",
         longname="number of columns",
         description="is the number of columns in the model grid.",
         optional=False,
     )
     delr = MFArray(
         block="griddata",
-        name="delr",
         longname="spacing along a row",
         description="is the column spacing in the row direction.",
         optional=False,
@@ -112,7 +104,6 @@ class TestGwfDis(MFPackage):
     )
     delc = MFArray(
         block="griddata",
-        name="delc",
         longname="spacing along a column",
         description="is the row spacing in the column direction.",
         optional=False,
@@ -121,7 +112,6 @@ class TestGwfDis(MFPackage):
     )
     top = MFArray(
         block="griddata",
-        name="top",
         longname="cell top elevation",
         description="is the top elevation for each cell in the top model"
         "layer.",
@@ -131,7 +121,6 @@ class TestGwfDis(MFPackage):
     )
     botm = MFArray(
         block="griddata",
-        name="botm",
         longname="cell bottom elevation",
         description="is the bottom elevation for each cell.",
         optional=False,
@@ -140,7 +129,6 @@ class TestGwfDis(MFPackage):
     )
     idomain = MFArray(
         block="griddata",
-        name="idomain",
         longname="idomain existence array",
         description="is an optional array that characterizes the existence "
         "status of a cell.  If the IDOMAIN array is not specified, then all "
