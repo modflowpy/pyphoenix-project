@@ -16,25 +16,24 @@ def single_keystring(members):
     return len(params) == 1 and isinstance(params[0], MFKeystring)
 
 
-def get_param(members, key, block):
+def get_param(members, name, block):
     ks = [m for m in members.values() if isinstance(m, MFKeystring)]
     if len(ks) == 1:
         param = ks[0]
     else:
-        param = members.get(key)
+        param = members.get(name)
         if param is not None:
-            param.name = key
+            param.name = name
         else:
-            raise ValueError(f"Invalid parameter: {key.upper()}")
+            raise ValueError(f"Invalid parameter: {name.upper()}")
     param.block = block
     return param
 
 
 class MFBlockMeta(type):
     def __new__(cls, clsname, bases, attrs):
-        new = super().__new__(cls, clsname, bases, attrs)
         if clsname == "MFBlock":
-            return new
+            return super().__new__(cls, clsname, bases, attrs)
 
         # detect block name
         block_name = (
@@ -45,18 +44,17 @@ class MFBlockMeta(type):
 
         # add parameter specification as class attribute.
         # dynamically set the parameters' name and block.
-        params = {
-            k: v.with_name(k).with_block(block_name)
-            for k, v in attrs.items()
-            if issubclass(type(v), MFParam)
-        }
-        if len([p for p in params if isinstance(p, MFKeystring)]) > 1:
-            raise ValueError("Only one keystring allowed per block")
-        for key, param in params.items():
-            setattr(new, key, param)
-        new.params = MFParams(params)
+        params = dict()
+        for attr_name, attr in attrs.items():
+            if issubclass(type(attr), MFParam):
+                attr.__doc__ = attr.description
+                attr.name = attr_name
+                attr.block = block_name
+                attrs[attr_name] = attr
+                params[attr_name] = attr
+        attrs["params"] = MFParams(params)
 
-        return new
+        return super().__new__(cls, clsname, bases, attrs)
 
 
 class MFBlockMappingMeta(MFBlockMeta, ABCMeta):
@@ -86,7 +84,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         super().__init__(params)
 
     def __getattribute__(self, name: str) -> Any:
-        if name == "data":
+        if name in ["data", "params"]:
             return super().__getattribute__(name)
 
         param = self.data.get(name)
@@ -169,3 +167,8 @@ class MFBlocks(UserDict):
 
     def __repr__(self):
         return pformat({k: repr(v) for k, v in self.data.items()})
+
+    def write(self, f):
+        """Write the blocks to file."""
+        for block in self.data.values():
+            block.write(f)

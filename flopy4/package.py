@@ -26,13 +26,14 @@ class MFPackageMeta(type):
         # add parameter and block specification as class
         # attributes. subclass mfblock dynamically based
         # on each block parameter specification.
-        params = MFParams(
-            {
-                k: v.with_name(k)
-                for k, v in attrs.items()
-                if issubclass(type(v), MFParam)
-            }
-        )
+        params = dict()
+        for attr_name, attr in attrs.items():
+            if issubclass(type(attr), MFParam):
+                attr.__doc__ = attr.description
+                attr.name = attr_name
+                attrs[attr_name] = attr
+                params[attr_name] = attr
+        params = MFParams(params)
         blocks = MFBlocks(
             {
                 block_name: get_block(
@@ -78,7 +79,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         return buffer.getvalue()
 
     def __getattribute__(self, name: str) -> Any:
-        if name == "data":
+        if name in ["data", "params", "blocks"]:
             return super().__getattribute__(name)
 
         block = self.data.get(name)
@@ -128,5 +129,4 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
 
     def write(self, f):
         """Write the package to file."""
-        for block in self.data.values():
-            block.write(f)
+        super().write(f)
