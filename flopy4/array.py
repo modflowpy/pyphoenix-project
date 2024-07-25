@@ -206,7 +206,6 @@ class MFArray(MFParam, NumPyArrayMixin):
     ):
         MFParam.__init__(
             self,
-            shape=shape,
             block=block,
             name=name,
             type=type,
