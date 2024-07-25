@@ -177,6 +177,10 @@ class MFParams(UserDict):
         for key, param in self.items():
             setattr(self, key, param)
 
+    def __repr__(self):
+        return pformat({k: repr(v) for k, v in self.data.items()})
+
     def write(self, f):
-        for param in self.values():
+        """Write the parameters to file."""
+        for param in self.data.values():
             param.write(f)
