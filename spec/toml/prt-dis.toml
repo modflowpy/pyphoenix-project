@@ -6,7 +6,7 @@ stress = false
 advanced = false
 
 [block.options.length_units]
-type = "STRING"
+type = "string"
 block_variable = false
 valid = []
 shape = ""
@@ -23,7 +23,7 @@ description = "is the length units used for this model.  Values can be ``FEET'',
 deprecated = ""
 
 [block.options.nogrb]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -40,7 +40,7 @@ description = "keyword to deactivate writing of the binary grid file."
 deprecated = ""
 
 [block.options.xorigin]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -57,7 +57,7 @@ description = "x-position of the lower-left corner of the model grid.  A default
 deprecated = ""
 
 [block.options.yorigin]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -74,7 +74,7 @@ description = "y-position of the lower-left corner of the model grid.  If not sp
 deprecated = ""
 
 [block.options.angrot]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -91,7 +91,7 @@ description = "counter-clockwise rotation angle (in degrees) of the lower-left c
 deprecated = ""
 
 [block.options.export_array_ascii]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -108,7 +108,7 @@ description = "keyword that specifies input griddata arrays should be written to
 deprecated = ""
 
 [block.options.export_array_netcdf]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -125,7 +125,7 @@ description = "keyword that specifies input griddata arrays should be written to
 deprecated = ""
 
 [block.options.ncf_filerecord]
-type = "RECORD NCF6 FILEIN NCF6_FILENAME"
+type = "record ncf6 filein ncf6_filename"
 block_variable = false
 valid = []
 shape = ""
@@ -142,7 +142,7 @@ description = ""
 deprecated = ""
 
 [block.options.ncf6]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -159,7 +159,7 @@ description = "keyword to specify that record corresponds to a netcdf configurat
 deprecated = ""
 
 [block.options.filein]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -176,7 +176,7 @@ description = "keyword to specify that an input filename is expected next."
 deprecated = ""
 
 [block.options.ncf6_filename]
-type = "STRING"
+type = "string"
 block_variable = false
 valid = []
 shape = ""
@@ -193,7 +193,7 @@ description = "defines a netcdf configuration (NCF) input file."
 deprecated = ""
 
 [block.dimensions.nlay]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -211,7 +211,7 @@ description = "is the number of layers in the model grid."
 deprecated = ""
 
 [block.dimensions.nrow]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -229,7 +229,7 @@ description = "is the number of rows in the model grid."
 deprecated = ""
 
 [block.dimensions.ncol]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -247,10 +247,10 @@ description = "is the number of columns in the model grid."
 deprecated = ""
 
 [block.griddata.delr]
-type = "DOUBLE1D"
+type = "double"
 block_variable = false
 valid = []
-shape = "NCOL"
+shape = "(ncol)"
 tagged = true
 in_record = false
 layered = false
@@ -265,10 +265,10 @@ description = "is the column spacing in the row direction."
 deprecated = ""
 
 [block.griddata.delc]
-type = "DOUBLE1D"
+type = "double"
 block_variable = false
 valid = []
-shape = "NROW"
+shape = "(nrow)"
 tagged = true
 in_record = false
 layered = false
@@ -283,10 +283,10 @@ description = "is the row spacing in the column direction."
 deprecated = ""
 
 [block.griddata.top]
-type = "DOUBLE2D"
+type = "double"
 block_variable = false
 valid = []
-shape = "NCOL NROW"
+shape = "(ncol, nrow)"
 tagged = true
 in_record = false
 layered = false
@@ -301,10 +301,10 @@ description = "is the top elevation for each cell in the top model layer."
 deprecated = ""
 
 [block.griddata.botm]
-type = "DOUBLE3D"
+type = "double"
 block_variable = false
 valid = []
-shape = "NCOL NROW NLAY"
+shape = "(ncol, nrow, nlay)"
 tagged = true
 in_record = false
 layered = true
@@ -319,10 +319,10 @@ description = "is the bottom elevation for each cell."
 deprecated = ""
 
 [block.griddata.idomain]
-type = "INTEGER3D"
+type = "integer"
 block_variable = false
 valid = []
-shape = "NCOL NROW NLAY"
+shape = "(ncol, nrow, nlay)"
 tagged = true
 in_record = false
 layered = true

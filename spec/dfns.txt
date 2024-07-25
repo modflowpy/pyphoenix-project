@@ -6,6 +6,7 @@
 
 # gwf model
 gwf-dis.dfn
+gwf-ic.dfn
 
 # gwt model
 gwt-dis.dfn

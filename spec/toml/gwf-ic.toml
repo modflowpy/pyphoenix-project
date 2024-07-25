@@ -1,0 +1,58 @@
+component = "GWF"
+subcomponent = "IC"
+blocknames = [ "options", "griddata",]
+multipkg = false
+stress = false
+advanced = false
+
+[block.options.export_array_ascii]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "export array variables to layered ascii files."
+description = "keyword that specifies input griddata arrays should be written to layered ascii output files."
+deprecated = ""
+
+[block.options.export_array_netcdf]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "export array variables to netcdf output files."
+description = "keyword that specifies input griddata arrays should be written to the model output netcdf file."
+deprecated = ""
+
+[block.griddata.strt]
+type = "double"
+block_variable = false
+valid = []
+shape = "(nodes)"
+tagged = true
+in_record = false
+layered = true
+time_series = false
+reader = "readarray"
+optional = false
+preserve_case = false
+default_value = "1.0"
+numeric_index = false
+longname = "starting head"
+description = "is the initial (starting) head---that is, head at the beginning of the GWF Model simulation.  STRT must be specified for all simulations, including steady-state simulations. One value is read for every model cell. For simulations in which the first stress period is steady state, the values used for STRT generally do not affect the simulation (exceptions may occur if cells go dry and (or) rewet). The execution time, however, will be less if STRT includes hydraulic heads that are close to the steady-state solution.  A head value lower than the cell bottom can be provided if a cell should start as dry."
+deprecated = ""

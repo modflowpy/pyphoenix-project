@@ -54,7 +54,7 @@ def test_dfn_load(tmp_path):
     ]
 
     assert dfn.param("options", "drape") == {
-        "type": "KEYWORD",
+        "type": "keyword",
         "block_variable": False,
         "valid": [],
         "shape": "",

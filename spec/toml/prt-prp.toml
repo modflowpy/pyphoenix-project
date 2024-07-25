@@ -1,12 +1,13 @@
 component = "PRT"
 subcomponent = "PRP"
 blocknames = [ "options", "dimensions", "packagedata", "period",]
-multipkg = true
+multipkg = false
 stress = false
 advanced = false
+multi = true
 
 [block.options.boundnames]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -23,7 +24,7 @@ description = "keyword to indicate that boundary names may be provided with the 
 deprecated = ""
 
 [block.options.print_input]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -40,7 +41,7 @@ description = "REPLACE print_input {'{#1}': 'all model stress package'}"
 deprecated = ""
 
 [block.options.dev_exit_solve_method]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -57,7 +58,7 @@ description = "the method for iterative solution of particle exit location and t
 deprecated = ""
 
 [block.options.exit_solve_tolerance]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -74,7 +75,7 @@ description = "the convergence tolerance for iterative solution of particle exit
 deprecated = ""
 
 [block.options.local_z]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -91,7 +92,7 @@ description = "indicates that ``zrpt'' defines the local z coordinate of the rel
 deprecated = ""
 
 [block.options.extend_tracking]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -108,7 +109,7 @@ description = "indicates that particles should be tracked beyond the end of the 
 deprecated = ""
 
 [block.options.track_filerecord]
-type = "RECORD TRACK FILEOUT TRACKFILE"
+type = "record track fileout trackfile"
 block_variable = false
 valid = []
 shape = ""
@@ -125,7 +126,7 @@ description = ""
 deprecated = ""
 
 [block.options.track]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -142,7 +143,7 @@ description = "keyword to specify that record corresponds to a binary track outp
 deprecated = ""
 
 [block.options.fileout]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -159,7 +160,7 @@ description = "keyword to specify that an output filename is expected next."
 deprecated = ""
 
 [block.options.trackfile]
-type = "STRING"
+type = "string"
 block_variable = false
 valid = []
 shape = ""
@@ -176,7 +177,7 @@ description = "name of the binary output file to write tracking information."
 deprecated = ""
 
 [block.options.trackcsv_filerecord]
-type = "RECORD TRACKCSV FILEOUT TRACKCSVFILE"
+type = "record trackcsv fileout trackcsvfile"
 block_variable = false
 valid = []
 shape = ""
@@ -193,7 +194,7 @@ description = ""
 deprecated = ""
 
 [block.options.trackcsv]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -210,7 +211,7 @@ description = "keyword to specify that record corresponds to a CSV track output 
 deprecated = ""
 
 [block.options.trackcsvfile]
-type = "STRING"
+type = "string"
 block_variable = false
 valid = []
 shape = ""
@@ -227,7 +228,7 @@ description = "name of the comma-separated value (CSV) file to write tracking in
 deprecated = ""
 
 [block.options.stoptime]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -244,7 +245,7 @@ description = "real value defining the maximum simulation time to which particle
 deprecated = ""
 
 [block.options.stoptraveltime]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -261,7 +262,7 @@ description = "real value defining the maximum travel time over which particles 
 deprecated = ""
 
 [block.options.stop_at_weak_sink]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -278,7 +279,7 @@ description = "is a text keyword to indicate that a particle is to terminate whe
 deprecated = ""
 
 [block.options.istopzone]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -295,7 +296,7 @@ description = "integer value defining the stop zone number.  If cells have been 
 deprecated = ""
 
 [block.options.drape]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -312,7 +313,7 @@ description = "is a text keyword to indicate that if a particle's release point 
 deprecated = ""
 
 [block.options.release_timesrecord]
-type = "RECORD RELEASE_TIMES TIMES"
+type = "record release_times times"
 block_variable = false
 valid = []
 shape = ""
@@ -329,7 +330,7 @@ description = ""
 deprecated = ""
 
 [block.options.release_times]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -346,10 +347,10 @@ description = "keyword indicating release times will follow"
 deprecated = ""
 
 [block.options.times]
-type = "DOUBLE1D"
+type = "double"
 block_variable = false
 valid = []
-shape = "UNKNOWN"
+shape = "(unknown)"
 tagged = false
 in_record = true
 layered = false
@@ -363,7 +364,7 @@ description = "times to release, relative to the beginning of the simulation.  R
 deprecated = ""
 
 [block.options.release_timesfilerecord]
-type = "RECORD RELEASE_TIMESFILE TIMESFILE"
+type = "record release_timesfile timesfile"
 block_variable = false
 valid = []
 shape = ""
@@ -380,7 +381,7 @@ description = ""
 deprecated = ""
 
 [block.options.release_timesfile]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -397,7 +398,7 @@ description = "keyword indicating release times file name will follow"
 deprecated = ""
 
 [block.options.timesfile]
-type = "STRING"
+type = "string"
 block_variable = false
 valid = []
 shape = ""
@@ -414,7 +415,7 @@ description = "name of the release times file.  RELEASE\\_TIMES and RELEASE\\_TI
 deprecated = ""
 
 [block.options.dev_forceternary]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -431,7 +432,7 @@ description = "force use of the ternary tracking method regardless of cell type 
 deprecated = ""
 
 [block.dimensions.nreleasepts]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -448,10 +449,10 @@ description = "is the number of particle release points."
 deprecated = ""
 
 [block.packagedata.packagedata]
-type = "RECARRAY IRPTNO CELLID XRPT YRPT ZRPT BOUNDNAME"
+type = "recarray irptno cellid xrpt yrpt zrpt boundname"
 block_variable = false
 valid = []
-shape = "NRELEASEPTS"
+shape = "(nreleasepts)"
 tagged = true
 in_record = false
 layered = false
@@ -465,7 +466,7 @@ description = ""
 deprecated = ""
 
 [block.packagedata.irptno]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -482,10 +483,10 @@ description = "integer value that defines the PRP release point number associate
 deprecated = ""
 
 [block.packagedata.cellid]
-type = "INTEGER1D"
+type = "integer"
 block_variable = false
 valid = []
-shape = "NCELLDIM"
+shape = "(ncelldim)"
 tagged = false
 in_record = true
 layered = false
@@ -499,7 +500,7 @@ description = "REPLACE cellid {}"
 deprecated = ""
 
 [block.packagedata.xrpt]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -516,7 +517,7 @@ description = "real value that defines the x coordinate of the release point in 
 deprecated = ""
 
 [block.packagedata.yrpt]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -533,7 +534,7 @@ description = "real value that defines the y coordinate of the release point in 
 deprecated = ""
 
 [block.packagedata.zrpt]
-type = "DOUBLE"
+type = "double"
 block_variable = false
 valid = []
 shape = ""
@@ -550,7 +551,7 @@ description = "real value that defines the z coordinate of the release point in 
 deprecated = ""
 
 [block.packagedata.boundname]
-type = "STRING"
+type = "string"
 block_variable = false
 valid = []
 shape = ""
@@ -567,7 +568,7 @@ description = "name of the particle release point. BOUNDNAME is an ASCII charact
 deprecated = ""
 
 [block.period.perioddata]
-type = "RECARRAY RELEASESETTING"
+type = "recarray releasesetting"
 block_variable = false
 valid = []
 shape = ""
@@ -584,7 +585,7 @@ description = ""
 deprecated = ""
 
 [block.period.releasesetting]
-type = "KEYSTRING ALL FIRST FREQUENCY STEPS FRACTION"
+type = "keystring all first frequency steps fraction"
 block_variable = false
 valid = []
 shape = ""
@@ -601,7 +602,7 @@ description = "specifies when to release particles within the stress period.  Ov
 deprecated = ""
 
 [block.period.all]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -618,7 +619,7 @@ description = "keyword to indicate release of particles at the start of all time
 deprecated = ""
 
 [block.period.first]
-type = "KEYWORD"
+type = "keyword"
 block_variable = false
 valid = []
 shape = ""
@@ -635,7 +636,7 @@ description = "keyword to indicate release of particles at the start of the firs
 deprecated = ""
 
 [block.period.frequency]
-type = "INTEGER"
+type = "integer"
 block_variable = false
 valid = []
 shape = ""
@@ -652,10 +653,10 @@ description = "release particles at the specified time step frequency. This keyw
 deprecated = ""
 
 [block.period.steps]
-type = "INTEGER1D"
+type = "integer"
 block_variable = false
 valid = []
-shape = "<NSTP"
+shape = "(<nstp)"
 tagged = true
 in_record = true
 layered = false
@@ -669,10 +670,10 @@ description = "release particles at the start of each step specified in STEPS. T
 deprecated = ""
 
 [block.period.fraction]
-type = "DOUBLE1D"
+type = "double"
 block_variable = false
 valid = []
-shape = "<NSTP"
+shape = "(<nstp)"
 tagged = true
 in_record = true
 layered = false

@@ -22,7 +22,10 @@ def get_param(members, key, block):
         param = ks[0]
     else:
         param = members.get(key)
-        param.name = key
+        if param is not None:
+            param.name = key
+        else:
+            raise ValueError(f"Invalid parameter: {key.upper()}")
     param.block = block
     return param
 

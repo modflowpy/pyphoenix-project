@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from io import StringIO
 from pathlib import Path
@@ -205,6 +206,7 @@ class MFArray(MFParam, NumPyArrayMixin):
     ):
         MFParam.__init__(
             self,
+            shape=shape,
             block=block,
             name=name,
             type=type,
@@ -423,20 +425,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             pos = f.tell()
             line = f.readline()
             line = line_strip(line)
-            if line in (
-                CommonNames.empty,
-                CommonNames.internal,
-                CommonNames.external,
-                CommonNames.constant,
-            ):
-                f.seek(pos, 0)
-                break
-            elif (
-                CommonNames.internal in line
-                or CommonNames.external in line
-                or CommonNames.constant in line
-                or CommonNames.end in line.upper()
-            ):
+            if not re.match("^[0-9. ]+$", line):
                 f.seek(pos, 0)
                 break
             astr.append(line)

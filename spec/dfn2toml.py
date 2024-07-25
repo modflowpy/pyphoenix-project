@@ -85,7 +85,7 @@ class Dfn2Toml:
                 d["block"][b][name] = block_d[p]
 
         if self._multi_package:
-            d["multipkg"] = True
+            d["multi"] = True
         if self._stress_package:
             d["stress"] = True
         if self._advanced_package:
@@ -201,40 +201,9 @@ class Dfn2Toml:
             if "block_variable" in v and v["block_variable"].upper() == "TRUE":
                 continue
 
-            vtype = v["type"].upper()
-            if vtype == "DOUBLE PRECISION":
-                vtype = "DOUBLE"
-            recarray = vtype and vtype.startswith("RECARRAY")
-
-            vname = v["name"].upper()
-
-            shape = ""
-            shapelist = []
-            if "shape" in v:
-                shape = v["shape"]
-                shape = shape.replace("(", "")
-                shape = shape.replace(")", "")
-                shape = shape.replace(",", "")
-                shape = shape.upper()
-                if shape == "NCOL*NROW; NCPL":
-                    if (
-                        vname == "AUX"
-                        and "reader" in v
-                        and v["reader"] == "readarray"
-                    ):
-                        shape = "NAUX NCPL"
-                    else:
-                        shape = "NCPL"
-                shapelist = shape.strip().split()
-
-            ndim = len(shapelist)
-            if (
-                shape != ""
-                and ndim > 0
-                and not recarray
-                and (vtype == "DOUBLE" or vtype == "INTEGER")
-            ):
-                vtype = f"{vtype}{ndim}D"
+            vtype = v["type"].lower()
+            if vtype == "double precision":
+                vtype = "double"
 
             d = None
             d = mf6_param_dfn.copy()
@@ -249,8 +218,6 @@ class Dfn2Toml:
                         valid = v[k].strip().split()
                         if len(valid) > 0:
                             d[k] = valid.copy()
-                    elif k == "shape":
-                        d[k] = shape
                     elif k == "type":
                         d[k] = vtype
                     else:
