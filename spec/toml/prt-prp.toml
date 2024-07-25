@@ -360,7 +360,7 @@ optional = false
 preserve_case = false
 numeric_index = false
 longname = "release times"
-description = "times to release, relative to the beginning of the simulation.  RELEASE\\_TIMES and RELEASE\\_TIMESFILE are mutually exclusive."
+description = "times to release, relative to the beginning of the simulation.  RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive."
 deprecated = ""
 
 [block.options.release_timesfilerecord]
@@ -411,7 +411,7 @@ optional = false
 preserve_case = true
 numeric_index = false
 longname = "file keyword"
-description = "name of the release times file.  RELEASE\\_TIMES and RELEASE\\_TIMESFILE are mutually exclusive."
+description = "name of the release times file.  RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive."
 deprecated = ""
 
 [block.options.dev_forceternary]
@@ -547,7 +547,7 @@ optional = false
 preserve_case = false
 numeric_index = false
 longname = "z coordinate of release point"
-description = "real value that defines the z coordinate of the release point in model coordinates or, if the LOCAL\\_Z option is active, in local cell coordinates.  The (x, y, z) location specified for the release point must lie within the cell that is identified by the specified cellid."
+description = "real value that defines the z coordinate of the release point in model coordinates or, if the LOCAL_Z option is active, in local cell coordinates.  The (x, y, z) location specified for the release point must lie within the cell that is identified by the specified cellid."
 deprecated = ""
 
 [block.packagedata.boundname]

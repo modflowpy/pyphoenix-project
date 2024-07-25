@@ -9,10 +9,8 @@ import toml
 MF6_LENVARNAME = 16
 F90_LINELEN = 82
 PROJ_ROOT = Path(__file__).parents[1]
-SRC_PATH = PROJ_ROOT / "src"
 DFN_PATH = PROJ_ROOT / "spec" / "dfn"
 TOML_PATH = PROJ_ROOT / "spec" / "toml"
-DEFAULT_DFNS_PATH = Path(__file__).parents[0] / "dfns.txt"
 
 # parameter defaults
 mf6_param_dfn = {
@@ -220,6 +218,8 @@ class Dfn2Toml:
                             d[k] = valid.copy()
                     elif k == "type":
                         d[k] = vtype
+                    elif k == "description":
+                        d[k] = v[k].replace("\\", "").strip()
                     else:
                         d[k] = v[k]
 
@@ -252,9 +252,8 @@ if __name__ == "__main__":
         "-d",
         "--dfn",
         required=False,
-        default=DEFAULT_DFNS_PATH,
-        help="Path to a DFN file, or to a text or YAML file "
-        "listing DFN files (one per line)",
+        default=DFN_PATH,
+        help="Path to a DFN file or directory contiaining DFN files",
     )
     parser.add_argument(
         "-o",
@@ -272,23 +271,14 @@ if __name__ == "__main__":
         help="Whether to show verbose output",
     )
     args = parser.parse_args()
-    dfn = Path(args.dfn)
     outdir = Path(args.outdir) if args.outdir else Path.cwd()
     Path(outdir).mkdir(exist_ok=True)
     verbose = args.verbose
 
-    if dfn.suffix.lower() in [".txt"]:
-        dfns = open(dfn, "r").readlines()
-        dfns = [dfn.strip() for dfn in dfns]
-        dfns = [
-            dfn
-            for dfn in dfns
-            if not dfn.startswith("#") and dfn.lower().endswith(".dfn")
-        ]
-        if dfn == DEFAULT_DFNS_PATH:
-            dfns = [DFN_PATH / p for p in dfns]
-    elif dfn.suffix.lower() in [".yml", ".yaml"]:
-        dfns = yaml.safe_load(open(dfn, "r"))
+    dfn = Path(args.dfn)
+    dfns = []
+    if dfn.is_dir():
+        dfns = list(dfn.glob("**/*.dfn"))
     elif dfn.suffix.lower() in [".dfn"]:
         dfns = [dfn]
 
