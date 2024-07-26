@@ -11,16 +11,19 @@ from flopy4.param import MFParam, MFParams
 from flopy4.utils import find_upper, strip
 
 
+def get_keystrings(members, name):
+    return [
+        m for m in members.values() if isinstance(m, MFKeystring) and name in m
+    ]
+
+
 def get_param(members, name, block):
-    ks = [m for m in members.values() if isinstance(m, MFKeystring)]
-    if len(ks) == 1:
-        param = ks[0]
-    else:
+    param = next(iter(get_keystrings(members, name)), None)
+    if param is None:
         param = members.get(name)
-        if param is not None:
-            param.name = name
-        else:
+        if param is None:
             raise ValueError(f"Invalid parameter: {name.upper()}")
+        param.name = name
     param.block = block
     return param
 
