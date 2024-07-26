@@ -1,7 +1,6 @@
 from abc import ABCMeta
 from io import StringIO
 from itertools import groupby
-from pprint import pformat
 from typing import Any
 
 from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
@@ -10,9 +9,12 @@ from flopy4.utils import strip
 
 
 def get_block(pkg_name, block_name, params):
-    return MFBlockMeta(
-        f"{pkg_name.title()}{block_name.title()}Block", (MFBlock,), params
-    )(params=params, name=block_name)
+    cls = MFBlockMeta(
+        f"{pkg_name.title()}{block_name.title()}Block",
+        (MFBlock,),
+        params.copy(),
+    )
+    return cls(params=params, name=block_name)
 
 
 class MFPackageMeta(type):
@@ -70,21 +72,31 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     def __init__(self, blocks=None):
         super().__init__(blocks)
 
-    def __repr__(self):
-        return pformat(self.data)
-
     def __str__(self):
         buffer = StringIO()
         self.write(buffer)
         return buffer.getvalue()
 
     def __getattribute__(self, name: str) -> Any:
-        if name in ["data", "params", "blocks"]:
+        if name == "data":
             return super().__getattribute__(name)
 
-        block = self.data.get(name)
-        if block is not None:
-            return block
+        if name == "blocks":
+            return MFBlocks(self.data)
+
+        if name == "params":
+            # todo cache this
+            return MFParams(
+                {
+                    param_name: param
+                    for block in self.values()
+                    for param_name, param in block.items()
+                }
+            )
+
+        # shortcut to block value
+        if name in self:
+            return self[name]
 
         # shortcut to parameter value for instance attribute.
         # the class attribute is the parameter specification.

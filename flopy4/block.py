@@ -11,11 +11,6 @@ from flopy4.param import MFParam, MFParams
 from flopy4.utils import find_upper, strip
 
 
-def single_keystring(members):
-    params = list(members.values())
-    return len(params) == 1 and isinstance(params[0], MFKeystring)
-
-
 def get_param(members, name, block):
     ks = [m for m in members.values() if isinstance(m, MFKeystring)]
     if len(ks) == 1:
@@ -84,8 +79,11 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         super().__init__(params)
 
     def __getattribute__(self, name: str) -> Any:
-        if name in ["data", "params"]:
+        if name == "data":
             return super().__getattribute__(name)
+
+        if name == "params":
+            return MFParams({k: v.value for k, v in self.data.items()})
 
         param = self.data.get(name)
         return (
@@ -93,9 +91,6 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             if param is not None
             else super().__getattribute__(name)
         )
-
-    def __repr__(self):
-        return pformat({k: v for k, v in self.data.items()})
 
     def __str__(self):
         buffer = StringIO()
@@ -166,7 +161,7 @@ class MFBlocks(UserDict):
             setattr(self, key, block)
 
     def __repr__(self):
-        return pformat({k: repr(v) for k, v in self.data.items()})
+        return pformat(self.data)
 
     def write(self, f):
         """Write the blocks to file."""

@@ -2,7 +2,6 @@ from abc import abstractmethod
 from collections.abc import Mapping
 from dataclasses import asdict
 from io import StringIO
-from pprint import pformat
 from typing import Any, Dict
 
 from flopy4.param import MFParam, MFParams, MFReader
@@ -58,13 +57,10 @@ class MFCompound(MFParam, MFParams):
     def __get__(self, obj, type=None):
         return self
 
-    def __repr__(self):
-        return pformat(self.data)
-
     @property
     def params(self) -> MFParams:
         """Component parameters."""
-        return self.data
+        return MFParams(self.data)
 
     @property
     def value(self) -> Mapping[str, Any]:
@@ -150,11 +146,12 @@ class MFRecord(MFCompound):
 
         return loaded
 
-    def write(self, f):
+    def write(self, f, **kwargs):
+        """Write the record to file."""
         f.write(f"{PAD}{self.name.upper()}")
         last = len(self) - 1
         for i, param in enumerate(self.data.values()):
-            param.write(f, newline=i == last)
+            param.write(f, newline=i == last, **kwargs)
 
 
 class MFKeystring(MFCompound):
@@ -225,6 +222,6 @@ class MFKeystring(MFCompound):
 
         return cls(loaded, **kwargs)
 
-    def write(self, f):
+    def write(self, f, **kwargs):
         """Write the keystring to file."""
-        super().write(f)
+        super().write(f, **kwargs)

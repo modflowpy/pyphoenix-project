@@ -338,7 +338,7 @@ class MFArray(MFParam, NumPyArrayMixin):
 
         return self._how
 
-    def write(self, f):
+    def write(self, f, **kwargs):
         # todo
         pass
 
