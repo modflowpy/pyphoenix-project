@@ -84,8 +84,11 @@ class MFParamSpec:
 class MFParam(MFParamSpec):
     """
     MODFLOW 6 input parameter. Can be a scalar or compound of
-    scalars, an array, or a list (i.e. a table). `MFParameter`
-    classes play a dual role: first, to define the blocks that
+    scalars, an array, or a list (i.e. a table).
+
+    Notes
+    -----
+    This class plays a dual role: first, to define blocks that
     specify the input required for MF6 components; and second,
     as a data access layer by which higher components (blocks,
     packages, etc) can read/write parameters. The former is a
@@ -93,10 +96,8 @@ class MFParam(MFParamSpec):
     generated from DFNs) while the latter happens at runtime,
     but both APIs are user-facing; the user can first inspect
     a package's specification via class attributes, then load
-    an input file and inspect the package data.
+    an input file and inspect package data via instance attrs.
 
-    Notes
-    -----
     Specification attributes are set at import time. A parent
     block or package defines parameters as class attributes,
     including a description, whether the parameter is optional,
@@ -149,11 +150,6 @@ class MFParam(MFParamSpec):
             default_value=default_value,
         )
 
-    def __repr__(self):
-        return (
-            super().__repr__() if self.value is None else pformat(self.value)
-        )
-
     def __str__(self):
         buffer = StringIO()
         self.write(buffer)
@@ -163,6 +159,11 @@ class MFParam(MFParamSpec):
     @abstractmethod
     def value(self) -> Optional[Any]:
         """Get the parameter's value, if loaded."""
+        pass
+
+    @abstractmethod
+    def write(self, f, **kwargs):
+        """Write the parameter to file."""
         pass
 
 
@@ -178,9 +179,9 @@ class MFParams(UserDict):
             setattr(self, key, param)
 
     def __repr__(self):
-        return pformat({k: repr(v) for k, v in self.data.items()})
+        return pformat(self.data)
 
-    def write(self, f):
+    def write(self, f, **kwargs):
         """Write the parameters to file."""
         for param in self.data.values():
-            param.write(f)
+            param.write(f, **kwargs)

@@ -316,8 +316,11 @@ def test_load_gwfic(tmp_path):
     with open(fpth, "r") as f:
         gwfic = TestGwfIc.load(f)
 
+    assert len(TestGwfIc.blocks) == 2
+    assert len(TestGwfIc.params) == 3
+
     assert len(gwfic.blocks) == 2
-    assert len(gwfic.params) == 3
+    assert len(gwfic.params) == 2  # only two params loaded
 
     # instance attributes: shortcut access to param values
     assert isinstance(gwfic.export_array_ascii, bool)

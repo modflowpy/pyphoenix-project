@@ -118,7 +118,8 @@ class MFKeyword(MFScalar):
         kwargs["name"] = line
         return cls(value=True, **kwargs)
 
-    def write(self, f, newline=True):
+    def write(self, f, **kwargs):
+        newline = kwargs.pop("newline", True)
         if self.value:
             f.write(
                 f"{PAD}" f"{self.name.upper()}" + ("\n" if newline else "")
@@ -180,7 +181,8 @@ class MFInteger(MFScalar):
         kwargs["name"] = words[0]
         return cls(value=int(words[1]), **kwargs)
 
-    def write(self, f, newline=True):
+    def write(self, f, **kwargs):
+        newline = kwargs.pop("newline", True)
         f.write(
             f"{PAD}"
             f"{self.name.upper()} "
@@ -243,7 +245,8 @@ class MFDouble(MFScalar):
         kwargs["name"] = words[0]
         return cls(value=float(words[1]), **kwargs)
 
-    def write(self, f, newline=True):
+    def write(self, f, **kwargs):
+        newline = kwargs.pop("newline", True)
         f.write(
             f"{PAD}"
             f"{self.name.upper()} "
@@ -306,7 +309,8 @@ class MFString(MFScalar):
         kwargs["name"] = words[0]
         return cls(value=words[1], **kwargs)
 
-    def write(self, f, newline=True):
+    def write(self, f, **kwargs):
+        newline = kwargs.pop("newline", True)
         f.write(
             f"{PAD}"
             f"{self.name.upper()} "
@@ -381,7 +385,8 @@ class MFFilename(MFScalar):
             **kwargs,
         )
 
-    def write(self, f, newline=True):
+    def write(self, f, **kwargs):
+        newline = kwargs.pop("newline", True)
         f.write(
             f"{PAD}{self.name.upper()} "
             f"{self.inout.value.upper()} "
