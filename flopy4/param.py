@@ -29,6 +29,8 @@ class MFParamSpec:
     repeating: bool = False
     tagged: bool = True
     reader: MFReader = MFReader.urword
+    # todo change to variadic tuple of str and resolve
+    # actual shape at load time from simulation context
     shape: Optional[Tuple[int]] = None
     default_value: Optional[Any] = None
 
@@ -53,6 +55,7 @@ class MFParamSpec:
         spec = dict()
         members = cls.fields()
         keywords = [f.name for f in members if f.type is bool]
+
         while True:
             line = f.readline()
             if not line or line == "\n":
@@ -68,6 +71,7 @@ class MFParamSpec:
                 spec[key] = literal_eval(val)
             else:
                 spec[key] = val
+
         return cls(**spec)
 
     def with_name(self, name) -> "MFParamSpec":
@@ -183,5 +187,5 @@ class MFParams(UserDict):
 
     def write(self, f, **kwargs):
         """Write the parameters to file."""
-        for param in self.data.values():
+        for param in self.values():
             param.write(f, **kwargs)

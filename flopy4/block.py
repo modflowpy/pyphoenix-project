@@ -82,23 +82,33 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         super().__init__(params)
 
     def __getattribute__(self, name: str) -> Any:
-        if name == "data":
-            return super().__getattribute__(name)
+        self_type = type(self)
 
+        # shortcut to parameter value for instance attribute.
+        # the class attribute is the parameter specification.
+        if name in self_type.params:
+            return self.value[name]
+
+        # add .params attribute as an alias for .value, this
+        # overrides the class attribute with specification
         if name == "params":
-            return MFParams({k: v.value for k, v in self.data.items()})
+            return self.value
 
-        param = self.data.get(name)
-        return (
-            param.value
-            if param is not None
-            else super().__getattribute__(name)
-        )
+        return super().__getattribute__(name)
 
     def __str__(self):
         buffer = StringIO()
         self.write(buffer)
         return buffer.getvalue()
+
+    @property
+    def value(self):
+        return MFParams({k: v.value for k, v in self.items()})
+
+    @value.setter
+    def value(self, value):
+        # todo set from dict of params
+        pass
 
     @classmethod
     def load(cls, f, **kwargs):
@@ -168,5 +178,5 @@ class MFBlocks(UserDict):
 
     def write(self, f):
         """Write the blocks to file."""
-        for block in self.data.values():
+        for block in self.values():
             block.write(f)

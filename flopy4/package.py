@@ -78,39 +78,45 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         return buffer.getvalue()
 
     def __getattribute__(self, name: str) -> Any:
-        if name == "data":
-            return super().__getattribute__(name)
+        self_type = type(self)
 
-        if name == "blocks":
-            return MFBlocks(self.data)
-
-        if name == "params":
-            # todo cache this
-            return MFParams(
-                {
-                    param_name: param
-                    for block in self.values()
-                    for param_name, param in block.items()
-                }
-            )
-
-        # shortcut to block value
-        if name in self:
-            return self[name]
+        # shortcut to block value for instance attribute.
+        # the class attribute is the block specification.
+        if name in self_type.blocks:
+            return self[name].value
 
         # shortcut to parameter value for instance attribute.
         # the class attribute is the parameter specification.
-        params = {
-            param_name: param
-            for block in self.data.values()
-            for param_name, param in block.items()
-        }
-        param = params.get(name)
-        return (
-            param.value
-            if param is not None
-            else super().__getattribute__(name)
+        if name in self_type.params:
+            return self._param_values()[name]
+
+        # define .blocks and .params attributes with values,
+        # overriding the class attributes with specification
+        if name == "blocks":
+            return self.value
+        if name == "params":
+            return self._param_values()
+
+        return super().__getattribute__(name)
+
+    def _param_values(self):
+        # todo cache
+        return MFParams(
+            {
+                param_name: param.value
+                for block in self.values()
+                for param_name, param in block.items()
+            }
         )
+
+    @property
+    def value(self):
+        return MFBlocks({k: v.value for k, v in self.items()})
+
+    @value.setter
+    def value(self, value):
+        # todo set from dict of blocks
+        pass
 
     @classmethod
     def load(cls, f):
@@ -135,9 +141,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
                     f.seek(pos)
                     blocks[name] = type(block).load(f)
 
-        pkg = cls()
-        pkg.update(blocks)
-        return pkg
+        return cls(blocks)
 
     def write(self, f):
         """Write the package to file."""
