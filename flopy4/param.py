@@ -185,6 +185,11 @@ class MFParams(UserDict):
     def __repr__(self):
         return pformat(self.data)
 
+    @property
+    def value(self):
+        """Get a dictionary of parameter values."""
+        return {k: v.value for k, v in self.items()}
+
     def write(self, f, **kwargs):
         """Write the parameters to file."""
         for param in self.values():

@@ -3,7 +3,7 @@ from collections import UserDict
 from dataclasses import asdict
 from io import StringIO
 from pprint import pformat
-from typing import Any
+from typing import Any, Dict, Optional
 
 from flopy4.array import MFArray
 from flopy4.compound import MFKeystring, MFRecord
@@ -64,6 +64,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
     """
     MF6 input block. Maps parameter names to parameters.
 
+
     Notes
     -----
     This class is dynamically subclassed by `MFPackage`
@@ -74,12 +75,22 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
     attributes expose the parameter value.
 
     The block's name and index are discovered upon load.
+    Likewise the parameter values are populated on load.
+    They can also be initialized by passing a dictionary
+    of names/values to `params` when calling `__init__`.
+    Only recognized parameters (i.e. parameters known to
+    the block specification) are allowed.
     """
 
-    def __init__(self, name=None, index=None, params=None):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        index: Optional[int] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ):
         self.name = name
         self.index = index
-        super().__init__(params)
+        self.value = params
 
     def __getattribute__(self, name: str) -> Any:
         self_type = type(self)
@@ -103,12 +114,32 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
 
     @property
     def value(self):
-        return MFParams({k: v.value for k, v in self.items()})
+        """Get a dictionary of block parameter values."""
+        return super().value
 
     @value.setter
     def value(self, value):
-        # todo set from dict of params
-        pass
+        """Set block parameter values from a dictionary."""
+        if value is None:
+            return
+
+        params = dict()
+        values = value.copy()
+
+        # we assume if a parameter name matches, it's the expected
+        # type. raise an error if we have any unrecognized params;
+        # blocks strictly disallow unrecognized params. to make an
+        # arbitrary set of parameters, use `MFParams` instead.
+        for param_name, param in type(self).params.copy().items():
+            value = values.pop(param_name, None)
+            value = param.default_value if value is None else value
+            param.value = value
+            params[param_name] = param
+        if any(values):
+            raise ValueError(f"Unknown parameters:\n{pformat(values)}")
+
+        # populate the internal dict by calling `MFParams.__init__()`
+        super().__init__(params)
 
     @classmethod
     def load(cls, f, **kwargs):

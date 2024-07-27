@@ -14,7 +14,7 @@ def get_block(pkg_name, block_name, params):
         (MFBlock,),
         params.copy(),
     )
-    return cls(params=params, name=block_name)
+    return cls(name=block_name)
 
 
 class MFPackageMeta(type):
