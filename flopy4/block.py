@@ -17,14 +17,14 @@ def get_keystrings(members, name):
     ]
 
 
-def get_param(members, name, block):
-    param = next(iter(get_keystrings(members, name)), None)
+def get_param(members, block_name, param_name):
+    param = next(iter(get_keystrings(members, param_name)), None)
     if param is None:
-        param = members.get(name)
+        param = members.get(param_name)
         if param is None:
-            raise ValueError(f"Invalid parameter: {name.upper()}")
-        param.name = name
-    param.block = block
+            raise ValueError(f"Invalid parameter: {param_name.upper()}")
+        param.name = param_name
+    param.block = block_name
     return param
 
 
@@ -40,8 +40,8 @@ class MFBlockMeta(type):
             .lower()
         )
 
-        # add parameter specification as class attribute.
-        # dynamically set the parameters' name and block.
+        # add class attributes for the block parameter specification.
+        # dynamically set each parameter's name, block and docstring.
         params = dict()
         for attr_name, attr in attrs.items():
             if issubclass(type(attr), MFParam):
@@ -50,6 +50,7 @@ class MFBlockMeta(type):
                 attr.block = block_name
                 attrs[attr_name] = attr
                 params[attr_name] = attr
+
         attrs["params"] = MFParams(params)
 
         return super().__new__(cls, clsname, bases, attrs)
@@ -90,7 +91,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
     ):
         self.name = name
         self.index = index
-        self.value = params
+        super().__init__(params=params)
 
     def __getattribute__(self, name: str) -> Any:
         self_type = type(self)
@@ -101,7 +102,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             return self.value[name]
 
         # add .params attribute as an alias for .value, this
-        # overrides the class attribute with specification
+        # overrides the class attribute with the param spec.
         if name == "params":
             return self.value
 
@@ -120,26 +121,30 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
     @value.setter
     def value(self, value):
         """Set block parameter values from a dictionary."""
-        if value is None:
+
+        if value is None or not any(value):
             return
 
         params = dict()
         values = value.copy()
 
-        # we assume if a parameter name matches, it's the expected
-        # type. raise an error if we have any unrecognized params;
-        # blocks strictly disallow unrecognized params. to make an
-        # arbitrary set of parameters, use `MFParams` instead.
+        # check provided parameters. if any are missing, set them
+        # to default values. assume if a param name matches, its
+        # type/value are ok (param setters should validate them).
         for param_name, param in type(self).params.copy().items():
             value = values.pop(param_name, None)
             value = param.default_value if value is None else value
             param.value = value
             params[param_name] = param
+
+        # raise an error if we have any unrecognized parameters.
+        # `MFBlock` strictly disallows unrecognized params. for
+        # an arbitrary collection of parameters, use `MFParams`.
         if any(values):
             raise ValueError(f"Unknown parameters:\n{pformat(values)}")
 
-        # populate the internal dict by calling `MFParams.__init__()`
-        super().__init__(params)
+        # populate internal dict and set attributes
+        super().__init__(params=params)
 
     @classmethod
     def load(cls, f, **kwargs):
@@ -167,7 +172,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             elif key == "end":
                 break
             elif found:
-                param = get_param(members, key, name)
+                param = get_param(members, name, key)
                 if param is not None:
                     f.seek(pos)
                     spec = asdict(param)
@@ -183,7 +188,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                         kwrgs["params"] = param.data.copy()
                     params[param.name] = ptype.load(f, **kwrgs)
 
-        return cls(name, index, params)
+        return cls(name=name, index=index, params=params)
 
     def write(self, f):
         """Write the block to file."""

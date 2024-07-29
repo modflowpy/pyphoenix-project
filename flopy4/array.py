@@ -228,9 +228,6 @@ class MFArray(MFParam, NumPyArrayMixin):
         self._how = how
         self._factor = factor
 
-    def __get__(self, obj, type=None):
-        return self if self.value is None else self.value
-
     def __getitem__(self, item):
         return self.raw[item]
 

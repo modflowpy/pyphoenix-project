@@ -50,16 +50,19 @@ class MFScalar(MFParam):
             default_value,
         )
 
-    def __get__(self, obj, type=None):
-        return self if self.value is None else self.value
-
     @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, value):
-        self._value = value
+        tvalue = type(value)
+        if issubclass(tvalue, MFScalar):
+            self._value = value.value
+        elif tvalue in [bool, int, float, str, Path]:
+            self._value = value
+        else:
+            raise ValueError(f"Unsupported scalar value: {value}")
 
 
 class MFKeyword(MFScalar):

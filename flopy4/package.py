@@ -1,7 +1,8 @@
 from abc import ABCMeta
 from io import StringIO
 from itertools import groupby
-from typing import Any
+from pprint import pformat
+from typing import Any, Dict, Optional
 
 from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
 from flopy4.param import MFParam, MFParams
@@ -14,7 +15,7 @@ def get_block(pkg_name, block_name, params):
         (MFBlock,),
         params.copy(),
     )
-    return cls(name=block_name)
+    return cls(name=block_name, params=params)
 
 
 class MFPackageMeta(type):
@@ -25,9 +26,8 @@ class MFPackageMeta(type):
         # detect package name
         pkg_name = clsname.replace("Package", "")
 
-        # add parameter and block specification as class
-        # attributes. subclass mfblock dynamically based
-        # on each block parameter specification.
+        # add class attributes for the package parameter specification.
+        # dynamically set each parameter's name and docstring.
         params = dict()
         for attr_name, attr in attrs.items():
             if issubclass(type(attr), MFParam):
@@ -35,24 +35,24 @@ class MFPackageMeta(type):
                 attr.name = attr_name
                 attrs[attr_name] = attr
                 params[attr_name] = attr
-        params = MFParams(params)
-        blocks = MFBlocks(
-            {
-                block_name: get_block(
-                    pkg_name=pkg_name,
-                    block_name=block_name,
-                    params={p.name: p for p in block},
-                )
-                for block_name, block in groupby(
-                    params.values(), lambda p: p.block
-                )
-            }
-        )
 
-        attrs["params"] = params
-        attrs["blocks"] = blocks
-        for block_name, block in blocks.items():
+        # add class attributes for the package block specification.
+        # subclass `MFBlock` dynamically with class name and params
+        # as given in the block parameter specification.
+        blocks = dict()
+        for block_name, block_params in groupby(
+            params.values(), lambda p: p.block
+        ):
+            block = get_block(
+                pkg_name=pkg_name,
+                block_name=block_name,
+                params={param.name: param for param in block_params},
+            )
             attrs[block_name] = block
+            blocks[block_name] = block
+
+        attrs["params"] = MFParams(params)
+        attrs["blocks"] = MFBlocks(blocks)
 
         return super().__new__(cls, clsname, bases, attrs)
 
@@ -64,18 +64,25 @@ class MFPackageMappingMeta(MFPackageMeta, ABCMeta):
 
 class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     """
-    MF6 model or simulation component package.
+    MF6 component package. Maps block names to blocks.
+
+
+    Notes
+    -----
+    Subclasses are generated from Jinja2 templates to
+    match each package in the MODFLOW 6 framework.
+
 
     TODO: reimplement with `ChainMap`?
     """
 
-    def __init__(self, blocks=None):
-        super().__init__(blocks)
-
-    def __str__(self):
-        buffer = StringIO()
-        self.write(buffer)
-        return buffer.getvalue()
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        blocks: Optional[Dict[str, Dict]] = None,
+    ):
+        self.name = name
+        super().__init__(blocks=blocks)
 
     def __getattribute__(self, name: str) -> Any:
         self_type = type(self)
@@ -90,14 +97,21 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         if name in self_type.params:
             return self._param_values()[name]
 
-        # define .blocks and .params attributes with values,
-        # overriding the class attributes with specification
+        # add .blocks attribute as an alias for .value, this
+        # overrides the class attribute with the block spec.
+        # also add a .params attribute, which is a flat dict
+        # of all block parameter values.
         if name == "blocks":
             return self.value
-        if name == "params":
+        elif name == "params":
             return self._param_values()
 
         return super().__getattribute__(name)
+
+    def __str__(self):
+        buffer = StringIO()
+        self.write(buffer)
+        return buffer.getvalue()
 
     def _param_values(self):
         # todo cache
@@ -111,12 +125,44 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
 
     @property
     def value(self):
+        """
+        Get a dictionary of package block values. This is a
+        nested mapping of block names to blocks, where each
+        block is a mapping of parameter names to parameter
+        values.
+        """
         return MFBlocks({k: v.value for k, v in self.items()})
 
     @value.setter
     def value(self, value):
-        # todo set from dict of blocks
-        pass
+        """
+        Set package block values from a nested dictionary,
+        where each block value is a mapping of parameter
+        names to parameter values.
+        """
+
+        if value is None or not any(value):
+            return
+
+        blocks = dict()
+        values = value.copy()
+
+        # load provided blocks. if any are missing, set them
+        # default values. assume if a block name matches, its
+        # param values are ok (param setters should validate).
+        for block_name, block in type(self).blocks.copy().items():
+            value = values.pop(block_name, None)
+            block.value = value
+            blocks[block_name] = block
+
+        # raise an error if we have any unrecognized blocks.
+        # `MFPackage` strictly disallows unrecognized blocks.
+        # for an arbitrary collection of blocks, use `MFBlocks`.
+        if any(values):
+            raise ValueError(f"Unknown blocks:\n{pformat(values)}")
+
+        # populate internal dict and set attributes
+        super().__init__(blocks=blocks)
 
     @classmethod
     def load(cls, f):
@@ -141,7 +187,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
                     f.seek(pos)
                     blocks[name] = type(block).load(f)
 
-        return cls(blocks)
+        return cls(blocks=blocks)
 
     def write(self, f):
         """Write the package to file."""

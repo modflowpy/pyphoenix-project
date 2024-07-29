@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from collections.abc import Mapping
 from dataclasses import asdict
 from io import StringIO
 from typing import Any, Dict
@@ -54,16 +53,13 @@ class MFCompound(MFParam, MFParams):
             default_value,
         )
 
-    def __get__(self, obj, type=None):
-        return self
-
     @property
     def params(self) -> MFParams:
         """Component parameters."""
         return MFParams(self.data)
 
     @property
-    def value(self) -> Mapping[str, Any]:
+    def value(self) -> Dict[str, Any]:
         """Get component names/values."""
         return {
             k: s.value for k, s in self.data.items() if s.value is not None
@@ -119,6 +115,7 @@ class MFRecord(MFCompound):
 
     @classmethod
     def load(cls, f, params, **kwargs) -> "MFRecord":
+        """Load a record with the given component parameters from a file."""
         line = strip(f.readline()).lower()
 
         if not any(line):
@@ -131,8 +128,9 @@ class MFRecord(MFCompound):
 
     @staticmethod
     def parse(line, params, **kwargs) -> Dict[str, MFScalar]:
-        loaded = dict()
+        """Parse a record with the given component parameters from a string."""
 
+        loaded = dict()
         for param_name, param in params.items():
             split = line.split()
             stype = type(param)
