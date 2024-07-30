@@ -1,14 +1,16 @@
 from abc import abstractmethod
 from pathlib import Path
+from typing import Generic, Optional, TypeVar, get_args
 
 from flopy4.constants import MFFileInout
 from flopy4.param import MFParam, MFReader
 from flopy4.utils import strip
 
 PAD = "  "
+T = TypeVar("T")
 
 
-class MFScalar(MFParam):
+class MFScalar(MFParam, Generic[T]):
     @abstractmethod
     def __init__(
         self,
@@ -31,7 +33,8 @@ class MFScalar(MFParam):
         default_value=None,
     ):
         self._value = value
-        super().__init__(
+        MFParam.__init__(
+            self,
             block,
             name,
             type,
@@ -50,19 +53,29 @@ class MFScalar(MFParam):
             default_value,
         )
 
-    def __get__(self, obj, type=None):
-        return self if self.value is None else self.value
+    def __init_subclass__(cls):
+        cls.T = get_args(cls.__orig_bases__[0])[0]
+        super().__init_subclass__()
 
     @property
-    def value(self):
+    def value(self) -> T:
         return self._value
 
     @value.setter
-    def value(self, value):
-        self._value = value
+    def value(self, value: Optional[T]):
+        if value is None:
+            return
+
+        t = type(value)
+        if issubclass(t, MFScalar):
+            self._value = value.value
+        elif t is type(self).T:
+            self._value = value
+        else:
+            raise ValueError(f"Unsupported scalar: {value}")
 
 
-class MFKeyword(MFScalar):
+class MFKeyword(MFScalar[bool]):
     def __init__(
         self,
         value=None,
@@ -126,7 +139,7 @@ class MFKeyword(MFScalar):
             )
 
 
-class MFInteger(MFScalar):
+class MFInteger(MFScalar[int]):
     def __init__(
         self,
         value=None,
@@ -170,6 +183,10 @@ class MFInteger(MFScalar):
     def __len__(self):
         return 2
 
+    @property
+    def vtype(self):
+        return int
+
     @classmethod
     def load(cls, f, **kwargs) -> "MFInteger":
         line = strip(f.readline()).lower()
@@ -190,7 +207,7 @@ class MFInteger(MFScalar):
         )
 
 
-class MFDouble(MFScalar):
+class MFDouble(MFScalar[float]):
     def __init__(
         self,
         value=None,
@@ -254,7 +271,7 @@ class MFDouble(MFScalar):
         )
 
 
-class MFString(MFScalar):
+class MFString(MFScalar[str]):
     def __init__(
         self,
         value=None,
@@ -296,7 +313,7 @@ class MFString(MFScalar):
         )
 
     def __len__(self):
-        return None if self._value is None else len(self._value.split())
+        return 0 if self._value is None else len(self._value.split())
 
     @classmethod
     def load(cls, f, **kwargs) -> "MFString":
@@ -318,7 +335,7 @@ class MFString(MFScalar):
         )
 
 
-class MFFilename(MFScalar):
+class MFFilename(MFScalar[Path]):
     def __init__(
         self,
         inout=MFFileInout.filein,

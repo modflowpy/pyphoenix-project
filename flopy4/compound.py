@@ -1,14 +1,26 @@
 from abc import abstractmethod
-from collections.abc import Mapping
 from dataclasses import asdict
 from io import StringIO
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
 from flopy4.utils import strip
 
 PAD = "  "
+
+
+def get_keystrings(
+    params: Iterable[MFParam], name=None
+) -> Iterator["MFKeystring"]:
+    """
+    Filter keystring parameters from the given iterable,
+    optionally matching the given component parameter name.
+    """
+    for param in params.values():
+        if isinstance(param, MFKeystring):
+            if name is None or name in param:
+                yield param
 
 
 class MFCompound(MFParam, MFParams):
@@ -54,24 +66,25 @@ class MFCompound(MFParam, MFParams):
             default_value,
         )
 
-    def __get__(self, obj, type=None):
-        return self
-
     @property
     def params(self) -> MFParams:
         """Component parameters."""
         return MFParams(self.data)
 
     @property
-    def value(self) -> Mapping[str, Any]:
+    def value(self) -> Dict[str, Any]:
         """Get component names/values."""
         return {
             k: s.value for k, s in self.data.items() if s.value is not None
         }
 
     @value.setter
-    def value(self, value):
-        """Set component names/values by keyword arguments."""
+    def value(self, value: Optional[Dict[str, Any]]):
+        """Set component names/values."""
+
+        if value is None:
+            return
+
         for key, val in value.items():
             self.data[key].value = val
 
@@ -98,7 +111,7 @@ class MFRecord(MFCompound):
         default_value=None,
     ):
         super().__init__(
-            params,
+            params=params,
             block=block,
             name=name,
             type=type,
@@ -119,6 +132,7 @@ class MFRecord(MFCompound):
 
     @classmethod
     def load(cls, f, params, **kwargs) -> "MFRecord":
+        """Load a record with the given component parameters from a file."""
         line = strip(f.readline()).lower()
 
         if not any(line):
@@ -131,8 +145,9 @@ class MFRecord(MFCompound):
 
     @staticmethod
     def parse(line, params, **kwargs) -> Dict[str, MFScalar]:
-        loaded = dict()
+        """Parse a record with the given component parameters from a string."""
 
+        loaded = dict()
         for param_name, param in params.items():
             split = line.split()
             stype = type(param)
@@ -176,7 +191,7 @@ class MFKeystring(MFCompound):
         default_value=None,
     ):
         super().__init__(
-            params,
+            params=params,
             block=block,
             name=name,
             type=type,

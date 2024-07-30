@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from flopy4.array import MFArray
 from flopy4.block import MFBlock
@@ -97,14 +100,15 @@ def test_load_write(tmp_path):
         assert isinstance(TestBlock.r.params["ri"], MFInteger)
         assert isinstance(TestBlock.r.params["rd"], MFDouble)
 
-        # check parameter values (via descriptors)
-        assert block.k
-        assert block.i == 1
-        assert block.d == 1.0
-        assert block.s == "value"
-        assert block.f == fpth
+        # check parameter values
+        assert block.k and block.value["k"]
+        assert block.i == block.value["i"] == 1
+        assert block.d == block.value["d"] == 1.0
+        assert block.s == block.value["s"] == "value"
+        assert block.f == block.value["f"] == fpth
         assert np.allclose(block.a, np.array([1.0, 2.0, 3.0]))
-        assert block.r == {"rd": 2.0, "ri": 2, "rk": True}
+        assert np.allclose(block.value["a"], np.array([1.0, 2.0, 3.0]))
+        assert block.r == block.value["r"] == {"rd": 2.0, "ri": 2, "rk": True}
 
     # test block write
     fpth2 = tmp_path / f"{name}2.txt"
@@ -151,6 +155,7 @@ def test_load_write_indexed(tmp_path):
         period1 = IndexedBlock.load(f)
         period2 = IndexedBlock.load(f)
 
+        # todo: go to 0-based indexing
         assert period1.index == 1
         assert period2.index == 2
 
@@ -162,3 +167,20 @@ def test_load_write_indexed(tmp_path):
         # instance attribute as shortcut to param value
         assert period1.ks == {"first": True}
         assert period2.ks == {"first": True, "frequency": 2}
+
+
+def test_set_value():
+    block = TestBlock(name="test")
+    block.value = {
+        "k": True,
+        "i": 42,
+        "d": 2.0,
+        "s": "hello world",
+    }
+    assert block.k
+
+
+def test_set_value_unrecognized():
+    block = TestBlock(name="test")
+    with pytest.raises(ValueError):
+        block.value = {"p": Path.cwd()}

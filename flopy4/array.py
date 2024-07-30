@@ -228,9 +228,6 @@ class MFArray(MFParam, NumPyArrayMixin):
         self._how = how
         self._factor = factor
 
-    def __get__(self, obj, type=None):
-        return self if self.value is None else self.value
-
     def __getitem__(self, item):
         return self.raw[item]
 
@@ -293,8 +290,15 @@ class MFArray(MFParam, NumPyArrayMixin):
             return self._value.reshape(self._shape) * self.factor
 
     @value.setter
-    def value(self, value: np.ndarray):
-        assert value.shape == self.shape
+    def value(self, value: Optional[np.ndarray]):
+        if value is None:
+            return
+
+        if value.shape != self.shape:
+            raise ValueError(
+                f"Expected array with shape {self.shape},"
+                f"got shape {value.shape}"
+            )
         self._value = value
 
     @property

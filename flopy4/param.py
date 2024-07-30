@@ -1,10 +1,10 @@
 from abc import abstractmethod
 from ast import literal_eval
-from collections import UserDict
+from collections import OrderedDict, UserDict
 from dataclasses import dataclass, fields
 from io import StringIO
 from pprint import pformat
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flopy4.constants import MFReader
 
@@ -29,6 +29,8 @@ class MFParamSpec:
     repeating: bool = False
     tagged: bool = True
     reader: MFReader = MFReader.urword
+    # todo change to variadic tuple of str and resolve
+    # actual shape at load time from simulation context
     shape: Optional[Tuple[int]] = None
     default_value: Optional[Any] = None
 
@@ -53,6 +55,7 @@ class MFParamSpec:
         spec = dict()
         members = cls.fields()
         keywords = [f.name for f in members if f.type is bool]
+
         while True:
             line = f.readline()
             if not line or line == "\n":
@@ -68,6 +71,7 @@ class MFParamSpec:
                 spec[key] = literal_eval(val)
             else:
                 spec[key] = val
+
         return cls(**spec)
 
     def with_name(self, name) -> "MFParamSpec":
@@ -155,6 +159,11 @@ class MFParam(MFParamSpec):
         self.write(buffer)
         return buffer.getvalue()
 
+    def __eq__(self, other):
+        if not isinstance(other, MFParam):
+            raise TypeError(f"Expected MFParam, got {type(other)}")
+        return self.value == other.value
+
     @property
     @abstractmethod
     def value(self) -> Optional[Any]:
@@ -169,11 +178,12 @@ class MFParam(MFParamSpec):
 
 class MFParams(UserDict):
     """
-    Mapping of parameter names to parameters.
-    Supports dictionary and attribute access.
+    Mapping of parameter names to parameters. Acts like
+    a dictionary, also supports named attribute access.
     """
 
     def __init__(self, params=None):
+        MFParams.assert_params(params)
         super().__init__(params)
         for key, param in self.items():
             setattr(self, key, param)
@@ -181,7 +191,50 @@ class MFParams(UserDict):
     def __repr__(self):
         return pformat(self.data)
 
+    def __eq__(self, other):
+        if not isinstance(other, MFParams):
+            raise TypeError(f"Expected MFParams, got {type(other)}")
+        return OrderedDict(sorted(self.value)) == OrderedDict(
+            sorted(other.value)
+        )
+
+    @staticmethod
+    def assert_params(params):
+        """
+        Raise an error if any of the given items are not
+        subclasses of `MFParam`.
+        """
+        if not params:
+            return
+        elif isinstance(params, dict):
+            params = params.values()
+        not_params = [
+            p
+            for p in params
+            if p is not None and not issubclass(type(p), MFParam)
+        ]
+        if any(not_params):
+            raise TypeError(f"Expected MFParam subclasses, got {not_params}")
+
+    @property
+    def value(self) -> Dict[str, Any]:
+        """Get a dictionary of parameter values."""
+        return {k: v.value for k, v in self.items()}
+
+    @value.setter
+    def value(self, value: Optional[Dict[str, Any]]):
+        """Set parameter values from a dictionary."""
+
+        if value is None or not any(value):
+            return
+
+        params = value.copy()
+        MFParams.assert_params(params)
+        self.update(params)
+        for key, param in self.items():
+            setattr(self, key, param)
+
     def write(self, f, **kwargs):
         """Write the parameters to file."""
-        for param in self.data.values():
+        for param in self.values():
             param.write(f, **kwargs)

@@ -61,7 +61,6 @@ class TestGwfIc(MFPackage):
         optional=False,
         # shape="(nodes)",
         shape=(10),
-        default_value=False,
     )
 
 
@@ -295,7 +294,7 @@ def test_loadfail_gwfic(tmp_path):
         try:
             TestGwfIc.load(f)
         except ValueError as e:
-            assert "NOT_AN_OPTION" in str(e)
+            assert "not_an_option" in str(e)
 
 
 def test_load_gwfic(tmp_path):
@@ -316,18 +315,16 @@ def test_load_gwfic(tmp_path):
     with open(fpth, "r") as f:
         gwfic = TestGwfIc.load(f)
 
-    assert len(TestGwfIc.blocks) == 2
-    assert len(TestGwfIc.params) == 3
-
-    assert len(gwfic.blocks) == 2
-    assert len(gwfic.params) == 2  # only two params loaded
+    assert len(TestGwfIc.blocks) == len(gwfic.blocks) == 2
+    assert len(TestGwfIc.params) == len(gwfic.params) == 3
 
     # instance attributes: shortcut access to param values
     assert isinstance(gwfic.export_array_ascii, bool)
-    assert isinstance(gwfic.export_array_netcdf, MFKeyword)
+    assert isinstance(gwfic.export_array_netcdf, bool)
     assert isinstance(gwfic.strt, np.ndarray)
 
     assert gwfic.export_array_ascii
+    assert not gwfic.export_array_netcdf
     assert np.allclose(gwfic.strt, np.array(strt))
 
 
