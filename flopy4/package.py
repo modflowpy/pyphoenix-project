@@ -10,6 +10,12 @@ from flopy4.utils import strip
 
 
 def get_block(pkg_name, block_name, params):
+    """
+    Dynamically subclass `MFBlock`. The class' name is composed from
+    the given package and block name. The class will have attributes
+    according to the given parameter specification; parameter values
+    are not yet initialized.
+    """
     cls = MFBlockMeta(
         f"{pkg_name.title()}{block_name.title()}Block",
         (MFBlock,),
@@ -70,7 +76,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     Notes
     -----
     Subclasses are generated from Jinja2 templates to
-    match each package in the MODFLOW 6 framework.
+    match packages as specified by definition files.
 
 
     TODO: reimplement with `ChainMap`?
@@ -93,7 +99,9 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
             return self[name].value
 
         # shortcut to parameter value for instance attribute.
-        # the class attribute is the parameter specification.
+        # the class attribute is the parameter specification,
+        # and dictionary access on the instance returns the
+        # full `MFParam` instance.
         if name in self_type.params:
             return self._get_param_values()[name]
 
@@ -113,15 +121,25 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         self.write(buffer)
         return buffer.getvalue()
 
-    def _get_param_values(self):
-        # todo cache
-        return MFParams(
-            {
-                param_name: param.value
-                for block in self.values()
-                for param_name, param in block.items()
-            }
-        )
+    def __eq__(self, other):
+        if not isinstance(other, MFPackage):
+            raise TypeError(f"Expected MFPackage, got {type(other)}")
+        return super().__eq__(other)
+
+    def _get_params(self) -> Dict[str, MFParam]:
+        """Get a flattened dictionary of member parameters."""
+        return {
+            param_name: param
+            for block in self.values()
+            for param_name, param in block.items()
+        }
+
+    def _get_param_values(self) -> Dict[str, Any]:
+        """Get a flattened dictionary of parameter values."""
+        return {
+            param_name: param.value
+            for param_name, param in self._get_params().items()
+        }
 
     @property
     def value(self):
@@ -131,7 +149,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         block is a mapping of parameter names to parameter
         values.
         """
-        return MFBlocks({k: v.value for k, v in self.items()})
+        return MFBlocks.value.fget(self)
 
     @value.setter
     def value(self, value):
@@ -144,28 +162,38 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         if value is None or not any(value):
             return
 
-        blocks = dict()
-        values = value.copy()
+        # coerce the block mapping to the spec and set defaults
+        blocks = type(self).coerce(value.copy(), set_default=True)
+        MFBlocks.value.fset(self, blocks)
 
-        # load provided blocks. if any are missing, set them
-        # default values. assume if a block name matches, its
-        # param values are ok (param setters should validate).
-        for block_name, block in type(self).blocks.copy().items():
-            value = values.pop(block_name, None)
-            block.value = value
-            blocks[block_name] = block
+    @classmethod
+    def coerce(
+        cls, blocks: Dict[str, MFBlock], set_default: bool = False
+    ) -> Dict[str, MFBlock]:
+        """
+        Check that the dictionary contains only known blocks,
+        raising an error if any unknown blocks are provided.
+
+        Sets default values for any missing member parameters
+        and ensures provided parameter types are as expected.
+        """
+
+        known = dict()
+        for block_name, block_spec in cls.blocks.copy().items():
+            block = blocks.pop(block_name, block_spec)
+            block = type(block).coerce(block, set_default=set_default)
+            known[block_name] = block
 
         # raise an error if we have any unrecognized blocks.
         # `MFPackage` strictly disallows unrecognized blocks.
-        # for an arbitrary collection of blocks, use `MFBlocks`.
-        if any(values):
-            raise ValueError(f"Unknown blocks:\n{pformat(values)}")
+        # for an arbitrary block collection, use `MFBlocks`.
+        if any(blocks):
+            raise ValueError(f"Unrecognized blocks:\n{pformat(blocks)}")
 
-        # populate internal dict and set attributes
-        super().__init__(blocks=blocks)
+        return known
 
     @classmethod
-    def load(cls, f):
+    def load(cls, f, **kwargs):
         """Load the package from file."""
         blocks = dict()
         members = cls.blocks
@@ -182,13 +210,14 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
             key = words[0]
             if key == "begin":
                 name = words[1]
-                block = members.get(name)
-                if block is not None:
-                    f.seek(pos)
-                    blocks[name] = type(block).load(f)
+                block = members.get(name, None)
+                if block is None:
+                    continue
+                f.seek(pos)
+                blocks[name] = type(block).load(f, **kwargs)
 
         return cls(blocks=blocks)
 
-    def write(self, f):
+    def write(self, f, **kwargs):
         """Write the package to file."""
-        super().write(f)
+        super().write(f, **kwargs)

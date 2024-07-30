@@ -1,28 +1,27 @@
 from abc import ABCMeta
-from collections import UserDict
+from collections import OrderedDict, UserDict
 from dataclasses import asdict
 from io import StringIO
 from pprint import pformat
 from typing import Any, Dict, Optional
 
 from flopy4.array import MFArray
-from flopy4.compound import MFKeystring, MFRecord
+from flopy4.compound import MFKeystring, MFRecord, get_keystrings
 from flopy4.param import MFParam, MFParams
+from flopy4.scalar import MFScalar
 from flopy4.utils import find_upper, strip
 
 
-def get_keystrings(members, name):
-    return [
-        m for m in members.values() if isinstance(m, MFKeystring) and name in m
-    ]
-
-
-def get_param(members, block_name, param_name):
-    param = next(iter(get_keystrings(members, param_name)), None)
+def get_param(params, block_name, param_name):
+    """
+    Find the first parameter in the collection with
+    the given name, set its block name, and return it.
+    """
+    param = next(get_keystrings(params, param_name), None)
     if param is None:
-        param = members.get(param_name)
+        param = params.get(param_name)
         if param is None:
-            raise ValueError(f"Invalid parameter: {param_name.upper()}")
+            raise ValueError(f"Invalid parameter: {param_name}")
         param.name = param_name
     param.block = block_name
     return param
@@ -119,10 +118,13 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         self.write(buffer)
         return buffer.getvalue()
 
+    def __eq__(self, other):
+        return super().__eq__(other)
+
     @property
     def value(self):
         """Get a dictionary of block parameter values."""
-        return super().value
+        return MFParams.value.fget(self)
 
     @value.setter
     def value(self, value):
@@ -133,43 +135,46 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
 
         # coerce the parameter mapping to the spec and set defaults
         params = type(self).coerce(value.copy(), set_default=True)
-        super().__init__(params=params)
+        MFParams.value.fset(self, params)
 
     @classmethod
     def coerce(
-        cls, params: Dict[str, MFParam], set_default: bool = False
+        cls, params: Dict[str, Any], set_default: bool = False
     ) -> Dict[str, MFParam]:
         """
-        Check that the dictionary contains only expected parameters
-        (raising an error if any unknown parameters are provided),
-        set default values for any missing member parameters,
-        and ensure provided parameter types are as expected.
+        Check that the dictionary contains only expected parameters,
+        raising an error if any unrecognized parameters are provided.
+
+        Dictionary values may be subclasses of `MFParam` or values
+        provided directly. If the former, this function optionally
+        sets default values for any missing member parameters.
         """
 
         known = dict()
         for param_name, param_spec in cls.params.copy().items():
             param = params.pop(param_name, param_spec)
 
-            # make sure param is of expected type
+            # make sure param is of expected type. set a
+            # default value if enabled and none provided.
             spec_type = type(param_spec)
             real_type = type(param)
-            if real_type is not spec_type:
+            if issubclass(real_type, MFParam):
+                if param.value is None and set_default:
+                    param.value = param_spec.default_value
+            elif issubclass(spec_type, MFScalar) and real_type == spec_type.T:
+                param = spec_type(value=param, **asdict(param_spec))
+            else:
                 raise TypeError(
                     f"Expected '{param_name}' as {spec_type}, got {real_type}"
                 )
 
-            # set default value if enabled and none provided
-            if param.value is None and set_default:
-                param.value = param_spec.default_value
-
-            # save the param
             known[param_name] = param
 
-        # raise an error if we have any unrecognized parameters.
-        # `MFBlock` strictly disallows unrecognized params. for
-        # an arbitrary collection of parameters, use `MFParams`.
+        # raise an error if we have any unknown parameters.
+        # `MFBlock` strictly disallows unrecognized params,
+        # for arbitrary parameter collections use `MFParams`.
         if any(params):
-            raise ValueError(f"Unknown parameters:\n{pformat(params)}")
+            raise ValueError(f"Unrecognized parameters:\n{pformat(params)}")
 
         return known
 
@@ -200,20 +205,21 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                 break
             elif found:
                 param = get_param(members, name, key)
-                if param is not None:
-                    f.seek(pos)
-                    spec = asdict(param)
-                    kwrgs = {**kwargs, **spec}
-                    ptype = type(param)
-                    if ptype is MFArray:
-                        # TODO: inject from model somehow?
-                        # and remove special handling here
-                        kwrgs["cwd"] = ""
-                    if ptype is MFRecord:
-                        kwrgs["params"] = param.data.copy()
-                    if ptype is MFKeystring:
-                        kwrgs["params"] = param.data.copy()
-                    params[param.name] = ptype.load(f, **kwrgs)
+                if param is None:
+                    continue
+                f.seek(pos)
+                spec = asdict(param)
+                kwrgs = {**kwargs, **spec}
+                ptype = type(param)
+                if ptype is MFArray:
+                    # TODO: inject from model somehow?
+                    # and remove special handling here
+                    kwrgs["cwd"] = ""
+                if ptype is MFRecord:
+                    kwrgs["params"] = param.data.copy()
+                if ptype is MFKeystring:
+                    kwrgs["params"] = param.data.copy()
+                params[param.name] = ptype.load(f, **kwrgs)
 
         return cls(name=name, index=index, params=params)
 
@@ -231,16 +237,65 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
 class MFBlocks(UserDict):
     """
     Mapping of block names to blocks. Acts like a
-    dictionary and supports named attribute access.
+    dictionary, also supports named attribute access.
     """
 
     def __init__(self, blocks=None):
+        MFBlocks.assert_blocks(blocks)
         super().__init__(blocks)
         for key, block in self.items():
             setattr(self, key, block)
 
     def __repr__(self):
         return pformat(self.data)
+
+    def __eq__(self, other):
+        if not isinstance(other, MFBlocks):
+            raise TypeError(f"Expected MFBlocks, got {type(other)}")
+        return OrderedDict(sorted(self.value)) == OrderedDict(
+            sorted(other.value)
+        )
+
+    @staticmethod
+    def assert_blocks(blocks):
+        """
+        Raise an error if any of the given items are
+        not subclasses of `MFBlock`.
+        """
+        if not blocks:
+            return
+        elif isinstance(blocks, dict):
+            blocks = blocks.values()
+        not_blocks = [
+            b
+            for b in blocks
+            if b is not None and not issubclass(type(b), MFBlock)
+        ]
+        if any(not_blocks):
+            raise TypeError(f"Expected MFBlock subclasses, got {not_blocks}")
+
+    @property
+    def value(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get a dictionary of package block values. This is a
+        nested mapping of block names to blocks, where each
+        block is a mapping of parameter names to parameter
+        values.
+        """
+        return {k: v.value for k, v in self.items()}
+
+    @value.setter
+    def value(self, value: Optional[Dict[str, Dict[str, Any]]]):
+        """Set block values from a nested dictionary."""
+
+        if value is None or not any(value):
+            return
+
+        blocks = value.copy()
+        MFBlocks.assert_blocks(blocks)
+        self.update(blocks)
+        for key, block in self.items():
+            setattr(self, key, block)
 
     def write(self, f, **kwargs):
         """Write the blocks to file."""

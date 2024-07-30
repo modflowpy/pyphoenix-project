@@ -294,7 +294,7 @@ def test_loadfail_gwfic(tmp_path):
         try:
             TestGwfIc.load(f)
         except ValueError as e:
-            assert "NOT_AN_OPTION" in str(e)
+            assert "not_an_option" in str(e)
 
 
 def test_load_gwfic(tmp_path):

@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from flopy4.array import MFArray
 from flopy4.block import MFBlock
@@ -164,3 +167,20 @@ def test_load_write_indexed(tmp_path):
         # instance attribute as shortcut to param value
         assert period1.ks == {"first": True}
         assert period2.ks == {"first": True, "frequency": 2}
+
+
+def test_set_value():
+    block = TestBlock(name="test")
+    block.value = {
+        "k": True,
+        "i": 42,
+        "d": 2.0,
+        "s": "hello world",
+    }
+    assert block.k
+
+
+def test_set_value_unrecognized():
+    block = TestBlock(name="test")
+    with pytest.raises(ValueError):
+        block.value = {"p": Path.cwd()}

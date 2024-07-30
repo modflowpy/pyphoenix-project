@@ -1,13 +1,26 @@
 from abc import abstractmethod
 from dataclasses import asdict
 from io import StringIO
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
 from flopy4.utils import strip
 
 PAD = "  "
+
+
+def get_keystrings(
+    params: Iterable[MFParam], name=None
+) -> Iterator["MFKeystring"]:
+    """
+    Filter keystring parameters from the given iterable,
+    optionally matching the given component parameter name.
+    """
+    for param in params.values():
+        if isinstance(param, MFKeystring):
+            if name is None or name in param:
+                yield param
 
 
 class MFCompound(MFParam, MFParams):
@@ -98,7 +111,7 @@ class MFRecord(MFCompound):
         default_value=None,
     ):
         super().__init__(
-            params,
+            params=params,
             block=block,
             name=name,
             type=type,
@@ -178,7 +191,7 @@ class MFKeystring(MFCompound):
         default_value=None,
     ):
         super().__init__(
-            params,
+            params=params,
             block=block,
             name=name,
             type=type,
