@@ -173,8 +173,8 @@ class MFParam(MFParamSpec):
 
 class MFParams(UserDict):
     """
-    Mapping of parameter names to parameters.
-    Supports dictionary and attribute access.
+    Mapping of parameter names to parameters. Acts like
+    a dictionary and supports named attribute access.
     """
 
     def __init__(self, params=None):

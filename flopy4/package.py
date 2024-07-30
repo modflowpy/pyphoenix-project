@@ -95,7 +95,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         # shortcut to parameter value for instance attribute.
         # the class attribute is the parameter specification.
         if name in self_type.params:
-            return self._param_values()[name]
+            return self._get_param_values()[name]
 
         # add .blocks attribute as an alias for .value, this
         # overrides the class attribute with the block spec.
@@ -104,7 +104,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         if name == "blocks":
             return self.value
         elif name == "params":
-            return self._param_values()
+            return self._get_param_values()
 
         return super().__getattribute__(name)
 
@@ -113,7 +113,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         self.write(buffer)
         return buffer.getvalue()
 
-    def _param_values(self):
+    def _get_param_values(self):
         # todo cache
         return MFParams(
             {

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import asdict
 from io import StringIO
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
@@ -66,8 +66,12 @@ class MFCompound(MFParam, MFParams):
         }
 
     @value.setter
-    def value(self, value):
-        """Set component names/values by keyword arguments."""
+    def value(self, value: Optional[Dict[str, Any]]):
+        """Set component names/values."""
+
+        if value is None:
+            return
+
         for key, val in value.items():
             self.data[key].value = val
 

@@ -91,6 +91,12 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
     ):
         self.name = name
         self.index = index
+
+        # if a parameter mapping is provided, coerce it to the
+        # spec and set default values
+        if params is not None:
+            params = type(self).coerce(params, set_default=True)
+
         super().__init__(params=params)
 
     def __getattribute__(self, name: str) -> Any:
@@ -125,26 +131,47 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         if value is None or not any(value):
             return
 
-        params = dict()
-        values = value.copy()
+        # coerce the parameter mapping to the spec and set defaults
+        params = type(self).coerce(value.copy(), set_default=True)
+        super().__init__(params=params)
 
-        # check provided parameters. if any are missing, set them
-        # to default values. assume if a param name matches, its
-        # type/value are ok (param setters should validate them).
-        for param_name, param in type(self).params.copy().items():
-            value = values.pop(param_name, None)
-            value = param.default_value if value is None else value
-            param.value = value
-            params[param_name] = param
+    @classmethod
+    def coerce(
+        cls, params: Dict[str, MFParam], set_default: bool = False
+    ) -> Dict[str, MFParam]:
+        """
+        Check that the dictionary contains only expected parameters
+        (raising an error if any unknown parameters are provided),
+        set default values for any missing member parameters,
+        and ensure provided parameter types are as expected.
+        """
+
+        known = dict()
+        for param_name, param_spec in cls.params.copy().items():
+            param = params.pop(param_name, param_spec)
+
+            # make sure param is of expected type
+            spec_type = type(param_spec)
+            real_type = type(param)
+            if real_type is not spec_type:
+                raise TypeError(
+                    f"Expected '{param_name}' as {spec_type}, got {real_type}"
+                )
+
+            # set default value if enabled and none provided
+            if param.value is None and set_default:
+                param.value = param_spec.default_value
+
+            # save the param
+            known[param_name] = param
 
         # raise an error if we have any unrecognized parameters.
         # `MFBlock` strictly disallows unrecognized params. for
         # an arbitrary collection of parameters, use `MFParams`.
-        if any(values):
-            raise ValueError(f"Unknown parameters:\n{pformat(values)}")
+        if any(params):
+            raise ValueError(f"Unknown parameters:\n{pformat(params)}")
 
-        # populate internal dict and set attributes
-        super().__init__(params=params)
+        return known
 
     @classmethod
     def load(cls, f, **kwargs):
@@ -202,7 +229,10 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
 
 
 class MFBlocks(UserDict):
-    """Mapping of block names to blocks."""
+    """
+    Mapping of block names to blocks. Acts like a
+    dictionary and supports named attribute access.
+    """
 
     def __init__(self, blocks=None):
         super().__init__(blocks)
@@ -212,7 +242,7 @@ class MFBlocks(UserDict):
     def __repr__(self):
         return pformat(self.data)
 
-    def write(self, f):
+    def write(self, f, **kwargs):
         """Write the blocks to file."""
         for block in self.values():
-            block.write(f)
+            block.write(f, **kwargs)
