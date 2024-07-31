@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from flopy.utils.flopy_io import line_strip, multi_line_strip
 
+from flopy.utils.flopy_io import line_strip, multi_line_strip
 from flopy4.constants import CommonNames
 from flopy4.param import MFParam, MFReader
 
@@ -203,6 +203,7 @@ class MFArray(MFParam, NumPyArrayMixin):
         tagged=False,
         reader=MFReader.urword,
         default_value=None,
+        extpath=None,
     ):
         MFParam.__init__(
             self,
@@ -227,6 +228,7 @@ class MFArray(MFParam, NumPyArrayMixin):
         self._shape = shape
         self._how = how
         self._factor = factor
+        self._extpath = extpath
 
     def __getitem__(self, item):
         return self.raw[item]
@@ -343,8 +345,65 @@ class MFArray(MFParam, NumPyArrayMixin):
         return self._how
 
     def write(self, f, **kwargs):
-        # todo
-        pass
+        PAD = "  "
+        if self.layered:
+            f.write(f"{PAD}" + f"{self.name.upper()} LAYERED\n")
+            for mfa in self._value:
+                values = mfa.raw
+                if mfa._how == MFArrayType.internal:
+                    if isinstance(self._shape, int) or len(self._shape) == 1:
+                        v = (
+                            f"{PAD*3}"
+                            + f"{' '.join([str(x) for x in values])}\n"
+                        )
+                    else:
+                        v = f"\n{PAD*3}"
+                        v = f"{v.join(' '.join(str(x) for x in y) \
+                              for y in values)}"
+                    lines = f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)}"
+                    if mfa._factor:
+                        lines += f" FACTOR {mfa._factor}"
+                    lines += f"\n{PAD*3}" + f"{v}\n"
+                elif mfa._how == MFArrayType.external:
+                    lines = (
+                        f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)} "
+                        f"{mfa._extpath}\n"
+                    )
+                elif mfa._how == MFArrayType.constant:
+                    lines = (
+                        f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)} "
+                        f"{str(mfa._value)}\n"
+                    )
+                f.write(lines)
+        else:
+            values = self.raw.ravel()
+            if self._how == MFArrayType.internal:
+                if isinstance(self._shape, int) or len(self._shape) == 1:
+                    v = f"{PAD*3}" + f"{' '.join([str(x) for x in values])}"
+                else:
+                    v = f"\n{PAD*3}"
+                    v = f"{v.join(' '.join(str(x) for x in y) \
+                          for y in values)}"
+                lines = (
+                    f"{PAD}" + f"{self.name.upper()}\n"
+                    f"{PAD*2}" + f"{MFArrayType.to_string(self._how)}"
+                )
+                if self._factor:
+                    lines += f" FACTOR {self._factor}"
+                lines += f"\n{v}\n"
+            elif self._how == MFArrayType.external:
+                lines = (
+                    f"{PAD}" + f"{self.name.upper()}\n"
+                    f"{PAD*2}"
+                    + f"{MFArrayType.to_string(self._how)} {self._extpath}\n"
+                )
+            elif self._how == MFArrayType.constant:
+                lines = (
+                    f"{PAD}" + f"{self.name.upper()}\n"
+                    f"{PAD*2}" + f"{MFArrayType.to_string(self._how)} "
+                    f"{str(self._value)}\n"
+                )
+            f.write(lines)
 
     @classmethod
     def load(cls, f, cwd, shape, header=True, **kwargs):
@@ -391,6 +450,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             control_line.pop(idx)
 
         how = MFArrayType.from_string(control_line[0])
+        extpath = None
         clpos = 1
 
         if how == MFArrayType.internal:
@@ -401,8 +461,8 @@ class MFArray(MFParam, NumPyArrayMixin):
             clpos += 1
 
         elif how == MFArrayType.external:
-            ext_path = Path(control_line[clpos])
-            fpath = cwd / ext_path
+            extpath = Path(control_line[clpos])
+            fpath = cwd / extpath
             with open(fpath) as foo:
                 array = cls.read_array(foo)
             clpos += 1
@@ -414,7 +474,14 @@ class MFArray(MFParam, NumPyArrayMixin):
         if len(control_line) > 2:
             factor = float(control_line[clpos + 1])
 
-        return cls(shape, array=array, how=how, factor=factor, **kwargs)
+        return cls(
+            shape,
+            array=array,
+            how=how,
+            factor=factor,
+            extpath=extpath,
+            **kwargs,
+        )
 
     @staticmethod
     def read_array(f):

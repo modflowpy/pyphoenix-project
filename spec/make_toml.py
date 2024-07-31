@@ -176,7 +176,6 @@ class Dfn2Toml:
         self._var_d = vardict
 
     def _substitute(self, blockname, component, subcomponent):
-        block_d = dict()
         block_d = {}
         for k in self._var_d:
             varname, block = k
