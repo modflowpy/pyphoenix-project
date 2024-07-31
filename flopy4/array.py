@@ -351,13 +351,20 @@ class MFArray(MFParam, NumPyArrayMixin):
             for mfa in self._value:
                 values = mfa.raw
                 if mfa._how == MFArrayType.internal:
-                    if isinstance(self._shape, int) or len(self._shape) == 1:
+                    if len(values.shape) == 1:
                         v = f"{PAD*3}"
                         v += " ".join([str(x) for x in values])
                         v += "\n"
-                    else:
+                    elif len(values.shape) == 2:
                         v = f"\n{PAD*3}"
                         v = v.join(" ".join(str(x) for x in y) for y in values)
+                    elif len(values.shape) == 3:
+                        v = f"{PAD*3}"
+                        for i in range(len(values)):
+                            v += v.join(
+                                " ".join(str(x) for x in y) for y in values[i]
+                            )
+                            v += f"\n{PAD*3}"
                     lines = f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)}"
                     if mfa._factor:
                         lines += f" FACTOR {mfa._factor}"
@@ -376,12 +383,19 @@ class MFArray(MFParam, NumPyArrayMixin):
         else:
             values = self.raw
             if self._how == MFArrayType.internal:
-                if isinstance(self._shape, int) or len(self._shape) == 1:
+                if len(values.shape) == 1:
                     v = f"{PAD*3}"
                     v += " ".join([str(x) for x in values])
-                else:
+                elif len(values.shape) == 2:
                     v = f"\n{PAD*3}"
                     v = v.join(" ".join(str(x) for x in y) for y in values)
+                elif len(values.shape) == 3:
+                    v = f"{PAD*3}"
+                    for i in range(len(values)):
+                        v += v.join(
+                            " ".join(str(x) for x in y) for y in values[i]
+                        )
+                        v += f"\n{PAD*3}"
                 lines = (
                     f"{PAD}" + f"{self.name.upper()}\n"
                     f"{PAD*2}" + f"{MFArrayType.to_string(self._how)}"
