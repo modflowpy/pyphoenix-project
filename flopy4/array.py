@@ -352,14 +352,12 @@ class MFArray(MFParam, NumPyArrayMixin):
                 values = mfa.raw
                 if mfa._how == MFArrayType.internal:
                     if isinstance(self._shape, int) or len(self._shape) == 1:
-                        v = (
-                            f"{PAD*3}"
-                            + f"{' '.join([str(x) for x in values])}\n"
-                        )
+                        v = f"{PAD*3}"
+                        v += " ".join([str(x) for x in values])
+                        v += "\n"
                     else:
                         v = f"\n{PAD*3}"
                         v = v.join(" ".join(str(x) for x in y) for y in values)
-
                     lines = f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)}"
                     if mfa._factor:
                         lines += f" FACTOR {mfa._factor}"
@@ -376,10 +374,11 @@ class MFArray(MFParam, NumPyArrayMixin):
                     )
                 f.write(lines)
         else:
-            values = self.raw.ravel()
+            values = self.raw
             if self._how == MFArrayType.internal:
                 if isinstance(self._shape, int) or len(self._shape) == 1:
-                    v = f"{PAD*3}" + f"{' '.join([str(x) for x in values])}"
+                    v = f"{PAD*3}"
+                    v += " ".join([str(x) for x in values])
                 else:
                     v = f"\n{PAD*3}"
                     v = v.join(" ".join(str(x) for x in y) for y in values)
