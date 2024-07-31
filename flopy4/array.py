@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-
 from flopy.utils.flopy_io import line_strip, multi_line_strip
+
 from flopy4.constants import CommonNames
 from flopy4.param import MFParam, MFReader
 
