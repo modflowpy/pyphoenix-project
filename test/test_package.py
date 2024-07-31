@@ -277,7 +277,9 @@ def test_load_write(tmp_path):
         assert "  D 1.0\n" in lines
         assert "  S value\n" in lines
         assert f"  F FILEIN {fpth}\n" in lines
-        # todo check array
+        assert "  A\n" in lines
+        assert "    INTERNAL\n" in lines
+        assert f"      {array}\n" in lines
         assert "END OPTIONS\n" in lines
 
 

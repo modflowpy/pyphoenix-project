@@ -35,7 +35,7 @@ class Toml2IPkg:
         with open(f"{PROJ_ROOT}/spec/mf6pkg.template") as f:
             tout = Template(f.read())
 
-        if not (tin or tout):
+        if not (tin and tout):
             raise ValueError("FileSystem NO-OPT")
 
         jinja_blocks = []

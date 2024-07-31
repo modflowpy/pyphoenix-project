@@ -122,7 +122,9 @@ def test_load_write(tmp_path):
         assert "  D 1.0\n" in lines
         assert "  S value\n" in lines
         assert f"  F FILEIN {fpth}\n" in lines
-        # assert "  A\n    INTERNAL\n      1.0 2.0 3.0\n" in lines
+        assert "  A\n" in lines
+        assert "    INTERNAL\n" in lines
+        assert "      1.0 2.0 3.0\n" in lines
         assert "  R  RK  RI 2  RD 2.0\n" in lines
         assert "END OPTIONS\n" in lines
 
