@@ -358,8 +358,8 @@ class MFArray(MFParam, NumPyArrayMixin):
                         )
                     else:
                         v = f"\n{PAD*3}"
-                        v = f"{v.join(' '.join(str(x) for x in y) \
-                              for y in values)}"
+                        v = v.join(" ".join(str(x) for x in y) for y in values)
+
                     lines = f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)}"
                     if mfa._factor:
                         lines += f" FACTOR {mfa._factor}"
@@ -382,8 +382,7 @@ class MFArray(MFParam, NumPyArrayMixin):
                     v = f"{PAD*3}" + f"{' '.join([str(x) for x in values])}"
                 else:
                     v = f"\n{PAD*3}"
-                    v = f"{v.join(' '.join(str(x) for x in y) \
-                          for y in values)}"
+                    v = v.join(" ".join(str(x) for x in y) for y in values)
                 lines = (
                     f"{PAD}" + f"{self.name.upper()}\n"
                     f"{PAD*2}" + f"{MFArrayType.to_string(self._how)}"
