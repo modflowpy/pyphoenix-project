@@ -1,4 +1,5 @@
 import re
+import math
 from enum import Enum
 from io import StringIO
 from pathlib import Path
@@ -430,6 +431,29 @@ class MFArray(MFParam, NumPyArrayMixin):
         else:
             name = kwargs.pop("name", None)
 
+        model_shape = kwargs.pop("model_shape", None)
+        params = kwargs.pop("params", {})
+        mempath = kwargs.pop("mempath", None)
+        if model_shape and isinstance(shape, str):
+            if shape == "(nodes)":
+                n = math.prod([x for x in model_shape])
+                shape = n
+            else:
+                shape = model_shape
+        elif params and "dimensions" in params:
+            if isinstance(shape, str):
+                if "dis" in mempath.split("/"):
+                    nlay = params.get("dimensions").get("nlay")
+                    nrow = params.get("dimensions").get("nrow")
+                    ncol = params.get("dimensions").get("ncol")
+                    ncpl = params.get("dimensions").get("ncpl")
+                    nodes = params.get("dimensions").get("nodes")
+                    if nrow and ncol:
+                        shape = (nlay, nrow, ncol)
+                    elif ncpl:
+                        shape = (nlay, ncpl)
+                    elif nodes:
+                        shape = nodes
         if layered:
             nlay = shape[0]
             lshp = shape[1:]

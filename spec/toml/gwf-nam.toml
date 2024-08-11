@@ -1,0 +1,278 @@
+component = "GWF"
+subcomponent = "NAM"
+blocknames = [ "options", "packages",]
+multipkg = false
+stress = false
+advanced = false
+
+[block.options.list]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = true
+numeric_index = false
+longname = "name of listing file"
+description = "is name of the listing file to create for this GWF model.  If not specified, then the name of the list file will be the basename of the GWF model name file and the '.lst' extension.  For example, if the GWF name file is called ``my.model.nam'' then the list file will be called ``my.model.lst''."
+deprecated = ""
+
+[block.options.print_input]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "print input to listing file"
+description = "REPLACE print_input {'{#1}': 'all model stress package'}"
+deprecated = ""
+
+[block.options.print_flows]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "print calculated flows to listing file"
+description = "REPLACE print_flows {'{#1}': 'all model package'}"
+deprecated = ""
+
+[block.options.save_flows]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "save flows for all packages to budget file"
+description = "REPLACE save_flows {'{#1}': 'all model package'}"
+deprecated = ""
+
+[block.options.newtonoptions]
+type = "record newton under_relaxation"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "newton keyword and options"
+description = "none"
+deprecated = ""
+
+[block.options.newton]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "keyword to activate Newton-Raphson formulation"
+description = "keyword that activates the Newton-Raphson formulation for groundwater flow between connected, convertible groundwater cells and stress packages that support calculation of Newton-Raphson terms for groundwater exchanges. Cells will not dry when this option is used. By default, the Newton-Raphson formulation is not applied."
+deprecated = ""
+
+[block.options.under_relaxation]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "keyword to activate Newton-Raphson UNDER_RELAXATION option"
+description = "keyword that indicates whether the groundwater head in a cell will be under-relaxed when water levels fall below the bottom of the model below any given cell. By default, Newton-Raphson UNDER_RELAXATION is not applied."
+deprecated = ""
+
+[block.options.export_netcdf]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "export model output netcdf file."
+description = "keyword that specifies timeseries data for the dependent variable should be written to a model output netcdf file.  No value or ``UGRID'' (ugrid based export) values are supported."
+deprecated = ""
+
+[block.options.nc_filerecord]
+type = "record netcdf filein netcdf_filename"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = ""
+description = "netcdf config filerecord"
+deprecated = ""
+
+[block.options.netcdf]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "netcdf keyword"
+description = "keyword to specify that record corresponds to a netcdf input file."
+deprecated = ""
+
+[block.options.filein]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "file keyword"
+description = "keyword to specify that an input filename is expected next."
+deprecated = ""
+
+[block.options.netcdf_filename]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = true
+numeric_index = false
+longname = "netcdf input filename"
+description = "defines a netcdf input file."
+deprecated = ""
+
+[block.packages.packages]
+type = "recarray ftype fname pname"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "package list"
+description = ""
+deprecated = ""
+
+[block.packages.ftype]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "package type"
+description = "is the file type, which must be one of the following character values shown in table~ref{table:ftype-gwf}. Ftype may be entered in any combination of uppercase and lowercase."
+deprecated = ""
+
+[block.packages.fname]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = true
+numeric_index = false
+longname = "file name"
+description = "is the name of the file containing the package input.  The path to the file should be included if the file is not located in the folder where the program was run."
+deprecated = ""
+
+[block.packages.pname]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "user name for package"
+description = "is the user-defined name for the package. PNAME is restricted to 16 characters.  No spaces are allowed in PNAME.  PNAME character values are read and stored by the program for stress packages only.  These names may be useful for labeling purposes when multiple stress packages of the same type are located within a single GWF Model.  If PNAME is specified for a stress package, then PNAME will be used in the flow budget table in the listing file; it will also be used for the text entry in the cell-by-cell budget file.  PNAME is case insensitive and is stored in all upper case letters."
+deprecated = ""

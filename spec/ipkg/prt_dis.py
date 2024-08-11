@@ -1,3 +1,4 @@
+# generated file
 import numpy as np
 
 from flopy4.array import MFArray
@@ -6,7 +7,6 @@ from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 from flopy4.compound import MFRecord
 
-# generated file
 class PrtDis(MFPackage):
     length_units = MFString(
         block = "options",

@@ -187,6 +187,8 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         params = dict()
         members = cls.params
 
+        mempath = kwargs.pop("mempath", None)
+
         while True:
             pos = f.tell()
             line = f.readline()
@@ -215,10 +217,15 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                     # TODO: inject from model somehow?
                     # and remove special handling here
                     kwrgs["cwd"] = ""
+                    kwrgs["mempath"] = f"{mempath}/{name}"
+                else:
+                    kwrgs.pop("model_shape", None)
+                    kwrgs.pop("params", None)
                 if ptype is MFRecord:
                     kwrgs["params"] = param.data.copy()
                 if ptype is MFKeystring:
                     kwrgs["params"] = param.data.copy()
+
                 params[param.name] = ptype.load(f, **kwrgs)
 
         return cls(name=name, index=index, params=params)
