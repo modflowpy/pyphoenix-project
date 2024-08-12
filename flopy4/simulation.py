@@ -1,8 +1,8 @@
 from typing import Dict, Optional
 
+from flopy4.ispec.gwf_model import GwfModel
 from flopy4.resolver import Resolve
 from flopy4.utils import strip
-from spec.ipkg.gwf_model import GwfModel
 
 
 class MFSimulation:

@@ -9,7 +9,7 @@ from jinja2 import Template
 
 PROJ_ROOT = Path(__file__).parents[1]
 TOML_PATH = PROJ_ROOT / "spec" / "toml"
-IPKG_PATH = PROJ_ROOT / "spec" / "ipkg"
+IPKG_PATH = PROJ_ROOT / "flopy4" / "ispec"
 component_d = dict()
 
 
@@ -45,6 +45,10 @@ class Toml2IPkg:
 
             for blkparam in tin["block"][b]:
                 ptype = tin["block"][b][blkparam]["type"]
+                desc = tin["block"][b][blkparam]["description"]
+                lname = tin["block"][b][blkparam]["longname"]
+                tin["block"][b][blkparam]["description"] = '\n'.join(textwrap.wrap(desc, 70))
+                tin["block"][b][blkparam]["longname"] = '\n'.join(textwrap.wrap(lname, 70))
                 if ptype.startswith("record"):
                     recparams = ptype.split()
                     recparams.remove(recparams[0])

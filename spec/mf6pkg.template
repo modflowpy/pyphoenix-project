@@ -43,8 +43,10 @@ class {{c}}{{s}}(MFPackage):
         shape = "{{params[pname].shape}}",
         reader = "{{params[pname].reader}}",
         optional = {{params[pname].optional}},
-        longname = "{{params[pname].longname}}",
-        description = "{{params[pname].description}}",
+        longname =
+"""{{params[pname].longname}}""",
+        description =
+"""{{params[pname].description}}""",
     )
     {%- endfor %}
   {%- endfor %}

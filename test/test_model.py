@@ -1,6 +1,6 @@
 import pytest
 
-from spec.ipkg.gwf_model import GwfModel
+from flopy4.ispec.gwf_model import GwfModel
 
 
 def test_load_gwfdis(tmp_path):
