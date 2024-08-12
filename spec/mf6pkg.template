@@ -1,3 +1,4 @@
+# generated file
 import numpy as np
 
 from flopy4.array import MFArray
@@ -6,7 +7,6 @@ from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 from flopy4.compound import MFRecord
 
-# generated file
 class {{c}}{{s}}(MFPackage):
 {%- for blocks in block_list %}
   {%- for blkname, params in blocks.items() %}
@@ -43,8 +43,10 @@ class {{c}}{{s}}(MFPackage):
         shape = "{{params[pname].shape}}",
         reader = "{{params[pname].reader}}",
         optional = {{params[pname].optional}},
-        longname = "{{params[pname].longname}}",
-        description = "{{params[pname].description}}",
+        longname =
+"""{{params[pname].longname}}""",
+        description =
+"""{{params[pname].description}}""",
     )
     {%- endfor %}
   {%- endfor %}

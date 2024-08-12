@@ -1,4 +1,5 @@
 from abc import ABCMeta
+from collections import OrderedDict, UserDict
 from io import StringIO
 from itertools import groupby
 from pprint import pformat
@@ -197,6 +198,9 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         """Load the package from file."""
         blocks = dict()
         members = cls.blocks
+        params = {}
+
+        mempath = kwargs.pop("mempath", None)
 
         while True:
             pos = f.tell()
@@ -214,10 +218,79 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
                 if block is None:
                     continue
                 f.seek(pos)
+                kwargs["params"] = params
+                kwargs["mempath"] = f"{mempath}/{name}"
                 blocks[name] = type(block).load(f, **kwargs)
+                if name == "options" or name == "dimensions":
+                    params[name] = blocks[name].params
 
         return cls(blocks=blocks)
 
     def write(self, f, **kwargs):
         """Write the package to file."""
         super().write(f, **kwargs)
+
+
+class MFPackages(UserDict):
+    """
+    Mapping of package names to packages. Acts like a
+    dictionary, also supports named attribute access.
+    """
+
+    def __init__(self, packages=None):
+        MFPackages.assert_packages(packages)
+        super().__init__(packages)
+        for key, package in self.items():
+            setattr(self, key, package)
+
+    def __repr__(self):
+        return pformat(self.data)
+
+    def __eq__(self, other):
+        if not isinstance(other, MFPackages):
+            raise TypeError(f"Expected MFPackages, got {type(other)}")
+        return OrderedDict(sorted(self.value)) == OrderedDict(
+            sorted(other.value)
+        )
+
+    @staticmethod
+    def assert_packages(packages):
+        """
+        Raise an error if any of the given items are
+        not subclasses of `MFPackage`.
+        """
+        if not packages:
+            return
+        elif isinstance(packages, dict):
+            packages = packages.values()
+        not_packages = [
+            p
+            for p in packages
+            if p is not None and not issubclass(type(p), MFPackage)
+        ]
+        if any(not_packages):
+            raise TypeError(
+                f"Expected MFPackage subclasses, got {not_packages}"
+            )
+
+    @property
+    def value(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get a dictionary of package package values. This is a
+        nested mapping of package names to packages.
+        ....
+        """
+        return {k: v.value for k, v in self.items()}
+
+    @value.setter
+    def value(self, value: Optional[Dict[str, Dict[str, Any]]]):
+        """Set package values from a nested dictionary."""
+
+        if value is None or not any(value):
+            return
+
+        packages = value.copy()
+        MFPackages.assert_packages(packages)
+        self.update(packages)
+        for key, package in self.items():
+            setattr(self, key, package)

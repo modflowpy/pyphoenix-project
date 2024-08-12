@@ -1,0 +1,13 @@
+# generated file
+from flopy4.model import MFModel
+from flopy4.resolver import Resolve
+{%- for pkg in pkg_list %}
+from flopy4.ispec.{{c.lower()}}_{{pkg.lower()}} import {{c}}{{pkg}}
+{%- endfor %}
+
+
+class {{c}}Model(MFModel, Resolve):
+{%- for pkg in pkg_list %}
+    {{pkg.lower()}}6 = {{c}}{{pkg}}()
+{%- endfor %}
+

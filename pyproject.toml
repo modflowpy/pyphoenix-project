@@ -87,6 +87,9 @@ include = [
 extend-include = [
     "docs/**/*.ipynb"
 ]
+exclude = [
+	"flopy4/ispec/*.py",
+]
 
 [tool.ruff.lint]
 select = [

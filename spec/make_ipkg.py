@@ -9,12 +9,13 @@ from jinja2 import Template
 
 PROJ_ROOT = Path(__file__).parents[1]
 TOML_PATH = PROJ_ROOT / "spec" / "toml"
-IPKG_PATH = PROJ_ROOT / "spec" / "ipkg"
+IPKG_PATH = PROJ_ROOT / "flopy4" / "ispec"
+component_d = dict()
 
 
 class Toml2IPkg:
     """
-    Verify MODFLOW 6 fortran source code format
+    Generate package python specification
     """
 
     def __init__(
@@ -44,6 +45,10 @@ class Toml2IPkg:
 
             for blkparam in tin["block"][b]:
                 ptype = tin["block"][b][blkparam]["type"]
+                desc = tin["block"][b][blkparam]["description"]
+                lname = tin["block"][b][blkparam]["longname"]
+                tin["block"][b][blkparam]["description"] = '\n'.join(textwrap.wrap(desc, 70))
+                tin["block"][b][blkparam]["longname"] = '\n'.join(textwrap.wrap(lname, 70))
                 if ptype.startswith("record"):
                     recparams = ptype.split()
                     recparams.remove(recparams[0])
@@ -93,6 +98,10 @@ class Toml2IPkg:
         with open(fspec, "w") as f:
             f.write(psource)
 
+        if comp not in component_d:
+            component_d[comp] = []
+        component_d[comp].append(subcomp)
+
     def warn(self):
         if len(self._warnings):
             print(f"TOML: {self._tomlfspec}")
@@ -100,6 +109,34 @@ class Toml2IPkg:
             for warn in self._warnings:
                 sys.stderr.write("  " + warn + "\n")
 
+
+class Toml2IModel:
+    """
+    Generate model python specification
+    """
+
+    def __init__(
+        self,
+        outdir: str = None,
+    ):
+        """Toml2IModel init"""
+
+
+        tout = None
+
+        with open(f"{PROJ_ROOT}/spec/mf6model.template") as f:
+            tout = Template(f.read())
+
+        if not tout:
+            raise ValueError("FileSystem NO-OPT")
+
+        for comp in component_d:
+            if comp != "Sim" and comp != "Utils":
+                fspec = f"{IPKG_PATH}/{comp.lower()}_model.py"
+                component_d[comp].sort()
+                psource = tout.render(c=comp, pkg_list=component_d[comp])
+                with open(fspec, "w") as f:
+                    f.write(psource)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -161,6 +198,8 @@ if __name__ == "__main__":
         converter = Toml2IPkg(t, str(outdir))
         if verbose:
             converter.warn()
+
+    Toml2IModel(str(outdir))
 
     if verbose:
         print("...done.")
