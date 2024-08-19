@@ -2,23 +2,55 @@ from abc import ABCMeta
 from collections import OrderedDict, UserDict
 from io import StringIO
 from itertools import groupby
+from keyword import kwlist
 from pprint import pformat
 from typing import Any, Dict, Optional
+from warnings import warn
 
-from flopy4.block import MFBlock, MFBlockMeta, MFBlocks
+from flopy4.block import MFBlock, MFBlockMeta, MFBlocks, collect_params
 from flopy4.param import MFParam, MFParams
 from flopy4.utils import strip
 
 
-def get_block(pkg_name, block_name, params):
+def collect_blocks(
+    params: Dict[str, MFParam],
+    package_name: str,
+) -> Dict[str, MFBlock]:
     """
-    Dynamically subclass `MFBlock`. The class' name is composed from
-    the given package and block name. The class will have attributes
-    according to the given parameter specification; parameter values
-    are not yet initialized.
+    Collect the block specification for the given dictionary of
+    parameters. Subclass `MFBlock` dynamically and set the name
+    of the block subclass by concatenating the package name and
+    the block name, with a trailing "Block".
     """
+
+    blocks = dict()
+    for block_name, block_params in groupby(
+        params.values(), lambda p: p.block
+    ):
+        block = make_block(
+            params={param.name: param for param in block_params},
+            block_name=block_name,
+            package_name=package_name,
+        )
+        blocks[block_name] = block
+    return blocks
+
+
+def make_block(
+    params: Dict[str, MFParam],
+    block_name: str,
+    package_name: str,
+) -> MFBlock:
+    """
+    Dynamically subclass `MFBlock` and return an instance of the new
+    class. The class will have attributes according to the parameter
+    specification provided, but parameter values are not initialized
+    until they are loaded from an input file or set manually.
+    """
+
+    cls_name = f"{package_name.title()}{block_name.title()}Block"
     cls = MFBlockMeta(
-        f"{pkg_name.title()}{block_name.title()}Block",
+        cls_name,
         (MFBlock,),
         params.copy(),
     )
@@ -26,40 +58,44 @@ def get_block(pkg_name, block_name, params):
 
 
 class MFPackageMeta(type):
+    """
+    Modify the creation of `MFPackage` subclasses to search the package's
+    class attributes, find any which are MF6 input parameters, set up those
+    parameters' attributes, dynamically create a set of `MFBlock`s to match,
+    and attach `.params` and `.blocks` attributes as the parameter and block
+    specification, respectively.
+
+    TODO: specify parameters via `attrs` with leading underscore, to
+    avoid collisions with Python keywords. Then we only attach a non-
+    underscored attribute if there is no collision. Parameters whose
+    name collides with a reserved keyword are accessible only by way
+    of the package's dictionary API.
+    """
+
     def __new__(cls, clsname, bases, attrs):
         if clsname == "MFPackage":
             return super().__new__(cls, clsname, bases, attrs)
 
-        # detect package name
-        pkg_name = clsname.replace("Package", "")
+        # infer package name
+        package_name = clsname.replace("Package", "")
 
-        # add class attributes for the package parameter specification.
-        # dynamically set each parameter's name and docstring.
-        params = dict()
-        for attr_name, attr in attrs.items():
-            if issubclass(type(attr), MFParam):
-                attr.__doc__ = attr.description
-                attr.name = attr_name
-                attrs[attr_name] = attr
-                params[attr_name] = attr
-
-        # add class attributes for the package block specification.
-        # subclass `MFBlock` dynamically with class name and params
-        # as given in the block parameter specification.
-        blocks = dict()
-        for block_name, block_params in groupby(
-            params.values(), lambda p: p.block
-        ):
-            block = get_block(
-                pkg_name=pkg_name,
-                block_name=block_name,
-                params={param.name: param for param in block_params},
-            )
-            attrs[block_name] = block
-            blocks[block_name] = block
-
+        # collect parameters
+        params = collect_params(attrs)
         attrs["params"] = MFParams(params)
+        for name, param in params.items():
+            if name in kwlist:
+                warn(f"Parameter name is a reserved keyword: {name}")
+            else:
+                attrs[name] = param
+
+        # collect blocks
+        blocks = collect_blocks(params, package_name)
         attrs["blocks"] = MFBlocks(blocks)
+        for name, block in blocks.items():
+            if name in kwlist:
+                warn(f"Block name is a reserved keyword: {name}")
+            else:
+                attrs[name] = block
 
         return super().__new__(cls, clsname, bases, attrs)
 
@@ -80,6 +116,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     match packages as specified by definition files.
 
 
+    TODO: pull
     TODO: reimplement with `ChainMap`?
     """
 

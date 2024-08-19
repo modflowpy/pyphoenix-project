@@ -36,10 +36,12 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+    "attrs",  # todo: lower bound?
+    "cattrs",  # todo: lower bound?
+    "Jinja2>=3.0",
+    "flopy>=3.7.0",
     "numpy>=1.20.3",
     "pandas>=2.0.0",
-    "flopy>=3.7.0",
-    "Jinja2>=3.0",
     "toml>=0.10",
 ]
 dynamic = ["version"]
@@ -55,6 +57,7 @@ test = [
     "jupyter",
     "jupytext",
     "modflow-devtools",
+    "mypy",
     "pooch>=1.8",
     "pytest!=8.1.0",
     "pytest-dotenv",
