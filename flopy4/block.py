@@ -2,55 +2,90 @@ from abc import ABCMeta
 from collections import OrderedDict, UserDict
 from dataclasses import asdict
 from io import StringIO
+from keyword import kwlist
 from pprint import pformat
 from typing import Any, Dict, Optional
+from warnings import warn
 
 from flopy4.array import MFArray
-from flopy4.compound import MFKeystring, MFRecord, get_keystrings
+from flopy4.compound import MFKeystring, MFRecord, get_compound
 from flopy4.param import MFParam, MFParams
 from flopy4.scalar import MFScalar
 from flopy4.utils import find_upper, strip
 
 
-def get_param(params, block_name, param_name):
+def get_param(params: Dict[str, MFParam], name: str) -> MFParam:
     """
-    Find the first parameter in the collection with
-    the given name, set its block name, and return it.
+    Find the block parameter with the given name. The parameter may be
+    a constituent of a compound `MFRecord` or `MFKeystring` parameter.
     """
-    param = next(get_keystrings(params, param_name), None)
+
+    param = next(iter(get_compound(params, scalar=name).values()), None)
     if param is None:
-        param = params.get(param_name)
+        param = params.get(name)
         if param is None:
-            raise ValueError(f"Invalid parameter: {param_name}")
-        param.name = param_name
-    param.block = block_name
+            raise ValueError(f"Invalid parameter: {name}")
+        param.name = name
     return param
 
 
+def collect_params(
+    attrs: Dict[str, Any],
+    block_name: Optional[str] = None,
+) -> Dict[str, MFParam]:
+    """
+    Select package parameter specification attributes in the
+    given dictionary of class attributes. Set each parameter's
+    name (to the attribute name) and docstring (via `__doc__`,
+    to the parameter's description).
+    """
+
+    params = dict()
+    for name, attr in attrs.items():
+        if not issubclass(type(attr), MFParam):
+            continue
+        attr.__doc__ = attr.description
+        attr.name = name
+        if block_name is not None:
+            attr.block = block_name
+        params[name] = attr
+    return params
+
+
 class MFBlockMeta(type):
+    """
+    Modify the creation of `MFBlock` subclasses to search the block's
+    class attributes, find any which are MF6 input parameters, set up
+    those parameters' attributes, and attach a `.params` attribute as
+    the parameter specification.
+
+    TODO: specify parameters via `attrs` with leading underscore, to
+    avoid collisions with Python keywords. Then we only attach a non-
+    underscored attribute if there is no collision. Parameters whose
+    name collides with a reserved keyword are accessible only by way
+    of the block's dictionary API.
+
+    """
+
     def __new__(cls, clsname, bases, attrs):
         if clsname == "MFBlock":
             return super().__new__(cls, clsname, bases, attrs)
 
-        # detect block name
+        # infer block name
         block_name = (
             clsname[list(find_upper(clsname))[1] :]
             .replace("Block", "")
             .lower()
         )
 
-        # add class attributes for the block parameter specification.
-        # dynamically set each parameter's name, block and docstring.
-        params = dict()
-        for attr_name, attr in attrs.items():
-            if issubclass(type(attr), MFParam):
-                attr.__doc__ = attr.description
-                attr.name = attr_name
-                attr.block = block_name
-                attrs[attr_name] = attr
-                params[attr_name] = attr
-
+        # collect parameters
+        params = collect_params(attrs, block_name)
         attrs["params"] = MFParams(params)
+        for name, param in params.items():
+            if name in kwlist:
+                warn(f"Parameter name is a reserved keyword: {name}")
+            else:
+                attrs[name] = param
 
         return super().__new__(cls, clsname, bases, attrs)
 
@@ -206,9 +241,10 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             elif key == "end":
                 break
             elif found:
-                param = get_param(members, name, key)
+                param = get_param(members, name=key)
                 if param is None:
                     continue
+                param.block = name
                 f.seek(pos)
                 spec = asdict(param)
                 kwrgs = {**kwargs, **spec}

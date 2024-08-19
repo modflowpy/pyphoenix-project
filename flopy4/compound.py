@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import asdict
 from io import StringIO
-from typing import Any, Dict, Iterable, Iterator, Optional
+from typing import Any, Dict, Optional
 
 from flopy4.param import MFParam, MFParams, MFReader
 from flopy4.scalar import MFScalar
@@ -10,17 +10,19 @@ from flopy4.utils import strip
 PAD = "  "
 
 
-def get_keystrings(
-    params: Iterable[MFParam], name=None
-) -> Iterator["MFKeystring"]:
+def get_compound(
+    params: Dict[str, MFParam], scalar: str = None
+) -> Dict[str, "MFCompound"]:
     """
-    Filter keystring parameters from the given iterable,
-    optionally matching the given component parameter name.
+    Find compound parameters in the given parameter collection,
+    optionally filtering by a scalar parameter name.
     """
-    for param in params.values():
-        if isinstance(param, MFKeystring):
-            if name is None or name in param:
-                yield param
+    compounds = dict()
+    for name, param in params.items():
+        if isinstance(param, (MFRecord, MFKeystring)):
+            if scalar is None or scalar in param:
+                compounds[name] = param
+    return compounds
 
 
 class MFCompound(MFParam, MFParams):
