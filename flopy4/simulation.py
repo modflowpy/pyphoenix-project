@@ -151,7 +151,8 @@ class MFSimulation:
                 else:
                     exch = None
                 with open(exgfile, "r") as f:
-                    ename = f"{exgtype.replace("6", "")}_{i}"
+                    ename = exgtype.replace("6", "")
+                    ename = f"{ename}_{i}"
                     kwargs["mempath"] = f"{mempath}/{ename}"
                     exchanges[ename] = exch.load(f, **kwargs)
 
