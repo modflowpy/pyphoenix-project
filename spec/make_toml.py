@@ -177,6 +177,7 @@ class Dfn2Toml:
 
     def _substitute(self, blockname, component, subcomponent):
         block_d = {}
+        ra_d = {}
         for k in self._var_d:
             varname, block = k
             if block != blockname:
@@ -222,9 +223,13 @@ class Dfn2Toml:
                     else:
                         d[k] = v[k]
 
-            block_d[varname] = d
+            if d["type"].lower().startswith("recarray"):
+                ra_d[varname] = d
+            else:
+                block_d[varname] = d
 
-        return block_d
+        bparams = {**block_d, **ra_d}
+        return bparams
 
     def get_blocknames(self):
         blocknames = []

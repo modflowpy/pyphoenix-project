@@ -1,13 +1,15 @@
 # generated file
-import numpy as np
-
 from flopy4.array import MFArray
-from flopy4.block import MFBlock
+from flopy4.compound import MFRecord, MFList
 from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
-from flopy4.compound import MFRecord
+
 
 class GwfIc(MFPackage):
+    multipkg = False
+    stress = False
+    advanced = False
+
     export_array_ascii = MFKeyword(
         block = "options",
         shape = "",
@@ -19,6 +21,7 @@ class GwfIc(MFPackage):
 """keyword that specifies input griddata arrays should be written to
 layered ascii output files.""",
     )
+
     export_array_netcdf = MFKeyword(
         block = "options",
         shape = "",
@@ -30,6 +33,7 @@ layered ascii output files.""",
 """keyword that specifies input griddata arrays should be written to the
 model output netcdf file.""",
     )
+
     strt = MFArray(
         block = "griddata",
         shape = "(nodes)",

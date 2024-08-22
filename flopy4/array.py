@@ -432,7 +432,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             name = kwargs.pop("name", None)
 
         model_shape = kwargs.pop("model_shape", None)
-        params = kwargs.pop("params", {})
+        params = kwargs.pop("blk_params", {})
         mempath = kwargs.pop("mempath", None)
         if model_shape and isinstance(shape, str):
             if shape == "(nodes)":

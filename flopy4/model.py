@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from typing import Any, Dict, Optional
 
+from flopy4.block import MFBlock
 from flopy4.package import MFPackage, MFPackages
 from flopy4.utils import strip
 
@@ -73,16 +74,17 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
 
     @classmethod
     def load(cls, f, **kwargs):
-        """Load the package from file."""
+        """Load the model name file."""
+        blocks = dict()
         packages = dict()
         members = cls.packages
+        nam_members = type(cls.packages.nam6).blocks
 
         mempath = kwargs.pop("mempath", None)
         mname = strip(mempath.split("/")[-1])
-        model_shape = None
 
         while True:
-            # pos = f.tell()
+            pos = f.tell()
             line = f.readline()
             if line == "":
                 break
@@ -90,43 +92,57 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
                 continue
             line = strip(line).lower()
             words = line.split()
-            # TODO: Temporary code. Reimplement below to load
-            #       dfn block specification with MFList support
-            if words[0] == "begin" and words[1] == "packages":
-                count = 0
-                while True:
-                    count += 1
-                    line = f.readline()
-                    line = strip(line).lower()
-                    words = line.split()
-                    if words[0] == "end":
-                        break
-                    elif len(words) > 1:
-                        ptype = words[0]
-                        fpth = words[1]
-                        # TODO: pname should be type (remove trailing 6)
-                        #       if base (not multi-instance see example
-                        #       spec/ipkg/gwf_ic.v2.py)
-                        if len(words) > 2:
-                            pname = words[2]
-                        else:
-                            pname = f"{ptype}-{count}"
-                    package = members.get(ptype, None)
-                    with open(fpth, "r") as f_pkg:
-                        kwargs["model_shape"] = model_shape
-                        kwargs["mempath"] = f"{mempath}/{pname}"
-                        packages[pname] = type(package).load(f_pkg, **kwargs)
-                        if ptype == "dis6":
-                            nlay = packages[pname].params["nlay"]
-                            nrow = packages[pname].params["nrow"]
-                            ncol = packages[pname].params["ncol"]
-                            model_shape = (nlay, nrow, ncol)
-                        elif ptype == "disv6":
-                            nlay = packages[pname].params["nlay"]
-                            ncpl = packages[pname].params["ncpl"]
-                            model_shape = (nlay, ncpl)
-                        elif ptype == "disu6":
-                            nodes = packages[pname].params["nodes"]
-                            model_shape = nodes
+            key = words[0]
+            if key == "begin":
+                name = words[1]
+                block = nam_members.get(name, None)
+                if block is None:
+                    continue
+                f.seek(pos)
+                blocks[name] = type(block).load(f, **kwargs)
 
+        MFModel.load_packages(members, blocks, packages, mempath, **kwargs)
         return cls(name=mname, mempath=mempath, packages=packages)
+
+    @staticmethod
+    def load_packages(
+        members,
+        blocks: Dict[str, MFBlock],
+        packages: Dict[str, MFPackage],
+        mempath,
+        **kwargs,
+    ):
+        """Load model name file packages"""
+        model_shape = None
+        assert "packages" in blocks
+        for param_name, param in blocks["packages"].items():
+            if param_name != "packages":
+                continue
+            assert "ftype" in param.value
+            assert "fname" in param.value
+            assert "pname" in param.value
+            for i in range(len(param.value["ftype"])):
+                ftype = param.value["ftype"][i]
+                fname = param.value["fname"][i]
+                pname = param.value["pname"][i]
+                package = members.get(ftype.lower(), None)
+                with open(fname, "r") as f:
+                    kwargs["model_shape"] = model_shape
+                    kwargs["mempath"] = f"{mempath}/{pname}"
+                    packages[pname] = type(package).load(f, **kwargs)
+                    if ftype.lower() == "dis6":
+                        nlay = packages[pname].params["nlay"]
+                        nrow = packages[pname].params["nrow"]
+                        ncol = packages[pname].params["ncol"]
+                        model_shape = (nlay, nrow, ncol)
+                    elif ftype.lower() == "disv6":
+                        nlay = packages[pname].params["nlay"]
+                        ncpl = packages[pname].params["ncpl"]
+                        model_shape = (nlay, ncpl)
+                    elif ftype.lower() == "disu6":
+                        nodes = packages[pname].params["nodes"]
+                        model_shape = nodes
+
+    def write(self, f, **kwargs):
+        """Write the list to file."""
+        pass

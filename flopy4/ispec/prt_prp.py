@@ -1,13 +1,15 @@
 # generated file
-import numpy as np
-
 from flopy4.array import MFArray
-from flopy4.block import MFBlock
+from flopy4.compound import MFRecord, MFList
 from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
-from flopy4.compound import MFRecord
+
 
 class PrtPrp(MFPackage):
+    multipkg = False
+    stress = False
+    advanced = False
+
     boundnames = MFKeyword(
         block = "options",
         shape = "",
@@ -19,6 +21,7 @@ class PrtPrp(MFPackage):
 """keyword to indicate that boundary names may be provided with the list
 of particle release points.""",
     )
+
     print_input = MFKeyword(
         block = "options",
         shape = "",
@@ -29,6 +32,7 @@ of particle release points.""",
         description =
 """REPLACE print_input {'{#1}': 'all model stress package'}""",
     )
+
     dev_exit_solve_method = MFInteger(
         block = "options",
         shape = "",
@@ -41,6 +45,7 @@ of particle release points.""",
 in the generalized Pollock's method.  0 default, 1 Brent, 2
 Chandrupatla.  The default is Brent's method.""",
     )
+
     exit_solve_tolerance = MFDouble(
         block = "options",
         shape = "",
@@ -54,6 +59,7 @@ location and time in the generalized Pollock's method.  A value of
 0.00001 works well for many problems, but the value that strikes the
 best balance between accuracy and runtime is problem-dependent.""",
     )
+
     local_z = MFKeyword(
         block = "options",
         shape = "",
@@ -68,6 +74,7 @@ of the cell.  If the cell is partially saturated at release time, the
 top of the cell is considered to be the water table elevation (the
 head in the cell) rather than the top defined by the user.""",
     )
+
     extend_tracking = MFKeyword(
         block = "options",
         shape = "",
@@ -82,6 +89,7 @@ particles terminate or reach a specified stop time.  By default,
 particles are terminated at the end of the simulation's final time
 step.""",
     )
+
     track_filerecord = MFRecord(
         params = {
             "track": MFKeyword(),
@@ -97,6 +105,7 @@ step.""",
         description =
 """""",
     )
+
     track = MFKeyword(
         block = "options",
         shape = "",
@@ -108,6 +117,7 @@ step.""",
 """keyword to specify that record corresponds to a binary track output
 file.  Each PRP Package may have a distinct binary track output file.""",
     )
+
     fileout = MFKeyword(
         block = "options",
         shape = "",
@@ -118,6 +128,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
         description =
 """keyword to specify that an output filename is expected next.""",
     )
+
     trackfile = MFString(
         block = "options",
         shape = "",
@@ -128,6 +139,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
         description =
 """name of the binary output file to write tracking information.""",
     )
+
     trackcsv_filerecord = MFRecord(
         params = {
             "trackcsv": MFKeyword(),
@@ -143,6 +155,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
         description =
 """""",
     )
+
     trackcsv = MFKeyword(
         block = "options",
         shape = "",
@@ -154,6 +167,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
 """keyword to specify that record corresponds to a CSV track output file.
 Each PRP Package may have a distinct CSV track output file.""",
     )
+
     trackcsvfile = MFString(
         block = "options",
         shape = "",
@@ -165,6 +179,7 @@ Each PRP Package may have a distinct CSV track output file.""",
 """name of the comma-separated value (CSV) file to write tracking
 information.""",
     )
+
     stoptime = MFDouble(
         block = "options",
         shape = "",
@@ -185,6 +200,7 @@ and its ending time will not limit the simulation time to which
 particles can be tracked.  If STOPTIME and STOPTRAVELTIME are both
 provided, particles will be stopped if either is reached.""",
     )
+
     stoptraveltime = MFDouble(
         block = "options",
         shape = "",
@@ -205,6 +221,7 @@ period, and its ending time will not limit the travel time over which
 particles can be tracked.  If STOPTIME and STOPTRAVELTIME are both
 provided, particles will be stopped if either is reached.""",
     )
+
     stop_at_weak_sink = MFKeyword(
         block = "options",
         shape = "",
@@ -217,6 +234,7 @@ provided, particles will be stopped if either is reached.""",
 enters a cell that is a weak sink.  By default, particles are allowed
 to pass though cells that are weak sinks.""",
     )
+
     istopzone = MFInteger(
         block = "options",
         shape = "",
@@ -231,6 +249,7 @@ it enters a cell whose IZONE value matches ISTOPZONE.  An ISTOPZONE
 value of zero indicates that there is no stop zone.  The default value
 is zero.""",
     )
+
     drape = MFKeyword(
         block = "options",
         shape = "",
@@ -245,6 +264,7 @@ be moved to the topmost active cell below it, if any. By default, a
 particle is not released into the simulation if its release point's
 cell is inactive at release time.""",
     )
+
     release_timesrecord = MFRecord(
         params = {
             "release_times": MFKeyword(),
@@ -259,6 +279,7 @@ cell is inactive at release time.""",
         description =
 """""",
     )
+
     release_times = MFKeyword(
         block = "options",
         shape = "",
@@ -269,6 +290,7 @@ cell is inactive at release time.""",
         description =
 """keyword indicating release times will follow""",
     )
+
     times = MFArray(
         block = "options",
         shape = "(unknown)",
@@ -280,6 +302,7 @@ cell is inactive at release time.""",
 """times to release, relative to the beginning of the simulation.
 RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
     )
+
     release_timesfilerecord = MFRecord(
         params = {
             "release_timesfile": MFKeyword(),
@@ -294,6 +317,7 @@ RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
         description =
 """""",
     )
+
     release_timesfile = MFKeyword(
         block = "options",
         shape = "",
@@ -304,6 +328,7 @@ RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
         description =
 """keyword indicating release times file name will follow""",
     )
+
     timesfile = MFString(
         block = "options",
         shape = "",
@@ -315,6 +340,7 @@ RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
 """name of the release times file.  RELEASE_TIMES and RELEASE_TIMESFILE
 are mutually exclusive.""",
     )
+
     dev_forceternary = MFKeyword(
         block = "options",
         shape = "",
@@ -326,6 +352,7 @@ are mutually exclusive.""",
 """force use of the ternary tracking method regardless of cell type in
 DISV grids.""",
     )
+
     nreleasepts = MFInteger(
         block = "dimensions",
         shape = "",
@@ -336,6 +363,7 @@ DISV grids.""",
         description =
 """is the number of particle release points.""",
     )
+
     irptno = MFInteger(
         block = "packagedata",
         shape = "",
@@ -350,6 +378,7 @@ greater than zero and less than or equal to NRELEASEPTS.  The program
 will terminate with an error if information for a PRP release point
 number is specified more than once.""",
     )
+
     cellid = MFArray(
         block = "packagedata",
         shape = "(ncelldim)",
@@ -360,6 +389,7 @@ number is specified more than once.""",
         description =
 """REPLACE cellid {}""",
     )
+
     xrpt = MFDouble(
         block = "packagedata",
         shape = "",
@@ -372,6 +402,7 @@ number is specified more than once.""",
 coordinates.  The (x, y, z) location specified for the release point
 must lie within the cell that is identified by the specified cellid.""",
     )
+
     yrpt = MFDouble(
         block = "packagedata",
         shape = "",
@@ -384,6 +415,7 @@ must lie within the cell that is identified by the specified cellid.""",
 coordinates.  The (x, y, z) location specified for the release point
 must lie within the cell that is identified by the specified cellid.""",
     )
+
     zrpt = MFDouble(
         block = "packagedata",
         shape = "",
@@ -397,6 +429,7 @@ coordinates or, if the LOCAL_Z option is active, in local cell
 coordinates.  The (x, y, z) location specified for the release point
 must lie within the cell that is identified by the specified cellid.""",
     )
+
     boundname = MFString(
         block = "packagedata",
         shape = "",
@@ -410,6 +443,26 @@ variable that can contain as many as 40 characters. If BOUNDNAME
 contains spaces in it, then the entire name must be enclosed within
 single quotes.""",
     )
+
+    packagedata = MFList(
+        params = {
+            "irptno": irptno,
+            "cellid": cellid,
+            "xrpt": xrpt,
+            "yrpt": yrpt,
+            "zrpt": zrpt,
+            "boundname": boundname,
+        },
+        block = "packagedata",
+        shape = "(nreleasepts)",
+        reader = "urword",
+        optional = False,
+        longname =
+"""""",
+        description =
+"""""",
+    )
+
     all = MFKeyword(
         block = "period",
         shape = "",
@@ -421,6 +474,7 @@ single quotes.""",
 """keyword to indicate release of particles at the start of all time
 steps in the period.""",
     )
+
     first = MFKeyword(
         block = "period",
         shape = "",
@@ -434,6 +488,7 @@ time step in the period. This keyword may be used in conjunction with
 other keywords to release particles at the start of multiple time
 steps.""",
     )
+
     frequency = MFInteger(
         block = "period",
         shape = "",
@@ -446,6 +501,7 @@ steps.""",
 may be used in conjunction with other keywords to release particles at
 the start of multiple time steps.""",
     )
+
     steps = MFArray(
         block = "period",
         shape = "(<nstp)",
@@ -458,6 +514,7 @@ the start of multiple time steps.""",
 keyword may be used in conjunction with other keywords to release
 particles at the start of multiple time steps.""",
     )
+
     fraction = MFArray(
         block = "period",
         shape = "(<nstp)",

@@ -238,6 +238,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         params = {}
 
         mempath = kwargs.pop("mempath", None)
+        kwargs.pop("modeltype", None)
 
         while True:
             pos = f.tell()
@@ -255,7 +256,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
                 if block is None:
                     continue
                 f.seek(pos)
-                kwargs["params"] = params
+                kwargs["blk_params"] = params
                 kwargs["mempath"] = f"{mempath}/{name}"
                 blocks[name] = type(block).load(f, **kwargs)
                 if name == "options" or name == "dimensions":

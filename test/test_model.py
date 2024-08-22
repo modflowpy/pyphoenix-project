@@ -50,10 +50,6 @@ def test_load_gwfdis(tmp_path):
         assert str(gwf) == "gwf_1"
         assert gwf.name == "gwf_1"
 
-        # print(type(gwf.values))
-        # print(type(gwf.values()))
-        # print(gwf.values())
-
         assert (
             gwf.value["dis"]["dimensions"]["nlay"]
             == gwf.packages["dis"]["dimensions"]["nlay"]

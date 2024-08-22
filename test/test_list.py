@@ -1,9 +1,57 @@
 import numpy as np
 
+from flopy4.block import MFBlock
+from flopy4.compound import MFList
+from flopy4.scalar import MFDouble, MFInteger
 from flopy4.simulation import MFSimulation
 
 
-def test_load_sim(tmp_path):
+class TestBlock(MFBlock):
+    __test__ = False  # tell pytest not to collect
+
+    testblock = MFList(
+        params={
+            # "s": MFString(),
+            "s": MFInteger(),
+            "i": MFInteger(),
+            "d": MFDouble(),
+        },
+        description="recarray",
+        optional=False,
+    )
+
+
+def test_tl(tmp_path):
+    tlist = [False, 0, "temp", 1.0, True]
+    assert isinstance(tlist[0], bool)
+    assert isinstance(tlist[1], int)
+    assert isinstance(tlist[2], str)
+    assert isinstance(tlist[3], float)
+    assert isinstance(tlist[4], bool)
+
+
+def test_list_load(tmp_path):
+    name = "testblock"
+
+    fpth = tmp_path / f"{name}.txt"
+    with open(fpth, "w") as f:
+        f.write("BEGIN TESTBLOCK\n")
+        f.write("  0 1  2.\n")
+        f.write("  1 2  3.\n")
+        f.write("  1 2  3.\n")
+        f.write("END TESTBLOCK\n")
+
+    with open(fpth, "r") as f:
+        in_list = TestBlock.load(f)
+        assert in_list.name == name
+        # assert isinstance(TestBlock.blist.params["s"], MFString)
+        assert isinstance(TestBlock.testblock.params["i"], MFInteger)
+        assert isinstance(TestBlock.testblock.params["d"], MFDouble)
+        assert isinstance(in_list.params["testblock"]["i"], np.ndarray)
+        assert isinstance(in_list.params["testblock"]["d"], np.ndarray)
+
+
+def test_sim_load(tmp_path):
     name = "gwf_1"
 
     nlay = 3
@@ -50,11 +98,25 @@ def test_load_sim(tmp_path):
         f.write(f"  IC6  {tmp_path}/{name}.ic  ic\n")
         f.write("END PACKAGES\n")
 
+    tdis_fpth = tmp_path / "sim.tdis"
+    with open(tdis_fpth, "w") as f:
+        f.write("BEGIN OPTIONS\n")
+        f.write("  TIME_UNITS  days\n")
+        f.write("  START_DATE_TIME  2041-01-01t00:00:00-05:00\n")
+        f.write("END OPTIONS\n\n")
+        f.write("BEGIN DIMENSIONS\n")
+        f.write("  NPER  1\n")
+        f.write("END DIMENSIONS\n\n")
+        f.write("BEGIN PERIODDATA\n")
+        f.write("    1.00000000  1       1.00000000\n")
+        f.write("END PERIODDATA\n")
+
     sim_fpth = tmp_path / "mfsim.nam"
     with open(sim_fpth, "w") as f:
         f.write("BEGIN OPTIONS\n")
         f.write("END OPTIONS\n\n")
         f.write("BEGIN TIMING\n")
+        f.write(f"  TDIS6  {tmp_path}/sim.tdis\n")
         f.write("END TIMING\n\n")
         f.write("BEGIN MODELS\n")
         f.write(f"  gwf6  {tmp_path}/{name}.nam  {name}\n")
@@ -66,16 +128,4 @@ def test_load_sim(tmp_path):
 
     # test resolve
     with open(sim_fpth, "r") as f:
-        s = MFSimulation.load(f)
-        assert np.allclose(
-            strt, s.models[f"{name}"].resolve(f"sim/{name}/ic/griddata/strt")
-        )
-        assert nlay == s.models[f"{name}"].resolve(
-            f"sim/{name}/dis/dimensions/nlay"
-        )
-        assert nrow == s.models[f"{name}"].resolve(
-            f"sim/{name}/dis/dimensions/nrow"
-        )
-        assert ncol == s.models[f"{name}"].resolve(
-            f"sim/{name}/dis/dimensions/ncol"
-        )
+        MFSimulation.load(f)

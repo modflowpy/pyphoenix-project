@@ -80,6 +80,8 @@ def test_load_write(tmp_path):
         f.write("  S value\n")
         f.write(f"  F FILEIN {fpth}\n")
         f.write("  R RK RI 2 RD 2.0\n")
+        # f.write("  RK RI 2 RD 2.0\n")
+        # f.write("  RK 2 2.0\n")
         f.write("  A\n    INTERNAL\n      1.0 2.0 3.0\n")
         f.write(f"END {name.upper()}\n")
 

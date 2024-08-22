@@ -448,23 +448,6 @@ longname = "number of particle release points"
 description = "is the number of particle release points."
 deprecated = ""
 
-[block.packagedata.packagedata]
-type = "recarray irptno cellid xrpt yrpt zrpt boundname"
-block_variable = false
-valid = []
-shape = "(nreleasepts)"
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-numeric_index = false
-longname = ""
-description = ""
-deprecated = ""
-
 [block.packagedata.irptno]
 type = "integer"
 block_variable = false
@@ -567,11 +550,11 @@ longname = "release point name"
 description = "name of the particle release point. BOUNDNAME is an ASCII character variable that can contain as many as 40 characters. If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."
 deprecated = ""
 
-[block.period.perioddata]
-type = "recarray releasesetting"
+[block.packagedata.packagedata]
+type = "recarray irptno cellid xrpt yrpt zrpt boundname"
 block_variable = false
 valid = []
-shape = ""
+shape = "(nreleasepts)"
 tagged = true
 in_record = false
 layered = false
@@ -684,4 +667,21 @@ preserve_case = false
 numeric_index = false
 longname = ""
 description = "release particles after the specified fraction of the time step has elapsed. If FRACTION is not set, particles are released at the start of the specified time step(s). FRACTION must be a single value when used with ALL, FIRST, or FREQUENCY. When used with STEPS, FRACTION may be a single value or an array of the same length as STEPS. If a single FRACTION value is provided with STEPS, the fraction applies to all steps."
+deprecated = ""
+
+[block.period.perioddata]
+type = "recarray releasesetting"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = ""
+description = ""
 deprecated = ""
