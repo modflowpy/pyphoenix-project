@@ -130,18 +130,210 @@ def test_load_sim(tmp_path):
         f.write(f"  ims6  {tmp_path}/{name}.ims  {name}\n")
         f.write("END SOLUTIONGROUP 1\n\n")
 
-    # test resolve
+    s = None
     with open(sim_fpth, "r") as f:
         s = MFSimulation.load(f)
-        assert np.allclose(
-            strt, s.models[f"{name}"].resolve(f"sim/{name}/ic/griddata/strt")
-        )
-        assert nlay == s.models[f"{name}"].resolve(
-            f"sim/{name}/dis/dimensions/nlay"
-        )
-        assert nrow == s.models[f"{name}"].resolve(
-            f"sim/{name}/dis/dimensions/nrow"
-        )
-        assert ncol == s.models[f"{name}"].resolve(
-            f"sim/{name}/dis/dimensions/ncol"
-        )
+
+    # mfsim.nam
+    assert "options" in s.nam
+    assert "timing" in s.nam
+    assert "models" in s.nam
+    assert "exchanges" in s.nam
+    assert "solutiongroup" in s.nam
+    assert "tdis6" in s.nam["timing"]
+    assert s.nam["timing"]["tdis6"].value == f"{tmp_path}/sim.tdis"
+    assert "mtype" in s.nam["models"].params["models"]
+    assert "mfname" in s.nam["models"].params["models"]
+    assert "mname" in s.nam["models"].params["models"]
+    assert s.nam["models"].params["models"]["mtype"][0] == "GWF6"
+    assert (
+        s.nam["models"].params["models"]["mfname"][0]
+        == f"{tmp_path}/{name}.nam"
+    )
+    assert s.nam["models"].params["models"]["mname"][0] == f"{name}"
+    assert "slntype" in s.nam["solutiongroup"].params["solutiongroup"]
+    assert "slnfname" in s.nam["solutiongroup"].params["solutiongroup"]
+    assert "slnmnames" in s.nam["solutiongroup"].params["solutiongroup"]
+    assert (
+        s.nam["solutiongroup"].params["solutiongroup"]["slntype"][0] == "ims6"
+    )
+    assert (
+        s.nam["solutiongroup"].params["solutiongroup"]["slnfname"][0]
+        == f"{tmp_path}/{name}.ims"
+    )
+    assert (
+        s.nam["solutiongroup"].params["solutiongroup"]["slnmnames"][0]
+        == f"{name}"
+    )
+
+    # models
+    assert "dis" in s.models["gwf_1"].packages
+    assert "options" in s.models["gwf_1"].packages["dis"]
+    assert "dimensions" in s.models["gwf_1"].packages["dis"]
+    assert "griddata" in s.models["gwf_1"].packages["dis"]
+    assert "ic" in s.models["gwf_1"].packages
+    assert "options" in s.models["gwf_1"].packages["ic"]
+    assert "griddata" in s.models["gwf_1"].packages["ic"]
+
+    # tdis
+    assert "time_units" in s.tdis.params
+    assert "start_date_time" in s.tdis.params
+    assert "nper" in s.tdis.params
+    assert "perioddata" in s.tdis.params
+    assert "perlen" in s.tdis.params["perioddata"]
+    assert "nstp" in s.tdis.params["perioddata"]
+    assert "tsmult" in s.tdis.params["perioddata"]
+    assert s.tdis.params["time_units"] == "days"
+    assert s.tdis.params["start_date_time"] == "2041-01-01t00:00:00-05:00"
+    assert s.tdis.params["nper"] == 31
+    assert np.allclose(
+        s.tdis.params["perioddata"]["perlen"],
+        np.array(
+            [
+                1.0,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+                365.25,
+            ]
+        ),
+    )
+    assert np.allclose(
+        s.tdis.params["perioddata"]["nstp"],
+        np.array(
+            [
+                1,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+                6,
+            ]
+        ),
+    )
+    assert np.allclose(
+        s.tdis.params["perioddata"]["tsmult"],
+        np.array(
+            [
+                1.0,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+                1.3,
+            ]
+        ),
+    )
+
+    # ims
+    assert "ims_0" in s.solvers
+    assert "print_option" in s.solvers["ims_0"].params
+    assert "outer_dvclose" in s.solvers["ims_0"].params
+    assert "outer_maximum" in s.solvers["ims_0"].params
+    assert "under_relaxation" in s.solvers["ims_0"].params
+    assert "inner_maximum" in s.solvers["ims_0"].params
+    assert "inner_dvclose" in s.solvers["ims_0"].params
+    assert "linear_acceleration" in s.solvers["ims_0"].params
+    assert "relaxation_factor" in s.solvers["ims_0"].params
+    assert "scaling_method" in s.solvers["ims_0"].params
+    assert "reordering_method" in s.solvers["ims_0"].params
+    assert s.solvers["ims_0"].params["print_option"] == "summary"
+    assert s.solvers["ims_0"].params["outer_dvclose"] == 1.00000000e-09
+    assert s.solvers["ims_0"].params["outer_maximum"] == 500
+    assert s.solvers["ims_0"].params["under_relaxation"] == "none"
+    assert s.solvers["ims_0"].params["inner_maximum"] == 300
+    assert s.solvers["ims_0"].params["inner_dvclose"] == 1.00000000e-09
+    assert s.solvers["ims_0"].params["linear_acceleration"] == "bicgstab"
+    assert s.solvers["ims_0"].params["relaxation_factor"] == 1.00000000
+    assert s.solvers["ims_0"].params["scaling_method"] == "none"
+    assert s.solvers["ims_0"].params["reordering_method"] == "none"
+
+    # test resolve
+    assert np.allclose(
+        strt, s.models[f"{name}"].resolve(f"sim/{name}/ic/griddata/strt")
+    )
+    assert nlay == s.models[f"{name}"].resolve(
+        f"sim/{name}/dis/dimensions/nlay"
+    )
+    assert nrow == s.models[f"{name}"].resolve(
+        f"sim/{name}/dis/dimensions/nrow"
+    )
+    assert ncol == s.models[f"{name}"].resolve(
+        f"sim/{name}/dis/dimensions/ncol"
+    )

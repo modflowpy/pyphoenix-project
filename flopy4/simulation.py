@@ -24,11 +24,17 @@ class MFSimulation:
         name: Optional[str] = "sim",
         tdis: Optional[SimTdis] = None,
         models: Optional[Dict[str, Dict]] = {},
+        exchanges: Optional[Dict[str, Dict]] = {},
+        solvers: Optional[Dict[str, Dict]] = {},
+        nam: Optional[Dict[str, Dict]] = {},
     ):
         self.name = name
         self.mempath = name
         self.tdis = tdis
         self.models = models
+        self.exchanges = exchanges
+        self.solvers = solvers
+        self.nam = nam
 
         self._resolv = Resolve(name=name, models=models)
 
@@ -65,7 +71,15 @@ class MFSimulation:
         MFSimulation.load_models(blocks, models, mempath, **kwargs)
         MFSimulation.load_exchanges(blocks, exchanges, mempath, **kwargs)
         MFSimulation.load_solvers(blocks, solvers, mempath, **kwargs)
-        return cls(name=sim_name, tdis=tdis, models=models)
+
+        return cls(
+            name=sim_name,
+            tdis=tdis,
+            models=models,
+            exchanges=exchanges,
+            solvers=solvers,
+            nam=blocks,
+        )
 
     @staticmethod
     def load_tdis(
@@ -85,7 +99,6 @@ class MFSimulation:
             with open(tdis_fpth, "r") as f:
                 kwargs["mempath"] = f"{mempath}"
                 tdis = SimTdis.load(f, **kwargs)
-                # print(tdis.params)
         return tdis
 
     @staticmethod
@@ -124,14 +137,13 @@ class MFSimulation:
     @staticmethod
     def load_exchanges(
         blocks: Dict[str, MFBlock],
-        exchanges: Dict[str, MFModel],
+        exchanges: Dict[str, Dict],
         mempath,
         **kwargs,
     ):
         """Load simulation exchanges"""
         assert "exchanges" in blocks
         for param_name, param in blocks["exchanges"].items():
-            print(param_name)
             if param_name != "exchanges":
                 continue
             if (
@@ -159,14 +171,13 @@ class MFSimulation:
     @staticmethod
     def load_solvers(
         blocks: Dict[str, MFBlock],
-        solvers: Dict[str, MFModel],
+        solvers: Dict[str, Dict],
         mempath,
         **kwargs,
     ):
         """Load simulation solvers"""
         assert "solutiongroup" in blocks
         for param_name, param in blocks["solutiongroup"].items():
-            print(param_name)
             if param_name != "solutiongroup":
                 continue
             if (
@@ -178,18 +189,16 @@ class MFSimulation:
             for i in range(len(param.value["slntype"])):
                 slntype = param.value["slntype"][i]
                 slnfname = param.value["slnfname"][i]
-                # TODO
-                # slnmnames =
+                # slnmnames = param.value["slnmnames"][i]
                 if slntype.lower() == "ims6":
                     sln = SlnIms
                 else:
                     sln = None
                 with open(slnfname, "r") as f:
-                    # TODO
-                    # ename = f"{exgtype.replace("6", "")}_{i}"
-                    # kwargs["mempath"] = f"{mempath}/{ename}"
-                    # solvers[ename] = sln.load(f, **kwargs)
-                    sln.load(f, **kwargs)
+                    slnname = slntype.replace("6", "")
+                    slnname = f"{slnname}_{i}"
+                    kwargs["mempath"] = f"{mempath}/{slnname}"
+                    solvers[slnname] = sln.load(f, **kwargs)
 
     def write(self, f, **kwargs):
         """Write the list to file."""

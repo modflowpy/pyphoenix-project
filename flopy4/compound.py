@@ -341,6 +341,10 @@ class MFList(MFCompound):
         params = kwargs.pop("params", None)
         kwargs.pop("type", None)
         kwargs.pop("shape", None)
+        maxsplit = -1
+
+        if list(params.items())[-1][1].shape == "(:)":
+            maxsplit = len(params) - 1
 
         param_lists = []
         # TODO: support multi-dimensional params
@@ -354,7 +358,7 @@ class MFList(MFCompound):
                 f.seek(pos)
                 break
             else:
-                tokens = line.split()
+                tokens = strip(line).split(maxsplit=maxsplit)
                 assert len(tokens) == len(param_lists)
                 for i, token in enumerate(tokens):
                     param_lists[i].append(token)
@@ -375,7 +379,7 @@ class MFList(MFCompound):
         param_lists: list,
         **kwargs,
     ) -> Dict[str, MFParam]:
-        """Load model name file packages"""
+        """Create the param dictionary"""
         idx = 0
         list_params = dict()
         for param_name, param in params.items():
@@ -400,7 +404,6 @@ class MFList(MFCompound):
             else:
                 list_params[param_name] = MFScalarList(
                     value=param_lists[idx],
-                    # type=MFScalarList,
                     type=type(param),
                     **kwargs,
                 )
