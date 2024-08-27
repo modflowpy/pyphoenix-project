@@ -465,6 +465,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             return MFArray(
                 shape,
                 array=np.array(objs, dtype=object),
+                type="array",
                 how=None,
                 factor=None,
                 name=name,

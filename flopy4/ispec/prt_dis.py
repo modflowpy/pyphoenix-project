@@ -11,6 +11,7 @@ class PrtDis(MFPackage):
     advanced = False
 
     length_units = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -24,6 +25,7 @@ class PrtDis(MFPackage):
     )
 
     nogrb = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -35,6 +37,7 @@ class PrtDis(MFPackage):
     )
 
     xorigin = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -49,6 +52,7 @@ grid file so that postprocessors can locate the grid in space.""",
     )
 
     yorigin = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -63,6 +67,7 @@ binary grid file so that postprocessors can locate the grid in space.""",
     )
 
     angrot = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -78,6 +83,7 @@ locate the grid in space.""",
     )
 
     export_array_ascii = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -90,6 +96,7 @@ layered ascii output files.""",
     )
 
     export_array_netcdf = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -102,6 +109,7 @@ model output netcdf file.""",
     )
 
     ncf_filerecord = MFRecord(
+        type = "record",
         params = {
             "ncf6": MFKeyword(),
             "filein": MFKeyword(),
@@ -118,6 +126,7 @@ model output netcdf file.""",
     )
 
     ncf6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -130,6 +139,7 @@ model output netcdf file.""",
     )
 
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -141,6 +151,7 @@ model output netcdf file.""",
     )
 
     ncf6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -152,6 +163,7 @@ model output netcdf file.""",
     )
 
     nlay = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -163,6 +175,7 @@ model output netcdf file.""",
     )
 
     nrow = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -174,6 +187,7 @@ model output netcdf file.""",
     )
 
     ncol = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -185,6 +199,7 @@ model output netcdf file.""",
     )
 
     delr = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol)",
         reader = "readarray",
@@ -196,6 +211,7 @@ model output netcdf file.""",
     )
 
     delc = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(nrow)",
         reader = "readarray",
@@ -207,6 +223,7 @@ model output netcdf file.""",
     )
 
     top = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol, nrow)",
         reader = "readarray",
@@ -218,6 +235,7 @@ model output netcdf file.""",
     )
 
     botm = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol, nrow, nlay)",
         reader = "readarray",
@@ -229,6 +247,7 @@ model output netcdf file.""",
     )
 
     idomain = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol, nrow, nlay)",
         reader = "readarray",

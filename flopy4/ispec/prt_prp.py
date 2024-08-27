@@ -11,6 +11,7 @@ class PrtPrp(MFPackage):
     advanced = False
 
     boundnames = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -23,6 +24,7 @@ of particle release points.""",
     )
 
     print_input = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -34,6 +36,7 @@ of particle release points.""",
     )
 
     dev_exit_solve_method = MFInteger(
+        type = "integer",
         block = "options",
         shape = "",
         reader = "urword",
@@ -47,6 +50,7 @@ Chandrupatla.  The default is Brent's method.""",
     )
 
     exit_solve_tolerance = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -61,6 +65,7 @@ best balance between accuracy and runtime is problem-dependent.""",
     )
 
     local_z = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -76,6 +81,7 @@ head in the cell) rather than the top defined by the user.""",
     )
 
     extend_tracking = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -91,6 +97,7 @@ step.""",
     )
 
     track_filerecord = MFRecord(
+        type = "record",
         params = {
             "track": MFKeyword(),
             "fileout": MFKeyword(),
@@ -107,6 +114,7 @@ step.""",
     )
 
     track = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -119,6 +127,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
     )
 
     fileout = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -130,6 +139,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
     )
 
     trackfile = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -141,6 +151,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
     )
 
     trackcsv_filerecord = MFRecord(
+        type = "record",
         params = {
             "trackcsv": MFKeyword(),
             "fileout": MFKeyword(),
@@ -157,6 +168,7 @@ file.  Each PRP Package may have a distinct binary track output file.""",
     )
 
     trackcsv = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -169,6 +181,7 @@ Each PRP Package may have a distinct CSV track output file.""",
     )
 
     trackcsvfile = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -181,6 +194,7 @@ information.""",
     )
 
     stoptime = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -202,6 +216,7 @@ provided, particles will be stopped if either is reached.""",
     )
 
     stoptraveltime = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -223,6 +238,7 @@ provided, particles will be stopped if either is reached.""",
     )
 
     stop_at_weak_sink = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -236,6 +252,7 @@ to pass though cells that are weak sinks.""",
     )
 
     istopzone = MFInteger(
+        type = "integer",
         block = "options",
         shape = "",
         reader = "urword",
@@ -251,6 +268,7 @@ is zero.""",
     )
 
     drape = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -266,6 +284,7 @@ cell is inactive at release time.""",
     )
 
     release_timesrecord = MFRecord(
+        type = "record",
         params = {
             "release_times": MFKeyword(),
             "times": MFArray(shape="(unknown)"),
@@ -281,6 +300,7 @@ cell is inactive at release time.""",
     )
 
     release_times = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -292,6 +312,7 @@ cell is inactive at release time.""",
     )
 
     times = MFArray(
+        type = "array",
         block = "options",
         shape = "(unknown)",
         reader = "urword",
@@ -304,6 +325,7 @@ RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
     )
 
     release_timesfilerecord = MFRecord(
+        type = "record",
         params = {
             "release_timesfile": MFKeyword(),
             "timesfile": MFString(),
@@ -319,6 +341,7 @@ RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
     )
 
     release_timesfile = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -330,6 +353,7 @@ RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
     )
 
     timesfile = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -342,6 +366,7 @@ are mutually exclusive.""",
     )
 
     dev_forceternary = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -354,6 +379,7 @@ DISV grids.""",
     )
 
     nreleasepts = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -365,6 +391,7 @@ DISV grids.""",
     )
 
     irptno = MFInteger(
+        type = "integer",
         block = "packagedata",
         shape = "",
         reader = "urword",
@@ -380,6 +407,7 @@ number is specified more than once.""",
     )
 
     cellid = MFArray(
+        type = "array",
         block = "packagedata",
         shape = "(ncelldim)",
         reader = "urword",
@@ -391,6 +419,7 @@ number is specified more than once.""",
     )
 
     xrpt = MFDouble(
+        type = "double",
         block = "packagedata",
         shape = "",
         reader = "urword",
@@ -404,6 +433,7 @@ must lie within the cell that is identified by the specified cellid.""",
     )
 
     yrpt = MFDouble(
+        type = "double",
         block = "packagedata",
         shape = "",
         reader = "urword",
@@ -417,6 +447,7 @@ must lie within the cell that is identified by the specified cellid.""",
     )
 
     zrpt = MFDouble(
+        type = "double",
         block = "packagedata",
         shape = "",
         reader = "urword",
@@ -431,6 +462,7 @@ must lie within the cell that is identified by the specified cellid.""",
     )
 
     boundname = MFString(
+        type = "string",
         block = "packagedata",
         shape = "",
         reader = "urword",
@@ -445,6 +477,7 @@ single quotes.""",
     )
 
     packagedata = MFList(
+        type = "recarray",
         params = {
             "irptno": irptno,
             "cellid": cellid,
@@ -464,6 +497,7 @@ single quotes.""",
     )
 
     all = MFKeyword(
+        type = "keyword",
         block = "period",
         shape = "",
         reader = "urword",
@@ -476,6 +510,7 @@ steps in the period.""",
     )
 
     first = MFKeyword(
+        type = "keyword",
         block = "period",
         shape = "",
         reader = "urword",
@@ -490,6 +525,7 @@ steps.""",
     )
 
     frequency = MFInteger(
+        type = "integer",
         block = "period",
         shape = "",
         reader = "urword",
@@ -503,6 +539,7 @@ the start of multiple time steps.""",
     )
 
     steps = MFArray(
+        type = "array",
         block = "period",
         shape = "(<nstp)",
         reader = "urword",
@@ -516,6 +553,7 @@ particles at the start of multiple time steps.""",
     )
 
     fraction = MFArray(
+        type = "array",
         block = "period",
         shape = "(<nstp)",
         reader = "urword",

@@ -339,12 +339,14 @@ class MFList(MFCompound):
 
         blk_params = kwargs.pop("blk_params", {})
         params = kwargs.pop("params", None)
-        kwargs.pop("type", None)
+        type = kwargs.pop("type", None)
+        kwargs.pop("mname", None)
         kwargs.pop("shape", None)
-        maxsplit = -1
 
         if list(params.items())[-1][1].shape == "(:)":
             maxsplit = len(params) - 1
+        else:
+            maxsplit = -1
 
         param_lists = []
         # TODO: support multi-dimensional params
@@ -371,7 +373,7 @@ class MFList(MFCompound):
                         raise ValueError("MFList nbound not satisfied")
 
         list_params = MFList.create_list_params(params, param_lists, **kwargs)
-        return cls(list_params, **kwargs)
+        return cls(list_params, type=type, **kwargs)
 
     @staticmethod
     def create_list_params(
@@ -413,4 +415,17 @@ class MFList(MFCompound):
 
     def write(self, f, **kwargs):
         """Write the list to file."""
-        pass
+        # TODO: numpy numeric data, remove trailing tab
+        PAD = "  "
+        count = 0
+
+        for name, param in self.params.items():
+            if count == 0:
+                count = len(param.value)
+            else:
+                assert len(param.value) == count
+        for i in range(count):
+            line = f"{PAD}"
+            for name, param in self.params.items():
+                line += f"{param.value[i]}\t"
+            f.write(line + "\n")

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, Optional
 
 from flopy4.block import MFBlock
@@ -10,8 +11,8 @@ from flopy4.ispec.sim_nam import SimNam
 from flopy4.ispec.sim_tdis import SimTdis
 from flopy4.ispec.sln_ims import SlnIms
 from flopy4.model import MFModel
+from flopy4.package import MFPackage
 from flopy4.resolver import Resolve
-from flopy4.utils import strip
 
 
 class MFSimulation:
@@ -22,8 +23,8 @@ class MFSimulation:
     def __init__(
         self,
         name: Optional[str] = "sim",
-        tdis: Optional[SimTdis] = None,
-        models: Optional[Dict[str, Dict]] = {},
+        tdis: Optional[MFPackage] = None,
+        models: Optional[Dict[str, MFModel]] = {},
         exchanges: Optional[Dict[str, Dict]] = {},
         solvers: Optional[Dict[str, Dict]] = {},
         nam: Optional[Dict[str, Dict]] = {},
@@ -41,36 +42,21 @@ class MFSimulation:
     @classmethod
     def load(cls, f, **kwargs):
         """Load mfsim.nam from file."""
-        blocks = dict()
         models = dict()
         exchanges = dict()
         solvers = dict()
-        members = SimNam.blocks
         sim_name = "sim"
         mempath = sim_name
 
-        while True:
-            pos = f.tell()
-            line = f.readline()
-            if line == "":
-                break
-            if line == "\n":
-                continue
-            line = strip(line).lower()
-            words = line.split()
-            key = words[0]
-            if key == "begin":
-                name = words[1]
-                block = members.get(name, None)
-                if block is None:
-                    continue
-                f.seek(pos)
-                blocks[name] = type(block).load(f, **kwargs)
+        kwargs["mempath"] = f"{mempath}"
+        kwargs["ftype"] = "nam6"
 
-        tdis = MFSimulation.load_tdis(blocks, mempath, **kwargs)
-        MFSimulation.load_models(blocks, models, mempath, **kwargs)
-        MFSimulation.load_exchanges(blocks, exchanges, mempath, **kwargs)
-        MFSimulation.load_solvers(blocks, solvers, mempath, **kwargs)
+        nam = SimNam.load(f, **kwargs)
+
+        tdis = MFSimulation.load_tdis(nam, **kwargs)
+        MFSimulation.load_models(nam, models, **kwargs)
+        MFSimulation.load_exchanges(nam, exchanges, **kwargs)
+        MFSimulation.load_solvers(nam, solvers, **kwargs)
 
         return cls(
             name=sim_name,
@@ -78,7 +64,7 @@ class MFSimulation:
             models=models,
             exchanges=exchanges,
             solvers=solvers,
-            nam=blocks,
+            nam=nam,
         )
 
     @staticmethod
@@ -131,6 +117,7 @@ class MFSimulation:
                 else:
                     model = None
                 with open(mfname, "r") as f:
+                    kwargs["mtype"] = mtype.lower()
                     kwargs["mempath"] = f"{mempath}/{mname}"
                     models[mname] = model.load(f, **kwargs)
 
@@ -200,6 +187,12 @@ class MFSimulation:
                     kwargs["mempath"] = f"{mempath}/{slnname}"
                     solvers[slnname] = sln.load(f, **kwargs)
 
-    def write(self, f, **kwargs):
-        """Write the list to file."""
-        pass
+    def write(self, basepath, **kwargs):
+        """Write the simulation to files."""
+        path = Path(basepath)
+        with open(path / "mfsim.nam", "w") as f:
+            self.nam.write(f, **kwargs)
+        with open(path / f"{self.name}.tdis", "w") as f:
+            self.tdis.write(f, **kwargs)
+        for model in self.models:
+            self.models[model].write(basepath, **kwargs)

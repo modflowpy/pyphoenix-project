@@ -11,6 +11,7 @@ class GwfNam(MFPackage):
     advanced = False
 
     list = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -26,6 +27,7 @@ name file is called ``my.model.nam'' then the list file will be called
     )
 
     print_input = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -37,6 +39,7 @@ name file is called ``my.model.nam'' then the list file will be called
     )
 
     print_flows = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -48,6 +51,7 @@ name file is called ``my.model.nam'' then the list file will be called
     )
 
     save_flows = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -59,6 +63,7 @@ name file is called ``my.model.nam'' then the list file will be called
     )
 
     newtonoptions = MFRecord(
+        type = "record",
         params = {
             "newton": MFKeyword(),
             "under_relaxation": MFKeyword(),
@@ -74,6 +79,7 @@ name file is called ``my.model.nam'' then the list file will be called
     )
 
     newton = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -89,6 +95,7 @@ default, the Newton-Raphson formulation is not applied.""",
     )
 
     under_relaxation = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -103,6 +110,7 @@ not applied.""",
     )
 
     export_netcdf = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -116,6 +124,7 @@ should be written to a model output netcdf file.  No value or
     )
 
     nc_filerecord = MFRecord(
+        type = "record",
         params = {
             "netcdf": MFKeyword(),
             "filein": MFKeyword(),
@@ -132,6 +141,7 @@ should be written to a model output netcdf file.  No value or
     )
 
     netcdf = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -143,6 +153,7 @@ should be written to a model output netcdf file.  No value or
     )
 
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -154,6 +165,7 @@ should be written to a model output netcdf file.  No value or
     )
 
     netcdf_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -165,6 +177,7 @@ should be written to a model output netcdf file.  No value or
     )
 
     ftype = MFString(
+        type = "string",
         block = "packages",
         shape = "",
         reader = "urword",
@@ -178,6 +191,7 @@ combination of uppercase and lowercase.""",
     )
 
     fname = MFString(
+        type = "string",
         block = "packages",
         shape = "",
         reader = "urword",
@@ -191,6 +205,7 @@ the program was run.""",
     )
 
     pname = MFString(
+        type = "string",
         block = "packages",
         shape = "",
         reader = "urword",
@@ -210,6 +225,7 @@ insensitive and is stored in all upper case letters.""",
     )
 
     packages = MFList(
+        type = "recarray",
         params = {
             "ftype": ftype,
             "fname": fname,

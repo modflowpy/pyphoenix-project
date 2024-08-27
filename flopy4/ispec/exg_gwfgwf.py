@@ -11,6 +11,7 @@ class ExgGwfgwf(MFPackage):
     advanced = False
 
     auxiliary = MFString(
+        type = "string",
         block = "options",
         shape = "(naux)",
         reader = "urword",
@@ -41,6 +42,7 @@ discharge is calculated for either of the groundwater models.""",
     )
 
     boundnames = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -52,6 +54,7 @@ discharge is calculated for either of the groundwater models.""",
     )
 
     print_input = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -64,6 +67,7 @@ to the listing file immediately after it is read.""",
     )
 
     print_flows = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -77,6 +81,7 @@ BUDGET'' is specified in Output Control.""",
     )
 
     save_flows = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -90,6 +95,7 @@ the models are set up with the ``BUDGET SAVE FILE'' option.""",
     )
 
     cell_averaging = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -106,6 +112,7 @@ for CELL_AVERAGING, then the harmonic-mean method will be used.""",
     )
 
     cvoptions = MFRecord(
+        type = "record",
         params = {
             "variablecv": MFKeyword(),
             "dewatered": MFKeyword(),
@@ -121,6 +128,7 @@ for CELL_AVERAGING, then the harmonic-mean method will be used.""",
     )
 
     variablecv = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -141,6 +149,7 @@ remains constant for the entire simulation.""",
     )
 
     dewatered = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -154,6 +163,7 @@ overlying cell if the head in the underlying cell is below its top.""",
     )
 
     newton = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -167,6 +177,7 @@ dry when this option is used.""",
     )
 
     xt3d = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -179,6 +190,7 @@ connected with this GWF-GWF Exchange.""",
     )
 
     gnc_filerecord = MFRecord(
+        type = "record",
         params = {
             "gnc6": MFKeyword(),
             "filein": MFKeyword(),
@@ -195,6 +207,7 @@ connected with this GWF-GWF Exchange.""",
     )
 
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -206,6 +219,7 @@ connected with this GWF-GWF Exchange.""",
     )
 
     gnc6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -218,6 +232,7 @@ file.""",
     )
 
     gnc6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -237,6 +252,7 @@ be in model 2.""",
     )
 
     mvr_filerecord = MFRecord(
+        type = "record",
         params = {
             "mvr6": MFKeyword(),
             "filein": MFKeyword(),
@@ -253,6 +269,7 @@ be in model 2.""",
     )
 
     mvr6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -264,6 +281,7 @@ be in model 2.""",
     )
 
     mvr6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -284,6 +302,7 @@ listed as part of this exchange.""",
     )
 
     obs_filerecord = MFRecord(
+        type = "record",
         params = {
             "obs6": MFKeyword(),
             "filein": MFKeyword(),
@@ -300,6 +319,7 @@ listed as part of this exchange.""",
     )
 
     obs6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -311,6 +331,7 @@ listed as part of this exchange.""",
     )
 
     obs6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -325,6 +346,7 @@ observation type(s) supported by the GWF-GWF package.""",
     )
 
     dev_interfacemodel_on = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -338,6 +360,7 @@ only be used for development purposes.""",
     )
 
     nexg = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -349,6 +372,7 @@ only be used for development purposes.""",
     )
 
     cellidm1 = MFInteger(
+        type = "integer",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -366,6 +390,7 @@ the cell.""",
     )
 
     cellidm2 = MFInteger(
+        type = "integer",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -383,6 +408,7 @@ the cell.""",
     )
 
     ihc = MFInteger(
+        type = "integer",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -397,6 +423,7 @@ is horizontal for a vertically staggered grid.""",
     )
 
     cl1 = MFDouble(
+        type = "double",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -409,6 +436,7 @@ with cell 2.""",
     )
 
     cl2 = MFDouble(
+        type = "double",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -421,6 +449,7 @@ with cell 1.""",
     )
 
     hwva = MFDouble(
+        type = "double",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -434,6 +463,7 @@ vertical connection between cell 1 and cell 2 if IHC = 0.""",
     )
 
     aux = MFArray(
+        type = "array",
         block = "exchangedata",
         shape = "(naux)",
         reader = "urword",
@@ -448,6 +478,7 @@ variables specified in the OPTIONS block.""",
     )
 
     boundname = MFString(
+        type = "string",
         block = "exchangedata",
         shape = "",
         reader = "urword",
@@ -459,6 +490,7 @@ variables specified in the OPTIONS block.""",
     )
 
     exchangedata = MFList(
+        type = "recarray",
         params = {
             "cellidm1": cellidm1,
             "cellidm2": cellidm2,

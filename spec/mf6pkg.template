@@ -16,24 +16,30 @@ class {{c}}{{s}}(MFPackage):
       {%- if 'keyword' == params[pname].type %}
 
     {{pname}} = MFKeyword(
+        type = "keyword",
       {%- elif 'string' == params[pname].type %}
 
     {{pname}} = MFString(
+        type = "string",
       {%- elif 'double' == params[pname].type %}
         {%- if '' == params[pname].shape %}
 
     {{pname}} = MFDouble(
+        type = "double",
         {%- else %}
 
     {{pname}} = MFArray(
+        type = "array",
         {%- endif %}
       {%- elif 'integer' == params[pname].type %}
         {%- if '' == params[pname].shape %}
 
     {{pname}} = MFInteger(
+        type = "integer",
         {%- else %}
 
     {{pname}} = MFArray(
+        type = "array",
         {%- endif %}
       {%- else %}
         {%- set tokens = params[pname].type.split(' ') %}
@@ -41,6 +47,7 @@ class {{c}}{{s}}(MFPackage):
         {%- set rec = tokens.pop(0) %}
 
     {{pname}} = MFRecord(
+        type = "record",
         params = {
         {%- for token in tokens %}
             "{{token}}": {{params[pname].rectypes[loop.index-1]}},
@@ -51,6 +58,7 @@ class {{c}}{{s}}(MFPackage):
         {%- set rec = tokens.pop(0) %}
 
     {{pname}} = MFList(
+        type = "recarray",
         params = {
         {%- for token in tokens %}
             "{{token}}": {{token}},

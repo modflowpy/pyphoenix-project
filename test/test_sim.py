@@ -337,3 +337,9 @@ def test_load_sim(tmp_path):
     assert ncol == s.models[f"{name}"].resolve(
         f"sim/{name}/dis/dimensions/ncol"
     )
+
+    import os
+
+    write_dir = tmp_path / "write"
+    os.makedirs(write_dir)
+    s.write(write_dir)

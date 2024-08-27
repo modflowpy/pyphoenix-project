@@ -11,6 +11,7 @@ class SlnIms(MFPackage):
     advanced = False
 
     print_option = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -28,6 +29,7 @@ SUMMARY information. NONE is default if PRINT_OPTION is not specified.""",
     )
 
     complexity = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -59,6 +61,7 @@ LINEAR variables will be assigned the simple complexity values.""",
     )
 
     csv_output_filerecord = MFRecord(
+        type = "record",
         params = {
             "csv_output": MFKeyword(),
             "fileout": MFKeyword(),
@@ -75,6 +78,7 @@ LINEAR variables will be assigned the simple complexity values.""",
     )
 
     csv_output = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -91,6 +95,7 @@ option.""",
     )
 
     csvfile = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -109,6 +114,7 @@ and linear acceleration information for each inner iteration.""",
     )
 
     csv_outer_output_filerecord = MFRecord(
+        type = "record",
         params = {
             "csv_outer_output": MFKeyword(),
             "fileout": MFKeyword(),
@@ -125,6 +131,7 @@ and linear acceleration information for each inner iteration.""",
     )
 
     csv_outer_output = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -137,6 +144,7 @@ values outer iteration convergence output.""",
     )
 
     fileout = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -148,6 +156,7 @@ values outer iteration convergence output.""",
     )
 
     outer_csvfile = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -161,6 +170,7 @@ at the end of each outer iteration for each time step.""",
     )
 
     csv_inner_output_filerecord = MFRecord(
+        type = "record",
         params = {
             "csv_inner_output": MFKeyword(),
             "fileout": MFKeyword(),
@@ -177,6 +187,7 @@ at the end of each outer iteration for each time step.""",
     )
 
     csv_inner_output = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -189,6 +200,7 @@ values solver convergence output.""",
     )
 
     inner_csvfile = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -205,6 +217,7 @@ information for each inner iteration.""",
     )
 
     no_ptcrecord = MFRecord(
+        type = "record",
         params = {
             "no_ptc": MFKeyword(),
             "no_ptc_option": MFString(),
@@ -220,6 +233,7 @@ information for each inner iteration.""",
     )
 
     no_ptc = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -242,6 +256,7 @@ with other MODFLOW versions, as PTC is only available in MODFLOW 6.""",
     )
 
     no_ptc_option = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -259,6 +274,7 @@ specified, the NO_PTC ALL option is used.""",
     )
 
     ats_outer_maximum_fraction = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -283,6 +299,7 @@ decrease the time step length by a factor of 1 / DTADJ.""",
     )
 
     outer_hclose = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -301,6 +318,7 @@ compatibility.""",
     )
 
     outer_dvclose = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -321,6 +339,7 @@ OUTER_HCLOSE will cause MODFLOW 6 to terminate with an error.""",
     )
 
     outer_rclosebnd = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -342,6 +361,7 @@ OUTER_RCLOSEBND will cause MODFLOW 6 to terminate with an error.""",
     )
 
     outer_maximum = MFInteger(
+        type = "integer",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -355,6 +375,7 @@ problem OUTER_MAXIMUM should be 1.""",
     )
 
     under_relaxation = MFString(
+        type = "string",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -380,6 +401,7 @@ as those with the wet/dry options of MODFLOW 6.""",
     )
 
     under_relaxation_gamma = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -412,6 +434,7 @@ specified if UNDER_RELAXATION is not NONE.""",
     )
 
     under_relaxation_theta = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -431,6 +454,7 @@ is DBD.""",
     )
 
     under_relaxation_kappa = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -450,6 +474,7 @@ is DBD.""",
     )
 
     under_relaxation_momentum = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -468,6 +493,7 @@ specified if UNDER_RELAXATION is DBD.""",
     )
 
     backtracking_number = MFInteger(
+        type = "integer",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -482,6 +508,7 @@ ranges from 2 to 20; a value of 10 works well for most problems.""",
     )
 
     backtracking_tolerance = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -501,6 +528,7 @@ BACKTRACKING_NUMBER is greater than zero.""",
     )
 
     backtracking_reduction_factor = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -517,6 +545,7 @@ BACKTRACKING_NUMBER is greater than zero.""",
     )
 
     backtracking_residual_limit = MFDouble(
+        type = "double",
         block = "nonlinear",
         shape = "",
         reader = "urword",
@@ -534,6 +563,7 @@ BACKTRACKING_NUMBER is greater than zero.""",
     )
 
     inner_maximum = MFInteger(
+        type = "integer",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -549,6 +579,7 @@ sufficient for most linear problems.""",
     )
 
     inner_hclose = MFDouble(
+        type = "double",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -568,6 +599,7 @@ one can be specified in order to maintain backward compatibility.""",
     )
 
     inner_dvclose = MFDouble(
+        type = "double",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -590,6 +622,7 @@ terminate with an error.""",
     )
 
     rcloserecord = MFRecord(
+        type = "record",
         params = {
             "inner_rclose": MFDouble(),
             "rclose_option": MFString(),
@@ -605,6 +638,7 @@ terminate with an error.""",
     )
 
     inner_rclose = MFDouble(
+        type = "double",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -622,6 +656,7 @@ are the defined mf length and time.""",
     )
 
     rclose_option = MFString(
+        type = "string",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -653,6 +688,7 @@ specified, an absolute residual (infinity-norm) criterion is used.""",
     )
 
     linear_acceleration = MFString(
+        type = "string",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -667,6 +703,7 @@ method.""",
     )
 
     relaxation_factor = MFDouble(
+        type = "double",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -687,6 +724,7 @@ zero.""",
     )
 
     preconditioner_levels = MFInteger(
+        type = "integer",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -706,6 +744,7 @@ MILU(0)) are used.""",
     )
 
     preconditioner_drop_tolerance = MFDouble(
+        type = "double",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -722,6 +761,7 @@ MILU(0)) are used.""",
     )
 
     number_orthogonalizations = MFInteger(
+        type = "integer",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -738,6 +778,7 @@ appropriate. By default, NUMBER_ORTHOGONALIZATIONS is zero.""",
     )
 
     scaling_method = MFString(
+        type = "string",
         block = "linear",
         shape = "",
         reader = "urword",
@@ -753,6 +794,7 @@ matrix scaling using the L2 norm.""",
     )
 
     reordering_method = MFString(
+        type = "string",
         block = "linear",
         shape = "",
         reader = "urword",

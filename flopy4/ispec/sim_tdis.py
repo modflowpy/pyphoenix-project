@@ -11,6 +11,7 @@ class SimTdis(MFPackage):
     advanced = False
 
     time_units = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -25,6 +26,7 @@ be ``unknown'',  ``seconds'', ``minutes'', ``hours'', ``days'', or
     )
 
     start_date_time = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -40,6 +42,7 @@ datetime.""",
     )
 
     ats_filerecord = MFRecord(
+        type = "record",
         params = {
             "ats6": MFKeyword(),
             "filein": MFKeyword(),
@@ -56,6 +59,7 @@ datetime.""",
     )
 
     ats6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -69,6 +73,7 @@ file is provided separately.""",
     )
 
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -80,6 +85,7 @@ file is provided separately.""",
     )
 
     ats6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -93,6 +99,7 @@ for selected stress periods.""",
     )
 
     nper = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -104,6 +111,7 @@ for selected stress periods.""",
     )
 
     perlen = MFDouble(
+        type = "double",
         block = "perioddata",
         shape = "",
         reader = "urword",
@@ -115,6 +123,7 @@ for selected stress periods.""",
     )
 
     nstp = MFInteger(
+        type = "integer",
         block = "perioddata",
         shape = "",
         reader = "urword",
@@ -126,6 +135,7 @@ for selected stress periods.""",
     )
 
     tsmult = MFDouble(
+        type = "double",
         block = "perioddata",
         shape = "",
         reader = "urword",
@@ -141,6 +151,7 @@ perlen frac{tsmult - 1}{tsmult^{nstp}-1}$.""",
     )
 
     perioddata = MFList(
+        type = "recarray",
         params = {
             "perlen": perlen,
             "nstp": nstp,

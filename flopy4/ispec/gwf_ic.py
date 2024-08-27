@@ -11,6 +11,7 @@ class GwfIc(MFPackage):
     advanced = False
 
     export_array_ascii = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -23,6 +24,7 @@ layered ascii output files.""",
     )
 
     export_array_netcdf = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -35,6 +37,7 @@ model output netcdf file.""",
     )
 
     strt = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(nodes)",
         reader = "readarray",

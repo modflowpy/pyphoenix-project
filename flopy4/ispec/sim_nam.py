@@ -12,6 +12,7 @@ class SimNam(MFPackage):
 
     # TODO this is hand edited to avoid python continue namespace collision
     todo_continue = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -24,6 +25,7 @@ one or more solutions do not converge.""",
     )
 
     nocheck = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -37,6 +39,7 @@ default.""",
     )
 
     memory_print_option = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -53,6 +56,7 @@ is not specified.""",
     )
 
     maxerrors = MFInteger(
+        type = "integer",
         block = "options",
         shape = "",
         reader = "urword",
@@ -64,6 +68,7 @@ is not specified.""",
     )
 
     print_input = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -79,6 +84,7 @@ model routines.""",
     )
 
     hpc_filerecord = MFRecord(
+        type = "record",
         params = {
             "hpc6": MFKeyword(),
             "filein": MFKeyword(),
@@ -95,6 +101,7 @@ model routines.""",
     )
 
     hpc6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -106,6 +113,7 @@ model routines.""",
     )
 
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -117,6 +125,7 @@ model routines.""",
     )
 
     hpc6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -130,6 +139,7 @@ files.""",
     )
 
     tdis6 = MFString(
+        type = "string",
         block = "timing",
         shape = "",
         reader = "urword",
@@ -141,6 +151,7 @@ files.""",
     )
 
     mtype = MFString(
+        type = "string",
         block = "models",
         shape = "",
         reader = "urword",
@@ -152,6 +163,7 @@ files.""",
     )
 
     mfname = MFString(
+        type = "string",
         block = "models",
         shape = "",
         reader = "urword",
@@ -163,6 +175,7 @@ files.""",
     )
 
     mname = MFString(
+        type = "string",
         block = "models",
         shape = "",
         reader = "urword",
@@ -177,6 +190,7 @@ stored as upper case letters.""",
     )
 
     models = MFList(
+        type = "recarray",
         params = {
             "mtype": mtype,
             "mfname": mfname,
@@ -193,6 +207,7 @@ stored as upper case letters.""",
     )
 
     exgtype = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -204,6 +219,7 @@ stored as upper case letters.""",
     )
 
     exgfile = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -215,6 +231,7 @@ stored as upper case letters.""",
     )
 
     exgmnamea = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -226,6 +243,7 @@ stored as upper case letters.""",
     )
 
     exgmnameb = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -237,6 +255,7 @@ stored as upper case letters.""",
     )
 
     exchanges = MFList(
+        type = "recarray",
         params = {
             "exgtype": exgtype,
             "exgfile": exgfile,
@@ -254,6 +273,7 @@ stored as upper case letters.""",
     )
 
     mxiter = MFInteger(
+        type = "integer",
         block = "solutiongroup",
         shape = "",
         reader = "urword",
@@ -267,6 +287,7 @@ group, then MXITER must be 1.""",
     )
 
     slntype = MFString(
+        type = "string",
         block = "solutiongroup",
         shape = "",
         reader = "urword",
@@ -280,6 +301,7 @@ version.""",
     )
 
     slnfname = MFString(
+        type = "string",
         block = "solutiongroup",
         shape = "",
         reader = "urword",
@@ -291,6 +313,7 @@ version.""",
     )
 
     slnmnames = MFString(
+        type = "string",
         block = "solutiongroup",
         shape = "(:)",
         reader = "urword",
@@ -304,6 +327,7 @@ provides on this line.""",
     )
 
     solutiongroup = MFList(
+        type = "recarray",
         params = {
             "slntype": slntype,
             "slnfname": slnfname,
