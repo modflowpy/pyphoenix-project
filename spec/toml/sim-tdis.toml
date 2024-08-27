@@ -1,0 +1,195 @@
+component = "SIM"
+subcomponent = "TDIS"
+blocknames = [ "options", "dimensions", "perioddata",]
+multipkg = false
+stress = false
+advanced = false
+
+[block.options.time_units]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "time unit"
+description = "is the time units of the simulation.  This is a text string that is used as a label within model output files.  Values for time_units may be ``unknown'',  ``seconds'', ``minutes'', ``hours'', ``days'', or ``years''.  The default time unit is ``unknown''."
+deprecated = ""
+
+[block.options.start_date_time]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "starting date and time"
+description = "is the starting date and time of the simulation.  This is a text string that is used as a label within the simulation list file.  The value has no effect on the simulation.  The recommended format for the starting date and time is described at https://www.w3.org/TR/NOTE-datetime."
+deprecated = ""
+
+[block.options.ats_filerecord]
+type = "record ats6 filein ats6_filename"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = ""
+description = ""
+deprecated = ""
+
+[block.options.ats6]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "ats keyword"
+description = "keyword to specify that record corresponds to an adaptive time step (ATS) input file.  The behavior of ATS and a description of the input file is provided separately."
+deprecated = ""
+
+[block.options.filein]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "file keyword"
+description = "keyword to specify that an input filename is expected next."
+deprecated = ""
+
+[block.options.ats6_filename]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = true
+numeric_index = false
+longname = "file name of adaptive time series information"
+description = "defines an adaptive time step (ATS) input file defining ATS controls.  Records in the ATS file can be used to override the time step behavior for selected stress periods."
+deprecated = ""
+
+[block.dimensions.nper]
+type = "integer"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+default_value = "1"
+numeric_index = false
+longname = "number of stress periods"
+description = "is the number of stress periods for the simulation."
+deprecated = ""
+
+[block.perioddata.perlen]
+type = "double"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "length of stress period"
+description = "is the length of a stress period."
+deprecated = ""
+
+[block.perioddata.nstp]
+type = "integer"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "number of time steps"
+description = "is the number of time steps in a stress period."
+deprecated = ""
+
+[block.perioddata.tsmult]
+type = "double"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "number of time steps"
+description = "is the multiplier for the length of successive time steps. The length of a time step is calculated by multiplying the length of the previous time step by TSMULT. The length of the first time step, $Delta t_1$, is related to PERLEN, NSTP, and TSMULT by the relation $Delta t_1= perlen frac{tsmult - 1}{tsmult^{nstp}-1}$."
+deprecated = ""
+
+[block.perioddata.perioddata]
+type = "recarray perlen nstp tsmult"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+default_value = "((1.0, 1, 1.0),)"
+numeric_index = false
+longname = "stress period time information"
+description = ""
+deprecated = ""

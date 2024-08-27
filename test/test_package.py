@@ -11,19 +11,31 @@ class TestPackage(MFPackage):
 
     k = MFKeyword(
         block="options",
+        type="keyword",
         description="keyword",
     )
     i = MFInteger(
         block="options",
+        type="integer",
         description="int",
     )
     d = MFDouble(
         block="options",
+        type="double",
         description="double",
     )
-    s = MFString(block="options", description="string", optional=False)
-    f = MFFilename(block="options", description="filename", optional=False)
-    a = MFArray(block="packagedata", description="array", shape=(3))
+    s = MFString(
+        block="options", type="string", description="string", optional=False
+    )
+    f = MFFilename(
+        block="options",
+        type="filename",
+        description="filename",
+        optional=False,
+    )
+    a = MFArray(
+        block="packagedata", type="array", description="array", shape=(3)
+    )
 
 
 class TestGwfIc(MFPackage):
@@ -246,8 +258,11 @@ def test_load_write(tmp_path):
         f.write("END PACKAGEDATA\n")
 
     # test package load
+    kwargs = {}
+    kwargs["mempath"] = f"{name}/test"
+    kwargs["ftype"] = "test"
     with open(fpth, "r") as f:
-        package = TestPackage.load(f)
+        package = TestPackage.load(f, **kwargs)
 
         # check block and parameter specifications
         assert len(package.blocks) == 2
@@ -292,9 +307,12 @@ def test_loadfail_gwfic(tmp_path):
         f.write("END OPTIONS\n")
 
     # test package load
+    kwargs = {}
+    kwargs["mempath"] = f"{name}/ic"
+    kwargs["ftype"] = "ic6"
     with open(fpth, "r") as f:
         try:
-            TestGwfIc.load(f)
+            TestGwfIc.load(f, **kwargs)
         except ValueError as e:
             assert "not_an_option" in str(e)
 
@@ -314,8 +332,11 @@ def test_load_gwfic(tmp_path):
         f.write("END GRIDDATA\n")
 
     # test package load
+    kwargs = {}
+    kwargs["mempath"] = f"{name}/ic"
+    kwargs["ftype"] = "ic6"
     with open(fpth, "r") as f:
-        gwfic = TestGwfIc.load(f)
+        gwfic = TestGwfIc.load(f, **kwargs)
 
     assert len(TestGwfIc.blocks) == len(gwfic.blocks) == 2
     assert len(TestGwfIc.params) == len(gwfic.params) == 3
@@ -374,8 +395,11 @@ def test_load_gwfdis(tmp_path):
         f.write("END GRIDDATA\n")
 
         # test package load
+    kwargs = {}
+    kwargs["mempath"] = f"{name}/dis"
+    kwargs["ftype"] = "dis6"
     with open(fpth, "r") as f:
-        gwfdis = TestGwfDis.load(f)
+        gwfdis = TestGwfDis.load(f, **kwargs)
 
     assert len(gwfdis.blocks) == 3
     assert len(gwfdis.params) == 9

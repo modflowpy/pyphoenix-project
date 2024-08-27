@@ -8,19 +8,25 @@ from typing import Any, Dict, Optional
 from warnings import warn
 
 from flopy4.array import MFArray
-from flopy4.compound import MFKeystring, MFRecord, get_compound
+from flopy4.compound import MFKeystring, MFList, MFRecord, get_compound
 from flopy4.param import MFParam, MFParams
 from flopy4.scalar import MFScalar
 from flopy4.utils import find_upper, strip
 
 
-def get_param(params: Dict[str, MFParam], name: str) -> MFParam:
+def get_param(params: Dict[str, MFParam], block: str, name: str) -> MFParam:
     """
     Find the block parameter with the given name. The parameter may be
     a constituent of a compound `MFRecord` or `MFKeystring` parameter.
     """
 
-    param = next(iter(get_compound(params, scalar=name).values()), None)
+    param = params.get(block)
+    # TODO: assumes MFList param name is block name
+    if param and isinstance(param, MFList):
+        param.name = block
+    else:
+        param = next(iter(get_compound(params, scalar=name).values()), None)
+
     if param is None:
         param = params.get(name)
         if param is None:
@@ -241,7 +247,9 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             elif key == "end":
                 break
             elif found:
-                param = get_param(members, name=key)
+                ptype = None
+                param = get_param(members, block=name, name=key)
+
                 if param is None:
                     continue
                 param.block = name
@@ -249,18 +257,21 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                 spec = asdict(param)
                 kwrgs = {**kwargs, **spec}
                 ptype = type(param)
-                if ptype is MFArray:
+
+                if ptype is MFList:
+                    kwrgs["params"] = param.data.copy()
+                elif ptype is MFRecord:
+                    kwrgs["params"] = param.data.copy()
+                elif ptype is MFKeystring:
+                    kwrgs["params"] = param.data.copy()
+                elif ptype is MFArray:
                     # TODO: inject from model somehow?
                     # and remove special handling here
                     kwrgs["cwd"] = ""
                     kwrgs["mempath"] = f"{mempath}/{name}"
-                else:
+                if ptype is not MFArray:
                     kwrgs.pop("model_shape", None)
-                    kwrgs.pop("params", None)
-                if ptype is MFRecord:
-                    kwrgs["params"] = param.data.copy()
-                if ptype is MFKeystring:
-                    kwrgs["params"] = param.data.copy()
+                    kwrgs.pop("blk_params", None)
 
                 params[param.name] = ptype.load(f, **kwrgs)
 

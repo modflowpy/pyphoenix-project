@@ -1,14 +1,17 @@
 # generated file
-import numpy as np
-
 from flopy4.array import MFArray
-from flopy4.block import MFBlock
+from flopy4.compound import MFRecord, MFList
 from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
-from flopy4.compound import MFRecord
+
 
 class GwfNam(MFPackage):
+    multipkg = False
+    stress = False
+    advanced = False
+
     list = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -22,7 +25,9 @@ GWF model name file and the '.lst' extension.  For example, if the GWF
 name file is called ``my.model.nam'' then the list file will be called
 ``my.model.lst''.""",
     )
+
     print_input = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -32,7 +37,9 @@ name file is called ``my.model.nam'' then the list file will be called
         description =
 """REPLACE print_input {'{#1}': 'all model stress package'}""",
     )
+
     print_flows = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -42,7 +49,9 @@ name file is called ``my.model.nam'' then the list file will be called
         description =
 """REPLACE print_flows {'{#1}': 'all model package'}""",
     )
+
     save_flows = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -52,7 +61,9 @@ name file is called ``my.model.nam'' then the list file will be called
         description =
 """REPLACE save_flows {'{#1}': 'all model package'}""",
     )
+
     newtonoptions = MFRecord(
+        type = "record",
         params = {
             "newton": MFKeyword(),
             "under_relaxation": MFKeyword(),
@@ -66,7 +77,9 @@ name file is called ``my.model.nam'' then the list file will be called
         description =
 """none""",
     )
+
     newton = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -80,7 +93,9 @@ packages that support calculation of Newton-Raphson terms for
 groundwater exchanges. Cells will not dry when this option is used. By
 default, the Newton-Raphson formulation is not applied.""",
     )
+
     under_relaxation = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -93,7 +108,9 @@ under-relaxed when water levels fall below the bottom of the model
 below any given cell. By default, Newton-Raphson UNDER_RELAXATION is
 not applied.""",
     )
+
     export_netcdf = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -105,7 +122,9 @@ not applied.""",
 should be written to a model output netcdf file.  No value or
 ``UGRID'' (ugrid based export) values are supported.""",
     )
+
     nc_filerecord = MFRecord(
+        type = "record",
         params = {
             "netcdf": MFKeyword(),
             "filein": MFKeyword(),
@@ -120,7 +139,9 @@ should be written to a model output netcdf file.  No value or
         description =
 """netcdf config filerecord""",
     )
+
     netcdf = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -130,7 +151,9 @@ should be written to a model output netcdf file.  No value or
         description =
 """keyword to specify that record corresponds to a netcdf input file.""",
     )
+
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -140,7 +163,9 @@ should be written to a model output netcdf file.  No value or
         description =
 """keyword to specify that an input filename is expected next.""",
     )
+
     netcdf_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -150,7 +175,9 @@ should be written to a model output netcdf file.  No value or
         description =
 """defines a netcdf input file.""",
     )
+
     ftype = MFString(
+        type = "string",
         block = "packages",
         shape = "",
         reader = "urword",
@@ -162,7 +189,9 @@ should be written to a model output netcdf file.  No value or
 shown in table~ref{table:ftype-gwf}. Ftype may be entered in any
 combination of uppercase and lowercase.""",
     )
+
     fname = MFString(
+        type = "string",
         block = "packages",
         shape = "",
         reader = "urword",
@@ -174,7 +203,9 @@ combination of uppercase and lowercase.""",
 file should be included if the file is not located in the folder where
 the program was run.""",
     )
+
     pname = MFString(
+        type = "string",
         block = "packages",
         shape = "",
         reader = "urword",
@@ -191,4 +222,21 @@ PNAME is specified for a stress package, then PNAME will be used in
 the flow budget table in the listing file; it will also be used for
 the text entry in the cell-by-cell budget file.  PNAME is case
 insensitive and is stored in all upper case letters.""",
+    )
+
+    packages = MFList(
+        type = "recarray",
+        params = {
+            "ftype": ftype,
+            "fname": fname,
+            "pname": pname,
+        },
+        block = "packages",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""package list""",
+        description =
+"""""",
     )

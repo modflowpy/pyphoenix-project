@@ -1,14 +1,18 @@
 # generated file
-import numpy as np
-
 from flopy4.array import MFArray
-from flopy4.block import MFBlock
+from flopy4.compound import MFRecord, MFList
 from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
-from flopy4.compound import MFRecord
+
 
 class SimNam(MFPackage):
-    continue = MFKeyword(
+    multipkg = False
+    stress = False
+    advanced = False
+
+    # TODO this is hand edited to avoid python continue namespace collision
+    todo_continue = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -19,7 +23,9 @@ class SimNam(MFPackage):
 """keyword flag to indicate that the simulation should continue even if
 one or more solutions do not converge.""",
     )
+
     nocheck = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -31,7 +37,9 @@ one or more solutions do not converge.""",
 not be called prior to each time step. Checks are performed by
 default.""",
     )
+
     memory_print_option = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -46,7 +54,9 @@ simulation component. ALL means print information for each variable
 stored in the memory manager. NONE is default if MEMORY_PRINT_OPTION
 is not specified.""",
     )
+
     maxerrors = MFInteger(
+        type = "integer",
         block = "options",
         shape = "",
         reader = "urword",
@@ -56,7 +66,9 @@ is not specified.""",
         description =
 """maximum number of errors that will be stored and printed.""",
     )
+
     print_input = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -70,7 +82,9 @@ will be written for those packages that support newer input data model
 routines.  Not all packages are supported yet by the newer input data
 model routines.""",
     )
+
     hpc_filerecord = MFRecord(
+        type = "record",
         params = {
             "hpc6": MFKeyword(),
             "filein": MFKeyword(),
@@ -85,7 +99,9 @@ model routines.""",
         description =
 """hpc record""",
     )
+
     hpc6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -95,7 +111,9 @@ model routines.""",
         description =
 """keyword to specify that record corresponds to a hpc file.""",
     )
+
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -105,7 +123,9 @@ model routines.""",
         description =
 """keyword to specify that an input filename is expected next.""",
     )
+
     hpc6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -117,7 +137,9 @@ model routines.""",
 See the ``HPC File'' section for instructions for preparing HPC input
 files.""",
     )
+
     tdis6 = MFString(
+        type = "string",
         block = "timing",
         shape = "",
         reader = "urword",
@@ -127,7 +149,9 @@ files.""",
         description =
 """is the name of the Temporal Discretization (TDIS) Input File.""",
     )
+
     mtype = MFString(
+        type = "string",
         block = "models",
         shape = "",
         reader = "urword",
@@ -137,7 +161,9 @@ files.""",
         description =
 """is the type of model to add to simulation.""",
     )
+
     mfname = MFString(
+        type = "string",
         block = "models",
         shape = "",
         reader = "urword",
@@ -147,7 +173,9 @@ files.""",
         description =
 """is the file name of the model name file.""",
     )
+
     mname = MFString(
+        type = "string",
         block = "models",
         shape = "",
         reader = "urword",
@@ -160,7 +188,26 @@ files.""",
 name is case insensitive; any lowercase letters are converted and
 stored as upper case letters.""",
     )
+
+    models = MFList(
+        type = "recarray",
+        params = {
+            "mtype": mtype,
+            "mfname": mfname,
+            "mname": mname,
+        },
+        block = "models",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""list of models""",
+        description =
+"""is the list of model types, model name files, and model names.""",
+    )
+
     exgtype = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -170,7 +217,9 @@ stored as upper case letters.""",
         description =
 """is the exchange type.""",
     )
+
     exgfile = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -180,7 +229,9 @@ stored as upper case letters.""",
         description =
 """is the input file for the exchange.""",
     )
+
     exgmnamea = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -190,7 +241,9 @@ stored as upper case letters.""",
         description =
 """is the name of the first model that is part of this exchange.""",
     )
+
     exgmnameb = MFString(
+        type = "string",
         block = "exchanges",
         shape = "",
         reader = "urword",
@@ -200,7 +253,27 @@ stored as upper case letters.""",
         description =
 """is the name of the second model that is part of this exchange.""",
     )
+
+    exchanges = MFList(
+        type = "recarray",
+        params = {
+            "exgtype": exgtype,
+            "exgfile": exgfile,
+            "exgmnamea": exgmnamea,
+            "exgmnameb": exgmnameb,
+        },
+        block = "exchanges",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""list of exchanges""",
+        description =
+"""is the list of exchange types, exchange files, and model names.""",
+    )
+
     mxiter = MFInteger(
+        type = "integer",
         block = "solutiongroup",
         shape = "",
         reader = "urword",
@@ -212,7 +285,9 @@ stored as upper case letters.""",
 The default value is 1.  If there is only one solution in the solution
 group, then MXITER must be 1.""",
     )
+
     slntype = MFString(
+        type = "string",
         block = "solutiongroup",
         shape = "",
         reader = "urword",
@@ -224,7 +299,9 @@ group, then MXITER must be 1.""",
 Explicit Model Solution (EMS6) are the only supported options in this
 version.""",
     )
+
     slnfname = MFString(
+        type = "string",
         block = "solutiongroup",
         shape = "",
         reader = "urword",
@@ -234,7 +311,9 @@ version.""",
         description =
 """name of file containing solution input.""",
     )
+
     slnmnames = MFString(
+        type = "string",
         block = "solutiongroup",
         shape = "(:)",
         reader = "urword",
@@ -245,4 +324,21 @@ version.""",
 """is the array of model names to add to this solution.  The number of
 model names is determined by the number of model names the user
 provides on this line.""",
+    )
+
+    solutiongroup = MFList(
+        type = "recarray",
+        params = {
+            "slntype": slntype,
+            "slnfname": slnfname,
+            "slnmnames": slnmnames,
+        },
+        block = "solutiongroup",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""solution type and models in the solution""",
+        description =
+"""is the list of solution types and models in the solution.""",
     )

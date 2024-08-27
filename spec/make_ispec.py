@@ -40,6 +40,7 @@ class Toml2IPkg:
             raise ValueError("FileSystem NO-OPT")
 
         jinja_blocks = []
+        ra_blocks = []
         for b in tin["blocknames"]:
             unsupported = []
 
@@ -47,9 +48,13 @@ class Toml2IPkg:
                 ptype = tin["block"][b][blkparam]["type"]
                 desc = tin["block"][b][blkparam]["description"]
                 lname = tin["block"][b][blkparam]["longname"]
-                tin["block"][b][blkparam]["description"] = '\n'.join(textwrap.wrap(desc, 70))
-                tin["block"][b][blkparam]["longname"] = '\n'.join(textwrap.wrap(lname, 70))
-                if ptype.startswith("record"):
+                tin["block"][b][blkparam]["description"] = "\n".join(
+                    textwrap.wrap(desc, 70)
+                )
+                tin["block"][b][blkparam]["longname"] = "\n".join(
+                    textwrap.wrap(lname, 70)
+                )
+                if ptype.startswith("record") or ptype.startswith("recarray"):
                     recparams = ptype.split()
                     recparams.remove(recparams[0])
                     typelist = []
@@ -68,16 +73,24 @@ class Toml2IPkg:
                                 typelist.append(f'MFArray(shape="{s}")')
                         elif t == "double":
                             if s == "":
-                                typelist.append("MFDouble")
+                                typelist.append("MFDouble()")
                             else:
                                 # todo add init args
                                 typelist.append(f'MFArray(shape="{s}")')
+                        elif t.startswith("keystring"):
+                            unsupported.append(blkparam)
+                            typelist.clear()
+                            break
                         else:
                             raise ValueError(f"Cannot add record type => {t}")
-                    tin["block"][b][blkparam]["rectypes"] = typelist
-                elif ptype.startswith("recarray") or ptype.startswith(
-                    "keystring"
-                ):
+                    if ptype.startswith("record"):
+                        tin["block"][b][blkparam]["rectypes"] = typelist
+                    else:
+                        tin["block"][b][blkparam]["ratypes"] = typelist
+                        ra_blocks.append(b)
+                # elif ptype.startswith("recarray"):
+                #    print(f"{tin['block'][b][blkparam]}")
+                elif ptype.startswith("keystring"):
                     unsupported.append(blkparam)
 
             jinja_d = {}
@@ -93,7 +106,9 @@ class Toml2IPkg:
         subcomp = tin["subcomponent"].title()
         fspec = f"{IPKG_PATH}/{comp.lower()}_{subcomp.lower()}.py"
 
-        psource = tout.render(c=comp, s=subcomp, block_list=jinja_blocks)
+        psource = tout.render(
+            c=comp, s=subcomp, block_list=jinja_blocks, ra_blocks=ra_blocks
+        )
 
         with open(fspec, "w") as f:
             f.write(psource)
@@ -121,7 +136,6 @@ class Toml2IModel:
     ):
         """Toml2IModel init"""
 
-
         tout = None
 
         with open(f"{PROJ_ROOT}/spec/mf6model.template") as f:
@@ -131,12 +145,18 @@ class Toml2IModel:
             raise ValueError("FileSystem NO-OPT")
 
         for comp in component_d:
-            if comp != "Sim" and comp != "Utils":
+            if (
+                comp != "Sim"
+                and comp != "Utils"
+                and comp != "Sln"
+                and comp != "Exg"
+            ):
                 fspec = f"{IPKG_PATH}/{comp.lower()}_model.py"
                 component_d[comp].sort()
                 psource = tout.render(c=comp, pkg_list=component_d[comp])
                 with open(fspec, "w") as f:
                     f.write(psource)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

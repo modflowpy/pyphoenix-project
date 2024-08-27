@@ -12,12 +12,12 @@ from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
 class TestBlock(MFBlock):
     __test__ = False  # tell pytest not to collect
 
-    k = MFKeyword(description="keyword")
-    i = MFInteger(description="int")
-    d = MFDouble(description="double")
-    s = MFString(description="string", optional=False)
-    f = MFFilename(description="filename", optional=False)
-    a = MFArray(description="array", shape=(3,))
+    k = MFKeyword(description="keyword", type="keyword")
+    i = MFInteger(description="int", type="integer")
+    d = MFDouble(description="double", type="double")
+    s = MFString(description="string", optional=False, type="string")
+    f = MFFilename(description="filename", optional=False, type="filename")
+    a = MFArray(description="array", shape=(3,), type="array")
     r = MFRecord(
         params={
             "rk": MFKeyword(),
@@ -26,6 +26,7 @@ class TestBlock(MFBlock):
         },
         description="record",
         optional=False,
+        type="record",
     )
 
 
@@ -80,6 +81,8 @@ def test_load_write(tmp_path):
         f.write("  S value\n")
         f.write(f"  F FILEIN {fpth}\n")
         f.write("  R RK RI 2 RD 2.0\n")
+        # f.write("  RK RI 2 RD 2.0\n")
+        # f.write("  RK 2 2.0\n")
         f.write("  A\n    INTERNAL\n      1.0 2.0 3.0\n")
         f.write(f"END {name.upper()}\n")
 

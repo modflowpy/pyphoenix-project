@@ -123,9 +123,11 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     def __init__(
         self,
         name: Optional[str] = None,
+        mempath: Optional[str] = None,
         blocks: Optional[Dict[str, Dict]] = None,
     ):
         self.name = name
+        self.mempath = mempath
         super().__init__(blocks=blocks)
 
     def __getattribute__(self, name: str) -> Any:
@@ -238,6 +240,10 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         params = {}
 
         mempath = kwargs.pop("mempath", None)
+        pname = strip(mempath.split("/")[-1])
+        ftype = kwargs.pop("ftype", None)
+        ptype = ftype.replace("6", "")
+        kwargs.pop("modeltype", None)
 
         while True:
             pos = f.tell()
@@ -255,13 +261,14 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
                 if block is None:
                     continue
                 f.seek(pos)
-                kwargs["params"] = params
-                kwargs["mempath"] = f"{mempath}/{name}"
+                kwargs["blk_params"] = params
+                # TODO: pname if multi-instance
+                kwargs["mempath"] = f"{mempath}/{ptype}"
                 blocks[name] = type(block).load(f, **kwargs)
                 if name == "options" or name == "dimensions":
                     params[name] = blocks[name].params
 
-        return cls(blocks=blocks)
+        return cls(blocks=blocks, name=pname, mempath=mempath)
 
     def write(self, f, **kwargs):
         """Write the package to file."""

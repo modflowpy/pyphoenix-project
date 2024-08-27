@@ -1,14 +1,17 @@
 # generated file
-import numpy as np
-
 from flopy4.array import MFArray
-from flopy4.block import MFBlock
+from flopy4.compound import MFRecord, MFList
 from flopy4.package import MFPackage
 from flopy4.scalar import MFDouble, MFFilename, MFInteger, MFKeyword, MFString
-from flopy4.compound import MFRecord
+
 
 class GweDis(MFPackage):
+    multipkg = False
+    stress = False
+    advanced = False
+
     length_units = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -20,7 +23,9 @@ class GweDis(MFPackage):
 ``METERS'', or ``CENTIMETERS''.  If not specified, the default is
 ``UNKNOWN''.""",
     )
+
     nogrb = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -30,7 +35,9 @@ class GweDis(MFPackage):
         description =
 """keyword to deactivate writing of the binary grid file.""",
     )
+
     xorigin = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -43,7 +50,9 @@ value of zero is assigned if not specified.  The value for XORIGIN
 does not affect the model simulation, but it is written to the binary
 grid file so that postprocessors can locate the grid in space.""",
     )
+
     yorigin = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -56,7 +65,9 @@ specified, then a default value equal to zero is used.  The value for
 YORIGIN does not affect the model simulation, but it is written to the
 binary grid file so that postprocessors can locate the grid in space.""",
     )
+
     angrot = MFDouble(
+        type = "double",
         block = "options",
         shape = "",
         reader = "urword",
@@ -70,7 +81,9 @@ assigned.  The value for ANGROT does not affect the model simulation,
 but it is written to the binary grid file so that postprocessors can
 locate the grid in space.""",
     )
+
     export_array_ascii = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -81,7 +94,9 @@ locate the grid in space.""",
 """keyword that specifies input griddata arrays should be written to
 layered ascii output files.""",
     )
+
     export_array_netcdf = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -92,7 +107,9 @@ layered ascii output files.""",
 """keyword that specifies input griddata arrays should be written to the
 model output netcdf file.""",
     )
+
     ncf_filerecord = MFRecord(
+        type = "record",
         params = {
             "ncf6": MFKeyword(),
             "filein": MFKeyword(),
@@ -107,7 +124,9 @@ model output netcdf file.""",
         description =
 """""",
     )
+
     ncf6 = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -118,7 +137,9 @@ model output netcdf file.""",
 """keyword to specify that record corresponds to a netcdf configuration
 (NCF) file.""",
     )
+
     filein = MFKeyword(
+        type = "keyword",
         block = "options",
         shape = "",
         reader = "urword",
@@ -128,7 +149,9 @@ model output netcdf file.""",
         description =
 """keyword to specify that an input filename is expected next.""",
     )
+
     ncf6_filename = MFString(
+        type = "string",
         block = "options",
         shape = "",
         reader = "urword",
@@ -138,7 +161,9 @@ model output netcdf file.""",
         description =
 """defines a netcdf configuration (NCF) input file.""",
     )
+
     nlay = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -148,7 +173,9 @@ model output netcdf file.""",
         description =
 """is the number of layers in the model grid.""",
     )
+
     nrow = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -158,7 +185,9 @@ model output netcdf file.""",
         description =
 """is the number of rows in the model grid.""",
     )
+
     ncol = MFInteger(
+        type = "integer",
         block = "dimensions",
         shape = "",
         reader = "urword",
@@ -168,7 +197,9 @@ model output netcdf file.""",
         description =
 """is the number of columns in the model grid.""",
     )
+
     delr = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol)",
         reader = "readarray",
@@ -178,7 +209,9 @@ model output netcdf file.""",
         description =
 """is the column spacing in the row direction.""",
     )
+
     delc = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(nrow)",
         reader = "readarray",
@@ -188,7 +221,9 @@ model output netcdf file.""",
         description =
 """is the row spacing in the column direction.""",
     )
+
     top = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol, nrow)",
         reader = "readarray",
@@ -198,7 +233,9 @@ model output netcdf file.""",
         description =
 """is the top elevation for each cell in the top model layer.""",
     )
+
     botm = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol, nrow, nlay)",
         reader = "readarray",
@@ -208,7 +245,9 @@ model output netcdf file.""",
         description =
 """is the bottom elevation for each cell.""",
     )
+
     idomain = MFArray(
+        type = "array",
         block = "griddata",
         shape = "(ncol, nrow, nlay)",
         reader = "readarray",

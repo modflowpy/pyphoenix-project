@@ -1,6 +1,9 @@
 from abc import ABCMeta
+from pathlib import Path
 from typing import Any, Dict, Optional
 
+from flopy4.block import MFBlock
+from flopy4.ispec.gwf_nam import GwfNam
 from flopy4.package import MFPackage, MFPackages
 from flopy4.utils import strip
 
@@ -40,10 +43,14 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
         self,
         name: Optional[str] = None,
         mempath: Optional[str] = None,
-        packages: Optional[Dict[str, Dict]] = None,
+        mtype: Optional[str] = None,
+        packages: Optional[Dict[str, MFPackage]] = None,
+        nam: Optional[MFPackage] = None,
     ):
         self.name = name
         self.mempath = mempath
+        self.mtype = mtype
+        self._p = packages
 
         super().__init__(packages=packages)
 
@@ -52,6 +59,7 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
 
         if name + "6" in self_type.packages:
             return self.value[name]
+            # return self.packages[name]
 
         if name == "packages":
             return self.value
@@ -73,60 +81,74 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
 
     @classmethod
     def load(cls, f, **kwargs):
-        """Load the package from file."""
+        """Load the model name file."""
         packages = dict()
         members = cls.packages
 
         mempath = kwargs.pop("mempath", None)
+        mtype = kwargs.pop("mtype", None)
         mname = strip(mempath.split("/")[-1])
+        kwargs["mempath"] = f"{mempath}"
+        kwargs["name"] = f"{mname}.nam"
+        kwargs["mname"] = mname
+        kwargs["ftype"] = "nam6"
+
+        packages["nam6"] = GwfNam.load(f, **kwargs)
+
+        MFModel.load_packages(members, packages["nam6"], packages, **kwargs)
+        return cls(name=mname, mempath=mempath, mtype=mtype, packages=packages)
+
+    @staticmethod
+    def load_packages(
+        members,
+        blocks: Dict[str, MFBlock],
+        packages: Dict[str, MFPackage],
+        mempath,
+        **kwargs,
+    ):
+        """Load model name file packages"""
+        if "ftype" not in blocks.params["packages"]:
+            # packages block was empty
+            return
+        kwargs.pop("mname", None)
         model_shape = None
-
-        while True:
-            # pos = f.tell()
-            line = f.readline()
-            if line == "":
-                break
-            if line == "\n":
+        assert "packages" in blocks
+        for param_name, param in blocks["packages"].items():
+            if param_name != "packages":
                 continue
-            line = strip(line).lower()
-            words = line.split()
-            # TODO: Temporary code. Reimplement below to load
-            #       dfn block specification with MFList support
-            if words[0] == "begin" and words[1] == "packages":
-                count = 0
-                while True:
-                    count += 1
-                    line = f.readline()
-                    line = strip(line).lower()
-                    words = line.split()
-                    if words[0] == "end":
-                        break
-                    elif len(words) > 1:
-                        ptype = words[0]
-                        fpth = words[1]
-                        # TODO: pname should be type (remove trailing 6)
-                        #       if base (not multi-instance see example
-                        #       spec/ipkg/gwf_ic.v2.py)
-                        if len(words) > 2:
-                            pname = words[2]
-                        else:
-                            pname = f"{ptype}-{count}"
-                    package = members.get(ptype, None)
-                    with open(fpth, "r") as f_pkg:
-                        kwargs["model_shape"] = model_shape
-                        kwargs["mempath"] = f"{mempath}/{pname}"
-                        packages[pname] = type(package).load(f_pkg, **kwargs)
-                        if ptype == "dis6":
-                            nlay = packages[pname].params["nlay"]
-                            nrow = packages[pname].params["nrow"]
-                            ncol = packages[pname].params["ncol"]
-                            model_shape = (nlay, nrow, ncol)
-                        elif ptype == "disv6":
-                            nlay = packages[pname].params["nlay"]
-                            ncpl = packages[pname].params["ncpl"]
-                            model_shape = (nlay, ncpl)
-                        elif ptype == "disu6":
-                            nodes = packages[pname].params["nodes"]
-                            model_shape = nodes
+            assert "ftype" in param.value
+            assert "fname" in param.value
+            assert "pname" in param.value
+            for i in range(len(param.value["ftype"])):
+                ftype = param.value["ftype"][i]
+                fname = param.value["fname"][i]
+                pname = param.value["pname"][i]
+                package = members.get(ftype.lower(), None)
+                with open(fname, "r") as f:
+                    kwargs["model_shape"] = model_shape
+                    kwargs["mempath"] = f"{mempath}/{pname}"
+                    kwargs["ftype"] = ftype.lower()
+                    packages[pname] = type(package).load(f, **kwargs)
+                    if ftype.lower() == "dis6":
+                        nlay = packages[pname].params["nlay"]
+                        nrow = packages[pname].params["nrow"]
+                        ncol = packages[pname].params["ncol"]
+                        model_shape = (nlay, nrow, ncol)
+                    elif ftype.lower() == "disv6":
+                        nlay = packages[pname].params["nlay"]
+                        ncpl = packages[pname].params["ncpl"]
+                        model_shape = (nlay, ncpl)
+                    elif ftype.lower() == "disu6":
+                        nodes = packages[pname].params["nodes"]
+                        model_shape = nodes
 
-        return cls(name=mname, mempath=mempath, packages=packages)
+    def write(self, basepath, **kwargs):
+        """Write the model to files."""
+        path = Path(basepath)
+        for p in self._p:
+            if self._p[p].name.endswith(".nam"):
+                with open(path / self._p[p].name, "w") as f:
+                    self._p[p].write(f)
+            else:
+                with open(path / self._p[p].name, "w") as f:
+                    self._p[p].write(f)

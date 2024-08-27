@@ -175,23 +175,6 @@ longname = "name of tdis input file"
 description = "is the name of the Temporal Discretization (TDIS) Input File."
 deprecated = ""
 
-[block.models.models]
-type = "recarray mtype mfname mname"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-numeric_index = false
-longname = "list of models"
-description = "is the list of model types, model name files, and model names."
-deprecated = ""
-
 [block.models.mtype]
 type = "string"
 block_variable = false
@@ -243,8 +226,8 @@ longname = "name of model"
 description = "is the user-assigned name of the model.  The model name cannot exceed 16 characters and must not have blanks within the name.  The model name is case insensitive; any lowercase letters are converted and stored as upper case letters."
 deprecated = ""
 
-[block.exchanges.exchanges]
-type = "recarray exgtype exgfile exgmnamea exgmnameb"
+[block.models.models]
+type = "recarray mtype mfname mname"
 block_variable = false
 valid = []
 shape = ""
@@ -256,8 +239,8 @@ reader = "urword"
 optional = false
 preserve_case = false
 numeric_index = false
-longname = "list of exchanges"
-description = "is the list of exchange types, exchange files, and model names."
+longname = "list of models"
+description = "is the list of model types, model name files, and model names."
 deprecated = ""
 
 [block.exchanges.exgtype]
@@ -328,6 +311,23 @@ longname = "name of model B"
 description = "is the name of the second model that is part of this exchange."
 deprecated = ""
 
+[block.exchanges.exchanges]
+type = "recarray exgtype exgfile exgmnamea exgmnameb"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "list of exchanges"
+description = "is the list of exchange types, exchange files, and model names."
+deprecated = ""
+
 [block.solutiongroup.mxiter]
 type = "integer"
 block_variable = false
@@ -343,23 +343,6 @@ preserve_case = false
 numeric_index = false
 longname = "maximum solution group iterations"
 description = "is the maximum number of outer iterations for this solution group.  The default value is 1.  If there is only one solution in the solution group, then MXITER must be 1."
-deprecated = ""
-
-[block.solutiongroup.solutiongroup]
-type = "recarray slntype slnfname slnmnames"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-numeric_index = false
-longname = "solution type and models in the solution"
-description = "is the list of solution types and models in the solution."
 deprecated = ""
 
 [block.solutiongroup.slntype]
@@ -411,4 +394,21 @@ preserve_case = false
 numeric_index = false
 longname = "array of model names in this solution"
 description = "is the array of model names to add to this solution.  The number of model names is determined by the number of model names the user provides on this line."
+deprecated = ""
+
+[block.solutiongroup.solutiongroup]
+type = "recarray slntype slnfname slnmnames"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "solution type and models in the solution"
+description = "is the list of solution types and models in the solution."
 deprecated = ""

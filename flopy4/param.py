@@ -237,4 +237,12 @@ class MFParams(UserDict):
     def write(self, f, **kwargs):
         """Write the parameters to file."""
         for param in self.values():
-            param.write(f, **kwargs)
+            if param.type == "record" or param.type == "recarray":
+                if len(self.params[param.name]):
+                    param.write(f, **kwargs)
+            elif param.type is None:
+                raise TypeError(
+                    f"Unknown specification type for param '{param.name}'"
+                )
+            elif self.params[param.name] is not None:
+                param.write(f, **kwargs)
