@@ -16,8 +16,8 @@ from pandas import DataFrame
 # types FloPy accepts in input data contexts.
 
 Scalar = Union[bool, int, float, str, Path]
-Record = Dict[str, Union[Scalar | List[Scalar]]]
-List = List[Scalar | Record]
+Record = Dict[str, Union[Scalar, List[Scalar]]]
+List = List[Union[Scalar, Record]]
 Array = ArrayLike
 Table = DataFrame
 Param = Union[Scalar, Record, List, Array, Table]
