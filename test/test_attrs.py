@@ -1,17 +1,26 @@
+import math
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
-from flopy4.attrs import Array, context, param, params
+import pytest
+
+from flopy4.attrs import Array, context, param, params, record
 
 # Records are product types: named, ordered tuples of scalars.
 # Records are immutable: they can't be changed, only evolved.
 
 
-@context(frozen=True)
+@record
 class Record:
     rk: bool = param(description="keyword in record")
     ri: int = param(description="int in record")
     rd: float = param(description="double in record")
+
+
+@record
+class VariadicRecord:
+    vrk: bool = param(description="keyword in record")
+    vrl: List[int] = param(description="list in record")
 
 
 @context
@@ -31,40 +40,40 @@ class Block:
 # Keystrings are sum types: discriminated unions of records.
 
 
-@context(frozen=True)
+@record
 class All:
     all: bool = param(
         description="keyword to indicate save for all time steps in period."
     )
 
 
-@context(frozen=True)
+@record
 class First:
     first: bool = param(
         description="keyword to indicate save for first step in period."
     )
 
 
-@context(frozen=True)
+@record
 class Last:
     last: bool = param(
         description="keyword to indicate save for last step in period."
     )
 
 
-@context(frozen=True)
+@record
 class Frequency:
     frequency: int = param(
         description="save at the specified time step frequency."
     )
 
 
-@context(frozen=True)
+@record
 class Steps:
     steps: List[int] = param(description="save for each step specified.")
 
 
-OCSetting = All | First | Last | Frequency | Steps
+OCSetting = Union[All, First, Last, Frequency, Steps]
 
 
 @context(multi=True)
@@ -75,7 +84,15 @@ class Period:
     )
 
 
-def test_introspection():
+def test_spec():
+    spec = params(Record)
+    assert len(spec) == 3
+    assert not Record.variadic
+
+    spec = params(VariadicRecord)
+    assert len(spec) == 2
+    assert VariadicRecord.variadic
+
     spec = params(Block)
     print(spec)
 
@@ -117,3 +134,10 @@ def test_introspection():
 
     ocsetting = spec["ocsetting"]
     assert ocsetting.type is OCSetting
+
+
+def test_usage():
+    r = Record(rk=True, ri=42, rd=math.pi)
+    assert r.ri == 42
+    with pytest.raises(TypeError):
+        Record(rk=None)
