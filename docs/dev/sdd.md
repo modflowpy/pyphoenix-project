@@ -10,7 +10,7 @@
   - [Objects](#objects)
     - [Counting the ways](#counting-the-ways)
     - [Context resolution](#context-resolution)
-    - [`Dict` mimicry](#dict-mimicry)
+    - [Dictionary mimicry](#dictionary-mimicry)
     - [Impedance mismatch](#impedance-mismatch)
   - [Parameters](#parameters)
     - [Arrays](#arrays)
@@ -21,7 +21,7 @@
   - [Code generation](#code-generation)
   - [IO](#io)
     - [Overview](#overview-1)
-    - [Unified access](#unified-access)
+    - [Decorators](#decorators)
     - [Converters](#converters)
     - [Codecs](#codecs)
     - [Parsers](#parsers)
@@ -214,7 +214,7 @@ and we want a finalizer callback to set the component's
 
 This should also help provide nice string representations.
 
-#### `Dict` mimicry
+#### Dictionary mimicry
 
 The dictionary is a ubiquitous data container, useful
 for e.g. passing keyword arguments, and for potential
@@ -489,7 +489,7 @@ sequenceDiagram
   MF6Parser-->DFN: defines grammar
 ```
 
-#### Unified access
+#### Decorators
 
 A small set of class decorators could provide unified access to
 IO for object model classes. Alternatively these could be mixins.
