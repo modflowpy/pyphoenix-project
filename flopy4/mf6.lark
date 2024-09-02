@@ -1,0 +1,22 @@
+scalar: string | NUMBER
+value: scalar | array | table | list
+keyval: [string] value
+repeat: [string] scalar+
+string: WORD*
+record: keyval* NEWLINE
+raggedrecord: keyval* (keyval | repeat) NEWLINE
+table: record*
+list: raggedrecord*
+array: (constantarray | internalarray | externalarray)
+constantarray: "constant" value
+internalarray: "internal" [factor] [iprn] NEWLINE repeat (NEWLINE repeat)* NEWLINE
+externalarray: "open/close" value [factor] ["binary"] [iprn]
+factor: ["factor" value]
+iprn: ["iprn" value]
+block: "begin" WORD ?INT NEWLINE (keyval NEWLINE)* "end" WORD
+
+%import common.SIGNED_NUMBER -> NUMBER
+%import common.INT
+%import common.NEWLINE
+%import common.WORD
+%ignore common.WS

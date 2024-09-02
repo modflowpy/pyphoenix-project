@@ -1,0 +1,9 @@
+value: string | NUMBER
+string: WORD*
+keyval: [string] value
+param: (keyval NEWLINE)+ NEWLINE
+
+%import common.SIGNED_NUMBER -> NUMBER
+%import common.NEWLINE
+%import common.WORD
+%ignore common.WS
