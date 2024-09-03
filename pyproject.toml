@@ -105,3 +105,10 @@ ignore = [
     "F821", # undefined name TODO FIXME
     "E722"  # do not use bare `except`
 ]
+
+[tool.mypy]
+packages = ["flopy4"]
+modules = ["test"]
+plugins = [
+    "numpy.typing.mypy_plugin"
+]

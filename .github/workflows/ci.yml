@@ -12,8 +12,8 @@ on:
       - '**.md'
       - '.gitignore'
 jobs:
-  lint:
-    name: Lint
+  check:
+    name: Check
     runs-on: ubuntu-latest
     steps:
 
@@ -30,8 +30,15 @@ jobs:
       - name: Install Python packages
         run: pip install ".[lint]"
 
-      - name: Run ruff
+      - name: Linter
         run: ruff check .
+
+      - name: Formatter
+        run: ruff format --check
+
+      # TODO: enable when passing
+      # - name: Type checker
+      #   run: mypy flopy4
   
   build:
     name: Build
