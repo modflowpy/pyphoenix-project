@@ -1,17 +1,20 @@
 from pathlib import Path
 from typing import (
+    Any,
     Optional,
     TypeVar,
     Union,
 )
 
 import attr
-from attrs import NOTHING, define, field, fields
-from cattrs import structure, unstructure
+from attrs import NOTHING, asdict, define, field, fields
+from cattrs import structure
 from numpy.typing import ArrayLike
 from pandas import DataFrame
 
 # Enumerate the primitive types to support.
+# This is just for reference, not meant to
+# be definitive, exclusive, or exhaustive.
 
 Scalar = Union[bool, int, float, str, Path]
 """A scalar input parameter."""
@@ -109,7 +112,7 @@ def context(
 
     def to_dict(self):
         """Convert the context to a dictionary."""
-        return unstructure(self)
+        return asdict(self, recurse=True)
 
     def wrap(cls):
         setattr(cls, "from_dict", classmethod(from_dict))
@@ -120,23 +123,6 @@ def context(
             frozen=frozen,
             slots=False,
             weakref_slot=True,
-        )
-
-    if maybe_cls is None:
-        return wrap
-
-    return wrap(maybe_cls)
-
-
-def choice(
-    maybe_cls: Optional[type[T]] = None,
-    *,
-    frozen: bool = False,
-):
-    def wrap(cls):
-        return context(
-            cls,
-            frozen=frozen,
         )
 
     if maybe_cls is None:
@@ -170,10 +156,11 @@ def is_frozen(cls: type) -> bool:
     return cls.__setattr__ == attr._make._frozen_setattrs
 
 
-def to_path(val) -> Optional[Path]:
-    if val is None:
+def to_path(value: Any) -> Optional[Path]:
+    """Try to convert the value to a `Path`."""
+    if value is None:
         return None
     try:
-        return Path(val).expanduser()
+        return Path(value).expanduser()
     except:
-        raise ValueError(f"Cannot convert value to Path: {val}")
+        raise ValueError(f"Can't convert value to Path: {value}")
