@@ -1,26 +1,32 @@
 from pathlib import Path
 from typing import (
-    Dict,
-    Iterable,
-    List,
     Optional,
     TypeVar,
     Union,
 )
 
-from attrs import NOTHING, Attribute, define, field, fields
+import attr
+from attrs import NOTHING, define, field, fields
+from cattrs import structure, unstructure
 from numpy.typing import ArrayLike
 from pandas import DataFrame
 
-# Core input data model. This enumerates the
-# types FloPy accepts in input data contexts.
+# Enumerate the primitive types to support.
 
 Scalar = Union[bool, int, float, str, Path]
-Record = Dict[str, Union[Scalar, List[Scalar]]]
-List = List[Union[Scalar, Record]]
+"""A scalar input parameter."""
+
+
 Array = ArrayLike
+"""An array input parameter"""
+
+
 Table = DataFrame
-Param = Union[Scalar, Record, List, Array, Table]
+"""A table input parameter."""
+
+
+Param = Union[Scalar, Array, Table]
+"""An input parameter."""
 
 
 # Wrap `attrs.field()` for input parameters.
@@ -32,6 +38,7 @@ def param(
     deprecated: bool = False,
     optional: bool = False,
     default=NOTHING,
+    alias=None,
     metadata=None,
     validator=None,
     converter=None,
@@ -53,6 +60,7 @@ def param(
         order=False,
         hash=False,
         init=True,
+        alias=alias,
         metadata=metadata,
         converter=converter,
     )
@@ -66,7 +74,9 @@ def params(cls):
     Notes
     -----
     Wraps `attrs.fields()`. A parameter can be a value
-    itself or another nested context of parameters.
+    itself or another nested context of parameters. We
+    eschew the traditional `get_...()` naming in favor
+    of `params()` in the spirit of `attrs.fields()`.
     """
     return {field.name: field for field in fields(cls)}
 
@@ -80,30 +90,35 @@ T = TypeVar("T")
 def context(
     maybe_cls: Optional[type[T]] = None,
     *,
+    auto_attribs: bool = True,
     frozen: bool = False,
-    multi: bool = False,
 ):
     """
     Wrap `attrs.define()` for more opinionated input contexts.
 
     Notes
     -----
-    Contexts are parameter containers and can be nested to an
-    arbitrary depth.
+    Input contexts may be nested to an arbitrary depth.
+
+    Contexts can be made immutable with `frozen=True`.
     """
 
-    def add_index(fields):
-        return [
-            Attribute.from_counting_attr(name="index", ca=field(), type=int),
-            *fields,
-        ]
+    def from_dict(cls, d: dict):
+        """Convert the dictionary to a context."""
+        return structure(d, cls)
+
+    def to_dict(self):
+        """Convert the context to a dictionary."""
+        return unstructure(self)
 
     def wrap(cls):
-        transformer = (lambda _, fields: add_index(fields)) if multi else None
+        setattr(cls, "from_dict", classmethod(from_dict))
+        setattr(cls, "to_dict", to_dict)
         return define(
             cls,
-            field_transformer=transformer,
+            auto_attribs=auto_attribs,
             frozen=frozen,
+            slots=False,
             weakref_slot=True,
         )
 
@@ -113,42 +128,52 @@ def context(
     return wrap(maybe_cls)
 
 
-def record(maybe_cls: Optional[type[T]] = None, *, frozen: bool = True):
+def choice(
+    maybe_cls: Optional[type[T]] = None,
+    *,
+    frozen: bool = False,
+):
+    def wrap(cls):
+        return context(
+            cls,
+            frozen=frozen,
+        )
+
+    if maybe_cls is None:
+        return wrap
+
+    return wrap(maybe_cls)
+
+
+# Utilities
+
+
+def is_attrs(cls: type) -> bool:
+    """Determines whether the given class is `attrs`-based."""
+
+    return hasattr(cls, "__attrs_attrs__")
+
+
+def is_frozen(cls: type) -> bool:
     """
-    Wrap `attrs.define()` for immutable records (tuples of parameters).
+    Determines whether the `attrs`-based class is frozen (i.e. immutable).
 
     Notes
     -----
+    The class *must* be `attrs`-based, otherwise `TypeError` is raised.
 
-    Records are frozen by default.
-
-    A variadic record ends with a list. A `variadic` flag is attached
-    to record classes via introspection at import time.
+    The way to check this may change in the future. See:
+        - https://github.com/python-attrs/attrs/issues/853
+        - https://github.com/python-attrs/attrs/issues/602
     """
 
-    def add_variadic(cls, fields):
-        last = fields[-1]
-        variadic = False
-        try:
-            variadic = issubclass(last.type, Iterable)
-        except:
-            variadic = (
-                hasattr(last.type, "__origin__")
-                and last.type.__origin__ is list
-            )
-        setattr(cls, "variadic", variadic)
-        return fields
+    return cls.__setattr__ == attr._make._frozen_setattrs
 
-    def wrap(cls):
-        return define(
-            cls,
-            auto_attribs=True,
-            field_transformer=add_variadic,
-            frozen=frozen,
-            weakref_slot=True,
-        )
 
-    if maybe_cls is None:
-        return wrap
-
-    return wrap(maybe_cls)
+def to_path(val) -> Optional[Path]:
+    if val is None:
+        return None
+    try:
+        return Path(val).expanduser()
+    except:
+        raise ValueError(f"Cannot convert value to Path: {val}")

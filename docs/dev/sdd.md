@@ -250,13 +250,14 @@ A parameter is a primitive value or a **composite**
 of such.
 
 Primitive parameters are **scalar** (int, float, bool,
-string, path), **array-like**, or **tabular**.
+string, path) or **array-like**.
 
 > [!NOTE]
 > Ideally a data model would be dependency-agnostic,
-but we view NumPy and Pandas as de facto standard
-library and accept them as array/table primitives. 
-If there is ever need to provide arrays/tables
+but we view NumPy as de facto standard library and
+accept its array primitives &mdash; especially as
+they have made recent advancements in type hinting.
+If there is ever need to define array abstractions
 of our own, we could take inspiration from
 [astropy](https://github.com/astropy/astropy).
 
@@ -265,16 +266,11 @@ Composite parameters are **record** and **union**
 **lists** of primitives or records. A record is a
 named and ordered tuple of primitives.
 
-A record's parameters must all be scalars, except
-for its last parameter, which may be a sequence of
-scalars (such a record could be called *variadic*;
-it is a value constructor with unspecified arity).
-
 > [!NOTE]
-> A record is a `Dict` for practical purposes. It
-needs implementing as an `attrs`-based class so
-its parameter spec is discoverable upon import,
-though.
+> Records are shown as `Dict` for demonstration,
+but need implementing as an `attrs`-based class
+so the parameter specification is discoverable
+upon import.
 
 A list may constrain its elements to parameters of
 a single scalar or record type, or may hold unions
@@ -283,7 +279,9 @@ of such.
 > [!NOTE]
 > On this view an MF6 keystring is a `typing.Union`
 of records and a period block is a list of `Union`s
-of records.
+of records. Most packages' `packagedata` block, on
+the other hand, have a regular shape, and can thus
+be considered tabular.
 
 A context is a map of parameters. So is a record;
 the operative difference is that composites cannot

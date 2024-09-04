@@ -4,6 +4,14 @@ def find_upper(s):
             yield i
 
 
+def flatten(d):
+    if isinstance(d, (tuple, list)):
+        for x in d:
+            yield from flatten(x)
+    else:
+        yield d
+
+
 def strip(line):
     """
     Remove comments and replace commas from input text
