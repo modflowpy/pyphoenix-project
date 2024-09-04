@@ -1,13 +1,9 @@
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Union
 
-from cattrs import unstructure
+import pytest
 
 from flopy4.attrs import context, is_frozen, param, params, to_path
-
-# Define the package input specification.
-# Some of this will be generic, and come
-# from elsewhere, eventually.
 
 ArrayFormat = Literal["exponential", "fixed", "general", "scientific"]
 
@@ -29,6 +25,36 @@ number of digits to use for writing a number"""
     array_format: ArrayFormat = param(
         description="""
 write format can be EXPONENTIAL, FIXED, GENERAL, or SCIENTIFIC"""
+    )
+
+
+@context
+class Options:
+    budget_file: Optional[Path] = param(
+        description="""
+name of the output file to write budget information""",
+        converter=to_path,
+        default=None,
+    )
+    budget_csv_file: Optional[Path] = param(
+        description="""
+name of the comma-separated value (CSV) output 
+file to write budget summary information. 
+A budget summary record will be written to this 
+file for each time step of the simulation.""",
+        converter=to_path,
+        default=None,
+    )
+    head_file: Optional[Path] = param(
+        description="""
+name of the output file to write head information.""",
+        converter=to_path,
+        default=None,
+    )
+    print_format: Optional[PrintFormat] = param(
+        description="""
+specify format for printing to the listing file""",
+        default=None,
     )
 
 
@@ -74,7 +100,7 @@ save at the specified time step frequency."""
 
 # It's awkward to have single-parameter contexts, but
 # it's the only way I got `cattrs` to distinguish the
-# choices in the union.
+# choices in the union. There is likely a better way.
 
 
 StepSelection = Union[All, First, Last, Steps, Frequency]
@@ -87,36 +113,6 @@ class OutputControlData:
     action: OutputAction = param()
     variable: OutputVariable = param()
     ocsetting: StepSelection = param()
-
-
-@context
-class Options:
-    budget_file: Optional[Path] = param(
-        description="""
-name of the output file to write budget information""",
-        converter=to_path,
-        default=None,
-    )
-    budget_csv_file: Optional[Path] = param(
-        description="""
-name of the comma-separated value (CSV) output 
-file to write budget summary information. 
-A budget summary record will be written to this 
-file for each time step of the simulation.""",
-        converter=to_path,
-        default=None,
-    )
-    head_file: Optional[Path] = param(
-        description="""
-name of the output file to write head information.""",
-        converter=to_path,
-        default=None,
-    )
-    print_format: Optional[PrintFormat] = param(
-        description="""
-specify format for printing to the listing file""",
-        default=None,
-    )
 
 
 Period = List[OutputControlData]
@@ -148,15 +144,36 @@ def test_spec():
     assert ocsetting.type is StepSelection
 
 
-def test_options():
+def test_options_to_dict():
     options = Options(
         budget_file="some/file/path.cbc",
     )
     assert isinstance(options.budget_file, Path)
-    assert len(unstructure(options)) == 4
+    assert len(options.to_dict()) == 4
 
 
-def test_gwfoc_structure():
+def test_output_control_data_from_dict():
+    # from dict
+    ocdata = OutputControlData.from_dict(
+        {
+            "action": "print",
+            "variable": "budget",
+            "ocsetting": {"steps": [1, 3, 5]},
+        }
+    )
+    assert ocdata.action == "print"
+
+
+@pytest.mark.xfail(reason="todo")
+def test_output_control_data_from_tuple():
+    ocdata = OutputControlData.from_tuple(
+        ("print", "budget", "steps", 1, 3, 5)
+    )
+    assert ocdata.action == "print"
+    assert ocdata.variable == "budget"
+
+
+def test_gwfoc_from_dict():
     gwfoc = GwfOc.from_dict(
         {
             "options": {

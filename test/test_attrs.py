@@ -14,9 +14,6 @@ from flopy4.attrs import (
     params,
 )
 
-# Records are product types: named, ordered tuples of scalars.
-# Records are immutable: they can't be changed, only evolved.
-
 
 @context(frozen=True)
 class Record:
@@ -40,9 +37,6 @@ class Block:
         description="record",
         optional=False,
     )
-
-
-# Keystrings are sum types: discriminated unions of records.
 
 
 def test_spec():
@@ -90,5 +84,4 @@ def test_usage():
     assert astuple(r) == (True, 42, math.pi, None)
     assert asdict(r) == {"rb": True, "ri": 42, "rf": math.pi, "rs": None}
     with pytest.raises(TypeError):
-        # non-optional members are required
         Record(rb=True)
