@@ -29,8 +29,6 @@ class MFParamSpec:
     repeating: bool = False
     tagged: bool = True
     reader: MFReader = MFReader.urword
-    # todo change to variadic tuple of str and resolve
-    # actual shape at load time from simulation context
     shape: Optional[Tuple[int]] = None
     default_value: Optional[Any] = None
 
