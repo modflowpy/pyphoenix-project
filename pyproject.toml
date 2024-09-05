@@ -36,10 +36,11 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "attrs",  # todo: lower bound?
-    "cattrs",  # todo: lower bound?
-    "Jinja2>=3.0",
+    "attrs",  # todo: bounds?
+    "cattrs",  # todo: bounds?
     "flopy>=3.7.0",
+    "Jinja2>=3.0",
+    "lark",  # todo: bounds?
     "numpy>=1.20.3",
     "pandas>=2.0.0",
     "toml>=0.10",
@@ -54,6 +55,7 @@ test = [
     "flopy4[lint]",
     "coverage",
     "GitPython",
+    "interegular",
     "jupyter",
     "jupytext",
     "modflow-devtools",
