@@ -55,6 +55,7 @@ test = [
     "flopy4[lint]",
     "coverage",
     "GitPython",
+    "interegular",
     "jupyter",
     "jupytext",
     "modflow-devtools",

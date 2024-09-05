@@ -1,3 +1,4 @@
+// TODO: test, probably broken
 value: string | NUMBER
 string: WORD*
 keyval: [string] value
