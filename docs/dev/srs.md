@@ -19,52 +19,97 @@
 
 ## Introduction
 
-### Intended audience
+This is the Software Requirement Specifications (SRS) document for FloPy 4, also
+called *the product* or flopy4.
 
-Hydrologic scientists, engineers, and students that are familiar with the
-Python ecosystem and MODFLOW. Another key audience is MODFLOW developers.
+### Product scope
 
-The product should be available on major operating systems and hardware
-ranging from laptops to HPC systems. The product should be available in
-any CPython environment.
+flopy4 will be a software product to pre- and post-Process MODFLOW-based 
+model input and output.
 
-**Use cases**
+Pre-processing will be limited to preparing model input datasets. 
+
+Post-processing will be limited to reading model output into internal data formats 
+that can be used by the product.
+
+For specific use cases, model input and output data will be processed by the 
+product into formats that can be analyzed in other libraries.
+
+The product will also be able to run MODFLOW simulations.
+
+The product can load existing model input datasets that were not necessarily 
+created by the product but conform to MODFLOW input and output specifications.
+
+flopy4 will replace the MODFLOW 6 targeted capabilities of the current FloPy 3.
+
+flopy4 will also replace the following capabilities of FloPy 3:
+  * PEST (?)
+  * capability 2 (discuss)
+
+### Product value
+
+The product will allow defining reproducible, versionable Python workflows for
+MODFLOW modeling applications. 
+
+The product will wrap MODFLOW and other programs and provide a Pythonic interface 
+to their functionality and input and output files. 
+
+flopy4 is essential to the MODFLOW development process for testing existing and 
+newly developed functionality.
+
+### Intended audience: 
+
+Hydrologic scientists, engineers, and students who are familiar with the Python 
+ecosystem and want to use MODFLOW for their hydrologic applications. The other 
+key audience is the team of MODFLOW software developers.
+
+### Intended use: 
+
+The product should be available on the major operating systems 
+(Windows, Linux, MacOS) and hardware ranging from laptops to HPC systems.
+
+The product will be used through Python scripts and Jupyter notebooks. 
+
+The product can be relied upon as a core component by other libraries and 
+tools that offer more advanced or domain specific or application specific 
+functionality.
+
+#### Use cases
 
 * A hydrologist needs to determine an optimal pumping rate for a well field...
 
+* A student wants to simulate salt water intrusion in a coastal aquifer and 
+visualize results...
+
 * A professor is teaching a groundwater modeling class...
 
-* A MODFLOW developer is debugging an issue in the UZF package and wants to create a complicated test with many cells and stress periods.
+* A hydrologic institute maintains their own suite of advanced pre- and 
+post-processing utilities that can rely on flopy4 as a component for its 
+core capabilities...
 
-* A MODFLOW developer is setting up worked example to demonstrate how to use a new feature...
+* A MODFLOW developer is debugging an issue in the UZF package and wants to 
+create a complicated test with many cells and stress periods...
 
-### Value proposition
+* A MODFLOW developer is setting up a worked example to demonstrate how to 
+use a new feature...
 
-The product will allow defining reproducible, versionable Python workflows
-for MODFLOW modeling applications. The product will wrap MODFLOW and other
-programs and provide a Pythonic interface to their functionality and input
-and output files. FloPy will also be used for MODFLOW development, to test
-existing and new functionality.
+## System requirements and functional requirements
+tbd
 
-### Project scope
+## External interface requirements
+tbd
 
-FloPy 4 will have the same basic responsibilities as FloPy 3:
+## Non-functional requirements (NRFs)
+tbd
 
-1. running simulations
-2. working with input and output
+**Maintainability**
 
-**Running simulations**
+flopy4 should maintain a separation of concerns with respect to hydrology and
+software engineering. The hydrologic modeler should not be concerned with the
+technical details of flopy4's internal data storage or parallel processing 
+implementation, for example, and a software engineer should be able to work 
+on the code without detailed knowledge on complex hydrologic concepts.
 
-The product will be able to run MODFLOW 6 (and other programs). The product
-will be able to load input datasets into MODFLOW 6 (and other programs) by
-way of an input specification provided for the program.
-
-**Input and output**
-
-The product must be able to 1) load, modify, and write simulation inputs
-and 2) load simulation outputs in several formats, to include any custom
-format used by a specific program, as well as standards supported by 3rd
-party software.
 
 ## Motivation
 
