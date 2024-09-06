@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Union
 
-import pytest
+from cattrs import Converter
 
 from flopy4.attrs import context, is_frozen, param, params, to_path
 
@@ -103,16 +103,30 @@ save at the specified time step frequency."""
 # choices in the union. There is likely a better way.
 
 
-StepSelection = Union[All, First, Last, Steps, Frequency]
-OutputAction = Literal["print", "save"]
-OutputVariable = Literal["budget", "head"]
+PrintSave = Literal["print", "save"]
+RType = Literal["budget", "head"]
+OCSetting = Union[All, First, Last, Steps, Frequency]
 
 
 @context
 class OutputControlData:
-    action: OutputAction = param()
-    variable: OutputVariable = param()
-    ocsetting: StepSelection = param()
+    printsave: PrintSave = param()
+    rtype: RType = param()
+    ocsetting: OCSetting = param()
+
+    @classmethod
+    def from_tuple(cls, t):
+        t = list(t)
+        printsave = t.pop(0)
+        rtype = t.pop(0)
+        ocsetting = {
+            "all": All,
+            "first": First,
+            "last": Last,
+            "steps": Steps,
+            "frequency": Frequency,
+        }[t.pop(0).lower()](t)
+        return cls(printsave, rtype, ocsetting)
 
 
 Period = List[OutputControlData]
@@ -131,6 +145,18 @@ period blocks"""
     )
 
 
+# Converter
+
+converter = Converter()
+
+
+def output_control_data_hook(value, type) -> OutputControlData:
+    return OutputControlData.from_tuple(value)
+
+
+converter.register_structure_hook(OutputControlData, output_control_data_hook)
+
+
 # Tests
 
 
@@ -141,7 +167,7 @@ def test_spec():
     assert not is_frozen(OutputControlData)
 
     ocsetting = spec["ocsetting"]
-    assert ocsetting.type is StepSelection
+    assert ocsetting.type is OCSetting
 
 
 def test_options_to_dict():
@@ -152,29 +178,17 @@ def test_options_to_dict():
     assert len(options.to_dict()) == 4
 
 
-def test_output_control_data_from_dict():
-    # from dict
-    ocdata = OutputControlData.from_dict(
-        {
-            "action": "print",
-            "variable": "budget",
-            "ocsetting": {"steps": [1, 3, 5]},
-        }
-    )
-    assert ocdata.action == "print"
-
-
-@pytest.mark.xfail(reason="todo")
 def test_output_control_data_from_tuple():
     ocdata = OutputControlData.from_tuple(
         ("print", "budget", "steps", 1, 3, 5)
     )
-    assert ocdata.action == "print"
-    assert ocdata.variable == "budget"
+    assert ocdata.printsave == "print"
+    assert ocdata.rtype == "budget"
+    assert ocdata.ocsetting == Steps([1, 3, 5])
 
 
 def test_gwfoc_from_dict():
-    gwfoc = GwfOc.from_dict(
+    gwfoc = converter.structure(
         {
             "options": {
                 "budget_file": "some/file/path.cbc",
@@ -188,25 +202,18 @@ def test_gwfoc_from_dict():
             },
             "periods": [
                 [
-                    {
-                        "action": "print",
-                        "variable": "budget",
-                        "ocsetting": {"steps": [1, 3, 5]},
-                    },
-                    {
-                        "action": "save",
-                        "variable": "head",
-                        "ocsetting": {"frequency": 2},
-                    },
+                    ("print", "budget", "steps", 1, 3, 5),
+                    ("save", "head", "frequency", 2),
                 ]
             ],
-        }
+        },
+        GwfOc,
     )
     assert gwfoc.options.budget_file == Path("some/file/path.cbc")
     assert gwfoc.options.print_format.width == 10
     assert gwfoc.options.print_format.array_format == "scientific"
     period = gwfoc.periods[0]
     assert len(period) == 2
-    assert period[0] == OutputControlData(
-        action="print", variable="budget", ocsetting=Steps([1, 3, 5])
+    assert period[0] == OutputControlData.from_tuple(
+        ("print", "budget", "steps", 1, 3, 5)
     )
