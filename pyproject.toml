@@ -105,5 +105,6 @@ select = [
 ]
 ignore = [
     "F821", # undefined name TODO FIXME
-    "E722"  # do not use bare `except`
+    "E722", # do not use bare `except`
+    "E741", # ambiguous variable name
 ]
