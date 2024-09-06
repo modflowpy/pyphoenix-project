@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import (
     Any,
     Optional,
+    Tuple,
     TypeVar,
     Union,
 )
@@ -28,7 +29,11 @@ Table = DataFrame
 """A table input parameter."""
 
 
-Param = Union[Scalar, Array, Table]
+Record = Tuple[Scalar, ...]
+"""A record input parameter."""
+
+
+Param = Union[Scalar, Array, Table, Record]
 """An input parameter."""
 
 
