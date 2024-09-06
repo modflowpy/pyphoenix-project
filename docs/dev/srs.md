@@ -4,9 +4,14 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-  - [Intended audience](#intended-audience)
-  - [Value proposition](#value-proposition)
-  - [Project scope](#project-scope)
+  - [Product scope](#product-scope)
+  - [Product value](#product-value)
+  - [Intended audience:](#intended-audience)
+  - [Intended use:](#intended-use)
+    - [Use cases](#use-cases)
+- [System requirements and functional requirements](#system-requirements-and-functional-requirements)
+- [External interface requirements](#external-interface-requirements)
+- [Non-functional requirements (NRFs)](#non-functional-requirements-nrfs)
 - [Motivation](#motivation)
   - [Consistency](#consistency)
   - [Maintenance](#maintenance)
