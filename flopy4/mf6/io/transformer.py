@@ -3,6 +3,14 @@ from pathlib import Path
 import numpy as np
 from lark import Transformer
 
+from flopy4.io.lark import (
+    parse_array,
+    parse_float,
+    parse_int,
+    parse_string,
+    parse_word,
+)
+
 
 class MF6Transformer(Transformer):
     """
@@ -25,29 +33,6 @@ class MF6Transformer(Transformer):
         (k,) = k
         return str(k).lower()
 
-    def word(self, w):
-        (w,) = w
-        return str(w)
-
-    def path(self, p):
-        _, p = p
-        return Path(p)
-
-    def string(self, s):
-        return " ".join(s)
-
-    def int(self, i):
-        (i,) = i
-        return int(i)
-
-    def float(self, f):
-        (f,) = f
-        return float(f)
-
-    def array(self, a):
-        (a,) = a
-        return a
-
     def constantarray(self, a):
         # TODO factor out `ConstantArray`
         # array-like class from `MFArray`
@@ -65,27 +50,35 @@ class MF6Transformer(Transformer):
         # TODO
         pass
 
-    record = tuple
-    list = list
+    def path(self, p):
+        _, p = p
+        return Path(p)
 
     def param(self, p):
         k = p[0]
         v = True if len(p) == 1 else p[1]
         return k, v
 
-    params = dict
-
     def block(self, b):
         return tuple(b[:2])
 
-    def paramblock(self, bn):
-        return str(bn[0]).lower()
+    def dictblock(self, b):
+        return str(b[0]).lower()
 
-    def listblock(self, bn):
-        name = str(bn[0])
-        if len(bn) == 2:
-            index = int(bn[1])
+    def listblock(self, b):
+        name = str(b[0])
+        if len(b) == 2:
+            index = int(b[1])
             name = f"{name} {index}"
         return name.lower()
 
+    word = parse_word
+    string = parse_string
+    int = parse_int
+    float = parse_float
+    array = parse_array
+    record = tuple
+    list = list
+    dict = dict
+    params = dict
     component = dict
