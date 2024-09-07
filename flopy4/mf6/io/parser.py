@@ -5,20 +5,28 @@ from lark import Lark
 
 MF6_GRAMMAR = r"""
 // component
-component: _NL* (block _NL+)* _NL*
+component: _NL* (block _NL+)+ _NL*
 
 // block
-block: _paramblock | _listblock
-_paramblock: _BEGIN paramblock _NL params _END paramblock
+block: _dictblock | _listblock
+_dictblock: _BEGIN dictblock _NL dict _END dictblock
 _listblock: _BEGIN listblock _NL list _END listblock
-paramblock: PARAMBLOCK
+dictblock: DICTBLOCK
 listblock: LISTBLOCK [_blockindex]
 _blockindex: INT
 _BEGIN: "begin"i
 _END: "end"i
 
+// dict
+dict.1: (param _NL)*
+
+// list adapted from https://github.com/lark-parser/lark/blob/master/examples/composition/csv.lark
+// negative priority for records because the pattern is so indiscriminate
+list.-1: record*
+record.-1: _record+ _NL
+_record: scalar
+
 // parameter
-params.1: (param _NL)*
 param: key | _pair
 _pair: key value
 key: PARAM
@@ -54,12 +62,6 @@ externalarray: "OPEN/CLOSE" PATH [factor] ["binary"] [iprn]
 factor: "FACTOR" NUMBER
 iprn: "IPRN" INT
 
-// list adapted from https://github.com/lark-parser/lark/blob/master/examples/composition/csv.lark
-// negative priority for records because the pattern is so indiscriminate
-list.-1: record*
-record.-1: _record+ _NL
-_record: scalar
-
 // newline
 _NL: /(\r?\n[\t ]*)+/
 
@@ -80,7 +82,7 @@ EBNF description for the MODFLOW 6 input language.
 
 def make_parser(
     params: Iterable[str],
-    param_blocks: Iterable[str],
+    dict_blocks: Iterable[str],
     list_blocks: Iterable[str],
 ):
     """
@@ -92,18 +94,18 @@ def make_parser(
     We specify blocks containing parameters separately from blocks
     that contain a list. These must be handled separately because
     the pattern for list elements (records) casts a wider net than
-    the pattern for parameters, causing parameter blocks to parse
-    as lists otherwise.
+    the pattern for parameters, which can cause a dictionary block
+    of named parameters to parse as a block with a list of records.
 
     """
     params = "|".join(['"' + n + '"i' for n in params])
-    param_blocks = "|".join(['"' + n + '"i' for n in param_blocks])
+    dict_blocks = "|".join(['"' + n + '"i' for n in dict_blocks])
     list_blocks = "|".join(['"' + n + '"i' for n in list_blocks])
     grammar = linesep.join(
         [
             MF6_GRAMMAR,
             f"PARAM: ({params})",
-            f"PARAMBLOCK: ({param_blocks})",
+            f"DICTBLOCK: ({dict_blocks})",
             f"LISTBLOCK: ({list_blocks})",
         ]
     )
