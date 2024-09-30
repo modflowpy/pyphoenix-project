@@ -112,6 +112,9 @@ ignore = [
     "E741", # ambiguous variable name
 ]
 
+[project.entry-points.flopy4]
+plot = "flopy4.singledispatch.plot_int"
+
 [tool.pixi.project]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64"]
@@ -145,3 +148,4 @@ test = { cmd = "pytest -v -n auto" }
 
 [tool.pixi.feature.lint.tasks]
 lint = { cmd = "ruff check ." }
+
