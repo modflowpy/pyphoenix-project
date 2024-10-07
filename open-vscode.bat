@@ -1,0 +1,1 @@
+pixi run -e test code . | exit

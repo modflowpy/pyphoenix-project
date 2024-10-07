@@ -108,3 +108,17 @@ ignore = [
     "E722", # do not use bare `except`
     "E741", # ambiguous variable name
 ]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[tool.pixi.pypi-dependencies]
+flopy4 = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+lint = { features = ["lint"], solve-group = "default" }
+test = { features = ["test", "lint"], solve-group = "default" }
+
+[tool.pixi.tasks]
