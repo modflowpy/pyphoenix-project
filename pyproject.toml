@@ -116,6 +116,9 @@ ignore = [
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64"]
 
+[tool.pixi.system-requirements]
+macos = "12.0"
+
 [tool.pixi.pypi-dependencies]
 flopy4 = { path = ".", editable = true }
 
