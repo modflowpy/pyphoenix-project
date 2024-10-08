@@ -1,1 +1,1 @@
-pixi run -e test code . | exit
+pixi run -e dev code . | exit
