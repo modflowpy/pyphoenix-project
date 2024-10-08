@@ -3049,7 +3049,7 @@ packages:
   name: flopy4
   version: 0.0.1.dev0
   path: .
-  sha256: 785b2cc7550ab2cb3b5cf5148a91e03b5b9ea630ee283c47941a7e776f106bea
+  sha256: 6dc11acd173d84f6bfdbbcced580fe6754c11f58eb7898e13670adf97ba8d101
   requires_dist:
   - attrs
   - cattrs
