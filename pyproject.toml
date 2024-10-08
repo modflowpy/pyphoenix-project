@@ -65,6 +65,10 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
 ]
+build = [
+    "build",
+    "twine",
+]
 
 [tool.setuptools]
 include-package-data = true
@@ -116,9 +120,26 @@ platforms = ["win-64"]
 [tool.pixi.pypi-dependencies]
 flopy4 = { path = ".", editable = true }
 
-[tool.pixi.environments]
-default = { solve-group = "default" }
-lint = { features = ["lint"], solve-group = "default" }
-test = { features = ["test", "lint"], solve-group = "default" }
+[tool.pixi.feature.py310.dependencies]
+python = "3.10"
 
-[tool.pixi.tasks]
+[tool.pixi.feature.py311.dependencies]
+python = "3.11"
+
+[tool.pixi.feature.py312.dependencies]
+python = "3.12"
+
+[tool.pixi.environments]
+test310 = { features = ["py310", "test"], solve-group = "py310" }
+test311 = { features = ["py311", "test"], solve-group = "py311" }
+test312 = { features = ["py312", "test"], solve-group = "py312" }
+dev = { features = ["py312", "test", "lint", "build"], solve-group = "py312" }
+
+[tool.pixi.feature.build.tasks]
+build = { cmd = "python -m build" }
+
+[tool.pixi.feature.test.tasks]
+test = { cmd = "pytest -v -n auto" }
+
+[tool.pixi.feature.lint.tasks]
+lint = { cmd = "ruff check ." }
