@@ -1,8 +1,11 @@
 build/
 docs/examples/*.ipynb
 venv/
-.vscode
 .DS_Store
 .ruff_cache
 *.egg-info
 **/__pycache__/
+
+# pixi environments
+.pixi
+*.egg-info

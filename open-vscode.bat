@@ -1,0 +1,1 @@
+pixi run -e dev code . | exit
