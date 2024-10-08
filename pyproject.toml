@@ -107,3 +107,10 @@ ignore = [
     "E722", # do not use bare `except`
     "E741", # ambiguous variable name
 ]
+
+[tool.mypy]
+packages = ["flopy4"]
+modules = ["test"]
+plugins = [
+    "numpy.typing.mypy_plugin"
+]
