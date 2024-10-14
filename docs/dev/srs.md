@@ -90,7 +90,7 @@ The product can be relied upon as a core component by other libraries and tools 
 
 ### System requirements
 
-flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy and XArray libraries, and flopy4 should not be conflicting with user installed libraries.
+flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries.
 
 The product must be able to run on the following operating systems: Windows, Linux, MacOS.
 
@@ -102,7 +102,7 @@ flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 o
 
 flopy4 must be able to run MODFLOW 6 simulations.
 
-flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it can support all packages that come with that version of MODFLOW 6.
+flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6.
 
 The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions.
 
