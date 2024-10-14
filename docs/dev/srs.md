@@ -34,8 +34,8 @@ called *the product* or flopy4.
 ### Product scope
 
 flopy4 will be a software product to pre- and post-process MODFLOW-based model input and output.
-Pre-processing will be limited to preparing model input datasets.
-Post-processing will be limited to reading model output into internal data formats that can be used by the product.
+Pre-processing will be limited to preparing model input datasets, mesh generation, and model input manipulation capabilities.
+Post-processing will be limited to reading model output into internal data formats that can be used by the product, plotting utilities, and rudimentary analysis capabilities.
 For specific use cases, model input and output data will be processed by the product into formats that can be analyzed in other libraries.
 
 The product will be able to run MODFLOW simulations.
