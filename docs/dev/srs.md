@@ -44,11 +44,6 @@ The product can load existing model input datasets that were not necessarily cre
 
 flopy4 will replace the MODFLOW 6 targeted capabilities of the current FloPy 3 library.
 
-flopy4 will also replace the following capabilities of FloPy 3:
-
-- PEST (?)
-- capability 2 (discuss)
-
 ### Product value
 
 The product will allow defining reproducible, versionable Python workflows for
