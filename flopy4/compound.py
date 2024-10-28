@@ -381,25 +381,19 @@ class MFList(MFCompound):
                 tokens = strip(line).split(maxsplit=maxsplit)
                 assert len(tokens) == sum(param_cols)
                 icol = 0
-                for i, p in enumerate(param_lists):
-                    if param_cols[i] == 1:
+                for i in range(len(param_types)):
+                    row_l = []
+                    for j in range(param_cols[i]):
                         if param_types[i] == "integer":
-                            param_lists[i].append(int(tokens[icol]))
+                            row_l.append(int(tokens[icol]))
                         elif param_types[i] == "double":
-                            param_lists[i].append(float(tokens[icol]))
+                            row_l.append(float(tokens[icol]))
                         else:
-                            param_lists[i].append(tokens[icol])
+                            row_l.append(tokens[icol])
                         icol += 1
+                    if param_cols[i] == 1:
+                        param_lists[i].append(row_l[0])
                     else:
-                        row_l = []
-                        for j in range(param_cols[i]):
-                            if param_types[i] == "integer":
-                                row_l.append(int(tokens[icol]))
-                            elif param_types[i] == "double":
-                                row_l.append(float(tokens[icol]))
-                            else:
-                                row_l.append(tokens[icol])
-                            icol += 1
                         param_lists[i].append(row_l)
 
         if blk_params and "dimensions" in blk_params:
