@@ -239,6 +239,7 @@ class MFParams(UserDict):
                 if len(self.params[param.name]):
                     param.write(f, **kwargs)
             elif param.type is None:
+                print(param)
                 raise TypeError(
                     f"Unknown specification type for param '{param.name}'"
                 )

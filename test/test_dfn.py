@@ -18,8 +18,14 @@ def test_dfn_load(tmp_path):
     assert dfn.component == "prt"
     assert dfn.subcomponent == "prp"
     assert type(dfn.dfn) is dict
-    assert len(dfn) == 4
-    assert dfn.blocknames == ["options", "dimensions", "packagedata", "period"]
+    assert len(list(dfn.dfn["block"])) == 5
+    assert dfn.blocknames == [
+        "options",
+        "dimensions",
+        "packagedata",
+        "releasetimes",
+        "period",
+    ]
 
     for b in dfn.blocknames:
         block_d = dfn[b]
@@ -44,13 +50,9 @@ def test_dfn_load(tmp_path):
         "stop_at_weak_sink",
         "istopzone",
         "drape",
-        "release_timesrecord",
-        "release_times",
-        "times",
-        "release_timesfilerecord",
-        "release_timesfile",
-        "timesfile",
         "dev_forceternary",
+        "release_time_tolerance",
+        "release_time_frequency",
     ]
 
     assert dfn.param("options", "drape") == {

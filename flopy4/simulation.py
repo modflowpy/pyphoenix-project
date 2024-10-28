@@ -47,16 +47,17 @@ class MFSimulation:
         solvers = dict()
         sim_name = "sim"
         mempath = sim_name
+        simpath = Path(f.name).parent
 
         kwargs["mempath"] = f"{mempath}"
         kwargs["ftype"] = "nam6"
 
         nam = SimNam.load(f, **kwargs)
 
-        tdis = MFSimulation.load_tdis(nam, **kwargs)
-        MFSimulation.load_models(nam, models, **kwargs)
-        MFSimulation.load_exchanges(nam, exchanges, **kwargs)
-        MFSimulation.load_solvers(nam, solvers, **kwargs)
+        tdis = MFSimulation.load_tdis(simpath, nam, **kwargs)
+        MFSimulation.load_models(simpath, nam, models, **kwargs)
+        MFSimulation.load_exchanges(simpath, nam, exchanges, **kwargs)
+        MFSimulation.load_solvers(simpath, nam, solvers, **kwargs)
 
         return cls(
             name=sim_name,
@@ -69,6 +70,7 @@ class MFSimulation:
 
     @staticmethod
     def load_tdis(
+        simpath: Path,
         blocks: Dict[str, MFBlock],
         mempath,
         **kwargs,
@@ -82,13 +84,14 @@ class MFSimulation:
             tdis_fpth = param.value
             if tdis_fpth is None:
                 raise ValueError("Invalid mfsim.name TDIS6 specification")
-            with open(tdis_fpth, "r") as f:
+            with open(Path(simpath / tdis_fpth), "r") as f:
                 kwargs["mempath"] = f"{mempath}"
                 tdis = SimTdis.load(f, **kwargs)
         return tdis
 
     @staticmethod
     def load_models(
+        simpath: Path,
         blocks: Dict[str, MFBlock],
         models: Dict[str, MFModel],
         mempath,
@@ -116,13 +119,14 @@ class MFSimulation:
                     model = PrtModel
                 else:
                     model = None
-                with open(mfname, "r") as f:
+                with open(Path(simpath / mfname), "r") as f:
                     kwargs["mtype"] = mtype.lower()
                     kwargs["mempath"] = f"{mempath}/{mname}"
                     models[mname] = model.load(f, **kwargs)
 
     @staticmethod
     def load_exchanges(
+        simpath: Path,
         blocks: Dict[str, MFBlock],
         exchanges: Dict[str, Dict],
         mempath,
@@ -157,6 +161,7 @@ class MFSimulation:
 
     @staticmethod
     def load_solvers(
+        simpath: Path,
         blocks: Dict[str, MFBlock],
         solvers: Dict[str, Dict],
         mempath,
@@ -181,18 +186,29 @@ class MFSimulation:
                     sln = SlnIms
                 else:
                     sln = None
-                with open(slnfname, "r") as f:
+                with open(Path(simpath / slnfname), "r") as f:
                     slnname = slntype.replace("6", "")
                     slnname = f"{slnname}_{i}"
                     kwargs["mempath"] = f"{mempath}/{slnname}"
                     solvers[slnname] = sln.load(f, **kwargs)
 
-    def write(self, basepath, **kwargs):
+    def write(self, simpath, **kwargs):
         """Write the simulation to files."""
-        path = Path(basepath)
+        path = Path(simpath)
+
+        fpath = Path(self.nam.params["tdis6"])
+        newpath = Path(path / fpath.name)
+        with open(newpath, "w") as f:
+            self.tdis.write(f, **kwargs)
+
+        # slntypes = self.nam.params["solutiongroup"]["slntype"]
+        slnfnames = self.nam.params["solutiongroup"]["slnfname"]
+        for index, sln in enumerate(self.solvers):
+            with open(path / slnfnames[index], "w") as f:
+                self.solvers[sln].write(f, **kwargs)
+
+        for model in self.models:
+            self.models[model].write(simpath, **kwargs)
+
         with open(path / "mfsim.nam", "w") as f:
             self.nam.write(f, **kwargs)
-        with open(path / f"{self.name}.tdis", "w") as f:
-            self.tdis.write(f, **kwargs)
-        for model in self.models:
-            self.models[model].write(basepath, **kwargs)

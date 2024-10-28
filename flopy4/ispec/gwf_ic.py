@@ -37,7 +37,7 @@ model output netcdf file.""",
     )
 
     strt = MFArray(
-        type = "array",
+        type = "double",
         block = "griddata",
         shape = "(nodes)",
         reader = "readarray",

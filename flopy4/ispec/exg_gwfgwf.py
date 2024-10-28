@@ -463,7 +463,7 @@ vertical connection between cell 1 and cell 2 if IHC = 0.""",
     )
 
     aux = MFArray(
-        type = "array",
+        type = "double",
         block = "exchangedata",
         shape = "(naux)",
         reader = "urword",

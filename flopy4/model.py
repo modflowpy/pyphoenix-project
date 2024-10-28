@@ -95,11 +95,15 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
 
         packages["nam6"] = GwfNam.load(f, **kwargs)
 
-        MFModel.load_packages(members, packages["nam6"], packages, **kwargs)
+        simpath = Path(f.name).parent
+        MFModel.load_packages(
+            simpath, members, packages["nam6"], packages, **kwargs
+        )
         return cls(name=mname, mempath=mempath, mtype=mtype, packages=packages)
 
     @staticmethod
     def load_packages(
+        simpath: Path,
         members,
         blocks: Dict[str, MFBlock],
         packages: Dict[str, MFPackage],
@@ -124,7 +128,7 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
                 fname = param.value["fname"][i]
                 pname = param.value["pname"][i]
                 package = members.get(ftype.lower(), None)
-                with open(fname, "r") as f:
+                with open(Path(simpath / fname), "r") as f:
                     kwargs["model_shape"] = model_shape
                     kwargs["mempath"] = f"{mempath}/{pname}"
                     kwargs["ftype"] = ftype.lower()
@@ -142,13 +146,17 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
                         nodes = packages[pname].params["nodes"]
                         model_shape = nodes
 
-    def write(self, basepath, **kwargs):
+    def write(self, simpath, **kwargs):
         """Write the model to files."""
-        path = Path(basepath)
-        for p in self._p:
-            if self._p[p].name.endswith(".nam"):
-                with open(path / self._p[p].name, "w") as f:
-                    self._p[p].write(f)
-            else:
-                with open(path / self._p[p].name, "w") as f:
-                    self._p[p].write(f)
+        fname_l = self._p["nam6"].params["packages"]["fname"]
+        # ftype_l = self._p["nam6"].params["packages"]["ftype"]
+        pname_l = self._p["nam6"].params["packages"]["pname"]
+
+        # write package files
+        for index, p in enumerate(pname_l):
+            with open(Path(simpath / fname_l[index]), "w") as f:
+                self._p[p].write(f)
+
+        # write name file
+        with open(Path(simpath / f"{self.name}.nam"), "w") as f:
+            self._p["nam6"].write(f)

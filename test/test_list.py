@@ -11,8 +11,8 @@ class TestBlock(MFBlock):
     testblock = MFList(
         params={
             "s": MFString(),
-            "i": MFInteger(),
-            "d": MFDouble(),
+            "i": MFInteger(type="integer"),
+            "d": MFDouble(type="double"),
         },
         description="recarray",
         optional=False,
@@ -67,12 +67,13 @@ def test_list_load1(tmp_path):
     assert isinstance(TestBlock.testblock.params["i"], MFInteger)
     assert isinstance(TestBlock.testblock.params["d"], MFDouble)
     assert isinstance(in_list.params["testblock"]["s"], list)
-    assert isinstance(in_list.params["testblock"]["i"], np.ndarray)
-    assert isinstance(in_list.params["testblock"]["d"], np.ndarray)
+    assert isinstance(in_list.params["testblock"]["i"], list)
+    assert isinstance(in_list.params["testblock"]["d"], list)
     assert isinstance(in_list.params["testblock"]["s"][0], str)
-    assert isinstance(in_list.params["testblock"]["i"][0], np.int32)
-    assert isinstance(in_list.params["testblock"]["d"][0], np.float64)
+    assert isinstance(in_list.params["testblock"]["i"][0], int)
+    assert isinstance(in_list.params["testblock"]["d"][0], float)
     assert in_list.params["testblock"]["s"] == ["model", "exch", "sim"]
+    print(in_list.params["testblock"]["i"])
     assert np.allclose(in_list.params["testblock"]["i"], np.array([1, 2, 2]))
     assert np.allclose(
         in_list.params["testblock"]["d"], np.array([2.0, 3.0, 3.0])

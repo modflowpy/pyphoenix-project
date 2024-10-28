@@ -434,6 +434,16 @@ class MFArray(MFParam, NumPyArrayMixin):
         model_shape = kwargs.pop("model_shape", None)
         params = kwargs.pop("blk_params", {})
         mempath = kwargs.pop("mempath", None)
+        atype = kwargs.get("type", None)
+
+        if atype is not None:
+            if atype == "integer":
+                dtype = np.int32
+            elif atype == "double":
+                dtype = np.float64
+        else:
+            raise ValueError("array spec type not defined")
+
         if model_shape and isinstance(shape, str):
             if shape == "(nodes)":
                 n = math.prod([x for x in model_shape])
@@ -459,7 +469,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             lshp = shape[1:]
             objs = []
             for _ in range(nlay):
-                mfa = cls._load(f, cwd, lshp, name)
+                mfa = cls._load(f, cwd, lshp, dtype=dtype, name=name)
                 objs.append(mfa)
 
             return MFArray(
@@ -474,11 +484,17 @@ class MFArray(MFParam, NumPyArrayMixin):
         else:
             kwargs.pop("layered", None)
             return cls._load(
-                f, cwd, shape, layered=layered, name=name, **kwargs
+                f,
+                cwd,
+                shape,
+                layered=layered,
+                dtype=dtype,
+                name=name,
+                **kwargs,
             )
 
     @classmethod
-    def _load(cls, f, cwd, shape, layered=False, **kwargs):
+    def _load(cls, f, cwd, shape, layered=False, dtype=None, **kwargs):
         control_line = multi_line_strip(f).split()
 
         if CommonNames.iprn.lower() in control_line:
@@ -491,17 +507,20 @@ class MFArray(MFParam, NumPyArrayMixin):
         clpos = 1
 
         if how == MFArrayType.internal:
-            array = cls.read_array(f)
+            array = cls.read_array(f, dtype)
 
         elif how == MFArrayType.constant:
-            array = float(control_line[clpos])
+            if dtype == np.float64:
+                array = float(control_line[clpos])
+            else:
+                array = int(control_line[clpos])
             clpos += 1
 
         elif how == MFArrayType.external:
             extpath = Path(control_line[clpos])
             fpath = cwd / extpath
             with open(fpath) as foo:
-                array = cls.read_array(foo)
+                array = cls.read_array(foo, dtype)
             clpos += 1
 
         else:
@@ -509,7 +528,10 @@ class MFArray(MFParam, NumPyArrayMixin):
 
         factor = None
         if len(control_line) > 2:
-            factor = float(control_line[clpos + 1])
+            if dtype == np.float64:
+                factor = float(control_line[clpos + 1])
+            else:
+                factor = int(control_line[clpos + 1])
 
         return cls(
             shape,
@@ -521,7 +543,7 @@ class MFArray(MFParam, NumPyArrayMixin):
         )
 
     @staticmethod
-    def read_array(f):
+    def read_array(f, dtype):
         """
         Read a MODFLOW 6 array from an open file
         into a flat NumPy array representation.
@@ -538,5 +560,5 @@ class MFArray(MFParam, NumPyArrayMixin):
             astr.append(line)
 
         astr = StringIO(" ".join(astr))
-        array = np.genfromtxt(astr).ravel()
+        array = np.genfromtxt(astr, dtype=dtype).ravel()
         return array

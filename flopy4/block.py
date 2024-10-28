@@ -225,6 +225,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         name = None
         index = None
         found = False
+        period = False
         params = dict()
         members = cls.params
 
@@ -238,12 +239,17 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             if line == "\n":
                 continue
             words = strip(line).lower().split()
-            key = words[0]
+            if period:
+                key = "stress_period_data"
+            else:
+                key = words[0]
             if key == "begin":
                 found = True
                 name = words[1]
                 if len(words) > 2 and str.isdigit(words[2]):
                     index = int(words[2])
+                if name == "period":
+                    period = True
             elif key == "end":
                 break
             elif found:
@@ -268,12 +274,14 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
                     # TODO: inject from model somehow?
                     # and remove special handling here
                     kwrgs["cwd"] = ""
+                    # kwrgs["type"] = param.type
                     kwrgs["mempath"] = f"{mempath}/{name}"
-                if ptype is not MFArray:
+                if ptype is not MFArray and ptype is not MFList:
                     kwrgs.pop("model_shape", None)
                     kwrgs.pop("blk_params", None)
 
                 params[param.name] = ptype.load(f, **kwrgs)
+                period = False
 
         return cls(name=name, index=index, params=params)
 
@@ -281,7 +289,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
         """Write the block to file."""
         index = self.index if self.index is not None else ""
         begin = f"BEGIN {self.name.upper()} {index}\n"
-        end = f"END {self.name.upper()}\n"
+        end = f"END {self.name.upper()}\n\n"
 
         f.write(begin)
         super().write(f)

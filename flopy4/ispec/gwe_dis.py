@@ -199,7 +199,7 @@ model output netcdf file.""",
     )
 
     delr = MFArray(
-        type = "array",
+        type = "double",
         block = "griddata",
         shape = "(ncol)",
         reader = "readarray",
@@ -211,7 +211,7 @@ model output netcdf file.""",
     )
 
     delc = MFArray(
-        type = "array",
+        type = "double",
         block = "griddata",
         shape = "(nrow)",
         reader = "readarray",
@@ -223,7 +223,7 @@ model output netcdf file.""",
     )
 
     top = MFArray(
-        type = "array",
+        type = "double",
         block = "griddata",
         shape = "(ncol, nrow)",
         reader = "readarray",
@@ -235,7 +235,7 @@ model output netcdf file.""",
     )
 
     botm = MFArray(
-        type = "array",
+        type = "double",
         block = "griddata",
         shape = "(ncol, nrow, nlay)",
         reader = "readarray",
@@ -247,7 +247,7 @@ model output netcdf file.""",
     )
 
     idomain = MFArray(
-        type = "array",
+        type = "integer",
         block = "griddata",
         shape = "(ncol, nrow, nlay)",
         reader = "readarray",

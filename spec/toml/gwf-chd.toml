@@ -1,0 +1,347 @@
+component = "GWF"
+subcomponent = "CHD"
+blocknames = [ "options", "dimensions", "period",]
+multipkg = false
+stress = true
+advanced = false
+multi = true
+
+[block.options.auxiliary]
+type = "string"
+block_variable = false
+valid = []
+shape = "(naux)"
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "keyword to specify aux variables"
+description = "REPLACE auxnames {'{#1}': 'Groundwater Flow'}"
+deprecated = ""
+
+[block.options.auxmultname]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "name of auxiliary variable for multiplier"
+description = "REPLACE auxmultname {'{#1}': 'CHD head value'}"
+deprecated = ""
+
+[block.options.boundnames]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = ""
+description = "REPLACE boundnames {'{#1}': 'constant-head'}"
+deprecated = ""
+
+[block.options.print_input]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "print input to listing file"
+description = "REPLACE print_input {'{#1}': 'constant-head'}"
+deprecated = ""
+
+[block.options.print_flows]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "print CHD flows to listing file"
+description = "REPLACE print_flows {'{#1}': 'constant-head'}"
+deprecated = ""
+
+[block.options.save_flows]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "save CHD flows to budget file"
+description = "REPLACE save_flows {'{#1}': 'constant-head'}"
+deprecated = ""
+
+[block.options.ts_filerecord]
+type = "record ts6 filein ts6_filename"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = ""
+description = ""
+deprecated = ""
+
+[block.options.ts6]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "head keyword"
+description = "keyword to specify that record corresponds to a time-series file."
+deprecated = ""
+
+[block.options.filein]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "file keyword"
+description = "keyword to specify that an input filename is expected next."
+deprecated = ""
+
+[block.options.ts6_filename]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = true
+numeric_index = false
+longname = "file name of time series information"
+description = "REPLACE timeseriesfile {}"
+deprecated = ""
+
+[block.options.obs_filerecord]
+type = "record obs6 filein obs6_filename"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = ""
+description = ""
+deprecated = ""
+
+[block.options.obs6]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to an observations file."
+deprecated = ""
+
+[block.options.obs6_filename]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = true
+numeric_index = false
+longname = "obs6 input filename"
+description = "REPLACE obs6_filename {'{#1}': 'constant-head'}"
+deprecated = ""
+
+[block.options.dev_no_newton]
+type = "keyword"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "turn off Newton for unconfined cells"
+description = "turn off Newton for unconfined cells"
+deprecated = ""
+
+[block.dimensions.maxbound]
+type = "integer"
+block_variable = false
+valid = []
+shape = ""
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "maximum number of constant heads"
+description = "REPLACE maxbound {'{#1}': 'constant-head'}"
+deprecated = ""
+
+[block.period.cellid]
+type = "integer"
+block_variable = false
+valid = []
+shape = "(ncelldim)"
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "cell identifier"
+description = "REPLACE cellid {}"
+deprecated = ""
+
+[block.period.head]
+type = "double"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = true
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = "head value assigned to constant head"
+description = "is the head at the boundary. If the Options block includes a TIMESERIESFILE entry (see the ``Time-Variable Input'' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+deprecated = ""
+
+[block.period.aux]
+type = "double"
+block_variable = false
+valid = []
+shape = "(naux)"
+tagged = false
+in_record = true
+layered = false
+time_series = true
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "auxiliary variables"
+description = "REPLACE aux {'{#1}': 'constant head'}"
+deprecated = ""
+
+[block.period.boundname]
+type = "string"
+block_variable = false
+valid = []
+shape = ""
+tagged = false
+in_record = true
+layered = false
+time_series = false
+reader = "urword"
+optional = true
+preserve_case = false
+numeric_index = false
+longname = "constant head boundary name"
+description = "REPLACE boundname {'{#1}': 'constant head boundary'}"
+deprecated = ""
+
+[block.period.stress_period_data]
+type = "recarray cellid head aux boundname"
+block_variable = false
+valid = []
+shape = "(maxbound)"
+tagged = true
+in_record = false
+layered = false
+time_series = false
+reader = "urword"
+optional = false
+preserve_case = false
+numeric_index = false
+longname = ""
+description = ""
+deprecated = ""

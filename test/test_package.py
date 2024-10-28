@@ -34,7 +34,7 @@ class TestPackage(MFPackage):
         optional=False,
     )
     a = MFArray(
-        block="packagedata", type="array", description="array", shape=(3)
+        block="packagedata", type="double", description="array", shape=(3)
     )
 
 
@@ -73,6 +73,7 @@ class TestGwfIc(MFPackage):
         optional=False,
         # shape="(nodes)",
         shape=(10),
+        type="double",
     )
 
 
@@ -112,6 +113,7 @@ class TestGwfDis(MFPackage):
         optional=False,
         # shape="(ncol)",
         shape=(5),
+        type="double",
     )
     delc = MFArray(
         block="griddata",
@@ -120,6 +122,7 @@ class TestGwfDis(MFPackage):
         optional=False,
         # shape="(nrow)",
         shape=(5),
+        type="double",
     )
     top = MFArray(
         block="griddata",
@@ -129,6 +132,7 @@ class TestGwfDis(MFPackage):
         optional=False,
         # shape="(ncol, nrow)",
         shape=(5, 5),
+        type="double",
     )
     botm = MFArray(
         block="griddata",
@@ -137,6 +141,7 @@ class TestGwfDis(MFPackage):
         optional=False,
         # shape="(ncol, nrow, nlay)",
         shape=(3, 5, 5),
+        type="double",
     )
     idomain = MFArray(
         block="griddata",
@@ -155,6 +160,7 @@ class TestGwfDis(MFPackage):
         optional=False,
         # shape="(ncol, nrow, nlay)",
         shape=(3, 5, 5),
+        type="integer",
     )
 
 

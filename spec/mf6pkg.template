@@ -29,7 +29,7 @@ class {{c}}{{s}}(MFPackage):
         {%- else %}
 
     {{pname}} = MFArray(
-        type = "array",
+        type = "double",
         {%- endif %}
       {%- elif 'integer' == params[pname].type %}
         {%- if '' == params[pname].shape %}
@@ -39,7 +39,7 @@ class {{c}}{{s}}(MFPackage):
         {%- else %}
 
     {{pname}} = MFArray(
-        type = "array",
+        type = "integer",
         {%- endif %}
       {%- else %}
         {%- set tokens = params[pname].type.split(' ') %}

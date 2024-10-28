@@ -283,88 +283,6 @@ particle is not released into the simulation if its release point's
 cell is inactive at release time.""",
     )
 
-    release_timesrecord = MFRecord(
-        type = "record",
-        params = {
-            "release_times": MFKeyword(),
-            "times": MFArray(shape="(unknown)"),
-        },
-        block = "options",
-        shape = "",
-        reader = "urword",
-        optional = True,
-        longname =
-"""""",
-        description =
-"""""",
-    )
-
-    release_times = MFKeyword(
-        type = "keyword",
-        block = "options",
-        shape = "",
-        reader = "urword",
-        optional = False,
-        longname =
-"""""",
-        description =
-"""keyword indicating release times will follow""",
-    )
-
-    times = MFArray(
-        type = "array",
-        block = "options",
-        shape = "(unknown)",
-        reader = "urword",
-        optional = False,
-        longname =
-"""release times""",
-        description =
-"""times to release, relative to the beginning of the simulation.
-RELEASE_TIMES and RELEASE_TIMESFILE are mutually exclusive.""",
-    )
-
-    release_timesfilerecord = MFRecord(
-        type = "record",
-        params = {
-            "release_timesfile": MFKeyword(),
-            "timesfile": MFString(),
-        },
-        block = "options",
-        shape = "",
-        reader = "urword",
-        optional = True,
-        longname =
-"""""",
-        description =
-"""""",
-    )
-
-    release_timesfile = MFKeyword(
-        type = "keyword",
-        block = "options",
-        shape = "",
-        reader = "urword",
-        optional = False,
-        longname =
-"""""",
-        description =
-"""keyword indicating release times file name will follow""",
-    )
-
-    timesfile = MFString(
-        type = "string",
-        block = "options",
-        shape = "",
-        reader = "urword",
-        optional = False,
-        longname =
-"""file keyword""",
-        description =
-"""name of the release times file.  RELEASE_TIMES and RELEASE_TIMESFILE
-are mutually exclusive.""",
-    )
-
     dev_forceternary = MFKeyword(
         type = "keyword",
         block = "options",
@@ -378,6 +296,40 @@ are mutually exclusive.""",
 DISV grids.""",
     )
 
+    release_time_tolerance = MFDouble(
+        type = "double",
+        block = "options",
+        shape = "",
+        reader = "urword",
+        optional = True,
+        longname =
+"""release time coincidence tolerance""",
+        description =
+"""real number indicating the tolerance within which to consider adjacent
+release times coincident. Coincident release times will be merged into
+a single release time. The default is $epsilon times 10^11$, where
+$epsilon$ is machine precision.""",
+    )
+
+    release_time_frequency = MFDouble(
+        type = "double",
+        block = "options",
+        shape = "",
+        reader = "urword",
+        optional = True,
+        longname =
+"""release time frequency""",
+        description =
+"""real number indicating the time frequency at which to release
+particles. This option can be used to schedule releases at a regular
+interval for the duration of the simulation, starting at the
+simulation start time. The release schedule is the union of this
+option, the RELEASETIMES block, and PERIOD block RELEASESETTING
+selections. If none of these are provided, a single release time is
+configured at the beginning of the first time step of the simulation's
+first stress period.""",
+    )
+
     nreleasepts = MFInteger(
         type = "integer",
         block = "dimensions",
@@ -388,6 +340,21 @@ DISV grids.""",
 """number of particle release points""",
         description =
 """is the number of particle release points.""",
+    )
+
+    nreleasetimes = MFInteger(
+        type = "integer",
+        block = "dimensions",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""number of particle release times""",
+        description =
+"""is the number of particle release times specified in the RELEASETIMES
+block. This is not necessarily the total number of release times;
+release times are the union of RELEASE_TIME_FREQUENCY, RELEASETIMES
+block, and PERIOD block RELEASESETTING selections.""",
     )
 
     irptno = MFInteger(
@@ -407,7 +374,7 @@ number is specified more than once.""",
     )
 
     cellid = MFArray(
-        type = "array",
+        type = "integer",
         block = "packagedata",
         shape = "(ncelldim)",
         reader = "urword",
@@ -496,6 +463,34 @@ single quotes.""",
 """""",
     )
 
+    time = MFDouble(
+        type = "double",
+        block = "releasetimes",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""release time""",
+        description =
+"""real value that defines the release time with respect to the
+simulation start time.""",
+    )
+
+    releasetimes = MFList(
+        type = "recarray",
+        params = {
+            "time": time,
+        },
+        block = "releasetimes",
+        shape = "(nreleasetimes)",
+        reader = "urword",
+        optional = False,
+        longname =
+"""""",
+        description =
+"""""",
+    )
+
     all = MFKeyword(
         type = "keyword",
         block = "period",
@@ -505,8 +500,8 @@ single quotes.""",
         longname =
 """""",
         description =
-"""keyword to indicate release of particles at the start of all time
-steps in the period.""",
+"""keyword to indicate release at the start of all time steps in the
+period.""",
     )
 
     first = MFKeyword(
@@ -518,10 +513,23 @@ steps in the period.""",
         longname =
 """""",
         description =
-"""keyword to indicate release of particles at the start of the first
-time step in the period. This keyword may be used in conjunction with
-other keywords to release particles at the start of multiple time
-steps.""",
+"""keyword to indicate release at the start of the first time step in the
+period. This keyword may be used in conjunction with other
+RELEASESETTING options.""",
+    )
+
+    last = MFKeyword(
+        type = "keyword",
+        block = "period",
+        shape = "",
+        reader = "urword",
+        optional = False,
+        longname =
+"""""",
+        description =
+"""keyword to indicate release at the start of the last time step in the
+period. This keyword may be used in conjunction with other
+RELEASESETTING options.""",
     )
 
     frequency = MFInteger(
@@ -533,13 +541,12 @@ steps.""",
         longname =
 """""",
         description =
-"""release particles at the specified time step frequency. This keyword
-may be used in conjunction with other keywords to release particles at
-the start of multiple time steps.""",
+"""release at the specified time step frequency. This keyword may be used
+in conjunction with other RELEASESETTING options.""",
     )
 
     steps = MFArray(
-        type = "array",
+        type = "integer",
         block = "period",
         shape = "(<nstp)",
         reader = "urword",
@@ -547,13 +554,12 @@ the start of multiple time steps.""",
         longname =
 """""",
         description =
-"""release particles at the start of each step specified in STEPS. This
-keyword may be used in conjunction with other keywords to release
-particles at the start of multiple time steps.""",
+"""release at the start of each step specified in STEPS. This option may
+be used in conjunction with other RELEASESETTING options.""",
     )
 
     fraction = MFArray(
-        type = "array",
+        type = "double",
         block = "period",
         shape = "(<nstp)",
         reader = "urword",
@@ -567,5 +573,7 @@ of the specified time step(s). FRACTION must be a single value when
 used with ALL, FIRST, or FREQUENCY. When used with STEPS, FRACTION may
 be a single value or an array of the same length as STEPS. If a single
 FRACTION value is provided with STEPS, the fraction applies to all
-steps.""",
+steps. NOTE: The FRACTION option has been removed. For fine control
+over release timing, specify times explicitly using the RELEASETIMES
+block.""",
     )

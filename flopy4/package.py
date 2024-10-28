@@ -243,6 +243,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
         pname = strip(mempath.split("/")[-1])
         ftype = kwargs.pop("ftype", None)
         ptype = ftype.replace("6", "")
+        kwargs.pop("mname", None)
         kwargs.pop("modeltype", None)
 
         while True:
