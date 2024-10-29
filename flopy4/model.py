@@ -137,14 +137,14 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
                         nlay = packages[pname].params["nlay"]
                         nrow = packages[pname].params["nrow"]
                         ncol = packages[pname].params["ncol"]
-                        model_shape = (nlay, nrow, ncol)
+                        model_shape = [nlay, nrow, ncol]
                     elif ftype.lower() == "disv6":
                         nlay = packages[pname].params["nlay"]
                         ncpl = packages[pname].params["ncpl"]
-                        model_shape = (nlay, ncpl)
+                        model_shape = [nlay, ncpl]
                     elif ftype.lower() == "disu6":
                         nodes = packages[pname].params["nodes"]
-                        model_shape = nodes
+                        model_shape = [nodes]
 
     def write(self, simpath, **kwargs):
         """Write the model to files."""

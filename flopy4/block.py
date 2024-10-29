@@ -236,7 +236,7 @@ class MFBlock(MFParams, metaclass=MFBlockMappingMeta):
             line = f.readline()
             if line == "":
                 raise ValueError("Early EOF, aborting")
-            if line == "\n":
+            if line == "\n" or line.lstrip().startswith("#"):
                 continue
             words = strip(line).lower().split()
             if period:

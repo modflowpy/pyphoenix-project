@@ -374,7 +374,9 @@ class MFList(MFCompound):
         while True:
             pos = f.tell()
             line = f.readline()
-            if line.lower().startswith("end"):
+            if line == "\n" or line.lstrip().startswith("#"):
+                continue
+            elif line.lower().startswith("end"):
                 f.seek(pos)
                 break
             else:

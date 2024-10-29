@@ -251,7 +251,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
             line = f.readline()
             if line == "":
                 break
-            if line == "\n":
+            if line == "\n" or line.lstrip().startswith("#"):
                 continue
             line = strip(line).lower()
             words = line.split()

@@ -456,14 +456,18 @@ class MFArray(MFParam, NumPyArrayMixin):
                     nlay = params.get("dimensions").get("nlay")
                     nrow = params.get("dimensions").get("nrow")
                     ncol = params.get("dimensions").get("ncol")
+                    shape = (nlay, nrow, ncol)
+                elif "disv" in mempath.split("/"):
+                    nlay = params.get("dimensions").get("nlay")
                     ncpl = params.get("dimensions").get("ncpl")
+                    shape = (nlay, ncpl)
+                elif "disu" in mempath.split("/"):
                     nodes = params.get("dimensions").get("nodes")
-                    if nrow and ncol:
-                        shape = (nlay, nrow, ncol)
-                    elif ncpl:
-                        shape = (nlay, ncpl)
-                    elif nodes:
+                    nja = params.get("dimensions").get("nja")
+                    if "nodes" in shape:
                         shape = nodes
+                    elif "nja" in shape:
+                        shape = nja
         if layered:
             nlay = shape[0]
             lshp = shape[1:]
@@ -554,7 +558,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             pos = f.tell()
             line = f.readline()
             line = line_strip(line)
-            if not re.match("^[0-9. ]+$", line):
+            if not re.match("^[-0-9. ]+$", line):
                 f.seek(pos, 0)
                 break
             astr.append(line)

@@ -192,23 +192,22 @@ class MFSimulation:
                     kwargs["mempath"] = f"{mempath}/{slnname}"
                     solvers[slnname] = sln.load(f, **kwargs)
 
-    def write(self, simpath, **kwargs):
+    def write(self, simpath: Path, **kwargs):
         """Write the simulation to files."""
-        path = Path(simpath)
-
-        fpath = Path(self.nam.params["tdis6"])
-        newpath = Path(path / fpath.name)
-        with open(newpath, "w") as f:
+        tdis_fpath = Path(self.nam.params["tdis6"])
+        with open(Path(simpath / tdis_fpath.name), "w") as f:
             self.tdis.write(f, **kwargs)
 
         # slntypes = self.nam.params["solutiongroup"]["slntype"]
         slnfnames = self.nam.params["solutiongroup"]["slnfname"]
         for index, sln in enumerate(self.solvers):
-            with open(path / slnfnames[index], "w") as f:
+            sln_fpath = Path(slnfnames[index])
+            # with open(simpath / slnfnames[index], "w") as f:
+            with open(Path(simpath / sln_fpath.name), "w") as f:
                 self.solvers[sln].write(f, **kwargs)
 
         for model in self.models:
             self.models[model].write(simpath, **kwargs)
 
-        with open(path / "mfsim.nam", "w") as f:
+        with open(simpath / "mfsim.nam", "w") as f:
             self.nam.write(f, **kwargs)
