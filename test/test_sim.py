@@ -346,21 +346,57 @@ def test_gwf_chd01(tmp_path):
     shutil.copytree(data_fpth, tmp_path / "gwf_chd01")
     sim_fpth = Path(tmp_path / "gwf_chd01" / "mfsim.nam")
 
-    s = None
+    sim = None
     with open(sim_fpth, "r") as f:
-        s = MFSimulation.load(f)
+        sim = MFSimulation.load(f)
 
     write_dir = tmp_path / "write"
     os.makedirs(write_dir)
-    s.write(write_dir)
+    sim.write(write_dir)
 
-    s = subprocess.run(["which", "mf6"])
-    if s.returncode == 0:
+    w = subprocess.run(["which", "mf6"])
+    if w.returncode == 0:
         os.chdir(tmp_path / "gwf_chd01")
         subprocess.run(["mf6"])
         os.chdir(tmp_path / "write")
         subprocess.run(["mf6"])
-        subprocess.run(["diff", f"./{name}.lst", f"../gwf_chd01/{name}.lst"])
+        diff = subprocess.run(
+            ["diff", f"./{name}.lst", f"../gwf_chd01/{name}.lst"]
+        )
+        if diff.stdout:
+            print(f"\nGWF model list file difference: {diff.stdout}")
+        if diff.stderr:
+            print(diff.stderr)
+
+
+def test_gwf_disv(tmp_path):
+    name = "disv01a"
+
+    data_fpth = Path(__file__).parent / "data" / "test_mf6model_0-disv01a_0"
+    shutil.copytree(data_fpth, tmp_path / "disv01a")
+    sim_fpth = Path(tmp_path / "disv01a" / "mfsim.nam")
+
+    sim = None
+    with open(sim_fpth, "r") as f:
+        sim = MFSimulation.load(f)
+
+    write_dir = tmp_path / "write"
+    os.makedirs(write_dir)
+    sim.write(write_dir)
+
+    w = subprocess.run(["which", "mf6"])
+    if w.returncode == 0:
+        os.chdir(tmp_path / "disv01a")
+        subprocess.run(["mf6"])
+        os.chdir(tmp_path / "write")
+        subprocess.run(["mf6"])
+        diff = subprocess.run(
+            ["diff", f"./{name}.lst", f"../disv01a/{name}.lst"]
+        )
+        if diff.stdout:
+            print(f"\nGWF model list file difference: {diff.stdout}")
+        if diff.stderr:
+            print(diff.stderr)
 
 
 def test_gwf_disu(tmp_path):
@@ -370,18 +406,24 @@ def test_gwf_disu(tmp_path):
     shutil.copytree(data_fpth, tmp_path / "disu01a")
     sim_fpth = Path(tmp_path / "disu01a" / "mfsim.nam")
 
-    s = None
+    sim = None
     with open(sim_fpth, "r") as f:
-        s = MFSimulation.load(f)
+        sim = MFSimulation.load(f)
 
     write_dir = tmp_path / "write"
     os.makedirs(write_dir)
-    s.write(write_dir)
+    sim.write(write_dir)
 
-    s = subprocess.run(["which", "mf6"])
-    if s.returncode == 0:
+    w = subprocess.run(["which", "mf6"])
+    if w.returncode == 0:
         os.chdir(tmp_path / "disu01a")
         subprocess.run(["mf6"])
         os.chdir(tmp_path / "write")
         subprocess.run(["mf6"])
-        subprocess.run(["diff", f"./{name}.lst", f"../disu01a/{name}.lst"])
+        diff = subprocess.run(
+            ["diff", f"./{name}.lst", f"../disu01a/{name}.lst"]
+        )
+        if diff.stdout:
+            print(f"\nGWF model list file difference: {diff.stdout}")
+        if diff.stderr:
+            print(diff.stderr)

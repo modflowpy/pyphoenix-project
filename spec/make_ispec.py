@@ -82,7 +82,7 @@ class Toml2IPkg:
                             typelist.clear()
                             break
                         else:
-                            raise ValueError(f"Cannot add record type => {t}")
+                            raise ValueError(f"Cannot add record type => {ptype}")
                     if ptype.startswith("record"):
                         tin["block"][b][blkparam]["rectypes"] = typelist
                     else:

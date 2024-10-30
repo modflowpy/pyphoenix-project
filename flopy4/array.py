@@ -460,7 +460,13 @@ class MFArray(MFParam, NumPyArrayMixin):
                 elif "disv" in mempath.split("/"):
                     nlay = params.get("dimensions").get("nlay")
                     ncpl = params.get("dimensions").get("ncpl")
-                    shape = (nlay, ncpl)
+                    nvert = params.get("dimensions").get("nvert")
+                    if shape == "(ncpl)":
+                        shape = ncpl
+                    elif shape == "(ncpl, nlay)":
+                        shape = (nlay, ncpl)
+                    elif shape == "(nvert)":
+                        shape = nvert
                 elif "disu" in mempath.split("/"):
                     nodes = params.get("dimensions").get("nodes")
                     nja = params.get("dimensions").get("nja")

@@ -343,6 +343,7 @@ class MFList(MFCompound):
         kwargs.pop("mname", None)
         kwargs.pop("shape", None)  # e.g. maxbound
 
+        jidx = -1
         param_lists = []
         param_cols = []
         param_types = []
@@ -353,18 +354,26 @@ class MFList(MFCompound):
                 #    "boundames and auxvars not yet supported in period blocks"
                 # )
             pcols = 0
-            if params[k].shape is None or params[k].shape == "":
+            if (
+                params[k].shape is None
+                or params[k].shape == ""
+                or params[k].shape == "(:)"
+            ):
                 pcols = 1
             elif params[k].shape == "(ncelldim)":
-                if model_shape:
-                    pcols = len(model_shape)
-                else:
-                    raise ValueError("model_shape not set")
+                assert model_shape
+                pcols = len(model_shape)
+            elif params[k].shape == "(ncvert)":
+                # param_cols will be updated each line
+                jidx = len(param_cols) - 1
             else:
-                pcols = len(params[k].shape.split(","))
+                raise ValueError(
+                    "MFList param {params[k].name} has "
+                    "unsupported shape {params[k].shape}"
+                )
             param_cols.append(pcols)
-            param_lists.append(list())
             param_types.append(params[k].type)
+            param_lists.append(list())
 
         if list(params.items())[-1][1].shape == "(:)":
             maxsplit = sum(param_cols) - 1
@@ -381,6 +390,8 @@ class MFList(MFCompound):
                 break
             else:
                 tokens = strip(line).split(maxsplit=maxsplit)
+                if jidx >= 0:
+                    param_cols[jidx + 1] = int(tokens[jidx])
                 assert len(tokens) == sum(param_cols)
                 icol = 0
                 for i in range(len(param_types)):
