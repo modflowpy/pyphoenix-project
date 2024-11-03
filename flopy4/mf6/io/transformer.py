@@ -3,13 +3,29 @@ from pathlib import Path
 import numpy as np
 from lark import Transformer
 
-from flopy4.io.lark import (
-    parse_array,
-    parse_float,
-    parse_int,
-    parse_string,
-    parse_word,
-)
+
+def parse_word(_, w):
+    (w,) = w
+    return str(w)
+
+
+def parse_string(_, s):
+    return " ".join(s)
+
+
+def parse_int(_, i):
+    (i,) = i
+    return int(i)
+
+
+def parse_float(_, f):
+    (f,) = f
+    return float(f)
+
+
+def parse_array(_, a):
+    (a,) = a
+    return np.array(a)
 
 
 class MF6Transformer(Transformer):

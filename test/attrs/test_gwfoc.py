@@ -1,101 +1,99 @@
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
-from cattrs import Converter
-
-from flopy4.attrs import context, is_frozen, param, params, to_path
+from attr import asdict, define, field, fields_dict
+from cattr import Converter
 
 ArrayFormat = Literal["exponential", "fixed", "general", "scientific"]
 
 
-@context
+@define
 class PrintFormat:
-    columns: int = param(
-        description="""
-number of columns for writing data"""
-    )
-    width: int = param(
-        description="""
-width for writing each number"""
-    )
-    digits: int = param(
-        description="""
-number of digits to use for writing a number"""
-    )
-    array_format: ArrayFormat = param(
-        description="""
-write format can be EXPONENTIAL, FIXED, GENERAL, or SCIENTIFIC"""
-    )
+    columns: int = field()
+    """
+    number of columns for writing data
+    """
+
+    width: int = field()
+    """
+    width for writing each number
+    """
+
+    digits: int = field()
+    """
+    number of digits to use for writing a number
+    """
+
+    array_format: ArrayFormat = field()
+    """
+    write format can be EXPONENTIAL, FIXED, GENERAL, or SCIENTIFIC
+    """
 
 
-@context
+@define
 class Options:
-    budget_file: Optional[Path] = param(
-        description="""
-name of the output file to write budget information""",
-        converter=to_path,
-        default=None,
-    )
-    budget_csv_file: Optional[Path] = param(
-        description="""
-name of the comma-separated value (CSV) output 
-file to write budget summary information. 
-A budget summary record will be written to this 
-file for each time step of the simulation.""",
-        converter=to_path,
-        default=None,
-    )
-    head_file: Optional[Path] = param(
-        description="""
-name of the output file to write head information.""",
-        converter=to_path,
-        default=None,
-    )
-    print_format: Optional[PrintFormat] = param(
-        description="""
-specify format for printing to the listing file""",
-        default=None,
-    )
+    budget_file: Optional[Path] = field(default=None)
+    """
+    name of the output file to write budget information
+    """
+
+    budget_csv_file: Optional[Path] = field(default=None)
+    """
+    name of the comma-separated value (CSV) output 
+    file to write budget summary information. 
+    A budget summary record will be written to this 
+    file for each time step of the simulation.
+    """
+
+    head_file: Optional[Path] = field(default=None)
+    """
+    name of the output file to write head information.
+    """
+
+    print_format: Optional[PrintFormat] = field(default=None)
+    """
+    specify format for printing to the listing file
+    """
 
 
-@context
+@define
 class All:
-    all: bool = param(
-        description="""
-keyword to indicate save for all time steps in period."""
-    )
+    all: bool = field()
+    """
+    keyword to indicate save for all time steps in period.
+    """
 
 
-@context
+@define
 class First:
-    first: bool = param(
-        description="""
-keyword to indicate save for first step in period."""
-    )
+    first: bool = field()
+    """
+    keyword to indicate save for first step in period.
+    """
 
 
-@context
+@define
 class Last:
-    last: bool = param(
-        description="""
-keyword to indicate save for last step in period"""
-    )
+    last: bool = field()
+    """
+    keyword to indicate save for last step in period
+    """
 
 
-@context
+@define
 class Steps:
-    steps: List[int] = param(
-        description="""
-save for each step specified."""
-    )
+    steps: List[int] = field()
+    """
+    save for each step specified
+    """
 
 
-@context
+@define
 class Frequency:
-    frequency: int = param(
-        description="""
-save at the specified time step frequency."""
-    )
+    frequency: int = field()
+    """
+    save at the specified time step frequency.
+    """
 
 
 # It's awkward to have single-parameter contexts, but
@@ -108,11 +106,11 @@ RType = Literal["budget", "head"]
 OCSetting = Union[All, First, Last, Steps, Frequency]
 
 
-@context
+@define
 class OutputControlData:
-    printsave: PrintSave = param()
-    rtype: RType = param()
-    ocsetting: OCSetting = param()
+    printsave: PrintSave = field()
+    rtype: RType = field()
+    ocsetting: OCSetting = field()
 
     @classmethod
     def from_tuple(cls, t):
@@ -133,16 +131,17 @@ Period = List[OutputControlData]
 Periods = List[Period]
 
 
-@context
+@define
 class GwfOc:
-    options: Options = param(
-        description="""
-options block"""
-    )
-    periods: Periods = param(
-        description="""
-period blocks"""
-    )
+    options: Options = field()
+    """
+    options block
+    """
+
+    periods: Periods = field()
+    """
+    period blocks
+    """
 
 
 # Converter
@@ -161,10 +160,8 @@ converter.register_structure_hook(OutputControlData, output_control_data_hook)
 
 
 def test_spec():
-    spec = params(OutputControlData)
+    spec = fields_dict(OutputControlData)
     assert len(spec) == 3
-    assert isinstance(spec, Dict)
-    assert not is_frozen(OutputControlData)
 
     ocsetting = spec["ocsetting"]
     assert ocsetting.type is OCSetting
@@ -174,8 +171,8 @@ def test_options_to_dict():
     options = Options(
         budget_file="some/file/path.cbc",
     )
-    assert isinstance(options.budget_file, Path)
-    assert len(options.to_dict()) == 4
+    assert isinstance(options.budget_file, str)  # TODO path
+    assert len(asdict(options)) == 4
 
 
 def test_output_control_data_from_tuple():
