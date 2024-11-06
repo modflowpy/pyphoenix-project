@@ -63,7 +63,7 @@ The other key audience is the team of MODFLOW software developers.
 ### Intended use
 
 The product should be available on the major operating systems (Windows, Linux, MacOS) and hardware ranging from laptops to HPC systems.
-The product will be used through Python scripts and Jupyter notebooks.
+The product will be used through Python scripts, Jupyter notebooks, pytest, and ipython.
 
 The product can be relied upon as a core component by other libraries and tools that offer more advanced, domain specific, or application specific functionality.
 
@@ -101,9 +101,9 @@ flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. An
 
 The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions.
 
-flopy4 can create grid definitions in different formats: structured, unstructured, **... (more)**
+flopy4 can create grid definitions in different formats: structured (DIS), vertex (DISV), unstructured (DISU). And is open for expansion of new grid definitions.
 
-flopy4 can create MODFLOW models that support parallel processing.
+flopy4 can create MODFLOW models that support parallel processing. It can pre-process models by splitting them up, ready for parallel computation.
 
 The product contains functions to plot model output and gives the user configurable or extendable options for customization.
 
@@ -111,19 +111,35 @@ The product can export its internal data model to different types of file format
 
 Extensive validation on the final input model can be used to ensure that the model is correct before running the simulation. The validation can be extended by the user to include custom checks.
 
+Instantiation of packages and models should work in an intuitive way, the user should not be stuck with specific orders of function calls. E.g., packages can be created without creating a simulation or model first.
+
 ## External interface requirements
 
 flopy4 should give the opportunity for external libraries to extend its capabilities by providing a plugin system. This can be useful for new plotting mechanisms, file export formats, or custom input file formats that can be converted to MODFLOW data.
 
 New DFN files should be compatible with flopy4, and the product should be able to generate a definition of the packages that are applicable to that version of MODFLOW 6.
 
-## Non-functional requirements (NRFs)
+The product strives for a consistency in its public API between MODFLOW6 and older MODFLOW packages.
+
+The product has programmatic access to example models, to make it quick for the user to run an example model, or to alter the examples to their liking.
+
+Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package.
+
+The product has a unified understanding of date and time.
+
+The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters.
+
+## Non-functional requirements (NFRs)
 
 The product must be able to create large models that are larger than the available memory on the user's machine.
 
 The product should be able to create an example model of the United States with a **?1 km?** grid resolution.
 
 Clear and informative error messages should be provided to the user when an error occurs, also during model input validation.
+
+The user documentation makes a clear distinction in user public and internal API.
+
+The user documentation provides a complete overview of the definition file specification.
 
 ### Maintainability
 
