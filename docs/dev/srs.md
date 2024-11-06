@@ -10,18 +10,18 @@
     - [Intended audience](#intended-audience)
     - [Intended use](#intended-use)
     - [Use cases](#use-cases)
-  - [System requirements and functional requirements](#system-requirements-and-functional-requirements)
-    - [System requirements](#system-requirements)
-    - [Functional requirements](#functional-requirements)
-  - [External interface requirements](#external-interface-requirements)
-  - [Non-functional requirements (NRFs)](#non-functional-requirements-nrfs)
-    - [Maintainability](#maintainability)
   - [Motivation](#motivation)
     - [Consistency](#consistency)
     - [Maintenance](#maintenance)
     - [Introspection](#introspection)
     - [Performance](#performance)
     - [Invariants](#invariants)
+  - [System requirements and functional requirements](#system-requirements-and-functional-requirements)
+    - [System requirements](#system-requirements)
+    - [Functional requirements](#functional-requirements)
+  - [External interface requirements](#external-interface-requirements)
+  - [Non-functional requirements (NRFs)](#non-functional-requirements-nfrs)
+    - [Maintainability](#maintainability)
   - [Goals](#goals)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -80,72 +80,6 @@ The product can be relied upon as a core component by other libraries and tools 
 - A MODFLOW developer is debugging an issue in the UZF package and wants to create a complicated test with many cells and stress periods...
 
 - A MODFLOW developer is setting up a worked example to demonstrate how to use a new feature...
-
-## System requirements and functional requirements
-
-### System requirements
-
-flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries.
-
-The product must be able to run on the following operating systems: Windows, Linux, MacOS.
-
-The product must be distributed via the Python Package Index (PyPI) and be installable via pip. Additionally, the product must be installable via conda-forge.
-
-### Functional requirements
-
-flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files.
-
-flopy4 must be able to run MODFLOW 6 simulations.
-
-flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6.
-
-The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions.
-
-flopy4 can create grid definitions in different formats: structured (DIS), vertex (DISV), unstructured (DISU). And is open for expansion of new grid definitions.
-
-flopy4 can create MODFLOW models that support parallel processing. It can pre-process models by splitting them up, ready for parallel computation.
-
-The product contains functions to plot model output and gives the user configurable or extendable options for customization.
-
-The product can export its internal data model to different types of file formats, such as NetCDF, VTK, and geospatial standards.
-
-Extensive validation on the final input model can be used to ensure that the model is correct before running the simulation. The validation can be extended by the user to include custom checks.
-
-Instantiation of packages and models should work in an intuitive way, the user should not be stuck with specific orders of function calls. E.g., packages can be created without creating a simulation or model first.
-
-## External interface requirements
-
-flopy4 should give the opportunity for external libraries to extend its capabilities by providing a plugin system. This can be useful for new plotting mechanisms, file export formats, or custom input file formats that can be converted to MODFLOW data.
-
-New DFN files should be compatible with flopy4, and the product should be able to generate a definition of the packages that are applicable to that version of MODFLOW 6.
-
-The product strives for a consistency in its public API between MODFLOW6 and older MODFLOW packages.
-
-The product has programmatic access to example models, to make it quick for the user to run an example model, or to alter the examples to their liking.
-
-Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package.
-
-The product has a unified understanding of date and time.
-
-The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters.
-
-## Non-functional requirements (NFRs)
-
-The product must be able to create large models that are larger than the available memory on the user's machine.
-
-The product should be able to create an example model of the United States with a **?1 km?** grid resolution.
-
-Clear and informative error messages should be provided to the user when an error occurs, also during model input validation.
-
-The user documentation makes a clear distinction in user public and internal API.
-
-The user documentation provides a complete overview of the definition file specification.
-
-### Maintainability
-
-flopy4 should maintain a separation of concerns with respect to hydrology and
-software engineering. The hydrologic modeler should not be concerned with the
-technical details of flopy4's internal data storage or parallel processing implementation, for example, and a software engineer should be able to work on the code without detailed knowledge on complex hydrologic concepts.
 
 ## Motivation
 
@@ -220,3 +154,69 @@ With the above in mind, we want the next version of FloPy to
 - be easy to read, debug, diagnose and test
 - be memory-efficient and provide fast IO
 - impose a minimal maintenance burden
+
+## System requirements and functional requirements
+
+### System requirements
+
+flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries.
+
+The product must be able to run on the following operating systems: Windows, Linux, MacOS.
+
+The product must be distributed via the Python Package Index (PyPI) and be installable via pip. Additionally, the product must be installable via conda-forge.
+
+### Functional requirements
+
+flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files.
+
+flopy4 must be able to run MODFLOW 6 simulations.
+
+flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6.
+
+The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions.
+
+flopy4 can create grid definitions in different formats: structured (DIS), vertex (DISV), unstructured (DISU). And is open for expansion of new grid definitions.
+
+flopy4 can create MODFLOW models that support parallel processing. It can pre-process models by splitting them up, ready for parallel computation.
+
+The product contains functions to plot model output and gives the user configurable or extendable options for customization.
+
+The product can export its internal data model to different types of file formats, such as NetCDF, VTK, and geospatial standards.
+
+Extensive validation on the final input model can be used to ensure that the model is correct before running the simulation. The validation can be extended by the user to include custom checks.
+
+Instantiation of packages and models should work in an intuitive way, the user should not be stuck with specific orders of function calls. E.g., packages can be created without creating a simulation or model first.
+
+## External interface requirements
+
+flopy4 should give the opportunity for external libraries to extend its capabilities by providing a plugin system. This can be useful for new plotting mechanisms, file export formats, or custom input file formats that can be converted to MODFLOW data.
+
+New DFN files should be compatible with flopy4, and the product should be able to generate a definition of the packages that are applicable to that version of MODFLOW 6.
+
+The product strives for a consistency in its public API between MODFLOW6 and older MODFLOW packages.
+
+The product has programmatic access to example models, to make it quick for the user to run an example model, or to alter the examples to their liking.
+
+Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package.
+
+The product has a unified understanding of date and time.
+
+The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters.
+
+## Non-functional requirements (NFRs)
+
+The product must be able to create large models that are larger than the available memory on the user's machine.
+
+The product should be able to create an example model of the United States with a **?1 km?** grid resolution.
+
+Clear and informative error messages should be provided to the user when an error occurs, also during model input validation.
+
+The user documentation makes a clear distinction in user public and internal API.
+
+The user documentation provides a complete overview of the definition file specification.
+
+### Maintainability
+
+flopy4 should maintain a separation of concerns with respect to hydrology and
+software engineering. The hydrologic modeler should not be concerned with the
+technical details of flopy4's internal data storage or parallel processing implementation, for example, and a software engineer should be able to work on the code without detailed knowledge on complex hydrologic concepts.
