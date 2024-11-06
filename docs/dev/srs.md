@@ -94,36 +94,27 @@ in several areas:
 
 ### Consistency
 
-The `flopy.mf6` module departs considerably from the older `flopy.modflow`
-module. This requires more memorization (or more R'ing TFM) for users and
-developers alike, and makes maintenance harder.
-
+The `flopy.mf6` module departs considerably from the older `flopy.modflow` module.
+This requires more memorization (or more R'ing TFM) for users and developers alike, and makes maintenance harder.
 Both modules are strongly coupled to the relevant programs' input format.
 
-We would like a consistent core framework for any modeling program, which
-can be applied to MODFLOW 6, older MODFLOW programs, and other hydrologic
-simulators. The framework should be agnostic to the IO format used by any
-particular program.
+We would like a consistent core framework for any modeling program, which can be applied to MODFLOW 6, older MODFLOW programs, and other hydrologic simulators.
+The framework should be agnostic to the IO format used by any particular program.
 
 ### Maintenance
 
-The `flopy.mf6` module is large and developers have struggled to maintain
-it. Deep abstraction in the object model raises barriers to comprehension
-and error messages are not easy to trace back to the offending component.
+The `flopy.mf6` module is large and developers have struggled to maintain it.
+Deep abstraction in the object model raises barriers to comprehension and error messages are not easy to trace back to the offending component.
 Debugging is also difficult.
 
 ### Introspection
 
-Component classes reproduce their input specification verbatim. This is
-redundant and yet not particularly useful or Pythonic; more informative
-would be a format-agnostic specification in terms of Python primitives,
-containers, and classes, which can be translated into any given format
-upon request. This allows flexibility to translate DFN specifications
-to a different format, e.g. TOML, YAML or JSON.
+Component classes reproduce their input specification verbatim.
+This is redundant and yet not particularly useful or pythonic;
+more informative would be a format-agnostic specification in terms of Python primitives, containers, and classes, which can be translated into any given format upon request.
+This allows flexibility to translate DFN specifications to a different format, e.g. TOML, YAML or JSON.
 
-Component classes also provide a data access layer via `.get_data()` and
-`set_data()` &mdash; it would be simpler just to get/set the attributes
-normally and intercept these behind the scenes for any magic necessary.
+Component classes also provide a data access layer via `.get_data()` and `set_data()` &mdash; it would be simpler just to get/set the attributes normally and intercept these behind the scenes for any magic necessary.
 
 ### Performance
 
@@ -131,26 +122,23 @@ TODO: describe current issues
 
 ### Invariants
 
-FloPy 3 has a "check" mechanism for validating simulation configurations,
-but this must be run manually by the user, and no straightforward method
-for extension is available.
+FloPy 3 has a "check" mechanism for validating simulation configurations, but this must be run manually by the user, and no straightforward method for extension is available.
+This allows simulations to be initialized in an invalid state, which may go unnoticed until runtime, producing less than informative errors from the modeling program.
+The most obvious example is that grid dimensions can be changed with no warning to the user, and no attempt to coerce package array data to the new shape.
+We would like automatic enforcement of invariants whenever a simulation changes.
 
-This allows simulations to be initialized in an invalid state, which may
-go unnoticed until runtime, producing less than informative errors from
-the modeling program.
+### Maintainability
 
-The most obvious example is that grid dimensions can be changed with no warning to the user, and no attempt to coerce package array data to the
-new shape.
-
-We would like automatic enforcement of invariants whenever a simulation
-changes.
+flopy4 should maintain a separation of concerns with respect to hydrology and software engineering.
+The hydrologic modeler should not be concerned with the technical details of flopy4's internal data storage or parallel processing implementation,
+for example, and a software engineer should be able to work on the code without detailed knowledge on complex hydrologic concepts.
 
 ## Goals
 
-With the above in mind, we want the next version of FloPy to
+With the above in mind, we want the next version of FloPy to:
 
 - preserve existing `flopy.mf6` functionality
-- be consistent, user-friendly and Pythonic
+- be consistent, user-friendly and pythonic
 - be easy to read, debug, diagnose and test
 - be memory-efficient and provide fast IO
 - impose a minimal maintenance burden
@@ -159,7 +147,8 @@ With the above in mind, we want the next version of FloPy to
 
 ### System requirements
 
-flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries.
+flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>.
+This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries.
 
 The product must be able to run on the following operating systems: Windows, Linux, MacOS.
 
@@ -214,9 +203,3 @@ Clear and informative error messages should be provided to the user when an erro
 The user documentation makes a clear distinction in user public and internal API.
 
 The user documentation provides a complete overview of the definition file specification.
-
-### Maintainability
-
-flopy4 should maintain a separation of concerns with respect to hydrology and
-software engineering. The hydrologic modeler should not be concerned with the
-technical details of flopy4's internal data storage or parallel processing implementation, for example, and a software engineer should be able to work on the code without detailed knowledge on complex hydrologic concepts.
