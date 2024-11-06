@@ -16,13 +16,13 @@
     - [Introspection](#introspection)
     - [Performance](#performance)
     - [Invariants](#invariants)
+    - [Maintainability](#maintainability)
+  - [Goals](#goals)
   - [System requirements and functional requirements](#system-requirements-and-functional-requirements)
     - [System requirements](#system-requirements)
     - [Functional requirements](#functional-requirements)
   - [External interface requirements](#external-interface-requirements)
-  - [Non-functional requirements (NRFs)](#non-functional-requirements-nfrs)
-    - [Maintainability](#maintainability)
-  - [Goals](#goals)
+  - [Non-functional requirements (NFRs)](#non-functional-requirements-nfrs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
