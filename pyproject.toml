@@ -47,6 +47,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+dev = ["flopy4[lint,test,build]"]
 lint = [
     "ruff"
 ]
