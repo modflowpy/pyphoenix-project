@@ -82,4 +82,6 @@ jobs:
           activate-environment: true
 
       - name: Run tests
-        run: pixi run test
+        run: |
+          pixi run python -m ipykernel install --name flopy4 --user
+          pixi run test
