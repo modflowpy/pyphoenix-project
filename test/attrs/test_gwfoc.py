@@ -134,14 +134,7 @@ Periods = List[Period]
 @define
 class GwfOc:
     options: Options = field()
-    """
-    options block
-    """
-
     periods: Periods = field()
-    """
-    period blocks
-    """
 
 
 # Converter
@@ -149,7 +142,7 @@ class GwfOc:
 converter = Converter()
 
 
-def output_control_data_hook(value, type) -> OutputControlData:
+def output_control_data_hook(value, _) -> OutputControlData:
     return OutputControlData.from_tuple(value)
 
 

@@ -1,6 +1,6 @@
 """Enumerates supported input variable types."""
 
-from pathlib import Path
+from os import PathLike
 from typing import (
     Iterable,
     Tuple,
@@ -9,20 +9,24 @@ from typing import (
 
 from numpy.typing import ArrayLike
 
-Scalar = Union[bool, int, float, str, Path]
+Scalar = Union[bool, int, float, str]
 """A scalar input variable."""
 
 
+Path = PathLike
+"""A file path input variable."""
+
+
 Array = ArrayLike
-"""An array input variable"""
-
-
-Table = Iterable["Record"]
-"""A table input variable."""
+"""An array input variable."""
 
 
 Record = Tuple[Union[Scalar, "Record"], ...]
 """A record input variable."""
+
+
+Table = Iterable["Record"]
+"""A table input variable."""
 
 
 Variable = Union[Scalar, Array, Table, Record]
