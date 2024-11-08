@@ -20,14 +20,14 @@
 #     Package *-- "1+" Variable
 # ```
 #
-# Components are generally mutable: subcomponents can be added/removed and
-# variables can be manipulated.
+# Note that this is not identical to the underlying object model, which
+# is yet to be determined. TODO: update this once we have a full prototype.
 #
 # # Variable types
 #
 # Variables are scalars, paths, arrays, or composite types: list, sum, union.
 #
-# MODFLOW 6 defines the following scalars types:
+# MODFLOW 6 defines the following scalar types:
 #
 # - `keyword`
 # - `integer`
@@ -45,6 +45,9 @@
 # or unions of records as items.
 #
 # We map this typology roughly to the following in Python:
+#
+# TODO: update the following as we develop a more concrete idea of what
+# type hints corresponding to the mf6 input data model will look like
 
 # +
 from os import PathLike
