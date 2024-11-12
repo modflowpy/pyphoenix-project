@@ -1,4 +1,4 @@
-# # Input data model
+# Input variables
 #
 # TODO: flesh this out, describe prospective plan for type hints,
 # determine whether we want to work directly with numpy or with
@@ -81,3 +81,5 @@ Variable = Union[Scalar, Array, Record, Table, List]
 # - While MODFLOW 6 typically formulates file path inputs as records with
 # 3 fields (identifying keyword, `filein`/`fileout`, and filename), FloPy
 # simply accepts `PathLike`.
+
+# TODO: demonstrate setting/accessing scalars in an options block
