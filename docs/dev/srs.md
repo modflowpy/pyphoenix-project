@@ -147,47 +147,47 @@ With the above in mind, we want the next version of FloPy to:
 
 ### Functional requirements
 
-| ID     | Description | MoSCoW |
-| ------ | ----------- | ------ |
-| FUNC-1 | flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files. | M |
-| FUNC-2 | flopy4 must be able to run MODFLOW 6 simulations. | M |
-| FUNC-3 | flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6. | M |
-| FUNC-4 | The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions. | M |
-| FUNC-5 | flopy4 can create grid definitions in different formats: structured (DIS), vertex (DISV), unstructured (DISU). And is open for expansion of new grid definitions. | M |
-| FUNC-6 | flopy4 can create MODFLOW models that support parallel processing. It can pre-process models by splitting them up, ready for parallel computation. | M |
-| FUNC-7 | The product contains functions to plot model output and gives the user configurable or extendable options for customization. | M |
-| FUNC-8 | The product can export its internal data model to different types of file formats, such as NetCDF, VTK, and geospatial standards. | M |
-| FUNC-9 | Extensive validation on the final input model can be used to ensure that the model is correct before running the simulation. | S |
-| FUNC-10| The validation can be extended by the user to include custom checks. | C |
-| FUNC-11| Instantiation of packages and models should work in an intuitive way, the user should not be stuck with specific orders of function calls. E.g., packages can be created without creating a simulation or model first. | M |
+| ID      | Description | MoSCoW |
+| ------- | ----------- | ------ |
+| FUNC-1  | flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files. | M |
+| FUNC-2  | flopy4 must be able to run MODFLOW 6 simulations. | M |
+| FUNC-3  | flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6. | M |
+| FUNC-4  | The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions. | M |
+| FUNC-5  | flopy4 can create grid definitions in different formats: structured (DIS), vertex (DISV), unstructured (DISU). And is open for expansion of new grid definitions. | M |
+| FUNC-6  | flopy4 can create MODFLOW models that support parallel processing. It can pre-process models by splitting them up, ready for parallel computation. | M |
+| FUNC-7  | The product contains functions to plot model output and gives the user configurable or extendable options for customization. | M |
+| FUNC-8  | The product can export its internal data model to different types of file formats, such as NetCDF, VTK, and geospatial standards. | M |
+| FUNC-9  | Extensive validation on the final input model can be used to ensure that the model is correct before running the simulation. | S |
+| FUNC-10 | The validation can be extended by the user to include custom checks. | C |
+| FUNC-11 | Instantiation of packages and models should work in an intuitive way, the user should not be stuck with specific orders of function calls. E.g., packages can be created without creating a simulation or model first. | M |
 | FUNC-12 | Functionality is in place to set up example simulation with predefined setup combinations of models and packages already configured. | C |
 
 ## External interface requirements
 
-| ID     | Description | MoSCoW |
-| ------ | ----------- | ------ |
-| API-1  | flopy4 should give the opportunity for external libraries to extend its capabilities by providing a plugin system. This can be useful for new plotting mechanisms, file export formats, or custom input file formats that can be converted to MODFLOW data. | C |
-| API-2  | New DFN files are compatible with flopy4, and the product should be able to generate a definition of the packages that are applicable to that version of MODFLOW 6. | M |
-| API-3  | The product strives for a consistency in its public API between MODFLOW6 and older MODFLOW packages. | S |
-| API-4  | The product has programmatic access to example models, to make it quick for the user to run an example model, or to alter the examples to their liking. | C |
-| API-5  | Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package. | M |
-| API-6 | The product has a unified understanding of date and time. | M |
-| API-7 | The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters. | M |
+| ID      | Description | MoSCoW |
+| ------- | ----------- | ------ |
+| API-1   | flopy4 should give the opportunity for external libraries to extend its capabilities by providing a plugin system. This can be useful for new plotting mechanisms, file export formats, or custom input file formats that can be converted to MODFLOW data. | C |
+| API-2   | New DFN files are compatible with flopy4, and the product should be able to generate a definition of the packages that are applicable to that version of MODFLOW 6. | M |
+| API-3   | The product strives for a consistency in its public API between MODFLOW6 and older MODFLOW packages. | S |
+| API-4   | The product has programmatic access to example models, to make it quick for the user to run an example model, or to alter the examples to their liking. | C |
+| API-5   | Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package. | M |
+| API-6   | The product has a unified understanding of date and time. | M |
+| API-7   | The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters. | M |
 
 ## Non-functional requirements
 
-| ID     | Description | MoSCoW |
-| ------ | ----------- | ------ |
-| NFR-1  | The product must be able to create large models that are larger than the available memory on the user's machine. | M |
-| NFR-2  | The product should be able to create an example model of the United States with a **?1 km?** grid resolution. | ? |
-| NFR-3  | Clear and informative error messages should be provided to the user when an error occurs, also during model input validation. | M |
-| NFR-4  | The user documentation makes a clear distinction in user public and internal API. | M |
-| NFR-5  | The user documentation provides a complete overview of the definition file specification. | M |
+| ID      | Description | MoSCoW |
+| ------- | ----------- | ------ |
+| NFR-1   | The product must be able to create large models that are larger than the available memory on the user's machine. | M |
+| NFR-2   | The product should be able to create an example model of the United States with a **?1 km?** grid resolution. | ? |
+| NFR-3   | Clear and informative error messages should be provided to the user when an error occurs, also during model input validation. | M |
+| NFR-4   | The user documentation makes a clear distinction in user public and internal API. | M |
+| NFR-5   | The user documentation provides a complete overview of the definition file specification. | M |
 
 ### System requirements
 
-| ID     | Description | MoSCoW |
-| ------ | ----------- | ------ |
-| SYS-1  | flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries. | M |
-| SYS-2  | The product must be able to run on the following operating systems: Windows, Linux, MacOS. | M |
-| SYS-3  | The product must be distributed via the Python Package Index (PyPI) and be installable via pip. Additionally, the product must be installable via conda-forge. | M |
+| ID      | Description | MoSCoW |
+| ------- | ----------- | ------ |
+| SYS-1   | flopy4 must be able to run within a python environment supporting versions that comply with scientific-python.org guidelines: <https://scientific-python.org/specs/spec-0000/>. This is due to its dependency on the Numpy, Matplotlib, and XArray libraries, and flopy4 should not be conflicting with user installed libraries. | M |
+| SYS-2   | The product must be able to run on the following operating systems: Windows, Linux, MacOS. | M |
+| SYS-3   | The product must be distributed via the Python Package Index (PyPI) and be installable via pip. Additionally, the product must be installable via conda-forge. | M |
