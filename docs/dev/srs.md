@@ -145,22 +145,28 @@ With the above in mind, we want the next version of FloPy to:
 
 ## System requirements and functional requirements
 
+The requirements below are written up through interviews with stakeholders and internal research of the flopy code base.
+
+The requirements are categorized through the [MoSCoW method](https://en.wikipedia.org/wiki/MoSCoW_method), prioritizing which requirements Must, Should, Could, and Won't go into the first iteration of the flopy 4 project.
+
 ### Functional requirements
 
 | ID      | Description | MoSCoW |
 | ------- | ----------- | ------ |
 | FUNC-1  | flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files. | M |
-| FUNC-2  | flopy4 must be able to run MODFLOW 6 simulations. | M |
+| FUNC-2  | flopy4 must be able to run MODFLOW 6 simulations and report back on the run status. | M |
 | FUNC-3  | flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6. | M |
 | FUNC-4  | The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions. | M |
 | FUNC-5  | flopy4 can create grid definitions in different formats: structured (DIS), vertex (DISV), unstructured (DISU). And is open for expansion of new grid definitions. | M |
 | FUNC-6  | flopy4 can create MODFLOW models that support parallel processing. It can pre-process models by splitting them up, ready for parallel computation. | M |
 | FUNC-7  | The product contains functions to plot model output and gives the user configurable or extendable options for customization. | M |
-| FUNC-8  | The product can export its internal data model to different types of file formats, such as NetCDF, VTK, and geospatial standards. | M |
-| FUNC-9  | Extensive validation on the final input model can be used to ensure that the model is correct before running the simulation. | S |
-| FUNC-10 | The validation can be extended by the user to include custom checks. | C |
-| FUNC-11 | Instantiation of packages and models should work in an intuitive way, the user should not be stuck with specific orders of function calls. E.g., packages can be created without creating a simulation or model first. | M |
-| FUNC-12 | Functionality is in place to set up example simulation with predefined setup combinations of models and packages already configured. | C |
+| FUNC-8  | The product contains functions to plot model input and gives the user configurable or extendable options for customization. | M |
+| FUNC-9  | The product can export its internal data model to different types of file formats, such as NetCDF, VTK, and geospatial standards. | M |
+| FUNC-10  | Extensive and optional validation on the final input model can be used to ensure that the model is free from detectable errors and to warn the user of potential errors before running the simulation. | S |
+| FUNC-11 | The validation can be extended by the user to include custom checks. | C |
+| FUNC-12 | Instantiation of packages and models should work in an intuitive way that does not depend on the specific order of function calls. E.g., packages can be created without creating a simulation or model first. | M |
+| FUNC-13 | Functionality is in place to set up example simulations with predefined setup combinations of models and packages already configured. | C |
+| FUNC-14 | Flopy is a non-intrusive package when it comes to reading and writing the model. When writing out a model that was read, Flopy does not add any additional information. | C |
 
 ## External interface requirements
 
@@ -168,9 +174,9 @@ With the above in mind, we want the next version of FloPy to:
 | ------- | ----------- | ------ |
 | API-1   | flopy4 should give the opportunity for external libraries to extend its capabilities by providing a plugin system. This can be useful for new plotting mechanisms, file export formats, or custom input file formats that can be converted to MODFLOW data. | C |
 | API-2   | New DFN files are compatible with flopy4, and the product should be able to generate a definition of the packages that are applicable to that version of MODFLOW 6. | M |
-| API-3   | The product strives for a consistency in its public API between MODFLOW6 and older MODFLOW packages. | S |
+| API-3   | The product strives for a consistency in its public API between MODFLOW 6 and older MODFLOW packages. | S |
 | API-4   | The product has programmatic access to example models, to make it quick for the user to run an example model, or to alter the examples to their liking. | C |
-| API-5   | Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package. | M |
+| API-5   | Input parameters have clear units to avoid confusion. E.g., using SI units only, or by providing usage of a python units package. | C |
 | API-6   | The product has a unified understanding of date and time. | M |
 | API-7   | The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters. | M |
 
