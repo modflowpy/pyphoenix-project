@@ -20,8 +20,8 @@
   - [Goals](#goals)
   - [System requirements and functional requirements](#system-requirements-and-functional-requirements)
     - [Functional requirements](#functional-requirements)
-  - [External interface requirements](#external-interface-requirements)
-  - [Non-functional requirements](#non-functional-requirements)
+    - [External interface requirements](#external-interface-requirements)
+    - [Non-functional requirements](#non-functional-requirements)
     - [System requirements](#system-requirements)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -166,9 +166,9 @@ The requirements are categorized through the [MoSCoW method](https://en.wikipedi
 | FUNC-11 | The validation can be extended by the user to include custom checks. | C |
 | FUNC-12 | Instantiation of packages and models should work in an intuitive way that does not depend on the specific order of function calls. E.g., packages can be created without creating a simulation or model first. | M |
 | FUNC-13 | Functionality is in place to set up example simulations with predefined setup combinations of models and packages already configured. | C |
-| FUNC-14 | Flopy is a non-intrusive package when it comes to reading and writing the model. When writing out a model that was read, Flopy does not add any additional information. | C |
+| FUNC-14 | Flopy is a non-intrusive package when it comes to reading, writing, and running the model. When writing out a model that was read, the simulation output must give the exact same results. | C |
 
-## External interface requirements
+### External interface requirements
 
 | ID      | Description | MoSCoW |
 | ------- | ----------- | ------ |
@@ -180,7 +180,7 @@ The requirements are categorized through the [MoSCoW method](https://en.wikipedi
 | API-6   | The product has a unified understanding of date and time. | M |
 | API-7   | The user is aided in their development process by providing python type hints directly from the API with accompanying documentation on all the input parameters. | M |
 
-## Non-functional requirements
+### Non-functional requirements
 
 | ID      | Description | MoSCoW |
 | ------- | ----------- | ------ |
