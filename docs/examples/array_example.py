@@ -62,12 +62,12 @@ internal = pooch.retrieve(
 constant = data_path / "constant.txt"
 external = data_path / "external.txt"
 shape = (1000, 100)
-type = "double"
+dtype = "double"
 
 # Open and load a NumPy array representation
 
 fhandle = open(internal)
-imfa = MFArray.load(fhandle, data_path, shape, type=type, header=False)
+imfa = MFArray.load(fhandle, data_path, shape, type=dtype, header=False)
 
 # Get values
 
@@ -88,7 +88,7 @@ plt.imshow(ivals2[0:100])
 plt.colorbar()
 
 fhandle = open(constant)
-cmfa = MFArray.load(fhandle, data_path, shape, type=type, header=False)
+cmfa = MFArray.load(fhandle, data_path, shape, type=dtype, header=False)
 cvals = cmfa.value
 plt.imshow(cvals[0:100])
 plt.colorbar()
@@ -111,7 +111,7 @@ cmfa._value
 # External
 
 fhandle = open(external)
-emfa = MFArray.load(fhandle, data_path, shape, type=type, header=False)
+emfa = MFArray.load(fhandle, data_path, shape, type=dtype, header=False)
 evals = emfa.value
 evals
 
@@ -137,7 +137,7 @@ mlayered = data_path / "mixed_layered.txt"  # (internal, constant, external)
 fhandle = open(ilayered)
 shape = (3, 1000, 100)
 ilmfa = MFArray.load(
-    fhandle, data_path, shape, type=type, header=False, layered=True
+    fhandle, data_path, shape, type=dtype, header=False, layered=True
 )
 vals = ilmfa.value
 
@@ -186,7 +186,7 @@ fig.colorbar(im, cax=cbar_ax)
 fhandle = open(clayered)
 shape = (3, 1000, 100)
 clmfa = MFArray.load(
-    fhandle, data_path, shape, type=type, header=False, layered=True
+    fhandle, data_path, shape, type=dtype, header=False, layered=True
 )
 
 clmfa._value
@@ -241,7 +241,7 @@ fig.colorbar(im, cax=cbar_ax)
 fhandle = open(mlayered)
 shape = (3, 1000, 100)
 mlmfa = MFArray.load(
-    fhandle, data_path, shape, type=type, header=False, layered=True
+    fhandle, data_path, shape, type=dtype, header=False, layered=True
 )
 
 mlmfa.how

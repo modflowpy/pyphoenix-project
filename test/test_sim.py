@@ -183,7 +183,7 @@ def test_load_sim(tmp_path):
     assert s.tdis.params["start_date_time"] == "2041-01-01t00:00:00-05:00"
     assert s.tdis.params["nper"] == 31
     assert np.allclose(
-        s.tdis.params["perioddata"]["perlen"],
+        [float(f) for f in s.tdis.params["perioddata"]["perlen"]],
         np.array(
             [
                 1.0,
@@ -259,7 +259,7 @@ def test_load_sim(tmp_path):
         ),
     )
     assert np.allclose(
-        s.tdis.params["perioddata"]["tsmult"],
+        [float(f) for f in s.tdis.params["perioddata"]["tsmult"]],
         np.array(
             [
                 1.0,
@@ -310,11 +310,11 @@ def test_load_sim(tmp_path):
     assert "scaling_method" in s.solvers["ims_0"].params
     assert "reordering_method" in s.solvers["ims_0"].params
     assert s.solvers["ims_0"].params["print_option"] == "summary"
-    assert s.solvers["ims_0"].params["outer_dvclose"] == 1.00000000e-09
+    assert float(s.solvers["ims_0"].params["outer_dvclose"]) == 1.00000000e-09
     assert s.solvers["ims_0"].params["outer_maximum"] == 500
     assert s.solvers["ims_0"].params["under_relaxation"] == "none"
     assert s.solvers["ims_0"].params["inner_maximum"] == 300
-    assert s.solvers["ims_0"].params["inner_dvclose"] == 1.00000000e-09
+    assert float(s.solvers["ims_0"].params["inner_dvclose"]) == 1.00000000e-09
     assert s.solvers["ims_0"].params["linear_acceleration"] == "bicgstab"
     assert s.solvers["ims_0"].params["relaxation_factor"] == 1.00000000
     assert s.solvers["ims_0"].params["scaling_method"] == "none"
@@ -358,15 +358,15 @@ def test_gwf_chd01(tmp_path):
     if w.returncode == 0:
         os.chdir(tmp_path / "gwf_chd01")
         subprocess.run(["mf6"])
-        os.chdir(tmp_path / "write")
+        os.chdir(write_dir)
         subprocess.run(["mf6"])
         diff = subprocess.run(
             ["diff", f"./{name}.lst", f"../gwf_chd01/{name}.lst"]
         )
-        if diff.stdout:
-            print(f"\nGWF model list file difference: {diff.stdout}")
         if diff.stderr:
             print(diff.stderr)
+        else:
+            print(f"\nmodel lst file diffs: {diff.stdout}")
 
 
 def test_gwf_disv(tmp_path):
@@ -388,15 +388,15 @@ def test_gwf_disv(tmp_path):
     if w.returncode == 0:
         os.chdir(tmp_path / "disv01a")
         subprocess.run(["mf6"])
-        os.chdir(tmp_path / "write")
+        os.chdir(write_dir)
         subprocess.run(["mf6"])
         diff = subprocess.run(
             ["diff", f"./{name}.lst", f"../disv01a/{name}.lst"]
         )
-        if diff.stdout:
-            print(f"\nGWF model list file difference: {diff.stdout}")
         if diff.stderr:
             print(diff.stderr)
+        else:
+            print(f"\nmodel lst file diffs: {diff.stdout}")
 
 
 def test_gwf_disu(tmp_path):
@@ -418,12 +418,12 @@ def test_gwf_disu(tmp_path):
     if w.returncode == 0:
         os.chdir(tmp_path / "disu01a")
         subprocess.run(["mf6"])
-        os.chdir(tmp_path / "write")
+        os.chdir(write_dir)
         subprocess.run(["mf6"])
         diff = subprocess.run(
             ["diff", f"./{name}.lst", f"../disu01a/{name}.lst"]
         )
-        if diff.stdout:
-            print(f"\nGWF model list file difference: {diff.stdout}")
         if diff.stderr:
             print(diff.stderr)
+        else:
+            print(f"\nmodel lst file diffs: {diff.stdout}")

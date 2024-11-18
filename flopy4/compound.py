@@ -368,8 +368,8 @@ class MFList(MFCompound):
                 jidx = len(param_cols) - 1
             else:
                 raise ValueError(
-                    "MFList param {params[k].name} has "
-                    "unsupported shape {params[k].shape}"
+                    f"MFList param {params[k].name} has "
+                    f"unsupported shape {params[k].shape}"
                 )
             param_cols.append(pcols)
             param_types.append(params[k].type)
@@ -379,6 +379,7 @@ class MFList(MFCompound):
             maxsplit = sum(param_cols) - 1
         else:
             maxsplit = -1
+        assert not (jidx >= 0 and maxsplit >= 0)
 
         while True:
             pos = f.tell()
