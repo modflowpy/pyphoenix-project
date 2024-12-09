@@ -1,28 +1,26 @@
 [build-system]
-requires = [
-    "setuptools >=61",
-]
+requires = ["setuptools >=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "flopy4"
 description = "Development project to reimplement MF6 support for FloPy"
 authors = [
-    {name = "Joe Hughes", email = "jdhughes@usgs.gov"},
-    {name = "Chris Langevin", email = "langevin@usgs.gov"},
-    {name = "Josh Larsen", email = "jlarsen@usgs.gov"},
-    {name = "Michael Reno", email = "mreno@ucar.edu"},
-    {name = "Wes Bonelli", email = "wbonelli@ucar.edu"},
+    { name = "Joe Hughes", email = "jdhughes@usgs.gov" },
+    { name = "Chris Langevin", email = "langevin@usgs.gov" },
+    { name = "Josh Larsen", email = "jlarsen@usgs.gov" },
+    { name = "Michael Reno", email = "mreno@ucar.edu" },
+    { name = "Wes Bonelli", email = "wbonelli@ucar.edu" },
 ]
 maintainers = [
-    {name = "Joe Hughes", email = "jdhughes@usgs.gov"},
-    {name = "Chris Langevin", email = "langevin@usgs.gov"},
-    {name = "Josh Larsen", email = "jlarsen@usgs.gov"},
-    {name = "Michael Reno", email = "mreno@ucar.edu"},
-    {name = "Wes Bonelli", email = "wbonelli@ucar.edu"},
+    { name = "Joe Hughes", email = "jdhughes@usgs.gov" },
+    { name = "Chris Langevin", email = "langevin@usgs.gov" },
+    { name = "Josh Larsen", email = "jlarsen@usgs.gov" },
+    { name = "Michael Reno", email = "mreno@ucar.edu" },
+    { name = "Wes Bonelli", email = "wbonelli@ucar.edu" },
 ]
 keywords = ["MODFLOW", "groundwater", "hydrogeology"]
-license = {text = "CC0"}
+license = { text = "CC0" }
 classifiers = [
     "Development Status :: 1 - Planning",
     "Intended Audience :: Science/Research",
@@ -51,9 +49,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["flopy4[lint,test,build]"]
-lint = [
-    "ruff"
-]
+lint = ["ruff"]
 test = [
     "flopy4[lint]",
     "coverage",
@@ -68,17 +64,14 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
 ]
-build = [
-    "build",
-    "twine",
-]
+build = ["build", "twine"]
 
 [tool.setuptools]
 include-package-data = true
 zip-safe = false
 
 [tool.setuptools.dynamic]
-version = {attr = "flopy4.version.__version__"}
+version = { attr = "flopy4.version.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["flopy4", "flopy4.*"]
@@ -89,19 +82,10 @@ include = ["flopy4", "flopy4.*"]
 
 [tool.ruff]
 line-length = 79
-target-version = "py38"
-include = [
-    "pyproject.toml",
-    "flopy4/**/*.py",
-    "test/**/*.py",
-    "docs/**/*.py",
-]
-extend-include = [
-    "docs/**/*.ipynb"
-]
-exclude = [
-    "flopy4/ispec/*.py",
-]
+target-version = "py310"
+include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "docs/**/*.py"]
+extend-include = ["docs/**/*.ipynb"]
+exclude = ["flopy4/ispec/*.py"]
 
 [tool.ruff.lint]
 select = [
@@ -156,4 +140,3 @@ test = { cmd = "pytest -v -n auto" }
 
 [tool.pixi.feature.lint.tasks]
 lint = { cmd = "ruff check ." }
-
