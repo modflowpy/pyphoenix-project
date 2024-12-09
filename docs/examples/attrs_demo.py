@@ -3,10 +3,10 @@
 # This example demonstrates a tentative `attrs`-based object model.
 
 from pathlib import Path
-from typing import Any, List, Literal, NamedTuple, Optional
+from typing import List, Literal, Optional
 
 import numpy as np
-from attr import asdict, define, field, fields_dict
+from attr import asdict, define, field
 from cattr import Converter
 from flopy.discretization import StructuredGrid
 from numpy.typing import NDArray
@@ -40,9 +40,7 @@ class GwfOc:
         digits: int
         format: Literal["exponential", "fixed", "general", "scientific"]
 
-    periods: List[List[tuple]] = field(
-        metadata={"block": "perioddata"}
-    )
+    periods: List[List[tuple]] = field(metadata={"block": "perioddata"})
     budget_file: Optional[Path] = field(
         default=None, metadata={"block": "options"}
     )
@@ -129,7 +127,7 @@ class Gwf:
 
 oc = GwfOc(
     budget_file="some/file/path.cbc",
-    periods=[[("print", "budget", "steps", 1, 3, 5)]]
+    periods=[[("print", "budget", "steps", 1, 3, 5)]],
 )
 assert isinstance(oc.budget_file, str)  # TODO path
 
