@@ -24,12 +24,12 @@ class Shim:
         return d
 
     @staticmethod
-    def _drop_none(d: Any):
+    def _drop_empty(d: Any):
         if isinstance(d, Mapping):
             return {
-                k: Shim._drop_none(v)
+                k: Shim._drop_empty(v)
                 for k, v in d.items()
-                if v is not None
+                if (v or isinstance(v, bool))
             }
         else:
             return d
@@ -43,7 +43,7 @@ class Shim:
 
     @staticmethod
     def apply(d: dict) -> dict:
-        return Shim._attach_children(Shim._drop_none(Shim._trim(d)))
+        return Shim._attach_children(Shim._drop_empty(Shim._trim(d)))
 
 
 if __name__ == "__main__":
