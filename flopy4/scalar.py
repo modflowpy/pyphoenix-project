@@ -134,9 +134,7 @@ class MFKeyword(MFScalar[bool]):
     def write(self, f, **kwargs):
         newline = kwargs.pop("newline", True)
         if self.value:
-            f.write(
-                f"{PAD}" f"{self.name.upper()}" + ("\n" if newline else "")
-            )
+            f.write(f"{PAD}" f"{self.name.upper()}" + ("\n" if newline else ""))
 
 
 class MFInteger(MFScalar[int]):
@@ -201,9 +199,7 @@ class MFInteger(MFScalar[int]):
     def write(self, f, **kwargs):
         newline = kwargs.pop("newline", True)
         f.write(
-            f"{PAD}"
-            f"{self.name.upper()} "
-            f"{self.value}" + ("\n" if newline else "")
+            f"{PAD}" f"{self.name.upper()} " f"{self.value}" + ("\n" if newline else "")
         )
 
 
@@ -265,9 +261,7 @@ class MFDouble(MFScalar[float]):
     def write(self, f, **kwargs):
         newline = kwargs.pop("newline", True)
         f.write(
-            f"{PAD}"
-            f"{self.name.upper()} "
-            f"{self.value}" + ("\n" if newline else "")
+            f"{PAD}" f"{self.name.upper()} " f"{self.value}" + ("\n" if newline else "")
         )
 
 
@@ -329,9 +323,7 @@ class MFString(MFScalar[str]):
     def write(self, f, **kwargs):
         newline = kwargs.pop("newline", True)
         f.write(
-            f"{PAD}"
-            f"{self.name.upper()} "
-            f"{self.value}" + ("\n" if newline else "")
+            f"{PAD}" f"{self.name.upper()} " f"{self.value}" + ("\n" if newline else "")
         )
 
 

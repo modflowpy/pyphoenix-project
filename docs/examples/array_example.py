@@ -136,9 +136,7 @@ mlayered = data_path / "mixed_layered.txt"  # (internal, constant, external)
 
 fhandle = open(ilayered)
 shape = (3, 1000, 100)
-ilmfa = MFArray.load(
-    fhandle, data_path, shape, type=dtype, header=False, layered=True
-)
+ilmfa = MFArray.load(fhandle, data_path, shape, type=dtype, header=False, layered=True)
 vals = ilmfa.value
 
 ilmfa._value  # internal storage
@@ -185,9 +183,7 @@ fig.colorbar(im, cax=cbar_ax)
 
 fhandle = open(clayered)
 shape = (3, 1000, 100)
-clmfa = MFArray.load(
-    fhandle, data_path, shape, type=dtype, header=False, layered=True
-)
+clmfa = MFArray.load(fhandle, data_path, shape, type=dtype, header=False, layered=True)
 
 clmfa._value
 
@@ -240,9 +236,7 @@ fig.colorbar(im, cax=cbar_ax)
 
 fhandle = open(mlayered)
 shape = (3, 1000, 100)
-mlmfa = MFArray.load(
-    fhandle, data_path, shape, type=dtype, header=False, layered=True
-)
+mlmfa = MFArray.load(fhandle, data_path, shape, type=dtype, header=False, layered=True)
 
 mlmfa.how
 

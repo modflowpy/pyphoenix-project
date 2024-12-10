@@ -1,0 +1,520 @@
+name = "gwf-uzf"
+package_type = "advanced-stress-package"
+multi = true
+
+[options.auxiliary]
+name = "auxiliary"
+type = "string"
+shape = "(naux)"
+block = "options"
+description = "defines an array of one or more auxiliary variable names.  there is no limit on the number of auxiliary variables that can be provided on this line; however, lists of information provided in subsequent blocks must have a column of data for each auxiliary variable name defined here.   the number of auxiliary variables detected on this line determines the value for naux.  comments cannot be provided anywhere on this line as they will be interpreted as auxiliary variable names.  auxiliary variables may not be used by the package, but they will be available for use by other parts of the program.  the program will terminate with an error if auxiliary variables are specified on more than one line in the options block."
+
+[options.auxmultname]
+name = "auxmultname"
+type = "string"
+block = "options"
+description = "name of auxiliary variable to be used as multiplier of gwf cell area used by uzf cell."
+
+[options.boundnames]
+name = "boundnames"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that boundary names may be provided with the list of uzf cells."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of uzf information will be written to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of uzf flow rates will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control.  if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that uzf flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.wc_filerecord]
+name = "wc_filerecord"
+type = "record"
+block = "options"
+
+[options.wc_filerecord.water_content]
+block = "options"
+name = "water_content"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "water_content keyword"
+description = "keyword to specify that record corresponds to unsaturated zone water contents."
+
+[options.wc_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.wc_filerecord.wcfile]
+block = "options"
+name = "wcfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the binary output file to write water content information."
+
+[options.budget_filerecord]
+name = "budget_filerecord"
+type = "record"
+block = "options"
+
+[options.budget_filerecord.budget]
+block = "options"
+name = "budget"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[options.budget_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budget_filerecord.budgetfile]
+block = "options"
+name = "budgetfile"
+preserve_case = "true"
+type = "string"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the binary output file to write budget information."
+
+[options.budgetcsv_filerecord]
+name = "budgetcsv_filerecord"
+type = "record"
+block = "options"
+
+[options.budgetcsv_filerecord.budgetcsv]
+block = "options"
+name = "budgetcsv"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[options.budgetcsv_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budgetcsv_filerecord.budgetcsvfile]
+block = "options"
+name = "budgetcsvfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation."
+
+[options.package_convergence_filerecord]
+name = "package_convergence_filerecord"
+type = "record"
+block = "options"
+
+[options.package_convergence_filerecord.package_convergence]
+block = "options"
+name = "package_convergence"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "package_convergence keyword"
+description = "keyword to specify that record corresponds to the package convergence comma spaced values file."
+
+[options.package_convergence_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.package_convergence_filerecord.package_convergence_filename]
+block = "options"
+name = "package_convergence_filename"
+type = "string"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the comma spaced values output file to write package convergence information."
+
+[options.timeseries]
+name = "timeseries"
+type = "record"
+block = "options"
+description = "Contains data for the ts package. Data can be stored in a dictionary containing data for the ts package with variable names as keys and package data as values. Data just for the timeseries variable is also acceptable. See ts package documentation for more information"
+
+[options.timeseries.subpackage]
+parent = "parent_package"
+key = "ts_filerecord"
+val = "timeseries"
+abbr = "ts"
+param = "timeseries"
+description = "xxx"
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[options.mover]
+name = "mover"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that this instance of the uzf package can be used with the water mover (mvr) package.  when the mover option is specified, additional memory is allocated within the package to store the available, provided, and received water."
+
+[options.simulate_et]
+name = "simulate_et"
+type = "keyword"
+block = "options"
+description = "keyword specifying that et in the unsaturated (uzf) and saturated zones (gwf) will be simulated. et can be simulated in the uzf cell and not the gwf cell by omitting keywords linear_gwet and square_gwet."
+
+[options.linear_gwet]
+name = "linear_gwet"
+type = "keyword"
+block = "options"
+description = "keyword specifying that groundwater et will be simulated using the original et formulation of modflow-2005."
+
+[options.square_gwet]
+name = "square_gwet"
+type = "keyword"
+block = "options"
+description = "keyword specifying that groundwater et will be simulated by assuming a constant et rate for groundwater levels between land surface (top) and land surface minus the et extinction depth (top-extdp). groundwater et is smoothly reduced from the pet rate to zero over a nominal interval at top-extdp."
+
+[options.simulate_gwseep]
+name = "simulate_gwseep"
+type = "keyword"
+block = "options"
+description = "keyword specifying that groundwater discharge (gwseep) to land surface will be simulated. groundwater discharge is nonzero when groundwater head is greater than land surface.  this option is no longer recommended; a better approach is to use the drain package with discharge scaling as a way to handle seepage to land surface.  the drain package with discharge scaling is described in chapter 3 of the supplemental technical information."
+
+[options.unsat_etwc]
+name = "unsat_etwc"
+type = "keyword"
+block = "options"
+description = "keyword specifying that et in the unsaturated zone will be simulated as a function of the specified pet rate while the water content (theta) is greater than the et extinction water content (extwc)."
+
+[options.unsat_etae]
+name = "unsat_etae"
+type = "keyword"
+block = "options"
+description = "keyword specifying that et in the unsaturated zone will be simulated using a capillary pressure based formulation. capillary pressure is calculated using the brooks-corey retention function."
+
+[dimensions.nuzfcells]
+name = "nuzfcells"
+type = "integer"
+block = "dimensions"
+description = "is the number of uzf cells.  more than one uzf cell can be assigned to a gwf cell; however, only one gwf cell can be assigned to a single uzf cell. if more than one uzf cell is assigned to a gwf cell, then an auxiliary variable should be used to reduce the surface area of the uzf cell with the auxmultname option."
+
+[dimensions.ntrailwaves]
+name = "ntrailwaves"
+type = "integer"
+block = "dimensions"
+description = "is the number of trailing waves.  a recommended value of 7 can be used for ntrailwaves.  this value can be increased to lower mass balance error in the unsaturated zone."
+default = 7
+
+[dimensions.nwavesets]
+name = "nwavesets"
+type = "integer"
+block = "dimensions"
+description = "is the number of wave sets.  a recommended value of 40 can be used for nwavesets.  this value can be increased if more waves are required to resolve variations in water content within the unsaturated zone."
+default = 40
+
+[packagedata.packagedata]
+name = "packagedata"
+type = "list"
+shape = "(nuzfcells)"
+block = "packagedata"
+
+[packagedata.packagedata.packagedata]
+name = "packagedata"
+type = "record"
+block = "packagedata"
+
+[packagedata.packagedata.packagedata.ifno]
+block = "period"
+name = "ifno"
+type = "integer"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "UZF id number"
+description = "integer value that defines the feature (UZF object) number associated with the specified PERIOD data on the line."
+numeric_index = "true"
+
+[packagedata.packagedata.packagedata.cellid]
+block = "packagedata"
+name = "cellid"
+type = "integer"
+shape = "(ncelldim)"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "cell identifier"
+description = "is the cell identifier, and depends on the type of grid that is used for the simulation.  For a structured grid that uses the DIS input file, CELLID is the layer, row, and column.   For a grid that uses the DISV input file, CELLID is the layer and CELL2D number.  If the model uses the unstructured discretization (DISU) input file, CELLID is the node number for the cell."
+
+[packagedata.packagedata.packagedata.landflag]
+block = "packagedata"
+name = "landflag"
+type = "integer"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "land flag"
+description = "integer value set to one for land surface cells indicating that boundary conditions can be applied and data can be specified in the PERIOD block. A value of 0 specifies a non-land surface cell."
+
+[packagedata.packagedata.packagedata.ivertcon]
+block = "packagedata"
+name = "ivertcon"
+type = "integer"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "vertical connection flag"
+description = "integer value set to specify underlying UZF cell that receives water flowing to bottom of cell. If unsaturated zone flow reaches the water table before the cell bottom, then water is added to the GWF cell instead of flowing to the underlying UZF cell. A value of 0 indicates the UZF cell is not connected to an underlying UZF cell."
+numeric_index = "true"
+
+[packagedata.packagedata.packagedata.surfdep]
+block = "packagedata"
+name = "surfdep"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "surface depression depth"
+description = "is the surface depression depth of the UZF cell."
+
+[packagedata.packagedata.packagedata.vks]
+block = "packagedata"
+name = "vks"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "vertical saturated hydraulic conductivity"
+description = "is the saturated vertical hydraulic conductivity of the UZF cell.  This value is used with the Brooks-Corey function and the simulated water content to calculate the partially saturated hydraulic conductivity."
+
+[packagedata.packagedata.packagedata.thtr]
+block = "packagedata"
+name = "thtr"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "residual water content"
+description = "is the residual (irreducible) water content of the UZF cell.  This residual water is not available to plants and will not drain into underlying aquifer cells."
+
+[packagedata.packagedata.packagedata.thts]
+block = "packagedata"
+name = "thts"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "saturated water content"
+description = "is the saturated water content of the UZF cell.  The values for saturated and residual water content should be set in a manner that is consistent with the specific yield value specified in the Storage Package.  The saturated water content must be greater than the residual content."
+
+[packagedata.packagedata.packagedata.thti]
+block = "packagedata"
+name = "thti"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "initial water content"
+description = "is the initial water content of the UZF cell.  The value must be greater than or equal to the residual water content and less than or equal to the saturated water content."
+
+[packagedata.packagedata.packagedata.eps]
+block = "packagedata"
+name = "eps"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "Brooks-Corey exponent"
+description = "is the exponent used in the Brooks-Corey function.  The Brooks-Corey function is used by UZF to calculated hydraulic conductivity under partially saturated conditions as a function of water content and the user-specified saturated hydraulic conductivity."
+
+[packagedata.packagedata.packagedata.boundname]
+block = "packagedata"
+name = "boundname"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "well name"
+description = "name of the UZF cell cell.  BOUNDNAME is an ASCII character variable that can contain as many as 40 characters.  If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."
+
+[period.perioddata]
+name = "perioddata"
+type = "list"
+block = "period"
+
+[period.perioddata.perioddata]
+name = "perioddata"
+type = "record"
+block = "period"
+
+[period.perioddata.perioddata.ifno]
+block = "period"
+name = "ifno"
+type = "integer"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "UZF id number"
+description = "integer value that defines the feature (UZF object) number associated with the specified PERIOD data on the line."
+numeric_index = "true"
+
+[period.perioddata.perioddata.finf]
+block = "period"
+name = "finf"
+type = "string"
+tagged = "false"
+in_record = "true"
+time_series = "true"
+reader = "urword"
+longname = "infiltration rate"
+description = "real or character value that defines the applied infiltration rate of the UZF cell ($LT^{-1}$). If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.pet]
+block = "period"
+name = "pet"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+time_series = "true"
+longname = "potential ET rate"
+description = "real or character value that defines the potential evapotranspiration rate of the UZF cell and specified GWF cell. Evapotranspiration is first removed from the unsaturated zone and any remaining potential evapotranspiration is applied to the saturated zone. If IVERTCON is greater than zero then residual potential evapotranspiration not satisfied in the UZF cell is applied to the underlying UZF and GWF cells. PET is always specified, but is only used if SIMULATE_ET is specified in the OPTIONS block. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.extdp]
+block = "period"
+name = "extdp"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+time_series = "true"
+longname = "extinction depth"
+description = "real or character value that defines the evapotranspiration extinction depth of the UZF cell. If IVERTCON is greater than zero and EXTDP extends below the GWF cell bottom then remaining potential evapotranspiration is applied to the underlying UZF and GWF cells. EXTDP is always specified, but is only used if SIMULATE_ET is specified in the OPTIONS block. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.extwc]
+block = "period"
+name = "extwc"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+time_series = "true"
+longname = "extinction water content"
+description = "real or character value that defines the evapotranspiration extinction water content of the UZF cell. EXTWC is always specified, but is only used if SIMULATE_ET and UNSAT_ETWC are specified in the OPTIONS block. The evapotranspiration rate from the unsaturated zone will be set to zero when the calculated water content is at or less than this value.  The value for EXTWC cannot be less than the residual water content, and if it is specified as being less than the residual water content it is set to the residual water content. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.ha]
+block = "period"
+name = "ha"
+type = "string"
+tagged = "false"
+in_record = "true"
+time_series = "true"
+reader = "urword"
+longname = "air entry potential"
+description = "real or character value that defines the air entry potential (head) of the UZF cell. HA is always specified, but is only used if SIMULATE_ET and UNSAT_ETAE are specified in the OPTIONS block. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.hroot]
+block = "period"
+name = "hroot"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+time_series = "true"
+longname = "root potential"
+description = "real or character value that defines the root potential (head) of the UZF cell. HROOT is always specified, but is only used if SIMULATE_ET and UNSAT_ETAE are specified in the OPTIONS block. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.rootact]
+block = "period"
+name = "rootact"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+time_series = "true"
+longname = "root activity function"
+description = "real or character value that defines the root activity function of the UZF cell. ROOTACT is the length of roots in a given volume of soil divided by that volume. Values range from 0 to about 3 $cm^{-2}$, depending on the plant community and its stage of development. ROOTACT is always specified, but is only used if SIMULATE_ET and UNSAT_ETAE are specified in the OPTIONS block. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.aux]
+block = "period"
+name = "aux"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+shape = "(naux)"
+reader = "urword"
+time_series = "true"
+optional = "true"
+longname = "auxiliary variables"
+description = "represents the values of the auxiliary variables for each UZF. The values of auxiliary variables must be present for each UZF. The values must be specified in the order of the auxiliary variables specified in the OPTIONS block.  If the package supports time series and the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."

@@ -79,9 +79,7 @@ class MFCompound(MFParam, MFParams):
     @property
     def value(self) -> Dict[str, Any]:
         """Get component names/values."""
-        return {
-            k: s.value for k, s in self.data.items() if s.value is not None
-        }
+        return {k: s.value for k, s in self.data.items() if s.value is not None}
 
     @value.setter
     def value(self, value: Optional[Dict[str, Any]]):

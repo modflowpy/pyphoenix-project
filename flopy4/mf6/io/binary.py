@@ -306,9 +306,7 @@ class BinaryList:
             data_list.append(data_record)
         return data_list
 
-    def write_binary_file(
-        self, data, fname, modelgrid=None, precision="double"
-    ):
+    def write_binary_file(self, data, fname, modelgrid=None, precision="double"):
         fd = _open_ext_file(fname, binary=True, write=True)
         data_array = self._build_data_array(data, modelgrid, precision)
         data_array.tofile(fd)
@@ -325,9 +323,7 @@ class BinaryList:
 
 def _open_ext_file(fname, binary=False, write=False):
     model_dim = self._data_dimensions.package_dim.model_dim[0]
-    read_file = self._simulation_data.mfpath.resolve_path(
-        fname, model_dim.model_name
-    )
+    read_file = self._simulation_data.mfpath.resolve_path(fname, model_dim.model_name)
     if write:
         options = "w"
     else:

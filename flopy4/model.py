@@ -96,9 +96,7 @@ class MFModel(MFPackages, metaclass=MFModelMappingMeta):
         packages["nam6"] = GwfNam.load(f, **kwargs)
 
         simpath = Path(f.name).parent
-        MFModel.load_packages(
-            simpath, members, packages["nam6"], packages, **kwargs
-        )
+        MFModel.load_packages(simpath, members, packages["nam6"], packages, **kwargs)
         return cls(name=mname, mempath=mempath, mtype=mtype, packages=packages)
 
     @staticmethod

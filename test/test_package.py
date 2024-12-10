@@ -24,18 +24,14 @@ class TestPackage(MFPackage):
         type="double",
         description="double",
     )
-    s = MFString(
-        block="options", type="string", description="string", optional=False
-    )
+    s = MFString(block="options", type="string", description="string", optional=False)
     f = MFFilename(
         block="options",
         type="filename",
         description="filename",
         optional=False,
     )
-    a = MFArray(
-        block="packagedata", type="double", description="array", shape=(3)
-    )
+    a = MFArray(block="packagedata", type="double", description="array", shape=(3))
 
 
 class TestGwfIc(MFPackage):
@@ -127,8 +123,7 @@ class TestGwfDis(MFPackage):
     top = MFArray(
         block="griddata",
         longname="cell top elevation",
-        description="is the top elevation for each cell in the top model"
-        "layer.",
+        description="is the top elevation for each cell in the top model" "layer.",
         optional=False,
         # shape="(ncol, nrow)",
         shape=(5, 5),

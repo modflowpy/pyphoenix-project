@@ -1,0 +1,26 @@
+name = "olf-sto"
+multi = false
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that cell-by-cell flow terms will be written to the file specified with 'budget save file' in output control."
+
+[options.export_array_ascii]
+name = "export_array_ascii"
+type = "keyword"
+block = "options"
+description = "keyword that specifies input grid arrays, which already support the layered keyword, should be written to layered ascii output files."
+
+[period.steady-state]
+name = "steady-state"
+type = "keyword"
+block = "period"
+description = "keyword to indicate that stress period iper is steady-state. steady-state conditions will apply until the transient keyword is specified in a subsequent begin period block."
+
+[period.transient]
+name = "transient"
+type = "keyword"
+block = "period"
+description = "keyword to indicate that stress period iper is transient. transient conditions will apply until the steady-state keyword is specified in a subsequent begin period block."

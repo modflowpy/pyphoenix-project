@@ -1,0 +1,204 @@
+name = "exg-gwegwe"
+multi = true
+
+[options.gwfmodelname1]
+name = "gwfmodelname1"
+type = "string"
+block = "options"
+description = "keyword to specify name of first corresponding gwf model.  in the simulation name file, the gwe6-gwe6 entry contains names for gwe models (exgmnamea and exgmnameb).  the gwe model with the name exgmnamea must correspond to the gwf model with the name gwfmodelname1."
+
+[options.gwfmodelname2]
+name = "gwfmodelname2"
+type = "string"
+block = "options"
+description = "keyword to specify name of second corresponding gwf model.  in the simulation name file, the gwe6-gwe6 entry contains names for gwe models (exgmnamea and exgmnameb).  the gwe model with the name exgmnameb must correspond to the gwf model with the name gwfmodelname2."
+
+[options.auxiliary]
+name = "auxiliary"
+type = "string"
+shape = "(naux)"
+block = "options"
+description = "an array of auxiliary variable names.  there is no limit on the number of auxiliary variables that can be provided. most auxiliary variables will not be used by the gwf-gwf exchange, but they will be available for use by other parts of the program.  if an auxiliary variable with the name 'angldegx' is found, then this information will be used as the angle (provided in degrees) between the connection face normal and the x axis, where a value of zero indicates that a normal vector points directly along the positive x axis.  the connection face normal is a normal vector on the cell face shared between the cell in model 1 and the cell in model 2 pointing away from the model 1 cell.  additional information on 'angldegx' is provided in the description of the disu package.  if an auxiliary variable with the name 'cdist' is found, then this information will be used as the straight-line connection distance, including the vertical component, between the two cell centers.  both angldegx and cdist are required if specific discharge is calculated for either of the groundwater models."
+
+[options.boundnames]
+name = "boundnames"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that boundary names may be provided with the list of gwe exchange cells."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of exchange entries will be echoed to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of exchange flow rates will be printed to the listing file for every stress period in which 'save budget' is specified in output control."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that cell-by-cell flow terms will be written to the budget file for each model provided that the output control for the models are set up with the 'budget save file' option."
+
+[options.adv_scheme]
+name = "adv_scheme"
+type = "string"
+block = "options"
+description = "scheme used to solve the advection term.  can be upstream, central, or tvd.  if not specified, upstream weighting is the default weighting scheme."
+
+[options.cnd_xt3d_off]
+name = "cnd_xt3d_off"
+type = "keyword"
+block = "options"
+description = "deactivate the xt3d method for the dispersive flux and use the faster and less accurate approximation for this exchange."
+
+[options.cnd_xt3d_rhs]
+name = "cnd_xt3d_rhs"
+type = "keyword"
+block = "options"
+description = "add xt3d dispersion terms to right-hand side, when possible, for this exchange."
+
+[options.perioddata]
+name = "perioddata"
+type = "record"
+block = "options"
+description = "Contains data for the mve package. Data can be stored in a dictionary containing data for the mve package with variable names as keys and package data as values. Data just for the perioddata variable is also acceptable. See mve package documentation for more information"
+
+[options.perioddata.subpackage]
+parent = "parent_model_or_package"
+key = "mve_filerecord"
+val = "perioddata"
+abbr = "mve"
+param = "perioddata"
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[options.dev_interfacemodel_on]
+name = "dev_interfacemodel_on"
+type = "keyword"
+block = "options"
+description = "activates the interface model mechanism for calculating the coefficients at (and possibly near) the exchange. this keyword should only be used for development purposes."
+
+[dimensions.nexg]
+name = "nexg"
+type = "integer"
+block = "dimensions"
+description = "keyword and integer value specifying the number of gwe-gwe exchanges."
+
+[exchangedata.exchangedata]
+name = "exchangedata"
+type = "list"
+shape = "(nexg)"
+block = "exchangedata"
+
+[exchangedata.exchangedata.exchangedata]
+name = "exchangedata"
+type = "record"
+block = "exchangedata"
+
+[exchangedata.exchangedata.exchangedata.cellidm1]
+block = "exchangedata"
+name = "cellidm1"
+type = "integer"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "cellid of first cell"
+description = "is the cellid of the cell in model 1 as specified in the simulation name file. For a structured grid that uses the DIS input file, CELLIDM1 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM1 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM1 is the node number for the cell."
+numeric_index = "true"
+
+[exchangedata.exchangedata.exchangedata.cellidm2]
+block = "exchangedata"
+name = "cellidm2"
+type = "integer"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "cellid of second cell"
+description = "is the cellid of the cell in model 2 as specified in the simulation name file. For a structured grid that uses the DIS input file, CELLIDM2 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM2 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM2 is the node number for the cell."
+numeric_index = "true"
+
+[exchangedata.exchangedata.exchangedata.ihc]
+block = "exchangedata"
+name = "ihc"
+type = "integer"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "integer flag for connection type"
+description = "is an integer flag indicating the direction between node n and all of its m connections. If IHC = 0 then the connection is vertical.  If IHC = 1 then the connection is horizontal. If IHC = 2 then the connection is horizontal for a vertically staggered grid."
+
+[exchangedata.exchangedata.exchangedata.cl1]
+block = "exchangedata"
+name = "cl1"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "connection distance"
+description = "is the distance between the center of cell 1 and the its shared face with cell 2."
+
+[exchangedata.exchangedata.exchangedata.cl2]
+block = "exchangedata"
+name = "cl2"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "connection distance"
+description = "is the distance between the center of cell 2 and the its shared face with cell 1."
+
+[exchangedata.exchangedata.exchangedata.hwva]
+block = "exchangedata"
+name = "hwva"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "horizontal cell width or area for vertical flow"
+description = "is the horizontal width of the flow connection between cell 1 and cell 2 if IHC $>$ 0, or it is the area perpendicular to flow of the vertical connection between cell 1 and cell 2 if IHC = 0."
+
+[exchangedata.exchangedata.exchangedata.aux]
+block = "exchangedata"
+name = "aux"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+shape = "(naux)"
+reader = "urword"
+optional = "true"
+longname = "auxiliary variables"
+description = "represents the values of the auxiliary variables for each GWEGWE Exchange. The values of auxiliary variables must be present for each exchange. The values must be specified in the order of the auxiliary variables specified in the OPTIONS block."
+mf6internal = "auxvar"
+
+[exchangedata.exchangedata.exchangedata.boundname]
+block = "exchangedata"
+name = "boundname"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "exchange boundname"
+description = "name of the GWE Exchange cell.  BOUNDNAME is an ASCII character variable that can contain as many as 40 characters.  If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."

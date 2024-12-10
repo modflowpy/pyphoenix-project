@@ -1,0 +1,96 @@
+name = "exg-olfgwf"
+multi = true
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of exchange entries will be echoed to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of exchange flow rates will be printed to the listing file for every stress period in which 'save budget' is specified in output control."
+
+[options.fixed_conductance]
+name = "fixed_conductance"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the product of the bedleak and cfact input variables in the exchangedata block represents conductance.  this conductance is fixed and does not change as a function of head in the surface water and groundwater models."
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[dimensions.nexg]
+name = "nexg"
+type = "integer"
+block = "dimensions"
+description = "keyword and integer value specifying the number of swf-gwf exchanges."
+
+[exchangedata.exchangedata]
+name = "exchangedata"
+type = "list"
+shape = "(nexg)"
+block = "exchangedata"
+
+[exchangedata.exchangedata.exchangedata]
+name = "exchangedata"
+type = "record"
+block = "exchangedata"
+
+[exchangedata.exchangedata.exchangedata.cellidm1]
+block = "exchangedata"
+name = "cellidm1"
+type = "integer"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "cellid of cell in surface water model"
+description = "is the cellid of the cell in model 1, which must be the surface water model. For a structured grid that uses the DIS input file, CELLIDM1 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM1 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM1 is the node number for the cell."
+numeric_index = "true"
+
+[exchangedata.exchangedata.exchangedata.cellidm2]
+block = "exchangedata"
+name = "cellidm2"
+type = "integer"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "cellid of cell in groundwater model"
+description = "is the cellid of the cell in model 2, which must be the groundwater model. For a structured grid that uses the DIS input file, CELLIDM2 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM2 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM2 is the node number for the cell."
+numeric_index = "true"
+
+[exchangedata.exchangedata.exchangedata.bedleak]
+block = "exchangedata"
+name = "bedleak"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "bed leakance"
+description = "is the leakance between the surface water and groundwater.  bedleak has dimensions of 1/T and is equal to the hydraulic conductivity of the bed sediments divided by the thickness of the bed sediments."
+
+[exchangedata.exchangedata.exchangedata.cfact]
+block = "exchangedata"
+name = "cfact"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+reader = "urword"
+optional = "false"
+longname = "factor used for conductance calculation"
+description = "is the factor used for the conductance calculation.  The definition for this parameter depends the type of surface water model and whether or not the fixed_conductance option is specified.  If the fixed_conductance option is specified, then the hydraulic conductance is calculated as the product of bedleak and cfact.  In this case, the conductance is fixed and does not change as a function of the calculated surface water and groundwater head.  If the fixed_conductance option is not specified, then the definition of cfact depends on whether the surface water model represents one-dimensional channel flow or two-dimensional overland flow.  If the surface water model represents one-dimensional channel flow, then cfact is the length of the channel cell in the groundwater model cell.  If the surface water model represents two-dimensional overland flow, then cfact is the intersection area of the overland flow cell and the underlying groundwater model cell."

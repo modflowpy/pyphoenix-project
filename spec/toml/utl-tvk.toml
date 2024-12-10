@@ -1,0 +1,70 @@
+name = "utl-tvk"
+multi = false
+
+[subpackage]
+parent = "parent_package"
+key = "tvk_filerecord"
+val = "perioddata"
+abbr = "tvk"
+param = "tvk_perioddata"
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that information for each change to the hydraulic conductivity in a cell will be written to the model listing file."
+
+[options.timeseries]
+name = "timeseries"
+type = "record"
+block = "options"
+description = "Contains data for the ts package. Data can be stored in a dictionary containing data for the ts package with variable names as keys and package data as values. Data just for the timeseries variable is also acceptable. See ts package documentation for more information"
+
+[options.timeseries.subpackage]
+parent = "parent_package"
+key = "ts_filerecord"
+val = "timeseries"
+abbr = "ts"
+param = "timeseries"
+description = "xxx"
+
+[period.perioddata]
+name = "perioddata"
+type = "list"
+block = "period"
+
+[period.perioddata.perioddata]
+name = "perioddata"
+type = "record"
+block = "period"
+
+[period.perioddata.perioddata.cellid]
+name = "cellid"
+type = "integer"
+shape = "(ncelldim)"
+block = "period"
+description = "is the cell identifier, and depends on the type of grid that is used for the simulation.  for a structured grid that uses the dis input file, cellid is the layer, row, and column.   for a grid that uses the disv input file, cellid is the layer and cell2d number.  if the model uses the unstructured discretization (disu) input file, cellid is the node number for the cell."
+
+[period.perioddata.perioddata.tvksetting]
+name = "tvksetting"
+type = "union"
+block = "period"
+description = "line of information that is parsed into a property name keyword and values.  property name keywords that can be used to start the tvksetting string include: k, k22, and k33."
+
+[period.perioddata.perioddata.tvksetting.k]
+name = "k"
+type = "double precision"
+block = "period"
+description = "is the new value to be assigned as the cell's hydraulic conductivity from the start of the specified stress period, as per k in the npf package.  if the options block includes a ts6 entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.tvksetting.k22]
+name = "k22"
+type = "double precision"
+block = "period"
+description = "is the new value to be assigned as the cell's hydraulic conductivity of the second ellipsoid axis (or the ratio of k22/k if the k22overk npf package option is specified) from the start of the specified stress period, as per k22 in the npf package.  for an unrotated case this is the hydraulic conductivity in the y direction.  if the options block includes a ts6 entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.tvksetting.k33]
+name = "k33"
+type = "double precision"
+block = "period"
+description = "is the new value to be assigned as the cell's hydraulic conductivity of the third ellipsoid axis (or the ratio of k33/k if the k33overk npf package option is specified) from the start of the specified stress period, as per k33 in the npf package.  for an unrotated case, this is the vertical hydraulic conductivity.  if the options block includes a ts6 entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."

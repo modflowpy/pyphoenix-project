@@ -1,0 +1,15 @@
+name = "chf-ic"
+multi = false
+
+[options.export_array_ascii]
+name = "export_array_ascii"
+type = "keyword"
+block = "options"
+description = "keyword that specifies input griddata arrays should be written to layered ascii output files."
+
+[griddata.strt]
+name = "strt"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is the initial (starting) stage---that is, stage at the beginning of the swf model simulation.  strt must be specified for all swf model simulations. one value is read for every model reach."

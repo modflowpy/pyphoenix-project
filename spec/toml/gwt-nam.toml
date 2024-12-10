@@ -1,0 +1,115 @@
+name = "gwt-nam"
+multi = false
+
+[options.list]
+name = "list"
+type = "string"
+block = "options"
+description = "is name of the listing file to create for this gwt model.  if not specified, then the name of the list file will be the basename of the gwt model name file and the '.lst' extension.  for example, if the gwt name file is called 'my.model.nam' then the list file will be called 'my.model.lst'."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of all model stress package information will be written to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of all model package flow rates will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control.  if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that all model package flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.export_netcdf]
+name = "export_netcdf"
+type = "string"
+block = "options"
+description = "keyword that specifies timeseries data for the dependent variable should be written to a model output netcdf file.  no value or 'ugrid' (ugrid based export) values are supported."
+
+[options.nc_filerecord]
+name = "nc_filerecord"
+type = "record"
+block = "options"
+description = "netcdf config filerecord"
+
+[options.nc_filerecord.netcdf]
+block = "options"
+name = "netcdf"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "netcdf keyword"
+description = "keyword to specify that record corresponds to a netcdf input file."
+
+[options.nc_filerecord.filein]
+block = "options"
+name = "filein"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an input filename is expected next."
+
+[options.nc_filerecord.netcdf_filename]
+block = "options"
+name = "netcdf_filename"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+optional = "false"
+tagged = "false"
+longname = "netcdf input filename"
+description = "defines a netcdf input file."
+mf6internal = "netcdf_fname"
+
+[packages.packages]
+name = "packages"
+type = "list"
+block = "packages"
+
+[packages.packages.packages]
+name = "packages"
+type = "record"
+block = "packages"
+
+[packages.packages.packages.ftype]
+block = "packages"
+name = "ftype"
+in_record = "true"
+type = "string"
+tagged = "false"
+reader = "urword"
+longname = "package type"
+description = "is the file type, which must be one of the following character values shown in table~ref{table:ftype-gwt}. Ftype may be entered in any combination of uppercase and lowercase."
+
+[packages.packages.packages.fname]
+block = "packages"
+name = "fname"
+in_record = "true"
+type = "string"
+preserve_case = "true"
+tagged = "false"
+reader = "urword"
+longname = "file name"
+description = "is the name of the file containing the package input.  The path to the file should be included if the file is not located in the folder where the program was run."
+
+[packages.packages.packages.pname]
+block = "packages"
+name = "pname"
+in_record = "true"
+type = "string"
+tagged = "false"
+reader = "urword"
+optional = "true"
+longname = "user name for package"
+description = "is the user-defined name for the package. PNAME is restricted to 16 characters.  No spaces are allowed in PNAME.  PNAME character values are read and stored by the program for stress packages only.  These names may be useful for labeling purposes when multiple stress packages of the same type are located within a single GWT Model.  If PNAME is specified for a stress package, then PNAME will be used in the flow budget table in the listing file; it will also be used for the text entry in the cell-by-cell budget file.  PNAME is case insensitive and is stored in all upper case letters."

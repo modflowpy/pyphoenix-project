@@ -257,9 +257,7 @@ class MFArray(MFParam, NumPyArrayMixin):
         if len(inputs) == 1:
             result = raw.__array_ufunc__(ufunc, method, raw, **kwargs)
         else:
-            result = raw.__array_ufunc__(
-                ufunc, method, raw, *inputs[1:], kwargs
-            )
+            result = raw.__array_ufunc__(ufunc, method, raw, *inputs[1:], kwargs)
         if not isinstance(result, np.ndarray):
             raise NotImplementedError(f"{str(ufunc)} has not been implemented")
 
@@ -299,8 +297,7 @@ class MFArray(MFParam, NumPyArrayMixin):
 
         if value.shape != self.shape:
             raise ValueError(
-                f"Expected array with shape {self.shape},"
-                f"got shape {value.shape}"
+                f"Expected array with shape {self.shape}," f"got shape {value.shape}"
             )
         self._value = value
 
@@ -407,8 +404,7 @@ class MFArray(MFParam, NumPyArrayMixin):
             elif self._how == MFArrayType.external:
                 lines = (
                     f"{PAD}" + f"{self.name.upper()}\n"
-                    f"{PAD*2}"
-                    + f"{MFArrayType.to_string(self._how)} {self._path}\n"
+                    f"{PAD*2}" + f"{MFArrayType.to_string(self._how)} {self._path}\n"
                 )
             elif self._how == MFArrayType.constant:
                 lines = (

@@ -1,0 +1,101 @@
+name = "gwf-rcha"
+package_type = "stress-package"
+multi = true
+
+[options.readasarrays]
+name = "readasarrays"
+type = "keyword"
+block = "options"
+description = "indicates that array-based input will be used for the recharge package.  this keyword must be specified to use array-based input.  when readasarrays is specified, values must be provided for every cell within a model layer, even those cells that have an idomain value less than one.  values assigned to cells with idomain values less than one are not used and have no effect on simulation results."
+default = true
+
+[options.fixed_cell]
+name = "fixed_cell"
+type = "keyword"
+block = "options"
+description = "indicates that recharge will not be reassigned to a cell underlying the cell specified in the list if the specified cell is inactive."
+
+[options.auxiliary]
+name = "auxiliary"
+type = "string"
+shape = "(naux)"
+block = "options"
+description = "defines an array of one or more auxiliary variable names.  there is no limit on the number of auxiliary variables that can be provided on this line; however, lists of information provided in subsequent blocks must have a column of data for each auxiliary variable name defined here.   the number of auxiliary variables detected on this line determines the value for naux.  comments cannot be provided anywhere on this line as they will be interpreted as auxiliary variable names.  auxiliary variables may not be used by the package, but they will be available for use by other parts of the program.  the program will terminate with an error if auxiliary variables are specified on more than one line in the options block."
+
+[options.auxmultname]
+name = "auxmultname"
+type = "string"
+block = "options"
+description = "name of auxiliary variable to be used as multiplier of recharge."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of recharge information will be written to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of recharge flow rates will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control.  if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that recharge flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.timearrayseries]
+name = "timearrayseries"
+type = "record"
+block = "options"
+description = "Contains data for the tas package. Data can be stored in a dictionary containing data for the tas package with variable names as keys and package data as values. Data just for the timearrayseries variable is also acceptable. See tas package documentation for more information"
+
+[options.timearrayseries.subpackage]
+parent = "parent_package"
+key = "tas_filerecord"
+val = "timearrayseries"
+abbr = "tas"
+param = "tas_array"
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[options.export_array_netcdf]
+name = "export_array_netcdf"
+type = "keyword"
+block = "options"
+description = "keyword that specifies input griddata arrays should be written to the model output netcdf file."
+
+[period.irch]
+name = "irch"
+type = "integer"
+shape = "(ncol*nrow; ncpl)"
+block = "period"
+description = "irch is the layer number that defines the layer in each vertical column where recharge is applied. if irch is omitted, recharge by default is applied to cells in layer 1.  irch can only be used if readasarrays is specified in the options block.  if irch is specified, it must be specified as the first variable in the period block or modflow will terminate with an error."
+
+[period.recharge]
+name = "recharge"
+type = "double precision"
+shape = "(ncol*nrow; ncpl)"
+block = "period"
+description = "is the recharge flux rate ($lt^{-1}$).  this rate is multiplied inside the program by the surface area of the cell to calculate the volumetric recharge rate. the recharge array may be defined by a time-array series (see the 'using time-array series in a package' section)."
+default = 0.001
+
+[period.aux]
+name = "aux"
+type = "double precision"
+shape = "(ncol*nrow; ncpl)"
+block = "period"
+description = "is an array of values for auxiliary variable aux(iaux), where iaux is a value from 1 to naux, and aux(iaux) must be listed as part of the auxiliary variables.  a separate array can be specified for each auxiliary variable.  if an array is not specified for an auxiliary variable, then a value of zero is assigned.  if the value specified here for the auxiliary variable is the same as auxmultname, then the recharge array will be multiplied by this array."

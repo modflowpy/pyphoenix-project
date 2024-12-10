@@ -22,13 +22,9 @@ class TestBlock(MFBlock):
 class SolutionGroup(MFBlock):
     __test__ = False  # tell pytest not to collect
 
-    slntype = MFString(
-        block="solutiongroup", shape="", optional=False, description=""
-    )
+    slntype = MFString(block="solutiongroup", shape="", optional=False, description="")
 
-    slnfname = MFString(
-        block="solutiongroup", shape="", optional=False, description=""
-    )
+    slnfname = MFString(block="solutiongroup", shape="", optional=False, description="")
 
     slnmnames = MFString(
         block="solutiongroup", shape="(:)", optional=False, description=""
@@ -75,9 +71,7 @@ def test_list_load1(tmp_path):
     assert in_list.params["testblock"]["s"] == ["model", "exch", "sim"]
     print(in_list.params["testblock"]["i"])
     assert np.allclose(in_list.params["testblock"]["i"], np.array([1, 2, 2]))
-    assert np.allclose(
-        in_list.params["testblock"]["d"], np.array([2.0, 3.0, 3.0])
-    )
+    assert np.allclose(in_list.params["testblock"]["d"], np.array([2.0, 3.0, 3.0]))
 
 
 def test_list_load2(tmp_path):
@@ -87,8 +81,7 @@ def test_list_load2(tmp_path):
     with open(fpth, "w") as f:
         f.write("BEGIN SOLUTIONGROUP 1\n")
         f.write(
-            f"  ims6  {tmp_path}/{name}.ims  "
-            f"model0 model1 model2 model3 model4\n"
+            f"  ims6  {tmp_path}/{name}.ims  " f"model0 model1 model2 model3 model4\n"
         )
         f.write("END SOLUTIONGROUP 1\n\n")
 
@@ -98,9 +91,7 @@ def test_list_load2(tmp_path):
 
     assert in_list.name == name
     assert in_list.params["solutiongroup"]["slntype"] == ["ims6"]
-    assert in_list.params["solutiongroup"]["slnfname"] == [
-        f"{tmp_path}/{name}.ims"
-    ]
+    assert in_list.params["solutiongroup"]["slnfname"] == [f"{tmp_path}/{name}.ims"]
     assert in_list.params["solutiongroup"]["slnmnames"] == [
         "model0 model1 model2 model3 model4"
     ]

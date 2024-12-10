@@ -1,0 +1,42 @@
+name = "utl-spca"
+multi = true
+
+[options.readasarrays]
+name = "readasarrays"
+type = "keyword"
+block = "options"
+description = "indicates that array-based input will be used for the spc package.  this keyword must be specified to use array-based input.  when readasarrays is specified, values must be provided for every cell within a model layer, even those cells that have an idomain value less than one.  values assigned to cells with idomain values less than one are not used and have no effect on simulation results."
+default = true
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of spc information will be written to the listing file immediately after it is read."
+
+[options.timearrayseries]
+name = "timearrayseries"
+type = "record"
+block = "options"
+description = "Contains data for the tas package. Data can be stored in a dictionary containing data for the tas package with variable names as keys and package data as values. Data just for the timearrayseries variable is also acceptable. See tas package documentation for more information"
+
+[options.timearrayseries.subpackage]
+parent = "parent_package"
+key = "tas_filerecord"
+val = "timearrayseries"
+abbr = "tas"
+param = "tas_array"
+
+[period.concentration]
+name = "concentration"
+type = "double precision"
+shape = "(ncol*nrow; ncpl)"
+block = "period"
+description = "is the concentration of the associated recharge or evapotranspiration stress package.  the concentration array may be defined by a time-array series (see the \"using time-array series in a package\" section)."
+
+[period.temperature]
+name = "temperature"
+type = "double precision"
+shape = "(ncol*nrow; ncpl)"
+block = "period"
+description = "is the temperature of the associated recharge or evapotranspiration stress package.  the temperature array may be defined by a time-array series (see the \"using time-array series in a package\" section)."

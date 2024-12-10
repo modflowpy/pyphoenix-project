@@ -1,0 +1,105 @@
+name = "gwe-mve"
+multi = false
+
+[subpackage]
+parent = "parent_model_or_package"
+key = "mve_filerecord"
+val = "perioddata"
+abbr = "mve"
+param = "perioddata"
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of mover information will be written to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of lake flow rates will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control.  if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that lake flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.budget_filerecord]
+name = "budget_filerecord"
+type = "record"
+block = "options"
+
+[options.budget_filerecord.budget]
+block = "options"
+name = "budget"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[options.budget_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budget_filerecord.budgetfile]
+block = "options"
+name = "budgetfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the binary output file to write budget information."
+
+[options.budgetcsv_filerecord]
+name = "budgetcsv_filerecord"
+type = "record"
+block = "options"
+
+[options.budgetcsv_filerecord.budgetcsv]
+block = "options"
+name = "budgetcsv"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[options.budgetcsv_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budgetcsv_filerecord.budgetcsvfile]
+block = "options"
+name = "budgetcsvfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation."

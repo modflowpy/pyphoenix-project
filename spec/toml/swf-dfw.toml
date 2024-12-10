@@ -1,0 +1,77 @@
+name = "swf-dfw"
+multi = false
+
+[options.central_in_space]
+name = "central_in_space"
+type = "keyword"
+block = "options"
+description = "keyword to indicate conductance should be calculated using central-in-space weighting instead of the default upstream weighting approach.  this option should be used with caution as it does not work well unless all of the stream reaches are saturated.  with this option, there is no way for water to flow into a dry reach from connected reaches."
+
+[options.length_conversion]
+name = "length_conversion"
+type = "double precision"
+block = "options"
+description = "real value that is used to convert user-specified manning's roughness coefficients from meters to model length units. length_conversion should be set to 3.28081, 1.0, and 100.0 when using length units (length_units) of feet, meters, or centimeters in the simulation, respectively. length_conversion does not need to be specified if length_units are meters."
+
+[options.time_conversion]
+name = "time_conversion"
+type = "double precision"
+block = "options"
+description = "real value that is used to convert user-specified manning's roughness coefficients from seconds to model time units. time_conversion should be set to 1.0, 60.0, 3,600.0, 86,400.0, and 31,557,600.0 when using time units (time_units) of seconds, minutes, hours, days, or years in the simulation, respectively. time_conversion does not need to be specified if time_units are seconds."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that budget flow terms will be written to the file specified with 'budget save file' in output control."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that calculated flows between cells will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control. if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period.  this option can produce extremely large list files because all cell-by-cell flows are printed.  it should only be used with the dfw package for models that have a small number of cells."
+
+[options.save_velocity]
+name = "save_velocity"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that x, y, and z components of velocity will be calculated at cell centers and written to the budget file, which is specified with 'budget save file' in output control.  if this option is activated, then additional information may be required in the discretization packages and the gwf exchange package (if gwf models are coupled).  specifically, angldegx must be specified in the connectiondata block of the disu package; angldegx must also be specified for the gwf exchange as an auxiliary variable."
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[options.export_array_ascii]
+name = "export_array_ascii"
+type = "keyword"
+block = "options"
+description = "keyword that specifies input griddata arrays should be written to layered ascii output files."
+
+[options.dev_swr_conductance]
+name = "dev_swr_conductance"
+type = "keyword"
+block = "options"
+description = "use the conductance formulation in the surface water routing (swr) process for modflow-2005."
+
+[griddata.manningsn]
+name = "manningsn"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "mannings roughness coefficient"
+
+[griddata.idcxs]
+name = "idcxs"
+type = "integer"
+shape = "(nodes)"
+block = "griddata"
+description = "integer value indication the cross section identifier in the cross section package that applies to the reach.  if not provided then reach will be treated as hydraulically wide."

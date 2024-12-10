@@ -1,0 +1,62 @@
+name = "utl-spc"
+multi = true
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of spc information will be written to the listing file immediately after it is read."
+
+[options.timeseries]
+name = "timeseries"
+type = "record"
+block = "options"
+description = "Contains data for the ts package. Data can be stored in a dictionary containing data for the ts package with variable names as keys and package data as values. Data just for the timeseries variable is also acceptable. See ts package documentation for more information"
+
+[options.timeseries.subpackage]
+parent = "parent_package"
+key = "ts_filerecord"
+val = "timeseries"
+abbr = "ts"
+param = "timeseries"
+description = "xxx"
+
+[dimensions.maxbound]
+name = "maxbound"
+type = "integer"
+block = "dimensions"
+description = "integer value specifying the maximum number of spc cells that will be specified for use during any stress period."
+
+[period.perioddata]
+name = "perioddata"
+type = "list"
+block = "period"
+
+[period.perioddata.perioddata]
+name = "perioddata"
+type = "record"
+block = "period"
+
+[period.perioddata.perioddata.bndno]
+name = "bndno"
+type = "integer"
+block = "period"
+description = "integer value that defines the boundary package feature number associated with the specified period data on the line. bndno must be greater than zero and less than or equal to maxbound."
+
+[period.perioddata.perioddata.spcsetting]
+name = "spcsetting"
+type = "union"
+block = "period"
+description = "line of information that is parsed into a keyword and values.  keyword values that can be used to start the spcsetting string include: concentration and temperature."
+
+[period.perioddata.perioddata.spcsetting.concentration]
+name = "concentration"
+type = "double precision"
+block = "period"
+description = "is the boundary concentration. if the options block includes a timeseriesfile entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value. by default, the concentration for each boundary feature is zero."
+
+[period.perioddata.perioddata.spcsetting.temperature]
+name = "temperature"
+type = "double precision"
+block = "period"
+description = "is the user-supplied boundary temperature. if the options block includes a timeseriesfile entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value. by default, the temperature for each boundary feature is zero."

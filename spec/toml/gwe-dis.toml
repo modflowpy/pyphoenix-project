@@ -1,336 +1,116 @@
-component = "GWE"
-subcomponent = "DIS"
-blocknames = [ "options", "dimensions", "griddata",]
-multipkg = false
-stress = false
-advanced = false
+name = "gwe-dis"
+multi = false
 
-[block.options.length_units]
+[options.length_units]
+name = "length_units"
 type = "string"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "model length units"
-description = "is the length units used for this model.  Values can be ``FEET'', ``METERS'', or ``CENTIMETERS''.  If not specified, the default is ``UNKNOWN''."
-deprecated = ""
+block = "options"
+description = "is the length units used for this model.  values can be 'feet', 'meters', or 'centimeters'.  if not specified, the default is 'unknown'."
 
-[block.options.nogrb]
+[options.nogrb]
+name = "nogrb"
 type = "keyword"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "do not write binary grid file"
+block = "options"
 description = "keyword to deactivate writing of the binary grid file."
-deprecated = ""
 
-[block.options.xorigin]
-type = "double"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "x-position of the model grid origin"
-description = "x-position of the lower-left corner of the model grid.  A default value of zero is assigned if not specified.  The value for XORIGIN does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
-deprecated = ""
+[options.xorigin]
+name = "xorigin"
+type = "double precision"
+block = "options"
+description = "x-position of the lower-left corner of the model grid.  a default value of zero is assigned if not specified.  the value for xorigin does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
 
-[block.options.yorigin]
-type = "double"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "y-position of the model grid origin"
-description = "y-position of the lower-left corner of the model grid.  If not specified, then a default value equal to zero is used.  The value for YORIGIN does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
-deprecated = ""
+[options.yorigin]
+name = "yorigin"
+type = "double precision"
+block = "options"
+description = "y-position of the lower-left corner of the model grid.  if not specified, then a default value equal to zero is used.  the value for yorigin does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
 
-[block.options.angrot]
-type = "double"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "rotation angle"
-description = "counter-clockwise rotation angle (in degrees) of the lower-left corner of the model grid.  If not specified, then a default value of 0.0 is assigned.  The value for ANGROT does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
-deprecated = ""
+[options.angrot]
+name = "angrot"
+type = "double precision"
+block = "options"
+description = "counter-clockwise rotation angle (in degrees) of the lower-left corner of the model grid.  if not specified, then a default value of 0.0 is assigned.  the value for angrot does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
 
-[block.options.export_array_ascii]
+[options.export_array_ascii]
+name = "export_array_ascii"
 type = "keyword"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "export array variables to layered ascii files."
+block = "options"
 description = "keyword that specifies input griddata arrays should be written to layered ascii output files."
-deprecated = ""
 
-[block.options.export_array_netcdf]
+[options.export_array_netcdf]
+name = "export_array_netcdf"
 type = "keyword"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "export array variables to netcdf output files."
+block = "options"
 description = "keyword that specifies input griddata arrays should be written to the model output netcdf file."
-deprecated = ""
 
-[block.options.ncf_filerecord]
-type = "record ncf6 filein ncf6_filename"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = ""
-description = ""
-deprecated = ""
+[options.packagedata]
+name = "packagedata"
+type = "record"
+block = "options"
+description = "Contains data for the ncf package. Data can be stored in a dictionary containing data for the ncf package with variable names as keys and package data as values. Data just for the packagedata variable is also acceptable. See ncf package documentation for more information"
 
-[block.options.ncf6]
-type = "keyword"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = true
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-numeric_index = false
-longname = "ncf keyword"
-description = "keyword to specify that record corresponds to a netcdf configuration (NCF) file."
-deprecated = ""
+[options.packagedata.subpackage]
+parent = "parent_package"
+key = "ncf_filerecord"
+val = "packagedata"
+abbr = "ncf"
+param = "packagedata"
 
-[block.options.filein]
-type = "keyword"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = true
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-numeric_index = false
-longname = "file keyword"
-description = "keyword to specify that an input filename is expected next."
-deprecated = ""
-
-[block.options.ncf6_filename]
-type = "string"
-block_variable = false
-valid = []
-shape = ""
-tagged = false
-in_record = true
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = true
-numeric_index = false
-longname = "file name of NCF information"
-description = "defines a netcdf configuration (NCF) input file."
-deprecated = ""
-
-[block.dimensions.nlay]
+[dimensions.nlay]
+name = "nlay"
 type = "integer"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-default_value = "1"
-numeric_index = false
-longname = "number of layers"
+block = "dimensions"
 description = "is the number of layers in the model grid."
-deprecated = ""
+default = 1
 
-[block.dimensions.nrow]
+[dimensions.nrow]
+name = "nrow"
 type = "integer"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-default_value = "2"
-numeric_index = false
-longname = "number of rows"
+block = "dimensions"
 description = "is the number of rows in the model grid."
-deprecated = ""
+default = 2
 
-[block.dimensions.ncol]
+[dimensions.ncol]
+name = "ncol"
 type = "integer"
-block_variable = false
-valid = []
-shape = ""
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "urword"
-optional = false
-preserve_case = false
-default_value = "2"
-numeric_index = false
-longname = "number of columns"
+block = "dimensions"
 description = "is the number of columns in the model grid."
-deprecated = ""
+default = 2
 
-[block.griddata.delr]
-type = "double"
-block_variable = false
-valid = []
+[griddata.delr]
+name = "delr"
+type = "double precision"
 shape = "(ncol)"
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "readarray"
-optional = false
-preserve_case = false
-default_value = "1.0"
-numeric_index = false
-longname = "spacing along a row"
+block = "griddata"
 description = "is the column spacing in the row direction."
-deprecated = ""
+default = 1.0
 
-[block.griddata.delc]
-type = "double"
-block_variable = false
-valid = []
+[griddata.delc]
+name = "delc"
+type = "double precision"
 shape = "(nrow)"
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "readarray"
-optional = false
-preserve_case = false
-default_value = "1.0"
-numeric_index = false
-longname = "spacing along a column"
+block = "griddata"
 description = "is the row spacing in the column direction."
-deprecated = ""
+default = 1.0
 
-[block.griddata.top]
-type = "double"
-block_variable = false
-valid = []
+[griddata.top]
+name = "top"
+type = "double precision"
 shape = "(ncol, nrow)"
-tagged = true
-in_record = false
-layered = false
-time_series = false
-reader = "readarray"
-optional = false
-preserve_case = false
-default_value = "1.0"
-numeric_index = false
-longname = "cell top elevation"
+block = "griddata"
 description = "is the top elevation for each cell in the top model layer."
-deprecated = ""
+default = 1.0
 
-[block.griddata.botm]
-type = "double"
-block_variable = false
-valid = []
+[griddata.botm]
+name = "botm"
+type = "double precision"
 shape = "(ncol, nrow, nlay)"
-tagged = true
-in_record = false
-layered = true
-time_series = false
-reader = "readarray"
-optional = false
-preserve_case = false
-default_value = "0."
-numeric_index = false
-longname = "cell bottom elevation"
+block = "griddata"
 description = "is the bottom elevation for each cell."
-deprecated = ""
 
-[block.griddata.idomain]
+[griddata.idomain]
+name = "idomain"
 type = "integer"
-block_variable = false
-valid = []
 shape = "(ncol, nrow, nlay)"
-tagged = true
-in_record = false
-layered = true
-time_series = false
-reader = "readarray"
-optional = true
-preserve_case = false
-numeric_index = false
-longname = "idomain existence array"
-description = "is an optional array that characterizes the existence status of a cell.  If the IDOMAIN array is not specified, then all model cells exist within the solution.  If the IDOMAIN value for a cell is 0, the cell does not exist in the simulation.  Input and output values will be read and written for the cell, but internal to the program, the cell is excluded from the solution.  If the IDOMAIN value for a cell is 1, the cell exists in the simulation.  If the IDOMAIN value for a cell is -1, the cell does not exist in the simulation.  Furthermore, the first existing cell above will be connected to the first existing cell below.  This type of cell is referred to as a ``vertical pass through'' cell."
-deprecated = ""
+block = "griddata"
+description = "is an optional array that characterizes the existence status of a cell.  if the idomain array is not specified, then all model cells exist within the solution.  if the idomain value for a cell is 0, the cell does not exist in the simulation.  input and output values will be read and written for the cell, but internal to the program, the cell is excluded from the solution.  if the idomain value for a cell is 1, the cell exists in the simulation.  if the idomain value for a cell is -1, the cell does not exist in the simulation.  furthermore, the first existing cell above will be connected to the first existing cell below.  this type of cell is referred to as a 'vertical pass through' cell."

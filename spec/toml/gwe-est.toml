@@ -1,0 +1,63 @@
+name = "gwe-est"
+multi = false
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that est flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.zero_order_decay]
+name = "zero_order_decay"
+type = "keyword"
+block = "options"
+description = "is a text keyword to indicate that zero-order decay will occur.  use of this keyword requires that decay and decay_sorbed (if sorption is active) are specified in the griddata block."
+
+[options.density_water]
+name = "density_water"
+type = "double precision"
+block = "options"
+description = "density of water used by calculations related to heat storage and conduction.  this value is set to 1,000 kg/m3 if no overriding value is specified.  a user-specified value should be provided for models that use units other than kilograms and meters or if it is necessary to use a value other than the default."
+default = 1000.0
+
+[options.heat_capacity_water]
+name = "heat_capacity_water"
+type = "double precision"
+block = "options"
+description = "heat capacity of water used by calculations related to heat storage and conduction.  this value is set to 4,184 j/kg/c if no overriding value is specified.  a user-specified value should be provided for models that use units other than kilograms, joules, and degrees celsius or it is necessary to use a value other than the default."
+default = 4184.0
+
+[options.latent_heat_vaporization]
+name = "latent_heat_vaporization"
+type = "double precision"
+block = "options"
+description = "latent heat of vaporization is the amount of energy that is required to convert a given quantity of liquid into a gas and is associated with evaporative cooling.  while the est package does not simulate evaporation, multiple other packages in a gwe simulation may.  to avoid having to specify the latent heat of vaporization in multiple packages, it is specified in a single location and accessed wherever it is needed.  for example, evaporation may occur from the surface of streams or lakes and the energy consumed by the change in phase would be needed in both the sfe and lke packages.  this value is set to 2,453,500 j/kg if no overriding value is specified.  a user-specified value should be provided for models that use units other than joules and kilograms or if it is necessary to use a value other than the default."
+default = 2453500.0
+
+[griddata.porosity]
+name = "porosity"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is the mobile domain porosity, defined as the mobile domain pore volume per mobile domain volume.  the gwe model does not support the concept of an immobile domain in the context of heat transport."
+
+[griddata.decay]
+name = "decay"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is the rate coefficient for zero-order decay for the aqueous phase of the mobile domain.  a negative value indicates heat (energy) production.  the dimensions of decay for zero-order decay is energy per length cubed per time.  zero-order decay will have no effect on simulation results unless zero-order decay is specified in the options block."
+
+[griddata.heat_capacity_solid]
+name = "heat_capacity_solid"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is the mass-based heat capacity of dry solids (aquifer material). for example, units of j/kg/c may be used (or equivalent)."
+
+[griddata.density_solid]
+name = "density_solid"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is a user-specified value of the density of aquifer material not considering the voids. value will remain fixed for the entire simulation.  for example, if working in si units, values may be entered as kilograms per cubic meter."

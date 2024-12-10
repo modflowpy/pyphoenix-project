@@ -241,6 +241,4 @@ assert gwfoc.options.printhead.width == 10
 assert gwfoc.options.printhead.format == "scientific"
 period = gwfoc.periods[0]
 assert len(period) == 2
-assert period[0] == OutputControlData.from_tuple(
-    ("print", "budget", "steps", 1, 3, 5)
-)
+assert period[0] == OutputControlData.from_tuple(("print", "budget", "steps", 1, 3, 5))

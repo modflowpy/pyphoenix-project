@@ -192,9 +192,7 @@ class MFParams(UserDict):
     def __eq__(self, other):
         if not isinstance(other, MFParams):
             raise TypeError(f"Expected MFParams, got {type(other)}")
-        return OrderedDict(sorted(self.value)) == OrderedDict(
-            sorted(other.value)
-        )
+        return OrderedDict(sorted(self.value)) == OrderedDict(sorted(other.value))
 
     @staticmethod
     def assert_params(params):
@@ -207,9 +205,7 @@ class MFParams(UserDict):
         elif isinstance(params, dict):
             params = params.values()
         not_params = [
-            p
-            for p in params
-            if p is not None and not issubclass(type(p), MFParam)
+            p for p in params if p is not None and not issubclass(type(p), MFParam)
         ]
         if any(not_params):
             raise TypeError(f"Expected MFParam subclasses, got {not_params}")
@@ -239,8 +235,6 @@ class MFParams(UserDict):
                 if len(self.params[param.name]):
                     param.write(f, **kwargs)
             elif param.type is None:
-                raise TypeError(
-                    f"Unknown specification type for param '{param.name}'"
-                )
+                raise TypeError(f"Unknown specification type for param '{param.name}'")
             elif self.params[param.name] is not None:
                 param.write(f, **kwargs)

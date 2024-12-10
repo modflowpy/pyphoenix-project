@@ -1,0 +1,70 @@
+name = "utl-tvs"
+multi = false
+
+[subpackage]
+parent = "parent_package"
+key = "tvs_filerecord"
+val = "perioddata"
+abbr = "tvs"
+param = "tvs_perioddata"
+
+[options.disable_storage_change_integration]
+name = "disable_storage_change_integration"
+type = "keyword"
+block = "options"
+description = "keyword that deactivates inclusion of storage derivative terms in the sto package matrix formulation.  in the absence of this keyword (the default), the groundwater storage formulation will be modified to correctly adjust heads based on transient variations in stored water volumes arising from changes to ss and sy properties."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that information for each change to a storage property in a cell will be written to the model listing file."
+
+[options.timeseries]
+name = "timeseries"
+type = "record"
+block = "options"
+description = "Contains data for the ts package. Data can be stored in a dictionary containing data for the ts package with variable names as keys and package data as values. Data just for the timeseries variable is also acceptable. See ts package documentation for more information"
+
+[options.timeseries.subpackage]
+parent = "parent_package"
+key = "ts_filerecord"
+val = "timeseries"
+abbr = "ts"
+param = "timeseries"
+description = "xxx"
+
+[period.perioddata]
+name = "perioddata"
+type = "list"
+block = "period"
+
+[period.perioddata.perioddata]
+name = "perioddata"
+type = "record"
+block = "period"
+
+[period.perioddata.perioddata.cellid]
+name = "cellid"
+type = "integer"
+shape = "(ncelldim)"
+block = "period"
+description = "is the cell identifier, and depends on the type of grid that is used for the simulation.  for a structured grid that uses the dis input file, cellid is the layer, row, and column.   for a grid that uses the disv input file, cellid is the layer and cell2d number.  if the model uses the unstructured discretization (disu) input file, cellid is the node number for the cell."
+
+[period.perioddata.perioddata.tvssetting]
+name = "tvssetting"
+type = "union"
+block = "period"
+description = "line of information that is parsed into a property name keyword and values.  property name keywords that can be used to start the tvssetting string include: ss and sy."
+
+[period.perioddata.perioddata.tvssetting.ss]
+name = "ss"
+type = "double precision"
+block = "period"
+description = "is the new value to be assigned as the cell's specific storage (or storage coefficient if the storagecoefficient sto package option is specified) from the start of the specified stress period, as per ss in the sto package.  specific storage values must be greater than or equal to 0.  if the options block includes a ts6 entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.perioddata.perioddata.tvssetting.sy]
+name = "sy"
+type = "double precision"
+block = "period"
+description = "is the new value to be assigned as the cell's specific yield from the start of the specified stress period, as per sy in the sto package.  specific yield values must be greater than or equal to 0.  if the options block includes a ts6 entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."

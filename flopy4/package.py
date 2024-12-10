@@ -24,9 +24,7 @@ def collect_blocks(
     """
 
     blocks = dict()
-    for block_name, block_params in groupby(
-        params.values(), lambda p: p.block
-    ):
+    for block_name, block_params in groupby(params.values(), lambda p: p.block):
         block = make_block(
             params={param.name: param for param in block_params},
             block_name=block_name,
@@ -177,8 +175,7 @@ class MFPackage(MFBlocks, metaclass=MFPackageMappingMeta):
     def _get_param_values(self) -> Dict[str, Any]:
         """Get a flattened dictionary of parameter values."""
         return {
-            param_name: param.value
-            for param_name, param in self._get_params().items()
+            param_name: param.value for param_name, param in self._get_params().items()
         }
 
     @property
@@ -294,9 +291,7 @@ class MFPackages(UserDict):
     def __eq__(self, other):
         if not isinstance(other, MFPackages):
             raise TypeError(f"Expected MFPackages, got {type(other)}")
-        return OrderedDict(sorted(self.value)) == OrderedDict(
-            sorted(other.value)
-        )
+        return OrderedDict(sorted(self.value)) == OrderedDict(sorted(other.value))
 
     @staticmethod
     def assert_packages(packages):
@@ -309,14 +304,10 @@ class MFPackages(UserDict):
         elif isinstance(packages, dict):
             packages = packages.values()
         not_packages = [
-            p
-            for p in packages
-            if p is not None and not issubclass(type(p), MFPackage)
+            p for p in packages if p is not None and not issubclass(type(p), MFPackage)
         ]
         if any(not_packages):
-            raise TypeError(
-                f"Expected MFPackage subclasses, got {not_packages}"
-            )
+            raise TypeError(f"Expected MFPackage subclasses, got {not_packages}")
 
     @property
     def value(self) -> Dict[str, Dict[str, Any]]:

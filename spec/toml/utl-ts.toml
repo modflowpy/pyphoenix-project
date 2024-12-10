@@ -1,0 +1,165 @@
+name = "utl-ts"
+multi = true
+
+[subpackage]
+parent = "parent_package"
+key = "ts_filerecord"
+val = "timeseries"
+abbr = "ts"
+param = "timeseries"
+description = "xxx"
+
+[attributes.time_series_namerecord]
+name = "time_series_namerecord"
+type = "record"
+block = "attributes"
+description = "xxx"
+
+[attributes.time_series_namerecord.names]
+block = "attributes"
+name = "names"
+other_names = "name"
+type = "keyword"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = "xxx"
+
+[attributes.time_series_namerecord.time_series_names]
+block = "attributes"
+name = "time_series_names"
+type = "string"
+shape = "any1d"
+tagged = "false"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = "Name by which a package references a particular time-array series. The name must be unique among all time-array series used in a package."
+
+[attributes.interpolation_methodrecord]
+name = "interpolation_methodrecord"
+type = "record"
+block = "attributes"
+description = "xxx"
+
+[attributes.interpolation_methodrecord.methods]
+block = "attributes"
+name = "methods"
+type = "keyword"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = " xxx"
+
+[attributes.interpolation_methodrecord.interpolation_method]
+block = "attributes"
+name = "interpolation_method"
+type = "string"
+valid = "stepwise linear linearend"
+shape = "time_series_names"
+tagged = "false"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = "Interpolation method, which is either STEPWISE or LINEAR."
+
+[attributes.interpolation_methodrecord_single]
+name = "interpolation_methodrecord_single"
+type = "record"
+block = "attributes"
+description = "xxx"
+
+[attributes.method]
+name = "method"
+type = "keyword"
+block = "attributes"
+description = " xxx"
+
+[attributes.interpolation_method_single]
+name = "interpolation_method_single"
+type = "string"
+block = "attributes"
+description = "interpolation method, which is either stepwise or linear."
+
+[attributes.sfacrecord]
+name = "sfacrecord"
+type = "record"
+block = "attributes"
+description = "xxx"
+
+[attributes.sfacrecord.sfacs]
+block = "attributes"
+name = "sfacs"
+type = "keyword"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = " xxx"
+
+[attributes.sfacrecord.sfacval]
+block = "attributes"
+name = "sfacval"
+type = "double precision"
+shape = "<time_series_name"
+tagged = "false"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = "Scale factor, which will multiply all array values in time series. SFAC is an optional attribute; if omitted, SFAC = 1.0."
+
+[attributes.sfacrecord_single]
+name = "sfacrecord_single"
+type = "record"
+block = "attributes"
+description = "xxx"
+
+[attributes.sfacrecord_single.sfacval]
+block = "attributes"
+name = "sfacval"
+type = "double precision"
+shape = "<time_series_name"
+tagged = "false"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = "Scale factor, which will multiply all array values in time series. SFAC is an optional attribute; if omitted, SFAC = 1.0."
+
+[attributes.sfac]
+name = "sfac"
+type = "keyword"
+block = "attributes"
+description = " xxx"
+
+[timeseries.timeseries]
+name = "timeseries"
+type = "list"
+block = "timeseries"
+description = "xxx"
+
+[timeseries.timeseries.timeseries]
+name = "timeseries"
+type = "record"
+block = "timeseries"
+description = "xxx"
+
+[timeseries.timeseries.timeseries.ts_time]
+block = "timeseries"
+name = "ts_time"
+type = "double precision"
+tagged = "false"
+reader = "urword"
+optional = "false"
+repeating = "false"
+in_record = "true"
+description = "A numeric time relative to the start of the simulation, in the time unit used in the simulation. Times must be strictly increasing."
+
+[timeseries.timeseries.timeseries.ts_array]
+block = "timeseries"
+name = "ts_array"
+type = "double precision"
+shape = "time_series_names"
+tagged = "false"
+reader = "urword"
+optional = "false"
+in_record = "true"
+description = "A 2-D array of numeric, floating-point values, or a constant value, readable by the U2DREL array-reading utility."

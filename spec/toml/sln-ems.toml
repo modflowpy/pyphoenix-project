@@ -1,0 +1,6 @@
+name = "sln-ems"
+multi = false
+
+[solution]
+abbr = "ems"
+pattern = "*"

@@ -154,13 +154,8 @@ def test_load_sim(tmp_path):
     assert "slntype" in s.nam["solutiongroup"].params["solutiongroup"]
     assert "slnfname" in s.nam["solutiongroup"].params["solutiongroup"]
     assert "slnmnames" in s.nam["solutiongroup"].params["solutiongroup"]
-    assert (
-        s.nam["solutiongroup"].params["solutiongroup"]["slntype"][0] == "ims6"
-    )
-    assert (
-        s.nam["solutiongroup"].params["solutiongroup"]["slnmnames"][0]
-        == f"{name}"
-    )
+    assert s.nam["solutiongroup"].params["solutiongroup"]["slntype"][0] == "ims6"
+    assert s.nam["solutiongroup"].params["solutiongroup"]["slnmnames"][0] == f"{name}"
 
     # models
     assert "dis" in s.models["gwf_1"].packages
@@ -324,15 +319,9 @@ def test_load_sim(tmp_path):
     assert np.allclose(
         strt, s.models[f"{name}"].resolve(f"sim/{name}/ic/griddata/strt")
     )
-    assert nlay == s.models[f"{name}"].resolve(
-        f"sim/{name}/dis/dimensions/nlay"
-    )
-    assert nrow == s.models[f"{name}"].resolve(
-        f"sim/{name}/dis/dimensions/nrow"
-    )
-    assert ncol == s.models[f"{name}"].resolve(
-        f"sim/{name}/dis/dimensions/ncol"
-    )
+    assert nlay == s.models[f"{name}"].resolve(f"sim/{name}/dis/dimensions/nlay")
+    assert nrow == s.models[f"{name}"].resolve(f"sim/{name}/dis/dimensions/nrow")
+    assert ncol == s.models[f"{name}"].resolve(f"sim/{name}/dis/dimensions/ncol")
 
     write_dir = tmp_path / "write"
     os.makedirs(write_dir)
@@ -360,9 +349,7 @@ def test_gwf_chd01(tmp_path):
         subprocess.run(["mf6"])
         os.chdir(write_dir)
         subprocess.run(["mf6"])
-        diff = subprocess.run(
-            ["diff", f"./{name}.lst", f"../gwf_chd01/{name}.lst"]
-        )
+        diff = subprocess.run(["diff", f"./{name}.lst", f"../gwf_chd01/{name}.lst"])
         if diff.stderr:
             print(diff.stderr)
         else:
@@ -390,9 +377,7 @@ def test_gwf_disv(tmp_path):
         subprocess.run(["mf6"])
         os.chdir(write_dir)
         subprocess.run(["mf6"])
-        diff = subprocess.run(
-            ["diff", f"./{name}.lst", f"../disv01a/{name}.lst"]
-        )
+        diff = subprocess.run(["diff", f"./{name}.lst", f"../disv01a/{name}.lst"])
         if diff.stderr:
             print(diff.stderr)
         else:
@@ -420,9 +405,7 @@ def test_gwf_disu(tmp_path):
         subprocess.run(["mf6"])
         os.chdir(write_dir)
         subprocess.run(["mf6"])
-        diff = subprocess.run(
-            ["diff", f"./{name}.lst", f"../disu01a/{name}.lst"]
-        )
+        diff = subprocess.run(["diff", f"./{name}.lst", f"../disu01a/{name}.lst"])
         if diff.stderr:
             print(diff.stderr)
         else:

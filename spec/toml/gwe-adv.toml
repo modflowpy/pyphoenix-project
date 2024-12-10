@@ -1,0 +1,8 @@
+name = "gwe-adv"
+multi = false
+
+[options.scheme]
+name = "scheme"
+type = "string"
+block = "options"
+description = "scheme used to solve the advection term.  can be upstream, central, or tvd.  if not specified, upstream weighting is the default weighting scheme."

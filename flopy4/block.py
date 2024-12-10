@@ -79,9 +79,7 @@ class MFBlockMeta(type):
 
         # infer block name
         block_name = (
-            clsname[list(find_upper(clsname))[1] :]
-            .replace("Block", "")
-            .lower()
+            clsname[list(find_upper(clsname))[1] :].replace("Block", "").lower()
         )
 
         # collect parameters
@@ -314,9 +312,7 @@ class MFBlocks(UserDict):
     def __eq__(self, other):
         if not isinstance(other, MFBlocks):
             raise TypeError(f"Expected MFBlocks, got {type(other)}")
-        return OrderedDict(sorted(self.value)) == OrderedDict(
-            sorted(other.value)
-        )
+        return OrderedDict(sorted(self.value)) == OrderedDict(sorted(other.value))
 
     @staticmethod
     def assert_blocks(blocks):
@@ -329,9 +325,7 @@ class MFBlocks(UserDict):
         elif isinstance(blocks, dict):
             blocks = blocks.values()
         not_blocks = [
-            b
-            for b in blocks
-            if b is not None and not issubclass(type(b), MFBlock)
+            b for b in blocks if b is not None and not issubclass(type(b), MFBlock)
         ]
         if any(not_blocks):
             raise TypeError(f"Expected MFBlock subclasses, got {not_blocks}")

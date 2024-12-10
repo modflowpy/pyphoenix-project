@@ -1,0 +1,218 @@
+name = "gwe-oc"
+multi = false
+
+[options.budget_filerecord]
+name = "budget_filerecord"
+type = "record"
+block = "options"
+
+[options.budget_filerecord.budget]
+block = "options"
+name = "budget"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[options.budget_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budget_filerecord.budgetfile]
+block = "options"
+name = "budgetfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the output file to write budget information."
+
+[options.budgetcsv_filerecord]
+name = "budgetcsv_filerecord"
+type = "record"
+block = "options"
+
+[options.budgetcsv_filerecord.budgetcsv]
+block = "options"
+name = "budgetcsv"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[options.budgetcsv_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budgetcsv_filerecord.budgetcsvfile]
+block = "options"
+name = "budgetcsvfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation."
+
+[options.temperature_filerecord]
+name = "temperature_filerecord"
+type = "record"
+block = "options"
+
+[options.temperature_filerecord.temperature]
+block = "options"
+name = "temperature"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "temperature keyword"
+description = "keyword to specify that record corresponds to temperature."
+
+[options.temperature_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.temperature_filerecord.temperaturefile]
+block = "options"
+name = "temperaturefile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the output file to write temperature information."
+
+[options.temperatureprintrecord]
+name = "temperatureprintrecord"
+type = "record"
+block = "options"
+
+[options.temperatureprintrecord.temperature]
+block = "options"
+name = "temperature"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "temperature keyword"
+description = "keyword to specify that record corresponds to temperature."
+
+[options.temperatureprintrecord.print_format]
+block = "options"
+name = "print_format"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "keyword to indicate that a print format follows"
+description = "keyword to specify format for printing to the listing file."
+
+[period.saverecord]
+name = "saverecord"
+type = "record"
+block = "period"
+
+[period.saverecord.save]
+block = "period"
+name = "save"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "keyword to save"
+description = "keyword to indicate that information will be saved this stress period."
+
+[period.saverecord.rtype]
+block = "period"
+name = "rtype"
+type = "string"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "record type"
+description = "type of information to save or print.  Can be BUDGET or TEMPERATURE."
+
+[period.saverecord.ocsetting]
+block = "period"
+name = "ocsetting"
+type = "keystring all first last frequency steps"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+description = "specifies the steps for which the data will be saved."
+
+[period.printrecord]
+name = "printrecord"
+type = "record"
+block = "period"
+
+[period.printrecord.print]
+block = "period"
+name = "print"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "keyword to save"
+description = "keyword to indicate that information will be printed this stress period."
+
+[period.printrecord.rtype]
+block = "period"
+name = "rtype"
+type = "string"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "record type"
+description = "type of information to save or print.  Can be BUDGET or TEMPERATURE."
+
+[period.printrecord.ocsetting]
+block = "period"
+name = "ocsetting"
+type = "keystring all first last frequency steps"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+description = "specifies the steps for which the data will be saved."

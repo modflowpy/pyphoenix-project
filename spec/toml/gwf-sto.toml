@@ -1,0 +1,92 @@
+name = "gwf-sto"
+multi = false
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that cell-by-cell flow terms will be written to the file specified with 'budget save file' in output control."
+
+[options.storagecoefficient]
+name = "storagecoefficient"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the ss array is read as storage coefficient rather than specific storage."
+
+[options.ss_confined_only]
+name = "ss_confined_only"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that compressible storage is only calculated for a convertible cell (iconvert>0) when the cell is under confined conditions (head greater than or equal to the top of the cell). this option has no effect on cells that are marked as being always confined (iconvert=0).  this option is identical to the approach used to calculate storage changes under confined conditions in modflow-2005."
+
+[options.perioddata]
+name = "perioddata"
+type = "record"
+block = "options"
+description = "Contains data for the tvs package. Data can be stored in a dictionary containing data for the tvs package with variable names as keys and package data as values. Data just for the perioddata variable is also acceptable. See tvs package documentation for more information"
+
+[options.perioddata.subpackage]
+parent = "parent_package"
+key = "tvs_filerecord"
+val = "perioddata"
+abbr = "tvs"
+param = "tvs_perioddata"
+
+[options.export_array_ascii]
+name = "export_array_ascii"
+type = "keyword"
+block = "options"
+description = "keyword that specifies input grid arrays, which already support the layered keyword, should be written to layered ascii output files."
+
+[options.export_array_netcdf]
+name = "export_array_netcdf"
+type = "keyword"
+block = "options"
+description = "keyword that specifies input griddata arrays should be written to the model output netcdf file."
+
+[options.dev_original_specific_storage]
+name = "dev_original_specific_storage"
+type = "keyword"
+block = "options"
+description = "flag indicating the original storage specific storage formulation should be used"
+
+[options.dev_oldstorageformulation]
+name = "dev_oldstorageformulation"
+type = "keyword"
+block = "options"
+description = "development option flag for old storage formulation"
+
+[griddata.iconvert]
+name = "iconvert"
+type = "integer"
+shape = "(nodes)"
+block = "griddata"
+description = "is a flag for each cell that specifies whether or not a cell is convertible for the storage calculation. 0 indicates confined storage is used. $>$0 indicates confined storage is used when head is above cell top and a mixed formulation of unconfined and confined storage is used when head is below cell top."
+
+[griddata.ss]
+name = "ss"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is specific storage (or the storage coefficient if storagecoefficient is specified as an option). specific storage values must be greater than or equal to 0. if the csub package is included in the gwf model, specific storage must be zero for every cell."
+default = 1e-05
+
+[griddata.sy]
+name = "sy"
+type = "double precision"
+shape = "(nodes)"
+block = "griddata"
+description = "is specific yield. specific yield values must be greater than or equal to 0. specific yield does not have to be specified if there are no convertible cells (iconvert=0 in every cell)."
+default = 0.15
+
+[period.steady-state]
+name = "steady-state"
+type = "keyword"
+block = "period"
+description = "keyword to indicate that stress period iper is steady-state. steady-state conditions will apply until the transient keyword is specified in a subsequent begin period block. if the csub package is included in the gwf model, only the first and last stress period can be steady-state."
+
+[period.transient]
+name = "transient"
+type = "keyword"
+block = "period"
+description = "keyword to indicate that stress period iper is transient. transient conditions will apply until the steady-state keyword is specified in a subsequent begin period block."

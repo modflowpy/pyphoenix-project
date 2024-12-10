@@ -1,0 +1,51 @@
+name = "gwt-api"
+multi = false
+
+[options.boundnames]
+name = "boundnames"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that boundary names may be provided with the list of api boundary cells."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of api boundary information will be written to the listing file immediately after it is read."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of api boundary flow rates will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control.  if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that api boundary flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[options.mover]
+name = "mover"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that this instance of the api boundary package can be used with the water mover (mvr) package.  when the mover option is specified, additional memory is allocated within the package to store the available, provided, and received water."
+
+[dimensions.maxbound]
+name = "maxbound"
+type = "integer"
+block = "dimensions"
+description = "integer value specifying the maximum number of api boundary cells that will be specified for use during any stress period."

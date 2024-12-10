@@ -1,0 +1,120 @@
+name = "utl-ncf"
+multi = false
+
+[subpackage]
+parent = "parent_package"
+key = "ncf_filerecord"
+val = "packagedata"
+abbr = "ncf"
+param = "packagedata"
+
+[options.ogc_wkt]
+name = "ogc_wkt"
+type = "string"
+shape = "lenbigline"
+block = "options"
+description = "is the crs well-known text (wkt) string."
+
+[options.deflate]
+name = "deflate"
+type = "integer"
+block = "options"
+description = "is the deflate level (0=min, 9=max) for per variable compression in the netcdf file. defining the parameter activates per variable compression in the export file at the level specified."
+
+[options.shuffle]
+name = "shuffle"
+type = "keyword"
+block = "options"
+description = "is the keyword used to turn on the netcdf variable shuffle filter when the deflate option is also set. the shuffle filter has the effect of storing the first byte of all of a variable's values in a chunk contiguously, followed by all the second bytes, etc. this can be an optimization for compression with certain types of data."
+
+[options.chunk_record]
+name = "chunk_record"
+type = "record"
+block = "options"
+description = "netcdf export chunking record"
+
+[options.chunk_record.chunking]
+block = "options"
+name = "chunking"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+optional = "false"
+longname = "keyword when defining ugrid chunking parameters"
+description = "is a keyword for providing netcdf export chunk sizes. Chunking can dramatically impact data access times and is optimal chunking is highly dependent on access patterns (timeseries vs spatial, for example). It can also significanlty impact compressibility of the data. A valid input record specifies chunk_time and either chunk_face (UGRID) or chunk_z, chunk_y, and chunk_x (STRUCTURED)."
+
+[options.chunk_record.chunk_time]
+block = "options"
+name = "chunk_time"
+type = "integer"
+in_record = "true"
+reader = "urword"
+optional = "false"
+longname = "chunking parameter for the time dimension"
+description = "is the keyword used to provide a netcdf export time dimension chunk size."
+
+[options.chunk_record.chunk_face]
+block = "options"
+name = "chunk_face"
+type = "integer"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "chunking parameter for the ugrid face dimension"
+description = "is the keyword used to provide a ugrid face dimension chunk size."
+
+[options.chunk_record.chunk_z]
+block = "options"
+name = "chunk_z"
+type = "integer"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "chunking parameter for structured z"
+description = "is the keyword used to provide a structured grid z dimensions chunk size."
+
+[options.chunk_record.chunk_y]
+block = "options"
+name = "chunk_y"
+type = "integer"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "chunking parameter for structured y"
+description = "is the keyword used to provide a structured grid y dimensions chunk size."
+
+[options.chunk_record.chunk_x]
+block = "options"
+name = "chunk_x"
+type = "integer"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "chunking parameter for structured x"
+description = "is the keyword used to provide a structured grid x dimensions chunk size."
+
+[options.modflow6_attr_off]
+name = "modflow6_attr_off"
+type = "keyword"
+block = "options"
+description = "is the keyword used to turn off internal input tagging in the model netcdf file. tagging adds internal modflow 6 attribute(s) to input variables which identify the variable. currently this applies to gridded arrays."
+
+[dimensions.ncpl]
+name = "ncpl"
+type = "integer"
+block = "dimensions"
+description = "is the number of cells in a in a projected plane layer."
+
+[griddata.lat]
+name = "lat"
+type = "double precision"
+shape = "(ncpl)"
+block = "griddata"
+description = "cell center latitude."
+
+[griddata.lon]
+name = "lon"
+type = "double precision"
+shape = "(ncpl)"
+block = "griddata"
+description = "cell center longitude."

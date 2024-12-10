@@ -1,0 +1,344 @@
+name = "gwe-mwe"
+multi = true
+
+[options.flow_package_name]
+name = "flow_package_name"
+type = "string"
+block = "options"
+description = "keyword to specify the name of the corresponding flow package.  if not specified, then the corresponding flow package must have the same name as this advanced transport package (the name associated with this package in the gwe name file)."
+
+[options.auxiliary]
+name = "auxiliary"
+type = "string"
+shape = "(naux)"
+block = "options"
+description = "defines an array of one or more auxiliary variable names.  there is no limit on the number of auxiliary variables that can be provided on this line; however, lists of information provided in subsequent blocks must have a column of data for each auxiliary variable name defined here.   the number of auxiliary variables detected on this line determines the value for naux.  comments cannot be provided anywhere on this line as they will be interpreted as auxiliary variable names.  auxiliary variables may not be used by the package, but they will be available for use by other parts of the program.  the program will terminate with an error if auxiliary variables are specified on more than one line in the options block."
+
+[options.flow_package_auxiliary_name]
+name = "flow_package_auxiliary_name"
+type = "string"
+block = "options"
+description = "keyword to specify the name of an auxiliary variable in the corresponding flow package.  if specified, then the simulated temperatures from this advanced transport package will be copied into the auxiliary variable specified with this name.  note that the flow package must have an auxiliary variable with this name or the program will terminate with an error.  if the flows for this advanced transport package are read from a file, then this option will have no effect."
+
+[options.boundnames]
+name = "boundnames"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that boundary names may be provided with the list of well cells."
+
+[options.print_input]
+name = "print_input"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of well information will be written to the listing file immediately after it is read."
+
+[options.print_temperature]
+name = "print_temperature"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of well {#2} will be printed to the listing file for every stress period in which 'temperature print' is specified in output control.  if there is no output control option and print_{#3} is specified, then {#2} are printed for the last time step of each stress period."
+
+[options.print_flows]
+name = "print_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that the list of well flow rates will be printed to the listing file for every stress period time step in which 'budget print' is specified in output control.  if there is no output control option and 'print_flows' is specified, then flow rates are printed for the last time step of each stress period."
+
+[options.save_flows]
+name = "save_flows"
+type = "keyword"
+block = "options"
+description = "keyword to indicate that well flow terms will be written to the file specified with 'budget fileout' in output control."
+
+[options.temperature_filerecord]
+name = "temperature_filerecord"
+type = "record"
+block = "options"
+
+[options.temperature_filerecord.temperature]
+block = "period"
+name = "temperature"
+type = "string"
+tagged = "true"
+in_record = "true"
+time_series = "true"
+reader = "urword"
+longname = "well temperature"
+description = "real or character value that defines the temperature for the well. The specified TEMPERATURE is only applied if the well is a constant temperature well. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[options.temperature_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.temperature_filerecord.tempfile]
+block = "options"
+name = "tempfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the binary output file to write temperature information."
+
+[options.budget_filerecord]
+name = "budget_filerecord"
+type = "record"
+block = "options"
+
+[options.budget_filerecord.budget]
+block = "options"
+name = "budget"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[options.budget_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budget_filerecord.budgetfile]
+block = "options"
+name = "budgetfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the binary output file to write budget information."
+
+[options.budgetcsv_filerecord]
+name = "budgetcsv_filerecord"
+type = "record"
+block = "options"
+
+[options.budgetcsv_filerecord.budgetcsv]
+block = "options"
+name = "budgetcsv"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[options.budgetcsv_filerecord.fileout]
+block = "options"
+name = "fileout"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+tagged = "true"
+optional = "false"
+longname = "file keyword"
+description = "keyword to specify that an output filename is expected next."
+
+[options.budgetcsv_filerecord.budgetcsvfile]
+block = "options"
+name = "budgetcsvfile"
+type = "string"
+preserve_case = "true"
+in_record = "true"
+reader = "urword"
+tagged = "false"
+optional = "false"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation."
+
+[options.timeseries]
+name = "timeseries"
+type = "record"
+block = "options"
+description = "Contains data for the ts package. Data can be stored in a dictionary containing data for the ts package with variable names as keys and package data as values. Data just for the timeseries variable is also acceptable. See ts package documentation for more information"
+
+[options.timeseries.subpackage]
+parent = "parent_package"
+key = "ts_filerecord"
+val = "timeseries"
+abbr = "ts"
+param = "timeseries"
+description = "xxx"
+
+[options.observations]
+name = "observations"
+type = "record"
+block = "options"
+description = "Contains data for the obs package. Data can be stored in a dictionary containing data for the obs package with variable names as keys and package data as values. Data just for the observations variable is also acceptable. See obs package documentation for more information"
+
+[options.observations.subpackage]
+parent = "parent_model_or_package"
+key = "obs_filerecord"
+val = "observations"
+abbr = "obs"
+param = "continuous"
+
+[packagedata.packagedata]
+name = "packagedata"
+type = "list"
+shape = "(maxbound)"
+block = "packagedata"
+
+[packagedata.packagedata.packagedata]
+name = "packagedata"
+type = "record"
+block = "packagedata"
+
+[packagedata.packagedata.packagedata.mawno]
+block = "period"
+name = "mawno"
+type = "integer"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "well number for this entry"
+description = "integer value that defines the well number associated with the specified PERIOD data on the line. MAWNO must be greater than zero and less than or equal to NMAWWELLS."
+numeric_index = "true"
+
+[packagedata.packagedata.packagedata.strt]
+block = "packagedata"
+name = "strt"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "starting well temperature"
+description = "real value that defines the starting temperature for the well."
+
+[packagedata.packagedata.packagedata.ktf]
+block = "packagedata"
+name = "ktf"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "thermal conductivity of the feature"
+description = "is the thermal conductivity of the of the interface between the aquifer cell and the feature."
+
+[packagedata.packagedata.packagedata.fthk]
+block = "packagedata"
+name = "fthk"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+longname = "thickness of the well feature"
+description = "real value that defines the thickness of the material through which conduction occurs.  Must be greater than 0."
+
+[packagedata.packagedata.packagedata.aux]
+block = "packagedata"
+name = "aux"
+type = "double precision"
+in_record = "true"
+tagged = "false"
+shape = "(naux)"
+reader = "urword"
+time_series = "true"
+optional = "true"
+longname = "auxiliary variables"
+description = "represents the values of the auxiliary variables for each well. The values of auxiliary variables must be present for each well. The values must be specified in the order of the auxiliary variables specified in the OPTIONS block.  If the package supports time series and the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[packagedata.packagedata.packagedata.boundname]
+block = "packagedata"
+name = "boundname"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+optional = "true"
+longname = "well name"
+description = "name of the well cell.  BOUNDNAME is an ASCII character variable that can contain as many as 40 characters.  If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."
+
+[period.mweperioddata]
+name = "mweperioddata"
+type = "list"
+block = "period"
+
+[period.mweperioddata.mweperioddata]
+name = "mweperioddata"
+type = "record"
+block = "period"
+
+[period.mweperioddata.mweperioddata.mawno]
+name = "mawno"
+type = "integer"
+block = "period"
+description = "integer value that defines the well number associated with the specified period data on the line. mawno must be greater than zero and less than or equal to nmawwells."
+
+[period.mweperioddata.mweperioddata.mwesetting]
+name = "mwesetting"
+type = "union"
+block = "period"
+description = "line of information that is parsed into a keyword and values.  keyword values that can be used to start the mwesetting string include: status, temperature, rainfall, evaporation, runoff, and auxiliary.  these settings are used to assign the temperature of associated with the corresponding flow terms.  temperatures cannot be specified for all flow terms.  for example, the multi-aquifer well package supports a 'withdrawal' flow term.  if this withdrawal term is active, then water will be withdrawn from the well at the calculated temperature of the well."
+
+[period.mweperioddata.mweperioddata.mwesetting.temperature]
+name = "temperature"
+type = "string"
+block = "period"
+description = "real or character value that defines the temperature for the well. the specified temperature is only applied if the well is a constant temperature well. if the options block includes a timeseriesfile entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.mweperioddata.mweperioddata.mwesetting.status]
+name = "status"
+type = "string"
+block = "period"
+description = "keyword option to define well status.  status can be active, inactive, or constant. by default, status is active, which means that temperature will be calculated for the well.  if a well is inactive, then there will be no solute mass fluxes into or out of the well and the inactive value will be written for the well temperature.  if a well is constant, then the temperature for the well will be fixed at the user specified value."
+
+[period.mweperioddata.mweperioddata.mwesetting.rate]
+name = "rate"
+type = "string"
+block = "period"
+description = "real or character value that defines the injection solute temperature $^{circ}c$ for the well. if the options block includes a timeseriesfile entry (see the 'time-variable input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+
+[period.mweperioddata.mweperioddata.mwesetting.auxiliaryrecord]
+name = "auxiliaryrecord"
+type = "record"
+block = "period"
+
+[period.mweperioddata.mweperioddata.mwesetting.auxiliaryrecord.auxiliary]
+block = "period"
+name = "auxiliary"
+type = "keyword"
+in_record = "true"
+reader = "urword"
+description = "keyword for specifying auxiliary variable."
+
+[period.mweperioddata.mweperioddata.mwesetting.auxiliaryrecord.auxname]
+block = "period"
+name = "auxname"
+type = "string"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+description = "name for the auxiliary variable to be assigned AUXVAL.  AUXNAME must match one of the auxiliary variable names defined in the OPTIONS block. If AUXNAME does not match one of the auxiliary variable names defined in the OPTIONS block the data are ignored."
+
+[period.mweperioddata.mweperioddata.mwesetting.auxiliaryrecord.auxval]
+block = "period"
+name = "auxval"
+type = "double precision"
+tagged = "false"
+in_record = "true"
+reader = "urword"
+time_series = "true"
+longname = "auxiliary variable value"
+description = "value for the auxiliary variable. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
