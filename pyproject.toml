@@ -35,8 +35,9 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "attrs",                   # todo: bounds?
-    "cattrs",                  # todo: bounds?
+    "attrs",  # todo: bounds?
+    "boltons",  # todo: bounds?
+    "cattrs",  # todo: bounds?
     "flopy>=3.7.0",
     "Jinja2>=3.0",
     "lark",                    # todo: bounds?
