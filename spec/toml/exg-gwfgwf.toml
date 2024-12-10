@@ -87,6 +87,7 @@ key = "gnc_filerecord"
 val = "gncdata"
 abbr = "gnc"
 param = "gncdata"
+description = ""
 
 [options.perioddata]
 name = "perioddata"
@@ -100,6 +101,7 @@ key = "mvr_filerecord"
 val = "perioddata"
 abbr = "mvr"
 param = "perioddata"
+description = ""
 
 [options.observations]
 name = "observations"
@@ -131,11 +133,13 @@ name = "exchangedata"
 type = "list"
 shape = "(nexg)"
 block = "exchangedata"
+description = ""
 
 [exchangedata.exchangedata.exchangedata]
 name = "exchangedata"
 type = "record"
 block = "exchangedata"
+description = ""
 
 [exchangedata.exchangedata.exchangedata.cellidm1]
 block = "exchangedata"
@@ -222,6 +226,7 @@ mf6internal = "auxvar"
 block = "exchangedata"
 name = "boundname"
 type = "string"
+shape = ""
 tagged = "false"
 in_record = "true"
 reader = "urword"

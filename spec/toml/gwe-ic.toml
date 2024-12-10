@@ -19,3 +19,4 @@ type = "double precision"
 shape = "(nodes)"
 block = "griddata"
 description = "is the initial (starting) temperature---that is, the temperature at the beginning of the gwe model simulation.  strt must be specified for all gwe model simulations. one value is read for every model cell."
+default = 0.0

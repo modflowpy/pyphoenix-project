@@ -18,11 +18,13 @@ name = "stress_period_data"
 type = "list"
 shape = "(maxhfb)"
 block = "period"
+description = ""
 
 [period.stress_period_data.stress_period_data]
 name = "stress_period_data"
 type = "record"
 block = "period"
+description = ""
 
 [period.stress_period_data.stress_period_data.cellid1]
 block = "period"
@@ -50,6 +52,7 @@ description = "identifier for the second cell. See CELLID1 for description of ho
 block = "period"
 name = "hydchr"
 type = "double precision"
+shape = ""
 tagged = "false"
 in_record = "true"
 reader = "urword"

@@ -19,11 +19,13 @@ default = 1
 name = "perioddata"
 type = "list"
 block = "perioddata"
+description = ""
 
 [perioddata.perioddata.perioddata]
 name = "perioddata"
 type = "record"
 block = "perioddata"
+description = ""
 
 [perioddata.perioddata.perioddata.iperats]
 block = "perioddata"

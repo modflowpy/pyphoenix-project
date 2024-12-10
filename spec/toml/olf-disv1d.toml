@@ -82,11 +82,13 @@ name = "vertices"
 type = "list"
 shape = "(nvert)"
 block = "vertices"
+description = ""
 
 [vertices.vertices.vertices]
 name = "vertices"
 type = "record"
 block = "vertices"
+description = ""
 
 [vertices.vertices.vertices.iv]
 block = "vertices"
@@ -127,11 +129,13 @@ name = "cell2d"
 type = "list"
 shape = "(nodes)"
 block = "cell2d"
+description = ""
 
 [cell2d.cell2d.cell2d]
 name = "cell2d"
 type = "record"
 block = "cell2d"
+description = ""
 
 [cell2d.cell2d.cell2d.icell2d]
 block = "cell2d"

@@ -105,11 +105,13 @@ name = "exchangedata"
 type = "list"
 shape = "(nexg)"
 block = "exchangedata"
+description = ""
 
 [exchangedata.exchangedata.exchangedata]
 name = "exchangedata"
 type = "record"
 block = "exchangedata"
+description = ""
 
 [exchangedata.exchangedata.exchangedata.cellidm1]
 block = "exchangedata"
@@ -196,6 +198,7 @@ mf6internal = "auxvar"
 block = "exchangedata"
 name = "boundname"
 type = "string"
+shape = ""
 tagged = "false"
 in_record = "true"
 reader = "urword"

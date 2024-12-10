@@ -31,6 +31,7 @@ key = "tvs_filerecord"
 val = "perioddata"
 abbr = "tvs"
 param = "tvs_perioddata"
+description = ""
 
 [options.export_array_ascii]
 name = "export_array_ascii"
@@ -62,6 +63,7 @@ type = "integer"
 shape = "(nodes)"
 block = "griddata"
 description = "is a flag for each cell that specifies whether or not a cell is convertible for the storage calculation. 0 indicates confined storage is used. $>$0 indicates confined storage is used when head is above cell top and a mixed formulation of unconfined and confined storage is used when head is below cell top."
+default = 0
 
 [griddata.ss]
 name = "ss"

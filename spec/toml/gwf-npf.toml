@@ -62,6 +62,7 @@ description = "keyword to indicate that when a cell is overlying a dewatered con
 name = "rewet_record"
 type = "record"
 block = "options"
+description = ""
 
 [options.rewet_record.rewet]
 block = "options"
@@ -167,6 +168,7 @@ key = "tvk_filerecord"
 val = "perioddata"
 abbr = "tvk"
 param = "tvk_perioddata"
+description = ""
 
 [options.export_array_ascii]
 name = "export_array_ascii"
@@ -198,6 +200,7 @@ type = "integer"
 shape = "(nodes)"
 block = "griddata"
 description = "flag for each cell that specifies how saturated thickness is treated.  0 means saturated thickness is held constant;  $>$0 means saturated thickness varies with computed head when head is below the cell top; $<$0 means saturated thickness varies with computed head unless the thickstrt option is in effect.  when thickstrt is in effect, a negative value for icelltype indicates that the saturated thickness value used in conductance calculations in the npf package will be computed as strt-bot and held constant.  if the thickstrt option is not in effect, then negative values provided by the user for icelltype are automatically reassigned by the program to a value of one."
+default = 0
 
 [griddata.k]
 name = "k"

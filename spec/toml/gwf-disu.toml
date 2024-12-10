@@ -36,6 +36,7 @@ name = "vertical_offset_tolerance"
 type = "double precision"
 block = "options"
 description = "checks are performed to ensure that the top of a cell is not higher than the bottom of an overlying cell.  this option can be used to specify the tolerance that is used for checking.  if top of a cell is above the bottom of an overlying cell by a value less than this tolerance, then the program will not terminate with an error.  the default value is zero.  this option should generally not be used."
+default = 0.0
 
 [options.export_array_ascii]
 name = "export_array_ascii"
@@ -136,11 +137,13 @@ name = "vertices"
 type = "list"
 shape = "(nvert)"
 block = "vertices"
+description = ""
 
 [vertices.vertices.vertices]
 name = "vertices"
 type = "record"
 block = "vertices"
+description = ""
 
 [vertices.vertices.vertices.iv]
 block = "vertices"
@@ -181,11 +184,13 @@ name = "cell2d"
 type = "list"
 shape = "(nodes)"
 block = "cell2d"
+description = ""
 
 [cell2d.cell2d.cell2d]
 name = "cell2d"
 type = "record"
 block = "cell2d"
+description = ""
 
 [cell2d.cell2d.cell2d.icell2d]
 block = "cell2d"

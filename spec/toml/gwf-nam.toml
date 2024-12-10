@@ -101,11 +101,13 @@ mf6internal = "netcdf_fname"
 name = "packages"
 type = "list"
 block = "packages"
+description = ""
 
 [packages.packages.packages]
 name = "packages"
 type = "record"
 block = "packages"
+description = ""
 
 [packages.packages.packages.ftype]
 block = "packages"

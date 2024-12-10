@@ -107,6 +107,7 @@ type = "double precision"
 shape = "(ncol, nrow, nlay)"
 block = "griddata"
 description = "is the bottom elevation for each cell."
+default = 0.0
 
 [griddata.idomain]
 name = "idomain"

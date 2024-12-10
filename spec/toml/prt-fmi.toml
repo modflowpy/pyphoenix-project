@@ -11,11 +11,13 @@ description = "keyword to indicate that fmi flow terms will be written to the fi
 name = "packagedata"
 type = "list"
 block = "packagedata"
+description = ""
 
 [packagedata.packagedata.packagedata]
 name = "packagedata"
 type = "record"
 block = "packagedata"
+description = ""
 
 [packagedata.packagedata.packagedata.flowtype]
 block = "packagedata"
@@ -31,6 +33,7 @@ description = "is the word GWFBUDGET or GWFHEAD.  If GWFBUDGET is specified, the
 block = "packagedata"
 name = "filein"
 type = "keyword"
+shape = ""
 in_record = "true"
 reader = "urword"
 tagged = "true"

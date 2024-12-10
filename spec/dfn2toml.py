@@ -18,7 +18,7 @@ class Shim:
         if isinstance(d, Mapping):
             if "children" in d:
                 for n, c in d["children"].items():
-                    d[n] = Shim._attach_children(c)
+                    d[n] = c
                 del d["children"]
             d = {k: Shim._attach_children(v) for k, v in d.items()}
         return d
@@ -29,7 +29,7 @@ class Shim:
             return {
                 k: Shim._drop_none(v)
                 for k, v in d.items()
-                if (v or isinstance(v, bool))
+                if v is not None
             }
         else:
             return d

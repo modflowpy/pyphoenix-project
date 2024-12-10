@@ -19,3 +19,4 @@ type = "double precision"
 shape = "(nodes)"
 block = "griddata"
 description = "is the initial (starting) concentration---that is, concentration at the beginning of the gwt model simulation.  strt must be specified for all gwt model simulations. one value is read for every model cell."
+default = 0.0

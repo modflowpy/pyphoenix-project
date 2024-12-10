@@ -31,11 +31,13 @@ description = "integer value specifying the maximum number of spc cells that wil
 name = "perioddata"
 type = "list"
 block = "period"
+description = ""
 
 [period.perioddata.perioddata]
 name = "perioddata"
 type = "record"
 block = "period"
+description = ""
 
 [period.perioddata.perioddata.bndno]
 name = "bndno"

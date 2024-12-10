@@ -76,11 +76,13 @@ name = "stress_period_data"
 type = "list"
 shape = "(maxbound)"
 block = "period"
+description = ""
 
 [period.stress_period_data.stress_period_data]
 name = "stress_period_data"
 type = "record"
 block = "period"
+description = ""
 
 [period.stress_period_data.stress_period_data.cellid]
 block = "period"
@@ -97,6 +99,7 @@ description = "is the cell identifier, and depends on the type of grid that is u
 block = "period"
 name = "head"
 type = "double precision"
+shape = ""
 tagged = "false"
 in_record = "true"
 reader = "urword"
@@ -121,6 +124,7 @@ description = "represents the values of the auxiliary variables for each constan
 block = "period"
 name = "boundname"
 type = "string"
+shape = ""
 tagged = "false"
 in_record = "true"
 reader = "urword"

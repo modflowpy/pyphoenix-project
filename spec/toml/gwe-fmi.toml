@@ -17,11 +17,13 @@ description = "correct for an imbalance in flows by assuming that any residual f
 name = "packagedata"
 type = "list"
 block = "packagedata"
+description = ""
 
 [packagedata.packagedata.packagedata]
 name = "packagedata"
 type = "record"
 block = "packagedata"
+description = ""
 
 [packagedata.packagedata.packagedata.flowtype]
 block = "packagedata"
@@ -37,6 +39,7 @@ description = "is the word GWFBUDGET, GWFHEAD, GWFMOVER or the name of an advanc
 block = "packagedata"
 name = "filein"
 type = "keyword"
+shape = ""
 in_record = "true"
 reader = "urword"
 tagged = "true"

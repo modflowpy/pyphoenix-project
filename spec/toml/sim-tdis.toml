@@ -37,12 +37,14 @@ default = 1
 name = "perioddata"
 type = "list"
 block = "perioddata"
+description = ""
 default = [[1.0, 1, 1.0]]
 
 [perioddata.perioddata.perioddata]
 name = "perioddata"
 type = "record"
 block = "perioddata"
+description = ""
 
 [perioddata.perioddata.perioddata.perlen]
 block = "perioddata"

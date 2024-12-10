@@ -91,6 +91,7 @@ type = "double precision"
 shape = "(ncol*nrow; ncpl)"
 block = "period"
 description = "is the elevation of the et surface ($l$)."
+default = 0.0
 
 [period.rate]
 name = "rate"

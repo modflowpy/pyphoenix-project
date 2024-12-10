@@ -17,11 +17,13 @@ description = "keyword to indicate that ssm flow terms will be written to the fi
 name = "sources"
 type = "list"
 block = "sources"
+description = ""
 
 [sources.sources.sources]
 name = "sources"
 type = "record"
 block = "sources"
+description = ""
 
 [sources.sources.sources.pname]
 block = "fileinput"
@@ -59,11 +61,13 @@ description = "name of the auxiliary variable in the package PNAME.  This auxili
 name = "fileinput"
 type = "list"
 block = "fileinput"
+description = ""
 
 [fileinput.fileinput.fileinput]
 name = "fileinput"
 type = "record"
 block = "fileinput"
+description = ""
 
 [fileinput.fileinput.fileinput.pname]
 block = "fileinput"
@@ -79,6 +83,7 @@ description = "name of the flow package for which an SPC6 input file contains a 
 block = "fileinput"
 name = "spc6"
 type = "keyword"
+shape = ""
 in_record = "true"
 reader = "urword"
 tagged = "true"
@@ -90,6 +95,7 @@ description = "keyword to specify that record corresponds to a source sink mixin
 block = "fileinput"
 name = "filein"
 type = "keyword"
+shape = ""
 in_record = "true"
 reader = "urword"
 tagged = "true"
@@ -113,6 +119,7 @@ description = "character string that defines the path and filename for the file 
 block = "fileinput"
 name = "mixed"
 type = "keyword"
+shape = ""
 in_record = "true"
 reader = "urword"
 tagged = "true"

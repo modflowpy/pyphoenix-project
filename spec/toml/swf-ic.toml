@@ -13,3 +13,4 @@ type = "double precision"
 shape = "(nodes)"
 block = "griddata"
 description = "is the initial (starting) stage---that is, stage at the beginning of the swf model simulation.  strt must be specified for all swf model simulations. one value is read for every model reach."
+default = 0.0
