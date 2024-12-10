@@ -11,6 +11,7 @@ authors = [
     { name = "Josh Larsen", email = "jlarsen@usgs.gov" },
     { name = "Michael Reno", email = "mreno@ucar.edu" },
     { name = "Wes Bonelli", email = "wbonelli@ucar.edu" },
+    { name = "Marnix Krause", email = "Marnix.Kraus@deltares.nl" },
 ]
 maintainers = [
     { name = "Joe Hughes", email = "jdhughes@usgs.gov" },
@@ -29,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
 requires-python = ">=3.10"
