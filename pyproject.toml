@@ -50,11 +50,15 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["flopy4[lint,test,build]"]
+<<<<<<< HEAD
 lint = ["ruff", "pre-commit>=4.0.1,<5"]
 build = [
     "build",
     "twine",
 ]
+=======
+lint = ["ruff"]
+>>>>>>> 94bb1fd (revert pyproject changes)
 test = [
     "flopy4[lint]",
     "coverage",
@@ -69,6 +73,7 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
 ]
+build = ["build", "twine"]
 
 [tool.setuptools]
 include-package-data = true
@@ -132,8 +137,12 @@ test312 = { features = ["py312", "test"], solve-group = "py312" }
 test313 = { features = ["py313", "test"], solve-group = "py313" }
 dev = { features = ["py311", "test", "lint", "build"], solve-group = "py311" }
 
-[tool.pixi.feature.dev.tasks]
+[tool.pixi.feature.build.tasks]
 build = { cmd = "python -m build" }
+
+[tool.pixi.feature.test.tasks]
+test = { cmd = "pytest -v -n auto" }
+
+[tool.pixi.feature.lint.tasks]
 lint = { cmd = "ruff check ." }
 install = { cmd = "pre-commit install --install-hooks" }
-test = { cmd = "pytest -v -n auto" }
