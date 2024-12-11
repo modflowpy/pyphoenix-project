@@ -3756,7 +3756,7 @@ packages:
 - pypi: .
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 0c74187f45c9ba541a0af4ea338b93f704e3f75d57feeafcab07b07261ab40b2
+  sha256: 36af66f173a5f479bdfb2373effd7f9eff7f5b5cc804ec3d738885b1c7420b38
   requires_dist:
   - attrs
   - cattrs
