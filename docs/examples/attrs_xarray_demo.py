@@ -64,7 +64,7 @@ def _to_shaped_array(
         warn(f"Failed to resolve dimension names: {', '.join(unresolved)}")
         return value
     elif value.shape == ():
-        return np.ones(shape) ** value.item()
+        return np.full(shape, value.item())
     elif value.shape != shape:
         raise ValueError(
             f"Shape mismatch, got {value.shape}, expected {shape}"
@@ -288,28 +288,40 @@ class Oc:
 class Npf:
     # no options, just arrays for now
     icelltype: NDArray[np.integer] = field(
-        metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array, metadata={"block": "griddata", "shape": "(nodes)"}
     )
     k: NDArray[np.floating] = field(
-        metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array, metadata={"block": "griddata", "shape": "(nodes)"}
     )
     k22: Optional[NDArray[np.floating]] = field(
-        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array,
+        default=None,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     k33: Optional[NDArray[np.floating]] = field(
-        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array,
+        default=None,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     angle1: Optional[NDArray[np.floating]] = field(
-        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array,
+        default=None,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     angle2: Optional[NDArray[np.floating]] = field(
-        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array,
+        default=None,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     angle3: Optional[NDArray[np.floating]] = field(
-        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array,
+        default=None,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     wetdry: Optional[NDArray[np.floating]] = field(
-        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_to_array,
+        default=None,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     model: Optional[Model] = field(default=None)
 
@@ -376,7 +388,7 @@ sim = Sim()
 tdis = Tdis(sim=sim, nper=1, perioddata=[Tdis.PeriodData()])
 gwf = Gwf(sim=sim)
 dis = Dis(model=gwf)
-ic = Ic(model=gwf, strt=1)
+ic = Ic(model=gwf, strt=1.0)
 oc = Oc(model=gwf, perioddata=[Oc.Steps()])
 npf = Npf(model=gwf, icelltype=0, k=1.0)
 
