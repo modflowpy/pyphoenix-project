@@ -3756,7 +3756,7 @@ packages:
 - pypi: .
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 36af66f173a5f479bdfb2373effd7f9eff7f5b5cc804ec3d738885b1c7420b38
+  sha256: 6347ea98cd5a19d2ee185fbf299b7e0b435a9e5f25854c168af7fcbb718184a6
   requires_dist:
   - attrs
   - cattrs
@@ -3772,8 +3772,6 @@ packages:
   - flopy4[build,lint,test] ; extra == 'dev'
   - ruff ; extra == 'lint'
   - pre-commit>=4.0.1,<5 ; extra == 'lint'
-  - build ; extra == 'build'
-  - twine ; extra == 'build'
   - flopy4[lint] ; extra == 'test'
   - coverage ; extra == 'test'
   - gitpython ; extra == 'test'
@@ -3786,6 +3784,8 @@ packages:
   - pytest!=8.1.0 ; extra == 'test'
   - pytest-dotenv ; extra == 'test'
   - pytest-xdist ; extra == 'test'
+  - build ; extra == 'build'
+  - twine ; extra == 'build'
   requires_python: '>=3.11'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/1b/3d/7a906f58f80c1ed37bbdf7b3f9b6792906156cb9143b067bf54c38405134/fonttools-4.55.8-cp312-cp312-macosx_10_13_x86_64.whl
