@@ -34,16 +34,16 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "attrs",                   # todo: bounds?
-    "cattrs",                  # todo: bounds?
+    "attrs",                                # todo: bounds?
+    "cattrs",                               # todo: bounds?
     "flopy>=3.7.0",
     "Jinja2>=3.0",
-    "lark",                    # todo: bounds?
+    "lark",                                 # todo: bounds?
     "numpy>=1.20.3",
     "pandas>=2.0.0",
     "toml>=0.10",
     "networkx>=3.4.2,<4",
-    "xarray>=2024.11.0,<2025",
+    "xarray[parallel,io]>=2024.11.0,<2025",
     "scipy>=1.14.1,<2",
 ]
 dynamic = ["version"]
