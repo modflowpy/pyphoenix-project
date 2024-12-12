@@ -51,7 +51,6 @@ dynamic = ["version"]
 [project.optional-dependencies]
 dev = ["flopy4[lint,test,build]"]
 lint = ["ruff", "pre-commit>=4.0.1,<5"]
-build = ["build", "twine"]
 test = [
     "flopy4[lint]",
     "coverage",
@@ -66,6 +65,7 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
 ]
+build = ["build", "twine"]
 
 [tool.setuptools]
 include-package-data = true
