@@ -1,6 +1,7 @@
 # # Attrs demo
 
-# This example demonstrates a tentative `attrs`-based object model.
+# This example demonstrates a tentative `attrs`-based object model which
+# which uses `xarray` to provide a `DataTree` view.
 
 from datetime import datetime
 from itertools import repeat
