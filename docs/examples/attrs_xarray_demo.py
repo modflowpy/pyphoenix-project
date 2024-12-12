@@ -285,10 +285,46 @@ class Oc:
 
 @datatree
 @define(slots=False)
+class Npf:
+    # no options, just arrays for now
+    icelltype: NDArray[np.integer] = field(
+        metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    k: NDArray[np.floating] = field(
+        metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    k22: Optional[NDArray[np.floating]] = field(
+        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    k33: Optional[NDArray[np.floating]] = field(
+        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    angle1: Optional[NDArray[np.floating]] = field(
+        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    angle2: Optional[NDArray[np.floating]] = field(
+        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    angle3: Optional[NDArray[np.floating]] = field(
+        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    wetdry: Optional[NDArray[np.floating]] = field(
+        default=None, metadata={"block": "griddata", "shape": "(nodes)"}
+    )
+    model: Optional[Model] = field(default=None)
+
+    def __attrs_post_init__(self):
+        # for some reason this is necessary..
+        pass
+
+
+@datatree
+@define(slots=False)
 class Gwf(Model):
     dis: Optional[Dis] = field(default=None)
     ic: Optional[Ic] = field(default=None)
     oc: Optional[Oc] = field(default=None)
+    npf: Optional[Npf] = field(default=None)
     sim: Optional["Sim"] = field(default=None)
 
     def __attrs_post_init__(self):
@@ -342,6 +378,7 @@ gwf = Gwf(sim=sim)
 dis = Dis(model=gwf)
 ic = Ic(model=gwf, strt=1)
 oc = Oc(model=gwf, perioddata=[Oc.Steps()])
+npf = Npf(model=gwf, icelltype=0, k=1.0)
 
 # View the data tree.
 gwf.data
