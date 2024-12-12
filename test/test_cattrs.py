@@ -25,7 +25,8 @@ def test_unstructure_numpy_array():
     f = Foo(x=np_arr)
     f_dict = unstructure(f)
 
-    # We expect that the default unstructure functionality keeps the numpy array as is.
+    # We expect that the default unstructure functionality keeps
+    # the numpy array as is.
     # This helps when finally converting the dictionary to MF6 input files.
     assert np_arr is f_dict["x"]
 
@@ -35,7 +36,8 @@ def test_unstructure_xarray():
     f = Bar(x=x_arr)
     f_dict = unstructure(f)
 
-    # We expect that the default unstructure functionality keeps the xarray as is.
+    # We expect that the default unstructure functionality keeps
+    # the xarray as is.
     # This helps when finally converting the dictionary to MF6 input files.
     assert x_arr is f_dict["x"]
 
