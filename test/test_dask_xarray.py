@@ -9,9 +9,9 @@ import xarray as xr
 # Instead we need to loop over the blocks and compute them one by one. (test 2)
 
 
-def test_netcdf_with_map_blocks():
+def test_netcdf_with_map_blocks(tmp_path):
     data = xr.DataArray(range(1, 1_000), dims=("x",))
-    nc_path = "test/data/test.nc"
+    nc_path = tmp_path / "test_netcdf_with_map_blocks.nc"
     data.to_netcdf(nc_path)
     data.close()
     data = xr.open_dataarray(nc_path, chunks={"x": 100})
@@ -36,9 +36,9 @@ def test_netcdf_with_map_blocks():
     assert len(output_file) == 10
 
 
-def test_netcdf_with_dask_map_blocks():
+def test_netcdf_with_dask_map_blocks(tmp_path):
     data = xr.DataArray(range(1, 1_000), dims=("x",))
-    nc_path = "test/data/test.nc"
+    nc_path = tmp_path / "test_netcdf_with_dask_map_blocks.nc"
     data.to_netcdf(nc_path)
     data.close()
     data = xr.open_dataarray(nc_path, chunks={"x": 100})
