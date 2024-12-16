@@ -74,3 +74,16 @@ def test_unstructure_xarray_tree():
     # the xarray as is.
     # This helps when finally converting the dictionary to MF6 input files.
     assert x_tree is f_dict["x"]
+
+
+def test_unstructure_xarray_tree_no_hook():
+    x_arr = xr.DataArray([1, 2, 3])
+    x_set = xr.Dataset({"x": x_arr})
+    x_tree = xr.DataTree(x_set)
+    f = Baz(x=x_tree)
+
+    f_dict = unstructure(f)
+
+    # Unfortunately the default converter seems to make a copy of the DataTree
+    # and doesn't keep the original reference.
+    assert x_tree is not f_dict["x"]
