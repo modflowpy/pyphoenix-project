@@ -153,7 +153,7 @@ The requirements are categorized through the [MoSCoW method](https://en.wikipedi
 
 | ID      | Description | MoSCoW |
 | ------- | ----------- | ------ |
-| FUNC-1  | flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files. | M |
+| FUNC-1  | flopy4 must be able to read and write MODFLOW 6 input files and read MODFLOW 6 output files. These include ASCII files and binary files. | M |
 | FUNC-2  | flopy4 must be able to run MODFLOW 6 simulations and report back on the run status. | M |
 | FUNC-3  | flopy4 must work with multiple versions of MODFLOW 6, based on the DFN files. And it must support all packages that come with that version of MODFLOW 6. | M |
 | FUNC-4  | The product lets the user define a model domain, including grid dimensions, cell sizes, and boundary conditions. | M |
