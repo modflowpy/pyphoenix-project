@@ -3,26 +3,15 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Principles](#principles)
-- [Overview](#overview)
-  - [Objects](#objects)
-    - [Counting the ways](#counting-the-ways)
-    - [Context resolution](#context-resolution)
+- [Basics](#basics)
+  - [Variables](#variables)
+- [Object model](#object-model)
     - [Dictionary mimicry](#dictionary-mimicry)
-    - [Impedance mismatch](#impedance-mismatch)
-  - [Parameters](#parameters)
     - [Arrays](#arrays)
     - [Tables](#tables)
-    - [Lazies](#lazies)
-    - [Signals](#signals)
     - [Units](#units)
   - [Code generation](#code-generation)
   - [IO](#io)
-    - [Overview](#overview-1)
-    - [Decorators](#decorators)
-    - [Converters](#converters)
-    - [Codecs](#codecs)
-    - [Parsers](#parsers)
 - [Resources](#resources)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -37,8 +26,6 @@ This document follows MODFLOW 6 terminology:
 - **component**: a package, model, or other conceptually distinct module within a simulation
 
 Each component contains zero or more variables. A definition file specifies a single component. Taken together, a set of definition files represents a MODFLOW 6  **input specification**, from which is generated a Python **object model** making up the `flopy.mf6` module's user-facing API.
-
-### Variables
 
 A variable is a primitive value or a composite.
 
