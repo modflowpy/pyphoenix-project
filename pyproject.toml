@@ -45,6 +45,7 @@ dependencies = [
     "networkx>=3.4.2,<4",
     "xarray[parallel,io]>=2024.11.0,<2025",
     "scipy>=1.14.1,<2",
+    "xarray-extras>=0.6.0",
 ]
 dynamic = ["version"]
 
@@ -120,13 +121,15 @@ python = "3.11"
 [tool.pixi.feature.py312.dependencies]
 python = "3.12"
 
-[tool.pixi.feature.py313.dependencies]
-python = "3.13"
+# Disable py313 until numba is available for python 3.13
+# [tool.pixi.feature.py313.dependencies]
+# python = "3.13"
 
 [tool.pixi.environments]
 test311 = { features = ["py311", "test"], solve-group = "py311" }
 test312 = { features = ["py312", "test"], solve-group = "py312" }
-test313 = { features = ["py313", "test"], solve-group = "py313" }
+# Disable py313 until numba is available for python 3.13
+# test313 = { features = ["py313", "test"], solve-group = "py313" }
 dev = { features = ["py311", "test", "lint", "build"], solve-group = "py311" }
 
 [tool.pixi.feature.build.tasks]

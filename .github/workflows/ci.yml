@@ -61,7 +61,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-22.04, macos-13, windows-2022 ]
-        python: [ "311", "312", "313" ]
+        # Disable py313 until numba is available for python 3.13
+        python: [ "311", "312" ]
     env:
       GCC_V: 11
     steps:

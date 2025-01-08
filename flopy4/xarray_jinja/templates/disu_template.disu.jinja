@@ -1,0 +1,5 @@
+BEGIN GRIDDATA
+{% for chunk in data | dask_expand %}
+{{chunk | nparray2string }}
+{% endfor %}
+END GRIDDATA

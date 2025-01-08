@@ -10,5 +10,6 @@
         "editor.codeActionsOnSave": {
             "source.fixAll": "explicit"
         }
-    }
+    },
+    "files.insertFinalNewline": true,
 }
