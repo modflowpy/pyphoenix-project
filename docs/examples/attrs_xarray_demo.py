@@ -1,69 +1,67 @@
-# # Attrs demo
+# # Demo attrs/XArray object model
 
-# This example demonstrates a tentative `attrs`-based object model which
-# which uses `xarray` to provide a `DataTree` view.
+# Demonstrate a tentative `attrs`- and `xarray`-based object model,
+# where `attrs` is used to define classes and `xarray` is used as
+# the underlying data store.
 
+
+from abc import ABC
 from datetime import datetime
-from itertools import repeat
-from os import PathLike
 from pathlib import Path
-from typing import Iterable, Literal, Optional, get_origin
-from warnings import warn
+from typing import Any, Literal, Optional, get_origin
 
 import numpy as np
-from attr import Factory, define, field, fields_dict
+from attr import Attribute, Factory, define, field, fields_dict
 from numpy.typing import ArrayLike, NDArray
 from xarray import Dataset, DataTree
 
 
-def _parse_dim_names(s: str) -> tuple[str]:
+def _to_path(value: Any) -> Optional[Path]:
+    return Path(value) if value else None
+
+
+def _parse_shape(shape: str) -> tuple[str]:
     return tuple(
         [
-            ss.strip()
-            for ss in s.strip().replace("(", "").replace(")", "").split(",")
-            if any(ss)
+            dim.strip()
+            for dim in shape.strip()
+            .replace("(", "")
+            .replace(")", "")
+            .split(",")
+            if any(dim)
         ]
     )
 
 
-def _try_resolve_dim(self, name) -> int | str:
+def _try_resolve_dim(data: DataTree, name: str) -> int | str:
     name = name.strip()
-    value = getattr(self, name, None)
-    if value:
-        return value
-    if hasattr(self, "model") and hasattr(self.model, "dis"):
-        return getattr(self.model.dis, name, name)
-    if hasattr(self, "sim") and hasattr(self.sim, "tdis"):
-        return getattr(self.sim.tdis, name, name)
+    value = data.get(name, None)
+    if value is not None:
+        return value.item()
+    root = data.root
+    paths = [
+        "/tdis",
+        "/gwf/dis",
+    ]
+    for path in paths:
+        value = root.get(f"{path}/{name}", None)
+        if value is not None:
+            return value.item()
+    print(f"Failed to resolve dim '{name}' for '{data.name}'")
     return name
 
 
-def _try_resolve_shape(self, field) -> tuple[int | str]:
-    dim_names = _parse_dim_names(field.metadata["shape"])
-    return tuple([_try_resolve_dim(self, n) for n in dim_names])
+def _try_resolve_shape(data: DataTree, attr: Attribute) -> tuple[int | str]:
+    shape = attr.metadata.get("shape", None)
+    if shape is None:
+        raise ValueError(f"Array {attr.name} missing shape metadata")
+    shape = [_try_resolve_dim(data, dim) for dim in _parse_shape(shape)]
+    return shape
 
 
-def _to_array(value: Optional[ArrayLike]) -> Optional[NDArray]:
-    return None if value is None else np.array(value)
-
-
-def _to_shaped_array(
-    value: Optional[ArrayLike | str | PathLike], self_, field
-) -> Optional[NDArray]:
-    if isinstance(value, (str, PathLike)):
-        # TODO handle external arrays
-        pass
-
-    value = _to_array(value)
-    if value is None:
-        return None
-
-    shape = _try_resolve_shape(self_, field)
-    unresolved = [dim for dim in shape if not isinstance(dim, int)]
-    if any(unresolved):
-        warn(f"Failed to resolve dimension names: {', '.join(unresolved)}")
-        return value
-    elif value.shape == ():
+def _reshape_array(value: ArrayLike, shape: tuple[int]) -> Optional[NDArray]:
+    value = np.array(value)
+    if value.shape == ():
         return np.full(shape, value.item())
     elif value.shape != shape:
         raise ValueError(
@@ -72,140 +70,141 @@ def _to_shaped_array(
     return value
 
 
-def _to_shaped_list(
-    value: Optional[Iterable | str | PathLike], self_, field
-) -> Optional[list]:
-    if isinstance(value, (str, PathLike)):
-        # TODO handle external lists
-        pass
-
-    shape = _try_resolve_shape(self_, field)
-    if len(shape) > 1:
-        raise ValueError(f"Expected at most 1 dimension, got {len(shape)}")
+def _resolve_array(
+    self, attr: Attribute, value: Optional[ArrayLike]
+) -> Optional[NDArray]:
+    if value is None:
+        return None
+    shape = _try_resolve_shape(self.data, attr)
     unresolved = [dim for dim in shape if not isinstance(dim, int)]
     if any(unresolved):
-        warn(f"Failed to resolve dimension names: {', '.join(unresolved)}")
-        return value
-    elif np.array(value).shape == ():
-        return list(repeat(value, shape[0]))
-    elif len(value) != shape[0]:
         raise ValueError(
-            f"Length mismatch, got {len(value)}, expected {shape[0]}"
+            f"Class '{type(self).__name__}' "
+            f"failed to resolve dims: {', '.join(unresolved)}"
         )
-    return value
+    return _reshape_array(value, shape)
 
 
-def _to_path(value) -> Optional[Path]:
-    return Path(value) if value else None
+def _bind_tree(data: DataTree):
+    if data.is_root:
+        return
+    data.parent = data.parent.assign({data.name: data})
+    if not data.parent.is_root:
+        _bind_tree(data.parent)
 
 
-def datatree(cls):
-    post_init_name = "__attrs_post_init__"
-    post_init_prev = getattr(cls, post_init_name, None)
+def _init_tree(self, **kwargs):
+    cls = type(self)
+    cls_name = cls.__name__.lower()
+    spec = fields_dict(cls)
+    parent = kwargs.get("parent", None)
+    data = Dataset()
+    dims = set()
 
-    def _set_data_on_self(self, cls):
-        fields = fields_dict(cls)
-        arrays = {}
-        for n, f in fields.items():
-            if get_origin(f.type) is np.ndarray:
-                value = getattr(self, n)
-                if value is None:
-                    continue
-                arrays[n] = (
-                    _parse_dim_names(f.metadata["shape"]),
-                    _to_shaped_array(value, self, f),
+    # add arrays
+    for name, attr in spec.items():
+        value = kwargs.get(name, attr.default)
+        shape = attr.metadata.get("shape", None)
+        if shape is not None:
+            dim_names = [
+                _try_resolve_dim(parent, dim) for dim in _parse_shape(shape)
+            ]
+            shape = tuple(
+                [
+                    (dim if isinstance(dim, int) else kwargs.get(dim, dim))
+                    for dim in dim_names
+                ]
+            )
+            unresolved = [dim for dim in shape if not isinstance(dim, int)]
+            if any(unresolved):
+                raise ValueError(
+                    f"Class '{cls_name}' "
+                    f"failed to resolve dims: {', '.join(unresolved)}"
                 )
-            elif get_origin(f.type) is list:
-                value = getattr(self, n)
-                if value is None:
-                    continue
-                arrays[n] = (
-                    _parse_dim_names(f.metadata["shape"]),
-                    _to_shaped_list(value, self, f),
+            dims.update(dim_names)
+            value = _reshape_array(value, shape)
+            if value.shape == ():
+                raise ValueError(
+                    f"Failed to resolve array '{name}', "
+                    f"make sure these dimensions exist: "
+                    f"{','.join(dims)}"
                 )
+            data[name] = (dim_names, value)
 
-        dataset = Dataset(arrays)
-        self.data = (
-            DataTree(dataset, name=cls.__name__.lower())
-            if cls is Sim or issubclass(cls, Model)
-            else dataset
+    # add scalars
+    for name, value in spec.items():
+        if name in data or name in dims:
+            continue
+        value = kwargs.get(name, attr.default)
+        data[name] = value
+
+    self.data = DataTree(data, name=cls_name)
+
+
+def _setattr(self, attr: Attribute, value: Any):
+    cls = type(self)
+    spec = fields_dict(cls)
+    if attr.name not in spec:
+        raise AttributeError(f"{cls.__name__} has no attribute {attr.name}")
+    if value is None:
+        return
+    self.data[attr.name] = (
+        (
+            _parse_shape(attr.metadata["shape"]),
+            _resolve_array(self, attr, value),
         )
+        if get_origin(attr.type) in [list, np.ndarray]
+        else value
+    )
+    # TODO run validation?
 
-    def _set_self_on_parent(self, cls):
-        self_name = cls.__name__.lower()
-        model = getattr(self, "model", None)
-        if model:
-            setattr(model, self_name, self)
-            data = (
-                DataTree(self.data, name=self_name)
-                if not isinstance(self.data, DataTree)
-                else self.data
-            )
-            model.data = model.data.assign({self_name: data})
-            sim = getattr(model, "sim", None)
-            if sim:
-                model_name = type(model).__name__.lower()
-                setattr(sim, model_name, model)
-                sim.data = sim.data.assign({model_name: model.data})
-        sim = getattr(self, "sim", None)
-        if sim:
-            setattr(sim, self_name, self)
-            data = (
-                DataTree(self.data, name=self_name)
-                if not isinstance(self.data, DataTree)
-                else self.data
-            )
-            sim.data = sim.data.assign({self_name: data})
 
-    def __attrs_post_init__(self):
-        if post_init_prev:
-            post_init_prev(self)
+def component(cls):
+    spec = fields_dict(cls)
+    init = cls.__init__
 
-        _set_data_on_self(self, cls)
-        _set_self_on_parent(self, cls)
+    def _init(self, *args, **kwargs):
+        init(self, *args, **kwargs)
+        _bind_tree(self.data)
 
-    # TODO: figure out why classes need to have a
-    # __attrs_post_init__ method for this to work
-    setattr(cls, post_init_name, __attrs_post_init__)
+    def _get(self, name):
+        if name in spec:
+            return self.data[name]
+        return super(cls, self).__getattribute__(name)
+
+    cls.__init__ = _init
+    cls.__getattribute__ = _get
     return cls
 
 
-class Model:
-    pass
+class Package(ABC):
+    data: DataTree = None
 
 
-@datatree
-@define(slots=False)
-class Dis:
-    nlay: int = field(default=1, metadata={"block": "dimensions"})
-    ncol: int = field(default=2, metadata={"block": "dimensions"})
-    nrow: int = field(default=2, metadata={"block": "dimensions"})
-    delr: NDArray[np.floating] = field(
-        converter=_to_array,
-        default=1.0,
-        metadata={"block": "griddata", "shape": "(ncol,)"},
+class Model(ABC):
+    data: DataTree = None
+
+
+class Sim(ABC):
+    data: DataTree = None
+
+
+# @component could in theory wrap the @define decorator
+@component
+@define(init=False, slots=False, on_setattr=_setattr)
+class Dis(Package):
+    length_units: str = field(
+        # store block as metadata then dynamically
+        # discover and expose blocks as properties.
+        default=None,
+        metadata={"block": "options"},
+        # OR, blocks could be attrs classes too...
+        # that will be necessary if variable names
+        # at the top level are not unique, but they
+        # currently are (if we like that constraint
+        # we should document it and enforce it when
+        # DFNs are loaded?)
     )
-    delc: NDArray[np.floating] = field(
-        converter=_to_array,
-        default=1.0,
-        metadata={"block": "griddata", "shape": "(nrow,)"},
-    )
-    top: NDArray[np.floating] = field(
-        converter=_to_array,
-        default=1.0,
-        metadata={"block": "griddata", "shape": "(ncol, nrow)"},
-    )
-    botm: NDArray[np.floating] = field(
-        converter=_to_array,
-        default=0.0,
-        metadata={"block": "griddata", "shape": "(ncol, nrow, nlay)"},
-    )
-    idomain: Optional[NDArray[np.integer]] = field(
-        converter=_to_array,
-        default=1,
-        metadata={"block": "griddata", "shape": "(ncol, nrow, nlay)"},
-    )
-    length_units: str = field(default=None, metadata={"block": "options"})
     nogrb: bool = field(default=False, metadata={"block": "options"})
     xorigin: float = field(default=None, metadata={"block": "options"})
     yorigin: float = field(default=None, metadata={"block": "options"})
@@ -213,18 +212,82 @@ class Dis:
     export_array_netcdf: bool = field(
         default=False, metadata={"block": "options"}
     )
-    nodes: int = field(init=False)
-    model: Optional[Model] = field(default=None)
+    nlay: int = field(default=1, metadata={"block": "dimensions"})
+    ncol: int = field(default=2, metadata={"block": "dimensions"})
+    nrow: int = field(default=2, metadata={"block": "dimensions"})
+    delr: NDArray[np.floating] = field(
+        # we use a converter both to resolve an array shape
+        # and check it, handling both conversion/validation
+        converter=_resolve_array,
+        default=1.0,
+        metadata={"block": "griddata", "shape": "(ncol,)"},
+    )
+    delc: NDArray[np.floating] = field(
+        converter=_resolve_array,
+        default=1.0,
+        metadata={"block": "griddata", "shape": "(nrow,)"},
+    )
+    top: NDArray[np.floating] = field(
+        converter=_resolve_array,
+        default=1.0,
+        metadata={"block": "griddata", "shape": "(ncol, nrow)"},
+    )
+    botm: NDArray[np.floating] = field(
+        converter=_resolve_array,
+        default=0.0,
+        metadata={"block": "griddata", "shape": "(ncol, nrow, nlay)"},
+    )
+    idomain: Optional[NDArray[np.integer]] = field(
+        converter=_resolve_array,
+        default=1,
+        metadata={"block": "griddata", "shape": "(ncol, nrow, nlay)"},
+    )
+    nodes: Optional[int] = field(default=None)
 
-    def __attrs_post_init__(self):
-        self.nodes = self.nlay * self.ncol * self.nrow
+    def __init__(
+        self=None,
+        model=None,
+        length_units=None,
+        nogrb=False,
+        xorigin=None,
+        yorigin=None,
+        angrot=None,
+        export_array_netcdf=False,
+        nlay=1,
+        ncol=2,
+        nrow=2,
+        delr=1.0,
+        delc=1.0,
+        top=1.0,
+        botm=0.0,
+        idomain=1,
+    ):
+        _init_tree(
+            self,
+            parent=model.data,
+            length_units=length_units,
+            nogrb=nogrb,
+            xorigin=xorigin,
+            yorigin=yorigin,
+            angrot=angrot,
+            export_array_netcdf=export_array_netcdf,
+            nlay=nlay,
+            ncol=ncol,
+            nrow=nrow,
+            nodes=ncol * nrow * nlay,
+            delr=delr,
+            delc=delc,
+            top=top,
+            botm=botm,
+            idomain=idomain,
+        )
 
 
-@datatree
-@define(slots=False)
-class Ic:
+@component
+@define(init=False, slots=False, on_setattr=_setattr)
+class Ic(Package):
     strt: NDArray[np.floating] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=1.0,
         metadata={"block": "packagedata", "shape": "(nodes)"},
     )
@@ -235,22 +298,34 @@ class Ic:
         default=False,
         metadata={"block": "options"},
     )
-    model: Optional[Model] = field(default=None)
 
-    def __attrs_post_init__(self):
-        # for some reason this is necessary..
-        pass
+    def __init__(
+        self,
+        model=None,
+        strt=1.0,
+        export_array_ascii=False,
+        export_array_netcdf=False,
+    ):
+        _init_tree(
+            self,
+            parent=model.data,
+            strt=strt,
+            export_array_ascii=export_array_ascii,
+            export_array_netcdf=export_array_netcdf,
+        )
 
 
-@datatree
-@define(slots=False)
-class Oc:
+@component
+@define(init=False, slots=False, on_setattr=_setattr)
+class Oc(Package):
     @define(slots=False)
     class Format:
-        columns: int
-        width: int
-        digits: int
-        format: Literal["exponential", "fixed", "general", "scientific"]
+        columns: int = field(default=10)
+        width: int = field(default=11)
+        digits: int = field(default=4)
+        format: Literal["exponential", "fixed", "general", "scientific"] = (
+            field(default="general")
+        )
 
     @define(slots=False)
     class Steps:
@@ -261,92 +336,132 @@ class Oc:
         steps: Optional[list[int]] = field(default=None)
 
     budget_file: Optional[Path] = field(
-        converter=_to_path, default=None, metadata={"block": "options"}
+        converter=_to_path,
+        default=None,
+        metadata={"block": "options"},
     )
     budget_csv_file: Optional[Path] = field(
-        converter=_to_path, default=None, metadata={"block": "options"}
+        converter=_to_path,
+        default=None,
+        metadata={"block": "options"},
     )
     head_file: Optional[Path] = field(
-        converter=_to_path, default=None, metadata={"block": "options"}
+        converter=_to_path,
+        default=None,
+        metadata={"block": "options"},
     )
     printhead: Optional[Format] = field(
-        default=None, metadata={"block": "options"}
+        default=None, init=False, metadata={"block": "options"}
     )
     perioddata: list[Steps] = field(
         default=Factory(list),
         metadata={"block": "perioddata", "shape": "(nper,)"},
     )
-    model: Optional[Model] = field(default=None)
 
-    def __attrs_post_init__(self):
-        # for some reason this is necessary..
-        pass
+    def __init__(
+        self,
+        model=None,
+        budget_file=None,
+        budget_csv_file=None,
+        head_file=None,
+        printhead=None,
+        perioddata=None,
+    ):
+        _init_tree(
+            self,
+            parent=model.data,
+            budget_file=budget_file,
+            budget_csv_file=budget_csv_file,
+            head_file=head_file,
+            printhead=printhead,
+            perioddata=perioddata,
+        )
 
 
-@datatree
-@define(slots=False)
-class Npf:
+@component
+@define(init=False, slots=False, on_setattr=_setattr)
+class Npf(Package):
     # no options, just arrays for now
     icelltype: NDArray[np.integer] = field(
-        converter=_to_array, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_resolve_array,
+        default=0,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     k: NDArray[np.floating] = field(
-        converter=_to_array, metadata={"block": "griddata", "shape": "(nodes)"}
+        converter=_resolve_array,
+        default=1.0,
+        metadata={"block": "griddata", "shape": "(nodes)"},
     )
     k22: Optional[NDArray[np.floating]] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=None,
         metadata={"block": "griddata", "shape": "(nodes)"},
     )
     k33: Optional[NDArray[np.floating]] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=None,
         metadata={"block": "griddata", "shape": "(nodes)"},
     )
     angle1: Optional[NDArray[np.floating]] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=None,
         metadata={"block": "griddata", "shape": "(nodes)"},
     )
     angle2: Optional[NDArray[np.floating]] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=None,
         metadata={"block": "griddata", "shape": "(nodes)"},
     )
     angle3: Optional[NDArray[np.floating]] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=None,
         metadata={"block": "griddata", "shape": "(nodes)"},
     )
     wetdry: Optional[NDArray[np.floating]] = field(
-        converter=_to_array,
+        converter=_resolve_array,
         default=None,
         metadata={"block": "griddata", "shape": "(nodes)"},
     )
-    model: Optional[Model] = field(default=None)
 
-    def __attrs_post_init__(self):
-        # for some reason this is necessary..
-        pass
+    def __init__(
+        self,
+        model=None,
+        icelltype=0,
+        k=1.0,
+        k22=None,
+        k33=None,
+        angle1=None,
+        angle2=None,
+        angle3=None,
+        wetdry=None,
+    ):
+        _init_tree(
+            self,
+            parent=model.data,
+            icelltype=icelltype,
+            k=k,
+            k22=k22,
+            k33=k33,
+            angle1=angle1,
+            angle2=angle2,
+            angle3=angle3,
+            wetdry=wetdry,
+        )
 
 
-@datatree
-@define(slots=False)
+@component
+@define(init=False, slots=False)
 class Gwf(Model):
-    dis: Optional[Dis] = field(default=None)
-    ic: Optional[Ic] = field(default=None)
-    oc: Optional[Oc] = field(default=None)
-    npf: Optional[Npf] = field(default=None)
-    sim: Optional["Sim"] = field(default=None)
-
-    def __attrs_post_init__(self):
-        # for some reason this is necessary..
-        pass
+    def __init__(
+        self,
+        sim=None,
+    ):
+        _init_tree(self, parent=sim.data)
 
 
-@datatree
-@define(slots=False)
-class Tdis:
+@component
+@define(init=False, slots=False, on_setattr=_setattr)
+class Tdis(Package):
     @define(slots=False)
     class PeriodData:
         perlen: float = field(default=1.0)
@@ -364,27 +479,35 @@ class Tdis:
     start_date_time: Optional[datetime] = field(
         default=None, metadata={"block": "options"}
     )
-    sim: Optional["Sim"] = field(default=None)
 
-    def __attrs_post_init__(self):
-        # for some reason this is necessary..
-        pass
+    def __init__(
+        self,
+        sim=None,
+        nper=1,
+        perioddata=None,
+        time_units=None,
+        start_date_time=None,
+    ):
+        _init_tree(
+            self,
+            parent=sim.data,
+            nper=nper,
+            perioddata=perioddata,
+            time_units=time_units,
+            start_date_time=start_date_time,
+        )
 
 
-@datatree
+@component
 @define(slots=False)
-class Sim:
-    tdis: Optional[Tdis] = field(default=None)
-    gwf: Optional[Gwf] = field(default=None)
-
-    def __attrs_post_init__(self):
-        # for some reason this is necessary..
-        pass
+class Simulation(Sim):
+    def __init__(self):
+        _init_tree(self)
 
 
-# Create a model.
+# Create a simulation.
 
-sim = Sim()
+sim = Simulation()
 tdis = Tdis(sim=sim, nper=1, perioddata=[Tdis.PeriodData()])
 gwf = Gwf(sim=sim)
 dis = Dis(model=gwf)
@@ -393,4 +516,4 @@ oc = Oc(model=gwf, perioddata=[Oc.Steps()])
 npf = Npf(model=gwf, icelltype=0, k=1.0)
 
 # View the data tree.
-gwf.data
+sim.data
