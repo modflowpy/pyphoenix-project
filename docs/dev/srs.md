@@ -87,7 +87,7 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | FUNC-1  | The product can read and write MODFLOW 6 input files, both ASCII and binary. | M |
 | FUNC-2  | The product can read MODFLOW 6 output files. | M |
 | FUNC-3  | The product can run MODFLOW 6 simulations and provide access to their results. | M |
-| FUNC-4  | The product can programmatically create a MODFLOW 6 simulation. | M |
+| FUNC-4  | The product can programmatically create, access, and manipulate MODFLOW 6 simulations. | M |
 | FUNC-5  | The product supports existing MODFLOW 6 discretization types and can be extended to support new ones. | M |
 | FUNC-6  | The product supports parallel MODFLOW 6 simulations, including requisite pre-processing e.g. model splitting. | M |
 | FUNC-7  | The product can plot simulation results with extensible plotting APIs building on popular visualization libraries. | M |
@@ -97,10 +97,15 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | FUNC-12 | The product allows simulation subcomponents to be created independently of parent context, then combined programmatically. | M |
 | FUNC-14 | The product can round-trip (i.e. load, write, and run) an existing simulation and give identical results to previous runs. | C |
 | FUNC-15 | The product can manage larger-than-memory models and datasets. E.g., the product can be used to create an example model of the United States with a **?1 km?** grid resolution. | M |
-| FUNC-16 | The product can determine whether it is compatible with a given MODFLOW 6 version (and corresponding definition files). | M |
-| FUNC-17 | The product is compatible with a wide range of MODFLOW 6 versions (and corresponding definition files) | S |
+| FUNC-16 | The product can determine and report whether it is compatible with a given MODFLOW 6 version (and corresponding specification). | M |
+| FUNC-17 | The product is compatible with a wide range of MODFLOW 6 versions (and corresponding specifications) | S |
 | FUNC-18 | The product understands and can manage/convert spatial units. | C |
 | FUNC-19 | The product understands and can manage/convert temporal units (date and time). | C |
+| FUNC-20 | The product can generate a MODFLOW 6 interface layer (i.e. source code) from definition files. | M |
+| FUNC-21 | The product's MF6 interface layer can be inspected at runtime, e.g. to discover component attributes and variables. | M |
+| FUNC-22 | The product's MF6 interface layer can reproduce the specification used to generate it. | S |
+| FUNC-23 | The product provides appropriate, informative string dumps for simulation components. | M |
+| FUNC-24 | The product provides programmatic access from any component to any other component registered with the simulation. | S |
 
 ### Non-functional requirements
 
@@ -112,7 +117,8 @@ Requirements are prioritized according to the [MoSCoW method](https://en.wikiped
 | NFR-4   | The product provides clear and informative error messages to the user when an error occurs. | M |
 | NFR-5   | The product has consistent APIs for MODFLOW 6 and older MODFLOW programs. | S |
 | NFR-6   | The product can be easily extended e.g. to support new input/output file formats. | S |
-| NFR-7   | The provides a well-documented, type-hinted public API. | S |
+| NFR-7   | The product provides a well-documented, type-hinted public API. | S |
+| NFR-8   | The product consolidates entry points and emphasizes API discoverability. | S |
 
 ### System requirements
 
