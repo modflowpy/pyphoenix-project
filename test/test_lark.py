@@ -34,18 +34,20 @@ MF6_PARSER = make_mf6_parser(
     params=["k", "i", "d", "s", "f", "a"],
     dict_blocks=["options", "packagedata"],
     list_blocks=["period"],
+    debug=True,
+    # ambiguity="explicit"  # uncomment to see ambiguous parse tree
 )
 MF6_TRANSFORMER = MF6Transformer()
 
 
 def test_parse_mf6():
     tree = MF6_PARSER.parse(COMPONENT)
-    # view the parse tree with e.g.
-    #   pytest test/test_lark.py::test_parse -s
+    # pytest -s to view the parse tree
     print(linesep + tree.pretty())
 
 
 def test_transform_mf6():
+    # fails with ambiguity="explicit"
     tree = MF6_PARSER.parse(COMPONENT)
     data = MF6_TRANSFORMER.transform(tree)
     assert data["options"] == {
