@@ -3,26 +3,16 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [FloPy 4 software requirement specifications (SRS)](#flopy-4-software-requirement-specifications-srs)
-  - [Introduction](#introduction)
-    - [Product scope](#product-scope)
-    - [Product value](#product-value)
-    - [Intended audience](#intended-audience)
-    - [Intended use](#intended-use)
-    - [Use cases](#use-cases)
-  - [Motivation](#motivation)
-    - [Consistency](#consistency)
-    - [Maintenance](#maintenance)
-    - [Introspection](#introspection)
-    - [Performance](#performance)
-    - [Invariants](#invariants)
-    - [Maintainability](#maintainability)
-  - [Goals](#goals)
-  - [System requirements and functional requirements](#system-requirements-and-functional-requirements)
-    - [Functional requirements](#functional-requirements)
-    - [External interface requirements](#external-interface-requirements)
-    - [Non-functional requirements](#non-functional-requirements)
-    - [System requirements](#system-requirements)
+- [Introduction](#introduction)
+  - [Product scope](#product-scope)
+  - [Product value](#product-value)
+  - [Intended audience](#intended-audience)
+  - [Intended use](#intended-use)
+  - [Use cases](#use-cases)
+- [Requirements](#requirements)
+  - [Functional requirements](#functional-requirements)
+  - [Non-functional requirements](#non-functional-requirements)
+  - [System requirements](#system-requirements)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
