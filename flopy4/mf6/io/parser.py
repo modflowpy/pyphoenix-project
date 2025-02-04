@@ -84,6 +84,7 @@ def make_parser(
     params: Iterable[str],
     dict_blocks: Iterable[str],
     list_blocks: Iterable[str],
+    **kwargs,
 ):
     """
     Create a parser for the MODFLOW 6 input language with the given
@@ -109,4 +110,4 @@ def make_parser(
             f"LISTBLOCK: ({list_blocks})",
         ]
     )
-    return Lark(grammar, start="component")
+    return Lark(grammar, start="component", **kwargs)
