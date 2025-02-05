@@ -30,6 +30,7 @@ Pre-processing includes tasks like preparing model input and mesh generation.
 
 Post-processing includes tasks like loading model output, plotting/visualiation, rudimentary statistical analysis, and interop with 3rd party formats/tools.
 
+
 ### Product value
 
 The product allows reproducible, versionable Python workflows for MODFLOW modeling applications.
@@ -40,8 +41,9 @@ The product is essential to the MODFLOW development process for testing existing
 
 ### Intended audience
 
-Hydrologic scientists, engineers, and students who are familiar with the Python ecosystem and want to use MODFLOW for their hydrologic applications.
-The other key audience is the team of MODFLOW software developers.
+The product is for hydrologic scientists, engineers, and students who are familiar with the Python ecosystem and want to use MODFLOW for their hydrologic applications.
+
+Another key audience is the MODFLOW development team.
 
 ### Intended use
 
@@ -64,6 +66,33 @@ Other libraries and tools may build upon the product to offer more advanced, dom
 - A MODFLOW developer is debugging an issue in the UZF package and wants to create a complicated test with many cells and stress periods...
 
 - A MODFLOW developer is setting up a worked example to demonstrate how to use a new feature...
+
+```mermaid
+C4Context
+  title [Context] Product use cases
+
+    Person(hydrologist, "Hydrologist", "determines optimal pumping rate for well field")
+    Person(student, "Student", "simulates salt water intrusion in coastal aquifer")
+    Person(professor, "Professor", "teaches groundwater modeling course")
+    Person(institution, "Lab/Institution", "maintains pre-/post-processing extensions")
+    Person(developer, "Developer", "debugs issues, develops features/models")
+
+    System(flopy, "FloPy")
+    System(mf6, "MODFLOW 6")
+
+    Rel(flopy, mf6, "wraps")
+    Rel(hydrologist, flopy, "uses")
+    Rel(student, flopy, "uses")
+    Rel(professor, flopy, "uses")
+    Rel(institution, flopy, "extends")
+    Rel(developer, flopy, "develops")
+    UpdateRelStyle(hydrologist, flopy, $lineColor="blue")
+    UpdateRelStyle(student, flopy, $lineColor="blue")
+    UpdateRelStyle(professor, flopy, $lineColor="blue")
+    UpdateRelStyle(institution, flopy, $lineColor="blue", $offsetX="-190", $offsetY="10")
+    UpdateRelStyle(developer, flopy, $lineColor="blue")
+
+```
 
 ## Requirements
 
