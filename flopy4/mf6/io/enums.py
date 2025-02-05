@@ -1,19 +1,6 @@
 from enum import Enum
 
 
-class CommonNames:
-    iprn = "IPRN"
-    internal = "INTERNAL"
-    constant = "CONSTANT"
-    external = "OPEN/CLOSE"
-    format = "FORMAT"
-    structured = "structured"
-    vertex = "vertex"
-    unstructured = "unstructured"
-    empty = ""
-    end = "END"
-
-
 class MFFileInout(Enum):
     filein = "filein"
     fileout = "fileout"
