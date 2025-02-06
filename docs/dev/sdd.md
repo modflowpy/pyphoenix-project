@@ -1,5 +1,27 @@
 # FloPy 4 software design description (SDD)
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Conceptual model](#conceptual-model)
+- [Object model](#object-model)
+  - [`attrs`](#attrs)
+  - [`xarray`](#xarray)
+  - [`attrs` + `xarray`](#attrs--xarray)
+- [Data types](#data-types)
+  - [Records](#records)
+  - [Unions](#unions)
+  - [Arrays](#arrays)
+  - [Lists](#lists)
+- [Developer workflow](#developer-workflow)
+- [IO](#io)
+  - [Reading input files](#reading-input-files)
+  - [Writing input files](#writing-input-files)
+  - [Reading output files](#reading-output-files)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 This is the Software Design Description (SDD) document for FloPy 4, also called *the product*.
 
 This document describes a tentative design, focusing on "core" functional requirements. Some attention may be given to architecture, but non-functional requirements are largely out of scope here.
@@ -8,20 +30,27 @@ This document describes a tentative design, focusing on "core" functional requir
 
 This document follows MODFLOW 6 terminology where applicable, with modifications/translations where appropriate.
 
-Core concepts include:
+MODFLOW 6 is designed as a hierarchy of modular **components**.
 
-- **definition**: defines input format for a single MF6 component
-- **component**: an element of a simulation, e.g. a model/package
-- **variable**: an input variable, e.g. data or configuration
-- **block**: a named collection of input variables
+Components encapsulate related functionality and data. Components may have user-specified configuration and/or data **variables**.
 
-A set of definition files make a complete MODFLOW 6 specification. A definition file specifies exactly one component. Components may have zero or more variables (some exchanges, for instance, have none).
+Most components must have one particular parent (e.g., models are children of a simulation), but some relax this requirement.
+
+Component types include:
+
+- **simulation**: MF6's "unit of work", consisting of 1+ (possibly coupled) hydrologic processes
+- **model**: a simulated hydrological process
+- **package**: a subcomponent of a model or simulation
+
+Certain subsets of packages have distinguishing characteristics. A **stress package** represents a forcing. A **basic package** contains only input variables applying statically to the entire simulation. An **advanced package** contains time-variable (i.e. transient) input data. In some cases, only a single instance of a package is expected &mdash; in other cases, arbitrarily many. Packages for which the latter is true are called **multi-packages**.
+
+Components are specified by **definition files**. A **definition** specifies input variables for a single MF6 component. A **block** is a named collection of input variables. A definition file specifies exactly one component. A component may contain zero or more blocks. Each block must contain at least one variable.
 
 ## Object model
 
 The product's main use cases will include creating, manipulating, running, and inspecting MODFLOW 6 simulations (FUNC-3, FUNC-4). It is natural to provide an object-oriented interface in which every MF6 component module will generally have a corresponding class.
 
-Component classes will provide access to both **specification** and **data**. It should be straightforward to read a component's specification off its class definition, or to inspect it programmatically (FUNC-21). Likewise it should be easy to retrieve the value of a variable from an instance of a component (FUNC-4).
+Component classes will provide access to both **specification** and **data** &mdash; that is, to **form** and **content**, respectively. It should be straightforward to read a component's specification off its class definition, or to inspect it programmatically (FUNC-21). Likewise it should be easy to retrieve the value of a variable from an instance of a component (FUNC-4).
 
 There are many ways to implement an object model in Python: dictionaries, named tuples, plain classes, `dataclasses`, etc. There are fewer options if the object model must be self-describing.
 
