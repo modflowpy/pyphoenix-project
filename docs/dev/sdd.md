@@ -42,7 +42,21 @@ Component types include:
 - **model**: a simulated hydrological process
 - **package**: a subcomponent of a model or simulation
 
-Certain subsets of packages have distinguishing characteristics. A **stress package** represents a forcing. A **basic package** contains only input variables applying statically to the entire simulation. An **advanced package** contains time-variable (i.e. transient) input data. In some cases, only a single instance of a package is expected &mdash; in other cases, arbitrarily many. Packages for which the latter is true are called **multi-packages**.
+Certain subsets of packages have distinguishing characteristics. A **stress package** represents a forcing. A **basic package** contains only input variables applying statically to the entire simulation. An **advanced package** contains time-variable (i.e. transient) input data. Usually only a single instance of a package is expected &mdash; when arbitrarily many are permitted, the package is called a **multi-package**. A **subpackage** is a concept only recognized by the product, not by MODFLOW 6 &mdash; a package linked to its parent not by a separate input file, but directly (i.e., subpackage data provided to the parent's initializer method). Subpackages may be attached to packages, models, or simulations.
+
+```mermaid
+classDiagram
+    Simulation *-- "1+" Package
+    Simulation *-- "1+" Model
+    Simulation *-- "1+" Variable
+    Simulation *-- "1+" Subpackage
+    Model *-- "1+" Package
+    Model *-- "1+" Subpackage
+    Model *-- "1+" Variable
+    Package *-- "1+" Subpackage
+    Package *-- "1+" Variable
+    Subpackage *-- "1+" Variable
+```
 
 Components are specified by **definition files**. A **definition** specifies input variables for a single MF6 component. A **block** is a named collection of input variables. A definition file specifies exactly one component. A component may contain zero or more blocks. Each block must contain at least one variable.
 
