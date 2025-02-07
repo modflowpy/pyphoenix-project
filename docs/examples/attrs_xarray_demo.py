@@ -20,7 +20,7 @@ def _to_path(value: Any) -> Optional[Path]:
     return Path(value) if value else None
 
 
-def _parse_shape(shape: str) -> tuple[str]:
+def _parse_dim_names(shape: str) -> tuple[str]:
     return tuple(
         [
             dim.strip()
@@ -33,21 +33,28 @@ def _parse_shape(shape: str) -> tuple[str]:
     )
 
 
-def _try_resolve_dim(data: DataTree, name: str) -> int | str:
+def _try_resolve_dim(data: Optional[DataTree], name: str) -> int | str:
     name = name.strip()
+    if data is None:
+        return name
     value = data.get(name, None)
     if value is not None:
         return value.item()
     root = data.root
     paths = [
-        "/tdis",
-        "/gwf/dis",
+        "tdis",
+        "dis",
+        "gwf/dis",
     ]
     for path in paths:
-        value = root.get(f"{path}/{name}", None)
-        if value is not None:
-            return value.item()
-    print(f"Failed to resolve dim '{name}' for '{data.name}'")
+        try:
+            key = f"{path}/{name}"
+            return root[key].item()
+        except:
+            try:
+                return root[path].dims[name]
+            except:
+                pass
     return name
 
 
@@ -55,7 +62,7 @@ def _try_resolve_shape(data: DataTree, attr: Attribute) -> tuple[int | str]:
     shape = attr.metadata.get("shape", None)
     if shape is None:
         raise ValueError(f"Array {attr.name} missing shape metadata")
-    shape = [_try_resolve_dim(data, dim) for dim in _parse_shape(shape)]
+    shape = [_try_resolve_dim(data, dim) for dim in _parse_dim_names(shape)]
     return shape
 
 
@@ -85,19 +92,18 @@ def _resolve_array(
     return _reshape_array(value, shape)
 
 
-def _bind_tree(data: DataTree):
-    if data.is_root:
-        return
-    data.parent = data.parent.assign({data.name: data})
-    if not data.parent.is_root:
-        _bind_tree(data.parent)
+def _bind_tree(self, parent):
+    parent.data = parent.data.assign({self.data.name: self.data})
+    self.data = parent.data[self.data.name]
+    grandparent = getattr(parent, "parent", None)
+    if grandparent is not None:
+        _bind_tree(parent, grandparent)
 
 
-def _init_tree(self, **kwargs):
+def _init_tree(self, parent=None, **kwargs):
     cls = type(self)
     cls_name = cls.__name__.lower()
     spec = fields_dict(cls)
-    parent = kwargs.get("parent", None)
     data = Dataset()
     dims = set()
 
@@ -106,13 +112,15 @@ def _init_tree(self, **kwargs):
         value = kwargs.get(name, attr.default)
         shape = attr.metadata.get("shape", None)
         if shape is not None:
-            dim_names = [
-                _try_resolve_dim(parent, dim) for dim in _parse_shape(shape)
+            dim_names = _parse_dim_names(shape)
+            shape = [
+                _try_resolve_dim(parent.data.root if parent else None, dim)
+                for dim in dim_names
             ]
             shape = tuple(
                 [
                     (dim if isinstance(dim, int) else kwargs.get(dim, dim))
-                    for dim in dim_names
+                    for dim in shape
                 ]
             )
             unresolved = [dim for dim in shape if not isinstance(dim, int)]
@@ -139,6 +147,9 @@ def _init_tree(self, **kwargs):
         data[name] = value
 
     self.data = DataTree(data, name=cls_name)
+    if parent is not None:
+        self.parent = parent
+        _bind_tree(self, parent)
 
 
 def _setattr(self, attr: Attribute, value: Any):
@@ -150,7 +161,7 @@ def _setattr(self, attr: Attribute, value: Any):
         return
     self.data[attr.name] = (
         (
-            _parse_shape(attr.metadata["shape"]),
+            _parse_dim_names(attr.metadata["shape"]),
             _resolve_array(self, attr, value),
         )
         if get_origin(attr.type) in [list, np.ndarray]
@@ -161,18 +172,17 @@ def _setattr(self, attr: Attribute, value: Any):
 
 def component(cls):
     spec = fields_dict(cls)
-    init = cls.__init__
-
-    def _init(self, *args, **kwargs):
-        init(self, *args, **kwargs)
-        _bind_tree(self.data)
 
     def _get(self, name):
         if name in spec:
-            return self.data[name]
+            value = self.data.get(name, None)
+            if value is not None:
+                return value
+            value = self.data.dims.get(name, None)
+            if value is not None:
+                return value
         return super(cls, self).__getattribute__(name)
 
-    cls.__init__ = _init
     cls.__getattribute__ = _get
     return cls
 
@@ -264,7 +274,7 @@ class Dis(Package):
     ):
         _init_tree(
             self,
-            parent=model.data,
+            parent=model,
             length_units=length_units,
             nogrb=nogrb,
             xorigin=xorigin,
@@ -308,7 +318,7 @@ class Ic(Package):
     ):
         _init_tree(
             self,
-            parent=model.data,
+            parent=model,
             strt=strt,
             export_array_ascii=export_array_ascii,
             export_array_netcdf=export_array_netcdf,
@@ -369,7 +379,7 @@ class Oc(Package):
     ):
         _init_tree(
             self,
-            parent=model.data,
+            parent=model,
             budget_file=budget_file,
             budget_csv_file=budget_csv_file,
             head_file=head_file,
@@ -437,7 +447,7 @@ class Npf(Package):
     ):
         _init_tree(
             self,
-            parent=model.data,
+            parent=model,
             icelltype=icelltype,
             k=k,
             k22=k22,
@@ -456,7 +466,7 @@ class Gwf(Model):
         self,
         sim=None,
     ):
-        _init_tree(self, parent=sim.data)
+        _init_tree(self, parent=sim)
 
 
 @component
@@ -490,7 +500,7 @@ class Tdis(Package):
     ):
         _init_tree(
             self,
-            parent=sim.data,
+            parent=sim,
             nper=nper,
             perioddata=perioddata,
             time_units=time_units,

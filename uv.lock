@@ -549,7 +549,6 @@ wheels = [
 
 [[package]]
 name = "flopy4"
-version = "0.0.1.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "attrs" },
