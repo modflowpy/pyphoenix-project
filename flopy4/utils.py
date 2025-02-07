@@ -1,4 +1,5 @@
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 
 def find_upper(s: str):
@@ -15,3 +16,7 @@ def flatten(l: Any):
             yield from flatten(x)
     else:
         yield l
+
+
+def to_path(value: Any) -> Optional[Path]:
+    return Path(value) if value else None
