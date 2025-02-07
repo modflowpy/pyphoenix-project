@@ -20,7 +20,7 @@ def _to_path(value: Any) -> Optional[Path]:
     return Path(value) if value else None
 
 
-def _parse_dim_names(shape: str) -> tuple[str]:
+def _parse_dim_names(shape: str) -> tuple[str, ...]:
     return tuple(
         [
             dim.strip()
