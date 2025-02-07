@@ -353,31 +353,31 @@ class MFArray(MFParam, NumPyArrayMixin):
                 values = mfa.raw
                 if mfa._how == MFArrayType.internal:
                     if len(values.shape) == 1:
-                        v = f"{PAD*3}"
+                        v = f"{PAD * 3}"
                         v += " ".join([str(x) for x in values])
                         v += "\n"
                     elif len(values.shape) == 2:
-                        v = f"\n{PAD*3}"
+                        v = f"\n{PAD * 3}"
                         v = v.join(" ".join(str(x) for x in y) for y in values)
                     elif len(values.shape) == 3:
-                        v = f"{PAD*3}"
+                        v = f"{PAD * 3}"
                         for i in range(len(values)):
                             v += " ".join(
-                                f"\n{PAD*3}" + " ".join(str(x) for x in y)
+                                f"\n{PAD * 3}" + " ".join(str(x) for x in y)
                                 for y in values[i]
                             )
-                    lines = f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)}"
+                    lines = f"{PAD * 2}" + f"{MFArrayType.to_string(mfa._how)}"
                     if mfa._factor:
                         lines += f" FACTOR {mfa._factor}"
-                    lines += f"\n{PAD*3}" + f"{v}\n"
+                    lines += f"\n{PAD * 3}" + f"{v}\n"
                 elif mfa._how == MFArrayType.external:
                     lines = (
-                        f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)} "
+                        f"{PAD * 2}" + f"{MFArrayType.to_string(mfa._how)} "
                         f"{mfa._path}\n"
                     )
                 elif mfa._how == MFArrayType.constant:
                     lines = (
-                        f"{PAD*2}" + f"{MFArrayType.to_string(mfa._how)} "
+                        f"{PAD * 2}" + f"{MFArrayType.to_string(mfa._how)} "
                         f"{str(mfa._value)}\n"
                     )
                 f.write(lines)
@@ -385,21 +385,21 @@ class MFArray(MFParam, NumPyArrayMixin):
             values = self.raw
             if self._how == MFArrayType.internal:
                 if len(values.shape) == 1:
-                    v = f"\n{PAD*3}"
+                    v = f"\n{PAD * 3}"
                     v += " ".join([str(x) for x in values])
                 elif len(values.shape) == 2:
-                    v = f"\n{PAD*3}"
+                    v = f"\n{PAD * 3}"
                     v = v.join(" ".join(str(x) for x in y) for y in values)
                 elif len(values.shape) == 3:
-                    v = f"{PAD*3}"
+                    v = f"{PAD * 3}"
                     for i in range(len(values)):
                         v += " ".join(
-                            f"\n{PAD*3}" + " ".join(str(x) for x in y)
+                            f"\n{PAD * 3}" + " ".join(str(x) for x in y)
                             for y in values[i]
                         )
                 lines = (
                     f"{PAD}" + f"{self.name.upper()}\n"
-                    f"{PAD*2}" + f"{MFArrayType.to_string(self._how)}"
+                    f"{PAD * 2}" + f"{MFArrayType.to_string(self._how)}"
                 )
                 if self._factor:
                     lines += f" FACTOR {self._factor}"
@@ -407,13 +407,13 @@ class MFArray(MFParam, NumPyArrayMixin):
             elif self._how == MFArrayType.external:
                 lines = (
                     f"{PAD}" + f"{self.name.upper()}\n"
-                    f"{PAD*2}"
+                    f"{PAD * 2}"
                     + f"{MFArrayType.to_string(self._how)} {self._path}\n"
                 )
             elif self._how == MFArrayType.constant:
                 lines = (
                     f"{PAD}" + f"{self.name.upper()}\n"
-                    f"{PAD*2}" + f"{MFArrayType.to_string(self._how)} "
+                    f"{PAD * 2}" + f"{MFArrayType.to_string(self._how)} "
                     f"{str(self._value)}\n"
                 )
             f.write(lines)

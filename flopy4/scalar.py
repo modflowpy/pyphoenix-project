@@ -134,9 +134,7 @@ class MFKeyword(MFScalar[bool]):
     def write(self, f, **kwargs):
         newline = kwargs.pop("newline", True)
         if self.value:
-            f.write(
-                f"{PAD}" f"{self.name.upper()}" + ("\n" if newline else "")
-            )
+            f.write(f"{PAD}{self.name.upper()}" + ("\n" if newline else ""))
 
 
 class MFInteger(MFScalar[int]):

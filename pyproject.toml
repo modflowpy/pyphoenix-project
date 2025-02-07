@@ -115,13 +115,13 @@ macos = "12.0"
 flopy4 = { path = ".", editable = true }
 
 [tool.pixi.feature.py311.dependencies]
-python = "3.11"
+python = "3.11.*"
 
 [tool.pixi.feature.py312.dependencies]
-python = "3.12"
+python = "3.12.*"
 
 [tool.pixi.feature.py313.dependencies]
-python = "3.13"
+python = "3.13.*"
 
 [tool.pixi.environments]
 test311 = { features = ["py311", "test"], solve-group = "py311" }
