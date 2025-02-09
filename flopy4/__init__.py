@@ -95,7 +95,7 @@ def _bind_tree(self, parent):
         _bind_tree(parent, grandparent)
 
 
-def init_tree(self, parent=None, **kwargs):
+def init_tree(self, parent=None, children=None, **kwargs):
     """
     Initialize a data tree for a component instance.
     """
@@ -144,7 +144,12 @@ def init_tree(self, parent=None, **kwargs):
         value = kwargs.get(name, attr.default)
         data[name] = value
 
-    self.data = DataTree(data, name=cls_name)
+    children = children or {}
+    self.data = DataTree(
+        data,
+        name=cls_name,
+        children={n: c for n, c in children.items() if c is not None},
+    )
     if parent is not None:
         self.parent = parent
         _bind_tree(self, parent)

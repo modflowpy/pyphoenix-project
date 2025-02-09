@@ -8,7 +8,16 @@ from attr import Factory, define, field
 
 from flopy4 import component, init_tree, setattribute
 
-__all__ = ["Component", "Package", "Model", "Sim", "Simulation"]
+__all__ = [
+    "Component",
+    "Package",
+    "Model",
+    "Simulation",
+    "Sim",
+    "COMPONENTS",
+]
+
+COMPONENTS = {}  # component registry
 
 
 class Component(ABC):
@@ -19,6 +28,10 @@ class Component(ABC):
         self.name = name
         self.path = path
 
+    @classmethod
+    def __attrs_init_subclass__(cls):
+        COMPONENTS[cls.__name__.lower()] = cls
+
 
 class Package(Component):
     def __init__(self, name=None, path=None):
@@ -28,14 +41,6 @@ class Package(Component):
 class Model(Component):
     def __init__(self, name=None, path=None):
         super().__init__(name, path)
-
-
-class Sim(Component):
-    exe: Path
-
-    def __init__(self, name=None, path=None, exe=None):
-        super().__init__(name, path)
-        self.exe = exe or which("mf6")
 
 
 @component
@@ -80,9 +85,66 @@ class Tdis(Package):
         )
 
 
-@component
-@define(init=False, slots=False, on_setattr=setattribute)
-class Simulation(Sim):
+class Solution(Package):
+    def __init__(self, name=None, path=None):
+        super().__init__(name, path)
+
+
+@define(init=False, slots=False)
+class Exchange(Package):
+    exgtype: type = field()
+    exgfile: Path = field()
+    exgmnamea: Optional[str] = field(default=None)
+    exgmnameb: Optional[str] = field(default=None)
+
+    def __init__(
+        self,
+        name=None,
+        path=None,
+        mnamea=None,
+        mnameb=None,
+    ):
+        super().__init__(name, path)
+        self.exgtype = type(self)
+        self.exgfile = path
+        self.exgmnamea = mnamea
+        self.exgmnameb = mnameb
+
+
+class Simulation(Component):
+    exe: Path
+
     def __init__(self, name=None, path=None, exe=None):
+        super().__init__(name, path)
+        self.exe = exe or which("mf6")
+
+
+@component
+@define(init=False, slots=False)
+class Sim(Simulation):
+    # tdis: Tdis = field(metadata={"block": "timing"})
+    # models: dict[str, Model] = field(metadata={"block": "models"})
+    # exchanges: dict[str, Exchange] = field(metadata={"block": "exchanges"})
+    # solutions: dict[str, Solution] = field(metadata={"block": "solutions"})
+
+    def __init__(
+        self,
+        name=None,
+        path=None,
+        exe=None,
+        tdis=None,
+        models=None,
+        exchanges=None,
+        solutions=None,
+    ):
         super().__init__(name, path, exe)
-        init_tree(self)
+        # TODO pull init_tree(self) call into @component definition
+        init_tree(
+            self,
+            # children={
+            #     "tdis": tdis,
+            #     "models": models,
+            #     "exchanges": exchanges,
+            #     "solutions": solutions,
+            # },
+        )

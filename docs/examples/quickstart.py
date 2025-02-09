@@ -1,9 +1,9 @@
-from flopy4.mf6 import Simulation, Tdis
+from flopy4.mf6 import Sim, Tdis
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
 ws = "./mymodel"
 name = "mymodel"
-sim = Simulation(name=name, path=ws, exe="mf6")
+sim = Sim(name=name, path=ws, exe="mf6")
 tdis = Tdis(sim)
 gwf = Gwf(sim, name=name, save_flows=True)
 dis = Dis(gwf, nrow=10, ncol=10)
