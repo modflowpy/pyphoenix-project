@@ -1,3 +1,6 @@
+import numpy as np
+from xarray import DataTree
+
 from flopy4.mf6 import Simulation, Tdis
 from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
 
@@ -13,4 +16,15 @@ def test_components():
     npf = Npf(model=gwf, icelltype=0, k=1.0)
 
     # View the data tree.
-    sim.data
+    # sim.data
+    assert isinstance(sim.data, DataTree)
+    assert "tdis" in sim.data.children
+    assert "gwf" in sim.data.children
+    assert "dis" in sim.data.children["gwf"].children
+    assert "ic" in sim.data.children["gwf"].children
+    assert "oc" in sim.data.children["gwf"].children
+    assert "npf" in sim.data.children["gwf"].children
+    assert "perioddata" in sim.data.children["tdis"]
+    assert np.array_equal(
+        sim.data.children["gwf"].children["npf"].k, np.ones((4))
+    )
