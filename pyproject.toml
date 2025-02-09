@@ -35,6 +35,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "attrs",                                # todo: bounds?
+    "beartype",
     "cattrs",                               # todo: bounds?
     "flopy>=3.7.0",
     "Jinja2>=3.0",
@@ -60,7 +61,6 @@ test = [
     "jupyter",
     "jupytext",
     "modflow-devtools",
-    "mypy",
     "pooch>=1.8",
     "pytest!=8.1.0",
     "pytest-dotenv",

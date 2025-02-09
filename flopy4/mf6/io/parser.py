@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from os import linesep
-from typing import Iterable
 
 from lark import Lark
 

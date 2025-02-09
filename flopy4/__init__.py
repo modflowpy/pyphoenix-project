@@ -2,8 +2,11 @@ from typing import Any, Optional, get_origin
 
 import numpy as np
 from attr import Attribute, fields_dict
+from beartype.claw import beartype_this_package
 from numpy.typing import ArrayLike, NDArray
 from xarray import Dataset, DataTree
+
+beartype_this_package()
 
 
 def _parse_dim_names(shape: str) -> tuple[str, ...]:
