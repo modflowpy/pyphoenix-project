@@ -11,19 +11,29 @@ ic = Ic(gwf)
 npf = Npf(gwf, save_specific_discharge=True)
 chd = Chd(
     gwf,
-    stress_period_data=[
-        # TODO? accept raw tuples for
-        # parity with flopy3 example?
-        Chd.StressPeriodData(cellid=(0, 0, 0), head=1.0),
-        Chd.StressPeriodData(cellid=(0, 9, 9), head=1.0),
-    ],
+    # ==> raw tuples as per flopy3
+    stress_period_data=[[(0, 0, 0), 1.], [(0, 9, 9), 0.]]
+    # ==> dictionary style
+    # stress_period_data={"*": {(0, 9, 9): {"head": 1.0, "another_var": 2.0}}},
+    # ==> typed records
+    # stress_period_data=[
+    #     Chd.StressPeriodData(cellid=(0, 0, 0), head=1.0),
+    #     Chd.StressPeriodData(cellid=(0, 9, 9), head=1.0),
+    #     Chd.StressPeriodData(cellid=(0, 9, 9), another_var=2.0),
+    # ],
 )
 
-# TODO? xarray alternative
-# chd.data["stress_period_data"].loc(dict(i=0, j=0, k=0)) = 1.
-# chd.data["stress_period_data"].loc(dict(i=0, j=9, k=9)) = 0.
+# ==> xarray alternatives.. TODO test this
+# multiple options: 
+# == 1) separate column for each variable, but we drop "stress_period_data" implicitly
+# chd.data["head"].loc(dict(i=0, j=0, k=0)) = 1.
+# chd.data["head"].loc(dict(i=0, j=9, k=9)) = 0.
+# == 2) categorical label for variable access? what is the dtype in this case?
+# chd.data["stress_period_data"].loc(dict(i=0, j=0, k=0, var="head")) = 1.
+# == 3) object dtype
+# chd.data["stress_period_data"].loc(dict(i=0, j=0, k=0)) = StressPeriodData(head=1.)
 
-# TODO? sparse array alternative
+# ==> sparse array alternative
 # spd = sparse.COO([[0,0], [0,9], [0,9]], [1., 0.])
 # chd = flopy4.mf6.ModflowGwfchd(gwf, stress_period_data=spd)
 
@@ -33,8 +43,9 @@ oc = Oc(
     gwf,
     budget_filerecord=budget_file,
     head_filerecord=head_file,
+    # existing flopy3 pattern
     perioddata=[("HEAD", "ALL"), ("BUDGET", "ALL")],
-    # TODO: format we want to support
+    # TODO: dictionary style
     # save={"head": {0: "ALL"}, "budget": {0: "ALL"}},
     # print={"budget": {0: np.ones((tdis.nstp[0]))}, "budget": {0, "ALL"}},
 )
