@@ -18,7 +18,7 @@ def test_sim():
     gwf = Gwf(sim=sim)
     dis = Dis(model=gwf)
     ic = Ic(model=gwf, strt=1.0)
-    oc = Oc(model=gwf, perioddata=[Oc.Steps()])
+    oc = Oc(model=gwf, perioddata=[Oc.Steps_("all")])
     npf = Npf(model=gwf, icelltype=0, k=1.0)
 
     assert isinstance(sim.data, DataTree)

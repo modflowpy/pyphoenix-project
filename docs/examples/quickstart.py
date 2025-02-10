@@ -1,3 +1,31 @@
+"""
+We reproduce the FloPy README example.
+
+We ask the question how, in general, to
+provide transient data to components.
+
+In particular we consider CHD and OC.
+
+Transient (i.e. stress period) data are
+the worst-case limit of the data model
+re: nesting depth and composite types.
+Everything else is easier to represent.
+
+An important consideration is to what
+degree FloPy should comport with the
+existing MF6 specification and type
+system defined in it, where it can
+"interpret" the spec in a way more
+natural for Python, and where it may
+instead be better to update the spec.
+
+We explore a few options, some which
+map directly to the spec as it exists,
+some which take some liberties with it,
+and some which would probably need DFN
+changes to support.
+"""
+
 from flopy4.mf6 import Sim, Tdis
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
@@ -9,46 +37,84 @@ gwf = Gwf(sim, name=name, save_flows=True)
 dis = Dis(gwf, nrow=10, ncol=10)
 ic = Ic(gwf)
 npf = Npf(gwf, save_specific_discharge=True)
+
+# CHD. first, nothing but builtins.
 chd = Chd(
     gwf,
-    # ==> raw tuples as per flopy3
-    stress_period_data=[[(0, 0, 0), 1.], [(0, 9, 9), 0.]]
-    # ==> dictionary style
-    # stress_period_data={"*": {(0, 9, 9): {"head": 1.0, "another_var": 2.0}}},
-    # ==> typed records
+    # 1) tuples (like flopy3)
+    stress_period_data=[[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]],
+    #
+    # (a tangential idea)
+    # "*" could mean "apply to all stress periods"?
+    # this is the default anyway if only one period
+    # is specified. "*" is just a bit more explicit
+    # stress_period_data={
+    #     "*": [[(0, 0, 0), 1.], [(0, 9, 9), 0.]]
+    # }
+    #
+    # 2) dictionaries
     # stress_period_data=[
-    #     Chd.StressPeriodData(cellid=(0, 0, 0), head=1.0),
-    #     Chd.StressPeriodData(cellid=(0, 9, 9), head=1.0),
-    #     Chd.StressPeriodData(cellid=(0, 9, 9), another_var=2.0),
+    #     {(0, 0, 0): {"head": 1.}, (0, 9, 9): {"head": 0.}}
+    # ]
+    #
+    # 3) typed records
+    # stress_period_data=[
+    #     Chd.Period(cellid=(0, 0, 0), head=1.),
+    #     Chd.Period(cellid=(0, 9, 9), head=0.),
     # ],
 )
 
-# ==> xarray alternatives.. TODO test this
-# multiple options: 
-# == 1) separate column for each variable, but we drop "stress_period_data" implicitly
-# chd.data["head"].loc(dict(i=0, j=0, k=0)) = 1.
-# chd.data["head"].loc(dict(i=0, j=9, k=9)) = 0.
-# == 2) categorical label for variable access? what is the dtype in this case?
-# chd.data["stress_period_data"].loc(dict(i=0, j=0, k=0, var="head")) = 1.
-# == 3) object dtype
-# chd.data["stress_period_data"].loc(dict(i=0, j=0, k=0)) = StressPeriodData(head=1.)
-
-# ==> sparse array alternative
+# alternatively, CHD with duck arrays.
+#
+# 4) xarray, scalar dtypes
+# chd.data["head"].loc(dict(k=0, i=0, j=0)) = 1.
+# chd.data["head"].loc(dict(k=0, i=9, j=9)) = 0.
+#
+# 5) xarray, object dtype
+# chd.data["stress_period_data"].loc(dict(k=0, i=0, j=0)) = Chd.Period(head=1.)
+# chd.data["stress_period_data"].loc(dict(k=0, i=9, j=9)) = Chd.Period(head=0.)
+#
+# 5a) xarray, object dtype, labeled vars (does this work? test it)
+# chd.data["stress_period_data"].loc(dict(k=0, i=0, j=0, var="head")) = 1.
+# chd.data["stress_period_data"].loc(dict(k=0, i=9, j=9, var="head")) = 0.
+#
+# 6) sparse array
 # spd = sparse.COO([[0,0], [0,9], [0,9]], [1., 0.])
-# chd = flopy4.mf6.ModflowGwfchd(gwf, stress_period_data=spd)
+# chd = Chd(gwf, stress_period_data=spd)
 
+# OC. first with builtins
 budget_file = name + ".bud"
 head_file = name + ".hds"
 oc = Oc(
     gwf,
     budget_filerecord=budget_file,
     head_filerecord=head_file,
-    # existing flopy3 pattern
+    # 1) tuples (like flopy3)
     perioddata=[("HEAD", "ALL"), ("BUDGET", "ALL")],
-    # TODO: dictionary style
-    # save={"head": {0: "ALL"}, "budget": {0: "ALL"}},
-    # print={"budget": {0: np.ones((tdis.nstp[0]))}, "budget": {0, "ALL"}},
+    # 2) typed records
+    # save=[
+    #     Oc.Period(rtype="head", steps="all"),
+    #     Oc.Period(rtype="budget", steps="all"),
+    # ],
+    # 3a) dicts, {period: {var: steps}}
+    # save={"*": {"head": "all", "budget": "all"}},
+    # 3b) dicts, {var: {period: steps}}
+    # save={"head": {"*": "all"}, "budget": {"*": "all"}},
 )
+
+# OC with duck arrays.
+#
+# 4) xarray, scalar dtypes. this is how imod-python does it:
+# https://deltares.github.io/imod-python/api/generated/mf6/imod.mf6.OutputControl.html
+# oc.data["save_head"] = "all"
+# oc.data["save_budget"] = "all"
+# limitation: no support for 'steps a b c ...' syntax due to ragged nature.
+#
+# 5) xarray, object dtypes
+# oc.data["save_head"] = Oc.Steps_("all")
+# oc.data["save_budget"] = Oc.Steps_("all")
+# this supports arbitrary step selections
+# oc.data["save_budget"] = Oc.Steps_("steps", 1)
 
 # TODO? mock some output
 # sim.write_simulation()

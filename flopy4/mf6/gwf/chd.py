@@ -13,7 +13,7 @@ class Chd(Package):
     multi = True
 
     @define(slots=False)
-    class StressPeriodData:
+    class Period:
         cellid: tuple[int, ...] = field()
         head: float = field()
         aux: Optional[float] = field(default=None)
@@ -39,7 +39,7 @@ class Chd(Package):
     maxbound: Optional[int] = field(
         default=None, metadata={"block": "dimensions"}
     )
-    stress_period_data: Optional[list[list[StressPeriodData]]] = field(
+    stress_period_data: Optional[list[Period]] = field(
         default=None, metadata={"block": "period"}
     )
 

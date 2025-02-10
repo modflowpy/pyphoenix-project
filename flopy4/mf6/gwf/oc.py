@@ -7,6 +7,10 @@ from flopy4 import component, init_tree, setattribute
 from flopy4.mf6 import Package
 from flopy4.utils import to_path
 
+Steps = (
+    Literal["all"] | Literal["first"] | Literal["last"] | tuple[str | int, ...]
+)
+
 
 @component
 @define(init=False, slots=False, on_setattr=setattribute)
@@ -21,12 +25,13 @@ class Oc(Package):
         )
 
     @define(slots=False)
-    class Steps:
-        first: Optional[Literal["first"]] = field(default="first")
-        last: Optional[Literal["last"]] = field(default=None)
-        all: Optional[Literal["all"]] = field(default=None)
-        frequency: Optional[int] = field(default=None)
-        steps: Optional[list[int]] = field(default=None)
+    class Period:
+        rtype: str = field()
+        steps: Steps = field()
+
+    @define
+    class Steps_:
+        steps: Steps = field()
 
     budget_file: Optional[Path] = field(
         converter=to_path,
@@ -43,10 +48,14 @@ class Oc(Package):
         default=None,
         metadata={"block": "options"},
     )
-    printhead: Optional[Format] = field(
+    format: Optional[Format] = field(
         default=None, init=False, metadata={"block": "options"}
     )
-    perioddata: list[Steps] = field(
+    save: Optional[list[Steps]] = field(
+        default=Factory(list),
+        metadata={"block": "perioddata", "shape": "(nper,)"},
+    )
+    print: Optional[list[Steps]] = field(
         default=Factory(list),
         metadata={"block": "perioddata", "shape": "(nper,)"},
     )
@@ -59,7 +68,7 @@ class Oc(Package):
         budget_file=None,
         budget_csv_file=None,
         head_file=None,
-        printhead=None,
+        format=None,
         perioddata=None,
     ):
         super().__init__(name, path)
@@ -69,6 +78,6 @@ class Oc(Package):
             budget_file=budget_file,
             budget_csv_file=budget_csv_file,
             head_file=head_file,
-            printhead=printhead,
+            format=format,
             perioddata=perioddata,
         )
