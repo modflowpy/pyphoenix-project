@@ -55,7 +55,7 @@ class Tdis(Package):
     nper: int = field(default=1, metadata={"block": "dimensions"})
     perioddata: list[PeriodData] = field(
         default=Factory(list),
-        metadata={"block": "perioddata", "shape": "(nper)"},
+        metadata={"block": "perioddata", "shape": ("nper",)},
     )
     time_units: Optional[str] = field(
         default=None, metadata={"block": "options"}

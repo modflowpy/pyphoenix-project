@@ -53,11 +53,11 @@ class Oc(Package):
     )
     save: Optional[list[Steps]] = field(
         default=Factory(list),
-        metadata={"block": "perioddata", "shape": "(nper,)"},
+        metadata={"block": "perioddata", "shape": ("nper",)},
     )
     print: Optional[list[Steps]] = field(
         default=Factory(list),
-        metadata={"block": "perioddata", "shape": "(nper,)"},
+        metadata={"block": "perioddata", "shape": ("nper",)},
     )
 
     def __init__(

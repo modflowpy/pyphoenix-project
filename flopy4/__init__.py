@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Optional, get_origin
 
 import numpy as np
@@ -6,30 +7,24 @@ from beartype.claw import beartype_this_package
 from numpy.typing import ArrayLike, NDArray
 from xarray import Dataset, DataTree
 
+from flopy4.utils import reshape_array
+
 beartype_this_package()
 
 
-def _parse_dim_names(shape: str) -> tuple[str, ...]:
-    return tuple(
-        [
-            dim.strip()
-            for dim in shape.strip()
-            .replace("(", "")
-            .replace(")", "")
-            .split(",")
-            if any(dim)
-        ]
-    )
+Scalar = bool | int | float | str | Path
 
 
-def _try_resolve_dim(data: Optional[DataTree], name: str) -> int | str:
+def resolve(
+    tree: Optional[DataTree], name: str, default=None
+) -> Optional[Scalar]:
     name = name.strip()
-    if data is None:
-        return name
-    value = data.get(name, None)
+    if tree is None:
+        return default
+    value = tree.get(name, None)
     if value is not None:
         return value.item()
-    root = data.root
+    root = tree.root
     paths = [
         "tdis",
         "dis",
@@ -43,61 +38,72 @@ def _try_resolve_dim(data: Optional[DataTree], name: str) -> int | str:
             try:
                 return root[path].dims[name]
             except:
-                pass
-    return name
+                try:
+                    return root[path].attrs[name]
+                except:
+                    pass
+    return default
 
 
-def _try_resolve_shape(data: DataTree, attr: Attribute) -> tuple[int | str]:
+def resolve_array(
+    self: Any,
+    attr: Attribute,
+    value: Optional[ArrayLike] = None,
+    tree: DataTree = None,
+    **kwargs,
+) -> Optional[NDArray]:
+    """
+    Resolve an array-like value to the given variable's expected shape.
+    If the value is a collection, check if the shape matches. If scalar,
+    broadcast it to the expected shape.
+    """
+    if value is None:
+        value = attr.default
     shape = attr.metadata.get("shape", None)
     if shape is None:
-        raise ValueError(f"Array {attr.name} missing shape metadata")
-    shape = [_try_resolve_dim(data, dim) for dim in _parse_dim_names(shape)]
-    return shape
-
-
-def _reshape_array(value: ArrayLike, shape: tuple[int]) -> Optional[NDArray]:
-    value = np.array(value)
-    if value.shape == ():
-        return np.full(shape, value.item())
-    elif value.shape != shape:
+        raise ValueError(f"Array variable {attr.name} missing shape metadata")
+    dim_names = shape
+    shape = [resolve(tree, name=dim, default=dim) for dim in shape]
+    shape = tuple(
+        [
+            (dim if isinstance(dim, int) else kwargs.get(dim, dim))
+            for dim in shape
+        ]
+    )
+    missing = [dim for dim in shape if not isinstance(dim, int)]
+    if any(missing):
         raise ValueError(
-            f"Shape mismatch, got {value.shape}, expected {shape}"
+            f"Class '{type(self).__name__}' "
+            f"failed to resolve dims: {', '.join(missing)}"
+        )
+    value = reshape_array(value, shape)
+    if value.shape == ():
+        raise ValueError(
+            f"Failed to resolve array '{attr.name}', "
+            f"are you sure these dimensions exist? "
+            f"{','.join(dim_names)}"
         )
     return value
 
 
-def resolve_array(
-    self, attr: Attribute, value: Optional[ArrayLike]
-) -> Optional[NDArray]:
+def bind_tree(self: Any, parent: Any):
     """
-    Resolve an array-like value to a numpy array with the correct shape.
-    The shape is determined by the shape metadata of the attribute, and
-    the dimensions are resolved by looking up the corresponding values
-    in the data tree.
+    Bind a child component to a parent component, linking their data trees.
     """
-    if value is None:
-        return None
-    shape = _try_resolve_shape(self.data, attr)
-    unresolved = [dim for dim in shape if not isinstance(dim, int)]
-    if any(unresolved):
-        raise ValueError(
-            f"Class '{type(self).__name__}' "
-            f"failed to resolve dims: {', '.join(unresolved)}"
-        )
-    return _reshape_array(value, shape)
-
-
-def _bind_tree(self, parent):
     parent.data = parent.data.assign({self.data.name: self.data})
     self.data = parent.data[self.data.name]
     grandparent = getattr(parent, "parent", None)
     if grandparent is not None:
-        _bind_tree(parent, grandparent)
+        bind_tree(parent, grandparent)
 
 
 def init_tree(self, parent=None, children=None, **kwargs):
     """
-    Initialize a data tree for a component instance.
+    Initialize a data tree for a component.
+
+    TODO: no need to pass kwargs in explicitly? just run
+    the attrs-generated initializer method then move the
+    contents of `__dict__` into the xarray store here...
     """
     cls = type(self)
     cls_name = cls.__name__.lower()
@@ -105,58 +111,47 @@ def init_tree(self, parent=None, children=None, **kwargs):
     data = Dataset()
     dims = set()
 
-    # add arrays
+    # set arrays, then scalars. filter array dims out
+    # on the first pass thru, while we set up arrays,
+    # so they're not duplicated as both vars and dims.
     for name, attr in spec.items():
-        value = kwargs.get(name, attr.default)
         shape = attr.metadata.get("shape", None)
-        if shape is not None:
-            dim_names = _parse_dim_names(shape)
-            shape = [
-                _try_resolve_dim(parent.data.root if parent else None, dim)
-                for dim in dim_names
-            ]
-            shape = tuple(
-                [
-                    (dim if isinstance(dim, int) else kwargs.get(dim, dim))
-                    for dim in shape
-                ]
-            )
-            unresolved = [dim for dim in shape if not isinstance(dim, int)]
-            if any(unresolved):
-                raise ValueError(
-                    f"Class '{cls_name}' "
-                    f"failed to resolve dims: {', '.join(unresolved)}"
-                )
-            dims.update(dim_names)
-            value = _reshape_array(value, shape)
-            if value.shape == ():
-                raise ValueError(
-                    f"Failed to resolve array '{name}', "
-                    f"make sure these dimensions exist: "
-                    f"{','.join(dims)}"
-                )
-            data[name] = (dim_names, value)
-
-    # add scalars
+        if shape is None:
+            continue
+        dims.update(shape)
+        value = resolve_array(
+            self,
+            attr,
+            value=None,
+            tree=parent.data.root if parent else None,
+            **kwargs,
+        )
+        data[name] = (shape, value)
     for name, value in spec.items():
         if name in data or name in dims:
             continue
         value = kwargs.get(name, attr.default)
         data[name] = value
 
-    children = children or {}
+    # create this node
     self.data = DataTree(
         data,
         name=cls_name,
-        children={n: c for n, c in children.items() if c is not None},
+        children={n: c for n, c in (children or {}).items() if c is not None},
     )
+
+    # bind to parent tree
     if parent is not None:
         self.parent = parent
-        _bind_tree(self, parent)
+        bind_tree(self, parent)
 
 
 def getattribute(self, name: str) -> Any:
-    """Override `__getattribute__` to proxy attribute access."""
+    """
+    Proxy `attrs` attribute access, returning values from
+    an `xarray.DataTree` in `self.data`. Meant to override
+    an `attrs`-based class' `__getattribute__` method.
+    """
     cls = type(self)
     spec = fields_dict(cls)
     if name in spec:
@@ -173,31 +168,40 @@ def getattribute(self, name: str) -> Any:
 
 
 def setattribute(self, attr: Attribute, value: Any):
-    """Hook for setting attribute values."""
+    """
+    Intercept values sent to an `attrs` attribute, and
+    set corresponding variables in an `xarray.DataTree`
+    in `self.data`. Meant to be called by `on_setattr`.
+    """
     cls = type(self)
     spec = fields_dict(cls)
     if attr.name not in spec:
         raise AttributeError(f"{cls.__name__} has no attribute {attr.name}")
     if value is None:
         return
-    self.data[attr.name] = (
-        (
-            _parse_dim_names(attr.metadata["shape"]),
-            resolve_array(self, attr, value),
-        )
-        if get_origin(attr.type) in [list, np.ndarray]
-        else value
-    )
+    if get_origin(attr.type) in [list, np.ndarray]:
+        shape = attr.metadata["shape"]
+        value = resolve_array(self, attr, value)
+        self.data[attr.name] = (shape, value)
+    else:
+        self.data[attr.name] = value
+
     # TODO run validation?
 
 
 def component(cls):
     """
-    Decorator for component classes.
+    Attach a data tree to an `attrs` class instance, and use
+    the data tree for attribute storage: intercept gets/sets
+    such that the class continues to act like normal `attrs`
+    classes, but attributes are proxied into the data tree.
 
-    This decorator adds a data tree to the class instance, on
-    top of the existing attributes. The data tree is used to
-    store both scalars and arrays. Attributes proxy the tree.
+    TODO: wrap `__init__` and call `init_tree` here, instead
+    of making decorated classes do it, and just shift fields
+    from `__dict__` into the data tree, deleting them after.
+
+    The `attrs` class must have `slots=False` for it to work!
     """
+
     cls.__getattribute__ = getattribute
     return cls

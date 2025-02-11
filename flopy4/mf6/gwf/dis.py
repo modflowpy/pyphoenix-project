@@ -38,27 +38,27 @@ class Dis(Package):
         # and check it, handling both conversion/validation
         converter=resolve_array,
         default=1.0,
-        metadata={"block": "griddata", "shape": "(ncol,)"},
+        metadata={"block": "griddata", "shape": ("ncol",)},
     )
     delc: NDArray[np.floating] = field(
         converter=resolve_array,
         default=1.0,
-        metadata={"block": "griddata", "shape": "(nrow,)"},
+        metadata={"block": "griddata", "shape": ("nrow",)},
     )
     top: NDArray[np.floating] = field(
         converter=resolve_array,
         default=1.0,
-        metadata={"block": "griddata", "shape": "(ncol, nrow)"},
+        metadata={"block": "griddata", "shape": ("ncol", "nrow")},
     )
     botm: NDArray[np.floating] = field(
         converter=resolve_array,
         default=0.0,
-        metadata={"block": "griddata", "shape": "(ncol, nrow, nlay)"},
+        metadata={"block": "griddata", "shape": ("ncol", "nrow", "nlay")},
     )
     idomain: Optional[NDArray[np.integer]] = field(
         converter=resolve_array,
         default=1,
-        metadata={"block": "griddata", "shape": "(ncol, nrow, nlay)"},
+        metadata={"block": "griddata", "shape": ("ncol", "nrow", "nlay")},
     )
     nodes: Optional[int] = field(default=None)
 

@@ -12,7 +12,7 @@ class Ic(Package):
     strt: NDArray[np.floating] = field(
         converter=resolve_array,
         default=1.0,
-        metadata={"block": "packagedata", "shape": "(nodes)"},
+        metadata={"block": "packagedata", "shape": ("nodes",)},
     )
     export_array_ascii: bool = field(
         default=False, metadata={"block": "options"}

@@ -13,7 +13,7 @@ class Chd(Package):
     multi = True
 
     @define(slots=False)
-    class Period:
+    class StressPeriodData:
         cellid: tuple[int, ...] = field()
         head: float = field()
         aux: Optional[float] = field(default=None)
@@ -39,9 +39,32 @@ class Chd(Package):
     maxbound: Optional[int] = field(
         default=None, metadata={"block": "dimensions"}
     )
-    stress_period_data: Optional[list[Period]] = field(
-        default=None, metadata={"block": "period"}
+    stress_period_data: Optional[list[list[StressPeriodData]]] = field(
+        default=None,
+        metadata={"block": "period", "shape": ("nper")},
+        # converter=lambda d: structure_spd(d),
     )
+
+    # def structure_spd(d) -> Optional[list[list[StressPeriodData]]]:
+    #     if d is None:
+    #         return None
+    #     if instance(d, dict):
+    #         pass
+    #     if isinstance(d, list):
+
+    #         def _structure_period(l):
+    #             return [structure_attrs_fromtuple(t) for t in l]
+
+    #         a = np.array(d)
+    #         match a.ndim:
+    #             case 1:
+    #                 period = _structure_period(a)
+    #             case 2:
+    #                 pass
+    #             case _:
+    #                 raise ValueError(
+    #                     "CHD stress period data must be 1D or 2D"
+    #                 )
 
     def __init__(
         self,

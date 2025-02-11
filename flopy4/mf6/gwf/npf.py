@@ -67,42 +67,42 @@ class Npf(Package):
     icelltype: NDArray[np.integer] = field(
         converter=resolve_array,
         default=0,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     k: NDArray[np.floating] = field(
         converter=resolve_array,
         default=1.0,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     k22: Optional[NDArray[np.floating]] = field(
         converter=resolve_array,
         default=None,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     k33: Optional[NDArray[np.floating]] = field(
         converter=resolve_array,
         default=None,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     angle1: Optional[NDArray[np.floating]] = field(
         converter=resolve_array,
         default=None,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     angle2: Optional[NDArray[np.floating]] = field(
         converter=resolve_array,
         default=None,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     angle3: Optional[NDArray[np.floating]] = field(
         converter=resolve_array,
         default=None,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
     wetdry: Optional[NDArray[np.floating]] = field(
         converter=resolve_array,
         default=None,
-        metadata={"block": "griddata", "shape": "(nodes)"},
+        metadata={"block": "griddata", "shape": ("nodes",)},
     )
 
     def __init__(

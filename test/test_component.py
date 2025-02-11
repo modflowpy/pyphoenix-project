@@ -22,7 +22,7 @@ def test_sim():
     npf = Npf(model=gwf, icelltype=0, k=1.0)
 
     assert isinstance(sim.data, DataTree)
-    # sim.data  # view the tree
+    sim.data  # view the tree
 
     assert "tdis" in sim.data.children
     assert "gwf" in sim.data.children
@@ -36,5 +36,5 @@ def test_sim():
     )
     assert sim.data.children["gwf"] is gwf.data
 
-    # why fails?
+    # TODO: figure out how to deduplicate trees. components proxy root?
     # assert gwf.parent.data.children["gwf"].children["npf"] is npf.data
