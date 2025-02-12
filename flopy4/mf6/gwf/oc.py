@@ -26,6 +26,7 @@ class Oc(Package):
 
     @define(slots=False)
     class Period:
+        # TODO follow imod-python for OC SPD
         rtype: str = field()
         steps: Steps = field()
 
