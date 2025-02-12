@@ -196,7 +196,7 @@ def init_tree(
         value = resolve_array(
             self,
             attr,
-            value=self.__dict__.get(attr.name),
+            value=self.__dict__.pop(attr.name),
             tree=parent.data.root if parent else None,
             **self.__dict__,
         )
@@ -204,7 +204,7 @@ def init_tree(
     for attr in spec.values():
         if attr.name in data or attr.name in dims:
             continue
-        data[attr.name] = self.__dict__.get(attr.name, attr.default)
+        data[attr.name] = self.__dict__.pop(attr.name, attr.default)
 
     # create tree
     self.data = DataTree(
