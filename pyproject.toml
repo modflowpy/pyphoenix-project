@@ -65,6 +65,7 @@ test = [
     "pytest!=8.1.0",
     "pytest-dotenv",
     "pytest-xdist",
+    "pytest-benchmark"
 ]
 build = ["build", "twine"]
 

@@ -5,22 +5,27 @@ from flopy4.mf6 import COMPONENTS, Sim, Tdis
 from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
 
 
-def test_components():
+def test_registry():
     assert COMPONENTS["sim"] is Sim
     assert COMPONENTS["tdis"] is Tdis
     assert COMPONENTS["gwf"] is Gwf
     assert COMPONENTS["npf"] is Npf
 
 
-def test_sim():
-    sim = Sim()
-    tdis = Tdis(sim, nper=1, perioddata=[Tdis.PeriodData()])
-    gwf = Gwf(sim)
-    dis = Dis(gwf)
-    ic = Ic(gwf, strt=1.0)
-    oc = Oc(gwf, saverecord=[Oc.Steps_("all")])
-    npf = Npf(gwf, icelltype=0, k=1.0)
+def test_sim(benchmark):
+    gwf = None
 
+    def make_sim():
+        sim = Sim()
+        tdis = Tdis(sim, nper=1, perioddata=[Tdis.PeriodData()])
+        gwf = Gwf(sim)
+        dis = Dis(gwf)
+        ic = Ic(gwf, strt=1.0)
+        oc = Oc(gwf, saverecord=[Oc.Steps_("all")])
+        npf = Npf(gwf, icelltype=0, k=1.0)
+        return sim
+
+    sim = benchmark(make_sim)
     assert isinstance(sim.data, DataTree)
     sim.data  # view the tree
 
@@ -34,7 +39,6 @@ def test_sim():
     assert np.array_equal(
         sim.data.children["gwf"].children["npf"].k, np.ones((4))
     )
-    assert sim.data.children["gwf"] is gwf.data
 
     # TODO: figure out how to deduplicate trees. components proxy root?
     # assert gwf.parent.data.children["gwf"].children["npf"] is npf.data

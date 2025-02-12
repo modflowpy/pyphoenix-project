@@ -161,6 +161,7 @@ def bind_tree(self: _HasData, parent: _HasData):
     grandparent = getattr(parent, "parent", None)
     if grandparent is not None:
         bind_tree(parent, grandparent)
+    self.parent = parent
 
 
 def init_tree(
@@ -217,7 +218,6 @@ def init_tree(
 
     # bind tree
     if parent is not None:
-        self.parent = parent
         bind_tree(self, parent)
 
 
@@ -237,12 +237,12 @@ def getattribute(self: Any, name: str) -> Any:
     spec = fields_dict(cls)
     try:
         tree = self.data
+        if name in spec:
+            value = get(tree, name, None)
+            if value is not None:
+                return value
     except:
-        return super(cls, self).__getattribute__(name)
-    if name in spec:
-        value = get(tree, name, None)
-        if value is not None:
-            return value
+        pass
     return super(cls, self).__getattribute__(name)
 
 
@@ -294,7 +294,11 @@ def component(cls: type[_HasAttrs]) -> type[_Component]:
         children = kwargs.pop("children", None)
         old_init(self, **kwargs)
         init_tree(self, name=name, parent=parent, children=children)
+        # `__getattribute__` now. way faster.
+        self.__getattribute__ = getattribute
 
-    cls.__getattribute__ = getattribute
+    # don't update `__getattribute__` yet, because init'ing
+    # the tree involves a lot of attribute access. do it in
+    # the init method, after the tree has been set up.
     cls.__init__ = init
     return cls
