@@ -12,9 +12,9 @@ def test_registry():
     assert COMPONENTS["npf"] is Npf
 
 
-def test_sim(benchmark):
+def test_init_top_down():
     sim = Sim()
-    tdis = Tdis(sim, nper=1, perioddata=[Tdis.PeriodData()])
+    tdis = Tdis(sim)
     gwf = Gwf(sim)
     dis = Dis(gwf)
     ic = Ic(gwf, strt=1.0)
@@ -24,6 +24,7 @@ def test_sim(benchmark):
     assert isinstance(sim.data, DataTree)
     sim.data  # view the tree
 
+    assert sim.tdis is tdis
     assert "tdis" in sim.data.children
     assert "gwf" in sim.data.children
     assert "dis" in sim.data.children["gwf"].children
@@ -35,5 +36,23 @@ def test_sim(benchmark):
         sim.data.children["gwf"].children["npf"].k, np.ones((4))
     )
     assert np.array_equal(npf.k, npf.data.k)
+
     # TODO: figure out how to deduplicate trees. components proxy root?
+    # assert npf.k is npf.data.k
     # assert gwf.parent.data.children["gwf"].children["npf"] is npf.data
+
+
+def test_init_bottom_up():
+    dis = Dis()
+    gwf = Gwf(children={"dis": dis})
+    tdis = Tdis()
+    sim = Sim(children={"tdis": tdis, "gwf": gwf})
+
+    assert isinstance(sim.data, DataTree)
+    sim.data  # view the tree
+
+    assert sim.tdis is tdis
+
+    assert "tdis" in sim.data.children
+    assert "gwf" in sim.data.children
+    assert "dis" in sim.data.children["gwf"].children

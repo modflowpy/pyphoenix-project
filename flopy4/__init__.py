@@ -18,10 +18,10 @@ beartype_this_package()
 Scalar = bool | int | float | str | Path
 """A scalar value."""
 
-_HasAttrs = Annotated[object, Is[lambda obj: attrs.has(type(obj))]]
+_IsAttrs = Annotated[object, Is[lambda obj: attrs.has(type(obj))]]
 """Runtime-applied type hint for `attrs` based class instances."""
 
-_HasData = Annotated[object, IsAttr["data", IsInstance[DataTree]]]
+_HasTree = Annotated[object, IsAttr["data", IsInstance[DataTree]]]
 """Runtime-applied type hint for objects with a `DataTree` in `.data`."""
 
 _Component = Annotated[
@@ -92,7 +92,7 @@ def find(
 
 
 def resolve_array(
-    self: _HasAttrs,
+    self: _IsAttrs,
     attr: Attribute,
     value: ArrayLike,
     tree: DataTree = None,
@@ -120,7 +120,7 @@ def resolve_array(
     shape = [find(tree or DataTree(), key=dim, default=dim) for dim in dims]
     shape = tuple(
         [
-            (dim if isinstance(dim, int) else kwargs.get(dim, dim))
+            (dim if isinstance(dim, int) else kwargs.pop(dim, dim))
             for dim in shape
         ]
     )
@@ -140,30 +140,58 @@ def resolve_array(
     return value
 
 
-def bind_tree(self: _HasData, parent: _HasData):
+def bind_tree(
+    self: _Component,
+    parent: _Component = None,
+    children: Optional[Mapping[str, _Component]] = None,
+):
     """
-    Bind a child component to a parent, linking their trees.
-    If the parent isn't the root, rebind it to recursively
-    upwards to the root.
+    Bind a given component to a parent component, linking the
+    two components and their data trees. If the parent is not
+    the tree's root, rebind it to recursively up to the root.
+
+    Also attach any child components to the given component's
+    data tree, as well as to any non-`attrs` attributes whose
+    name matches a child's name.
 
     TODO: this is massively duplicative, since each component
     has a subtree of its own, next to the one its parent owns
     and in which its tree appears. need to have a single tree
     at the root, then each component's data is a view into it.
     """
-    parent.data = parent.data.assign({self.data.name: self.data})
-    self.data = parent.data[self.data.name]
-    grandparent = getattr(parent, "parent", None)
-    if grandparent is not None:
-        bind_tree(parent, grandparent)
-    self.parent = parent
+
+    cls = type(self)
+
+    if parent:
+        parent_spec = fields_dict(type(parent))
+        if self.data.name in parent_spec:
+            setattr(parent, self.data.name, self)
+
+        # TODO
+        # parent_bindings = {
+        #     k: v
+        #     for k, v in parent_spec.items()
+        #     if v.metadata.get("bind", False)
+        # }
+
+        parent.data = parent.data.assign({self.data.name: self.data})
+        self.data = parent.data[self.data.name]
+        grandparent = getattr(parent, "parent", None)
+        if grandparent is not None:
+            bind_tree(parent, grandparent)
+        self.parent = parent
+    self.children = children
+    spec = fields_dict(type(self))
+    for n, c in (children or {}).items():
+        if n in spec:
+            setattr(self, n, c)
 
 
 def init_tree(
-    self: _HasAttrs,
+    self: _IsAttrs,
     name: Optional[str] = None,
-    parent: Optional[_HasData] = None,
-    children: Optional[Mapping[str, _HasData]] = None,
+    parent: Optional[_HasTree] = None,
+    children: Optional[Mapping[str, _HasTree]] = None,
 ):
     """
     Initialize a data tree for a component class instance.
@@ -180,40 +208,43 @@ def init_tree(
     spec = fields_dict(cls)
     data = Dataset()
     dims = set()
+    arrays = {}
+    scalars = {}
+    children = children or {}
 
-    # set arrays, then scalars. filter array dims out
-    # on the first pass thru, while we set up arrays,
+    # set scalars and arrays. filter array dims out
     # so they're not attached as both vars and dims.
+    # also filter out subcomponents, just want vars.
     for attr in spec.values():
+        bind = attr.metadata.get("bind", False)
+        if bind:
+            continue
         dims_ = attr.metadata.get("dims", None)
         if dims_ is None:
+            scalars[attr.name] = attr
             continue
         dims.update(dims_)
+        arrays[attr.name] = attr
+    scalars = {k: self.__dict__.pop(k, v.default) for k, v in scalars.items()}
+    for attr in arrays.values():
+        dims_ = attr.metadata["dims"]
         value = resolve_array(
             self,
             attr,
-            value=self.__dict__.pop(attr.name),
+            value=self.__dict__.pop(attr.name, attr.default),
             tree=parent.data.root if parent else None,
-            **self.__dict__,
+            **scalars,
         )
         data[attr.name] = (dims_, value)
-    for attr in spec.values():
-        if attr.name in data or attr.name in dims:
-            continue
-        data[attr.name] = self.__dict__.pop(attr.name, attr.default)
+    for k, v in scalars.items():
+        data.attrs[k] = v
 
-    # create tree
     self.data = DataTree(
         data,
         name=name or cls.__name__.lower(),
-        children={
-            n: c.data for n, c in (children or {}).items() if c is not None
-        },
+        children={n: c.data for n, c in children.items()},
     )
-
-    # bind tree
-    if parent is not None:
-        bind_tree(self, parent)
+    bind_tree(self, parent=parent, children=children)
 
 
 def getattribute(self: Any, name: str) -> Any:
@@ -230,8 +261,11 @@ def getattribute(self: Any, name: str) -> Any:
     """
     cls = type(self)
     spec = fields_dict(cls)
+    if name == "data":
+        raise AttributeError
     tree = self.data
-    if name in spec:
+    var = spec.get(name, None)
+    if var:
         value = get(tree, name, None)
         if value is not None:
             return value
@@ -263,7 +297,7 @@ def setattribute(self: _Component, attr: Attribute, value: Any):
     # TODO run validation?
 
 
-def component(cls: type[_HasAttrs]) -> type[_Component]:
+def component(cls: type[_IsAttrs]) -> type[_Component]:
     """
     Attach a data tree to an `attrs` class instance, and use
     the data tree for attribute storage: intercept gets/sets
@@ -277,7 +311,7 @@ def component(cls: type[_HasAttrs]) -> type[_Component]:
 
     old_init = cls.__init__
 
-    def init(self, *args, **kwargs):
+    def _init(self, *args, **kwargs):
         name = kwargs.pop("name", None)
         parent = args[0] if args and any(args) else None
         children = kwargs.pop("children", None)
@@ -285,5 +319,5 @@ def component(cls: type[_HasAttrs]) -> type[_Component]:
         init_tree(self, name=name, parent=parent, children=children)
         cls.__getattr__ = getattribute
 
-    cls.__init__ = init
+    cls.__init__ = _init
     return cls

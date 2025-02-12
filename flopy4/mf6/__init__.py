@@ -72,31 +72,9 @@ class Simulation(Component):
 
 
 @component
-@define(slots=False, on_setattr=setattribute)
+@define(init=False, slots=False)
 class Sim(Simulation):
-    pass
-    # tdis: Tdis = field(metadata={"block": "timing"})
-    # models: dict[str, Model] = field(metadata={"block": "models"})
-    # exchanges: dict[str, Exchange] = field(metadata={"block": "exchanges"})
-    # solutions: dict[str, Solution] = field(metadata={"block": "solutions"})
-
-    # def __init__(
-    #     self,
-    #     name=None,
-    #     path=None,
-    #     exe=None,
-    #     tdis=None,
-    #     models=None,
-    #     exchanges=None,
-    #     solutions=None,
-    # ):
-    #     super().__init__(name, path, exe)
-    #     init_tree(
-    #         self,
-    #         children={
-    #             "tdis": tdis,
-    #             "models": models,
-    #             "exchanges": exchanges,
-    #             "solutions": solutions,
-    #         },
-    #     )
+    tdis: Tdis = field(metadata={"bind": True})
+    models: dict[str, Model] = field(metadata={"bind": True})
+    exchanges: dict[str, Exchange] = field(metadata={"bind": True})
+    solutions: dict[str, Solution] = field(metadata={"bind": True})

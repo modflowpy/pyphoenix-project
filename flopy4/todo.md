@@ -19,10 +19,11 @@ BFS is ok as a general solution but we should use all the info we have.
 
 ### components
 
-I think for access by name we want dict style e.g. `gwf["chd1"]`.
+I think for access by name we want dict style e.g. `gwf["chd1"]`,
+like imod-python does it.
 
 By type, e.g. `gwf.chd`, where it's either a single component,
-or a dict for multipackages.
+or a dict by name (or auto-increment index) for multipackages.
 
 ### variables
 
