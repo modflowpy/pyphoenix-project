@@ -48,7 +48,9 @@ def get(
 
     value = tree.get(key, None)
     if value is not None:
-        return value.item()
+        if value.shape == ():
+            return value.item()
+        return value
     value = tree.dims.get(key, None)
     if value is not None:
         return value
@@ -228,15 +230,12 @@ def getattribute(self: Any, name: str) -> Any:
     """
     cls = type(self)
     spec = fields_dict(cls)
-    try:
-        tree = self.data
-        if name in spec:
-            value = get(tree, name, None)
-            if value is not None:
-                return value
-    except:
-        pass
-    return super(cls, self).__getattribute__(name)
+    tree = self.data
+    if name in spec:
+        value = get(tree, name, None)
+        if value is not None:
+            return value
+    raise AttributeError
 
 
 def setattribute(self: _Component, attr: Attribute, value: Any):
@@ -253,10 +252,7 @@ def setattribute(self: _Component, attr: Attribute, value: Any):
     spec = fields_dict(cls)
     if attr.name not in spec:
         raise AttributeError(f"{cls.__name__} has no attribute {attr.name}")
-    if value is None:
-        return
-    data = getattr(self, "data", None)
-    if data is None:
+    if value is None or not hasattr(self, "data"):
         return value
     if get_origin(attr.type) in [list, np.ndarray]:
         shape = attr.metadata["dims"]
@@ -287,11 +283,7 @@ def component(cls: type[_HasAttrs]) -> type[_Component]:
         children = kwargs.pop("children", None)
         old_init(self, **kwargs)
         init_tree(self, name=name, parent=parent, children=children)
-        # `__getattribute__` now. way faster.
-        self.__getattribute__ = getattribute
+        cls.__getattr__ = getattribute
 
-    # don't update `__getattribute__` yet, because init'ing
-    # the tree involves a lot of attribute access. do it in
-    # the init method, after the tree has been set up.
     cls.__init__ = init
     return cls
