@@ -6,7 +6,7 @@ from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component
+@component(align=["nodes"])
 @define(slots=False, on_setattr=setattribute)
 class Ic(Package):
     strt: NDArray[np.floating] = field(

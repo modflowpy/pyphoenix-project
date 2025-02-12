@@ -1,17 +1,17 @@
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Annotated, Any, Literal, Optional, get_origin
+from typing import Annotated, Any, Optional, get_origin
 
 import attrs
 import numpy as np
 from attr import Attribute, fields_dict
 from beartype.claw import beartype_this_package
 from beartype.vale import Is, IsAttr, IsInstance
+from flopy.discretization.grid import Grid
+from flopy.discretization.modeltime import ModelTime
 from numpy.typing import ArrayLike, NDArray
 from xarray import Dataset, DataTree
 
-from flopy.discretization.modeltime import ModelTime
-from flopy.discretization.grid import Grid
 from flopy4.utils import reshape_array
 
 beartype_this_package()
@@ -172,35 +172,40 @@ def bind_tree(
     name = self.data.name
     spec = fields_dict(cls)
 
+    # bind parent
     if parent:
-        # try binding first by name, then by
+        # try binding first by name
         parent_spec = fields_dict(type(parent))
         parent_var = parent_spec.get(name, None)
         if parent_var:
             assert parent_var.metadata.get("bind", False)
             setattr(parent, name, self)
-        # TODO
+        # TODO bind multipackages by type
         # parent_bindings = {
         #     n: v
         #     for n, v in parent_spec.items()
         #     if v.metadata.get("bind", False)
         # }
         # print(parent_bindings)
-
         if name in parent.data:
             parent.data.update({name: self.data, **parent.data})
         else:
             parent.data = parent.data.assign({name: self.data})
         self.data = parent.data[self.data.name]
+
+        # bind grandparent
         grandparent = getattr(parent, "parent", None)
         if grandparent is not None:
             bind_tree(parent, grandparent)
-        self.parent = parent
-    self.children = children
 
+        self.parent = parent
+
+    # bind children
+    self.children = children
     for n, c in (children or {}).items():
         v = spec.get(n, None)
         if v and v.metadata.get("bind", False):
+            self.data.update({n: c.data})
             setattr(self, n, c)
 
 
@@ -212,19 +217,22 @@ def init_tree(
 ):
     """
     Initialize a data tree for a component class instance.
-    The tree is built from the class' `attrs` fields, i.e.
-    spirited from the instance's `__dict__` into the tree,
-    which is attached to the instance as `self.data`. The
-    class cannot use slots for this to work.
 
     Notes
     -----
     This method must run after the default `__init__()`.
+
+    The tree is built from the class' `attrs` fields, i.e.
+    spirited from the instance's `__dict__` into the tree,
+    which is attached to the instance as `self.data`. The
+    `__dict__` is empty after this method runs, and field
+    access is proxied to the tree.
+
+    The class cannot use slots for this to work.
     """
 
     cls = type(self)
     spec = fields_dict(cls)
-    data = Dataset()
     dimensions = set()
     array_vars = {}
     scalar_vars = {}
@@ -233,7 +241,6 @@ def init_tree(
     components = {}
     children = children or {}
 
-    # distinguish scalars, arrays, components
     for var in spec.values():
         bind = var.metadata.get("bind", False)
         if bind:
@@ -252,34 +259,27 @@ def init_tree(
             if val is not None:
                 yield (var.name, val)
 
-    scalar_vals = dict(list(_yield_scalars(
-        spec=scalar_vars,
-        vals=self.__dict__
-    )))
-    
+    scalar_vals = dict(
+        list(_yield_scalars(spec=scalar_vars, vals=self.__dict__))
+    )
+
     def _yield_arrays(spec, vals):
         for var in spec.values():
             dims = var.metadata["dims"]
             val = resolve_array(
                 self,
                 var,
-                value=self.__dict__.pop(var.name, var.default),
+                value=vals.pop(var.name, var.default),
                 tree=parent.data.root if parent else None,
                 **scalar_vals,
             )
             if val is not None:
                 yield (var.name, (dims, val))
 
-    array_vals = dict(list(_yield_arrays(
-        spec=array_vars,
-        vals=self.__dict__
-    )))
-    
-    data.update(array_vals)
-    data.attrs.update(scalar_vals)
+    array_vals = dict(list(_yield_arrays(spec=array_vars, vals=self.__dict__)))
 
     self.data = DataTree(
-        data,
+        Dataset(array_vals, attrs=scalar_vals),
         name=name or cls.__name__.lower(),
         children={n: c.data for n, c in children.items()},
     )
@@ -301,21 +301,17 @@ def getattribute(self: Any, name: str) -> Any:
     """
 
     if name == "data":
-        # if the data tree hasn't been set up yet,
-        # just return None for everything?
-        # return None
         raise AttributeError
 
     cls = type(self)
     spec = fields_dict(cls)
-    
     tree = self.data
     var = spec.get(name, None)
     if var:
         value = get(tree, name, None)
         if value is not None:
             return value
-    
+
     raise AttributeError
 
 
@@ -338,18 +334,18 @@ def setattribute(self: _Component, attr: Attribute, value: Any):
     if get_origin(attr.type) in [list, np.ndarray]:
         shape = attr.metadata["dims"]
         value = resolve_array(self, attr, value)
-        self.data[attr.name] = (shape, value)
-    else:
-        self.data[attr.name] = value
-    # TODO run validation?
-
-
-_Align = Literal["time", "grid", "both"]
+        value = (shape, value)
+    bind = attr.metadata.get("bind", False)
+    if bind:
+        self.data = self.data.assign({attr.name: value.data})
+        return value
+    self.data.update({attr.name: value})
 
 
 def component(
-    cls: type[_IsAttrs],
-    align: Optional[_Align] = None
+    maybe_cls: Optional[type[_IsAttrs]] = None,
+    *,
+    align: Optional[Iterable[str]] = None,
 ) -> type[_Component]:
     """
     Attach a data tree to an `attrs` class instance, and use
@@ -362,24 +358,36 @@ def component(
     For this to work, the `attrs` class cannot use slots.
     """
 
-    init_self = cls.__init__
+    def wrap(cls):
+        init_self = cls.__init__
 
-    def init_time(self, time: ModelTime):
-        self.time = time
+        def init(self, *args, **kwargs):
+            name = kwargs.pop("name", None)
+            children = kwargs.pop("children", None)
+            parent = args[0] if args and any(args) else None
 
-    def init_grid(self, grid: Grid):
-        self.grid = grid
+            # resolve dims from grid and time discretizations
+            grid: Grid = kwargs.pop("grid", None)
+            time: ModelTime = kwargs.pop("time", None)
+            diss = [dis for dis in [grid, time] if dis]
+            if align:
+                for dim in align:
+                    for dis in diss:
+                        attr = getattr(dis, dim, None)
+                        if attr is not None:
+                            kwargs[dim] = attr
 
-    def init(self, *args, **kwargs):
-        name = kwargs.pop("name", None)
-        parent = args[0] if args and any(args) else None
-        children = kwargs.pop("children", None)
-        init_time()
-        time = kwargs.pop("time", None)
-        grid = kwargs.pop("grid", None)
-        init_self(self, **kwargs)
-        init_tree(self, name=name, parent=parent, children=children)
-        # cls.__getattr__ = getattribute
+            # run the original __init__, then set up the tree
+            init_self(self, **kwargs)
+            init_tree(self, name=name, parent=parent, children=children)
 
-    cls.__init__ = init
-    return cls
+            # override attribute access
+            cls.__getattr__ = getattribute
+
+        cls.__init__ = init
+        return cls
+
+    if maybe_cls is None:
+        return wrap
+
+    return wrap(maybe_cls)

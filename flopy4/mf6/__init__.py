@@ -34,7 +34,7 @@ class Model(Component):
     pass
 
 
-@component
+@component(align=["nper"])
 @define(slots=False, on_setattr=setattribute)
 class Tdis(Package):
     @define(slots=False)

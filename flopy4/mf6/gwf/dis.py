@@ -8,7 +8,7 @@ from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component
+@component(align=["nlay", "ncol", "nrow"])
 @define(slots=False, on_setattr=setattribute)
 class Dis(Package):
     length_units: str = field(
