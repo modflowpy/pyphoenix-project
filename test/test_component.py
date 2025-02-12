@@ -14,12 +14,12 @@ def test_components():
 
 def test_sim():
     sim = Sim()
-    tdis = Tdis(sim=sim, nper=1, perioddata=[Tdis.PeriodData()])
-    gwf = Gwf(sim=sim)
-    dis = Dis(model=gwf)
-    ic = Ic(model=gwf, strt=1.0)
-    oc = Oc(model=gwf, perioddata=[Oc.Steps_("all")])
-    npf = Npf(model=gwf, icelltype=0, k=1.0)
+    tdis = Tdis(sim, nper=1, perioddata=[Tdis.PeriodData()])
+    gwf = Gwf(sim)
+    dis = Dis(gwf)
+    ic = Ic(gwf, strt=1.0)
+    oc = Oc(gwf, saverecord=[Oc.Steps_("all")])
+    npf = Npf(gwf, icelltype=0, k=1.0)
 
     assert isinstance(sim.data, DataTree)
     sim.data  # view the tree

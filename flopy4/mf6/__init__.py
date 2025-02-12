@@ -1,12 +1,11 @@
 from abc import ABC
 from datetime import datetime
 from pathlib import Path
-from shutil import which
 from typing import Optional
 
 from attr import Factory, define, field
 
-from flopy4 import component, init_tree, setattribute
+from flopy4 import component, setattribute
 
 __all__ = [
     "Component",
@@ -17,34 +16,26 @@ __all__ = [
     "COMPONENTS",
 ]
 
-COMPONENTS = {}  # component registry
+COMPONENTS = {}
+"""MF6 component registry."""
 
 
 class Component(ABC):
-    name: Optional[str] = None
-    path: Optional[Path] = None
-
-    def __init__(self, name=None, path=None):
-        self.name = name
-        self.path = path
-
     @classmethod
     def __attrs_init_subclass__(cls):
         COMPONENTS[cls.__name__.lower()] = cls
 
 
 class Package(Component):
-    def __init__(self, name=None, path=None):
-        super().__init__(name, path)
+    pass
 
 
 class Model(Component):
-    def __init__(self, name=None, path=None):
-        super().__init__(name, path)
+    pass
 
 
 @component
-@define(init=False, slots=False, on_setattr=setattribute)
+@define(slots=False, on_setattr=setattribute)
 class Tdis(Package):
     @define(slots=False)
     class PeriodData:
@@ -55,7 +46,7 @@ class Tdis(Package):
     nper: int = field(default=1, metadata={"block": "dimensions"})
     perioddata: list[PeriodData] = field(
         default=Factory(list),
-        metadata={"block": "perioddata", "shape": ("nper",)},
+        metadata={"block": "perioddata", "dims": ("nper",)},
     )
     time_units: Optional[str] = field(
         default=None, metadata={"block": "options"}
@@ -64,87 +55,48 @@ class Tdis(Package):
         default=None, metadata={"block": "options"}
     )
 
-    def __init__(
-        self,
-        sim=None,
-        name=None,
-        path=None,
-        nper=1,
-        perioddata=None,
-        time_units=None,
-        start_date_time=None,
-    ):
-        super().__init__(name, path)
-        init_tree(
-            self,
-            parent=sim,
-            nper=nper,
-            perioddata=perioddata,
-            time_units=time_units,
-            start_date_time=start_date_time,
-        )
-
 
 class Solution(Package):
-    def __init__(self, name=None, path=None):
-        super().__init__(name, path)
+    pass
 
 
-@define(init=False, slots=False)
 class Exchange(Package):
     exgtype: type = field()
     exgfile: Path = field()
     exgmnamea: Optional[str] = field(default=None)
     exgmnameb: Optional[str] = field(default=None)
 
-    def __init__(
-        self,
-        name=None,
-        path=None,
-        mnamea=None,
-        mnameb=None,
-    ):
-        super().__init__(name, path)
-        self.exgtype = type(self)
-        self.exgfile = path
-        self.exgmnamea = mnamea
-        self.exgmnameb = mnameb
-
 
 class Simulation(Component):
-    exe: Path
-
-    def __init__(self, name=None, path=None, exe=None):
-        super().__init__(name, path)
-        self.exe = exe or which("mf6")
+    pass
 
 
 @component
-@define(init=False, slots=False)
+@define(slots=False, on_setattr=setattribute)
 class Sim(Simulation):
+    pass
     # tdis: Tdis = field(metadata={"block": "timing"})
     # models: dict[str, Model] = field(metadata={"block": "models"})
     # exchanges: dict[str, Exchange] = field(metadata={"block": "exchanges"})
     # solutions: dict[str, Solution] = field(metadata={"block": "solutions"})
 
-    def __init__(
-        self,
-        name=None,
-        path=None,
-        exe=None,
-        tdis=None,
-        models=None,
-        exchanges=None,
-        solutions=None,
-    ):
-        super().__init__(name, path, exe)
-        # TODO pull init_tree(self) call into @component definition
-        init_tree(
-            self,
-            # children={
-            #     "tdis": tdis,
-            #     "models": models,
-            #     "exchanges": exchanges,
-            #     "solutions": solutions,
-            # },
-        )
+    # def __init__(
+    #     self,
+    #     name=None,
+    #     path=None,
+    #     exe=None,
+    #     tdis=None,
+    #     models=None,
+    #     exchanges=None,
+    #     solutions=None,
+    # ):
+    #     super().__init__(name, path, exe)
+    #     init_tree(
+    #         self,
+    #         children={
+    #             "tdis": tdis,
+    #             "models": models,
+    #             "exchanges": exchanges,
+    #             "solutions": solutions,
+    #         },
+    #     )

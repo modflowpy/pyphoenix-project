@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 from attr import Factory, define, field
 
-from flopy4 import component, init_tree, setattribute
+from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 from flopy4.utils import to_path
 
@@ -13,7 +13,7 @@ Steps = (
 
 
 @component
-@define(init=False, slots=False, on_setattr=setattribute)
+@define(slots=False, on_setattr=setattribute)
 class Oc(Package):
     @define(slots=False)
     class Format:
@@ -51,33 +51,11 @@ class Oc(Package):
     format: Optional[Format] = field(
         default=None, init=False, metadata={"block": "options"}
     )
-    save: Optional[list[Steps]] = field(
+    saverecord: Optional[list[Steps]] = field(
         default=Factory(list),
-        metadata={"block": "perioddata", "shape": ("nper",)},
+        metadata={"block": "perioddata", "dims": ("nper",)},
     )
-    print: Optional[list[Steps]] = field(
+    printrecord: Optional[list[Steps]] = field(
         default=Factory(list),
-        metadata={"block": "perioddata", "shape": ("nper",)},
+        metadata={"block": "perioddata", "dims": ("nper",)},
     )
-
-    def __init__(
-        self,
-        model=None,
-        name=None,
-        path=None,
-        budget_file=None,
-        budget_csv_file=None,
-        head_file=None,
-        format=None,
-        perioddata=None,
-    ):
-        super().__init__(name, path)
-        init_tree(
-            self,
-            parent=model,
-            budget_file=budget_file,
-            budget_csv_file=budget_csv_file,
-            head_file=head_file,
-            format=format,
-            perioddata=perioddata,
-        )

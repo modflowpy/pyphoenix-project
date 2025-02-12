@@ -1,9 +1,12 @@
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Optional, get_origin
+from typing import Annotated, Any, Optional, get_origin
 
+import attrs
 import numpy as np
 from attr import Attribute, fields_dict
 from beartype.claw import beartype_this_package
+from beartype.vale import Is, IsAttr, IsInstance
 from numpy.typing import ArrayLike, NDArray
 from xarray import Dataset, DataTree
 
@@ -13,42 +16,90 @@ beartype_this_package()
 
 
 Scalar = bool | int | float | str | Path
+"""A scalar value."""
+
+_HasAttrs = Annotated[object, Is[lambda obj: attrs.has(type(obj))]]
+"""Runtime-applied type hint for `attrs` based class instances."""
+
+_HasData = Annotated[object, IsAttr["data", IsInstance[DataTree]]]
+"""Runtime-applied type hint for objects with a `DataTree` in `.data`."""
+
+_Component = Annotated[
+    object,
+    (
+        Is[lambda obj: attrs.has(type(obj))]
+        & IsAttr["data", IsInstance[DataTree]]
+    ),
+]
+"""
+An `attrs`-based class with a `DataTree` in `.data.
+The minimal contract for component class instances.
+"""
 
 
-def resolve(
-    tree: Optional[DataTree], name: str, default=None
+def get(
+    tree: DataTree, key: str, default: Optional[Scalar] = None
 ) -> Optional[Scalar]:
-    name = name.strip()
-    if tree is None:
-        return default
-    value = tree.get(name, None)
+    """
+    Get a value with the given `name` from the given `tree`.
+    Look first in the tree's variables, then its dimensions,
+    then in `attrs`. If not found, return `None`.
+
+    This function searches this node only.
+    """
+
+    value = tree.get(key, None)
     if value is not None:
         return value.item()
-    root = tree.root
-    paths = [
-        "tdis",
-        "dis",
-        "gwf/dis",
-    ]
-    for path in paths:
-        try:
-            key = f"{path}/{name}"
-            return root[key].item()
-        except:
-            try:
-                return root[path].dims[name]
-            except:
-                try:
-                    return root[path].attrs[name]
-                except:
-                    pass
+    value = tree.dims.get(key, None)
+    if value is not None:
+        return value
+    value = tree.attrs.get(key, None)
+    if value is not None:
+        return value
     return default
 
 
+def find(
+    tree: DataTree,
+    key: str,
+    default: Optional[Scalar] = None,
+) -> Optional[Scalar]:
+    """
+    Search for a value with the given `key` in the given `tree`, first
+    within itself, then from the root downwards in breadth-first order.
+
+    A set of search paths can be provided to look in before continuing
+    with the unguided BFS.
+
+    If the value is not found, return the `default`.
+    """
+
+    def _find_recursive(tree, key):
+        key = key.strip()
+
+        # look in current node first
+        value = get(tree, key, None)
+        if value is not None:
+            return value
+
+        # look in children
+        for node in tree.children.values():
+            value = get(node, key, None)
+            if value is not None:
+                return value
+            result = _find_recursive(node, key)
+            if result is not None:
+                return result
+        return None
+
+    return _find_recursive(tree.root, key) or default
+
+
 def resolve_array(
-    self: Any,
+    self: _HasAttrs,
     attr: Attribute,
-    value: Optional[ArrayLike] = None,
+    value: ArrayLike,
     tree: DataTree = None,
     **kwargs,
 ) -> Optional[NDArray]:
@@ -56,39 +107,54 @@ def resolve_array(
     Resolve an array-like value to the given variable's expected shape.
     If the value is a collection, check if the shape matches. If scalar,
     broadcast it to the expected shape.
+
+    The shape is expected as a tuple of dimension names under key "dims"
+    in `attr.metadata`.
+
+    Dimensions can be resolved from an optional `xarray.DataTree` or can
+    be passed in as kwargs. If a dimension cannot be resolved or found,
+    a `ValueError` is raised.
     """
-    if value is None:
-        value = attr.default
-    shape = attr.metadata.get("shape", None)
-    if shape is None:
-        raise ValueError(f"Array variable {attr.name} missing shape metadata")
-    dim_names = shape
-    shape = [resolve(tree, name=dim, default=dim) for dim in shape]
+    value = value or attr.default
+    dims = attr.metadata.get("dims", None)
+    if not dims:
+        raise ValueError(
+            f"Component class '{type(self).__name__}' array "
+            f"variable '{attr.name}' needs 'dims' metadata"
+        )
+    shape = [find(tree or DataTree(), key=dim, default=dim) for dim in dims]
     shape = tuple(
         [
             (dim if isinstance(dim, int) else kwargs.get(dim, dim))
             for dim in shape
         ]
     )
-    missing = [dim for dim in shape if not isinstance(dim, int)]
-    if any(missing):
+    unresolved = [dim for dim in shape if not isinstance(dim, int)]
+    if any(unresolved):
         raise ValueError(
-            f"Class '{type(self).__name__}' "
-            f"failed to resolve dims: {', '.join(missing)}"
+            f"Component class '{type(self).__name__}' failed "
+            f"to resolve dimensions: {', '.join(unresolved)}"
         )
     value = reshape_array(value, shape)
     if value.shape == ():
         raise ValueError(
             f"Failed to resolve array '{attr.name}', "
             f"are you sure these dimensions exist? "
-            f"{','.join(dim_names)}"
+            f"{','.join(dims)}"
         )
     return value
 
 
-def bind_tree(self: Any, parent: Any):
+def bind_tree(self: _HasData, parent: _HasData):
     """
-    Bind a child component to a parent component, linking their data trees.
+    Bind a child component to a parent, linking their trees.
+    If the parent isn't the root, rebind it to recursively
+    upwards to the root.
+
+    TODO: this is massively duplicative, since each component
+    has a subtree of its own, next to the one its parent owns
+    and in which its tree appears. need to have a single tree
+    at the root, then each component's data is a view into it.
     """
     parent.data = parent.data.assign({self.data.name: self.data})
     self.data = parent.data[self.data.name]
@@ -97,81 +163,98 @@ def bind_tree(self: Any, parent: Any):
         bind_tree(parent, grandparent)
 
 
-def init_tree(self, parent=None, children=None, **kwargs):
+def init_tree(
+    self: _HasAttrs,
+    name: Optional[str] = None,
+    parent: Optional[_HasData] = None,
+    children: Optional[Mapping[str, _HasData]] = None,
+):
     """
-    Initialize a data tree for a component.
+    Initialize a data tree for a component class instance.
+    The tree is built from the class' `attrs` fields, i.e.
+    spirited from the instance's `__dict__` into the tree,
+    which is attached to the instance as `self.data`. The
+    class cannot use slots for this to work.
 
-    TODO: no need to pass kwargs in explicitly? just run
-    the attrs-generated initializer method then move the
-    contents of `__dict__` into the xarray store here...
+    Notes
+    -----
+    This method must run after the default `__init__()`.
     """
     cls = type(self)
-    cls_name = cls.__name__.lower()
     spec = fields_dict(cls)
     data = Dataset()
     dims = set()
 
     # set arrays, then scalars. filter array dims out
     # on the first pass thru, while we set up arrays,
-    # so they're not duplicated as both vars and dims.
-    for name, attr in spec.items():
-        shape = attr.metadata.get("shape", None)
-        if shape is None:
+    # so they're not attached as both vars and dims.
+    for attr in spec.values():
+        dims_ = attr.metadata.get("dims", None)
+        if dims_ is None:
             continue
-        dims.update(shape)
+        dims.update(dims_)
         value = resolve_array(
             self,
             attr,
-            value=None,
+            value=self.__dict__.get(attr.name),
             tree=parent.data.root if parent else None,
-            **kwargs,
+            **self.__dict__,
         )
-        data[name] = (shape, value)
-    for name, value in spec.items():
-        if name in data or name in dims:
+        data[attr.name] = (dims_, value)
+    for attr in spec.values():
+        if attr.name in data or attr.name in dims:
             continue
-        value = kwargs.get(name, attr.default)
-        data[name] = value
+        data[attr.name] = self.__dict__.get(attr.name, attr.default)
 
-    # create this node
+    # create tree
     self.data = DataTree(
         data,
-        name=cls_name,
-        children={n: c for n, c in (children or {}).items() if c is not None},
+        name=name or cls.__name__.lower(),
+        children={
+            n: c.data for n, c in (children or {}).items() if c is not None
+        },
     )
 
-    # bind to parent tree
+    # bind tree
     if parent is not None:
         self.parent = parent
         bind_tree(self, parent)
 
 
-def getattribute(self, name: str) -> Any:
+def getattribute(self: Any, name: str) -> Any:
     """
     Proxy `attrs` attribute access, returning values from
-    an `xarray.DataTree` in `self.data`. Meant to override
-    an `attrs`-based class' `__getattribute__` method.
+    an `xarray.DataTree` in `self.data`.
+
+    Notes
+    -----
+    Overrides `__getattribute__` in classes fulfilling the
+    `Component` contract. But we don't annotate `self` as a
+    `Component` because beartype will use `__getattribute__`
+    to resolve the type hint, which will create recursion.
     """
     cls = type(self)
     spec = fields_dict(cls)
+    try:
+        tree = self.data
+    except:
+        return super(cls, self).__getattribute__(name)
     if name in spec:
-        value = self.data.get(name, None)
-        if value is not None:
-            return value
-        value = self.data.dims.get(name, None)
-        if value is not None:
-            return value
-        value = self.data.attrs.get(name, None)
+        value = get(tree, name, None)
         if value is not None:
             return value
     return super(cls, self).__getattribute__(name)
 
 
-def setattribute(self, attr: Attribute, value: Any):
+def setattribute(self: _Component, attr: Attribute, value: Any):
     """
     Intercept values sent to an `attrs` attribute, and
     set corresponding variables in an `xarray.DataTree`
-    in `self.data`. Meant to be called by `on_setattr`.
+    in `self.data`.
+
+    Notes
+    -----
+    For the `on_setattr` hook in `_Component` classes.
     """
     cls = type(self)
     spec = fields_dict(cls)
@@ -179,29 +262,39 @@ def setattribute(self, attr: Attribute, value: Any):
         raise AttributeError(f"{cls.__name__} has no attribute {attr.name}")
     if value is None:
         return
+    data = getattr(self, "data", None)
+    if data is None:
+        return value
     if get_origin(attr.type) in [list, np.ndarray]:
-        shape = attr.metadata["shape"]
+        shape = attr.metadata["dims"]
         value = resolve_array(self, attr, value)
         self.data[attr.name] = (shape, value)
     else:
         self.data[attr.name] = value
-
     # TODO run validation?
 
 
-def component(cls):
+def component(cls: type[_HasAttrs]) -> type[_Component]:
     """
     Attach a data tree to an `attrs` class instance, and use
     the data tree for attribute storage: intercept gets/sets
     such that the class continues to act like normal `attrs`
     classes, but attributes are proxied into the data tree.
 
-    TODO: wrap `__init__` and call `init_tree` here, instead
-    of making decorated classes do it, and just shift fields
-    from `__dict__` into the data tree, deleting them after.
-
-    The `attrs` class must have `slots=False` for it to work!
+    Notes
+    -----
+    For this to work, the `attrs` class may not use slots.
     """
 
+    old_init = cls.__init__
+
+    def init(self, *args, **kwargs):
+        name = kwargs.pop("name", None)
+        parent = args[0] if args and any(args) else None
+        children = kwargs.pop("children", None)
+        old_init(self, **kwargs)
+        init_tree(self, name=name, parent=parent, children=children)
+
     cls.__getattribute__ = getattribute
+    cls.__init__ = init
     return cls
