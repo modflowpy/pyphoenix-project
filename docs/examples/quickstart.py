@@ -1,6 +1,8 @@
 from flopy4.mf6 import Sim, Tdis
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
+# TODO rewrite bottom up
+
 ws = "./mymodel"
 name = "mymodel"
 sim = Sim(name=name, path=ws, exe="mf6")

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from attr import define, field
+from attr import Factory, define, field
 
 from flopy4 import component, setattribute
 from flopy4.mf6 import Model
@@ -17,6 +17,13 @@ __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 @component
 @define(slots=False, on_setattr=setattribute)
 class Gwf(Model):
+    # "bind" indicates this is a subcomponent, not a variable.
+    # TODO: add separate `component()` decorator like `field`?
+    dis: Dis = field(metadata={"bind": True}, default=Factory(Dis))
+    ic: Ic = field(metadata={"bind": True}, default=Factory(Ic))
+    oc: Oc = field(metadata={"bind": True}, default=Factory(Oc))
+    npf: Npf = field(metadata={"bind": True}, default=Factory(Npf))
+
     @define(slots=False)
     class NewtonOptions:
         newton: bool = field()

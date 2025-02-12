@@ -74,7 +74,9 @@ class Simulation(Component):
 @component
 @define(init=False, slots=False)
 class Sim(Simulation):
-    tdis: Tdis = field(metadata={"bind": True})
+    # "bind" indicates this is a subcomponent, not a variable.
+    # TODO: add separate `component()` decorator like `field`?
     models: dict[str, Model] = field(metadata={"bind": True})
     exchanges: dict[str, Exchange] = field(metadata={"bind": True})
     solutions: dict[str, Solution] = field(metadata={"bind": True})
+    tdis: Tdis = field(metadata={"bind": True}, default=Factory(Tdis))

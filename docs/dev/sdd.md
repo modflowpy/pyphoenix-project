@@ -88,13 +88,15 @@ For nodes in the context tree (i.e., components with children), `.data` can be a
 
 Combining these patterns naively would result in data duplication and synchronization challenges.
 
-We can arrange instead for `attrs` to proxy `xarray` via `__getattribute__`.
+We can arrange instead for `attrs` to proxy `xarray` via `__getattr__`.
 
 Likewise, we can use [`on_setattr`](https://www.attrs.org/en/stable/api.html#core) to intercept values sent to the `attrs` attributes and send them to `xarray`.
 
-Other `attrs` functionality should "just work" (e.g. validation, `__repr__`, `__eq__`, etc), due to the operation of `__getattribute__` under the hood.
+Other `attrs` functionality should "just work" (e.g. validation, `__repr__`, `__eq__`, etc), due to the operation of `__getattr__` under the hood.
 
 This combined concept can be packaged in a class decorator, which can be applied to component classes.
+
+The `attrs.field` decorator can be used for component variables. We can define a separate decorator for subcomponents.
 
 ## Data types
 
