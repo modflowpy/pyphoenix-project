@@ -67,9 +67,9 @@ def find(
 ) -> Optional[Scalar]:
     """
     Search for a value with the given `key` in the given `tree`, first
-    within itself, then from the root downwards in breadth-first order.
+    within its own `Dataset`, then depth-first from the root downwards.
     A set of search paths can be provided to look in before continuing
-    with the unguided BFS. If a match is not found, return a `default`.
+    with the unguided DFS. If a match is not found, return a `default`.
     """
 
     def _find_recursive(tree, key):
