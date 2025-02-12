@@ -32,7 +32,7 @@ _Component = Annotated[
     ),
 ]
 """
-An `attrs`-based class with a `DataTree` in `.data.
+An `attrs`-based class with a `DataTree` in `.data`.
 The minimal contract for component class instances.
 """
 
@@ -41,11 +41,9 @@ def get(
     tree: DataTree, key: str, default: Optional[Scalar] = None
 ) -> Optional[Scalar]:
     """
-    Get a value with the given `name` from the given `tree`.
-    Look first in the tree's variables, then its dimensions,
-    then in `attrs`. If not found, return `None`.
-
-    This function searches this node only.
+    Get a value with the given `name` from the given `tree`
+    node. Look first in its variables, then dims, then attrs.
+    If not found, return a `default`. Search is not recursive.
     """
 
     value = tree.get(key, None)
@@ -68,22 +66,17 @@ def find(
     """
     Search for a value with the given `key` in the given `tree`, first
     within itself, then from the root downwards in breadth-first order.
-
     A set of search paths can be provided to look in before continuing
-    with the unguided BFS.
-
-    If the value is not found, return the `default`.
+    with the unguided BFS. If a match is not found, return a `default`.
     """
 
     def _find_recursive(tree, key):
         key = key.strip()
-
-        # look in current node first
+        # this node first
         value = get(tree, key, None)
         if value is not None:
             return value
-
-        # look in children
+        # bfs over children
         for node in tree.children.values():
             value = get(node, key, None)
             if value is not None:
@@ -229,9 +222,9 @@ def getattribute(self: Any, name: str) -> Any:
     Notes
     -----
     Overrides `__getattribute__` in classes fulfilling the
-    `Component` contract. But we don't annotate `self` as a
-    `Component` because beartype will use `__getattribute__`
-    to resolve the type hint, which will create recursion.
+    `_Component` contract. But don't annotate `self` as a
+    `_Component` because beartype use `__getattribute__`
+    to evaluate the type hint, creating recursion.
     """
     cls = type(self)
     spec = fields_dict(cls)
@@ -283,7 +276,7 @@ def component(cls: type[_HasAttrs]) -> type[_Component]:
 
     Notes
     -----
-    For this to work, the `attrs` class may not use slots.
+    For this to work, the `attrs` class cannot use slots.
     """
 
     old_init = cls.__init__
