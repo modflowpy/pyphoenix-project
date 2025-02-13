@@ -238,6 +238,7 @@ def init_tree(
     cls = type(self)
     spec = fields_dict(cls)
     dimensions = set()
+    coordinates = {}
     array_vars = {}
     scalar_vars = {}
     array_vals = {}
@@ -281,9 +282,18 @@ def init_tree(
 
     array_vals = dict(list(_yield_arrays(spec=array_vars, vals=self.__dict__)))
 
+    # add coordinate arrays to the data tree
+    for dim in dimensions:
+        var = spec[dim]
+        coord = var.metadata.get("coord", None)
+        if coord:
+            value = np.arange(array_vals[dim][1].shape[0])
+            coordinates[coord] = value
+
     self.data = DataTree(
         Dataset(
-            array_vals,
+            data_vars=array_vals,
+            coords=coordinates,
             attrs={
                 n: v for n, v in scalar_vals.items() if n not in dimensions
             },
