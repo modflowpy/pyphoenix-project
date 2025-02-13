@@ -96,7 +96,7 @@ def resolve_array(
     tree: DataTree = None,
     strict: bool = False,
     **kwargs,
-) -> Optional[NDArray]:
+) -> tuple[Optional[NDArray], Optional[dict[str, NDArray]]]:
     """
     Resolve an array-like value to the given variable's expected shape.
     If the value is a collection, check if the shape matches. If scalar,
@@ -117,7 +117,7 @@ def resolve_array(
                 f"Component class '{type(self).__name__}' array "
                 f"variable '{attr.name}' could not be resolved "
             )
-        return None
+        return None, None
     dims = attr.metadata.get("dims", None)
     if not dims:
         if strict:
@@ -125,7 +125,7 @@ def resolve_array(
                 f"Component class '{type(self).__name__}' array "
                 f"variable '{attr.name}' needs 'dims' metadata"
             )
-        return None
+        return None, None
     shape = [find(tree or DataTree(), key=dim, default=dim) for dim in dims]
     shape = tuple(
         [
@@ -141,8 +141,10 @@ def resolve_array(
                 f"variable '{attr.name}' failed dim resolution: "
                 f"{', '.join(unresolved)}"
             )
-        return None
-    return reshape_array(value, shape)
+        return None, None
+    array = reshape_array(value, shape)
+    coords = {dim: np.arange(size) for dim, size in zip(dims, shape)}
+    return array, coords
 
 
 def bind_tree(
@@ -231,6 +233,7 @@ def init_tree(
     cls = type(self)
     spec = fields_dict(cls)
     dimensions = set()
+    coordinates = {}
     components = {}
     array_vars = {}
     scalar_vars = {}
@@ -261,7 +264,7 @@ def init_tree(
     def _yield_arrays(spec, vals):
         for var in spec.values():
             dims = var.metadata["dims"]
-            val = resolve_array(
+            val, coords = resolve_array(
                 self,
                 var,
                 value=vals.pop(var.name, var.default),
@@ -269,6 +272,7 @@ def init_tree(
                 **{**scalar_vals, **kwargs},
             )
             if val is not None:
+                coordinates.update(coords)
                 yield (var.name, (dims, val))
 
     array_vals = dict(list(_yield_arrays(spec=array_vars, vals=self.__dict__)))
@@ -276,6 +280,7 @@ def init_tree(
     self.data = DataTree(
         Dataset(
             data_vars=array_vals,
+            coords=coordinates,
             attrs={
                 n: v for n, v in scalar_vals.items() if n not in dimensions
             },
@@ -329,7 +334,7 @@ def setattribute(self: _Component, attr: Attribute, value: Any):
         return value
     if get_origin(attr.type) in [list, np.ndarray]:
         shape = attr.metadata["dims"]
-        value = resolve_array(self, attr, value)
+        value, _ = resolve_array(self, attr, value)
         value = (shape, value)
     bind = attr.metadata.get("bind", False)
     if bind:
