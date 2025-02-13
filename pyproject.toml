@@ -35,8 +35,9 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "attrs",                                # todo: bounds?
+    "beartype",
     "cattrs",                               # todo: bounds?
-    "flopy>=3.7.0",
+    "flopy",
     "Jinja2>=3.0",
     "lark",                                 # todo: bounds?
     "numpy>=1.20.3",
@@ -45,6 +46,7 @@ dependencies = [
     "networkx>=3.4.2,<4",
     "xarray[parallel,io]>=2024.11.0,<2025",
     "scipy>=1.14.1,<2",
+    "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
 ]
 dynamic = ["version"]
 
@@ -59,11 +61,11 @@ test = [
     "jupyter",
     "jupytext",
     "modflow-devtools",
-    "mypy",
     "pooch>=1.8",
     "pytest!=8.1.0",
     "pytest-dotenv",
     "pytest-xdist",
+    "pytest-benchmark"
 ]
 build = ["build", "twine"]
 
@@ -96,6 +98,7 @@ select = [
     "I001", # isort - unsorted-imports
 ]
 ignore = [
+    "F841", # local variable is assigned to but never used
     "F821", # undefined name TODO FIXME
     "E722", # do not use bare `except`
     "E741", # ambiguous variable name

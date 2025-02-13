@@ -1,32 +1,27 @@
-def find_upper(s):
-    for i in range(len(s)):
-        if s[i].isupper():
-            yield i
+from pathlib import Path
+from typing import Any, Optional
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 
-def flatten(d):
-    if isinstance(d, (tuple, list)):
-        for x in d:
-            yield from flatten(x)
-    else:
-        yield d
-
-
-def strip(line):
+def to_path(value: Any) -> Optional[Path]:
     """
-    Remove comments and replace commas from input text
-    for a free formatted modflow input file
-
-    Parameters
-    ----------
-        line : str
-            a line of text from a modflow input file
-
-    Returns
-    -------
-        str : line with comments removed and commas replaced
+    Convert a value to a Path if it has a value, otherwise return None.
     """
-    for comment_flag in ["//", "#", "!"]:
-        line = line.split(comment_flag)[0]
-    line = line.strip()
-    return line.replace(",", " ")
+    return Path(value) if value else None
+
+
+def reshape_array(value: ArrayLike, shape: tuple[int]) -> Optional[NDArray]:
+    """
+    If the `ArrayLike` is iterable, make sure it's the given shape.
+    If it's a scalar, broadcast it to the given shape.
+    """
+    value = np.array(value)
+    if value.shape == ():
+        return np.full(shape, value.item())
+    if value.shape != shape:
+        raise ValueError(
+            f"Shape mismatch, got {value.shape}, expected {shape}"
+        )
+    return value
