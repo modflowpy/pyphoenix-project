@@ -71,17 +71,13 @@ def find(
     """
     Search for a value with the given `key` in the given `tree`, first
     within its own `Dataset`, then depth-first from the root downwards.
-    A set of search paths can be provided to look in before continuing
-    with the unguided DFS. If a match is not found, return a `default`.
     """
 
     def _find_recursive(tree, key):
         key = key.strip()
-        # this node first
         value = get(tree, key, None)
         if value is not None:
             return value
-        # dfs over children
         for node in tree.children.values():
             value = get(node, key, None)
             if value is not None:
@@ -238,13 +234,11 @@ def init_tree(
     cls = type(self)
     spec = fields_dict(cls)
     dimensions = set()
-    coordinates = {}
     array_vars = {}
     scalar_vars = {}
     array_vals = {}
     scalar_vals = {}
     components = {}
-    children = children or {}
 
     for var in spec.values():
         bind = var.metadata.get("bind", False)
@@ -290,10 +284,8 @@ def init_tree(
             },
         ),
         name=name or cls.__name__.lower(),
-        children={n: c.data for n, c in children.items()},
+        children={n: c.data for n, c in (children or {}).items()},
     )
-
-    bind_tree(self, parent=parent, children=children)
 
 
 def getattribute(self: _Component, name: str) -> Any:
@@ -393,6 +385,7 @@ def component(maybe_cls: Optional[type[_IsAttrs]] = None) -> type[_Component]:
             init_tree(
                 self, name=name, parent=parent, children=children, **dim_kwargs
             )
+            bind_tree(self, parent=parent, children=children)
 
             # override attribute access
             cls.__getattr__ = getattribute
