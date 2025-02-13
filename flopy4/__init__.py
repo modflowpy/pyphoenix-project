@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from itertools import chain
 from pathlib import Path
 from typing import Annotated, Any, Optional, get_origin
 
@@ -160,10 +159,11 @@ def bind_tree(
     data tree, as well as to any non-`attrs` attributes whose
     name matches a child's name.
 
-    TODO: this is massively duplicative, since each component
-    has a subtree of its own, next to the one its parent owns
-    and in which its tree appears. need to have a single tree
-    at the root, then each component's data is a view into it.
+    TODO: discover dimensions from self, parent and children.
+    If the parent defines a dimension, it should be used for
+    self and children. If a dimension is found in self or in
+    a child which has scope broader than self, send it up to
+    the parent.
     """
 
     cls = type(self)
@@ -172,30 +172,27 @@ def bind_tree(
 
     # bind parent
     if parent:
-        # try binding first by name
+        # bind to parent attrs whose name
+        # matches this component's name
         parent_spec = fields_dict(type(parent))
         parent_var = parent_spec.get(name, None)
         if parent_var:
             assert parent_var.metadata.get("bind", False)
             setattr(parent, name, self)
-        # TODO bind multipackages by type
-        # parent_bindings = {
-        #     n: v
-        #     for n, v in parent_spec.items()
-        #     if v.metadata.get("bind", False)
-        # }
-        # print(parent_bindings)
+
+        # bind parent data tree
         if name in parent.data:
             parent.data.update({name: self.data})
         else:
             parent.data = parent.data.assign({name: self.data})
         self.data = parent.data[self.data.name]
 
-        # bind grandparent
+        # bind grandparent recursively
         grandparent = getattr(parent, "parent", None)
         if grandparent is not None:
             bind_tree(parent, parent=grandparent)
 
+        # update parent reference
         self.parent = parent
 
     # bind children
@@ -234,11 +231,11 @@ def init_tree(
     cls = type(self)
     spec = fields_dict(cls)
     dimensions = set()
+    components = {}
     array_vars = {}
     scalar_vars = {}
     array_vals = {}
     scalar_vals = {}
-    components = {}
 
     for var in spec.values():
         bind = var.metadata.get("bind", False)
@@ -341,6 +338,30 @@ def setattribute(self: _Component, attr: Attribute, value: Any):
     self.data.update({attr.name: value})
 
 
+def pop_dims(**kwargs):
+    """
+    Use dims from `Grid` and/or `ModelTime` instances
+    passed to `grid` and `time` keyword arguments, if
+    available.
+    """
+    dims = {}
+    grid: Grid = kwargs.pop("grid", None)
+    time: ModelTime = kwargs.pop("time", None)
+    grid_dims = ["nlay", "nrow", "ncol", "nnodes"]
+    time_dims = ["nper", "nstp"]
+    if grid:
+        for dim in grid_dims:
+            dims[dim] = getattr(grid, dim)
+    if time:
+        for dim in time_dims:
+            dims[dim] = getattr(time, dim)
+    for dim in grid_dims + time_dims:
+        v = kwargs.pop(dim, None)
+        if v is not None:
+            dims[dim] = v
+    return kwargs, dims
+
+
 def component(maybe_cls: Optional[type[_IsAttrs]] = None) -> type[_Component]:
     """
     Attach a data tree to an `attrs` class instance, and use
@@ -362,28 +383,11 @@ def component(maybe_cls: Optional[type[_IsAttrs]] = None) -> type[_Component]:
             children = kwargs.pop("children", None)
             parent = args[0] if args and any(args) else None
 
-            # use dims from grid and modeltime, if provided
-            dim_kwargs = {}
-            dims_used = set(
-                chain(*[var.metadata.get("dims", []) for var in spec.values()])
-            )
-            grid: Grid = kwargs.pop("grid", None)
-            time: ModelTime = kwargs.pop("time", None)
-            if grid:
-                grid_dims = ["nlay", "nrow", "ncol", "nnodes"]
-                for dim in grid_dims:
-                    if dim in dims_used:
-                        dim_kwargs[dim] = getattr(grid, dim)
-            if time:
-                time_dims = ["nper", "ntstp"]
-                for dim in time_dims:
-                    if dim in dims_used:
-                        dim_kwargs[dim] = getattr(time, dim)
-
             # run the original __init__, then set up the tree
+            kwargs, dimensions = pop_dims(**kwargs)
             init_self(self, **kwargs)
             init_tree(
-                self, name=name, parent=parent, children=children, **dim_kwargs
+                self, name=name, parent=parent, children=children, **dimensions
             )
             bind_tree(self, parent=parent, children=children)
 
@@ -397,3 +401,7 @@ def component(maybe_cls: Optional[type[_IsAttrs]] = None) -> type[_Component]:
         return wrap
 
     return wrap(maybe_cls)
+
+
+# TODO: add separate `component()` decorator like `attrs.field()`?
+# for now, "bind" metadata indicates subcomponent, not a variable.

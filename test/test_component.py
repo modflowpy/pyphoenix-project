@@ -3,12 +3,12 @@ from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
 
-from flopy4.mf6 import COMPONENTS, Sim, Tdis
+from flopy4.mf6 import COMPONENTS, Simulation, Tdis
 from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
 
 
 def test_registry():
-    assert COMPONENTS["sim"] is Sim
+    assert COMPONENTS["simulation"] is Simulation
     assert COMPONENTS["tdis"] is Tdis
     assert COMPONENTS["gwf"] is Gwf
     assert COMPONENTS["npf"] is Npf
@@ -17,7 +17,7 @@ def test_registry():
 
 
 def test_init_top_down():
-    sim = Sim()
+    sim = Simulation()
     tdis = Tdis(sim)
     gwf = Gwf(sim)
     dis = Dis(gwf)
@@ -70,7 +70,7 @@ def test_init_bottom_up():
         },
     )
     tdis = Tdis(time=time)
-    sim = Sim(children={"tdis": tdis, "gwf": gwf})
+    sim = Simulation(children={"tdis": tdis, "gwf": gwf})
 
     assert sim.tdis is tdis
     # TODO test autoincrement
