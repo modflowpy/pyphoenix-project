@@ -188,7 +188,7 @@ def bind_tree(
         # }
         # print(parent_bindings)
         if name in parent.data:
-            parent.data.update({name: self.data, **parent.data})
+            parent.data.update({name: self.data})
         else:
             parent.data = parent.data.assign({name: self.data})
         self.data = parent.data[self.data.name]
@@ -196,7 +196,7 @@ def bind_tree(
         # bind grandparent
         grandparent = getattr(parent, "parent", None)
         if grandparent is not None:
-            bind_tree(parent, grandparent)
+            bind_tree(parent, parent=grandparent)
 
         self.parent = parent
 
@@ -207,6 +207,7 @@ def bind_tree(
         if v and v.metadata.get("bind", False):
             self.data.update({n: c.data})
             setattr(self, n, c)
+        bind_tree(c, parent=self)
 
 
 def init_tree(
@@ -256,8 +257,7 @@ def init_tree(
     def _yield_scalars(spec, vals):
         for var in spec.values():
             val = vals.pop(var.name, var.default)
-            if val is not None:
-                yield (var.name, val)
+            yield (var.name, val)
 
     scalar_vals = dict(
         list(_yield_scalars(spec=scalar_vars, vals=self.__dict__))
@@ -279,7 +279,12 @@ def init_tree(
     array_vals = dict(list(_yield_arrays(spec=array_vars, vals=self.__dict__)))
 
     self.data = DataTree(
-        Dataset(array_vals, attrs=scalar_vals),
+        Dataset(
+            array_vals,
+            attrs={
+                n: v for n, v in scalar_vals.items() if n not in dimensions
+            },
+        ),
         name=name or cls.__name__.lower(),
         children={n: c.data for n, c in children.items()},
     )
