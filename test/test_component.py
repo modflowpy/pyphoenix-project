@@ -55,18 +55,19 @@ def test_init_top_down():
 
 def test_init_bottom_up():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid()
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     dis = Dis(grid=grid)
     ic = Ic(grid=grid)
     oc = Oc(grid=grid)
     npf = Npf(grid=grid)
     gwf = Gwf(
+        grid=grid,
         children={
             "dis": dis,
             "ic": ic,
             "oc": oc,
             "npf": npf,
-        }
+        },
     )
     tdis = Tdis(time=time)
     sim = Sim(children={"tdis": tdis, "gwf": gwf})

@@ -1,4 +1,5 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
+from itertools import chain
 from pathlib import Path
 from typing import Annotated, Any, Optional, get_origin
 
@@ -215,6 +216,7 @@ def init_tree(
     name: Optional[str] = None,
     parent: Optional[_HasTree] = None,
     children: Optional[Mapping[str, _HasTree]] = None,
+    **kwargs,
 ):
     """
     Initialize a data tree for a component class instance.
@@ -271,7 +273,7 @@ def init_tree(
                 var,
                 value=vals.pop(var.name, var.default),
                 tree=parent.data.root if parent else None,
-                **scalar_vals,
+                **{**scalar_vals, **kwargs},
             )
             if val is not None:
                 yield (var.name, (dims, val))
@@ -347,11 +349,7 @@ def setattribute(self: _Component, attr: Attribute, value: Any):
     self.data.update({attr.name: value})
 
 
-def component(
-    maybe_cls: Optional[type[_IsAttrs]] = None,
-    *,
-    align: Optional[Iterable[str]] = None,
-) -> type[_Component]:
+def component(maybe_cls: Optional[type[_IsAttrs]] = None) -> type[_Component]:
     """
     Attach a data tree to an `attrs` class instance, and use
     the data tree for attribute storage: intercept gets/sets
@@ -365,6 +363,7 @@ def component(
 
     def wrap(cls):
         init_self = cls.__init__
+        spec = fields_dict(cls)
 
         def init(self, *args, **kwargs):
             name = kwargs.pop("name", None)
@@ -372,19 +371,29 @@ def component(
             parent = args[0] if args and any(args) else None
 
             # resolve dims from grid and time discretizations
+            # get dims from spec
+            dim_kwargs = {}
+            dims_used = set(
+                chain(*[var.metadata.get("dims", []) for var in spec.values()])
+            )
             grid: Grid = kwargs.pop("grid", None)
             time: ModelTime = kwargs.pop("time", None)
-            diss = [dis for dis in [grid, time] if dis]
-            if align:
-                for dim in align:
-                    for dis in diss:
-                        attr = getattr(dis, dim, None)
-                        if attr is not None:
-                            kwargs[dim] = attr
+            if grid:
+                grid_dims = ["nlay", "nrow", "ncol", "nnodes"]
+                for dim in grid_dims:
+                    if dim in dims_used:
+                        dim_kwargs[dim] = getattr(grid, dim)
+            if time:
+                time_dims = ["nper", "ntstp"]
+                for dim in time_dims:
+                    if dim in dims_used:
+                        dim_kwargs[dim] = getattr(time, dim)
 
             # run the original __init__, then set up the tree
             init_self(self, **kwargs)
-            init_tree(self, name=name, parent=parent, children=children)
+            init_tree(
+                self, name=name, parent=parent, children=children, **dim_kwargs
+            )
 
             # override attribute access
             cls.__getattr__ = getattribute

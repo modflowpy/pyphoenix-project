@@ -8,7 +8,7 @@ from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component(align=["nlay", "ncol", "nrow"])
+@component
 @define(slots=False, on_setattr=setattribute)
 class Dis(Package):
     length_units: str = field(
@@ -45,7 +45,10 @@ class Dis(Package):
         default=1,
         metadata={"block": "griddata", "dims": ("ncol", "nrow", "nlay")},
     )
-    nodes: Optional[int] = field(default=None)
+    nnodes: Optional[int] = field(default=None)
 
     def __attrs_post_init__(self):
-        self.nodes = self.ncol * self.nrow * self.nlay
+        try:
+            self.nnodes = self.ncol * self.nrow * self.nlay
+        except:
+            pass

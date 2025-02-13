@@ -9,7 +9,7 @@ from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component(align=["nodes"])
+@component
 @define(slots=False, on_setattr=setattribute)
 class Npf(Package):
     @define(slots=False)
@@ -66,33 +66,33 @@ class Npf(Package):
     )
     icelltype: NDArray[np.integer] = field(
         default=0,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     k: NDArray[np.floating] = field(
         default=1.0,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     k22: Optional[NDArray[np.floating]] = field(
         default=None,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     k33: Optional[NDArray[np.floating]] = field(
         default=None,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     angle1: Optional[NDArray[np.floating]] = field(
         default=None,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     angle2: Optional[NDArray[np.floating]] = field(
         default=None,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     angle3: Optional[NDArray[np.floating]] = field(
         default=None,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )
     wetdry: Optional[NDArray[np.floating]] = field(
         default=None,
-        metadata={"block": "griddata", "dims": ("nodes",)},
+        metadata={"block": "griddata", "dims": ("nnodes",)},
     )

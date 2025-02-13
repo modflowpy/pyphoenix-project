@@ -12,7 +12,7 @@ Steps = (
 )
 
 
-@component(align="nper")
+@component
 @define(slots=False, on_setattr=setattribute)
 class Oc(Package):
     @define(slots=False)

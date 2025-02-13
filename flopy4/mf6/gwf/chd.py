@@ -7,7 +7,7 @@ from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component(align="nper")
+@component
 @define(slots=False, on_setattr=setattribute)
 class Chd(Package):
     multi = True
