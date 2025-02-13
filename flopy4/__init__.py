@@ -41,8 +41,8 @@ The minimal contract for component class instances.
 
 
 def get(
-    tree: DataTree, key: str, default: Optional[Scalar] = None
-) -> Optional[Scalar]:
+    tree: DataTree, key: str, default: Optional[Any] = None
+) -> Optional[Any]:
     """
     Get a value with the given `name` from the given `tree`
     node. Look first in its variables, then dims, then attrs.
@@ -66,8 +66,8 @@ def get(
 def find(
     tree: DataTree,
     key: str,
-    default: Optional[Scalar] = None,
-) -> Optional[Scalar]:
+    default: Optional[Any] = None,
+) -> Optional[Any]:
     """
     Search for a value with the given `key` in the given `tree`, first
     within its own `Dataset`, then depth-first from the root downwards.
@@ -81,7 +81,7 @@ def find(
         value = get(tree, key, None)
         if value is not None:
             return value
-        # bfs over children
+        # dfs over children
         for node in tree.children.values():
             value = get(node, key, None)
             if value is not None:
