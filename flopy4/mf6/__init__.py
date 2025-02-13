@@ -43,7 +43,9 @@ class Tdis(Package):
         nstp: int = field(default=1)
         tsmult: float = field(default=1.0)
 
-    nper: int = field(default=1, metadata={"block": "dimensions", "dim": {"coord": "kper"}})
+    nper: int = field(
+        default=1, metadata={"block": "dimensions", "dim": {"coord": "kper"}}
+    )
     perioddata: list[PeriodData] = field(
         default=Factory(list),
         metadata={"block": "perioddata", "dims": ("nper",)},

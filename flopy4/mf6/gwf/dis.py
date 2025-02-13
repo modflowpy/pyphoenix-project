@@ -22,9 +22,15 @@ class Dis(Package):
     export_array_netcdf: bool = field(
         default=False, metadata={"block": "options"}
     )
-    nlay: int = field(default=1, metadata={"block": "dimensions", "dim": {"coord": "k"}})
-    ncol: int = field(default=2, metadata={"block": "dimensions", "dim": {"coord": "i"}})
-    nrow: int = field(default=2, metadata={"block": "dimensions", "dim": {"coord": "j"}})
+    nlay: int = field(
+        default=1, metadata={"block": "dimensions", "dim": {"coord": "k"}}
+    )
+    ncol: int = field(
+        default=2, metadata={"block": "dimensions", "dim": {"coord": "i"}}
+    )
+    nrow: int = field(
+        default=2, metadata={"block": "dimensions", "dim": {"coord": "j"}}
+    )
     delr: NDArray[np.floating] = field(
         default=1.0,
         metadata={"block": "griddata", "dims": ("ncol",)},
