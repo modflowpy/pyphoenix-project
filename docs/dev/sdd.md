@@ -86,9 +86,13 @@ For nodes in the context tree (i.e., components with children), `.data` can be a
 
 ### `attrs` + `xarray`
 
-Combining these patterns naively would result in data duplication and synchronization challenges.
+Combining these patterns naively would result in several challenges, involving duplication, synchronization, and a more general problem reminiscent of [object-relational impedance mismatch](https://en.wikipedia.org/wiki/Object%E2%80%93relational_impedance_mismatch), where the list-oriented and array-oriented paradigms conflict.
 
-We can arrange instead for `attrs` to proxy `xarray` via `__getattr__`.
+Ultimately, we'd like a mapping between an abstract hierarchy of components and variables, as defined in MF6 definition files, to a Python representation which is self-describing (courtesy of `attrs`) and self-aligning (courtesy of `xarray`).
+
+#### Details
+
+We can arrange for `attrs` to proxy `xarray` via `__getattr__`.
 
 Likewise, we can use [`on_setattr`](https://www.attrs.org/en/stable/api.html#core) to intercept values sent to the `attrs` attributes and send them to `xarray`.
 
