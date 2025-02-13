@@ -369,8 +369,7 @@ def component(maybe_cls: Optional[type[_IsAttrs]] = None) -> type[_Component]:
             children = kwargs.pop("children", None)
             parent = args[0] if args and any(args) else None
 
-            # resolve dims from grid and time discretizations
-            # get dims from spec
+            # use dims from grid and modeltime, if provided
             dim_kwargs = {}
             dims_used = set(
                 chain(*[var.metadata.get("dims", []) for var in spec.values()])
