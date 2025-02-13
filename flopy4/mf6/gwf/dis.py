@@ -23,13 +23,25 @@ class Dis(Package):
         default=False, metadata={"block": "options"}
     )
     nlay: int = field(
-        default=1, metadata={"block": "dimensions", "dim": {"coord": "k"}}
+        default=1,
+        metadata={
+            "block": "dimensions",
+            "dim": {"coord": "k", "scope": "simulation"},
+        },
     )
     ncol: int = field(
-        default=2, metadata={"block": "dimensions", "dim": {"coord": "i"}}
+        default=2,
+        metadata={
+            "block": "dimensions",
+            "dim": {"coord": "i", "scope": "simulation"},
+        },
     )
     nrow: int = field(
-        default=2, metadata={"block": "dimensions", "dim": {"coord": "j"}}
+        default=2,
+        metadata={
+            "block": "dimensions",
+            "dim": {"coord": "j", "scope": "simulation"},
+        },
     )
     delr: NDArray[np.floating] = field(
         default=1.0,

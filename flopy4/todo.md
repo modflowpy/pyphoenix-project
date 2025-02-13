@@ -6,6 +6,11 @@ Each component should get a view into the root (as far as it's aware) tree
 unless it's the root (i.e. simulation) itself, or it's not attached to any
 parent context, in which case it's the root of its own tree.
 
+Currently it's massively duplicative, since each component
+has a subtree of its own, next to the one its parent owns
+and in which its tree appears. need to have a single tree
+at the root, then each component's data is a view into it.
+
 - subcomponent accessors
 
 I think for access by name we want dict style e.g. `gwf["chd1"]`,

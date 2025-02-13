@@ -12,7 +12,8 @@ __all__ = [
     "Package",
     "Model",
     "Simulation",
-    "Sim",
+    "Solution",
+    "Exchange",
     "COMPONENTS",
 ]
 
@@ -34,6 +35,17 @@ class Model(Component):
     pass
 
 
+class Solution(Package):
+    pass
+
+
+class Exchange(Package):
+    exgtype: type = field()
+    exgfile: Path = field()
+    exgmnamea: Optional[str] = field(default=None)
+    exgmnameb: Optional[str] = field(default=None)
+
+
 @component
 @define(slots=False, on_setattr=setattribute)
 class Tdis(Package):
@@ -44,7 +56,11 @@ class Tdis(Package):
         tsmult: float = field(default=1.0)
 
     nper: int = field(
-        default=1, metadata={"block": "dimensions", "dim": {"coord": "kper"}}
+        default=1,
+        metadata={
+            "block": "dimensions",
+            "dim": {"coord": "kper", "scope": "simulation"},
+        },
     )
     perioddata: list[PeriodData] = field(
         default=Factory(list),
@@ -58,26 +74,9 @@ class Tdis(Package):
     )
 
 
-class Solution(Package):
-    pass
-
-
-class Exchange(Package):
-    exgtype: type = field()
-    exgfile: Path = field()
-    exgmnamea: Optional[str] = field(default=None)
-    exgmnameb: Optional[str] = field(default=None)
-
-
-class Simulation(Component):
-    pass
-
-
 @component
 @define(init=False, slots=False)
-class Sim(Simulation):
-    # "bind" indicates this is a subcomponent, not a variable.
-    # TODO: add separate `component()` decorator like `field`?
+class Simulation(Component):
     models: dict[str, Model] = field(metadata={"bind": True})
     exchanges: dict[str, Exchange] = field(metadata={"bind": True})
     solutions: dict[str, Solution] = field(metadata={"bind": True})
