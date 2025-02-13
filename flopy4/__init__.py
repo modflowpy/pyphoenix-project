@@ -112,7 +112,8 @@ def resolve_array(
 
     Dimensions can be resolved from an optional `xarray.DataTree` or can
     be passed in as kwargs. If a dimension cannot be resolved or found,
-    a `ValueError` is raised.
+    and `strict=False`, a `ValueError` is raised, otherwise `None` is
+    returned.
     """
     value = value or attr.default
     if value is None:
@@ -294,17 +295,15 @@ def init_tree(
     bind_tree(self, parent=parent, children=children)
 
 
-def getattribute(self: Any, name: str) -> Any:
+def getattribute(self: _Component, name: str) -> Any:
     """
     Proxy `attrs` attribute access, returning values from
     an `xarray.DataTree` in `self.data`.
 
     Notes
     -----
-    Overrides `__getattribute__` in classes fulfilling the
-    `_Component` contract. But don't annotate `self` as a
-    `_Component` because beartype use `__getattribute__`
-    to evaluate the type hint, creating recursion.
+    Override `__getattr__` with this in classes fulfilling
+    the `_Component` contract.
     """
 
     if name == "data":
