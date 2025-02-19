@@ -4,13 +4,12 @@ from typing import Optional
 import numpy as np
 from attr import define, field
 from numpy.typing import NDArray
+from xattree import array, xattree
 
-from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component
-@define(slots=False, on_setattr=setattribute)
+@xattree
 class Npf(Package):
     @define(slots=False)
     class CvOptions:
@@ -64,35 +63,43 @@ class Npf(Package):
     dev_omega: Optional[float] = field(
         default=None, metadata={"block": "options"}
     )
-    icelltype: NDArray[np.integer] = field(
+    icelltype: NDArray[np.integer] = array(
+        dims=("nnodes",),
         default=0,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    k: NDArray[np.floating] = field(
+    k: NDArray[np.floating] = array(
+        dims=("nnodes",),
         default=1.0,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    k22: Optional[NDArray[np.floating]] = field(
+    k22: Optional[NDArray[np.floating]] = array(
+        dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    k33: Optional[NDArray[np.floating]] = field(
+    k33: Optional[NDArray[np.floating]] = array(
+        dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    angle1: Optional[NDArray[np.floating]] = field(
+    angle1: Optional[NDArray[np.floating]] = array(
+        dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    angle2: Optional[NDArray[np.floating]] = field(
+    angle2: Optional[NDArray[np.floating]] = array(
+        dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    angle3: Optional[NDArray[np.floating]] = field(
+    angle3: Optional[NDArray[np.floating]] = array(
+        dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )
-    wetdry: Optional[NDArray[np.floating]] = field(
+    wetdry: Optional[NDArray[np.floating]] = array(
+        dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata", "dims": ("nnodes",)},
+        metadata={"block": "griddata"},
     )

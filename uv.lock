@@ -789,6 +789,7 @@ dependencies = [
     { name = "scipy" },
     { name = "toml" },
     { name = "xarray", extra = ["io", "parallel"] },
+    { name = "xattree" },
 ]
 
 [package.optional-dependencies]
@@ -865,6 +866,7 @@ requires-dist = [
     { name = "toml", specifier = ">=0.10" },
     { name = "twine", marker = "extra == 'build'" },
     { name = "xarray", extras = ["io", "parallel"], specifier = ">=2024.11.0,<2025" },
+    { name = "xattree", git = "https://github.com/modflowpy/xattree.git" },
 ]
 
 [[package]]
@@ -3274,6 +3276,19 @@ io = [
 ]
 parallel = [
     { name = "dask", extra = ["complete"] },
+]
+
+[[package]]
+name = "xattree"
+version = "0.1.0.dev0"
+source = { git = "https://github.com/modflowpy/xattree.git#1b4308e0bbf25dacb5d45c4fdf212ecf493a3634" }
+dependencies = [
+    { name = "attrs" },
+    { name = "beartype" },
+    { name = "cattrs" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "xarray" },
 ]
 
 [[package]]

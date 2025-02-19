@@ -1,15 +1,14 @@
 from typing import Optional
 
 import numpy as np
-from attr import define, field
+from attr import field
 from numpy.typing import NDArray
+from xattree import array, dim, xattree
 
-from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component
-@define(slots=False, on_setattr=setattribute)
+@xattree
 class Dis(Package):
     length_units: str = field(
         default=None,
@@ -22,51 +21,56 @@ class Dis(Package):
     export_array_netcdf: bool = field(
         default=False, metadata={"block": "options"}
     )
-    nlay: int = field(
+    nlay: int = dim(
+        coord="k",
+        scope="simulation",
         default=1,
         metadata={
             "block": "dimensions",
-            "dim": {"coord": "k", "scope": "simulation"},
         },
     )
-    ncol: int = field(
+    ncol: int = dim(
+        coord="i",
+        scope="simulation",
         default=2,
         metadata={
             "block": "dimensions",
-            "dim": {"coord": "i", "scope": "simulation"},
         },
     )
-    nrow: int = field(
+    nrow: int = dim(
+        coord="j",
+        scope="simulation",
         default=2,
         metadata={
             "block": "dimensions",
-            "dim": {"coord": "j", "scope": "simulation"},
         },
     )
-    delr: NDArray[np.floating] = field(
+    delr: NDArray[np.floating] = array(
+        dims=("ncol",),
         default=1.0,
-        metadata={"block": "griddata", "dims": ("ncol",)},
+        metadata={"block": "griddata"},
     )
-    delc: NDArray[np.floating] = field(
+    delc: NDArray[np.floating] = array(
+        dims=("nrow",),
         default=1.0,
-        metadata={"block": "griddata", "dims": ("nrow",)},
+        metadata={"block": "griddata"},
     )
-    top: NDArray[np.floating] = field(
+    top: NDArray[np.floating] = array(
+        dims=("ncol", "nrow"),
         default=1.0,
-        metadata={"block": "griddata", "dims": ("ncol", "nrow")},
+        metadata={"block": "griddata"},
     )
-    botm: NDArray[np.floating] = field(
+    botm: NDArray[np.floating] = array(
+        dims=("ncol", "nrow", "nlay"),
         default=0.0,
-        metadata={"block": "griddata", "dims": ("ncol", "nrow", "nlay")},
+        metadata={"block": "griddata"},
     )
-    idomain: Optional[NDArray[np.integer]] = field(
+    idomain: NDArray[np.integer] = array(
+        dims=("ncol", "nrow", "nlay"),
         default=1,
-        metadata={"block": "griddata", "dims": ("ncol", "nrow", "nlay")},
+        metadata={"block": "griddata"},
     )
-    nnodes: Optional[int] = field(default=None)
+    nnodes: Optional[int] = dim(default=None, coord="node", scope="simulation")
 
     def __attrs_post_init__(self):
-        try:
-            self.nnodes = self.ncol * self.nrow * self.nlay
-        except:
-            pass
+        self.nnodes = self.ncol * self.nrow * self.nlay

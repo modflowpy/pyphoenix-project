@@ -3,9 +3,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from attr import Factory, define, field
-
-from flopy4 import component, setattribute
+from attr import Factory, field
+from attrs import define
+from xattree import array, child, xattree
 
 __all__ = [
     "Component",
@@ -46,10 +46,9 @@ class Exchange(Package):
     exgmnameb: Optional[str] = field(default=None)
 
 
-@component
-@define(slots=False, on_setattr=setattribute)
+@xattree
 class Tdis(Package):
-    @define(slots=False)
+    @define
     class PeriodData:
         perlen: float = field(default=1.0)
         nstp: int = field(default=1)
@@ -62,9 +61,10 @@ class Tdis(Package):
             "dim": {"coord": "kper", "scope": "simulation"},
         },
     )
-    perioddata: list[PeriodData] = field(
+    perioddata: list[PeriodData] = array(
+        dims=("nper",),
         default=Factory(list),
-        metadata={"block": "perioddata", "dims": ("nper",)},
+        metadata={"block": "perioddata"},
     )
     time_units: Optional[str] = field(
         default=None, metadata={"block": "options"}
@@ -74,10 +74,9 @@ class Tdis(Package):
     )
 
 
-@component
-@define(init=False, slots=False)
+@xattree
 class Simulation(Component):
-    models: dict[str, Model] = field(metadata={"bind": True})
-    exchanges: dict[str, Exchange] = field(metadata={"bind": True})
-    solutions: dict[str, Solution] = field(metadata={"bind": True})
-    tdis: Tdis = field(metadata={"bind": True}, default=Factory(Tdis))
+    models: dict[str, Model] = child(dict[str, Model])
+    exchanges: dict[str, Exchange] = child(dict[str, Exchange])
+    solutions: dict[str, Solution] = child(dict[str, Solution])
+    tdis: Tdis = child(Tdis)

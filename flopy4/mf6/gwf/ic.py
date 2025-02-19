@@ -1,17 +1,17 @@
 import numpy as np
-from attr import define, field
+from attr import field
 from numpy.typing import NDArray
+from xattree import array, xattree
 
-from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 
 
-@component
-@define(slots=False, on_setattr=setattribute)
+@xattree
 class Ic(Package):
-    strt: NDArray[np.floating] = field(
+    strt: NDArray[np.floating] = array(
+        dims=("nnodes",),
         default=1.0,
-        metadata={"block": "packagedata", "dims": ("nnodes",)},
+        metadata={"block": "packagedata"},
     )
     export_array_ascii: bool = field(
         default=False, metadata={"block": "options"}
