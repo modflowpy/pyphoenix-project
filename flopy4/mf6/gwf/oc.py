@@ -1,20 +1,18 @@
 from pathlib import Path
 from typing import Literal, Optional
 
+import numpy as np
 from attr import define, field
+from numpy.typing import NDArray
 from xattree import array, xattree
 
 from flopy4.mf6 import Package
 from flopy4.utils import to_path
 
-Steps = (
-    Literal["all"] | Literal["first"] | Literal["last"] | tuple[str | int, ...]
-)
-
 
 @xattree
 class Oc(Package):
-    @define
+    @define(slots=False)
     class Format:
         columns: int = field(default=10)
         width: int = field(default=11)
@@ -23,15 +21,18 @@ class Oc(Package):
             field(default="general")
         )
 
-    @define
-    class Period:
-        # TODO follow imod-python for OC SPD
-        rtype: str = field()
-        steps: Steps = field()
+    @define(slots=False)
+    class Steps:
+        all: bool = field()
+        first: bool = field()
+        last: bool = field()
+        steps: list[int] = field()
+        frequency: int = field()
 
-    @define
-    class Steps_:
-        steps: Steps = field()
+    @define(slots=False)
+    class Period:
+        rtype: str = field()
+        steps: "Oc.Steps" = field()
 
     budget_file: Optional[Path] = field(
         converter=to_path,
@@ -51,12 +52,14 @@ class Oc(Package):
     format: Optional[Format] = field(
         default=None, init=False, metadata={"block": "options"}
     )
-    saverecord: Optional[list[Steps]] = array(
+    saverecord: Optional[NDArray[np.object_]] = array(
+        Period,
         dims=("nper",),
         default=None,
         metadata={"block": "perioddata"},
     )
-    printrecord: Optional[list[Steps]] = array(
+    printrecord: Optional[NDArray[np.object_]] = array(
+        Period,
         dims=("nper",),
         default=None,
         metadata={"block": "perioddata"},

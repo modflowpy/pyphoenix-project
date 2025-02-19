@@ -27,18 +27,22 @@ class Component(ABC):
         COMPONENTS[cls.__name__.lower()] = cls
 
 
+@define
 class Package(Component):
     pass
 
 
+@define
 class Model(Component):
     pass
 
 
+@define
 class Solution(Package):
     pass
 
 
+@define
 class Exchange(Package):
     exgtype: type = field()
     exgfile: Path = field()
