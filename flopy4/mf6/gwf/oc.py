@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Literal, Optional
 
-from attr import Factory, define, field
+from attr import define, field
+from xattree import array, xattree
 
-from flopy4 import component, setattribute
 from flopy4.mf6 import Package
 from flopy4.utils import to_path
 
@@ -12,10 +12,9 @@ Steps = (
 )
 
 
-@component
-@define(slots=False, on_setattr=setattribute)
+@xattree
 class Oc(Package):
-    @define(slots=False)
+    @define
     class Format:
         columns: int = field(default=10)
         width: int = field(default=11)
@@ -24,7 +23,7 @@ class Oc(Package):
             field(default="general")
         )
 
-    @define(slots=False)
+    @define
     class Period:
         # TODO follow imod-python for OC SPD
         rtype: str = field()
@@ -52,11 +51,13 @@ class Oc(Package):
     format: Optional[Format] = field(
         default=None, init=False, metadata={"block": "options"}
     )
-    saverecord: Optional[list[Steps]] = field(
-        default=Factory(list),
-        metadata={"block": "perioddata", "dims": ("nper",)},
+    saverecord: Optional[list[Steps]] = array(
+        dims=("nper",),
+        default=None,
+        metadata={"block": "perioddata"},
     )
-    printrecord: Optional[list[Steps]] = field(
-        default=Factory(list),
-        metadata={"block": "perioddata", "dims": ("nper",)},
+    printrecord: Optional[list[Steps]] = array(
+        dims=("nper",),
+        default=None,
+        metadata={"block": "perioddata"},
     )
