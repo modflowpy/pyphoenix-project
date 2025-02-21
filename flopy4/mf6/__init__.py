@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from attr import Factory, field
+from attr import field
 from attrs import define
 from numpy.typing import NDArray
 from xattree import array, child, dim, xattree
