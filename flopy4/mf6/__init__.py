@@ -3,9 +3,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from attr import Factory, field
+import numpy as np
+from attr import field
 from attrs import define
-from xattree import array, child, xattree
+from numpy.typing import NDArray
+from xattree import array, child, dim, xattree
 
 __all__ = [
     "Component",
@@ -58,16 +60,15 @@ class Tdis(Package):
         nstp: int = field(default=1)
         tsmult: float = field(default=1.0)
 
-    nper: int = field(
+    nper: int = dim(
+        coord="kper",
+        scope="simulation",
         default=1,
-        metadata={
-            "block": "dimensions",
-            "dim": {"coord": "kper", "scope": "simulation"},
-        },
+        metadata={"block": "dimensions"},
     )
-    perioddata: list[PeriodData] = array(
+    perioddata: NDArray[np.object_] = array(
+        PeriodData,
         dims=("nper",),
-        default=Factory(list),
         metadata={"block": "perioddata"},
     )
     time_units: Optional[str] = field(
