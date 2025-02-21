@@ -16,11 +16,10 @@ def test_registry():
     assert COMPONENTS["oc"] is Oc
 
 
-def test_sim():
+def test_empty_sim():
     sim = Simulation()
 
 
-# @pytest.mark.xfail(reason="TODO finish debugging")
 def test_init_bottom_up():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
@@ -31,6 +30,7 @@ def test_init_bottom_up():
         "ncol": grid.ncol,
         "nnodes": grid.nnodes,
     }
+
     dis = Dis(dims=dims)
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
@@ -40,32 +40,34 @@ def test_init_bottom_up():
         ic=ic,
         oc=oc,
         npf=npf,
+        # TODO get dims/coords from dis
+        # and remove explicit arg below
         dims=dims,
     )
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.data.dis is dis.data
+    assert gwf.data.ic is ic.data
+    assert gwf.data.oc is oc.data
+    assert gwf.data.npf is npf.data
+    assert np.array_equal(npf.k, np.ones(4))
+    assert np.array_equal(npf.data.k, np.ones(4))
+
     tdis = Tdis(dims=dims)
     sim = Simulation(tdis=tdis, models={"gwf": gwf})
 
-    assert isinstance(sim.data, DataTree)
-    assert "tdis" in sim.data.children
-    assert "gwf" in sim.data.children
-    assert "dis" in sim.data.children["gwf"].children
-    assert "ic" in sim.data.children["gwf"].children
-    assert "oc" in sim.data.children["gwf"].children
-    assert "npf" in sim.data.children["gwf"].children
-
     assert sim.tdis is tdis
     assert sim.models["gwf"] is gwf
-    # TODO debug
-    # assert gwf.dis is dis
-    # assert gwf.ic is ic
-    # assert gwf.oc is oc
-    # assert gwf.npf is npf
-
-    assert np.array_equal(
-        sim.data.children["gwf"].children["npf"].k, np.ones((4))
-    )
-    assert np.array_equal(npf.k, npf.data.k)
-
-    # TODO: debug
-    # assert npf.k is npf.data.k
-    # assert gwf.parent.data.children["gwf"].children["npf"] is npf.data
+    assert isinstance(sim.data, DataTree)
+    assert sim.data.tdis is tdis.data
+    assert sim.data.gwf is gwf.data
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(4))
+    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(4))
