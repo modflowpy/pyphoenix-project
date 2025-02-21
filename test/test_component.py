@@ -16,6 +16,10 @@ def test_registry():
     assert COMPONENTS["oc"] is Oc
 
 
+def test_sim():
+    sim = Simulation()
+
+
 # @pytest.mark.xfail(reason="TODO finish debugging")
 def test_init_bottom_up():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
