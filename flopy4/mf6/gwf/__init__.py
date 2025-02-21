@@ -3,7 +3,7 @@ from typing import Optional
 
 from attr import field
 from attrs import define
-from xattree import child, xattree
+from xattree import xattree
 
 from flopy4.mf6 import Model
 from flopy4.mf6.gwf.chd import Chd
@@ -17,12 +17,10 @@ __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
 @xattree
 class Gwf(Model):
-    # "bind" indicates this is a subcomponent, not a variable.
-    # TODO: add separate `component()` decorator like `field`?
-    dis: Dis = child(Dis)
-    ic: Ic = child(Dis)
-    oc: Oc = child(Oc)
-    npf: Npf = child(Npf)
+    dis: Dis = field()
+    ic: Ic = field()
+    oc: Oc = field()
+    npf: Npf = field()
 
     @define
     class NewtonOptions:

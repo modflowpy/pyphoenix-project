@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import xarray as xr
 
 # These tests show how we could use a chunked and lazy dask array
@@ -9,6 +10,7 @@ import xarray as xr
 # Instead we need to loop over the blocks and compute them one by one. (test 2)
 
 
+@pytest.mark.slow
 def test_netcdf_with_map_blocks(tmp_path):
     data = xr.DataArray(range(1, 1_000), dims=("x",))
     nc_path = tmp_path / "test_netcdf_with_map_blocks.nc"
@@ -36,6 +38,7 @@ def test_netcdf_with_map_blocks(tmp_path):
     assert len(output_file) == 10
 
 
+@pytest.mark.slow
 def test_netcdf_with_dask_map_blocks(tmp_path):
     data = xr.DataArray(range(1, 1_000), dims=("x",))
     nc_path = tmp_path / "test_netcdf_with_dask_map_blocks.nc"

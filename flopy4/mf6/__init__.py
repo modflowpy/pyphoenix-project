@@ -7,7 +7,7 @@ import numpy as np
 from attr import field
 from attrs import define
 from numpy.typing import NDArray
-from xattree import array, child, dim, xattree
+from xattree import array, dim, xattree
 
 __all__ = [
     "Component",
@@ -81,7 +81,7 @@ class Tdis(Package):
 
 @xattree
 class Simulation(Component):
-    models: dict[str, Model] = child(dict[str, Model])
-    exchanges: dict[str, Exchange] = child(dict[str, Exchange])
-    solutions: dict[str, Solution] = child(dict[str, Solution])
-    tdis: Tdis = child(Tdis)
+    models: dict[str, Model] = field()
+    exchanges: dict[str, Exchange] = field()
+    solutions: dict[str, Solution] = field()
+    tdis: Tdis = field()
