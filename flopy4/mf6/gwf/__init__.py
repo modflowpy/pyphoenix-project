@@ -21,6 +21,7 @@ class Gwf(Model):
     ic: Ic = field()
     oc: Oc = field()
     npf: Npf = field()
+    chd: list[Chd] = field()
 
     @define
     class NewtonOptions:

@@ -19,7 +19,7 @@ chd = Chd(
 # list input in the mf6 paradigm, just stored in xarray.
 # this is straightforward to implement. even in flopy3?
 assert all(
-    period == Chd.StressPeriodData((0, 0, 0), 1.0)
+    period == Chd.Period((0, 0, 0), 1.0)
     for period in chd.data["stress_period_data"]
 )
 

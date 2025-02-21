@@ -4,7 +4,7 @@ from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
 
 from flopy4.mf6 import COMPONENTS, Simulation, Tdis
-from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
 
 def test_registry():
@@ -35,11 +35,13 @@ def test_init_bottom_up():
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
     npf = Npf(dims=dims)
+    chd = Chd(dims=dims)
     gwf = Gwf(
         dis=dis,
         ic=ic,
         oc=oc,
         npf=npf,
+        chd=[chd],
         # TODO get dims/coords from dis
         # and remove explicit arg below
         dims=dims,
@@ -50,10 +52,12 @@ def test_init_bottom_up():
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
+    assert gwf.chd[0] is chd
     assert gwf.data.dis is dis.data
     assert gwf.data.ic is ic.data
     assert gwf.data.oc is oc.data
     assert gwf.data.npf is npf.data
+    assert gwf.data.chd_0 is chd.data
     assert np.array_equal(npf.k, np.ones(4))
     assert np.array_equal(npf.data.k, np.ones(4))
 
@@ -69,5 +73,6 @@ def test_init_bottom_up():
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
+    assert gwf.chd[0] is chd
     assert np.array_equal(sim.models["gwf"].npf.k, np.ones(4))
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(4))
