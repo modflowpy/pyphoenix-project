@@ -64,42 +64,42 @@ class Npf(Package):
         default=None, metadata={"block": "options"}
     )
     icelltype: NDArray[np.integer] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=0,
         metadata={"block": "griddata"},
     )
     k: NDArray[np.floating] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=1.0,
         metadata={"block": "griddata"},
     )
     k22: Optional[NDArray[np.floating]] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=None,
         metadata={"block": "griddata"},
     )
     k33: Optional[NDArray[np.floating]] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=None,
         metadata={"block": "griddata"},
     )
     angle1: Optional[NDArray[np.floating]] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=None,
         metadata={"block": "griddata"},
     )
     angle2: Optional[NDArray[np.floating]] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=None,
         metadata={"block": "griddata"},
     )
     angle3: Optional[NDArray[np.floating]] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=None,
         metadata={"block": "griddata"},
     )
     wetdry: Optional[NDArray[np.floating]] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=None,
         metadata={"block": "griddata"},
     )

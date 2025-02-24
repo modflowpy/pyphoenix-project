@@ -22,14 +22,6 @@ class Chd(Package):
         steps: list[int] = field()
         frequency: int = field()
 
-    @define
-    class Period:
-        steps: "Chd.Steps" = field()
-        cellid: tuple[int, ...] = field()
-        head: float = field()
-        aux: Optional[float] = field(default=None)
-        boundname: Optional[str] = field(default=None)
-
     auxiliary: Optional[list[str]] = array(
         default=None, metadata={"block": "options"}
     )
@@ -50,9 +42,30 @@ class Chd(Package):
     maxbound: Optional[int] = field(
         default=None, metadata={"block": "dimensions"}
     )
-    stress_period_data: Optional[NDArray[np.object_]] = array(
-        Period,
-        dims=("nper",),
+    head: Optional[NDArray[np.floating]] = array(
+        dims=(
+            "per",
+            "node",
+        ),
         default=None,
         metadata={"block": "period"},
+    )
+    aux: Optional[NDArray[np.floating]] = array(
+        dims=(
+            "per",
+            "node",
+        ),
+        default=None,
+        metadata={"block": "period"},
+    )
+    boundname: Optional[NDArray[np.str_]] = array(
+        dims=(
+            "per",
+            "node",
+        ),
+        default=None,
+        metadata={"block": "period"},
+    )
+    steps: Optional[NDArray[np.object_]] = array(
+        Steps, dims=("per", "node"), default=None, metadata={"block": "period"}
     )

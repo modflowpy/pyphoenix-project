@@ -21,14 +21,18 @@ def test_empty_sim():
 
 
 def test_init_bottom_up():
+    pass
+
+
+def test_init_explicit_dims():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     dims = {
-        "nper": time.nper,
-        "nlay": grid.nlay,
-        "nrow": grid.nrow,
-        "ncol": grid.ncol,
-        "nnodes": grid.nnodes,
+        "per": time.nper,
+        "lay": grid.nlay,
+        "row": grid.nrow,
+        "col": grid.ncol,
+        "node": grid.nnodes,
     }
 
     dis = Dis(dims=dims)
