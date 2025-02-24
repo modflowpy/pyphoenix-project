@@ -54,28 +54,32 @@ class Exchange(Package):
 
 @xattree
 class Tdis(Package):
-    @define
-    class PeriodData:
-        perlen: float = field(default=1.0)
-        nstp: int = field(default=1)
-        tsmult: float = field(default=1.0)
-
     nper: int = dim(
-        coord="kper",
-        scope="simulation",
+        name="per",
         default=1,
+        scope="simulation",
         metadata={"block": "dimensions"},
-    )
-    perioddata: NDArray[np.object_] = array(
-        PeriodData,
-        dims=("nper",),
-        metadata={"block": "perioddata"},
     )
     time_units: Optional[str] = field(
         default=None, metadata={"block": "options"}
     )
     start_date_time: Optional[datetime] = field(
         default=None, metadata={"block": "options"}
+    )
+    perlen: NDArray[np.floating] = array(
+        default=1.0,
+        dims=("per",),
+        metadata={"block": "perioddata"},
+    )
+    nstp: NDArray[np.integer] = array(
+        default=1,
+        dims=("per",),
+        metadata={"block": "perioddata"},
+    )
+    tsmult: NDArray[np.floating] = array(
+        default=1.0,
+        dims=("per",),
+        metadata={"block": "perioddata"},
     )
 
 

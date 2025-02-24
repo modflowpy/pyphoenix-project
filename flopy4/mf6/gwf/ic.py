@@ -9,7 +9,7 @@ from flopy4.mf6 import Package
 @xattree
 class Ic(Package):
     strt: NDArray[np.floating] = array(
-        dims=("nnodes",),
+        dims=("node",),
         default=1.0,
         metadata={"block": "packagedata"},
     )

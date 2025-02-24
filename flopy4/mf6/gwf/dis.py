@@ -22,7 +22,7 @@ class Dis(Package):
         default=False, metadata={"block": "options"}
     )
     nlay: int = dim(
-        coord="k",
+        name="lay",
         scope="simulation",
         default=1,
         metadata={
@@ -30,7 +30,7 @@ class Dis(Package):
         },
     )
     ncol: int = dim(
-        coord="i",
+        name="col",
         scope="simulation",
         default=2,
         metadata={
@@ -38,7 +38,7 @@ class Dis(Package):
         },
     )
     nrow: int = dim(
-        coord="j",
+        name="row",
         scope="simulation",
         default=2,
         metadata={
@@ -46,31 +46,31 @@ class Dis(Package):
         },
     )
     delr: NDArray[np.floating] = array(
-        dims=("ncol",),
+        dims=("col",),
         default=1.0,
         metadata={"block": "griddata"},
     )
     delc: NDArray[np.floating] = array(
-        dims=("nrow",),
+        dims=("row",),
         default=1.0,
         metadata={"block": "griddata"},
     )
     top: NDArray[np.floating] = array(
-        dims=("ncol", "nrow"),
+        dims=("col", "row"),
         default=1.0,
         metadata={"block": "griddata"},
     )
     botm: NDArray[np.floating] = array(
-        dims=("ncol", "nrow", "nlay"),
+        dims=("col", "row", "lay"),
         default=0.0,
         metadata={"block": "griddata"},
     )
     idomain: NDArray[np.integer] = array(
-        dims=("ncol", "nrow", "nlay"),
+        dims=("col", "row", "lay"),
         default=1,
         metadata={"block": "griddata"},
     )
-    nnodes: Optional[int] = dim(default=None, coord="node", scope="simulation")
+    nnodes: Optional[int] = dim(name="node", scope="simulation", default=None)
 
     def __attrs_post_init__(self):
         self.nnodes = self.ncol * self.nrow * self.nlay
