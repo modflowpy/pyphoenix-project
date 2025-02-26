@@ -7,7 +7,7 @@ import numpy as np
 from attr import field
 from attrs import define
 from numpy.typing import NDArray
-from xattree import array, dim, xattree, ROOT
+from xattree import ROOT, array, dim, xattree
 
 __all__ = [
     "Component",
