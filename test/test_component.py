@@ -16,15 +16,11 @@ def test_registry():
     assert COMPONENTS["oc"] is Oc
 
 
-def test_empty_sim():
+def test_init_empty_sim():
     sim = Simulation()
 
 
-def test_init_bottom_up():
-    pass
-
-
-def test_init_explicit_dims():
+def test_init_gwf():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     dims = {
@@ -65,6 +61,33 @@ def test_init_explicit_dims():
     assert np.array_equal(npf.k, np.ones(4))
     assert np.array_equal(npf.data.k, np.ones(4))
 
+
+def test_init_sim():
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
+    dims = {
+        "per": time.nper,
+        "lay": grid.nlay,
+        "row": grid.nrow,
+        "col": grid.ncol,
+        "node": grid.nnodes,
+    }
+
+    dis = Dis(dims=dims)
+    ic = Ic(dims=dims)
+    oc = Oc(dims=dims)
+    npf = Npf(dims=dims)
+    chd = Chd(dims=dims)
+    gwf = Gwf(
+        dis=dis,
+        ic=ic,
+        oc=oc,
+        npf=npf,
+        chd=[chd],
+        # TODO get dims/coords from dis
+        # and remove explicit arg below
+        dims=dims,
+    )
     tdis = Tdis(dims=dims)
     sim = Simulation(tdis=tdis, models={"gwf": gwf})
 
