@@ -7,7 +7,7 @@ import numpy as np
 from attr import field
 from attrs import define
 from numpy.typing import NDArray
-from xattree import array, dim, xattree
+from xattree import array, dim, xattree, ROOT
 
 __all__ = [
     "Component",
@@ -57,7 +57,7 @@ class Tdis(Package):
     nper: int = dim(
         name="per",
         default=1,
-        scope="simulation",
+        scope=ROOT,
         metadata={"block": "dimensions"},
     )
     time_units: Optional[str] = field(

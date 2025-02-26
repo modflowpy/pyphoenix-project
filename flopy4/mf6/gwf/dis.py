@@ -1,9 +1,8 @@
-from typing import Optional
 
 import numpy as np
 from attr import field
 from numpy.typing import NDArray
-from xattree import array, dim, xattree
+from xattree import ROOT, array, dim, xattree
 
 from flopy4.mf6 import Package
 
@@ -23,7 +22,7 @@ class Dis(Package):
     )
     nlay: int = dim(
         name="lay",
-        scope="simulation",
+        scope="gwf",
         default=1,
         metadata={
             "block": "dimensions",
@@ -31,7 +30,7 @@ class Dis(Package):
     )
     ncol: int = dim(
         name="col",
-        scope="simulation",
+        scope="gwf",
         default=2,
         metadata={
             "block": "dimensions",
@@ -39,7 +38,7 @@ class Dis(Package):
     )
     nrow: int = dim(
         name="row",
-        scope="simulation",
+        scope="gwf",
         default=2,
         metadata={
             "block": "dimensions",
@@ -70,7 +69,7 @@ class Dis(Package):
         default=1,
         metadata={"block": "griddata"},
     )
-    nnodes: Optional[int] = dim(name="node", scope="simulation", default=None)
+    nnodes: int = dim(name="node", scope="gwf", init=False)
 
     def __attrs_post_init__(self):
         self.nnodes = self.ncol * self.nrow * self.nlay
