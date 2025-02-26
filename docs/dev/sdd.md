@@ -90,65 +90,6 @@ Combining these patterns naively would result in several challenges, involving d
 
 Ultimately, we'd like a mapping between an abstract hierarchy of components and variables, as defined in MF6 definition files, to a Python representation which is self-describing (courtesy of `attrs`) and self-aligning (courtesy of `xarray`).
 
-We can arrange for `attrs` to proxy `xarray`. Each component can own a node in an `xarray.DataTree`, say, in `.data`, which can serve as the component's backing store.
-
-```mermaid
-sequenceDiagram
-    Note over User: Initialize component
-    User->>Component: __init__()
-    Component->>__dict__: [populate]
-    Note over Component,__dict__: attrs-generated initialization
-    create participant DataTree
-    Component->>DataTree: [create]
-    __dict__->>DataTree: [transfer]
-    Note over Component,DataTree: xarray data tree initialization
-    destroy __dict__
-    Component-x__dict__: 
-    Note over Component,__dict__: __dict__ empty except tree
-    opt bind parent, if exists
-    Component-->>Parent: [bind parent component]
-    DataTree-->>ParentTree: [bind parent tree]
-    DataTree<<-->>ParentTree: [share dimensions]
-    end
-    DataTree->>Component: [return]
-    Component->>User: [return]
-    
-    Note over User: Get variable
-    User->>Component: .var
-    alt is array
-    Component->>DataTree: .data["var"]
-    else is dim
-    Component->>DataTree: .data.dims["var"]
-    else is scalar
-    Component->>DataTree: .data.attrs["var"]
-    end
-    Note over Component,DataTree: override __getattr__, redirect to tree
-    DataTree->>Component: [return value]
-    Component->>User: [return value]
-    
-    Note over User: Set variable
-    User->>Component: .var = ...
-    alt is array
-    Component->>DataTree: .data["var"] = ...
-    DataTree->>DataTree: [check dimensions]
-    else is scalar
-    Component->>DataTree: .data.attrs["var"] = ...
-    end
-    Note over Component,DataTree: use attrs on_setattr hook
-    DataTree->>Component: [return]
-    Component->>User: [return]
-```
-
-We can override `__getattr__` to redirect attribute access to `xarray`.
-
-Likewise, we can use [`on_setattr`](https://www.attrs.org/en/stable/api.html#core) to intercept values sent to the `attrs` attributes and send them to `xarray`.
-
-Other `attrs` functionality should "just work" (e.g. validation, `__repr__`, `__eq__`, etc), due to the operation of `__getattr__` under the hood.
-
-This combined concept can be packaged in a class decorator, which can be applied to component classes.
-
-The `attrs.field` decorator can be used for component variables. We can define a separate decorator for subcomponents.
-
 ## Data types
 
 MODFLOW 6 defines a [type system for input variables](https://github.com/MODFLOW-USGS/modflow6/tree/develop/doc/mf6io/mf6ivar#variable-types). We adapt this for Python.
