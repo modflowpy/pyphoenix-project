@@ -92,7 +92,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c8/19/4ec628951a74043532ca2cf5d97b7b14863931476d117c471e8e2b1eb39f/urllib3-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d5/66/5d973e9f3e7370fd686fb47a9af3319418ed925c27d72ce16b791231576d/wrapt-1.17.2-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -176,7 +176,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c8/19/4ec628951a74043532ca2cf5d97b7b14863931476d117c471e8e2b1eb39f/urllib3-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c0/ef/8be90a0b7e73c32e550c73cfb2fa09db62234227ece47b0e80a05073b375/wrapt-1.17.2-cp313-cp313-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -262,7 +262,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c8/19/4ec628951a74043532ca2cf5d97b7b14863931476d117c471e8e2b1eb39f/urllib3-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bf/ae/743f16ef8c2e3628df3ddfd652b7d4c555d12c84b53f3d8218498f4ade9b/wrapt-1.17.2-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -485,7 +485,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b4/b0/9fc566b0fe08b282c850063591a756057c3247b2362b9286429ec5bf1721/wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -692,7 +692,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/ff/149aba8365fdacef52b31a258c4dc1c57c79759c335eff0b3316a2664a64/wrapt-1.17.2-cp311-cp311-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -901,7 +901,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/47/f8/fb1773491a253cbc123c5d5dc15c86041f746ed30416535f2a8df1f4a392/wrapt-1.17.2-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1098,7 +1098,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b4/b0/9fc566b0fe08b282c850063591a756057c3247b2362b9286429ec5bf1721/wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1281,7 +1281,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/ff/149aba8365fdacef52b31a258c4dc1c57c79759c335eff0b3316a2664a64/wrapt-1.17.2-cp311-cp311-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1465,7 +1465,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/47/f8/fb1773491a253cbc123c5d5dc15c86041f746ed30416535f2a8df1f4a392/wrapt-1.17.2-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1661,7 +1661,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/5a/04cde32b07a7431d4ed0553a76fdb7a61270e78c5fd5a603e190ac389f14/wrapt-1.17.2-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1842,7 +1842,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/18/75ddc64c3f63988f5a1d7e10fb204ffe5762bc663f8023f18ecaf31a332e/wrapt-1.17.2-cp312-cp312-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2024,7 +2024,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/15/06/1dbf478ea45c03e78a6a8c4be4fdc3c3bddea5c8de8a93bc971415e47f0f/wrapt-1.17.2-cp312-cp312-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2219,7 +2219,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d5/66/5d973e9f3e7370fd686fb47a9af3319418ed925c27d72ce16b791231576d/wrapt-1.17.2-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2402,7 +2402,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c0/ef/8be90a0b7e73c32e550c73cfb2fa09db62234227ece47b0e80a05073b375/wrapt-1.17.2-cp313-cp313-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2586,7 +2586,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/21/02/88b65cc394961a60c43c70517066b6b679738caf78506a5da7b88ffcb643/widgetsnbextension-4.0.13-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bf/ae/743f16ef8c2e3628df3ddfd652b7d4c555d12c84b53f3d8218498f4ade9b/wrapt-1.17.2-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/ed/1c4631ad5909487ea8907cd326d9855c2207d790e3936e77bda48173b8be/xarray-2024.11.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+      - pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
       - pypi: https://files.pythonhosted.org/packages/9a/6e/49408735dae940a0c1c225c6b908fd83bd6e3f5fae120f865754e72f78cb/xyzservices-2025.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/e9/be8b28e9e9d572b2f983f1ce2d6524f86df46135f007aba6e1c47f94d6fd/zarr-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -9780,7 +9780,7 @@ packages:
   - nc-time-axis ; extra == 'viz'
   - seaborn ; extra == 'viz'
   requires_python: '>=3.10'
-- pypi: git+https://github.com/modflowpy/xattree#df08111cdb9cf20f1671e0c243d0b75950a5c062
+- pypi: git+https://github.com/modflowpy/xattree#3c2460d069683989ab30d2a7741cf98792af129a
   name: xattree
   version: 0.1.0.dev0
   requires_dist:
