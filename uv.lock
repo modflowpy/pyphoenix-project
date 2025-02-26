@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -867,7 +866,6 @@ requires-dist = [
     { name = "xarray", extras = ["io", "parallel"], specifier = ">=2024.11.0,<2025" },
     { name = "xattree", git = "https://github.com/modflowpy/xattree.git" },
 ]
-provides-extras = ["dev", "lint", "test", "build"]
 
 [[package]]
 name = "fonttools"
@@ -3286,7 +3284,7 @@ parallel = [
 [[package]]
 name = "xattree"
 version = "0.1.0.dev0"
-source = { git = "https://github.com/modflowpy/xattree.git#208852db97f9b1e23638aadb47983f1d6b99aa9f" }
+source = { git = "https://github.com/modflowpy/xattree.git#df08111cdb9cf20f1671e0c243d0b75950a5c062" }
 dependencies = [
     { name = "attrs" },
     { name = "beartype" },
