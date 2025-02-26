@@ -10,10 +10,8 @@ from xattree import array, xattree
 from flopy4.mf6 import Package
 
 
-@xattree
+@xattree(multi="list")
 class Chd(Package):
-    multi = True
-
     @define(slots=False)
     class Steps:
         all: bool = field()

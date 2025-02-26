@@ -20,7 +20,7 @@ def test_init_empty_sim():
     sim = Simulation()
 
 
-def test_init_gwf():
+def test_init_gwf_explicit_dims():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     dims = {
@@ -42,8 +42,6 @@ def test_init_gwf():
         oc=oc,
         npf=npf,
         chd=[chd],
-        # TODO get dims/coords from dis
-        # and remove explicit arg below
         dims=dims,
     )
 
@@ -57,7 +55,24 @@ def test_init_gwf():
     assert gwf.data.ic is ic.data
     assert gwf.data.oc is oc.data
     assert gwf.data.npf is npf.data
-    assert gwf.data.chd_0 is chd.data
+    assert np.array_equal(npf.k, np.ones(4))
+    assert np.array_equal(npf.data.k, np.ones(4))
+
+
+def test_init_gwf_dis_first():
+    dis = Dis()
+    gwf = Gwf(dis=dis)
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf, strict=False)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, strict=False)
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
     assert np.array_equal(npf.k, np.ones(4))
     assert np.array_equal(npf.data.k, np.ones(4))
 
@@ -84,8 +99,6 @@ def test_init_sim():
         oc=oc,
         npf=npf,
         chd=[chd],
-        # TODO get dims/coords from dis
-        # and remove explicit arg below
         dims=dims,
     )
     tdis = Tdis(dims=dims)
