@@ -85,7 +85,7 @@ EBNF description for the MODFLOW 6 input language.
 """
 
 
-def make_parser(cls: type, **kwargs) -> Lark:
+def make_parser(cls: type, extra_params=None, **kwargs) -> Lark:
     """
     Create a parser for the MODFLOW 6 input language with the given
     parameter and block specification.
@@ -100,7 +100,8 @@ def make_parser(cls: type, **kwargs) -> Lark:
     if not has_xats(cls):
         raise ValueError(f"Class '{cls.__name__}' is not a `xattree`.")
     spec = cls.__xattree__["spec"].flat
-    params = "|".join(['"' + n + '"i' for n in spec.keys()])
+    pnames = list(spec.keys()) + (extra_params or [])
+    params = "|".join(['"' + n + '"i' for n in pnames])
     blocks = set([xat.metadata.get("block", None) for xat in spec.values()])
     blocks.discard(None)
     # temp hack, TODO detect list blocks as blocks with a single

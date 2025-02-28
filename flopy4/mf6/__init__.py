@@ -4,10 +4,9 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from attr import field
 from attrs import define
 from numpy.typing import NDArray
-from xattree import ROOT, array, dim, xattree
+from xattree import ROOT, array, dim, field, xattree
 
 __all__ = [
     "Component",
@@ -54,6 +53,12 @@ class Exchange(Package):
 
 @xattree
 class Tdis(Package):
+    @define
+    class PeriodData:
+        perlen: float
+        nstp: int
+        tsmult: float
+
     nper: int = dim(
         name="per",
         default=1,
@@ -66,6 +71,11 @@ class Tdis(Package):
     start_date_time: Optional[datetime] = field(
         default=None, metadata={"block": "options"}
     )
+    # perioddata: NDArray[np.object_] = array(
+    #     PeriodData,
+    #     dims=("per",),
+    #     metadata={"block": "perioddata"},
+    # )
     perlen: NDArray[np.floating] = array(
         default=1.0,
         dims=("per",),
