@@ -80,15 +80,15 @@ We propose to follow the same general pattern, using `attrs` instead for introsp
 
 XArray provides abstractions for working with multiple datasets related in a hierarchical context, some of which may share the same spatial/temporal indices and/or coordinate systems. 
 
-We propose to follow [imod-python](https://github.com/Deltares/imod-python) in adopting [xarray](https://docs.xarray.dev/en/stable/index.html) as our components' onboard data store, e.g. in a `.data` attribute.
-
-For nodes in the context tree (i.e., components with children), `.data` can be a [`DataTree`](https://docs.xarray.dev/en/stable/generated/xarray.DataTree.html). For leaves in the tree, just a `Dataset`.
+We propose to follow [imod-python](https://github.com/Deltares/imod-python) in adopting [xarray](https://docs.xarray.dev/en/stable/index.html) as our components' onboard data store.
 
 ### `attrs` + `xarray`
 
 Combining these patterns naively would result in several challenges, involving duplication, synchronization, and a more general problem reminiscent of [object-relational impedance mismatch](https://en.wikipedia.org/wiki/Object%E2%80%93relational_impedance_mismatch), where the list-oriented and array-oriented paradigms conflict.
 
 Ultimately, we'd like a mapping between an abstract hierarchy of components and variables, as defined in MF6 definition files, to a Python representation which is self-describing (courtesy of `attrs`) and self-aligning (courtesy of `xarray`).
+
+The [`DataTree`](https://docs.xarray.dev/en/stable/generated/xarray.DataTree.html) is a recently developed `xarray` extension, now in the core package, which provides [many of the features we want from a hierarchical data store](https://docs.xarray.dev/en/stable/user-guide/hierarchical-data.html).
 
 ## Data types
 

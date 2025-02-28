@@ -1,7 +1,6 @@
 import numpy as np
-from attr import field
 from numpy.typing import NDArray
-from xattree import array, xattree
+from xattree import array, field, xattree
 
 from flopy4.mf6 import Package
 
