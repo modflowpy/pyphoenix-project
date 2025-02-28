@@ -79,7 +79,7 @@ def test_init_gwf_dis_first():
 
 def test_init_sim():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=3)
     dims = {
         "per": time.nper,
         "lay": grid.nlay,
@@ -114,5 +114,5 @@ def test_init_sim():
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(4))
-    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(4))
+    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(6))
+    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(6))

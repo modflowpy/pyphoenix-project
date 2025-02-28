@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Optional
 
-from attr import field
 from attrs import define
-from xattree import xattree
+from xattree import field, xattree
 
 from flopy4.mf6 import Model
 from flopy4.mf6.gwf.chd import Chd
