@@ -38,7 +38,6 @@ dependencies = [
     "cattrs",                               # todo: bounds?
     "flopy",
     "Jinja2>=3.0",
-    "lark",                                 # todo: bounds?
     "numpy>=1.20.3",
     "pandas>=2.0.0",
     "toml>=0.10",
@@ -57,7 +56,6 @@ test = [
     "flopy4[lint]",
     "coverage",
     "GitPython",
-    "interegular",
     "jupyter",
     "jupytext",
     "modflow-devtools",
