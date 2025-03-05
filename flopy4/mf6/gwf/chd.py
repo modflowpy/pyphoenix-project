@@ -1,12 +1,41 @@
 from pathlib import Path
 from typing import Optional
 
+import attrs
 import numpy as np
 from attrs import define
 from numpy.typing import NDArray
-from xattree import array, field, xattree
+from xattree import _get_xatspec, array, field, xattree
 
 from flopy4.mf6 import Package
+
+dnodata = 1e30
+
+
+def _get_nn(ncol, nrow, k, i, j):
+    return k * nrow * ncol + i * ncol + j
+
+
+def _convert_array(value, self_, field):
+    if not isinstance(value, dict):
+        return value
+
+    inherited_dims = self_.__dict__.get("dims", {})
+    spec = _get_xatspec(type(self_))
+    field = spec.arrays["head"]
+    shape = field.dims
+    if not shape:
+        raise ValueError()
+    dims = [inherited_dims.get(d, d) for d in shape]
+    # TODO pull out dtype from annotation
+    a = np.full(dims, fill_value=dnodata, dtype=np.float64)
+    for kper, period in value.items():
+        if kper == "*":
+            kper = 0
+        for cellid, v in period.items():
+            nn = _get_nn(inherited_dims["col"], inherited_dims["row"], *cellid)
+            a[kper, nn] = v
+    return a
 
 
 @xattree(multi="list")
@@ -46,6 +75,9 @@ class Chd(Package):
         ),
         default=None,
         metadata={"block": "period"},
+        converter=attrs.Converter(
+            _convert_array, takes_self=True, takes_field=True
+        ),
     )
     aux: Optional[NDArray[np.floating]] = array(
         dims=(
