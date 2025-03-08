@@ -3,8 +3,10 @@ from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
 
-from flopy4.mf6 import COMPONENTS, Simulation, Tdis
+from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.tdis import Tdis
 
 
 def test_registry():

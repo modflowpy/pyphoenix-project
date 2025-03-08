@@ -3,8 +3,8 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import array, field, xattree
 
-from flopy4.mf6 import Package
 from flopy4.mf6.converters import convert_array
+from flopy4.mf6.package import Package
 
 
 @xattree

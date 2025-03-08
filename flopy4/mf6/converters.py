@@ -1,5 +1,3 @@
-import types
-from typing import Union, get_args, get_origin
 
 import numpy as np
 from numpy.typing import NDArray
@@ -8,7 +6,7 @@ from xattree import _get_xatspec
 from flopy4.mf6.constants import FILL_DNODATA
 
 
-def convert_array(value, self_, field):
+def convert_array(value, self_, field) -> NDArray:
     if not isinstance(value, dict):
         # if not a dict, assume it's a numpy array
         # and let xarray deal with it if it isn't
@@ -29,20 +27,8 @@ def convert_array(value, self_, field):
     if any(unresolved):
         raise ValueError(f"Couldn't resolve dims: {unresolved}")
 
-    # extract dtype
-    origin = get_origin(field.type)
-    args = get_args(field.type)
-    if origin in (Union, types.UnionType) and args[-1] is types.NoneType:
-        origin = args[0]  # Optional
-    if origin is NDArray:
-        dtype = args[1]
-    elif origin is np.ndarray:
-        dtype = args[0]
-    else:
-        raise ValueError(f"Expected NDArray, got {origin}")
-
     # create array
-    a = np.full(shape, fill_value=FILL_DNODATA, dtype=dtype)
+    a = np.full(shape, fill_value=FILL_DNODATA, dtype=field.dtype)
 
     def _get_nn(cellid):
         match len(cellid):
@@ -59,13 +45,13 @@ def convert_array(value, self_, field):
 
     # populate array. TODO: is there a way to do this
     # without hardcoding awareness of kper and cellid?
-    if "kper" in dims:
+    if "per" in dims:
         for kper, period in value.items():
             if kper == "*":
                 kper = 0
             match len(shape):
                 case 1:
-                    a[kper] = v
+                    a[kper] = value
                 case _:
                     for cellid, v in period.items():
                         nn = _get_nn(cellid)
@@ -75,6 +61,6 @@ def convert_array(value, self_, field):
     else:
         for cellid, v in value.items():
             nn = _get_nn(cellid)
-            a[kper, nn] = v
+            a[nn] = v
 
     return a
