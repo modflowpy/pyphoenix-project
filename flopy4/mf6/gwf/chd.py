@@ -10,8 +10,7 @@ from flopy4.mf6.converters import convert_array
 from flopy4.mf6.package import Package
 
 
-# TODO get rid of multi, just infer from parent?
-@xattree(multi="list")
+@xattree
 class Chd(Package):
     @define(slots=False)
     class Steps:

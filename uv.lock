@@ -3313,7 +3313,7 @@ parallel = [
 [[package]]
 name = "xattree"
 version = "0.1.0.dev0"
-source = { git = "https://github.com/modflowpy/xattree.git#a0b76af0b211b1fc80aa3f5735bce333839fd657" }
+source = { git = "https://github.com/modflowpy/xattree.git#7604ceaf91d6bad2a3239e59d786b2a841b6afb9" }
 dependencies = [
     { name = "attrs" },
     { name = "cattrs" },
