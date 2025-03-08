@@ -4,6 +4,7 @@ from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
@@ -118,3 +119,8 @@ def test_init_sim():
     assert gwf.chd[0] is chd
     assert np.array_equal(sim.models["gwf"].npf.k, np.ones(100))
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(100))
+    assert chd.head[0, 0] == 1.0
+    assert chd.head[0, 99] == 0.0
+    assert np.array_equal(chd.head[0, 1:99], np.full((98,), FILL_DNODATA))
+    assert np.array_equal(chd.head, chd.data.head)
+    assert np.array_equal(chd.head, sim.models["gwf"].chd[0].data.head)
