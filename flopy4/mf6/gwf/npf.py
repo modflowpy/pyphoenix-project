@@ -2,11 +2,12 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from attr import define
+from attrs import Converter, define
 from numpy.typing import NDArray
 from xattree import array, field, xattree
 
-from flopy4.mf6 import Package
+from flopy4.mf6.converters import convert_array
+from flopy4.mf6.package import Package
 
 
 @xattree
@@ -67,39 +68,47 @@ class Npf(Package):
         dims=("node",),
         default=0,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k: NDArray[np.floating] = array(
         dims=("node",),
         default=1.0,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k22: Optional[NDArray[np.floating]] = array(
         dims=("node",),
         default=None,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k33: Optional[NDArray[np.floating]] = array(
         dims=("node",),
         default=None,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle1: Optional[NDArray[np.floating]] = array(
         dims=("node",),
         default=None,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle2: Optional[NDArray[np.floating]] = array(
         dims=("node",),
         default=None,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle3: Optional[NDArray[np.floating]] = array(
         dims=("node",),
         default=None,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     wetdry: Optional[NDArray[np.floating]] = array(
         dims=("node",),
         default=None,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )

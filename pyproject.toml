@@ -51,7 +51,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["flopy4[lint,test,build]"]
-lint = ["ruff", "pre-commit>=4.0.1,<5"]
+lint = ["ruff", "pre-commit>=4.0.1,<5", "mypy"]
 test = [
     "flopy4[lint]",
     "coverage",
@@ -139,3 +139,8 @@ test = { cmd = "pytest -v -n auto" }
 [tool.pixi.feature.lint.tasks]
 lint = { cmd = "ruff check ." }
 install = { cmd = "pre-commit install --install-hooks" }
+
+[tool.mypy]
+mypy_path = "flopy4"
+ignore_missing_imports = true
+warn_unreachable = true

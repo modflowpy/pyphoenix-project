@@ -4,12 +4,12 @@ from typing import Optional
 from attrs import define
 from xattree import field, xattree
 
-from flopy4.mf6 import Model
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.dis import Dis
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
+from flopy4.mf6.model import Model
 
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
