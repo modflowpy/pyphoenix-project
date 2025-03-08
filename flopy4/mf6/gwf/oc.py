@@ -2,11 +2,12 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-from attr import define
+from attrs import Converter, define
 from numpy.typing import NDArray
 from xattree import array, field, xattree
 
 from flopy4.mf6 import Package
+from flopy4.mf6.converters import convert_array
 from flopy4.utils import to_path
 
 
@@ -57,10 +58,12 @@ class Oc(Package):
         dims=("per",),
         default=None,
         metadata={"block": "perioddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     printrecord: Optional[NDArray[np.object_]] = array(
         Period,
         dims=("per",),
         default=None,
         metadata={"block": "perioddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )

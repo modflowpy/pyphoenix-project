@@ -1,8 +1,10 @@
 import numpy as np
+from attrs import Converter
 from numpy.typing import NDArray
 from xattree import array, dim, field, xattree
 
 from flopy4.mf6 import Package
+from flopy4.mf6.converters import convert_array
 
 
 @xattree
@@ -46,26 +48,31 @@ class Dis(Package):
         dims=("col",),
         default=1.0,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     delc: NDArray[np.floating] = array(
         dims=("row",),
         default=1.0,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     top: NDArray[np.floating] = array(
         dims=("col", "row"),
         default=1.0,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.floating] = array(
         dims=("col", "row", "lay"),
         default=0.0,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     idomain: NDArray[np.integer] = array(
         dims=("col", "row", "lay"),
         default=1,
         metadata={"block": "griddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     nnodes: int = dim(name="node", scope="gwf", init=False)
 
