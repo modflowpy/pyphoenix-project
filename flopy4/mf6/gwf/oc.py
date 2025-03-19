@@ -55,14 +55,14 @@ class Oc(Package):
     )
     saverecord: Optional[NDArray[np.object_]] = array(
         Period,
-        dims=("per",),
+        dims=("nper",),
         default=None,
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     printrecord: Optional[NDArray[np.object_]] = array(
         Period,
-        dims=("per",),
+        dims=("nper",),
         default=None,
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),

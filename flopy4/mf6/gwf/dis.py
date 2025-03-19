@@ -21,7 +21,6 @@ class Dis(Package):
         default=False, metadata={"block": "options"}
     )
     nlay: int = dim(
-        name="lay",
         scope="gwf",
         default=1,
         metadata={
@@ -29,7 +28,6 @@ class Dis(Package):
         },
     )
     ncol: int = dim(
-        name="col",
         scope="gwf",
         default=2,
         metadata={
@@ -37,7 +35,6 @@ class Dis(Package):
         },
     )
     nrow: int = dim(
-        name="row",
         scope="gwf",
         default=2,
         metadata={
@@ -45,36 +42,36 @@ class Dis(Package):
         },
     )
     delr: NDArray[np.floating] = array(
-        dims=("col",),
+        dims=("ncol",),
         default=1.0,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     delc: NDArray[np.floating] = array(
-        dims=("row",),
+        dims=("nrow",),
         default=1.0,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     top: NDArray[np.floating] = array(
-        dims=("col", "row"),
+        dims=("ncol", "nrow"),
         default=1.0,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.floating] = array(
-        dims=("col", "row", "lay"),
+        dims=("ncol", "nrow", "nlay"),
         default=0.0,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     idomain: NDArray[np.integer] = array(
-        dims=("col", "row", "lay"),
+        dims=("ncol", "nrow", "nlay"),
         default=1,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
-    nnodes: int = dim(name="node", scope="gwf", init=False)
+    nnodes: int = dim(scope="gwf", init=False)
 
     def __attrs_post_init__(self):
         self.nnodes = self.ncol * self.nrow * self.nlay

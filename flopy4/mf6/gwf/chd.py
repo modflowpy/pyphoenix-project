@@ -42,8 +42,8 @@ class Chd(Package):
     )
     head: Optional[NDArray[np.floating]] = array(
         dims=(
-            "per",
-            "node",
+            "nper",
+            "nnodes",
         ),
         default=None,
         metadata={"block": "period"},
@@ -51,8 +51,8 @@ class Chd(Package):
     )
     aux: Optional[NDArray[np.floating]] = array(
         dims=(
-            "per",
-            "node",
+            "nper",
+            "nnodes",
         ),
         default=None,
         metadata={"block": "period"},
@@ -60,8 +60,8 @@ class Chd(Package):
     )
     boundname: Optional[NDArray[np.str_]] = array(
         dims=(
-            "per",
-            "node",
+            "nper",
+            "nnodes",
         ),
         default=None,
         metadata={"block": "period"},
@@ -69,7 +69,7 @@ class Chd(Package):
     )
     steps: Optional[NDArray[np.object_]] = array(
         Steps,
-        dims=("per", "node"),
+        dims=("nper", "nnodes"),
         default=None,
         metadata={"block": "period"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),

@@ -19,7 +19,7 @@ def convert_array(value, self_, field) -> NDArray:
 
     # resolve dims
     explicit_dims = self_.__dict__.get("dims", {})
-    inherited_dims = self_.parent.data.dims if self_.parent else {}
+    inherited_dims = dict(self_.parent.data.dims) if self_.parent else {}
     dims = inherited_dims | explicit_dims
     shape = [dims.get(d, d) for d in field.dims]
     unresolved = [d for d in shape if isinstance(d, str)]
@@ -38,13 +38,13 @@ def convert_array(value, self_, field) -> NDArray:
                 return k * dims["ncpl"] + j
             case 3:
                 k, i, j = cellid
-                return k * dims["row"] * dims["col"] + i * dims["col"] + j
+                return k * dims["nrow"] * dims["ncol"] + i * dims["ncol"] + j
             case _:
                 raise ValueError(f"Invalid cellid: {cellid}")
 
     # populate array. TODO: is there a way to do this
     # without hardcoding awareness of kper and cellid?
-    if "per" in dims:
+    if "nper" in dims:
         for kper, period in value.items():
             if kper == "*":
                 kper = 0

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
@@ -27,13 +28,12 @@ def test_init_gwf_explicit_dims():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     dims = {
-        "per": time.nper,
-        "lay": grid.nlay,
-        "row": grid.nrow,
-        "col": grid.ncol,
-        "node": grid.nnodes,
+        "nper": time.nper,
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+        "nnodes": grid.nnodes,
     }
-
     dis = Dis(dims=dims)
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
@@ -80,18 +80,37 @@ def test_init_gwf_dis_first():
     assert np.array_equal(npf.data.k, np.ones(4))
 
 
-def test_init_sim():
+def test_init_gwf_top_down_misaligned():
+    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+    dims = {
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+    }
+    gwf = Gwf()
+    with pytest.raises(
+        ValueError, match=r"group '/dis' is not aligned with its parents"
+    ):
+        Dis(parent=gwf, **dims)
+
+    # passing dims explicitly to gwf doesn't work either.
+    # one MUST create the component declaring dims first.
+    with pytest.raises(
+        ValueError, match=r"group '/dis' is not aligned with its parents"
+    ):
+        Gwf(dims=dims)
+
+
+def test_init_sim_explicit_dims():
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
     dims = {
-        "per": time.nper,
-        "lay": grid.nlay,
-        "row": grid.nrow,
-        "col": grid.ncol,
-        "node": grid.nnodes,
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
     }
-
-    dis = Dis(dims=dims)
+    dis = Dis(**dims)
+    dims["nper"] = time.nper
+    dims["nnodes"] = grid.nnodes
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
     npf = Npf(dims=dims)
