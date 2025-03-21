@@ -1,10 +1,8 @@
 import numpy as np
 
-from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf
+from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
-
-# TODO rewrite bottom up
 
 ws = "./mymodel"
 name = "mymodel"
@@ -18,31 +16,23 @@ chd = Chd(
     parent=gwf,
     head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
 )
+oc = Oc(
+    parent=gwf,
+    budget_file=f"{name}.bud",
+    head_file=f"{name}.hds",
+    save_head={"*": "all"},
+    save_budget={"*": "all"},
+)
 
-# adopt xarray paradigm. transpose lists to arrays. this
-# is no longer "sparse": in the sense that lists specify
-# <maxbound> features of interest, where arrays specify
-# the entire domain. but to maximize the value of xarray
-# we want to "align" everything to the discretization in
-# both time and space.
-
-assert chd.data["head"][0, 0] == 1.0
-assert chd.data["head"][0, 99] == 0.0
+# check CHD
+assert chd.data["head"][0, 0].item() == 1.0
+assert chd.data["head"][0, 99].item() == 0.0
 assert np.allclose(chd.data["head"][:, 1:99], np.full(98, 1e30))
 
 # TODO: xarray index aliasing nlay/ncol/nrow to k/i/j?
 # assert chd.data["head"].loc(dict(k=0, i=0, j=0)) == 1.
 # assert chd.data["head"].loc(dict(k=0, i=9, j=9)) == 0.
 
-# TODO OC!
-
-# oc = Oc(
-#     gwf,
-#     budget_filerecord=f"{name}.bud",
-#     head_filerecord=f"{name}.hds",
-#     saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
-# )
-
-# xarray style. this is how imod-python does it too.
-# assert oc.data["save_head"] == "all"
-# assert oc.data["save_budget"] == "all"
+# check OC
+assert oc.data["save_head"][0].item() == "all"
+assert oc.data["save_budget"][0].item() == "all"

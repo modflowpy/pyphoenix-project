@@ -53,17 +53,27 @@ class Oc(Package):
     format: Optional[Format] = field(
         default=None, init=False, metadata={"block": "options"}
     )
-    saverecord: Optional[NDArray[np.object_]] = array(
-        Period,
+    save_head: Optional[NDArray[np.str_ | np.integer]] = array(
         dims=("nper",),
-        default=None,
+        default="all",
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
-    printrecord: Optional[NDArray[np.object_]] = array(
-        Period,
+    save_budget: Optional[NDArray[np.str_ | np.integer]] = array(
         dims=("nper",),
-        default=None,
+        default="all",
+        metadata={"block": "perioddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
+    )
+    print_head: Optional[NDArray[np.str_ | np.integer]] = array(
+        dims=("nper",),
+        default="all",
+        metadata={"block": "perioddata"},
+        converter=Converter(convert_array, takes_self=True, takes_field=True),
+    )
+    print_budget: Optional[NDArray[np.str_ | np.integer]] = array(
+        dims=("nper",),
+        default="all",
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )

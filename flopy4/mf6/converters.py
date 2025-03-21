@@ -27,7 +27,10 @@ def convert_array(value, self_, field) -> NDArray:
         raise ValueError(f"Couldn't resolve dims: {unresolved}")
 
     # create array
-    a = np.full(shape, fill_value=FILL_DNODATA, dtype=field.dtype)
+    # TDOD: support other fill values, configurable by field?
+    a = np.full(
+        shape, fill_value=field.default or FILL_DNODATA
+    )  # , dtype=field.dtype)
 
     def _get_nn(cellid):
         match len(cellid):
@@ -50,7 +53,7 @@ def convert_array(value, self_, field) -> NDArray:
                 kper = 0
             match len(shape):
                 case 1:
-                    a[kper] = value
+                    a[kper] = period
                 case _:
                     for cellid, v in period.items():
                         nn = _get_nn(cellid)
