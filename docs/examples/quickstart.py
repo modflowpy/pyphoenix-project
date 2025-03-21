@@ -1,13 +1,15 @@
 import numpy as np
 
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 
 ws = "./mymodel"
 name = "mymodel"
 tdis = Tdis()
-sim = Simulation(name=name, tdis=tdis)
+ims = Ims()
+sim = Simulation(name=name, tdis=tdis, solutions={"ims": ims})
 dis = Dis(nrow=10, ncol=10)
 gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
 ic = Ic(parent=gwf)
