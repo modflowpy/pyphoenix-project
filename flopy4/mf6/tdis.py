@@ -19,7 +19,6 @@ class Tdis(Package):
         tsmult: float
 
     nper: int = dim(
-        name="per",
         default=1,
         scope=ROOT,
         metadata={"block": "dimensions"},
@@ -32,19 +31,19 @@ class Tdis(Package):
     )
     perlen: NDArray[np.floating] = array(
         default=1.0,
-        dims=("per",),
+        dims=("nper",),
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     nstp: NDArray[np.integer] = array(
         default=1,
-        dims=("per",),
+        dims=("nper",),
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     tsmult: NDArray[np.floating] = array(
         default=1.0,
-        dims=("per",),
+        dims=("nper",),
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )

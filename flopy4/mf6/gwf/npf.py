@@ -65,49 +65,49 @@ class Npf(Package):
         default=None, metadata={"block": "options"}
     )
     icelltype: NDArray[np.integer] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=0,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k: NDArray[np.floating] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=1.0,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k22: Optional[NDArray[np.floating]] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=None,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k33: Optional[NDArray[np.floating]] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=None,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle1: Optional[NDArray[np.floating]] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=None,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle2: Optional[NDArray[np.floating]] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=None,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle3: Optional[NDArray[np.floating]] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=None,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     wetdry: Optional[NDArray[np.floating]] = array(
-        dims=("node",),
+        dims=("nnodes",),
         default=None,
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),

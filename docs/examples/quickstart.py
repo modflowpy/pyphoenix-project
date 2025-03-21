@@ -1,45 +1,38 @@
-from flopy4.mf6 import Simulation, Tdis
-from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+import numpy as np
 
-# TODO rewrite bottom up
+from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.tdis import Tdis
 
 ws = "./mymodel"
 name = "mymodel"
-sim = Simulation(name=name)
-tdis = Tdis(sim)
-gwf = Gwf(sim, name=name, save_flows=True)
-dis = Dis(gwf, nrow=10, ncol=10)
-ic = Ic(gwf)
-npf = Npf(gwf, save_specific_discharge=True)
+tdis = Tdis()
+sim = Simulation(name=name, tdis=tdis)
+dis = Dis(nrow=10, ncol=10)
+gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
+ic = Ic(parent=gwf)
+npf = Npf(parent=gwf, save_specific_discharge=True)
 chd = Chd(
-    gwf,
-    head={(0, 0, 0): 1.0, (0, 9, 9): 0.0},
+    parent=gwf,
+    head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+)
+oc = Oc(
+    parent=gwf,
+    budget_file=f"{name}.bud",
+    head_file=f"{name}.hds",
+    save_head={"*": "all"},
+    save_budget={"*": "all"},
 )
 
-# list input in the mf6 paradigm, just stored in xarray.
-# this is straightforward to implement. even in flopy3?
-assert all(
-    period == Chd.Period((0, 0, 0), 1.0)
-    for period in chd.data["stress_period_data"]
-)
+# check CHD
+assert chd.data["head"][0, 0].item() == 1.0
+assert chd.data["head"][0, 99].item() == 0.0
+assert np.allclose(chd.data["head"][:, 1:99], np.full(98, 1e30))
 
-# adopt xarray paradigm. transpose lists to arrays. this
-# is no longer "sparse": in the sense that lists specify
-# <maxbound> features of interest, where arrays specify
-# the entire domain. but to maximize the value of xarray
-# we want to "align" everything to the discretization in
-# both time and space.
-
+# TODO: xarray index aliasing nlay/ncol/nrow to k/i/j?
 # assert chd.data["head"].loc(dict(k=0, i=0, j=0)) == 1.
 # assert chd.data["head"].loc(dict(k=0, i=9, j=9)) == 0.
 
-oc = Oc(
-    gwf,
-    budget_filerecord=f"{name}.bud",
-    head_filerecord=f"{name}.hds",
-    saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
-)
-
-# xarray style. this is how imod-python does it too.
-# assert oc.data["save_head"] == "all"
-# assert oc.data["save_budget"] == "all"
+# check OC
+assert oc.data["save_head"][0].item() == "all"
+assert oc.data["save_budget"][0].item() == "all"
