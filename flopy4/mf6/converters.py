@@ -1,3 +1,4 @@
+import numpy as np
 import sparse
 from numpy.typing import NDArray
 from xattree import _get_xatspec
@@ -63,7 +64,7 @@ def convert_array(value, self_, field) -> NDArray:
             nn = _get_nn(cellid)
             a[(nn)] = v
 
-    coords = list(map(list, zip(*a.keys())))
+    coords = np.array(list(map(list, zip(*a.keys()))))
     return sparse.COO(
         coords,
         list(a.values()),
