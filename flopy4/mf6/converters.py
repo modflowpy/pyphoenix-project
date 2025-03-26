@@ -1,4 +1,4 @@
-import numpy as np
+import sparse
 from numpy.typing import NDArray
 from xattree import _get_xatspec
 
@@ -28,9 +28,7 @@ def convert_array(value, self_, field) -> NDArray:
 
     # create array
     # TDOD: support other fill values, configurable by field?
-    a = np.full(
-        shape, fill_value=field.default or FILL_DNODATA
-    )  # , dtype=field.dtype)
+    a = dict()
 
     def _get_nn(cellid):
         match len(cellid):
@@ -53,16 +51,22 @@ def convert_array(value, self_, field) -> NDArray:
                 kper = 0
             match len(shape):
                 case 1:
-                    a[kper] = period
+                    a[(kper)] = period
                 case _:
                     for cellid, v in period.items():
                         nn = _get_nn(cellid)
-                        a[kper, nn] = v
+                        a[(kper, nn)] = v
             if kper == "*":
                 break
     else:
         for cellid, v in value.items():
             nn = _get_nn(cellid)
-            a[nn] = v
+            a[(nn)] = v
 
-    return a
+    coords = list(map(list, zip(*a.keys())))
+    return sparse.COO(
+        coords,
+        list(a.values()),
+        shape=shape,
+        fill_value=field.default or FILL_DNODATA,
+    )
