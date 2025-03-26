@@ -34,18 +34,19 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "attrs",                                # todo: bounds?
-    "cattrs",                               # todo: bounds?
+    "attrs",                                                                            # todo: bounds?
+    "cattrs",                                                                           # todo: bounds?
     "flopy",
     "Jinja2>=3.0",
     "numpy>=1.20.3",
     "pandas>=2.0.0",
     "toml>=0.10",
     "networkx>=3.4.2,<4",
-    "xarray[parallel,io]>=2024.11.0,<2025",
+    "xarray[parallel,io]>=2024.11.0",
     "scipy>=1.14.1,<2",
     "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
     "xattree @ git+https://github.com/modflowpy/xattree.git",
+    "sparse>=0.15.5,<1",
 ]
 dynamic = ["version"]
 
@@ -63,7 +64,7 @@ test = [
     "pytest!=8.1.0",
     "pytest-dotenv",
     "pytest-xdist",
-    "pytest-benchmark"
+    "pytest-benchmark",
 ]
 build = ["build", "twine"]
 
