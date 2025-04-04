@@ -52,7 +52,7 @@ def convert_array(value, self_, field) -> NDArray:
                 kper = 0
             match len(shape):
                 case 1:
-                    a[(kper)] = period
+                    a[(kper,)] = period
                 case _:
                     for cellid, v in period.items():
                         nn = _get_nn(cellid)
@@ -62,7 +62,7 @@ def convert_array(value, self_, field) -> NDArray:
     else:
         for cellid, v in value.items():
             nn = _get_nn(cellid)
-            a[(nn)] = v
+            a[(nn,)] = v
 
     coords = np.array(list(map(list, zip(*a.keys()))))
     return sparse.COO(
