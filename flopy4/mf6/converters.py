@@ -1,3 +1,5 @@
+from typing import Any, Tuple
+
 import numpy as np
 import sparse
 from numpy.typing import NDArray
@@ -27,9 +29,7 @@ def convert_array(value, self_, field) -> NDArray:
     if any(unresolved):
         raise ValueError(f"Couldn't resolve dims: {unresolved}")
 
-    # create array
-    # TDOD: support other fill values, configurable by field?
-    a = dict()
+    a: dict[Tuple[Any, ...], Any] = dict()
 
     def _get_nn(cellid):
         match len(cellid):
