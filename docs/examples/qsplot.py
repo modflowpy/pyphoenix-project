@@ -23,7 +23,6 @@ def _pcolormesh(grid, da, ax):
 
     collection = PolyCollection(vertices)
     collection.set_array(da.to_numpy().ravel())
-    # collection._scale_norm(norm, vmin, vmax)
     p = ax.add_collection(collection, autolim=False)
 
     xmin, xmax, ymin, ymax = grid.extent
@@ -35,23 +34,24 @@ def _pcolormesh(grid, da, ax):
     return p
 
 
-# open budget file
+# create budget reader
 bpth = os.path.join(ws, f"{modelname}.bud")
 bobj = flopy.utils.CellBudgetFile(bpth, precision="double")
 
 # set specific discharge
 spdis = bobj.get_data(text="DATA-SPDIS")[0]
 
-# open head file
+# create head reader
 hpth = os.path.join(ws, f"{modelname}.hds")
 hobj = flopy.utils.HeadFile(hpth, precision="double")
 
 # set heads
 heads = hobj.get_alldata()
 
-# open grb file
+# create grb reader
 grbpth = os.path.join(ws, f"{modelname}.dis.grb")
 grbobj = flopy.mf6.utils.MfGrdFile(grbpth)
+grid = None
 
 # flow vector component arrays
 uflow = None
@@ -94,7 +94,7 @@ plt.quiver(xcrs, ycrs, qx, qy, color="w")
 cbar = plt.colorbar(label=da.name)
 plt.contour(xcrs, ycrs, qz, 4, cmap="viridis")
 # plt.contourf(xcrs, ycrs, qz, 5, cmap='viridis', alpha=0.4)
-qs_pth = os.path.join(QS_ROOT, "qs.png")
+qs_pth = os.path.join(QS_ROOT, "image", "qs.png")
 fig.savefig(qs_pth)
 
 # projection example with cartopy
@@ -103,7 +103,9 @@ da.plot(ax=ax, transform=ccrs.PlateCarree())
 ax.coastlines()
 ax.stock_img()
 ax.set_extent([-5, 15, -4, 14], crs=ccrs.PlateCarree())
-ax.gridlines(draw_labels=True)
+glines = ax.gridlines(draw_labels=True)
+glines.top_labels = False
+glines.right_labels = False
 ax.set_title("Head")
-qsprj_pth = os.path.join(QS_ROOT, "qsprj.png")
+qsprj_pth = os.path.join(QS_ROOT, "image", "qsprj.png")
 fig.savefig(qsprj_pth)
