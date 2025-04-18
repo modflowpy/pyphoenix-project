@@ -3,7 +3,6 @@ from pathlib import Path
 import flopy
 import matplotlib.pyplot as plt
 import numpy as np
-import xarray as xr
 
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
@@ -72,16 +71,8 @@ v = []
 for r in spdis:
     u.append(r[3])
     v.append(r[4])
-uflow = np.array(u).reshape(grid.nrow, grid.ncol)
-vflow = np.array(v).reshape(grid.nrow, grid.ncol)
-
-# set data coordinate arrays
-xcrs = grid.xycenters[0]
-ycrs = grid.xycenters[1]
-
-# create qx, qy dataarrys
-qx = xr.DataArray(uflow, dims=("y", "x"), coords={"x": xcrs, "y": ycrs})
-qy = xr.DataArray(vflow, dims=("y", "x"), coords={"x": xcrs, "y": ycrs})
+qx = np.array(u).reshape(grid.nrow, grid.ncol)
+qy = np.array(v).reshape(grid.nrow, grid.ncol)
 
 fig, ax = plt.subplots()
 pmv = flopy.plot.PlotMapView(modelgrid=grid, ax=ax)
