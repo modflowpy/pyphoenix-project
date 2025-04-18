@@ -103,9 +103,9 @@ da.plot(ax=ax, transform=ccrs.PlateCarree())
 ax.coastlines()
 ax.stock_img()
 ax.set_extent([-5, 15, -4, 14], crs=ccrs.PlateCarree())
-glines = ax.gridlines(draw_labels=True)
-glines.top_labels = False
-glines.right_labels = False
+gln = ax.gridlines(draw_labels=True)
+gln.top_labels = False
+gln.right_labels = False
 ax.set_title("Head")
 qsprj_pth = os.path.join(QS_ROOT, "image", "qsprj.png")
 fig.savefig(qsprj_pth)
