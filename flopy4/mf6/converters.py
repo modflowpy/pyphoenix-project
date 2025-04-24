@@ -5,6 +5,7 @@ import sparse
 from numpy.typing import NDArray
 from xattree import _get_xatspec
 
+from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
 
 
@@ -29,7 +30,29 @@ def convert_array(value, self_, field) -> NDArray:
     if any(unresolved):
         raise ValueError(f"Couldn't resolve dims: {unresolved}")
 
-    a: dict[Tuple[Any, ...], Any] = dict()
+    if np.prod(shape) > SPARSE_THRESHOLD:
+        a: dict[Tuple[Any, ...], Any] = dict()
+
+        def set_(arr, val, *ind):
+            arr[tuple(ind)] = val
+
+        def final(arr):
+            coords = np.array(list(map(list, zip(*arr.keys()))))
+            return sparse.COO(
+                coords,
+                list(arr.values()),
+                shape=shape,
+                fill_value=field.default or FILL_DNODATA,
+            )
+    else:
+        a = np.full(shape, FILL_DNODATA, dtype=field.dtype)  # type: ignore
+
+        def set_(arr, val, *ind):
+            arr[ind] = val
+
+        def final(arr):
+            arr[arr == FILL_DNODATA] = field.default or FILL_DNODATA
+            return arr
 
     def _get_nn(cellid):
         match len(cellid):
@@ -52,22 +75,19 @@ def convert_array(value, self_, field) -> NDArray:
                 kper = 0
             match len(shape):
                 case 1:
-                    a[(kper,)] = period
+                    set_(a, period, kper)
+                    # a[(kper,)] = period
                 case _:
                     for cellid, v in period.items():
                         nn = _get_nn(cellid)
-                        a[(kper, nn)] = v
+                        set_(a, v, kper, nn)
+                        # a[(kper, nn)] = v
             if kper == "*":
                 break
     else:
         for cellid, v in value.items():
             nn = _get_nn(cellid)
-            a[(nn,)] = v
+            set_(a, v, nn)
+            # a[(nn,)] = v
 
-    coords = np.array(list(map(list, zip(*a.keys()))))
-    return sparse.COO(
-        coords,
-        list(a.values()),
-        shape=shape,
-        fill_value=field.default or FILL_DNODATA,
-    )
+    return final(a)
