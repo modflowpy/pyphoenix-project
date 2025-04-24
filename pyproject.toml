@@ -42,7 +42,7 @@ dependencies = [
     "pandas>=2.0.0",
     "toml>=0.10",
     "networkx>=3.4.2,<4",
-    "xarray[parallel,io]>=2024.11.0",
+    "xarray[parallel,io]>=2025.3.0,<2026",
     "scipy>=1.14.1,<2",
     "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
     "xattree @ git+https://github.com/modflowpy/xattree.git",
