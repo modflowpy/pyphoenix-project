@@ -865,7 +865,7 @@ test = [
 requires-dist = [
     { name = "attrs" },
     { name = "build", marker = "extra == 'build'" },
-    { name = "cartopy", specifier = ">0.24" },
+    { name = "cartopy", specifier = ">=0.24.1" },
     { name = "cattrs" },
     { name = "coverage", marker = "extra == 'test'" },
     { name = "flopy" },
