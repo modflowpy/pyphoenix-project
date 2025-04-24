@@ -853,7 +853,7 @@ requires-dist = [
     { name = "sparse", specifier = ">=0.15.5,<1" },
     { name = "toml", specifier = ">=0.10" },
     { name = "twine", marker = "extra == 'build'" },
-    { name = "xarray", extras = ["io", "parallel"], specifier = ">=2024.11.0" },
+    { name = "xarray", extras = ["io", "parallel"], specifier = ">=2025.3.0,<2026" },
     { name = "xattree", git = "https://github.com/modflowpy/xattree.git" },
 ]
 provides-extras = ["dev", "lint", "test", "build"]
@@ -3360,7 +3360,7 @@ parallel = [
 [[package]]
 name = "xattree"
 version = "0.1.0.dev0"
-source = { git = "https://github.com/modflowpy/xattree.git#2268a465fd3e4c2d80f583176fa6010169a7cf15" }
+source = { git = "https://github.com/modflowpy/xattree.git#6c2cb601a09106c7feb1e2c0333aee0648b29084" }
 dependencies = [
     { name = "attrs" },
     { name = "cattrs" },
