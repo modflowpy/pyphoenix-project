@@ -34,9 +34,9 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "attrs",                                # todo: bounds?
-    "cartopy",
-    "cattrs",                               # todo: bounds?
+    "attrs", # todo: bounds?
+    "cartopy>0.24",
+    "cattrs", # todo: bounds?
     "flopy",
     "Jinja2>=3.0",
     "numpy>=1.20.3",
@@ -47,6 +47,7 @@ dependencies = [
     "scipy>=1.14.1,<2",
     "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
     "xattree @ git+https://github.com/modflowpy/xattree.git",
+    "pyproj>=3.7.1",
 ]
 dynamic = ["version"]
 

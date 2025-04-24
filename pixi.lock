@@ -4117,10 +4117,10 @@ packages:
 - pypi: .
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 4bb1605d49a2a62af086c4a9ff20a2263554d5e33f6e64856aeedbd2ab1dd1b4
+  sha256: 960e9f7ca2e0926792ab4e6ee3254fa45a1f3b57eee388bcc73d35e8860aab24
   requires_dist:
   - attrs
-  - cartopy
+  - cartopy>0.24
   - cattrs
   - flopy
   - jinja2>=3.0
@@ -4132,6 +4132,7 @@ packages:
   - scipy>=1.14.1,<2
   - modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git
   - xattree @ git+https://github.com/modflowpy/xattree.git
+  - pyproj>=3.7.1
   - flopy4[build,lint,test] ; extra == 'dev'
   - ruff ; extra == 'lint'
   - pre-commit>=4.0.1,<5 ; extra == 'lint'
