@@ -29,7 +29,7 @@ oc = Oc(
 # check CHD
 assert chd.data["head"][0, 0].item() == 1.0
 assert chd.data["head"][0, 99].item() == 0.0
-assert np.allclose(chd.data["head"][:, 1:99], np.full(98, 1e30))
+assert np.allclose(chd.data["head"][:, 1:99].data.todense(), np.full(98, 1e30))
 
 # TODO: xarray index aliasing nlay/ncol/nrow to k/i/j?
 # assert chd.data["head"].loc(dict(k=0, i=0, j=0)) == 1.

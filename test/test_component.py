@@ -140,6 +140,62 @@ def test_init_sim_explicit_dims():
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(100))
     assert chd.head[0, 0] == 1.0
     assert chd.head[0, 99] == 0.0
-    assert np.array_equal(chd.head[0, 1:99], np.full((98,), FILL_DNODATA))
-    assert np.array_equal(chd.head, chd.data.head)
-    assert np.array_equal(chd.head, sim.models["gwf"].chd[0].data.head)
+    assert np.array_equal(chd.head[0, 1:99].data, np.full((98,), FILL_DNODATA))
+    assert np.array_equal(chd.head.data, chd.data.head.data)
+    assert np.array_equal(
+        chd.head.data,
+        sim.models["gwf"].chd[0].data.head.data,
+    )
+
+
+def test_init_big_sim():
+    # if size over threshold, arrays should be sparse
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=100, ncol=100)
+    dims = {
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+    }
+    dis = Dis(**dims)
+    dims["nper"] = time.nper
+    dims["nnodes"] = grid.nnodes
+    ic = Ic(dims=dims)
+    oc = Oc(dims=dims)
+    npf = Npf(dims=dims)
+    chd = Chd(dims=dims, head={"*": {(0, 0, 0): 1.0, (0, 99, 99): 0.0}})
+    gwf = Gwf(
+        dis=dis,
+        ic=ic,
+        oc=oc,
+        npf=npf,
+        chd=[chd],
+        dims=dims,
+    )
+    tdis = Tdis(dims=dims)
+    sim = Simulation(tdis=tdis, models={"gwf": gwf})
+
+    assert sim.tdis is tdis
+    assert sim.models["gwf"] is gwf
+    assert isinstance(sim.data, DataTree)
+    assert sim.data.tdis is tdis.data
+    assert sim.data.gwf is gwf.data
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
+    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(10000))
+    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(10000))
+    assert chd.head[0, 0] == 1.0
+    assert chd.head[0, 9999] == 0.0
+    assert np.array_equal(
+        chd.head[0, 1:9999].data.todense(), np.full((9998,), FILL_DNODATA)
+    )
+    assert np.array_equal(
+        chd.head.data.todense(), chd.data.head.data.todense()
+    )
+    assert np.array_equal(
+        chd.head.data.todense(),
+        sim.models["gwf"].chd[0].data.head.data.todense(),
+    )
