@@ -46,6 +46,7 @@ dependencies = [
     "scipy>=1.14.1,<2",
     "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
     "xattree @ git+https://github.com/modflowpy/xattree.git",
+    "imod>=1.0.0-rc3",
     "sparse>=0.15.5,<1",
 ]
 dynamic = ["version"]

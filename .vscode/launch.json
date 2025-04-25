@@ -10,8 +10,19 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "purpose": ["debug-test"],
+            "purpose": [
+                "debug-test"
+            ],
             "justMyCode": false
+        },
+        {
+            "name": "quickstart",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/docs/examples/quickstart.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/docs/examples"
         }
     ]
 }

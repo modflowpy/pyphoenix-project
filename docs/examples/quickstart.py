@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import flopy
+import imod.mf6
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -45,24 +46,17 @@ assert oc.data.save_head.sel(per=0) == "all"
 # PLOT
 # create budget reader
 bpth = Path("./quickstart_data/mymodel.bud")
-bobj = flopy.utils.CellBudgetFile(bpth, precision="double")
+grbpth = Path("./quickstart_data/mymodel.dis.grb")
 
 # set specific discharge
-spdis = bobj.get_data(text="DATA-SPDIS")[0]
+spdis = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=False)
 
 # create head reader
 hpth = Path("./quickstart_data/mymodel.hds")
-hobj = flopy.utils.HeadFile(hpth, precision="double")
-
-# set heads
-heads = hobj.get_alldata()
+heads = imod.mf6.open_hds(hpth, grbpth)
 
 # create grid
-grbpth = Path("./quickstart_data/mymodel.dis.grb")
 grid = flopy.discretization.StructuredGrid.from_binary_grid_file(grbpth)
-
-# TODO: get_specific_discharge is dependent on flopy3 model
-# qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(spdis, gwf)
 
 # set discharge component arrays
 u = []
