@@ -22,6 +22,9 @@ class Dis(Package):
         default=False, metadata={"block": "options"}
     )
     nlay: int = dim(
+        # disable the otherwise automatic coordinate variable
+        # because we're going to create another one for this
+        # dimension with a different name via a custom index
         coord=False,
         scope="gwf",
         default=1,
@@ -46,36 +49,40 @@ class Dis(Package):
         },
     )
     delr: NDArray[np.floating] = array(
-        dims=("ncol",),
         default=1.0,
+        dims=("ncol",),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     delc: NDArray[np.floating] = array(
-        dims=("nrow",),
         default=1.0,
+        dims=("nrow",),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     top: NDArray[np.floating] = array(
-        dims=("ncol", "nrow"),
         default=1.0,
+        dims=("ncol", "nrow"),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.floating] = array(
-        dims=("ncol", "nrow", "nlay"),
         default=0.0,
+        dims=("ncol", "nrow", "nlay"),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     idomain: NDArray[np.integer] = array(
-        dims=("ncol", "nrow", "nlay"),
         default=1,
+        dims=("ncol", "nrow", "nlay"),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
-    nnodes: int = dim(scope="gwf", init=False)
+    nnodes: int = dim(
+        # coord=False,
+        scope="gwf",
+        init=False,
+    )
 
     def __attrs_post_init__(self):
         self.nnodes = self.ncol * self.nrow * self.nlay
