@@ -7,11 +7,10 @@ from numpy.typing import NDArray
 from xattree import ROOT, array, dim, field, xattree
 
 from flopy4.mf6.converters import convert_array
-from flopy4.mf6.indexes import time_index
 from flopy4.mf6.package import Package
 
 
-@xattree(index=time_index, index_scope=ROOT)
+@xattree
 class Tdis(Package):
     @define
     class PeriodData:
@@ -20,7 +19,7 @@ class Tdis(Package):
         tsmult: float
 
     nper: int = dim(
-        coord=False,
+        coord="per",
         default=1,
         scope=ROOT,
         metadata={"block": "dimensions"},

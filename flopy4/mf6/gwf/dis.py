@@ -4,11 +4,10 @@ from numpy.typing import NDArray
 from xattree import array, dim, field, xattree
 
 from flopy4.mf6.converters import convert_array
-from flopy4.mf6.indexes import grid_index
 from flopy4.mf6.package import Package
 
 
-@xattree(index=grid_index, index_scope="gwf")
+@xattree
 class Dis(Package):
     length_units: str = field(
         default=None,
@@ -22,10 +21,7 @@ class Dis(Package):
         default=False, metadata={"block": "options"}
     )
     nlay: int = dim(
-        # disable the otherwise automatic coordinate variable
-        # because we're going to create another one for this
-        # dimension with a different name via a custom index
-        coord=False,
+        coord="lay",
         scope="gwf",
         default=1,
         metadata={
@@ -33,7 +29,7 @@ class Dis(Package):
         },
     )
     ncol: int = dim(
-        coord=False,
+        coord="col",
         scope="gwf",
         default=2,
         metadata={
@@ -41,7 +37,7 @@ class Dis(Package):
         },
     )
     nrow: int = dim(
-        coord=False,
+        coord="row",
         scope="gwf",
         default=2,
         metadata={
@@ -79,7 +75,7 @@ class Dis(Package):
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     nnodes: int = dim(
-        # coord=False,
+        coord="node",
         scope="gwf",
         init=False,
     )
