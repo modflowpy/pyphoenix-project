@@ -44,15 +44,6 @@ class MetaIndex(Index):
                 results.append(index.sel({k: labels[k]}))
         return merge_sel_results(results)
 
-    def to_pandas_index(self) -> pd.Index:
-        # from https://github.com/corteva/rioxarray/pull/846/files#diff-917105823f61e63ef4afde8bed408a6c249e375690e56bc800406676f02551d8R418
-        if len(self._indices) == 1:
-            index = next(iter(self._indices.values()))
-            if isinstance(index, PandasIndex):
-                return index.to_pandas_index()
-
-        raise ValueError("Cannot convert MetaIndex to pandas.Index")
-
 
 def grid_index(dataset: xr.Dataset) -> MetaIndex:
     return MetaIndex(
