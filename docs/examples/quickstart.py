@@ -27,9 +27,8 @@ oc = Oc(
 )
 
 # check CHD
-assert chd.data["head"][0, 0].item() == 1.0
-assert chd.data.head.sel(per=0)[99].item() == 0.0
-assert chd.data.head.sel(per=0, node=99).item() == 0.0
+assert chd.data["head"][0, 0] == 1.0
+assert chd.data.head.sel(per=0)[99] == 0.0
 assert np.allclose(chd.data.head[:, 1:99], np.full(98, 1e30))
 
 # check DIS
