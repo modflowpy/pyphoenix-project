@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import flopy
 import imod.mf6
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,29 +48,23 @@ bpth = Path("./quickstart_data/mymodel.bud")
 grbpth = Path("./quickstart_data/mymodel.dis.grb")
 
 # set specific discharge
-spdis = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=False)
+spdis = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=True)
 
 # create head reader
 hpth = Path("./quickstart_data/mymodel.hds")
 heads = imod.mf6.open_hds(hpth, grbpth)
-
-# create grid
-grid = flopy.discretization.StructuredGrid.from_binary_grid_file(grbpth)
-
-# set discharge component arrays
-u = []
-v = []
-for r in spdis:
-    u.append(r[3])
-    v.append(r[4])
-qx = np.array(u).reshape(grid.nrow, grid.ncol)
-qy = np.array(v).reshape(grid.nrow, grid.ncol)
-
+sq = heads.squeeze()
 fig, ax = plt.subplots()
-pmv = flopy.plot.PlotMapView(modelgrid=grid, ax=ax)
-pmv.plot_array(heads[0][0])
-pmv.plot_grid(colors="white")
-pmv.contour_array(heads[0][0], levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
-pmv.plot_vector(qx, qy, normalize=True, color="white")
+ax.tick_params()
+ax.set_xticks(np.arange(0, 11, 2), minor=False)
+ax.set_xticks(np.arange(1, 10, 2), minor=True)
+ax.set_yticks(np.arange(0, 11, 2), minor=False)
+ax.set_yticks(np.arange(1, 10, 2), minor=True)
+ax.grid(which="both", color="white")
+sq.plot.imshow(ax=ax)
+sq.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
+spdis.squeeze().plot.quiver(
+    x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white"
+)
 qs_pth = Path("./image/quickstart.png")
 fig.savefig(qs_pth)
