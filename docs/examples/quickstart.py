@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import flopy
+import imod.mf6
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -45,39 +45,26 @@ assert oc.data.save_head.sel(per=0) == "all"
 # PLOT
 # create budget reader
 bpth = Path("./quickstart_data/mymodel.bud")
-bobj = flopy.utils.CellBudgetFile(bpth, precision="double")
+grbpth = Path("./quickstart_data/mymodel.dis.grb")
 
 # set specific discharge
-spdis = bobj.get_data(text="DATA-SPDIS")[0]
+spdis = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=True)
 
 # create head reader
 hpth = Path("./quickstart_data/mymodel.hds")
-hobj = flopy.utils.HeadFile(hpth, precision="double")
-
-# set heads
-heads = hobj.get_alldata()
-
-# create grid
-grbpth = Path("./quickstart_data/mymodel.dis.grb")
-grid = flopy.discretization.StructuredGrid.from_binary_grid_file(grbpth)
-
-# TODO: get_specific_discharge is dependent on flopy3 model
-# qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(spdis, gwf)
-
-# set discharge component arrays
-u = []
-v = []
-for r in spdis:
-    u.append(r[3])
-    v.append(r[4])
-qx = np.array(u).reshape(grid.nrow, grid.ncol)
-qy = np.array(v).reshape(grid.nrow, grid.ncol)
-
+heads = imod.mf6.open_hds(hpth, grbpth)
+sq = heads.squeeze()
 fig, ax = plt.subplots()
-pmv = flopy.plot.PlotMapView(modelgrid=grid, ax=ax)
-pmv.plot_array(heads[0][0])
-pmv.plot_grid(colors="white")
-pmv.contour_array(heads[0][0], levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
-pmv.plot_vector(qx, qy, normalize=True, color="white")
+ax.tick_params()
+ax.set_xticks(np.arange(0, 11, 2), minor=False)
+ax.set_xticks(np.arange(1, 10, 2), minor=True)
+ax.set_yticks(np.arange(0, 11, 2), minor=False)
+ax.set_yticks(np.arange(1, 10, 2), minor=True)
+ax.grid(which="both", color="white")
+sq.plot.imshow(ax=ax)
+sq.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
+spdis.squeeze().plot.quiver(
+    x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white"
+)
 qs_pth = Path("./image/quickstart.png")
 fig.savefig(qs_pth)
