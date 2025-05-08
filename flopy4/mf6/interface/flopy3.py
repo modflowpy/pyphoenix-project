@@ -66,13 +66,14 @@ class Flopy3Model(ModelInterface):
                     laycbd=None,
                 )
 
-        for c in model.children:
-            p_fp3 = Flopy3Package(
-                package=model.children[c],
-                model=self,
-                modeltime=modeltime,
-            )
-            self._plist.append(p_fp3)
+        if hasattr(model, "children"):
+            for c in model.children:
+                p_fp3 = Flopy3Package(
+                    package=model.children[c],
+                    model=self,
+                    modeltime=modeltime,
+                )
+                self._plist.append(p_fp3)
 
     @property
     def modelgrid(self):
@@ -152,7 +153,7 @@ class Flopy3Model(ModelInterface):
         """
         return [p.name for p in self._plist]
 
-    def plot(self, packages: list = None, **kwargs):
+    def plot(self, packages: Optional[list] = None, **kwargs):
         if packages is None:
             packages = self.get_package_list()
         return PlotUtilities._plot_model_helper(
@@ -233,7 +234,6 @@ class Flopy3Package(PackageInterface):
     def data_list(self):
         return self._dlist
 
-    @property
     def export(self, f, **kwargs):
         pass
 
