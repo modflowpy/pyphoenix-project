@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
@@ -8,8 +9,7 @@ from flopy.discretization.modeltime import ModelTime
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
-from typing import Optional
-from xattree import XatTree, _get_xatspec, _XatSpec
+from xattree import _get_xatspec
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
@@ -67,11 +67,9 @@ class Flopy3Model(ModelInterface):
                 )
 
         for c in model.children:
-            xatspec = _get_xatspec(type(model.children[c]))
             p_fp3 = Flopy3Package(
+                package=model.children[c],
                 model=self,
-                data=model.data[c],
-                spec=xatspec,
                 modeltime=modeltime,
             )
             self._plist.append(p_fp3)
@@ -156,9 +154,6 @@ class Flopy3Model(ModelInterface):
         return [p.name for p in self._plist]
 
     def plot(self, packages: list = None, **kwargs):
-        # kwargs = {}
-        # kwargs["filename_base"] = "modelif"
-
         return PlotUtilities._plot_model_helper(
             self, SelPackList=packages, **kwargs
         )
@@ -167,38 +162,37 @@ class Flopy3Model(ModelInterface):
 class Flopy3Package(PackageInterface):
     def __init__(
         self,
+        package: Package,
         model: Optional[Flopy3Model] = None,
-        data: Optional[XatTree] = None,
-        spec: Optional[_XatSpec] = None,
         modeltime: Optional[ModelTime] = None,
     ):
         self._model = model
-        self._data = data
-        self._spec = spec
+        self._data = package.data
+        self._spec = _get_xatspec(type(package))
         self._time = modeltime
         self._dlist = list()
 
-        for a in data.attrs:
-            if data.attrs[a] is not None:
+        for a in self._data.attrs:
+            if self._data.attrs[a] is not None:
                 d_fp3 = Flopy3Data(
                     name=a,
                     modelname=self.parent,
                     modelgrid=model.modelgrid,
                     modeltime=modeltime,
-                    data=data.attrs[a],
-                    spec=spec.flat[a],
+                    data=self._data.attrs[a],
+                    spec=self._spec.flat[a],
                 )
                 self.__dict__[f"{a}"] = d_fp3
                 self._dlist.append(d_fp3)
 
-        for v in data.data_vars:
+        for v in self._data.data_vars:
             d_fp3 = Flopy3Data(
                 name=v,
                 modelname=self.parent,
                 modelgrid=model.modelgrid,
                 modeltime=modeltime,
-                data=data.data_vars[v],
-                spec=spec.flat[v],
+                data=self._data.data_vars[v],
+                spec=self._spec.flat[v],
             )
             self.__dict__[f"{v}"] = d_fp3
             self._dlist.append(d_fp3)
