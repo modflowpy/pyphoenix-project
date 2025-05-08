@@ -59,6 +59,9 @@ class Ims(Solution):
     inner_dvclose: Optional[float] = field(
         default=None, metadata={"block": "linear"}
     )
+    inner_hclose: Optional[float] = field(
+        default=None, metadata={"block": "linear"}
+    )
     inner_rclose: Optional[float] = field(
         default=None, metadata={"block": "linear"}
     )
