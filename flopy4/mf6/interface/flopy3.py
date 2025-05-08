@@ -18,7 +18,7 @@ from flopy4.mf6.package import Package
 class Flopy3Model(ModelInterface):
     def __init__(
         self,
-        model: Optional[Model] = None,
+        model: Model,
         modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
         ims: Optional[Package] = None,
@@ -103,13 +103,12 @@ class Flopy3Model(ModelInterface):
         """
         Solver inner hclose and rclose values.
         """
-        if self._ims:
-            return self._ims.inner_hclose, self._ims.inner_rclose
+        assert self._ims
+        return self._ims.inner_hclose, self._ims.inner_rclose
 
         return None
 
-    @property
-    def export(self, f):
+    def export(self, f, **kwargs):
         pass
 
     @property
@@ -154,6 +153,8 @@ class Flopy3Model(ModelInterface):
         return [p.name for p in self._plist]
 
     def plot(self, packages: list = None, **kwargs):
+        if packages is None:
+            packages = self.get_package_list()
         return PlotUtilities._plot_model_helper(
             self, SelPackList=packages, **kwargs
         )
@@ -164,11 +165,21 @@ class Flopy3Package(PackageInterface):
         self,
         package: Package,
         model: Optional[Flopy3Model] = None,
+        modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
     ):
         self._model = model
-        self._data = package.data
+        if hasattr(package, "data"):
+            self._data = package.data
+        else:
+            raise Exception("Input package has no data")
         self._spec = _get_xatspec(type(package))
+        if modelgrid:
+            self._grid = modelgrid
+        elif model:
+            self._grid = model.modelgrid
+        else:
+            raise Exception("Input package needs grid")
         self._time = modeltime
         self._dlist = list()
 
@@ -177,7 +188,7 @@ class Flopy3Package(PackageInterface):
                 d_fp3 = Flopy3Data(
                     name=a,
                     modelname=self.parent,
-                    modelgrid=model.modelgrid,
+                    modelgrid=self._grid,
                     modeltime=modeltime,
                     data=self._data.attrs[a],
                     spec=self._spec.flat[a],
@@ -189,7 +200,7 @@ class Flopy3Package(PackageInterface):
             d_fp3 = Flopy3Data(
                 name=v,
                 modelname=self.parent,
-                modelgrid=model.modelgrid,
+                modelgrid=self._grid,
                 modeltime=modeltime,
                 data=self._data.data_vars[v],
                 spec=self._spec.flat[v],

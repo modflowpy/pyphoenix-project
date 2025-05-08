@@ -93,7 +93,7 @@ def test_modelif():
 
 
 def norun_test_cbd_small():
-    # def test_cbd_small():
+#def test_cbd_small():
     import sys
 
     sys.path.append("/home/mjreno/.clone/usgs/flopy/autotest")
