@@ -8,6 +8,7 @@ from flopy.discretization.modeltime import ModelTime
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
+from typing import Optional
 from xattree import XatTree, _get_xatspec, _XatSpec
 
 from flopy4.mf6.model import Model
@@ -17,10 +18,10 @@ from flopy4.mf6.package import Package
 class Flopy3Model(ModelInterface):
     def __init__(
         self,
-        model: Model = None,
-        modelgrid: Grid = None,
-        modeltime: ModelTime = None,
-        ims: Package = None,
+        model: Optional[Model] = None,
+        modelgrid: Optional[Grid] = None,
+        modeltime: Optional[ModelTime] = None,
+        ims: Optional[Package] = None,
     ):
         self._model = model
         self._grid = modelgrid
@@ -110,7 +111,7 @@ class Flopy3Model(ModelInterface):
         return None
 
     @property
-    def export(self, f, **kwargs):
+    def export(self, f):
         pass
 
     @property
@@ -166,10 +167,10 @@ class Flopy3Model(ModelInterface):
 class Flopy3Package(PackageInterface):
     def __init__(
         self,
-        model: Flopy3Model = None,
-        data: XatTree = None,
-        spec: _XatSpec = None,
-        modeltime: ModelTime = None,
+        model: Optional[Flopy3Model] = None,
+        data: Optional[XatTree] = None,
+        spec: Optional[_XatSpec] = None,
+        modeltime: Optional[ModelTime] = None,
     ):
         self._model = model
         self._data = data
@@ -257,10 +258,10 @@ class Flopy3Data(DataInterface):
     def __init__(
         # TODO: types of data and spec are unions
         self,
-        name: str = None,
-        modelname: str = None,
-        modelgrid: Grid = None,
-        modeltime: ModelTime = None,
+        name: Optional[str] = None,
+        modelname: Optional[str] = None,
+        modelgrid: Optional[Grid] = None,
+        modeltime: Optional[ModelTime] = None,
         data=None,
         spec=None,
     ):
