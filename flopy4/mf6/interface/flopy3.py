@@ -185,7 +185,10 @@ class Flopy3Package(PackageInterface):
         self._dlist = list()
 
         for a in self._data.attrs:
-            if self._data.attrs[a] is not None:
+            if (
+                self._data.attrs[a] is not None
+                and self._spec.flat[a].type is not None
+            ):
                 d_fp3 = Flopy3Data(
                     name=a,
                     modelname=self.parent,
