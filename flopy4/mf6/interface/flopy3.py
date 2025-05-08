@@ -198,16 +198,17 @@ class Flopy3Package(PackageInterface):
                 self._dlist.append(d_fp3)
 
         for v in self._data.data_vars:
-            d_fp3 = Flopy3Data(
-                name=v,
-                modelname=self.parent,
-                modelgrid=self._grid,
-                modeltime=modeltime,
-                data=self._data.data_vars[v],
-                spec=self._spec.flat[v],
-            )
-            self.__dict__[f"{v}"] = d_fp3
-            self._dlist.append(d_fp3)
+            if self._data.data_vars[v] is not None:
+                d_fp3 = Flopy3Data(
+                    name=v,
+                    modelname=self.parent,
+                    modelgrid=self._grid,
+                    modeltime=modeltime,
+                    data=self._data.data_vars[v],
+                    spec=self._spec.flat[v],
+                )
+                self.__dict__[f"{v}"] = d_fp3
+                self._dlist.append(d_fp3)
 
     @property
     def name(self):
@@ -270,6 +271,10 @@ class Flopy3Data(DataInterface):
         data=None,
         spec=None,
     ):
+        assert data is not None
+        assert spec is not None
+        assert spec.type is not None
+        assert hasattr(spec.type, "__name__")
         self._name = name
         self._modelname = modelname
         self._grid = modelgrid
