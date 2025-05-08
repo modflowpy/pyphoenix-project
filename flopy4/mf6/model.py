@@ -1,8 +1,8 @@
-from attrs import define
+from xattree import xattree
 
 from flopy4.mf6.component import Component
 
 
-@define
+@xattree
 class Model(Component):
     pass
