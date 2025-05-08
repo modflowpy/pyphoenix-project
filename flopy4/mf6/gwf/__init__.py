@@ -5,6 +5,7 @@ import attrs
 import imod
 import xarray as xr
 from attrs import define
+from flopy.discretization.grid import Grid
 from xattree import field, xattree
 
 from flopy4.mf6.gwf.chd import Chd
@@ -47,6 +48,7 @@ class Gwf(Model):
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )
+    grid: Grid = attrs.field(default=None)
 
     @define
     class NewtonOptions:

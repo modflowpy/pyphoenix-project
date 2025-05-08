@@ -62,6 +62,73 @@ def test_init_gwf_explicit_dims():
     assert np.array_equal(npf.data.k, np.ones(4))
 
 
+@pytest.mark.skip(reason="TODO")
+def test_init_gwf_from_grid():
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
+    dis = Dis(grid=grid)
+    ic = Ic(grid=grid)
+    oc = Oc(grid=grid)
+    npf = Npf(grid=grid)
+    chd = Chd(grid=grid)
+    gwf = Gwf(
+        dis=dis,
+        ic=ic,
+        oc=oc,
+        npf=npf,
+        chd=[chd],
+        grid=grid,
+    )
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
+    assert gwf.data.dis is dis.data
+    assert gwf.data.ic is ic.data
+    assert gwf.data.oc is oc.data
+    assert gwf.data.npf is npf.data
+    assert np.array_equal(npf.k, np.ones(4))
+    assert np.array_equal(npf.data.k, np.ones(4))
+
+
+@pytest.mark.skip(reason="TODO")
+def test_init_gwf_from_grid_context():
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
+    # TODO maybe a dumb idea, but we could put the
+    # time and grid in a context manager? then you
+    # don't have to pass them into each component.
+    with Discretization(grid, time):
+        dis = Dis()
+        ic = Ic()
+        oc = Oc()
+        npf = Npf()
+        chd = Chd()
+        gwf = Gwf(
+            dis=dis,
+            ic=ic,
+            oc=oc,
+            npf=npf,
+            chd=[chd],
+        )
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
+    assert gwf.data.dis is dis.data
+    assert gwf.data.ic is ic.data
+    assert gwf.data.oc is oc.data
+    assert gwf.data.npf is npf.data
+    assert np.array_equal(npf.k, np.ones(4))
+    assert np.array_equal(npf.data.k, np.ones(4))
+
+
 def test_init_gwf_dis_first():
     dis = Dis()
     gwf = Gwf(dis=dis)
