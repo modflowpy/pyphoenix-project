@@ -13,6 +13,7 @@ from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.model import Model
+from flopy4.mf6.utils import open_hds
 
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
@@ -25,16 +26,16 @@ class Gwf(Model):
 
         @property
         def head(self) -> xr.DataArray:
-            return imod.mf6.open_hds(
-                Path("quickstart_data", f"{self.parent.name}.hds"),
-                Path("quickstart_data", f"{self.parent.name}.dis.grb"),
+            return open_hds(
+                self.parent.parent.sim_ws / f"{self.parent.name}.hds",
+                self.parent.parent.sim_ws / f"{self.parent.name}.dis.grb",
             )
 
         @property
         def budget(self):
             return imod.mf6.open_cbc(
-                Path("./quickstart_data/mymodel.bud"),
-                Path("./quickstart_data/mymodel.dis.grb"),
+                self.parent.parent.sim_ws / "mymodel.bud",
+                self.parent.parent.sim_ws / "mymodel.dis.grb",
                 merge_to_dataset=True,
             )
 

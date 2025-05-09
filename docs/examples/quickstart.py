@@ -8,7 +8,7 @@ from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 
-ws = "./quickstart_data"
+ws = Path("./quickstart_data")
 name = "mymodel"
 tdis = Tdis()
 ims = Ims()
