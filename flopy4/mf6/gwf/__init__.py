@@ -1,6 +1,9 @@
 from pathlib import Path
 from typing import Optional
 
+import attrs
+import imod
+import xarray as xr
 from attrs import define
 from xattree import field, xattree
 
@@ -16,11 +19,33 @@ __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
 @xattree
 class Gwf(Model):
+    @define
+    class Output:
+        parent: "Gwf" = field(repr=False)
+
+        @property
+        def head(self) -> xr.DataArray:
+            return imod.mf6.open_hds(
+                Path("quickstart_data", f"{self.parent.name}.hds"),
+                Path("quickstart_data", f"{self.parent.name}.dis.grb"),
+            )
+
+        @property
+        def budget(self):
+            return imod.mf6.open_cbc(
+                Path("./quickstart_data/mymodel.bud"),
+                Path("./quickstart_data/mymodel.dis.grb"),
+                merge_to_dataset=True,
+            )
+
     dis: Dis = field()
     ic: Ic = field()
     oc: Oc = field()
     npf: Npf = field()
     chd: list[Chd] = field()
+    output: Output = attrs.field(
+        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
+    )
 
     @define
     class NewtonOptions:
