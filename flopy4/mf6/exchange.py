@@ -1,13 +1,12 @@
 from pathlib import Path
 from typing import Optional
 
-from attrs import define
-from xattree import field
+from xattree import field, xattree
 
 from flopy4.mf6.package import Package
 
 
-@define
+@xattree
 class Exchange(Package):
     exgtype: type = field()
     exgfile: Path = field()

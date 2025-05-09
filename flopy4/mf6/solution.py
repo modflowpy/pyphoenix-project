@@ -1,8 +1,8 @@
-from attrs import define
+from xattree import xattree
 
 from flopy4.mf6.package import Package
 
 
-@define
+@xattree
 class Solution(Package):
     pass
