@@ -58,19 +58,19 @@ class Dis(Package):
     )
     top: NDArray[np.floating] = array(
         default=1.0,
-        dims=("ncol", "nrow"),
+        dims=("nrow", "ncol"),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.floating] = array(
         default=0.0,
-        dims=("ncol", "nrow", "nlay"),
+        dims=("nlay", "nrow", "ncol"),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     idomain: NDArray[np.integer] = array(
         default=1,
-        dims=("ncol", "nrow", "nlay"),
+        dims=("nlay", "nrow", "ncol"),
         metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )

@@ -33,7 +33,7 @@ oc = Oc(
 )
 
 # model interface
-gwfif = Flopy3Model(gwf)
+fp3gwf = Flopy3Model(gwf)
 
 # check CHD
 assert chd.data["head"][0, 0] == 1.0
@@ -55,15 +55,21 @@ hpth = Path("./quickstart_data/mymodel.hds")
 # set data
 bobj = flopy.utils.CellBudgetFile(bpth, precision="double")
 spdis = bobj.get_data(text="DATA-SPDIS")[0]
-# spdis = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=True)
+spdisimod = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=True)
+print(spdis)
+print(type(spdisimod))
+# print(spdisimod)
+for d in spdisimod.variables:
+    print(d)
+    print(spdisimod.variables[d].data)
 heads = imod.mf6.open_hds(hpth, grbpth)
 
 # discharge vectors
-qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(spdis, gwfif)
+qx, qy, qz = flopy.utils.postprocessing.get_specific_discharge(spdis, fp3gwf)
 
 # plot
 fig, ax = plt.subplots()
-pmv = flopy.plot.PlotMapView(model=gwfif, ax=ax)
+pmv = flopy.plot.PlotMapView(model=fp3gwf, ax=ax)
 pmv.plot_array(heads[0][0])
 pmv.plot_grid(colors="white")
 pmv.contour_array(heads[0][0], levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)

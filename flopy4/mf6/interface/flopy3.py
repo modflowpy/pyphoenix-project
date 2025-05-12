@@ -1,7 +1,6 @@
 import re
-from typing import Optional
+from typing import Optional, Union
 
-import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization import StructuredGrid
 from flopy.discretization.grid import Grid
@@ -9,7 +8,7 @@ from flopy.discretization.modeltime import ModelTime
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
-from xattree import _get_xatspec
+from xattree import _Array, _Attr, _get_xatspec
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
@@ -51,9 +50,9 @@ class Flopy3Model(ModelInterface):
                 self._grid = StructuredGrid(
                     delc=model.dis.delc.data,
                     delr=model.dis.delr.data,
-                    top=np.transpose(model.dis.top.data),
-                    botm=np.transpose(model.dis.botm.data),
-                    idomain=np.transpose(model.dis.idomain.data),
+                    top=model.dis.top.data,
+                    botm=model.dis.botm.data,
+                    idomain=model.dis.idomain.data,
                     lenuni=lenuni,
                     crs=None,
                     prjfile=None,
@@ -104,8 +103,8 @@ class Flopy3Model(ModelInterface):
         """
         Solver inner hclose and rclose values.
         """
-        assert self._ims
-        return self._ims.inner_hclose, self._ims.inner_rclose
+        if self._ims is not None:
+            return self._ims.inner_hclose, self._ims.inner_rclose
 
         return None
 
@@ -154,8 +153,8 @@ class Flopy3Model(ModelInterface):
         return [p.name for p in self._plist]
 
     def plot(self, packages: Optional[list] = None, **kwargs):
-        if packages is None:
-            packages = self.get_package_list()
+        # if packages is None:
+        #    packages = self.get_package_list()
         return PlotUtilities._plot_model_helper(
             self, SelPackList=packages, **kwargs
         )
@@ -190,12 +189,12 @@ class Flopy3Package(PackageInterface):
                 and self._spec.flat[a].type is not None
             ):
                 d_fp3 = Flopy3Data(
+                    data=self._data.attrs[a],
+                    spec=self._spec.flat[a],
                     name=a,
                     modelname=self.parent,
                     modelgrid=self._grid,
                     modeltime=modeltime,
-                    data=self._data.attrs[a],
-                    spec=self._spec.flat[a],
                 )
                 self.__dict__[f"{a}"] = d_fp3
                 self._dlist.append(d_fp3)
@@ -203,12 +202,12 @@ class Flopy3Package(PackageInterface):
         for v in self._data.data_vars:
             if self._data.data_vars[v] is not None:
                 d_fp3 = Flopy3Data(
+                    data=self._data.data_vars[v],
+                    spec=self._spec.flat[v],
                     name=v,
                     modelname=self.parent,
                     modelgrid=self._grid,
                     modeltime=modeltime,
-                    data=self._data.data_vars[v],
-                    spec=self._spec.flat[v],
                 )
                 self.__dict__[f"{v}"] = d_fp3
                 self._dlist.append(d_fp3)
@@ -257,22 +256,18 @@ class Flopy3Package(PackageInterface):
         return None
 
     def plot(self, **kwargs):
-        # kwargs = {}
-        # kwargs["filename_base"] = "modelif"
-
         return PlotUtilities._plot_package_helper(self, **kwargs)
 
 
 class Flopy3Data(DataInterface):
     def __init__(
-        # TODO: types of data and spec are unions
         self,
+        data,
+        spec: Union[_Attr, _Array],
         name: Optional[str] = None,
         modelname: Optional[str] = None,
         modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
-        data=None,
-        spec=None,
     ):
         assert data is not None
         assert spec is not None
@@ -326,14 +321,12 @@ class Flopy3Data(DataInterface):
 
     @property
     def dtype(self):
-        # return self._spec.type
         return self._spec.type.__name__
 
     @property
     def array(self):
         if self._spec.type.__name__ == "ndarray":
             if "nnodes" in self._data.dims:
-                # TODO: transpose?
                 if "nper" in self._data.dims:
                     shape = (
                         self._time.nper,
@@ -348,7 +341,7 @@ class Flopy3Data(DataInterface):
 
                 return self._data.data.reshape(shape)
             else:
-                return np.transpose(self._data.data)
+                return self._data.data
         return None
 
     @property

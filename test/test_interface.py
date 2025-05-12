@@ -4,10 +4,10 @@ from flopy.discretization.modeltime import ModelTime
 
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
-from flopy4.mf6.interface.flopy3 import Flopy3Model
+from flopy4.mf6.interface.flopy3 import Flopy3Model, Flopy3Package
 
 
-def test_modelif():
+def test_flopy3_model():
     from flopy.mbase import ModelInterface
     from flopy.pakbase import PackageInterface
 
@@ -49,22 +49,22 @@ def test_modelif():
     pnames = ["dis", "ic", "oc", "npf", "chd0"]
     ptypes = ["DIS", "IC", "OC", "NPF", "CHD"]
 
-    gwfif = Flopy3Model(model=gwf, modeltime=time, ims=ims)
-    assert isinstance(gwfif, ModelInterface)
-    assert gwfif.modelgrid
-    assert gwfif.modelgrid.nlay == gwf.dis.nlay
-    assert gwfif.modelgrid.nrow == gwf.dis.nrow
-    assert gwfif.modelgrid.ncol == gwf.dis.ncol
-    assert gwfif.modelgrid.nnodes == grid.nnodes
+    fp3gwf = Flopy3Model(model=gwf, modeltime=time, ims=ims)
+    assert isinstance(fp3gwf, ModelInterface)
+    assert fp3gwf.modelgrid
+    assert fp3gwf.modelgrid.nlay == gwf.dis.nlay
+    assert fp3gwf.modelgrid.nrow == gwf.dis.nrow
+    assert fp3gwf.modelgrid.ncol == gwf.dis.ncol
+    assert fp3gwf.modelgrid.nnodes == grid.nnodes
 
-    assert gwfif.solver_tols == (ims.inner_hclose, ims.inner_rclose)
+    assert fp3gwf.solver_tols == (ims.inner_hclose, ims.inner_rclose)
     assert np.all(
-        np.equal(gwfif.laytyp, np.zeros(gwfif.modelgrid.nnodes, dtype=int))
+        np.equal(fp3gwf.laytyp, np.zeros(fp3gwf.modelgrid.nnodes, dtype=int))
     )
 
     # model packages
-    assert gwfif.get_package_list() == pnames
-    for i, p in enumerate(gwfif.packagelist):
+    assert fp3gwf.get_package_list() == pnames
+    for i, p in enumerate(fp3gwf.packagelist):
         assert isinstance(p, PackageInterface)
         assert p.name == pnames[i]
         assert p.package_type == ptypes[i]
@@ -85,15 +85,154 @@ def test_modelif():
             print(f"data_type: {d.data_type}")
             print(f"array: {d.array}\n")
 
-    kwargs = {}
-    kwargs["filename_base"] = "modelif"
-
-    # gwfif.plot(**kwargs)
-    gwfif.plot(filename_base="modelif")
+    fp3gwf.plot(filename_base="modelif")
 
 
-def norun_test_cbd_small():
-#def test_cbd_small():
+def test_flopy3_package():
+    from flopy.mbase import ModelInterface
+    from flopy.pakbase import PackageInterface
+
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+        xoff=0.0,
+        yoff=0.0,
+        angrot=0.0,
+        delr=np.array([1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]),
+        delc=np.array([2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0]),
+        top=np.array(
+            [
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+            ]
+        ),
+        botm=np.array(
+            [
+                [
+                    [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0],
+                ]
+            ]
+        ),
+    )
+
+    dims = {
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+    }
+
+    dis = Dis(**dims)
+    dis.nogrb = True
+    dis.xorigin = 0.0
+    dis.yorigin = 0.0
+    dis.delr = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]
+    dis.delc = [2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0]
+    dis.top = [
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+        [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+    ]
+    dis.botm = [
+        [
+            [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0],
+        ]
+    ]
+
+    dims["nper"] = time.nper
+    dims["nnodes"] = grid.nnodes
+
+    gwf = Gwf(
+        dis=dis,
+        dims=dims,
+    )
+
+    # fp3gwf is needed because "parent" property needs
+    # to return it for flopy3 based plotting (below)
+    fp3gwf = Flopy3Model(model=gwf, modeltime=time)
+    fp3dis = Flopy3Package(package=dis, model=fp3gwf, modeltime=time)
+    assert isinstance(fp3gwf, ModelInterface)
+    assert isinstance(fp3dis, PackageInterface)
+    assert fp3gwf.modelgrid.nlay == grid.nlay
+    assert fp3gwf.modelgrid.nrow == grid.nrow
+    assert fp3gwf.modelgrid.ncol == grid.ncol
+    assert fp3gwf.modelgrid.nnodes == grid.nnodes
+    assert fp3gwf.modelgrid.angrot == grid.angrot
+    assert np.all(np.equal(fp3gwf.modelgrid.delr, grid.delr))
+    assert np.all(np.equal(fp3gwf.modelgrid.delc, grid.delc))
+    assert np.all(np.equal(fp3gwf.modelgrid.top, grid.top))
+    assert np.all(np.equal(fp3gwf.modelgrid.botm, grid.botm))
+
+    # model packages
+    assert fp3dis.name == "dis"
+    assert fp3dis.package_type == "DIS"
+    assert not fp3dis.has_stress_period_data
+
+    # package data
+    data_list = [
+        "nogrb",
+        "xorigin",
+        "yorigin",
+        "export_array_netcdf",
+        "delr",
+        "delc",
+        "top",
+        "botm",
+        "idomain",
+    ]
+    data = {
+        "delr": grid.delr,
+        "delc": grid.delc,
+        "top": grid.top,
+        "botm": grid.botm,
+    }
+    dlist = [d.name for d in fp3dis.data_list]
+    assert dlist == data_list
+
+    for k, v in data.items():
+        for di in fp3dis.data_list:
+            if di.name == k:
+                assert np.all(np.equal(di.array, np.transpose(v)))
+
+    fp3dis.plot(filename_base="fp3dis")
+
+
+# def norun_test_cbd_small():
+def test_flopy3_cbd_small():
     import sys
 
     sys.path.append("/home/mjreno/.clone/usgs/flopy/autotest")
@@ -114,8 +253,8 @@ def norun_test_cbd_small():
         dis=dis,
         dims=dims,
     )
-    gwfif = Flopy3Model(model=gwf, modelgrid=cbd_small, modeltime=time)
-    gwfif.plot(filename_base="cbd_small")
+    fp3gwf = Flopy3Model(model=gwf, modelgrid=cbd_small, modeltime=time)
+    fp3gwf.plot(filename_base="cbd_small")
 
 
 def norun_test_grid2():
@@ -154,8 +293,8 @@ def norun_test_grid2():
         dis=dis,
         dims=dims,
     )
-    gwfif = Flopy3Model(model=gwf, modeltime=time)
-    gwfif.plot(filename_base="grid2")
+    fp3gwf = Flopy3Model(model=gwf, modeltime=time)
+    fp3gwf.plot(filename_base="grid2")
 
     # dis = flopy.mf6.ModflowGwfdis(
     #    gwf,
@@ -171,7 +310,7 @@ def norun_test_grid2():
 
 
 # demo failed case
-def test_mgrid2():
+def test_flopy3_mgrid2():
     lx = 5.0
     lz = 1.0
     nlay = 1
@@ -180,6 +319,7 @@ def test_mgrid2():
     delc = 1.0
     delr = lx / ncol
     delz = lz / nlay
+    # adelc = np.full((ncol, nrow), delc)
     adelc = np.full((nrow), delc)
     adelr = np.full((ncol), delr)
 
