@@ -49,22 +49,22 @@ def test_flopy3_model():
     pnames = ["dis", "ic", "oc", "npf", "chd0"]
     ptypes = ["DIS", "IC", "OC", "NPF", "CHD"]
 
-    fp3gwf = Flopy3Model(model=gwf, modeltime=time, ims=ims)
-    assert isinstance(fp3gwf, ModelInterface)
-    assert fp3gwf.modelgrid
-    assert fp3gwf.modelgrid.nlay == gwf.dis.nlay
-    assert fp3gwf.modelgrid.nrow == gwf.dis.nrow
-    assert fp3gwf.modelgrid.ncol == gwf.dis.ncol
-    assert fp3gwf.modelgrid.nnodes == grid.nnodes
+    gwf3 = Flopy3Model(model=gwf, modeltime=time, ims=ims)
+    assert isinstance(gwf3, ModelInterface)
+    assert gwf3.modelgrid
+    assert gwf3.modelgrid.nlay == gwf.dis.nlay
+    assert gwf3.modelgrid.nrow == gwf.dis.nrow
+    assert gwf3.modelgrid.ncol == gwf.dis.ncol
+    assert gwf3.modelgrid.nnodes == grid.nnodes
 
-    assert fp3gwf.solver_tols == (ims.inner_hclose, ims.inner_rclose)
+    assert gwf3.solver_tols == (ims.inner_hclose, ims.inner_rclose)
     assert np.all(
-        np.equal(fp3gwf.laytyp, np.zeros(fp3gwf.modelgrid.nnodes, dtype=int))
+        np.equal(gwf3.laytyp, np.zeros(gwf3.modelgrid.nnodes, dtype=int))
     )
 
     # model packages
-    assert fp3gwf.get_package_list() == pnames
-    for i, p in enumerate(fp3gwf.packagelist):
+    assert gwf3.get_package_list() == pnames
+    for i, p in enumerate(gwf3.packagelist):
         assert isinstance(p, PackageInterface)
         assert p.name == pnames[i]
         assert p.package_type == ptypes[i]
@@ -85,7 +85,7 @@ def test_flopy3_model():
             print(f"data_type: {d.data_type}")
             print(f"array: {d.array}\n")
 
-    fp3gwf.plot(filename_base="modelif")
+    gwf3.plot(filename_base="modelif")
 
 
 def test_flopy3_package():
@@ -181,21 +181,21 @@ def test_flopy3_package():
         dims=dims,
     )
 
-    # fp3gwf is needed because "parent" property needs
+    # gwf3 is needed because "parent" property needs
     # to return it for flopy3 based plotting (below)
-    fp3gwf = Flopy3Model(model=gwf, modeltime=time)
-    fp3dis = Flopy3Package(package=dis, model=fp3gwf, modeltime=time)
-    assert isinstance(fp3gwf, ModelInterface)
+    gwf3 = Flopy3Model(model=gwf, modeltime=time)
+    fp3dis = Flopy3Package(package=dis, model=gwf3, modeltime=time)
+    assert isinstance(gwf3, ModelInterface)
     assert isinstance(fp3dis, PackageInterface)
-    assert fp3gwf.modelgrid.nlay == grid.nlay
-    assert fp3gwf.modelgrid.nrow == grid.nrow
-    assert fp3gwf.modelgrid.ncol == grid.ncol
-    assert fp3gwf.modelgrid.nnodes == grid.nnodes
-    assert fp3gwf.modelgrid.angrot == grid.angrot
-    assert np.all(np.equal(fp3gwf.modelgrid.delr, grid.delr))
-    assert np.all(np.equal(fp3gwf.modelgrid.delc, grid.delc))
-    assert np.all(np.equal(fp3gwf.modelgrid.top, grid.top))
-    assert np.all(np.equal(fp3gwf.modelgrid.botm, grid.botm))
+    assert gwf3.modelgrid.nlay == grid.nlay
+    assert gwf3.modelgrid.nrow == grid.nrow
+    assert gwf3.modelgrid.ncol == grid.ncol
+    assert gwf3.modelgrid.nnodes == grid.nnodes
+    assert gwf3.modelgrid.angrot == grid.angrot
+    assert np.all(np.equal(gwf3.modelgrid.delr, grid.delr))
+    assert np.all(np.equal(gwf3.modelgrid.delc, grid.delc))
+    assert np.all(np.equal(gwf3.modelgrid.top, grid.top))
+    assert np.all(np.equal(gwf3.modelgrid.botm, grid.botm))
 
     # model packages
     assert fp3dis.name == "dis"
@@ -253,8 +253,8 @@ def test_flopy3_cbd_small():
         dis=dis,
         dims=dims,
     )
-    fp3gwf = Flopy3Model(model=gwf, modelgrid=cbd_small, modeltime=time)
-    fp3gwf.plot(filename_base="cbd_small")
+    gwf3 = Flopy3Model(model=gwf, modelgrid=cbd_small, modeltime=time)
+    gwf3.plot(filename_base="cbd_small")
 
 
 def norun_test_grid2():
@@ -293,8 +293,8 @@ def norun_test_grid2():
         dis=dis,
         dims=dims,
     )
-    fp3gwf = Flopy3Model(model=gwf, modeltime=time)
-    fp3gwf.plot(filename_base="grid2")
+    gwf3 = Flopy3Model(model=gwf, modeltime=time)
+    gwf3.plot(filename_base="grid2")
 
     # dis = flopy.mf6.ModflowGwfdis(
     #    gwf,

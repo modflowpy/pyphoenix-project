@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Union
+from typing import Optional
 
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization import StructuredGrid
@@ -8,7 +8,7 @@ from flopy.discretization.modeltime import ModelTime
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
-from xattree import _Array, _Attr, _get_xatspec
+from xattree import _get_xatspec, _Xattribute
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
@@ -263,7 +263,7 @@ class Flopy3Data(DataInterface):
     def __init__(
         self,
         data,
-        spec: Union[_Attr, _Array],
+        spec: _Xattribute,
         name: Optional[str] = None,
         modelname: Optional[str] = None,
         modelgrid: Optional[Grid] = None,
