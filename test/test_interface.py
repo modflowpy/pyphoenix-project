@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
 
@@ -336,3 +337,65 @@ def test_flopy3_mgrid2():
 
     dis.delr = adelr  # succeeds
     dis.delc = adelc  # fails
+
+
+@pytest.mark.xfail(
+    reason=(
+        "demonstrate why wrapping array values "
+        "with DataArray is necessary on set"
+    )
+)
+def test_fails():
+    from xarray import Dataset, DataTree
+    from xarray.indexes import PandasIndex
+
+    data = Dataset(
+        {
+            "delr": ("ncol", [1.0]),
+            "delc": (
+                "nrow",
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                ],
+            ),
+        },
+        coords={
+            "col": ("ncol", [0]),
+            "row": ("nrow", [0, 1, 2]),
+        },
+    )
+    data.set_xindex("col", PandasIndex)
+    data.set_xindex("row", PandasIndex)
+    tree = DataTree(data)
+    tree["delr"] = [2.0]
+    tree["delc"] = [2.0, 2.0, 2.0]
+
+
+def test_succeeds():
+    from xarray import DataArray, Dataset, DataTree
+    from xarray.indexes import PandasIndex
+
+    data = Dataset(
+        {
+            "delr": ("ncol", [1.0]),
+            "delc": (
+                "nrow",
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                ],
+            ),
+        },
+        coords={
+            "col": ("ncol", [0]),
+            "row": ("nrow", [0, 1, 2]),
+        },
+    )
+    data.set_xindex("col", PandasIndex)
+    data.set_xindex("row", PandasIndex)
+    tree = DataTree(data)
+    tree["delr"] = DataArray([2.0], dims="ncol")
+    tree["delc"] = DataArray([2.0, 2.0, 2.0], dims="nrow")
