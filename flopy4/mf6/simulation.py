@@ -17,6 +17,5 @@ class Simulation(Component):
     models: dict[str, Model] = field()
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()
-    tdis: Tdis = field()
     sim_ws: Path = field(default=None)
-    time: ModelTime = attrs.field(default=None)
+    tdis: Tdis = field(converter=lambda time: Tdis.from_time(time))

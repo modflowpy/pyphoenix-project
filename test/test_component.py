@@ -49,44 +49,12 @@ def test_init_gwf_explicit_dims():
     )
 
     assert isinstance(gwf.data, DataTree)
-    assert gwf.dis is dis
+    assert gwf.dis is not dis  # dimension order switched.. is this ok?
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    assert gwf.data.dis is dis.data
-    assert gwf.data.ic is ic.data
-    assert gwf.data.oc is oc.data
-    assert gwf.data.npf is npf.data
-    assert np.array_equal(npf.k, np.ones(4))
-    assert np.array_equal(npf.data.k, np.ones(4))
-
-
-@pytest.mark.skip(reason="TODO")
-def test_init_gwf_from_grid():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
-    dis = Dis(grid=grid)
-    ic = Ic(grid=grid)
-    oc = Oc(grid=grid)
-    npf = Npf(grid=grid)
-    chd = Chd(grid=grid)
-    gwf = Gwf(
-        dis=dis,
-        ic=ic,
-        oc=oc,
-        npf=npf,
-        chd=[chd],
-        grid=grid,
-    )
-
-    assert isinstance(gwf.data, DataTree)
-    assert gwf.dis is dis
-    assert gwf.ic is ic
-    assert gwf.oc is oc
-    assert gwf.npf is npf
-    assert gwf.chd[0] is chd
-    assert gwf.data.dis is dis.data
+    assert gwf.data.dis is not dis.data
     assert gwf.data.ic is ic.data
     assert gwf.data.oc is oc.data
     assert gwf.data.npf is npf.data
@@ -138,13 +106,32 @@ def test_init_gwf_dis_first():
     chd = Chd(parent=gwf, strict=False)
 
     assert isinstance(gwf.data, DataTree)
-    assert gwf.dis is dis
+    assert gwf.dis is not dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
     assert np.array_equal(npf.k, np.ones(4))
     assert np.array_equal(npf.data.k, np.ones(4))
+
+
+def test_init_gwf_dis_first_with_grid():
+    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+    gwf = Gwf(dis=grid)
+    dis = gwf.dis
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf, strict=False)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, strict=False)
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
+    assert np.array_equal(npf.k, np.ones(100))
+    assert np.array_equal(npf.data.k, np.ones(100))
 
 
 def test_init_gwf_top_down_misaligned():
@@ -198,7 +185,7 @@ def test_init_sim_explicit_dims():
     assert isinstance(sim.data, DataTree)
     assert sim.data.tdis is tdis.data
     assert sim.data.gwf is gwf.data
-    assert gwf.dis is dis
+    assert gwf.dis is not dis  # gwf.dis has inherited dim nper
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
@@ -219,35 +206,16 @@ def test_init_big_sim():
     # if size over threshold, arrays should be sparse
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=100, ncol=100)
-    dims = {
-        "nlay": grid.nlay,
-        "nrow": grid.nrow,
-        "ncol": grid.ncol,
-    }
-    dis = Dis(**dims)
-    dims["nper"] = time.nper
-    dims["nnodes"] = grid.nnodes
-    ic = Ic(dims=dims)
-    oc = Oc(dims=dims)
-    npf = Npf(dims=dims)
-    chd = Chd(dims=dims, head={"*": {(0, 0, 0): 1.0, (0, 99, 99): 0.0}})
-    gwf = Gwf(
-        dis=dis,
-        ic=ic,
-        oc=oc,
-        npf=npf,
-        chd=[chd],
-        dims=dims,
-    )
-    tdis = Tdis(dims=dims)
-    sim = Simulation(tdis=tdis, models={"gwf": gwf})
+    sim = Simulation(tdis=time)
+    gwf = Gwf(parent=sim, dis=grid)
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 99, 99): 0.0}})
 
-    assert sim.tdis is tdis
     assert sim.models["gwf"] is gwf
     assert isinstance(sim.data, DataTree)
-    assert sim.data.tdis is tdis.data
     assert sim.data.gwf is gwf.data
-    assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf

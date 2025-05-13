@@ -40,7 +40,7 @@ class Gwf(Model):
                 merge_to_dataset=True,
             )
 
-    dis: Dis = field()
+    dis: Dis = field(converter=lambda grid: Dis.from_grid(grid))
     ic: Ic = field()
     oc: Oc = field()
     npf: Npf = field()
@@ -71,3 +71,7 @@ class Gwf(Model):
     nc_filerecord: Optional[Path] = field(
         default=None, metadata={"block": "options"}
     )
+
+    @property
+    def grid(self) -> Grid:
+        return self.dis.to_grid()

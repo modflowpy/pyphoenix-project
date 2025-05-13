@@ -1,5 +1,6 @@
 import numpy as np
 from attrs import Converter
+from flopy.discretization.structuredgrid import StructuredGrid
 from numpy.typing import NDArray
 from xattree import array, dim, field, xattree
 
@@ -82,3 +83,49 @@ class Dis(Package):
 
     def __attrs_post_init__(self):
         self.nnodes = self.ncol * self.nrow * self.nlay
+
+    def to_grid(self) -> StructuredGrid:
+        """
+        Convert the discretization to a `StructuredGrid`.
+
+        Returns
+        -------
+        StructuredGrid
+            A `StructuredGrid` with the same dimensions and data as the `Dis`.
+        """
+        return StructuredGrid(
+            nlay=self.nlay,
+            nrow=self.nrow,
+            ncol=self.ncol,
+            delr=self.delr,
+            delc=self.delc,
+            top=self.top,
+            botm=self.botm,
+            idomain=self.idomain,
+        )
+
+    @classmethod
+    def from_grid(cls, grid: StructuredGrid) -> "Dis":
+        """
+        Create a discretization from a `StructuredGrid`.
+
+        Parameters
+        ----------
+        grid : StructuredGrid
+            A structured grid.
+
+        Returns
+        -------
+        Dis
+            A discretization with the same dimensions and data as the grid.
+        """
+        return Dis(
+            nlay=grid.nlay,
+            nrow=grid.nrow,
+            ncol=grid.ncol,
+            delr=grid.delr,
+            delc=grid.delc,
+            top=grid.top,
+            botm=grid.botm,
+            idomain=grid.idomain,
+        )
