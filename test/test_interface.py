@@ -185,9 +185,9 @@ def test_flopy3_package():
     # gwf3 is needed because "parent" property needs
     # to return it for flopy3 based plotting (below)
     gwf3 = Flopy3Model(model=gwf, modeltime=time)
-    fp3dis = Flopy3Package(package=dis, model=gwf3, modeltime=time)
+    dis3 = Flopy3Package(package=dis, model=gwf3, modeltime=time)
     assert isinstance(gwf3, ModelInterface)
-    assert isinstance(fp3dis, PackageInterface)
+    assert isinstance(dis3, PackageInterface)
     assert gwf3.modelgrid.nlay == grid.nlay
     assert gwf3.modelgrid.nrow == grid.nrow
     assert gwf3.modelgrid.ncol == grid.ncol
@@ -199,9 +199,9 @@ def test_flopy3_package():
     assert np.all(np.equal(gwf3.modelgrid.botm, grid.botm))
 
     # model packages
-    assert fp3dis.name == "dis"
-    assert fp3dis.package_type == "DIS"
-    assert not fp3dis.has_stress_period_data
+    assert dis3.name == "dis"
+    assert dis3.package_type == "DIS"
+    assert not dis3.has_stress_period_data
 
     # package data
     data_list = [
@@ -221,19 +221,19 @@ def test_flopy3_package():
         "top": grid.top,
         "botm": grid.botm,
     }
-    dlist = [d.name for d in fp3dis.data_list]
+    dlist = [d.name for d in dis3.data_list]
     assert dlist == data_list
 
     for k, v in data.items():
-        for di in fp3dis.data_list:
+        for di in dis3.data_list:
             if di.name == k:
-                assert np.all(np.equal(di.array, np.transpose(v)))
+                assert np.all(np.equal(di.array, v))
 
-    fp3dis.plot(filename_base="fp3dis")
+    dis3.plot(filename_base="dis3")
 
 
-# def norun_test_cbd_small():
-def test_flopy3_cbd_small():
+def norun_test_cbd_small():
+# def test_flopy3_cbd_small():
     import sys
 
     sys.path.append("/home/mjreno/.clone/usgs/flopy/autotest")

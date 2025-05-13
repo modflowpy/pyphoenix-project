@@ -153,8 +153,6 @@ class Flopy3Model(ModelInterface):
         return [p.name for p in self._plist]
 
     def plot(self, packages: Optional[list] = None, **kwargs):
-        # if packages is None:
-        #    packages = self.get_package_list()
         return PlotUtilities._plot_model_helper(
             self, SelPackList=packages, **kwargs
         )

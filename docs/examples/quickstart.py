@@ -32,7 +32,7 @@ oc = Oc(
     save_budget={"*": "all"},
 )
 
-# model interface
+# flopy3 model interface
 gwf3 = Flopy3Model(gwf)
 
 # check CHD
