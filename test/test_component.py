@@ -49,12 +49,12 @@ def test_init_gwf_explicit_dims():
     )
 
     assert isinstance(gwf.data, DataTree)
-    assert gwf.dis is not dis  # dimension order switched.. is this ok?
+    assert gwf.dis is dis  # dimension order switched.. is this ok?
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    assert gwf.data.dis is not dis.data
+    assert gwf.data.dis is dis.data
     assert gwf.data.ic is ic.data
     assert gwf.data.oc is oc.data
     assert gwf.data.npf is npf.data
@@ -106,7 +106,7 @@ def test_init_gwf_dis_first():
     chd = Chd(parent=gwf, strict=False)
 
     assert isinstance(gwf.data, DataTree)
-    assert gwf.dis is not dis
+    assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
@@ -185,7 +185,7 @@ def test_init_sim_explicit_dims():
     assert isinstance(sim.data, DataTree)
     assert sim.data.tdis is tdis.data
     assert sim.data.gwf is gwf.data
-    assert gwf.dis is not dis  # gwf.dis has inherited dim nper
+    assert gwf.dis is dis  # gwf.dis has inherited dim nper
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf

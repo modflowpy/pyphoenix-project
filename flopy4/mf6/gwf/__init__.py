@@ -19,6 +19,16 @@ from flopy4.mf6.utils import open_hds
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
 
+def convert_grid(value):
+    if isinstance(value, Grid):
+        return Dis.from_grid(value)
+    if isinstance(value, Dis):
+        return value
+    raise TypeError(
+        f"Expected Grid or Dis, got {type(value)}"
+    )
+
+
 @xattree
 class Gwf(Model):
     @define
@@ -40,7 +50,7 @@ class Gwf(Model):
                 merge_to_dataset=True,
             )
 
-    dis: Dis = field(converter=lambda grid: Dis.from_grid(grid))
+    dis: Dis = field(converter=convert_grid)
     ic: Ic = field()
     oc: Oc = field()
     npf: Npf = field()
