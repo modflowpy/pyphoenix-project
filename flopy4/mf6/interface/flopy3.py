@@ -5,6 +5,7 @@ from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization import StructuredGrid
 from flopy.discretization.grid import Grid
 from flopy.discretization.modeltime import ModelTime
+from flopy.export.utils import model_export, package_export
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
@@ -21,6 +22,7 @@ class Flopy3Model(ModelInterface):
         modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
         ims: Optional[Package] = None,
+        crs: Optional[int] = None,
     ):
         self._model = model
         self._grid = modelgrid
@@ -54,7 +56,7 @@ class Flopy3Model(ModelInterface):
                     botm=model.dis.botm.data,
                     idomain=model.dis.idomain.data,
                     lenuni=lenuni,
-                    crs=None,
+                    crs=crs,
                     prjfile=None,
                     xoff=xoff,
                     yoff=yoff,
@@ -73,6 +75,10 @@ class Flopy3Model(ModelInterface):
                     modeltime=modeltime,
                 )
                 self._plist.append(p_fp3)
+
+    @property
+    def modeltime(self):
+        return self._time
 
     @property
     def modelgrid(self):
@@ -109,7 +115,7 @@ class Flopy3Model(ModelInterface):
         return None
 
     def export(self, f, **kwargs):
-        pass
+        return model_export(f, self, **kwargs)
 
     @property
     def laytyp(self):
@@ -151,6 +157,12 @@ class Flopy3Model(ModelInterface):
         Get a list of all the package names.
         """
         return [p.name for p in self._plist]
+
+    def get_package(self, name=None):
+        for p in self._plist:
+            if p.name == name.upper():
+                return p
+        return None
 
     def plot(self, packages: Optional[list] = None, **kwargs):
         return PlotUtilities._plot_model_helper(
@@ -217,15 +229,17 @@ class Flopy3Package(PackageInterface):
 
     @name.setter
     def name(self, name):
-        pass
+        """Package name"""
+        assert False, "Unsupported function to set the package name"
 
     @property
     def parent(self):
         return self._model
 
     @parent.setter
-    def parent(self, name):
-        pass
+    def parent(self, parent):
+        """Parent package"""
+        assert False, "Unsupported function to set the parent"
 
     @property
     def package_type(self):
@@ -236,7 +250,7 @@ class Flopy3Package(PackageInterface):
         return self._dlist
 
     def export(self, f, **kwargs):
-        pass
+        return package_export(f, self, **kwargs)
 
     @property
     def plottable(self):
@@ -319,6 +333,8 @@ class Flopy3Data(DataInterface):
 
     @property
     def dtype(self):
+        if self._spec.type.__name__ == "ndarray":
+            return self._data.data.dtype
         return self._spec.type.__name__
 
     @property

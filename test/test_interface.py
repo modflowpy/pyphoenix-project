@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 from flopy.discretization import StructuredGrid
@@ -6,6 +8,33 @@ from flopy.discretization.modeltime import ModelTime
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.interface.flopy3 import Flopy3Model, Flopy3Package
+from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.tdis import Tdis
+
+
+def quickstart_model():
+    ws = "./mymodel"
+    name = "mymodel"
+    tdis = Tdis()
+    ims = Ims()
+    sim = Simulation(name=name, tdis=tdis, solutions={"ims": ims})
+    dis = Dis(nrow=10, ncol=10)
+    gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
+    ic = Ic(parent=gwf)
+    npf = Npf(parent=gwf, save_specific_discharge=True)
+    chd = Chd(
+        parent=gwf,
+        head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+    )
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{name}.bud",
+        head_file=f"{name}.hds",
+        save_head={"*": "all"},
+        save_budget={"*": "all"},
+    )
+
+    return gwf
 
 
 def test_flopy3_model():
@@ -69,7 +98,7 @@ def test_flopy3_model():
         assert isinstance(p, PackageInterface)
         assert p.name == pnames[i]
         assert p.package_type == ptypes[i]
-        # assert p.parent == "gwf"
+        assert p.parent is gwf3
         # TODO oc?
         if p.name == "chd0" or p.name == "oc":
             assert p.has_stress_period_data
@@ -82,72 +111,23 @@ def test_flopy3_model():
         for d in p.data_list:
             print(f"{p.name} data={d.name}")
             # assert d.model == "gwf"
+            assert d.model is gwf3
             print(f"dtype: {d.dtype}")
             print(f"data_type: {d.data_type}")
             print(f"array: {d.array}\n")
 
-    gwf3.plot(filename_base="modelif")
+    bpth = Path("output/flopy3_model/flopy3_model")
+    Path("output/flopy3_model").mkdir(parents=True, exist_ok=True)
+    gwf3.plot(filename_base=bpth)
 
 
 def test_flopy3_package():
     from flopy.mbase import ModelInterface
     from flopy.pakbase import PackageInterface
 
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(
-        nlay=1,
-        nrow=10,
-        ncol=10,
-        xoff=0.0,
-        yoff=0.0,
-        angrot=0.0,
-        delr=np.array([1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]),
-        delc=np.array([2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0]),
-        top=np.array(
-            [
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-            ]
-        ),
-        botm=np.array(
-            [
-                [
-                    [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0],
-                ]
-            ]
-        ),
-    )
-
-    dims = {
-        "nlay": grid.nlay,
-        "nrow": grid.nrow,
-        "ncol": grid.ncol,
-    }
-
-    dis = Dis(**dims)
-    dis.nogrb = True
-    dis.xorigin = 0.0
-    dis.yorigin = 0.0
-    dis.delr = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]
-    dis.delc = [2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0]
-    dis.top = [
+    delr = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]
+    delc = [2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1, 2.0]
+    top = [
         [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
         [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
         [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
@@ -159,7 +139,7 @@ def test_flopy3_package():
         [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
         [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
     ]
-    dis.botm = [
+    botm = [
         [
             [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -173,6 +153,35 @@ def test_flopy3_package():
             [1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.0],
         ]
     ]
+
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+        xoff=0.0,
+        yoff=0.0,
+        angrot=0.0,
+        delr=np.array(delr),
+        delc=np.array(delc),
+        top=np.array(top),
+        botm=np.array(botm),
+    )
+
+    dims = {
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+    }
+
+    dis = Dis(**dims)
+    dis.nogrb = True
+    dis.xorigin = 0.0
+    dis.yorigin = 0.0
+    dis.delr = delr
+    dis.delc = delc
+    dis.top = top
+    dis.botm = botm
 
     dims["nper"] = time.nper
     dims["nnodes"] = grid.nnodes
@@ -229,11 +238,12 @@ def test_flopy3_package():
             if di.name == k:
                 assert np.all(np.equal(di.array, v))
 
-    dis3.plot(filename_base="dis3")
+    bpth = Path("output/flopy3_package/flopy3_package")
+    Path("output/flopy3_package").mkdir(parents=True, exist_ok=True)
+    dis3.plot(filename_base=bpth)
 
 
-def norun_test_cbd_small():
-# def test_flopy3_cbd_small():
+def norun_test_flopy3_cbd_small():
     import sys
 
     sys.path.append("/home/mjreno/.clone/usgs/flopy/autotest")
@@ -254,11 +264,13 @@ def norun_test_cbd_small():
         dis=dis,
         dims=dims,
     )
+    bpth = Path("output/flopy3_cbd_small/flopy3_cbd_small")
+    Path("output/flopy3_cbd_small").mkdir(parents=True, exist_ok=True)
     gwf3 = Flopy3Model(model=gwf, modelgrid=cbd_small, modeltime=time)
-    gwf3.plot(filename_base="cbd_small")
+    gwf3.plot(filename_base=bpth)
 
 
-def norun_test_grid2():
+def test_flopy3_grid2():
     lx = 5.0
     lz = 1.0
     nlay = 1
@@ -270,9 +282,8 @@ def norun_test_grid2():
     delz = lz / nlay
     adelc = np.full((nrow), delc)
     adelr = np.full((ncol), delr)
-    top = [0.0, 0.0, -0.90, 0.0, 0.0]
-    botm = list(top - np.arange(delz, nlay * delz + delz, delz))
-    botm[2] = -1.0
+    top = [[0.0, 0.0, -0.90, 0.0, 0.0]]
+    botm = [list(top - np.arange(delz, nlay * delz + delz, delz))]
     idomain = np.full((nlay, nrow, ncol), 1)
 
     dims = {
@@ -287,56 +298,47 @@ def norun_test_grid2():
     dis.delc = adelc
     dis.top = top
     dis.botm = botm
-    # dis.idomain = idomain
+    dis.idomain = idomain
     dims["nper"] = time.nper
     dims["nnodes"] = nlay * nrow * ncol
     gwf = Gwf(
         dis=dis,
         dims=dims,
     )
+    bpth = Path("output/flopy3_grid2/flopy3_grid2")
+    Path("output/flopy3_grid2").mkdir(parents=True, exist_ok=True)
     gwf3 = Flopy3Model(model=gwf, modeltime=time)
-    gwf3.plot(filename_base="grid2")
-
-    # dis = flopy.mf6.ModflowGwfdis(
-    #    gwf,
-    #    nlay=nlay,
-    #    nrow=nrow,
-    #    ncol=ncol,
-    #    delr=delr,
-    #    delc=delc,
-    #    top=top,
-    #    botm=botm,
-    #    idomain=idomain,
-    # )
+    gwf3.plot(filename_base=bpth)
 
 
-# demo failed case
-def test_flopy3_mgrid2():
-    lx = 5.0
-    lz = 1.0
-    nlay = 1
-    nrow = 1
-    ncol = 5
-    delc = 1.0
-    delr = lx / ncol
-    delz = lz / nlay
-    # adelc = np.full((ncol, nrow), delc)
-    adelc = np.full((nrow), delc)
-    adelr = np.full((ncol), delr)
+def test_flopy3_export():
+    # see flopy test_export.py test_export_output()
+    Path("output/flopy3_model/shape").mkdir(parents=True, exist_ok=True)
+    Path("output/flopy3_package/shape").mkdir(parents=True, exist_ok=True)
+    Path("output/flopy3_model/netcdf").mkdir(parents=True, exist_ok=True)
+    Path("output/flopy3_package/netcdf").mkdir(parents=True, exist_ok=True)
 
-    dims = {
-        "nlay": nlay,
-        "nrow": nrow,
-        "ncol": ncol,
-    }
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
 
-    dis = Dis(**dims)
+    gwf = quickstart_model()
+    gwf3 = Flopy3Model(gwf, modeltime=time, crs=3070)
+    dis3 = Flopy3Package(gwf.dis, model=gwf3)
 
-    print(dis.delr.dims)  # prints ('ncol',)
-    print(dis.delc.dims)  # prints ('nrow',)
+    # model shapefile export
+    shp_mpth = Path("output/flopy3_model/shape/flopy3_model.shp")
+    gwf3.export(f=shp_mpth)
 
-    dis.delr = adelr  # succeeds
-    dis.delc = adelc  # fails
+    # package shapefile export
+    shp_ppth = Path("output/flopy3_package/shape/flopy3_package.shp")
+    dis3.export(f=shp_ppth)
+
+    # model netcdf export
+    nc_mpth = Path("output/flopy3_model/netcdf/flopy3_model.nc")
+    gwf3.export(f=nc_mpth)
+
+    # package netcdf export
+    nc_ppth = Path("output/flopy3_package/netcdf/flopy3_package.nc")
+    dis3.export(f=nc_ppth)
 
 
 @pytest.mark.xfail(
