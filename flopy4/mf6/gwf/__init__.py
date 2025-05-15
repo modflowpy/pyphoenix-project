@@ -24,9 +24,7 @@ def convert_grid(value):
         return Dis.from_grid(value)
     if isinstance(value, Dis):
         return value
-    raise TypeError(
-        f"Expected Grid or Dis, got {type(value)}"
-    )
+    raise TypeError(f"Expected Grid or Dis, got {type(value)}")
 
 
 @xattree
@@ -58,7 +56,6 @@ class Gwf(Model):
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )
-    grid: Grid = attrs.field(default=None)
 
     @define
     class NewtonOptions:
