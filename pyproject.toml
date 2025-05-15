@@ -47,7 +47,7 @@ dependencies = [
     "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
     "xattree @ git+https://github.com/modflowpy/xattree.git",
     "imod>=1.0.0-rc3",
-    "sparse>=0.15.5,<1", "pyproj>=3.7.1,<4",
+    "sparse>=0.15.5,<1", "pyproj>=3.7.1,<4", "netcdf4", "pyshp>=2.3.1,<3",
 ]
 dynamic = ["version"]
 
@@ -131,10 +131,6 @@ test311 = { features = ["py311", "test"], solve-group = "py311" }
 test312 = { features = ["py312", "test"], solve-group = "py312" }
 test313 = { features = ["py313", "test"], solve-group = "py313" }
 dev = { features = ["py311", "test", "lint", "build"], solve-group = "py311" }
-
-[tool.pixi.dependencies]
-pyshp = ">=2.3.1,<3"
-netcdf4 = ">=1.7.2,<2"
 
 [tool.pixi.feature.build.tasks]
 build = { cmd = "python -m build" }

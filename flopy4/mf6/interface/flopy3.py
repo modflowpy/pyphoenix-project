@@ -1,6 +1,7 @@
 import re
 from typing import Optional
 
+import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization import StructuredGrid
 from flopy.discretization.grid import Grid
@@ -114,9 +115,6 @@ class Flopy3Model(ModelInterface):
 
         return None
 
-    def export(self, f, **kwargs):
-        return model_export(f, self, **kwargs)
-
     @property
     def laytyp(self):
         """
@@ -168,6 +166,9 @@ class Flopy3Model(ModelInterface):
         return PlotUtilities._plot_model_helper(
             self, SelPackList=packages, **kwargs
         )
+
+    def export(self, f, **kwargs):
+        return model_export(f, self, **kwargs)
 
 
 class Flopy3Package(PackageInterface):
@@ -249,9 +250,6 @@ class Flopy3Package(PackageInterface):
     def data_list(self):
         return self._dlist
 
-    def export(self, f, **kwargs):
-        return package_export(f, self, **kwargs)
-
     @property
     def plottable(self):
         return True
@@ -269,6 +267,9 @@ class Flopy3Package(PackageInterface):
 
     def plot(self, **kwargs):
         return PlotUtilities._plot_package_helper(self, **kwargs)
+
+    def export(self, f, **kwargs):
+        return package_export(f, self, **kwargs)
 
 
 class Flopy3Data(DataInterface):
@@ -334,7 +335,12 @@ class Flopy3Data(DataInterface):
     @property
     def dtype(self):
         if self._spec.type.__name__ == "ndarray":
-            return self._data.data.dtype
+            if self._data.data.dtype == np.dtype("float64"):
+                return np.float64
+            elif self._data.data.dtype == np.dtype("int64"):
+                return np.int64
+            elif self._data.data.dtype == np.dtype("int32"):
+                return np.int32
         return self._spec.type.__name__
 
     @property
