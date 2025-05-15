@@ -22,13 +22,13 @@ __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 class Gwf(Model):
     @define
     class Output:
-        parent: "Gwf" = field(repr=False)
+        parent: "Gwf" = attrs.field(repr=False)
 
         @property
         def head(self) -> xr.DataArray:
             return open_hds(
-                self.parent.parent.sim_ws / f"{self.parent.name}.hds",
-                self.parent.parent.sim_ws / f"{self.parent.name}.dis.grb",
+                self.parent.parent.sim_ws / f"{self.parent.name}.hds",  # type: ignore
+                self.parent.parent.sim_ws / f"{self.parent.name}.dis.grb",  # type: ignore
             )
 
         @property

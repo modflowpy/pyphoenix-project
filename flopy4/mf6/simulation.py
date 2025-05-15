@@ -11,8 +11,8 @@ from flopy4.mf6.tdis import Tdis
 
 @xattree
 class Simulation(Component):
-    sim_ws: Path = field(default=None)
     models: dict[str, Model] = field()
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()
     tdis: Tdis = field()
+    sim_ws: Path = field(default=None)
