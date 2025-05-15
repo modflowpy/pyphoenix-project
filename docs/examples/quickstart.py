@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import imod.mf6
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -9,11 +8,11 @@ from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 
-ws = "./mymodel"
+ws = Path("./quickstart_data")
 name = "mymodel"
 tdis = Tdis()
 ims = Ims()
-sim = Simulation(name=name, tdis=tdis, solutions={"ims": ims})
+sim = Simulation(name=name, tdis=tdis, solutions={"ims": ims}, sim_ws=ws)
 dis = Dis(nrow=10, ncol=10)
 gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
 ic = Ic(parent=gwf)
@@ -43,17 +42,12 @@ assert oc.data["save_head"][0] == "all"
 assert oc.data.save_head.sel(per=0) == "all"
 
 # PLOT
-# create budget reader
-bpth = Path("./quickstart_data/mymodel.bud")
-grbpth = Path("./quickstart_data/mymodel.dis.grb")
 
 # set specific discharge
-spdis = imod.mf6.open_cbc(bpth, grbpth, merge_to_dataset=True)
-
-# create head reader
-hpth = Path("./quickstart_data/mymodel.hds")
-heads = imod.mf6.open_hds(hpth, grbpth)
+spdis = gwf.output.budget
+heads = gwf.output.head
 sq = heads.squeeze()
+
 fig, ax = plt.subplots()
 ax.tick_params()
 ax.set_xticks(np.arange(0, 11, 2), minor=False)

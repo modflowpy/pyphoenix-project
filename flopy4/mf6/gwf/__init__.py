@@ -1,6 +1,9 @@
 from pathlib import Path
 from typing import Optional
 
+import attrs
+import imod
+import xarray as xr
 from attrs import define
 from xattree import field, xattree
 
@@ -10,17 +13,40 @@ from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.model import Model
+from flopy4.mf6.utils import open_hds
 
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
 
 @xattree
 class Gwf(Model):
+    @define
+    class Output:
+        parent: "Gwf" = attrs.field(repr=False)
+
+        @property
+        def head(self) -> xr.DataArray:
+            return open_hds(
+                self.parent.parent.sim_ws / f"{self.parent.name}.hds",  # type: ignore
+                self.parent.parent.sim_ws / f"{self.parent.name}.dis.grb",  # type: ignore
+            )
+
+        @property
+        def budget(self):
+            return imod.mf6.open_cbc(
+                self.parent.parent.sim_ws / "mymodel.bud",
+                self.parent.parent.sim_ws / "mymodel.dis.grb",
+                merge_to_dataset=True,
+            )
+
     dis: Dis = field()
     ic: Ic = field()
     oc: Oc = field()
     npf: Npf = field()
     chd: list[Chd] = field()
+    output: Output = attrs.field(
+        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
+    )
 
     @define
     class NewtonOptions:

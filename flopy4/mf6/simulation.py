@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from xattree import field, xattree
 
 from flopy4.mf6.component import Component
@@ -13,3 +15,4 @@ class Simulation(Component):
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()
     tdis: Tdis = field()
+    sim_ws: Path = field(default=None)
