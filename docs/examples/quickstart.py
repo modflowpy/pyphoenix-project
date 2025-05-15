@@ -8,7 +8,7 @@ from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 
-ws = Path("./quickstart_data")
+ws = Path(__file__).parent / "quickstart_data"
 name = "mymodel"
 tdis = Tdis()
 ims = Ims()
@@ -41,13 +41,11 @@ assert dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 assert oc.data["save_head"][0] == "all"
 assert oc.data.save_head.sel(per=0) == "all"
 
-# PLOT
+# get head and budget results
+budget = gwf.output.budget.squeeze()
+head = gwf.output.head.squeeze()
 
-# set specific discharge
-spdis = gwf.output.budget
-heads = gwf.output.head
-sq = heads.squeeze()
-
+# make plot
 fig, ax = plt.subplots()
 ax.tick_params()
 ax.set_xticks(np.arange(0, 11, 2), minor=False)
@@ -55,10 +53,9 @@ ax.set_xticks(np.arange(1, 10, 2), minor=True)
 ax.set_yticks(np.arange(0, 11, 2), minor=False)
 ax.set_yticks(np.arange(1, 10, 2), minor=True)
 ax.grid(which="both", color="white")
-sq.plot.imshow(ax=ax)
-sq.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
-spdis.squeeze().plot.quiver(
+head.plot.imshow(ax=ax)
+head.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
+budget.plot.quiver(
     x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white"
 )
-qs_pth = Path("./image/quickstart.png")
-fig.savefig(qs_pth)
+fig.savefig(ws / "quickstart.png")
