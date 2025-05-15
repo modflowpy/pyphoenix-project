@@ -57,7 +57,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/97/12/a1f2f4fdc6b7159c0d12249456f9fe454665b6126e98dbee9f2bd3cf735c/lz4-4.4.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0c/91/96cf928db8236f1bfab6ce15ad070dfdd02ed88261c2afafd4b43575e9e9/MarkupSafe-3.0.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/f5/64/41c4367bcaecbc03ef0d2a3ecee58a7065d0a36ae1aa817fe573a2da66d4/matplotlib-3.10.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/2d/7b/2c1d74ca6c94f70a1add74a8393a0138172207dc5de6fc6269483519d048/msgpack-1.1.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d1/80/b9c19f1bb4ac6c5fa6f94a4f278bc68a778473d1814a86a375d7cffa193a/netCDF4-1.7.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -74,6 +74,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/bf/b9/b0eb3f3cbcb734d930fdf839431606844a825b23eaf9a6ab371edac8162c/psutil-7.0.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/be/27/43a47fa0ff9053ab5203bb3faeec435d43c0d8bfa40179bfd076cdbd4e1c/pyarrow-20.0.0-cp313-cp313-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6f/57/f61b7d22c91ae1d12ee00ac4c0038714e774ebcd851b9133e5f4f930dd40/pyproj-3.7.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/24/b7721e4845c2f162d26f50521b825fb061bc0a5afcf9a386840f23ea19fa/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -92,7 +94,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6b/11/cc635220681e93a0183390e26485430ca2c7b5f9d33b15c74c2861cb8091/urllib3-2.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -141,7 +143,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/3b/3c/d1d1b926d3688263893461e7c47ed7382a969a0976fc121fc678ec325fc6/lz4-4.4.4-cp313-cp313-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/83/0e/67eb10a7ecc77a0c2bbe2b0235765b98d164d81600746914bebada795e97/MarkupSafe-3.0.2-cp313-cp313-macosx_10_13_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/3b/c1/23cfb566a74c696a3b338d8955c549900d18fe2b898b6e94d682ca21e7c2/matplotlib-3.10.3-cp313-cp313-macosx_10_13_x86_64.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/c8/ee/be57e9702400a6cb2606883d55b05784fada898dfc7fd12608ab1fdb054e/msgpack-1.1.0-cp313-cp313-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e6/7a/ce4f9038d8726c9c90e07b2d3a404ae111a27720d712cfcded0c8ef160e8/netCDF4-1.7.2-cp313-cp313-macosx_12_0_x86_64.whl
@@ -158,6 +160,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ed/e6/2d26234410f8b8abdbf891c9da62bee396583f713fb9f3325a4760875d22/psutil-7.0.0-cp36-abi3-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/ff/75/2303d1caa410925de902d32ac215dc80a7ce7dd8dfe95358c165f2adf107/pyarrow-20.0.0-cp313-cp313-macosx_12_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ef/e3/3af305b830494fa85d95f6d95ef7fa73f2ee1cc8ef5b495c7c3269fb835f/PyYAML-6.0.2-cp313-cp313-macosx_10_13_x86_64.whl
@@ -176,7 +180,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6b/11/cc635220681e93a0183390e26485430ca2c7b5f9d33b15c74c2861cb8091/urllib3-2.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -227,7 +231,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/96/b8e24ea7537ab418074c226279acfcaa470e1ea8271003e24909b6db942b/lz4-4.4.4-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/29/88/07df22d2dd4df40aba9f3e402e6dc1b8ee86297dddbad4872bd5e7b0094f/MarkupSafe-3.0.2-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/b1/0f/eed564407bd4d935ffabf561ed31099ed609e19287409a27b6d336848653/matplotlib-3.10.3-cp313-cp313-win_amd64.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/b6/bc/8bd826dd03e022153bfa1766dcdec4976d6c818865ed54223d71f07862b3/msgpack-1.1.0-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/b5/e04550fd53de57001dbd5a87242da7ff784c80790adc48897977b6ccf891/netCDF4-1.7.2-cp313-cp313-win_amd64.whl
@@ -244,6 +248,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/50/1b/6921afe68c74868b4c9fa424dad3be35b095e16687989ebbb50ce4fceb7c/psutil-7.0.0-cp37-abi3-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/9d/07/290f4abf9ca702c5df7b47739c1b2c83588641ddfa2cc75e34a301d42e55/pyarrow-20.0.0-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/98/df/68a2b7f5fb6400c64aad82d72bcc4bc531775e62eedff993a77c780defd0/pyproj-3.7.1-cp313-cp313-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/fa/de/02b54f42487e3d3c6efb3f89428677074ca7bf43aae402517bc7cca949f3/PyYAML-6.0.2-cp313-cp313-win_amd64.whl
@@ -262,7 +268,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5c/23/c7abc0ca0a1526a0774eca151daeb8de62ec457e77262b66b359c3c7679e/tzdata-2025.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6b/11/cc635220681e93a0183390e26485430ca2c7b5f9d33b15c74c2861cb8091/urllib3-2.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -392,7 +398,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/2b/9f/7ba6f94fc1e9ac3d2b853fdff3035fb2fa5afbed898c4a72b8a020610594/more_itertools-10.7.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/a1/ad7b84b91ab5a324e707f4c9761633e357820b011a01e34ce658c1dda7cc/msgpack-1.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/e9/9a/1f7d18b30edd57441a6411fcbc0c6869448d1a4bacbaee60656ac0fc29c8/mypy-1.15.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl
@@ -433,7 +439,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3c/ac/12fab74a908d40b63174dc704587febd0729414804bbfd873cabe504ff2d/pyproj-3.7.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -457,7 +465,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/bd/37/89f19c8c05505d0601ed5650156e50eb881ae3918786c8fd7262b4ee66d3/scipy-1.15.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/54/24/b4293291fa1dd830f353d2cb163295742fa87f179fcc8a20a306a81978b7/SecretStorage-3.3.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -487,7 +495,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -602,7 +610,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/2b/9f/7ba6f94fc1e9ac3d2b853fdff3035fb2fa5afbed898c4a72b8a020610594/more_itertools-10.7.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/60/c2/687684164698f1d51c41778c838d854965dd284a4b9d3a44beba9265c931/msgpack-1.1.0-cp311-cp311-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/03/bc/f6339726c627bd7ca1ce0fa56c9ae2d0144604a319e0e339bdadafbbb599/mypy-1.15.0-cp311-cp311-macosx_10_9_x86_64.whl
@@ -643,7 +651,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
       - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -666,7 +676,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/3c/38/c1e0b77ab58b426f8c332c1d1d3432d9fc9a9ea622806e208220cb133c9e/ruff-0.11.10-py3-none-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/96/ab/5cc9f80f28f6a7dff646c5756e559823614a42b1939d86dd0ed550470210/scipy-1.15.3-cp311-cp311-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -696,7 +706,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -812,7 +822,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/2b/9f/7ba6f94fc1e9ac3d2b853fdff3035fb2fa5afbed898c4a72b8a020610594/more_itertools-10.7.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/aa/c4/5a582fc9a87991a3e6f6800e9bb2f3c82972912235eb9539954f3e9997c7/msgpack-1.1.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/96/39/11b57431a1f686c1aed54bf794870efe0f6aeca11aca281a0bd87a5ad42c/mypy-1.15.0-cp311-cp311-win_amd64.whl
@@ -851,7 +861,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/92/39/ef6f06a5b223dbea308cfcbb7a0f72e7b506aef1850e061b2c73b0818715/pyproj-3.7.1-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -877,7 +889,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/24/f3/66643d8f32f50a4b0d09a4832b7d919145ee2b944d43e604fbd7c144d175/ruff-0.11.10-py3-none-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/ab/a7/0ddaf514ce8a8714f6ed243a2b391b41dbb65251affe21ee3077ec45ea9a/scipy-1.15.3-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -907,7 +919,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1024,7 +1036,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/a8/a1/ad7b84b91ab5a324e707f4c9761633e357820b011a01e34ce658c1dda7cc/msgpack-1.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -1059,6 +1071,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3c/ac/12fab74a908d40b63174dc704587febd0729414804bbfd873cabe504ff2d/pyproj-3.7.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -1076,7 +1090,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/24/61/c5485bfa5b7abd55af0c1fe5a7af98682f6b16207e4f980f40d73b84682c/rpds_py-0.25.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/bd/37/89f19c8c05505d0601ed5650156e50eb881ae3918786c8fd7262b4ee66d3/scipy-1.15.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -1104,7 +1118,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1207,7 +1221,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/60/c2/687684164698f1d51c41778c838d854965dd284a4b9d3a44beba9265c931/msgpack-1.1.0-cp311-cp311-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -1242,6 +1256,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -1259,7 +1275,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/41/bb/505b4de3e7011fba218cfdf78bb80754194e9a5af469a96900923c535bf5/rpds_py-0.25.0-cp311-cp311-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/96/ab/5cc9f80f28f6a7dff646c5756e559823614a42b1939d86dd0ed550470210/scipy-1.15.3-cp311-cp311-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -1287,7 +1303,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1391,7 +1407,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/aa/c4/5a582fc9a87991a3e6f6800e9bb2f3c82972912235eb9539954f3e9997c7/msgpack-1.1.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -1424,6 +1440,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/92/39/ef6f06a5b223dbea308cfcbb7a0f72e7b506aef1850e061b2c73b0818715/pyproj-3.7.1-cp311-cp311-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -1443,7 +1461,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5f/e8/c94eb1678b3cd51023ab855f8c2adcb28dfb2a51d045a1228fc306e09387/rpds_py-0.25.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/ab/a7/0ddaf514ce8a8714f6ed243a2b391b41dbb65251affe21ee3077ec45ea9a/scipy-1.15.3-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -1471,7 +1489,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1587,7 +1605,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/f1/54/65af8de681fa8255402c80eda2a501ba467921d5a7a028c9c22a2c2eedb5/msgpack-1.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -1622,6 +1640,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/a3/448f05b15e318bd6bea9a32cfaf11e886c4ae61fa3eee6e09ed5c3b74bb2/pyproj-3.7.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -1639,7 +1659,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c4/0e/0cbcef1144cd9ed9e30bbcbfb98a823904fefa12b8ebc1e5a0426d8d6a7e/rpds_py-0.25.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0b/1f/03f52c282437a168ee2c7c14a1a0d0781a9a4a8962d84ac05c06b4c5b555/scipy-1.15.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -1667,7 +1687,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1768,7 +1788,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/70/da/5312b067f6773429cec2f8f08b021c06af416bba340c912c2ec778539ed6/msgpack-1.1.0-cp312-cp312-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -1803,6 +1823,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -1820,7 +1842,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ee/b5/819fd819dd66a65951749a2a475a0b4455fa3ad0b4f84eba5a7d785ac07b/rpds_py-0.25.0-cp312-cp312-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/37/4b/683aa044c4162e10ed7a7ea30527f2cbd92e6999c10a8ed8edb253836e9c/scipy-1.15.3-cp312-cp312-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -1848,7 +1870,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -1950,7 +1972,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/73/80/2708a4641f7d553a63bc934a3eb7214806b5b39d200133ca7f7afb0a53e8/msgpack-1.1.0-cp312-cp312-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -1983,6 +2005,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/3e/47/c6ab03d6564a7c937590cff81a2742b5990f096cce7c1a622d325be340ee/pyproj-3.7.1-cp312-cp312-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -2002,7 +2026,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/f2/43/891aeac02896d5a7eaa720c30cc2b960e6e5b9b6364db067a57a29597a99/rpds_py-0.25.0-cp312-cp312-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/e6/eb/3bf6ea8ab7f1503dca3a10df2e4b9c3f6b3316df07f6c0ded94b281c7101/scipy-1.15.3-cp312-cp312-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -2030,7 +2054,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2145,7 +2169,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/2d/7b/2c1d74ca6c94f70a1add74a8393a0138172207dc5de6fc6269483519d048/msgpack-1.1.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -2180,6 +2204,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/6f/57/f61b7d22c91ae1d12ee00ac4c0038714e774ebcd851b9133e5f4f930dd40/pyproj-3.7.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -2197,7 +2223,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/57/17/7343ea3ec906ee8c2b64a956d702de5067e0058b5d2869fbfb4b11625112/rpds_py-0.25.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b5/09/c5b6734a50ad4882432b6bb7c02baf757f5b2f256041da5df242e2d7e6b6/scipy-1.15.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -2225,7 +2251,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2328,7 +2354,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/c8/ee/be57e9702400a6cb2606883d55b05784fada898dfc7fd12608ab1fdb054e/msgpack-1.1.0-cp313-cp313-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -2363,6 +2389,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -2380,7 +2408,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0d/d9/6534d5a9d00038261894551ee8043267f17c019e6c0df3c7d822fb5914f1/rpds_py-0.25.0-cp313-cp313-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/73/18/ec27848c9baae6e0d6573eda6e01a602e5649ee72c27c3a8aad673ebecfd/scipy-1.15.3-cp313-cp313-macosx_10_13_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -2408,7 +2436,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -2512,7 +2540,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/f7/7782a043553ee469c1ff49cfa1cdace2d6bf99a1f333cf38676b3ddf30da/mdit_py_plugins-0.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/4d/23c4e4f09da849e127e9f123241946c23c1e30f45a88366879e064211815/mistune-3.1.3-py3-none-any.whl
-      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+      - pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
       - pypi: https://files.pythonhosted.org/packages/b6/bc/8bd826dd03e022153bfa1766dcdec4976d6c818865ed54223d71f07862b3/msgpack-1.1.0-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2c/e6/4d16dfa26f40230593c216bf695da01682fdbdf6af4e79abef572ab26bce/narwhals-1.40.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/34/6d/e7fa07f03a4a7b221d94b4d586edb754a9b0dc3c9e2c93353e9fa4e0d117/nbclient-0.10.2-py3-none-any.whl
@@ -2545,6 +2573,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/98/df/68a2b7f5fb6400c64aad82d72bcc4bc531775e62eedff993a77c780defd0/pyproj-3.7.1-cp313-cp313-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl
@@ -2564,7 +2594,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/65/c6/ac744cc5752b6f291b2cf13e19cd7ea3cafe68922239a3b95f05f39287b7/rpds_py-0.25.0-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/87/2e/892ad2862ba54f084ffe8cc4a22667eaf9c2bcec6d2bff1d15713c6c0703/scipy-1.15.3-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/40/b0/4562db6223154aa4e22f939003cb92514c79f3d4dccca3444253fd17f902/Send2Trash-1.8.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/be/d09147ad1ec7934636ad912901c5fd7667e1c858e19d355237db0d0cd5e4/smmap-5.0.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
@@ -2592,7 +2622,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/51/5447876806d1088a0f8f71e16542bf350918128d0a69437df26047c8e46f/widgetsnbextension-4.0.14-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a4/1e/96fd96419fec1a37da998a1ca3d558f2cae2f6f3cd5015170371b05a2b6b/xarray-2025.4.0-py3-none-any.whl
-      - pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+      - pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
       - pypi: https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/00/3b/e20bdf84088c11f2c396d034506cbffadd53e024111c1aa4585c2aba1523/zarr-3.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/ab/11a76c1e2126084fde2639514f24e6111b789b0bfa4fc6264a8975c7e1f1/zict-3.0.0-py2.py3-none-any.whl
@@ -3870,7 +3900,7 @@ packages:
 - pypi: .
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 04478c032e9d6180b0f384742d44a76c85817e8cc079c28dcef8fa44a6115a8c
+  sha256: 1ccdf85f599708f6778b9a37383254c062c78c0cf760dc7c5838dbcd37d69b11
   requires_dist:
   - attrs
   - cattrs
@@ -3886,6 +3916,9 @@ packages:
   - xattree @ git+https://github.com/modflowpy/xattree.git
   - sparse>=0.15.5,<1
   - dask[array]>=2025.5.0
+  - pyproj>=3.7.1,<4
+  - netcdf4>=1.7.2,<2
+  - pyshp>=2.3.1,<3
   - flopy4[build,lint,test] ; extra == 'dev'
   - ruff ; extra == 'lint'
   - pre-commit>=4.0.1,<5 ; extra == 'lint'
@@ -6013,7 +6046,7 @@ packages:
   requires_dist:
   - typing-extensions ; python_full_version < '3.11'
   requires_python: '>=3.8'
-- pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#134fb4c91cfa2382c014114ff292a05fa0305a2b
+- pypi: git+https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19
   name: modflow-devtools
   version: 1.7.0.dev0
   requires_dist:
@@ -8270,11 +8303,65 @@ packages:
   - railroad-diagrams ; extra == 'diagrams'
   - jinja2 ; extra == 'diagrams'
   requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/3c/ac/12fab74a908d40b63174dc704587febd0729414804bbfd873cabe504ff2d/pyproj-3.7.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: 8c5dcf24ede53d8abab7d8a77f69ff1936c6a8843ef4fcc574646e4be66e5739
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/3e/47/c6ab03d6564a7c937590cff81a2742b5990f096cce7c1a622d325be340ee/pyproj-3.7.1-cp312-cp312-win_amd64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: aee664a9d806612af30a19dba49e55a7a78ebfec3e9d198f6a6176e1d140ec98
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+  name: pyproj
+  version: 3.7.1
+  sha256: 60d72facd7b6b79853f19744779abcd3f804c4e0d4fa8815469db20c9f640a47
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/6f/57/f61b7d22c91ae1d12ee00ac4c0038714e774ebcd851b9133e5f4f930dd40/pyproj-3.7.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: b35ed213892e211a3ce2bea002aa1183e1a2a9b79e51bb3c6b15549a831ae528
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/92/39/ef6f06a5b223dbea308cfcbb7a0f72e7b506aef1850e061b2c73b0818715/pyproj-3.7.1-cp311-cp311-win_amd64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: 5ad0ff443a785d84e2b380869fdd82e6bfc11eba6057d25b4409a9bbfa867970
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/98/df/68a2b7f5fb6400c64aad82d72bcc4bc531775e62eedff993a77c780defd0/pyproj-3.7.1-cp313-cp313-win_amd64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: d3caac7473be22b6d6e102dde6c46de73b96bc98334e577dfaee9886f102ea2e
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/b3/a3/448f05b15e318bd6bea9a32cfaf11e886c4ae61fa3eee6e09ed5c3b74bb2/pyproj-3.7.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: 084c0a475688f934d386c2ab3b6ce03398a473cd48adfda70d9ab8f87f2394a0
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
   name: pyproject-hooks
   version: 1.2.0
   sha256: 9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913
   requires_python: '>=3.7'
+- pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
+  name: pyshp
+  version: 2.3.1
+  sha256: 67024c0ccdc352ba5db777c4e968483782dfa78f8e200672a90d2d30fd8b7b49
+  requires_python: '>=2.7'
 - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
   name: pytest
   version: 8.3.5
@@ -9293,10 +9380,10 @@ packages:
   - pyobjc-framework-cocoa ; sys_platform == 'darwin' and extra == 'objc'
   - pywin32 ; sys_platform == 'win32' and extra == 'win32'
   requires_python: '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*'
-- pypi: https://files.pythonhosted.org/packages/a1/18/0e835c3a557dc5faffc8f91092f62fc337c1dab1066715842e7a4b318ec4/setuptools-80.7.1-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/58/29/93c53c098d301132196c3238c312825324740851d77a8500a2462c0fd888/setuptools-80.8.0-py3-none-any.whl
   name: setuptools
-  version: 80.7.1
-  sha256: ca5cc1069b85dc23070a6628e6bcecb3292acac802399c7f8edc0100619f9009
+  version: 80.8.0
+  sha256: 95a60484590d24103af13b686121328cc2736bee85de8936383111e421b9edc0
   requires_dist:
   - pytest>=6,!=8.1.* ; extra == 'test'
   - virtualenv>=13.0.0 ; extra == 'test'
@@ -9794,7 +9881,7 @@ packages:
   - types-pytz ; extra == 'types'
   - types-setuptools ; extra == 'types'
   requires_python: '>=3.10'
-- pypi: git+https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926
+- pypi: git+https://github.com/modflowpy/xattree.git#6ac66b67aaef966e92b4bd339621c13b4b7f9dc0
   name: xattree
   version: 0.1.0.dev0
   requires_dist:

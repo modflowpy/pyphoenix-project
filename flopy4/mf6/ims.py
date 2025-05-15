@@ -29,6 +29,7 @@ class Ims(Solution):
     inner_maximum: Optional[int] = field(block="linear", default=None)
     inner_dvclose: Optional[float] = field(block="linear", default=None)
     inner_rclose: Optional[float] = field(block="linear", default=None)
+    inner_hclose: Optional[float] = field(block="linear", default=None)
     rclose_option: Optional[str] = field(block="linear", default=None)
     linear_acceleration: Optional[str] = field(block="linear", default=None)
     relaxation_factor: Optional[float] = field(block="linear", default=None)
