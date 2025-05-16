@@ -5,6 +5,7 @@ import attrs
 import imod
 import xarray as xr
 from attrs import define
+from flopy.discretization.grid import Grid
 from xattree import field, xattree
 
 from flopy4.mf6.gwf.chd import Chd
@@ -16,6 +17,14 @@ from flopy4.mf6.model import Model
 from flopy4.mf6.utils import open_hds
 
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
+
+
+def convert_grid(value):
+    if isinstance(value, Grid):
+        return Dis.from_grid(value)
+    if isinstance(value, Dis):
+        return value
+    raise TypeError(f"Expected Grid or Dis, got {type(value)}")
 
 
 @xattree
@@ -39,7 +48,7 @@ class Gwf(Model):
                 merge_to_dataset=True,
             )
 
-    dis: Dis = field()
+    dis: Dis = field(converter=convert_grid)
     ic: Ic = field()
     oc: Oc = field()
     npf: Npf = field()
@@ -69,3 +78,7 @@ class Gwf(Model):
     nc_filerecord: Optional[Path] = field(
         default=None, metadata={"block": "options"}
     )
+
+    @property
+    def grid(self) -> Grid:
+        return self.dis.to_grid()

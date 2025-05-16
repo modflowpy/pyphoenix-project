@@ -3,7 +3,7 @@ from typing import Any, Tuple
 import numpy as np
 import sparse
 from numpy.typing import NDArray
-from xattree import _get_xatspec
+from xattree import get_xatspec
 
 from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
@@ -16,8 +16,8 @@ def convert_array(value, self_, field) -> NDArray:
         return value
 
     # get spec
-    spec = _get_xatspec(type(self_))
-    field = spec.arrays[field.name]
+    spec = get_xatspec(type(self_))
+    field = spec[field.name]
     if not field.dims:
         raise ValueError(f"Field {field} missing dims")
 

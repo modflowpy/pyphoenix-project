@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 from attrs import Converter, define
+from flopy.discretization.modeltime import ModelTime
 from numpy.typing import NDArray
 from xattree import ROOT, array, dim, field, xattree
 
@@ -48,3 +49,26 @@ class Tdis(Package):
         metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
+
+    def to_time(self) -> ModelTime:
+        """Convert to a `ModelTime` object."""
+        return ModelTime(
+            nper=self.nper,
+            time_units=self.time_units,
+            start_date_time=self.start_date_time,
+            perlen=self.perlen,
+            nstp=self.nstp,
+            tsmult=self.tsmult,
+        )
+
+    @classmethod
+    def from_time(cls, time: ModelTime) -> "Tdis":
+        """Create a time discretization from a `ModelTime`."""
+        return cls(
+            nper=time.nper,
+            time_units=time.time_units,
+            start_date_time=time.start_datetime,
+            perlen=time.perlen,
+            nstp=time.nstp,
+            tsmult=time.tsmult,
+        )
