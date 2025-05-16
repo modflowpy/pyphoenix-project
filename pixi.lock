@@ -160,7 +160,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ed/e6/2d26234410f8b8abdbf891c9da62bee396583f713fb9f3325a4760875d22/psutil-7.0.0-cp36-abi3-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/ff/75/2303d1caa410925de902d32ac215dc80a7ce7dd8dfe95358c165f2adf107/pyarrow-20.0.0-cp313-cp313-macosx_12_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/ef/01/984828464c9960036c602753fc0f21f24f0aa9043c18fa3f2f2b66a86340/pyproj-3.7.1-cp313-cp313-macosx_13_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl
@@ -651,7 +651,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/ab/0d/63670fc527e664068b70b7cab599aa38b7420dd009bdc29ea257e7f3dfb3/pyproj-3.7.1-cp311-cp311-macosx_13_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
@@ -1256,7 +1256,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/ab/0d/63670fc527e664068b70b7cab599aa38b7420dd009bdc29ea257e7f3dfb3/pyproj-3.7.1-cp311-cp311-macosx_13_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
@@ -1823,7 +1823,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/e6/c9/876d4345b8d17f37ac59ebd39f8fa52fc6a6a9891a420f72d050edb6b899/pyproj-3.7.1-cp312-cp312-macosx_13_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
@@ -2389,7 +2389,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/ef/01/984828464c9960036c602753fc0f21f24f0aa9043c18fa3f2f2b66a86340/pyproj-3.7.1-cp313-cp313-macosx_13_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/98/2f/68116db5b36b895c0450e3072b8cb6c2fac0359279b182ea97014d3c8ac0/pyshp-2.3.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/d6/b41653199ea09d5969d4e385df9bbfd9a100f28ca7e824ce7c0a016e3053/pytest_benchmark-5.1.0-py3-none-any.whl
@@ -3900,7 +3900,7 @@ packages:
 - pypi: .
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 1ccdf85f599708f6778b9a37383254c062c78c0cf760dc7c5838dbcd37d69b11
+  sha256: b0e87678a21f0f7d64da1174a4acf39a7e1588830a6d4a3e030492a904d6b14c
   requires_dist:
   - attrs
   - cattrs
@@ -8317,13 +8317,6 @@ packages:
   requires_dist:
   - certifi
   requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/67/10/a8480ea27ea4bbe896c168808854d00f2a9b49f95c0319ddcbba693c8a90/pyproj-3.7.1.tar.gz
-  name: pyproj
-  version: 3.7.1
-  sha256: 60d72facd7b6b79853f19744779abcd3f804c4e0d4fa8815469db20c9f640a47
-  requires_dist:
-  - certifi
-  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/6f/57/f61b7d22c91ae1d12ee00ac4c0038714e774ebcd851b9133e5f4f930dd40/pyproj-3.7.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   name: pyproj
   version: 3.7.1
@@ -8345,10 +8338,31 @@ packages:
   requires_dist:
   - certifi
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/ab/0d/63670fc527e664068b70b7cab599aa38b7420dd009bdc29ea257e7f3dfb3/pyproj-3.7.1-cp311-cp311-macosx_13_0_x86_64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: a94e26c1a4950cea40116775588a2ca7cf56f1f434ff54ee35a84718f3841a3d
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/b3/a3/448f05b15e318bd6bea9a32cfaf11e886c4ae61fa3eee6e09ed5c3b74bb2/pyproj-3.7.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   name: pyproj
   version: 3.7.1
   sha256: 084c0a475688f934d386c2ab3b6ce03398a473cd48adfda70d9ab8f87f2394a0
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/e6/c9/876d4345b8d17f37ac59ebd39f8fa52fc6a6a9891a420f72d050edb6b899/pyproj-3.7.1-cp312-cp312-macosx_13_0_x86_64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: 2781029d90df7f8d431e29562a3f2d8eafdf233c4010d6fc0381858dc7373217
+  requires_dist:
+  - certifi
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/ef/01/984828464c9960036c602753fc0f21f24f0aa9043c18fa3f2f2b66a86340/pyproj-3.7.1-cp313-cp313-macosx_13_0_x86_64.whl
+  name: pyproj
+  version: 3.7.1
+  sha256: 5f8d02ef4431dee414d1753d13fa82a21a2f61494737b5f642ea668d76164d6d
   requires_dist:
   - certifi
   requires_python: '>=3.10'

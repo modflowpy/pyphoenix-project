@@ -195,7 +195,11 @@ class Flopy3Package(PackageInterface):
         for a in self._data.attrs:
             if a == "host":
                 continue
-            if self._data.attrs[a] is not None and self._spec[a].type is not None:
+            if (
+                self._data.attrs[a] is not None
+                and a in self._spec
+                and self._spec[a].type is not None
+            ):
                 d_fp3 = Flopy3Data(
                     data=self._data.attrs[a],
                     spec=self._spec[a],
@@ -208,7 +212,11 @@ class Flopy3Package(PackageInterface):
                 self._dlist.append(d_fp3)
 
         for v in self._data.data_vars:
-            if self._data.data_vars[v] is not None:
+            if (
+                self._data.data_vars[v] is not None
+                and v in self._spec
+                and self._spec[v].type is not None
+            ):
                 d_fp3 = Flopy3Data(
                     data=self._data.data_vars[v],
                     spec=self._spec[v],
