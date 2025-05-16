@@ -234,3 +234,9 @@ def test_init_big_sim():
         chd.head.data.todense(),
         sim.models["gwf"].chd[0].data.head.data.todense(),
     )
+
+    # test dictionary access/deletion
+    assert gwf.get("npf")
+    assert gwf["npf"].attrs["host"] is npf
+    del gwf["npf"]
+    assert not gwf.get("npf")
