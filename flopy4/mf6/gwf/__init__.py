@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Optional
 
 import attrs
-import imod
 import xarray as xr
 from attrs import define
 from flopy.discretization.grid import Grid
@@ -15,7 +14,7 @@ from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.model import Model
-from flopy4.mf6.utils import open_hds
+from flopy4.mf6.utils import open_cbc, open_hds
 
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]
 
@@ -45,10 +44,9 @@ class Gwf(Model):
         @property
         def budget(self):
             # TODO support other extensions than .bud (e.g. .cbc)
-            return imod.mf6.open_cbc(
+            return open_cbc(
                 self.parent.parent.path / f"{self.parent.name}.bud",
                 self.parent.parent.path / f"{self.parent.name}.dis.grb",
-                merge_to_dataset=True,
             )
 
     dis: Dis = field(converter=convert_grid)

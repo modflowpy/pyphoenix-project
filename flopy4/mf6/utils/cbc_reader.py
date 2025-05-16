@@ -1,0 +1,771 @@
+import os
+import struct
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, BinaryIO, cast
+
+import dask
+import dask.array
+import numpy as np
+import pandas as pd
+import xarray as xr
+from attrs import define
+from flopy.discretization import StructuredGrid
+
+from flopy4.structured_grid import StructuredGridWrapper
+
+from .grid_utils import get_coords
+
+
+@define
+class Imeth1Header:
+    kstp: int
+    kper: int
+    text: str
+    ndim1: int
+    ndim2: int
+    ndim3: int
+    imeth: int
+    delt: float
+    pertim: float
+    totim: float
+    pos: int
+
+
+@define
+class Imeth6Header:
+    kstp: int
+    kper: int
+    text: str
+    ndim1: int
+    ndim2: int
+    ndim3: int
+    imeth: int
+    delt: float
+    pertim: float
+    totim: float
+    pos: int
+    txt1id1: str
+    txt2id1: str
+    txt1id2: str
+    txt2id2: str
+    ndat: int
+    auxtxt: list[str]
+    nlist: int
+
+
+def open_cbc(
+    cbc_path: Path,
+    grb_path: Path,
+    flowja: bool = False,
+    simulation_start_time: np.datetime64 | None = None,
+    time_unit: str | None = "d",
+) -> xr.Dataset:
+    """
+    Open modflow6 cell-by-cell (.cbc) file.
+
+    The data is lazily read per timestep and automatically converted into
+    (dense) xr.DataArrays or xu.UgridDataArrays, for DIS and DISV respectively.
+    The conversion is done via the information stored in the Binary Grid file
+    (GRB).
+
+    The ``flowja`` argument controls whether the flow-ja-face array
+    (if present) is returned in grid form as "as is".
+    By default ``flowja=False`` and the array is returned in "grid form",
+    meaning:
+
+        * DIS: in right, front, and lower face flow. All flows are placed in
+          the cell.
+
+    When ``flowja=True``, the flow-ja-face array is returned as it is found in
+    the CBC file, with a flow for every cell to cell connection. Additionally,
+    a ``connectivity`` DataArray is returned describing for every cell (n) its
+    connected cells (m).
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+        Path to the cell-by-cell flows file
+    grb_path: str, pathlib.Path
+        Path to the binary grid file
+    flowja: bool, default value: False
+        Whether to return the flow-ja-face values "as is" (``True``) or in a
+        grid form (``False``).
+    simulation_start_time : Optional datetime
+        The time and date correpsonding to the beginning of the simulation.
+        Use this to convert the time coordinates of the output array to
+        calendar time/dates. time_unit must also be present if this argument is
+        present.
+    time_unit: Optional str
+        The time unit MF6 is working in, in string representation.
+        Only used if simulation_start_time was provided.
+        Admissible values are:
+        ns -> nanosecond
+        ms -> microsecond
+        s -> second
+        m -> minute
+        h -> hour
+        d -> day
+        w -> week
+        Units "month" or "year" are not supported, as they do not represent
+        unambiguous timedelta values durations.
+
+    Returns
+    -------
+    cbc_content: xr.Dataset | Dict[str, xr.DataArray]
+        DataArray contains float64 data of the budgets,
+        with dimensions ("time", "layer", "y", "x").
+
+    Examples
+    --------
+
+    Open a cbc file:
+
+    >>> import flopy4.mf6.utils
+    >>> cbc_content = open_cbc("budgets.cbc", "my-model.grb")
+
+    Check the contents:
+
+    >>> print(cbc_content.keys())
+
+    Get the drainage budget, compute a time mean for the first layer:
+
+    >>> drn_budget = cbc_content["drn]
+    >>> mean = drn_budget.sel(layer=1).mean("time")
+
+    """
+    grid = StructuredGridWrapper.from_binary_grid_file(grb_path)
+    cbc = _open_cbc_dis(
+        cbc_path, grid, flowja, simulation_start_time, time_unit
+    )
+    return xr.merge([cbc])
+
+
+def _open_cbc_dis(
+    cbc_path: Path,
+    grid: StructuredGrid,
+    flowja: bool = False,
+    simulation_start_time: np.datetime64 | None = None,
+    time_unit: str | None = "d",
+) -> dict[str, xr.DataArray]:
+    headers = read_cbc_headers(cbc_path)
+    indices = None
+    header_advanced_package = get_first_header_advanced_package(headers)
+    if header_advanced_package is not None:
+        # For advanced packages the id2 column of variable gwf contains the MF6
+        # ids. Get id's eager from first stress period.
+        dtype = np.dtype(
+            [("id1", np.int32), ("id2", np.int32), ("budget", np.float64)]
+            + [(name, np.float64) for name in header_advanced_package.auxtxt]
+        )
+        table = read_imeth6_budgets(
+            cbc_path,
+            header_advanced_package.nlist,
+            dtype,
+            header_advanced_package.pos,
+        )
+        indices = table["id2"] - 1  # Convert to 0 based index
+    cbc_content = {}
+    for key, header_list in headers.items():
+        # TODO: validate homogeneity of header_list, ndat consistent,
+        # nlist consistent etc.
+        if key == "flow-ja-face" and isinstance(header_list[0], Imeth1Header):
+            assert all(isinstance(x, Imeth1Header) for x in header_list)
+            if flowja:
+                flowjaface, nm = open_face_budgets_as_flowja(
+                    cbc_path, cast(list[Imeth1Header], header_list), grid
+                )
+                cbc_content["flow-ja-face"] = flowjaface
+                cbc_content["connectivity"] = nm
+            else:
+                right, front, lower = dis_open_face_budgets(
+                    cbc_path,
+                    grid,
+                    cast(list[Imeth1Header], header_list),
+                )
+                cbc_content["flow-right-face"] = right
+                cbc_content["flow-front-face"] = front
+                cbc_content["flow-lower-face"] = lower
+        else:
+            if isinstance(header_list[0], Imeth1Header):
+                assert all(isinstance(x, Imeth1Header) for x in header_list)
+                cbc_content[key] = open_imeth1_budgets(
+                    cbc_path, grid, cast(list[Imeth1Header], header_list)
+                )
+            elif isinstance(header_list[0], Imeth6Header):
+                assert all(isinstance(x, Imeth6Header) for x in header_list)
+
+                # for non cell flow budget terms,
+                # use auxiliary variables as return value
+                if header_list[0].text.startswith("data-"):
+                    for return_variable in header_list[0].auxtxt:
+                        key_aux = f"{header_list[0].txt2id1}-{return_variable}"
+                        cbc_content[key_aux] = open_imeth6_budgets(
+                            cbc_path,
+                            grid,
+                            cast(list[Imeth6Header], header_list),
+                            return_variable,
+                            indices=indices,
+                        )
+                else:
+                    cbc_content[key] = open_imeth6_budgets(
+                        cbc_path,
+                        grid,
+                        cast(list[Imeth6Header], header_list),
+                        indices=indices,
+                    )
+    if simulation_start_time is not None:
+        for cbc_name, cbc_array in cbc_content.items():
+            cbc_content[cbc_name] = assign_datetime_coords(
+                cbc_array, simulation_start_time, time_unit
+            )
+
+    return cbc_content
+
+
+def get_first_header_advanced_package(
+    headers: dict[str, list[Any]],
+) -> Any:
+    for key, header_list in headers.items():
+        # multimodels have a gwf-gwf budget for flow-ja-face between domains
+        if "flow-ja-face" not in key and "gwf_" in key:
+            return header_list[0]
+    return None
+
+
+def read_cbc_headers(
+    cbc_path: Path,
+) -> dict[str, list[Imeth1Header | Imeth6Header]]:
+    """
+    Read all the header data from a cell-by-cell (.cbc) budget file.
+
+    All budget data for a MODFLOW6 model is stored in a single file. This
+    function collects all header data, as well as the starting byte position of
+    the actual budget data.
+
+    This function groups the headers per TEXT record (e.g. "flow-ja-face",
+    "drn", etc.). The headers are stored as a list of named tuples.
+    flow-ja-face, storage-ss, and storage-sy are written using IMETH=1, all
+    others with IMETH=6.
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+        Path to the budget file.
+
+    Returns
+    -------
+    headers: Dict[List[UnionImeth1Header, Imeth6Header]]
+        Dictionary containing a list of headers per TEXT record in the budget
+        file.
+    """
+    headers: dict[str, list[Imeth1Header | Imeth6Header]] = defaultdict(list)
+    with open(cbc_path, "rb") as f:
+        filesize = os.fstat(f.fileno()).st_size
+        while f.tell() < filesize:
+            header = read_common_cbc_header(f)
+            if header["imeth"] == 1:
+                # Multiply by -1 because ndim3 is stored as a negative for some
+                # reason. (ndim3 is the integer size of the third dimension)
+                datasize = (
+                    header["ndim1"] * header["ndim2"] * header["ndim3"] * -1
+                ) * 8
+                header["pos"] = f.tell()
+                key = header["text"]
+                headers[key].append(Imeth1Header(**header))
+            elif header["imeth"] == 6:
+                imeth6_header = read_imeth6_header(f)
+                datasize = imeth6_header["nlist"] * (
+                    8 + imeth6_header["ndat"] * 8
+                )
+                header["pos"] = f.tell()
+                # key-format:
+                # "package type"-"optional_package_variable"_"package name"
+                # for river output: riv_sys1
+                # for uzf output: uzf-gwrch_uzf_sys1
+                key = header["text"] + "_" + imeth6_header["txt2id2"]
+                # npf-key can be present multiple times in cases of saved
+                # saturation + specific discharge
+                if header["text"].startswith("data-"):
+                    key = (
+                        imeth6_header["txt2id2"]
+                        + "_"
+                        + header["text"].replace("data-", "")
+                    )
+                headers[key].append(Imeth6Header(**header, **imeth6_header))
+            else:
+                raise ValueError(
+                    f"Invalid imeth value in CBC file {cbc_path}. "
+                    f"Should be 1 or 6, received: {header['imeth']}."
+                )
+            # Skip the data
+            f.seek(datasize, 1)
+    return headers
+
+
+def read_common_cbc_header(f: BinaryIO) -> dict[str, Any]:
+    """
+    Read the common part (shared by imeth=1 and imeth6) of a CBC header section
+    """
+    content = {}
+    content["kstp"] = struct.unpack("i", f.read(4))[0]
+    content["kper"] = struct.unpack("i", f.read(4))[0]
+    content["text"] = f.read(16).decode("utf-8").strip().lower()
+    content["ndim1"] = struct.unpack("i", f.read(4))[0]
+    content["ndim2"] = struct.unpack("i", f.read(4))[0]
+    content["ndim3"] = struct.unpack("i", f.read(4))[0]
+    content["imeth"] = struct.unpack("i", f.read(4))[0]
+    content["delt"] = struct.unpack("d", f.read(8))[0]
+    content["pertim"] = struct.unpack("d", f.read(8))[0]
+    content["totim"] = struct.unpack("d", f.read(8))[0]
+    return content
+
+
+def read_imeth6_header(f: BinaryIO) -> dict[str, Any]:
+    """
+    Read the imeth=6 specific data of a CBC header section.
+    """
+    content: dict[str, str | list[str]] = {}
+    content["txt1id1"] = f.read(16).decode("utf-8").strip().lower()
+    content["txt2id1"] = f.read(16).decode("utf-8").strip().lower()
+    content["txt1id2"] = f.read(16).decode("utf-8").strip().lower()
+    content["txt2id2"] = f.read(16).decode("utf-8").strip().lower()
+    ndat = struct.unpack("i", f.read(4))[0]
+    content["ndat"] = ndat
+    content["auxtxt"] = [
+        f.read(16).decode("utf-8").strip().lower() for _ in range(ndat - 1)
+    ]
+    content["nlist"] = struct.unpack("i", f.read(4))[0]
+    return content
+
+
+def assign_datetime_coords(
+    da: xr.DataArray,
+    simulation_start_time: np.datetime64,
+    time_unit: str | None = "d",
+) -> xr.DataArray:
+    if "time" not in da.coords:
+        raise ValueError(
+            "cannot convert time column, "
+            "because a time column could not be found"
+        )
+
+    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(
+        da["time"], unit=time_unit
+    )
+    return da.assign_coords(time=time)
+
+
+def open_imeth6_budgets(
+    cbc_path: Path,
+    grid: StructuredGrid,
+    header_list: list[Imeth6Header],
+    return_variable: str = "budget",
+    indices: np.ndarray | None = None,
+) -> xr.DataArray:
+    """
+    Open the data for an imeth==6 budget section.
+
+    Uses the information of the DIS GRB file to create the properly sized dense
+    xr.DataArrays (which store the entire domain).
+    Doing so ignores the boundary condition internal index (id2) and any
+    present auxiliary columns.
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    grid: StructuredGrid
+    header_list: List[Imeth1Header]
+    return_variable: str
+    return_id: np.ndarray | None
+
+    Returns
+    -------
+    xr.DataArray with dims ("time", "layer", "y", "x")
+    """
+    # Allocates dense arrays for the entire model domain
+    dtype = np.dtype(
+        [("id1", np.int32), ("id2", np.int32), ("budget", np.float64)]
+        + [(name, np.float64) for name in header_list[0].auxtxt]
+    )
+    shape = (grid.nlay, grid.nrow, grid.ncol)
+    size = np.prod(shape)
+    dask_list = []
+    time = np.empty(len(header_list), dtype=np.float64)
+    for i, header in enumerate(header_list):
+        time[i] = header.totim
+        a = dask.delayed(read_imeth6_budgets_dense)(
+            cbc_path,
+            header.nlist,
+            dtype,
+            header.pos,
+            size,
+            shape,
+            return_variable,
+            indices,
+        )
+        x = dask.array.from_delayed(a, shape=shape, dtype=np.float64)
+        dask_list.append(x)
+
+    daskarr = dask.array.stack(dask_list, axis=0)
+    coords = get_coords(grid)
+    coords["time"] = time
+    name = header_list[0].text
+    return xr.DataArray(
+        daskarr, coords, ("time", "layer", "y", "x"), name=name
+    )
+
+
+def read_imeth6_budgets_dense(
+    cbc_path: Path,
+    count: int,
+    dtype: np.dtype,
+    pos: int,
+    size: int,
+    shape: tuple,
+    return_variable: str,
+    indices: np.ndarray | None,
+) -> np.ndarray:
+    """
+    Read the data for an imeth==6 budget section.
+
+    Utilizes the shape information from the DIS GRB file to create a
+    dense numpy array. Always allocates for the entire domain
+    (all layers, rows, columns).
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    count: int
+        number of values to read
+    dtype: numpy dtype
+        Data type of the structured array. Contains at least "id1", "id2",
+        and "budget".
+        Optionally contains auxiliary columns.
+    pos: int
+        position in the file where the data for a timestep starts
+    size: int
+        size of the entire model domain
+    shape: tuple[int, int, int]
+        Shape (nlayer, nrow, ncolumn) of entire model domain.
+    return_variable: str
+        variable name to return from budget table
+    indices: np.ndarray | None
+        optional array that contains the indices to map return_variable
+        to model topology
+
+    Returns
+    -------
+    Three-dimensional array of floats
+    """
+    # Allocates a dense array for the entire domain
+    out = np.full(size, np.nan, dtype=np.float64)
+    table = read_imeth6_budgets(cbc_path, count, dtype, pos)
+    if indices is None:
+        indices = table["id1"] - 1  # Convert to 0 based index
+    # Zero the relevant values, overwrite the NaN value.
+    out[indices] = 0
+    # Sum all the budget terms.
+    np.add.at(out, indices, table[return_variable])
+    return out.reshape(shape)
+
+
+def read_imeth6_budgets(
+    cbc_path: Path, count: int, dtype: np.dtype, pos: int
+) -> Any:
+    """
+    Read the data for an imeth==6 budget section for a single timestep.
+
+    Returns a numpy structured array containing:
+    * id1: the model cell number
+    * id2: the boundary condition index
+    * budget: the budget terms
+    * and assorted auxiliary columns, if present
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    count: int
+        number of values to read
+    dtype: numpy dtype
+        Data type of the structured array. Contains at least "id1", "id2",
+        and "budget".
+        Optionally contains auxiliary columns.
+    pos:
+        position in the file where the data for a timestep starts
+
+    Returns
+    -------
+    Numpy structured array of type dtype
+    """
+    with open(cbc_path, "rb") as f:
+        f.seek(pos)
+        table = np.fromfile(f, dtype, count)
+    return table
+
+
+def open_imeth1_budgets(
+    cbc_path: Path,
+    grid: StructuredGrid,
+    header_list: list[Imeth1Header],
+) -> xr.DataArray:
+    """
+    Open the data for an imeth==1 budget section. Data is read lazily per
+    timestep.
+
+    Can be used for:
+
+        * STO-SS
+        * STO-SY
+        * CSUB-CGELASTIC
+        * CSUB-WATERCOMP
+
+    Utilizes the shape information from the DIS GRB file to create a dense
+    array; (lazily) allocates for the entire domain (all layers, rows, columns)
+    per timestep.
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    grid: StructuredGrid
+    header_list: List[Imeth1Header]
+
+    Returns
+    -------
+    xr.DataArray with dims ("time", "layer", "y", "x")
+    """
+    nlayer = grid.nlay
+    nrow = grid.nrow
+    ncol = grid.ncol
+    budgets = cbc_open_imeth1_budgets(cbc_path, header_list)
+    # Merge dictionaries
+    coords = get_coords(grid) | {"time": budgets["time"]}
+
+    return xr.DataArray(
+        data=budgets.data.reshape((budgets["time"].size, nlayer, nrow, ncol)),
+        coords=coords,
+        dims=("time", "layer", "y", "x"),
+        name=budgets.name,
+    )
+
+
+def cbc_open_imeth1_budgets(
+    cbc_path: Path, header_list: list[Imeth1Header]
+) -> xr.DataArray:
+    """
+    Open the data for an imeth==1 budget section. Data is read lazily per
+    timestep. The cell data is not spatially labelled.
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    header_list: List[Imeth1Header]
+
+    Returns
+    -------
+    xr.DataArray with dims ("time", "linear_index")
+    """
+    # Gather times from the headers
+    dask_list = []
+    time = np.empty(len(header_list), dtype=np.float64)
+    for i, header in enumerate(header_list):
+        time[i] = header.totim
+        count = header.ndim1 * header.ndim2 * header.ndim3 * -1
+        a = dask.delayed(read_imeth1_budgets)(cbc_path, count, header.pos)
+        x = dask.array.from_delayed(a, shape=(count,), dtype=np.float64)
+        dask_list.append(x)
+
+    return xr.DataArray(
+        data=dask.array.stack(dask_list, axis=0),
+        coords={"time": time},
+        dims=("time", "linear_index"),
+        name=header_list[0].text,
+    )
+
+
+def read_imeth1_budgets(cbc_path: Path, count: int, pos: int) -> np.ndarray:
+    """
+    Read the data for an imeth=1 budget section.
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    count: int
+        number of values to read
+    pos:
+        position in the file where the data for a timestep starts
+
+    Returns
+    -------
+    1-D array of floats
+    """
+    with open(cbc_path, "rb") as f:
+        f.seek(pos)
+        timestep_budgets = np.fromfile(f, np.float64, count)
+    return timestep_budgets
+
+
+def dis_open_face_budgets(
+    cbc_path: Path,
+    grid: StructuredGrid,
+    header_list: list[Imeth1Header],
+) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    """
+    Open the flow-ja-face, and extract right, front, and lower face flows.
+
+    Parameters
+    ----------
+    cbc_path: str, pathlib.Path
+    grid: StructuredGrid
+    header_list: List[Imeth1Header]
+
+    Returns
+    -------
+    right: xr.DataArray of floats with dims ("time", "layer", "y", "x")
+    front: xr.DataArray of floats with dims ("time", "layer", "y", "x")
+    lower: xr.DataArray of floats with dims ("time", "layer", "y", "x")
+    """
+    right_index, front_index, lower_index = dis_to_right_front_lower_indices(
+        grid
+    )
+    budgets = cbc_open_imeth1_budgets(cbc_path, header_list)
+    right = dis_extract_face_budgets(budgets, right_index)
+    front = dis_extract_face_budgets(budgets, front_index)
+    lower = dis_extract_face_budgets(budgets, lower_index)
+    return right, front, lower
+
+
+def dis_extract_face_budgets(
+    budgets: xr.DataArray, index: xr.DataArray
+) -> xr.DataArray:
+    """
+    Grab right, front, or lower face flows from the flow-ja-face array.
+
+    This could be done by a single .isel() indexing operation, but those
+    are extremely slow in this case, which seems to be an xarray issue.
+
+    Parameters
+    ----------
+    budgets: xr.DataArray of floats
+        flow-ja-face array, dims ("time", "linear_index")
+        The linear index enumerates cell-to-cell connections in this case, not
+        the individual cells.
+    index: xr.DataArray of ints
+        right, front, or lower index array with dims("layer", "y", "x")
+
+    Returns
+    -------
+    xr.DataArray of floats with dims ("time", "layer", "y", "x")
+    """
+    coords = dict(index.coords)
+    coords["time"] = budgets["time"]
+    # isel with a 3D array is extremely slow
+    # this followed by the dask reshape is much faster for some reason.
+    data = budgets.isel(linear_index=index.values.ravel()).data
+    da = xr.DataArray(
+        data=data.reshape((budgets["time"].size, *index.shape)),
+        coords=coords,
+        dims=("time", "layer", "y", "x"),
+        name="flow-ja-face",
+    )
+    return da.where(index >= 0, other=0.0)
+
+
+def dis_to_right_front_lower_indices(
+    grid: StructuredGrid,
+) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    """
+    Infer the indices to extract right, front, and lower face flows from the
+    flow-ja-face array.
+
+    Parameters
+    ----------
+    grid: StructuredGrid
+
+    Returns
+    -------
+    right: xr.DataArray of ints with dims ("layer", "y", "x")
+    front: xr.DataArray of ints with dims ("layer", "y", "x")
+    lower: xr.DataArray of ints with dims ("layer", "y", "x")
+    """
+    right, front, lower = dis_indices(grid)
+    coords = get_coords(grid)
+    return (
+        xr.DataArray(right, coords, ("layer", "y", "x")),
+        xr.DataArray(front, coords, ("layer", "y", "x")),
+        xr.DataArray(lower, coords, ("layer", "y", "x")),
+    )
+
+
+def dis_indices(
+    grid: StructuredGrid,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Infer type of connection via cell number comparison. Returns arrays
+    that can be used for extracting right, front, and lower face flow from the
+    flow-ja-face array.
+
+    In a structured grid, using a linear index:
+    * the right neighbor is +(1)
+    * the front neighbor is +(number of cells in a column)
+    * the lower neighbor is +(number of cells in a layer)
+    * lower "vertical passthrough" cells (idomain <0) are multitude of (number
+      of cells in a layer)
+
+    Parameters
+    ----------
+    grid: StructuredGrid
+
+    Returns
+    -------
+    right: 3D array of ints
+    front: 3D array of ints
+    lower: 3D array of ints
+    """
+    shape = (grid.nlay, grid.nrow, grid.ncol)
+    ncells_per_layer = grid.nrow * grid.ncol
+    right = np.full(grid.nnodes, -1, np.int64)
+    front = np.full(grid.nnodes, -1, np.int64)
+    lower = np.full(grid.nnodes, -1, np.int64)
+
+    for i in range(grid.nnodes):
+        for nzi in range(grid.ia[i], grid.ia[i + 1]):
+            nzi -= 1  # python is 0-based, modflow6 is 1-based
+            j = grid.ja[nzi] - 1  # python is 0-based, modflow6 is 1-based
+            d = j - i
+            if d <= 0:  # left, back, upper
+                continue
+            elif d == 1 and grid.ncol > 1:  # right neighbor
+                right[i] = nzi
+            elif d == grid.ncol and ncells_per_layer > 1:  # front neighbor
+                front[i] = nzi
+            elif d == ncells_per_layer:  # lower neighbor
+                lower[i] = nzi
+            else:  # skips one: must be pass through
+                npassed = int(d / ncells_per_layer)
+                for ipass in range(0, npassed):
+                    lower[i + ipass * ncells_per_layer] = nzi
+
+    return right.reshape(shape), front.reshape(shape), lower.reshape(shape)
+
+
+def open_face_budgets_as_flowja(
+    cbc_path: Path,
+    header_list: list[Imeth1Header],
+    grid: StructuredGrid,
+) -> tuple[xr.DataArray, xr.DataArray]:
+    flowja = cbc_open_imeth1_budgets(cbc_path, header_list)
+    flowja = flowja.rename({"linear_index": "connection"})
+    n = expand_indptr(grid.ia)
+    m = grid.ja - 1
+    nm = xr.DataArray(
+        np.column_stack([n, m]),
+        coords={"cell": ["n", "m"]},
+        dims=["connection", "cell"],
+    )
+    return flowja, nm
+
+
+def expand_indptr(ia) -> np.ndarray:
+    n = np.diff(ia)
+    return np.repeat(np.arange(ia.size - 1), n)
