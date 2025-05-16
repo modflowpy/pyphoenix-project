@@ -35,16 +35,18 @@ class Gwf(Model):
 
         @property
         def head(self) -> xr.DataArray:
+            # TODO support other extensions than .hds (e.g. .hed)
             return open_hds(
-                self.parent.parent.sim_ws / f"{self.parent.name}.hds",  # type: ignore
-                self.parent.parent.sim_ws / f"{self.parent.name}.dis.grb",  # type: ignore
+                self.parent.parent.path / f"{self.parent.name}.hds",  # type: ignore
+                self.parent.parent.path / f"{self.parent.name}.dis.grb",  # type: ignore
             )
 
         @property
         def budget(self):
+            # TODO support other extensions than .bud (e.g. .cbc)
             return imod.mf6.open_cbc(
-                self.parent.parent.sim_ws / "mymodel.bud",
-                self.parent.parent.sim_ws / "mymodel.dis.grb",
+                self.parent.parent.path / f"{self.parent.name}.bud",
+                self.parent.parent.path / f"{self.parent.name}.dis.grb",
                 merge_to_dataset=True,
             )
 

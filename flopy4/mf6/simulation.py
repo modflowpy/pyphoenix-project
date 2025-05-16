@@ -24,7 +24,9 @@ class Simulation(Component):
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()
     tdis: Tdis = field(converter=convert_time)
-    sim_ws: Path = field(default=None)
+    # TODO: decorator for components bound
+    # to some directory or file path?
+    path: Path = field(default=None)
 
     @property
     def time(self) -> ModelTime:
