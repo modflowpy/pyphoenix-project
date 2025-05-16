@@ -27,9 +27,7 @@ class MetaIndex(Index):
 
     @classmethod
     def from_variables(cls, variables):
-        return {
-            k: PandasIndex.from_variables({k: v}) for k, v in variables.items()
-        }
+        return {k: PandasIndex.from_variables({k: v}) for k, v in variables.items()}
 
     def create_variables(self, variables=None):
         idx_vars = {}

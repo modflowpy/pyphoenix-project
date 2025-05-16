@@ -57,9 +57,7 @@ def open_hds(
     head: xr.DataArray
     """
     grid = StructuredGrid.from_binary_grid_file(grb_path)
-    return _open_hds_dis(
-        hds_path, grid, dry_nan, simulation_start_time, time_unit
-    )
+    return _open_hds_dis(hds_path, grid, dry_nan, simulation_start_time, time_unit)
 
 
 def _open_hds_dis(
@@ -84,22 +82,14 @@ def _open_hds_dis(
     for i in range(ntime):
         # TODO verify dimension order
         pos = i * (nlayer * (52 + nrow * ncol * 8))
-        a = dask.delayed(read_hds_timestep)(
-            path, nlayer, nrow, ncol, dry_nan, pos
-        )
-        x = dask.array.from_delayed(
-            a, shape=(nlayer, nrow, ncol), dtype=np.float64
-        )
+        a = dask.delayed(read_hds_timestep)(path, nlayer, nrow, ncol, dry_nan, pos)
+        x = dask.array.from_delayed(a, shape=(nlayer, nrow, ncol), dtype=np.float64)
         dask_list.append(x)
 
     daskarr = dask.array.stack(dask_list, axis=0)
-    data_array = xr.DataArray(
-        daskarr, coords, ("time", "layer", "y", "x"), name="head"
-    )
+    data_array = xr.DataArray(daskarr, coords, ("time", "layer", "y", "x"), name="head")
     if simulation_start_time is not None:
-        data_array = assign_datetime_coords(
-            data_array, simulation_start_time, time_unit
-        )
+        data_array = assign_datetime_coords(data_array, simulation_start_time, time_unit)
     return data_array
 
 
@@ -131,9 +121,7 @@ def get_coords(grid: StructuredGrid) -> dict[str, Any]:
     return coords
 
 
-def read_times(
-    path: Path, ntime: int, nlayer: int, nrow: int, ncol: int
-) -> np.ndarray:
+def read_times(path: Path, ntime: int, nlayer: int, nrow: int, ncol: int) -> np.ndarray:
     """
     Reads all total simulation times.
     """
@@ -154,9 +142,7 @@ def read_times(
     with open(path, "rb") as f:
         f.seek(start_of_header)
         for i in range(ntime):
-            times[i] = struct.unpack("d", f.read(8))[
-                0
-            ]  # total simulation time
+            times[i] = struct.unpack("d", f.read(8))[0]  # total simulation time
             f.seek(nskip, 1)
     return times
 
@@ -187,14 +173,9 @@ def assign_datetime_coords(
     time_unit: str | None = "d",
 ) -> xr.DataArray:
     if "time" not in da.coords:
-        raise ValueError(
-            "cannot convert time column,"
-            " because a time column could not be found"
-        )
+        raise ValueError("cannot convert time column, because a time column could not be found")
 
-    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(
-        da["time"], unit=time_unit
-    )
+    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(da["time"], unit=time_unit)
     return da.assign_coords(time=time)
 
 

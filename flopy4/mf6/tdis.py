@@ -5,9 +5,10 @@ import numpy as np
 from attrs import Converter, define
 from flopy.discretization.modeltime import ModelTime
 from numpy.typing import NDArray
-from xattree import ROOT, array, dim, field, xattree
+from xattree import ROOT, xattree
 
 from flopy4.mf6.converters import convert_array
+from flopy4.mf6.decorators import array, dim, field
 from flopy4.mf6.package import Package
 
 
@@ -20,33 +21,29 @@ class Tdis(Package):
         tsmult: float
 
     nper: int = dim(
+        block="dimensions",
         coord="per",
         default=1,
         scope=ROOT,
-        metadata={"block": "dimensions"},
     )
-    time_units: Optional[str] = field(
-        default=None, metadata={"block": "options"}
-    )
-    start_date_time: Optional[datetime] = field(
-        default=None, metadata={"block": "options"}
-    )
+    time_units: Optional[str] = field(block="options", default=None)
+    start_date_time: Optional[datetime] = field(block="options", default=None)
     perlen: NDArray[np.floating] = array(
+        block="perioddata",
         default=1.0,
         dims=("nper",),
-        metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     nstp: NDArray[np.integer] = array(
+        block="perioddata",
         default=1,
         dims=("nper",),
-        metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     tsmult: NDArray[np.floating] = array(
+        block="perioddata",
         default=1.0,
         dims=("nper",),
-        metadata={"block": "perioddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
 

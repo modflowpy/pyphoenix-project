@@ -6,8 +6,9 @@ import imod
 import xarray as xr
 from attrs import define
 from flopy.discretization.grid import Grid
-from xattree import field, xattree
+from xattree import xattree
 
+from flopy4.mf6.decorators import field
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.dis import Dis
 from flopy4.mf6.gwf.ic import Ic
@@ -64,22 +65,14 @@ class Gwf(Model):
         newton: bool = field()
         under_relaxation: bool = field()
 
-    list: Optional[str] = field(default=None, metadata={"block": "options"})
-    print_input: bool = field(default=False, metadata={"block": "options"})
-    print_flows: bool = field(default=False, metadata={"block": "options"})
-    save_flows: bool = field(default=False, metadata={"block": "options"})
-    newtonoptions: Optional[NewtonOptions] = field(
-        default=None, metadata={"block": "options"}
-    )
-    nc_mesh2d_filerecord: Optional[Path] = field(
-        default=None, metadata={"block": "options"}
-    )
-    nc_structured_filerecord: Optional[Path] = field(
-        default=None, metadata={"block": "options"}
-    )
-    nc_filerecord: Optional[Path] = field(
-        default=None, metadata={"block": "options"}
-    )
+    list: Optional[str] = field(block="options", default=None)
+    print_input: bool = field(block="options", default=False)
+    print_flows: bool = field(block="options", default=False)
+    save_flows: bool = field(block="options", default=False)
+    newtonoptions: Optional[NewtonOptions] = field(block="options", default=None)
+    nc_mesh2d_filerecord: Optional[Path] = field(block="options", default=None)
+    nc_structured_filerecord: Optional[Path] = field(block="options", default=None)
+    nc_filerecord: Optional[Path] = field(block="options", default=None)
 
     @property
     def grid(self) -> Grid:

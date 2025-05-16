@@ -4,9 +4,10 @@ from typing import Optional
 import numpy as np
 from attrs import Converter, define
 from numpy.typing import NDArray
-from xattree import array, field, xattree
+from xattree import xattree
 
 from flopy4.mf6.converters import convert_array
+from flopy4.mf6.decorators import array, field
 from flopy4.mf6.package import Package
 
 
@@ -29,86 +30,68 @@ class Npf(Package):
         xt3d: bool = field()
         rhs: bool = field()
 
-    save_flows: bool = field(default=False, metadata={"block": "options"})
-    print_flows: bool = field(default=False, metadata={"block": "options"})
-    alternative_cell_averaging: Optional[str] = field(
-        default=None, metadata={"block": "options"}
-    )
-    thickstrt: bool = field(default=False, metadata={"block": "options"})
-    cvoptions: Optional[CvOptions] = field(
-        default=None, metadata={"block": "options"}
-    )
-    perched: bool = field(default=False, metadata={"block": "options"})
-    rewet_record: Optional[RewetRecord] = field(
-        default=None, metadata={"block": "options"}
-    )
-    xt3d_options: Optional[Xt3dOptions] = field(
-        default=None, metadata={"block": "options"}
-    )
-    save_specific_discharge: bool = field(
-        default=None, metadata={"block": "options"}
-    )
-    save_saturation: bool = field(default=None, metadata={"block": "options"})
-    k22overk: bool = field(default=None, metadata={"block": "options"})
-    k33overk: bool = field(default=None, metadata={"block": "options"})
-    tvk_filerecord: Optional[Path] = field(
-        default=None, metadata={"block": "options"}
-    )
-    export_array_ascii: bool = field(
-        default=False, metadata={"block": "options"}
-    )
-    export_array_netcdf: bool = field(
-        default=False, metadata={"block": "options"}
-    )
-    dev_no_newton: bool = field(default=False, metadata={"block": "options"})
-    dev_omega: Optional[float] = field(
-        default=None, metadata={"block": "options"}
-    )
+    save_flows: bool = field(block="options", default=False)
+    print_flows: bool = field(block="options", default=False)
+    alternative_cell_averaging: Optional[str] = field(block="options", default=None)
+    thickstrt: bool = field(block="options", default=False)
+    cvoptions: Optional[CvOptions] = field(block="options", default=None)
+    perched: bool = field(block="options", default=False)
+    rewet_record: Optional[RewetRecord] = field(block="options", default=None)
+    xt3d_options: Optional[Xt3dOptions] = field(block="options", default=None)
+    save_specific_discharge: bool = field(block="options", default=None)
+    save_saturation: bool = field(block="options", default=None)
+    k22overk: bool = field(block="options", default=None)
+    k33overk: bool = field(block="options", default=None)
+    tvk_filerecord: Optional[Path] = field(block="options", default=None)
+    export_array_ascii: bool = field(block="options", default=False)
+    export_array_netcdf: bool = field(block="options", default=False)
+    dev_no_newton: bool = field(block="options", default=False)
+    dev_omega: Optional[float] = field(block="options", default=None)
     icelltype: NDArray[np.integer] = array(
+        block="griddata",
         dims=("nnodes",),
         default=0,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k: NDArray[np.floating] = array(
+        block="griddata",
         dims=("nnodes",),
         default=1.0,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k22: Optional[NDArray[np.floating]] = array(
+        block="griddata",
         dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     k33: Optional[NDArray[np.floating]] = array(
+        block="griddata",
         dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle1: Optional[NDArray[np.floating]] = array(
+        block="griddata",
         dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle2: Optional[NDArray[np.floating]] = array(
+        block="griddata",
         dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     angle3: Optional[NDArray[np.floating]] = array(
+        block="griddata",
         dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     wetdry: Optional[NDArray[np.floating]] = array(
+        block="griddata",
         dims=("nnodes",),
         default=None,
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
