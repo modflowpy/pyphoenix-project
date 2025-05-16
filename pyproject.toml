@@ -84,7 +84,7 @@ include = ["flopy4", "flopy4.*"]
 "flopy4.toml" = ["dfns/toml/*.toml"]
 
 [tool.ruff]
-line-length = 79
+line-length = 100
 target-version = "py311"
 include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]

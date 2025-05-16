@@ -13,6 +13,4 @@ def pytest_generate_tests(metafunc):
             for file in sorted(EXAMPLES_PATH.glob("*example.py"))
             if file.stem not in EXCLUDED_EXAMPLES
         }
-        metafunc.parametrize(
-            "example_script", scripts.values(), ids=scripts.keys()
-        )
+        metafunc.parametrize("example_script", scripts.values(), ids=scripts.keys())

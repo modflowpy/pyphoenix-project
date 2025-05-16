@@ -50,9 +50,7 @@ def test_unstructure_xarray_tree_to_ascii():
     f = Baz(x=x_tree)
 
     converter = Converter()
-    converter.register_unstructure_hook(
-        Baz, lambda b: " ".join(b.x["x"].data.astype(str))
-    )
+    converter.register_unstructure_hook(Baz, lambda b: " ".join(b.x["x"].data.astype(str)))
     f_dict = converter.unstructure(f)
 
     # The data is formatted in ascii format.

@@ -2,9 +2,10 @@ import numpy as np
 from attrs import Converter
 from flopy.discretization.structuredgrid import StructuredGrid
 from numpy.typing import NDArray
-from xattree import array, dim, field, xattree
+from xattree import xattree
 
 from flopy4.mf6.converters import convert_array
+from flopy4.mf6.decorators import array, dim, field
 from flopy4.mf6.package import Package
 
 
@@ -14,65 +15,57 @@ class Dis(Package):
         default=None,
         metadata={"block": "options"},
     )
-    nogrb: bool = field(default=False, metadata={"block": "options"})
-    xorigin: float = field(default=None, metadata={"block": "options"})
-    yorigin: float = field(default=None, metadata={"block": "options"})
-    angrot: float = field(default=None, metadata={"block": "options"})
-    export_array_netcdf: bool = field(
-        default=False, metadata={"block": "options"}
-    )
+    nogrb: bool = field(block="options", default=False)
+    xorigin: float = field(block="options", default=None)
+    yorigin: float = field(block="options", default=None)
+    angrot: float = field(block="options", default=None)
+    export_array_netcdf: bool = field(block="options", default=False)
     nlay: int = dim(
+        block="dimensions",
         coord="lay",
         scope="gwf",
         default=1,
-        metadata={
-            "block": "dimensions",
-        },
     )
     ncol: int = dim(
+        block="dimensions",
         coord="col",
         scope="gwf",
         default=2,
-        metadata={
-            "block": "dimensions",
-        },
     )
     nrow: int = dim(
+        block="dimensions",
         coord="row",
         scope="gwf",
         default=2,
-        metadata={
-            "block": "dimensions",
-        },
     )
     delr: NDArray[np.floating] = array(
+        block="griddata",
         default=1.0,
         dims=("ncol",),
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     delc: NDArray[np.floating] = array(
+        block="griddata",
         default=1.0,
         dims=("nrow",),
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     top: NDArray[np.floating] = array(
+        block="griddata",
         default=1.0,
         dims=("ncol", "nrow"),
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.floating] = array(
+        block="griddata",
         default=0.0,
         dims=("ncol", "nrow", "nlay"),
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     idomain: NDArray[np.integer] = array(
+        block="griddata",
         default=1,
         dims=("ncol", "nrow", "nlay"),
-        metadata={"block": "griddata"},
         converter=Converter(convert_array, takes_self=True, takes_field=True),
     )
     nnodes: int = dim(

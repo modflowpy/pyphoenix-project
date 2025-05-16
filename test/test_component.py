@@ -141,16 +141,12 @@ def test_init_gwf_top_down_misaligned():
         "ncol": grid.ncol,
     }
     gwf = Gwf()
-    with pytest.raises(
-        ValueError, match=r"group '/dis' is not aligned with its parents"
-    ):
+    with pytest.raises(ValueError, match=r"group '/dis' is not aligned with its parents"):
         Dis(parent=gwf, **dims)
 
     # passing dims explicitly to gwf doesn't work either.
     # one MUST create the component declaring dims first.
-    with pytest.raises(
-        ValueError, match=r"group '/dis' is not aligned with its parents"
-    ):
+    with pytest.raises(ValueError, match=r"group '/dis' is not aligned with its parents"):
         Gwf(dims=dims)
 
 
@@ -224,12 +220,8 @@ def test_init_big_sim():
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(10000))
     assert chd.head[0, 0] == 1.0
     assert chd.head[0, 9999] == 0.0
-    assert np.array_equal(
-        chd.head[0, 1:9999].data.todense(), np.full((9998,), FILL_DNODATA)
-    )
-    assert np.array_equal(
-        chd.head.data.todense(), chd.data.head.data.todense()
-    )
+    assert np.array_equal(chd.head[0, 1:9999].data.todense(), np.full((9998,), FILL_DNODATA))
+    assert np.array_equal(chd.head.data.todense(), chd.data.head.data.todense())
     assert np.array_equal(
         chd.head.data.todense(),
         sim.models["gwf"].chd[0].data.head.data.todense(),
