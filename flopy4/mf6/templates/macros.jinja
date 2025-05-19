@@ -1,0 +1,36 @@
+{% macro scalar(var) %}
+{{ var.name }} {% endif %}{{ var.value }}
+{% endmacro %}
+
+{% macro union(var) %}
+{% endmacro %}
+
+{% macro record(var) %}
+{% if var.tagged %}{{ var.name }} {% endif %}{{ var.value|join(' ') }}
+{% endmacro %}
+
+{% macro array(var) %}
+{% if constant %}{% if layered %}
+{# layered constant #}
+{{ var.name }} LAYERED
+{% for val in var.value %}
+CONSTANT
+{% endfor %}
+{% else %}
+{# constant #}
+{{ var.name }} CONSTANT {{ var.value }}
+{% endif %}
+{% else %}
+{# layered #}
+{% if layered %}
+{{ var.name }}
+{% for val in var.value %}{{ val }}{% endfor %}
+{% else %}
+{# grid-shaped #}
+{{ var.name }} {{ var.value }}
+{% endif %}
+{% endif %}
+{% endmacro %}
+
+{% macro list(var) %}
+{% endmacro %}

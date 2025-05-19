@@ -1,0 +1,17 @@
+{% for block in blocks %}
+begin {{ block.name }} {{ block.index }}
+{% for var in block %}
+{% if var.kind in ['keyword', 'integer', 'double precision'] %}
+{{ macros.scalar(var) }}
+{% elif var.kind == 'keystring' %}
+{{ macros.union(var) }}
+{% elif var.kind == 'record' %}
+{{ macros.record(var) }}
+{% elif var.kind == 'array' %}
+{{ macros.array(var) }}
+{% elif var.kind == 'list' %}
+{{ macros.list(var) }}
+{% endif %}
+{% endfor %}
+end {{ block.name }}
+{% endfor %}
