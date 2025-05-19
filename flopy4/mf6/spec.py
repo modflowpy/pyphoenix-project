@@ -106,6 +106,22 @@ def array(
 Block = dict[str, Attribute]
 
 
+def _block_sort_key(item) -> int:
+    k, _ = item
+    if k == "options":
+        return 0
+    elif k == "dimensions":
+        return 1
+    elif k == "griddata":
+        return 2
+    elif k == "packagedata":
+        return 3
+    elif k == "perioddata":
+        return 4
+    else:
+        return 5
+
+
 def blocks(cls) -> list[list[Attribute]]:
     """Return an ordered list of blocks for a component class."""
     return [list(v.values()) for v in blocks_dict(cls).values()]
@@ -125,4 +141,4 @@ def blocks_dict(cls) -> dict[str, Block]:
         if block not in blocks:
             blocks[block] = {}
         blocks[block][k] = v
-    return blocks
+    return dict(sorted(blocks.items(), key=_block_sort_key))
