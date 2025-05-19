@@ -4,6 +4,11 @@ from flopy.discretization import StructuredGrid
 
 
 class StructuredGridWrapper(StructuredGrid):
+    """
+    Wrapper for StructuredGrid to add ia and ja properties.
+    TODO: add this to flopy3 and this can be removed.
+    """
+
     def __init__(
         self,
         delc=None,
@@ -78,8 +83,7 @@ class StructuredGridWrapper(StructuredGrid):
         grb_obj = MfGrdFile(file_path, verbose=verbose)
         if grb_obj.grid_type != "DIS":
             raise ValueError(
-                f"Binary grid file ({os.path.basename(file_path)}) "
-                "is not a structured (DIS) grid."
+                f"Binary grid file ({os.path.basename(file_path)}) is not a structured (DIS) grid."
             )
 
         idomain = grb_obj.idomain

@@ -8,8 +8,8 @@ from numpy.typing import NDArray
 from xattree import ROOT, xattree
 
 from flopy4.mf6.converters import convert_array
-from flopy4.mf6.decorators import array, dim, field
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import array, dim, field
 
 
 @xattree

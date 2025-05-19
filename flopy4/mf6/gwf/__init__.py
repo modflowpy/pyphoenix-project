@@ -7,13 +7,13 @@ from attrs import define
 from flopy.discretization.grid import Grid
 from xattree import xattree
 
-from flopy4.mf6.decorators import field
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.dis import Dis
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.model import Model
+from flopy4.mf6.spec import field
 from flopy4.mf6.utils import open_cbc, open_hds
 
 __all__ = ["Gwf", "Chd", "Dis", "Ic", "Npf", "Oc"]

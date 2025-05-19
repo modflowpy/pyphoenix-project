@@ -3,8 +3,8 @@ from typing import Optional
 
 from xattree import xattree
 
-from flopy4.mf6.decorators import field
 from flopy4.mf6.solution import Solution
+from flopy4.mf6.spec import field
 
 
 @xattree

@@ -135,9 +135,7 @@ def open_cbc(
 
     """
     grid = StructuredGridWrapper.from_binary_grid_file(grb_path)
-    cbc = _open_cbc_dis(
-        cbc_path, grid, flowja, simulation_start_time, time_unit
-    )
+    cbc = _open_cbc_dis(cbc_path, grid, flowja, simulation_start_time, time_unit)
     return xr.merge([cbc])
 
 
@@ -267,17 +265,13 @@ def read_cbc_headers(
             if header["imeth"] == 1:
                 # Multiply by -1 because ndim3 is stored as a negative for some
                 # reason. (ndim3 is the integer size of the third dimension)
-                datasize = (
-                    header["ndim1"] * header["ndim2"] * header["ndim3"] * -1
-                ) * 8
+                datasize = (header["ndim1"] * header["ndim2"] * header["ndim3"] * -1) * 8
                 header["pos"] = f.tell()
                 key = header["text"]
                 headers[key].append(Imeth1Header(**header))
             elif header["imeth"] == 6:
                 imeth6_header = read_imeth6_header(f)
-                datasize = imeth6_header["nlist"] * (
-                    8 + imeth6_header["ndat"] * 8
-                )
+                datasize = imeth6_header["nlist"] * (8 + imeth6_header["ndat"] * 8)
                 header["pos"] = f.tell()
                 # key-format:
                 # "package type"-"optional_package_variable"_"package name"
@@ -287,11 +281,7 @@ def read_cbc_headers(
                 # npf-key can be present multiple times in cases of saved
                 # saturation + specific discharge
                 if header["text"].startswith("data-"):
-                    key = (
-                        imeth6_header["txt2id2"]
-                        + "_"
-                        + header["text"].replace("data-", "")
-                    )
+                    key = imeth6_header["txt2id2"] + "_" + header["text"].replace("data-", "")
                 headers[key].append(Imeth6Header(**header, **imeth6_header))
             else:
                 raise ValueError(
@@ -332,9 +322,7 @@ def read_imeth6_header(f: BinaryIO) -> dict[str, Any]:
     content["txt2id2"] = f.read(16).decode("utf-8").strip().lower()
     ndat = struct.unpack("i", f.read(4))[0]
     content["ndat"] = ndat
-    content["auxtxt"] = [
-        f.read(16).decode("utf-8").strip().lower() for _ in range(ndat - 1)
-    ]
+    content["auxtxt"] = [f.read(16).decode("utf-8").strip().lower() for _ in range(ndat - 1)]
     content["nlist"] = struct.unpack("i", f.read(4))[0]
     return content
 
@@ -345,14 +333,9 @@ def assign_datetime_coords(
     time_unit: str | None = "d",
 ) -> xr.DataArray:
     if "time" not in da.coords:
-        raise ValueError(
-            "cannot convert time column, "
-            "because a time column could not be found"
-        )
+        raise ValueError("cannot convert time column, because a time column could not be found")
 
-    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(
-        da["time"], unit=time_unit
-    )
+    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(da["time"], unit=time_unit)
     return da.assign_coords(time=time)
 
 
@@ -411,9 +394,7 @@ def open_imeth6_budgets(
     coords = get_coords(grid)
     coords["time"] = time
     name = header_list[0].text
-    return xr.DataArray(
-        daskarr, coords, ("time", "layer", "y", "x"), name=name
-    )
+    return xr.DataArray(daskarr, coords, ("time", "layer", "y", "x"), name=name)
 
 
 def read_imeth6_budgets_dense(
@@ -470,9 +451,7 @@ def read_imeth6_budgets_dense(
     return out.reshape(shape)
 
 
-def read_imeth6_budgets(
-    cbc_path: Path, count: int, dtype: np.dtype, pos: int
-) -> Any:
+def read_imeth6_budgets(cbc_path: Path, count: int, dtype: np.dtype, pos: int) -> Any:
     """
     Read the data for an imeth==6 budget section for a single timestep.
 
@@ -549,9 +528,7 @@ def open_imeth1_budgets(
     )
 
 
-def cbc_open_imeth1_budgets(
-    cbc_path: Path, header_list: list[Imeth1Header]
-) -> xr.DataArray:
+def cbc_open_imeth1_budgets(cbc_path: Path, header_list: list[Imeth1Header]) -> xr.DataArray:
     """
     Open the data for an imeth==1 budget section. Data is read lazily per
     timestep. The cell data is not spatially labelled.
@@ -625,9 +602,7 @@ def dis_open_face_budgets(
     front: xr.DataArray of floats with dims ("time", "layer", "y", "x")
     lower: xr.DataArray of floats with dims ("time", "layer", "y", "x")
     """
-    right_index, front_index, lower_index = dis_to_right_front_lower_indices(
-        grid
-    )
+    right_index, front_index, lower_index = dis_to_right_front_lower_indices(grid)
     budgets = cbc_open_imeth1_budgets(cbc_path, header_list)
     right = dis_extract_face_budgets(budgets, right_index)
     front = dis_extract_face_budgets(budgets, front_index)
@@ -635,9 +610,7 @@ def dis_open_face_budgets(
     return right, front, lower
 
 
-def dis_extract_face_budgets(
-    budgets: xr.DataArray, index: xr.DataArray
-) -> xr.DataArray:
+def dis_extract_face_budgets(budgets: xr.DataArray, index: xr.DataArray) -> xr.DataArray:
     """
     Grab right, front, or lower face flows from the flow-ja-face array.
 
