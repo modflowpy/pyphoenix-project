@@ -1,4 +1,9 @@
-from attrs import NOTHING
+"""
+Wrap `xattree` and `attrs` specification utilities for MF6.
+These include field decorators and introspection functions.
+"""
+
+from attrs import NOTHING, Attribute, fields_dict
 from xattree import array as xattree_array
 from xattree import coord as xattree_coord
 from xattree import dim as xattree_dim
@@ -15,7 +20,7 @@ def field(
     metadata=None,
     block: str | None = None,
 ):
-    """Create a field."""
+    """Define a field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
@@ -40,7 +45,7 @@ def dim(
     metadata=None,
     block: str | None = None,
 ):
-    """Create a dimension field."""
+    """Define a dimension field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
@@ -63,7 +68,7 @@ def coord(
     metadata=None,
     block: str | None = None,
 ):
-    """Create a coordinate field."""
+    """Define a coordinate field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
@@ -87,7 +92,7 @@ def array(
     metadata=None,
     block: str | None = None,
 ):
-    """Create an array field."""
+    """Define an array field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
@@ -101,3 +106,44 @@ def array(
         eq=eq,
         metadata=metadata,
     )
+
+
+Block = dict[str, Attribute]
+
+
+def _block_sort_key(item) -> int:
+    k, _ = item
+    if k == "options":
+        return 0
+    elif k == "dimensions":
+        return 1
+    elif k == "griddata":
+        return 2
+    elif k == "packagedata":
+        return 3
+    elif k == "perioddata":
+        return 4
+    else:
+        return 5
+
+
+def blocks(cls) -> list[list[Attribute]]:
+    """Return an ordered list of blocks for a component class."""
+    return [list(v.values()) for v in blocks_dict(cls).values()]
+
+
+def blocks_dict(cls) -> dict[str, Block]:
+    """
+    Return an ordered dictionary of blocks for a component class,
+    whose keys are block names. Each block is a map from variable
+    (field) name to `attrs.Attribute`.
+    """
+    fields = fields_dict(cls)
+    fields = {k: v for k, v in fields.items() if "block" in v.metadata}
+    blocks: dict[str, Block] = {}
+    for k, v in fields.items():
+        block = v.metadata["block"]
+        if block not in blocks:
+            blocks[block] = {}
+        blocks[block][k] = v
+    return dict(sorted(blocks.items(), key=_block_sort_key))
