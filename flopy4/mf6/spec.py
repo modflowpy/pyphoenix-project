@@ -103,12 +103,15 @@ def array(
     )
 
 
+Block = dict[str, Attribute]
+
+
 def blocks(cls) -> list[list[Attribute]]:
     """Return an ordered list of blocks for a component class."""
     return [list(v.values()) for v in blocks_dict(cls).values()]
 
 
-def blocks_dict(cls) -> dict[str, Attribute]:
+def blocks_dict(cls) -> dict[str, Block]:
     """
     Return an ordered dictionary of blocks for a component class,
     whose keys are block names. Each block is a map from variable
@@ -116,7 +119,7 @@ def blocks_dict(cls) -> dict[str, Attribute]:
     """
     fields = fields_dict(cls)
     fields = {k: v for k, v in fields.items() if "block" in v.metadata}
-    blocks = {}
+    blocks: dict[str, Block] = {}
     for k, v in fields.items():
         block = v.metadata["block"]
         if block not in blocks:
