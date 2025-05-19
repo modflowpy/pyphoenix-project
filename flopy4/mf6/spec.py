@@ -1,3 +1,8 @@
+"""
+Wrap `xattree` and `attrs` specification utilities for MF6.
+These include field decorators and introspection functions.
+"""
+
 from attrs import NOTHING, Attribute, fields_dict
 from xattree import array as xattree_array
 from xattree import coord as xattree_coord
