@@ -228,7 +228,6 @@ def test_init_big_sim():
     )
 
     # test dictionary access/deletion
-    assert gwf.get("npf")
-    assert gwf["npf"].attrs["host"] is npf
+    assert gwf["npf"] is npf
     del gwf["npf"]
-    assert not gwf.get("npf")
+    assert "npf" not in gwf

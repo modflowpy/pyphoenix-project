@@ -1789,7 +1789,7 @@ wheels = [
 [[package]]
 name = "modflow-devtools"
 version = "1.7.0.dev0"
-source = { git = "https://github.com/MODFLOW-USGS/modflow-devtools.git#bf103be4926647027bd8b7d3ba86b7753c983b6b" }
+source = { git = "https://github.com/MODFLOW-USGS/modflow-devtools.git#04ac4fa14099bcaaaf52079a8d368ca8f3b90f19" }
 
 [package.optional-dependencies]
 dfn = [
@@ -3066,15 +3066,15 @@ wheels = [
 
 [[package]]
 name = "sparse"
-version = "0.16.0"
+version = "0.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numba" },
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/7b/56d0fde99e82bde2cba4edc5506444010e77af0ae1549d1144dd290b20a1/sparse-0.16.0.tar.gz", hash = "sha256:26973e5dc80d54a37dfc2622ec554c5a3aa8396c4bafe7e9da59d2101b133588", size = 641159 }
+sdist = { url = "https://files.pythonhosted.org/packages/63/74/5c674277fc3d61bd1863d233a8e1f7ddf35cb1adeeaf9973888629e7a9b1/sparse-0.17.0.tar.gz", hash = "sha256:6b1ad51a810c5be40b6f95e28513ec810fe1c785923bd83b2e4839a751df4bf7", size = 642387 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ca/4a/e59e0968ad52460bb997221fdf5a77d1385b0258f37bfbc84675977b0a62/sparse-0.16.0-py2.py3-none-any.whl", hash = "sha256:25d4463cf36315ee16a19b6951f1d6b8e9128a07dafd58f846eb6dfb4cd5b9d8", size = 147304 },
+    { url = "https://files.pythonhosted.org/packages/8d/fd/42a1720542199ae6ff0f9c37bbd55dd3033ddd7bbe00d68cde09d6824887/sparse-0.17.0-py2.py3-none-any.whl", hash = "sha256:1922d1d97f692b1061c4f03a1dd6ee21850aedc88e171aa845715f5069952f18", size = 259370 },
 ]
 
 [[package]]
@@ -3375,7 +3375,7 @@ parallel = [
 [[package]]
 name = "xattree"
 version = "0.1.0.dev0"
-source = { git = "https://github.com/modflowpy/xattree.git#30b15917c24d29583ab8a166d2a7d0b0a9d3a84a" }
+source = { git = "https://github.com/modflowpy/xattree.git#99c58a96624193cf67deba2da1ec4fec70a9e926" }
 dependencies = [
     { name = "attrs" },
     { name = "cattrs" },

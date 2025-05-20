@@ -30,6 +30,8 @@ oc = Oc(
     save_budget={"*": "all"},
 )
 
+sim.run(verbose=True)
+
 # check CHD
 assert chd.data["head"][0, 0] == 1.0
 assert chd.data.head.sel(per=0)[99] == 0.0

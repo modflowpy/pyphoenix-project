@@ -1,6 +1,8 @@
+from os import PathLike
 from pathlib import Path
 
 from flopy.discretization.modeltime import ModelTime
+from modflow_devtools.misc import run_cmd, set_dir
 from xattree import field, xattree
 
 from flopy4.mf6.component import Component
@@ -31,3 +33,15 @@ class Simulation(Component):
     @property
     def time(self) -> ModelTime:
         return self.tdis.to_time()
+
+    def run(self, exe: str | PathLike = "mf6", verbose: bool = False) -> None:
+        """Run the simulation using the given executable."""
+        if self.path is None:
+            raise ValueError(f"Simulation {self.name} has no workspace path.")
+        with set_dir(self.path):
+            stdout, stderr, retcode = run_cmd(exe, verbose=verbose)
+            if retcode != 0:
+                raise RuntimeError(
+                    f"Simulation {self.name}: {exe} failed to run with returncode "  # type: ignore
+                    f"{retcode}, and error message:\n\n{stdout + stderr} "
+                )

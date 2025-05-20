@@ -13,30 +13,22 @@ class Component(ABC, MutableMapping):
     def __attrs_init_subclass__(cls):
         COMPONENTS[cls.__name__.lower()] = cls
 
-    def __attrs_post_init__(self):
-        self._where = type(self).__xattree__["where"]
-
     def __getitem__(self, key):
-        data = getattr(self, self._where)
-        return data.children[key]
+        return self.children[key]  # type: ignore
 
     def __setitem__(self, key, value):
-        data = getattr(self, self._where)
-        if key in data.children:
-            data.update({key: value})
-        else:
-            data = data.assign({key: value})
-        setattr(self, self._where, data)
+        self.children[key] = value  # type: ignore
 
     def __delitem__(self, key):
-        data = getattr(self, self._where)
-        data = data.drop_nodes(key)
-        setattr(self, self._where, data)
+        del self.children[key]  # type: ignore
 
     def __iter__(self):
-        data = getattr(self, self._where)
-        return iter(data.children)
+        return iter(self.children)  # type: ignore
 
     def __len__(self):
-        data = getattr(self, self._where)
-        return len(data.children)
+        return len(self.children)  # type: ignore
+
+    def write(self) -> None:
+        # TODO: write with jinja to file
+        for child in self.children.values():  # type: ignore
+            child.write()
