@@ -1,13 +1,13 @@
 {% macro field(field) %}
-{% if field|kind == 'scalar' %}
+{% if field|fieldkind == 'scalar' %}
 {{ macros.scalar(field) }}
-{% elif field|kind == 'union' %}
+{% elif field|fieldkind == 'union' %}
 {{ macros.union(field) }}
-{% elif field|kind == 'record' %}
+{% elif field|fieldkind == 'record' %}
 {{ macros.record(field) }}
-{% elif field|kind == 'array' %}
+{% elif field|fieldkind == 'array' %}
 {{ macros.array(field) }}
-{% elif field|kind == 'list' %}
+{% elif field|fieldkind == 'list' %}
 {{ macros.list(field) }}
 {% endif %}
 {% endmacro %}
@@ -48,8 +48,8 @@ CONSTANT
 {% endmacro %}
 
 {% macro internal_array(field) %}
-{% for chunk in field.value|dask_expand %}
-{{ chunk|nparray2string }}
+{% for chunk in field|value|arraydelayed %}
+{{ chunk|array2string }}
 {% endfor %}
 {% endmacro %}
 

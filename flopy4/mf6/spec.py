@@ -141,7 +141,6 @@ def blocks_dict(cls) -> dict[str, Block]:
     (field) name to `attrs.Attribute`.
     """
     fields = fields_dict(cls)
-    fields = {k: v for k, v in fields.items() if "block" in v.metadata}
     blocks: dict[str, Block] = {}
     for k, v in fields.items():
         block = v.metadata["block"]

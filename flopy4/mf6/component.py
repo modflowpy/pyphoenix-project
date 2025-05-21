@@ -4,7 +4,8 @@ from collections.abc import MutableMapping
 from attrs import Attribute
 from modflow_devtools.dfn import Dfn, Var
 from xattree import xattree
-from flopy4.io import Writer
+
+from flopy4.mf6.io import Writer
 
 from flopy4.mf6.spec import fields_dict
 

@@ -1,8 +1,8 @@
-{% for block in blocks %}
-BEGIN {{ block.name }} {% if block.index is not none %}{{ block.index }}{% endif %}
-{% for field in block %}
+{% for block_name, block_ in blocks.items() %}
+BEGIN {{ block_name }}
+{% for field in block_.values() %}
 {{ macros.field(field) }}
 {% endfor %}
-END {{ block.name }}
+END {{ block_name }}
 
 {% endfor %}

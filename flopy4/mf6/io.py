@@ -1,44 +1,44 @@
 import sys
+
 import numpy as np
 from jinja2 import Environment, PackageLoader
-from flopy4.mf6 import filters
-from flopy4.mf6.spec import blocks_dict
 
+from flopy4.mf6 import filters
+from flopy4.mf6.spec import blocks_dict, fields_dict
 
 env = Environment(
-loader=PackageLoader("flopy4.mf6"),
+    loader=PackageLoader("flopy4.mf6"),
     trim_blocks=True,
     lstrip_blocks=True,
 )
-env.filters["dask_expand"] = filters.dask_expand
-env.filters["nparray2string"] = filters.nparray2string
+env.filters["fieldkind"] = filters.fieldkind
+env.filters["fieldvalue"] = filters.fieldvalue
+env.filters["arraydelayed"] = filters.arraydelayed
+env.filters["array2string"] = filters.array2string
 
 
 class Writer:
-    def _write_ascii(self, path) -> None:
-        # TODO: factor out an ascii writer separately
+    # TODO remove type: ignore statements below.
+    # but idk how to properly type a mixin class.
+    # this one assumes the presence of attributes:
+    # - name
+    # - path
+    # - data
 
-        block_spec = blocks_dict(type(self))
-        blocks = {}
-        for block_name, block in block_spec.items():
-            blocks[block_name] = {}
-            for field_name, field in block.items():
-                if field_name == "data":
-                    continue
-                blocks[block_name][field_name] = {
-                    "spec": field,
-                    "value": getattr(self, field_name),
-                }
-
+    def _write_ascii(self) -> None:
+        cls = type(self)
+        fields = fields_dict(cls)
+        blocks = blocks_dict(cls)
         template = env.get_template("blocks.jinja")
-        iterator = template.generate(blocks=blocks)
-        with np.printoptions(
-            precision=4, linewidth=sys.maxsize, threshold=sys.maxsize
-        ):
-            with open(path, "w") as f:
+        iterator = template.generate(fields=fields, blocks=blocks, data=self.data)  # type: ignore
+        # are these printoptions always applicable?
+        with np.printoptions(precision=4, linewidth=sys.maxsize, threshold=sys.maxsize):
+            # TODO don't hardcode the filename, maybe a filename attribute?
+            with open(self.path / self.name, "w") as f:  # type: ignore
                 f.writelines(iterator)
 
     def write(self) -> None:
+        # TODO: factor out an ascii writer separately
         self._write_ascii()
         for child in self.children.values():  # type: ignore
             child.write()
