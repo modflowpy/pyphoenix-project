@@ -4,10 +4,11 @@ These include field decorators and introspection functions.
 """
 
 from attrs import NOTHING, Attribute, fields_dict
-from xattree import array as xattree_array
-from xattree import coord as xattree_coord
-from xattree import dim as xattree_dim
-from xattree import field as xattree_field
+
+from flopy4.spec import array as flopy_array
+from flopy4.spec import coord as flopy_coord
+from flopy4.spec import dim as flopy_dim
+from flopy4.spec import field as flopy_field
 
 
 def field(
@@ -24,7 +25,7 @@ def field(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
-    return xattree_field(
+    return flopy_field(
         default=default,
         validator=validator,
         converter=converter,
@@ -49,7 +50,7 @@ def dim(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
-    return xattree_dim(
+    return flopy_dim(
         scope=scope,
         coord=coord,
         default=default,
@@ -72,7 +73,7 @@ def coord(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
-    return xattree_coord(
+    return flopy_coord(
         scope=scope,
         default=default,
         repr=repr,
@@ -96,7 +97,7 @@ def array(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
-    return xattree_array(
+    return flopy_array(
         cls=cls,
         dims=dims,
         default=default,
