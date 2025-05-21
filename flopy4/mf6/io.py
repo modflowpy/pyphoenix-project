@@ -1,6 +1,7 @@
 import sys
 
 import numpy as np
+from cattrs import unstructure
 from jinja2 import Environment, PackageLoader
 
 from flopy4.mf6 import filters
@@ -30,7 +31,7 @@ class Writer:
         fields = fields_dict(cls)
         blocks = blocks_dict(cls)
         template = env.get_template("blocks.jinja")
-        iterator = template.generate(fields=fields, blocks=blocks, data=self.data)  # type: ignore
+        iterator = template.generate(fields=fields, blocks=blocks, data=unstructure(self.data))  # type: ignore
         # are these printoptions always applicable?
         with np.printoptions(precision=4, linewidth=sys.maxsize, threshold=sys.maxsize):
             # TODO don't hardcode the filename, maybe a filename attribute?
