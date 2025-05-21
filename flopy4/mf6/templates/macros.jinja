@@ -1,36 +1,58 @@
-{% macro scalar(var) %}
-{{ var.name }} {% endif %}{{ var.value }}
+{% macro field(field) %}
+{% if field|kind == 'scalar' %}
+{{ macros.scalar(field) }}
+{% elif field|kind == 'union' %}
+{{ macros.union(field) }}
+{% elif field|kind == 'record' %}
+{{ macros.record(field) }}
+{% elif field|kind == 'array' %}
+{{ macros.array(field) }}
+{% elif field|kind == 'list' %}
+{{ macros.list(field) }}
+{% endif %}
 {% endmacro %}
 
-{% macro union(var) %}
+{% macro scalar(field) %}
+{{ field.name }} {% endif %}{{ field.value }}
 {% endmacro %}
 
-{% macro record(var) %}
-{% if var.tagged %}{{ var.name }} {% endif %}{{ var.value|join(' ') }}
+{% macro union(field) %}
+{% for item in field.value.items() %}
+{{ macros.field(item) }}
+{% endfor %}
 {% endmacro %}
 
-{% macro array(var) %}
-{% if constant %}{% if layered %}
-{# layered constant #}
-{{ var.name }} LAYERED
-{% for val in var.value %}
+{% macro record(field) %}
+{% for item in field.values() %}{% if item.tagged %}{{ item.name }} {% endif %}{{ macros.field(field) }}{%
+endfor
+%}
+{% endmacro %}
+
+{% macro array(field, how="internal") %}
+{% if how == "layered constant" %}
+{{ field.name }} LAYERED
+{% for val in field.value %}
 CONSTANT
 {% endfor %}
-{% else %}
-{# constant #}
-{{ var.name }} CONSTANT {{ var.value }}
-{% endif %}
-{% else %}
-{# layered #}
+{% elif how == "constant" %}
+{{ field.name }} CONSTANT {{ field.value }}
+{% elif how == "layered" %}
 {% if layered %}
-{{ var.name }}
-{% for val in var.value %}{{ val }}{% endfor %}
-{% else %}
-{# grid-shaped #}
-{{ var.name }} {{ var.value }}
-{% endif %}
+{{ field.name }}
+{% for val in field.value %}{{ val }}{% endfor %}
+{% elif how == "internal" %}
+{{ field.name }} {{ macro.internal_array(field) }}
+{% elif how == "external" %}
+{{ field.name}} OPEN/CLOSE {{ field.value }}
 {% endif %}
 {% endmacro %}
 
-{% macro list(var) %}
+{% macro internal_array(field) %}
+{% for chunk in field.value|dask_expand %}
+{{ chunk|nparray2string }}
+{% endfor %}
+{% endmacro %}
+
+{% macro list(field) %}
+{# TODO #}
 {% endmacro %}

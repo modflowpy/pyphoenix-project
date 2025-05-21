@@ -1,17 +1,8 @@
 {% for block in blocks %}
-begin {{ block.name }} {{ block.index }}
-{% for var in block %}
-{% if var.kind in ['keyword', 'integer', 'double precision'] %}
-{{ macros.scalar(var) }}
-{% elif var.kind == 'keystring' %}
-{{ macros.union(var) }}
-{% elif var.kind == 'record' %}
-{{ macros.record(var) }}
-{% elif var.kind == 'array' %}
-{{ macros.array(var) }}
-{% elif var.kind == 'list' %}
-{{ macros.list(var) }}
-{% endif %}
+BEGIN {{ block.name }} {% if block.index is not none %}{{ block.index }}{% endif %}
+{% for field in block %}
+{{ macros.field(field) }}
 {% endfor %}
-end {{ block.name }}
+END {{ block.name }}
+
 {% endfor %}
