@@ -1,14 +1,17 @@
 {% macro field(field) %}
-{% if field|fieldkind == 'scalar' %}
-{{ macros.scalar(field) }}
-{% elif field|fieldkind == 'union' %}
-{{ macros.union(field) }}
-{% elif field|fieldkind == 'record' %}
+{% set kind = field|fieldkind %}
+{% if kind == 'attr' %}
+{% if field.type|isdict %}
 {{ macros.record(field) }}
-{% elif field|fieldkind == 'array' %}
+{% else %}
+{{ macros.scalar(field) }}
+{% endif %}
+{% elif kind in ['array', 'coord'] %}
 {{ macros.array(field) }}
-{% elif field|fieldkind == 'list' %}
-{{ macros.list(field) }}
+{% elif kind == 'dim' %}
+{{ macros.scalar(field) }}
+{% elif kind == 'child' %}
+{# TODO #}
 {% endif %}
 {% endmacro %}
 
@@ -16,7 +19,7 @@
 {{ field.name }} {% endif %}{{ field.value }}
 {% endmacro %}
 
-{% macro union(field) %}
+{% macro keystring(field) %} {# union #}
 {% for item in field.value.items() %}
 {{ macros.field(item) }}
 {% endfor %}
@@ -48,7 +51,7 @@ CONSTANT
 {% endmacro %}
 
 {% macro internal_array(field) %}
-{% for chunk in field|value|arraydelayed %}
+{% for chunk in field|fieldvalue|arraydelayed %}
 {{ chunk|array2string }}
 {% endfor %}
 {% endmacro %}
