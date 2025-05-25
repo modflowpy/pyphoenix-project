@@ -13,7 +13,7 @@ from flopy4.mf6.spec import array, field
 
 @xattree
 class Chd(Package):
-    multi: ClassVar[bool] = True
+    multi_package: ClassVar[bool] = True
 
     @define(slots=False)
     class Steps:

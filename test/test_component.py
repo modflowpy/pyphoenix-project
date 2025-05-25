@@ -2,11 +2,13 @@ import numpy as np
 import pytest
 from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
+from modflow_devtools.dfn import Sln
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 
@@ -242,3 +244,27 @@ def test_gwf_dfn():
     assert dfn["ref"] is None
     assert dfn["sln"] is None
     assert "save_flows" in set(dfn["options"].keys())
+
+
+def test_chd_dfn():
+    chd = Chd(strict=False)
+    dfn = chd.dfn
+    assert dfn["name"] == "chd"
+    assert not dfn["advanced"]
+    assert dfn["multi"]
+    assert dfn["ref"] is None
+    assert dfn["sln"] is None
+    assert "print_input" in set(dfn["options"].keys())
+    assert "head" in set(dfn["period"].keys())
+
+
+def test_ims_dfn():
+    ims = Ims(strict=False)
+    dfn = ims.dfn
+    assert dfn["name"] == "ims"
+    assert not dfn["advanced"]
+    assert not dfn["multi"]
+    assert dfn["ref"] is None
+    assert dfn["sln"] == Sln(abbr="ims", pattern="*")
+    assert "complexity" in set(dfn["options"].keys())
+    assert "inner_maximum" in set(dfn["linear"].keys())
