@@ -18,7 +18,7 @@ class Component(ABC, MutableMapping):
         COMPONENTS[cls.__name__.lower()] = cls
 
     def __attrs_post_init__(self):
-        self._dfn = None
+        self._dfn = self._get_dfn()
 
     def __getitem__(self, key):
         return self.children[key]  # type: ignore
@@ -38,39 +38,36 @@ class Component(ABC, MutableMapping):
     @property
     def dfn(self) -> Dfn:
         """Return the component's definition."""
+        return self._dfn
 
-        def _dfn() -> Dfn:
-            def _to_dfn_spec(attribute: Attribute) -> Var:
-                return Var(
-                    name=attribute.name,
-                    type=attribute.type,
-                    shape=attribute.metadata.get("dims", None),
-                    block=attribute.metadata.get("block", None),
-                    default=attribute.default,
-                    children={k: _to_dfn_spec(v) for k, v in fields_dict(attribute.type)}  # type: ignore
-                    if attribute.metadata.get("kind", None) == "child"  # type: ignore
-                    else None,  # type: ignore
-                )
-
-            fields = {k: _to_dfn_spec(v) for k, v in fields_dict(self.__class__).items()}
-            blocks: dict[str, dict[str, Var]] = {}
-            for k, v in fields.items():
-                if (block := v.get("block", None)) is not None:
-                    blocks.setdefault(block, {})[k] = v
-                else:
-                    blocks[k] = v
-            return Dfn(
-                name=self.name,  # type: ignore
-                advanced=getattr(self, "advanced_package", False),
-                multi=getattr(self, "multi_package", False),
-                ref=getattr(self, "sub_package", None),
-                sln=getattr(self, "solution_package", None),
-                **blocks,
+    def _get_dfn(self) -> Dfn:
+        def _to_dfn_spec(attribute: Attribute) -> Var:
+            return Var(
+                name=attribute.name,
+                type=attribute.type,
+                shape=attribute.metadata.get("dims", None),
+                block=attribute.metadata.get("block", None),
+                default=attribute.default,
+                children={k: _to_dfn_spec(v) for k, v in fields_dict(attribute.type)}  # type: ignore
+                if attribute.metadata.get("kind", None) == "child"  # type: ignore
+                else None,  # type: ignore
             )
 
-        if self._dfn is None:
-            self._dfn = _dfn()
-        return self._dfn
+        fields = {k: _to_dfn_spec(v) for k, v in fields_dict(self.__class__).items()}
+        blocks: dict[str, dict[str, Var]] = {}
+        for k, v in fields.items():
+            if (block := v.get("block", None)) is not None:
+                blocks.setdefault(block, {})[k] = v
+            else:
+                blocks[k] = v
+        return Dfn(
+            name=self.name,  # type: ignore
+            advanced=getattr(self, "advanced_package", False),
+            multi=getattr(self, "multi_package", False),
+            ref=getattr(self, "sub_package", None),
+            sln=getattr(self, "solution_package", None),
+            **blocks,
+        )
 
     def load(self) -> None:
         # TODO: load
