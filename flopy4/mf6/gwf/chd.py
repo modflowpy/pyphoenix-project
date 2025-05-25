@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 import numpy as np
 from attrs import Converter, define
@@ -13,6 +13,8 @@ from flopy4.mf6.spec import array, field
 
 @xattree
 class Chd(Package):
+    multi_package: ClassVar[bool] = True
+
     @define(slots=False)
     class Steps:
         all: bool = field()
