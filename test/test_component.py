@@ -231,3 +231,14 @@ def test_init_big_sim():
     assert gwf["npf"] is npf
     del gwf["npf"]
     assert "npf" not in gwf
+
+
+def test_gwf_dfn():
+    gwf = Gwf()
+    dfn = gwf.dfn
+    assert dfn["name"] == "gwf"
+    assert not dfn["advanced"]
+    assert not dfn["multi"]
+    assert dfn["ref"] is None
+    assert dfn["sln"] is None
+    assert "save_flows" in set(dfn["options"].keys())

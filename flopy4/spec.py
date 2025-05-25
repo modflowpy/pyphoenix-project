@@ -1,10 +1,14 @@
-"""Wrap `xattree` and `attrs` specification utilities."""
+"""
+Wrap `xattree` and `attrs` specification utilities.
+These include field decorators and introspection functions.
+"""
 
-from attrs import NOTHING
+from attrs import NOTHING, Attribute
 from xattree import array as xattree_array
 from xattree import coord as xattree_coord
 from xattree import dim as xattree_dim
 from xattree import field as xattree_field
+from xattree import fields_dict as xattree_fields_dict
 
 
 def field(
@@ -87,3 +91,17 @@ def array(
         eq=eq,
         metadata=metadata,
     )
+
+
+def fields(cls) -> list[Attribute]:
+    """Return an ordered list of fields for a component class."""
+    return list(fields_dict(cls).values())
+
+
+def fields_dict(cls) -> dict[str, Attribute]:
+    """
+    Return an ordered dictionary of fields for a component class,
+    whose keys are field names. Each field is an `attrs.Attribute`.
+    """
+    fields = xattree_fields_dict(cls)
+    return {k: v for k, v in fields.items()}
