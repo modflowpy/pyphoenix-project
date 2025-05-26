@@ -38,12 +38,14 @@ def test_simulation_to_jinja():
         trim_blocks=True,
         lstrip_blocks=True,
     )
-    env.filters["fieldkind"] = filters.fieldkind
+    env.filters["field_kind"] = filters.field_kind
     env.filters["fieldvalue"] = filters.fieldvalue
     env.filters["arraydelayed"] = filters.arraydelayed
     env.filters["array2string"] = filters.array2string
+    env.filters["is_dict"] = filters.is_dict
 
     fields = fields_dict(Oc)
     blocks = blocks_dict(Oc)
     result = env.get_template("blocks.jinja").render(fields=fields, blocks=blocks, data=oc.data)
+    print(result)
     assert result != ""

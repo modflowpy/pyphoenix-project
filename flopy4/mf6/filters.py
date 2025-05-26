@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import xarray as xr
 from attrs import Attribute
@@ -5,7 +7,7 @@ from jinja2 import pass_context
 from numpy.typing import NDArray
 
 
-def fieldkind(field: Attribute) -> str:
+def field_kind(field: Attribute) -> str:
     """
     Get a field's `xattree` kind. Kind is either:
 
@@ -21,13 +23,13 @@ def fieldkind(field: Attribute) -> str:
         raise TypeError(f"Field {field.name} has no xattree metadata")
     if "kind" not in xatmeta:
         raise TypeError(f"Field {field.name} has no kind")
-    return xatmeta.get("kind", "attr")
+    return xatmeta.get("kind") or "attr"
 
 
 @pass_context
 def fieldvalue(ctx, field: Attribute):
     """Get a field's value from the data tree via the template context."""
-    return ctx["data"][field.name]
+    return ctx["data"].attrs.get(field.name) or ctx["data"].get(field.name)
 
 
 def arraydelayed(value: xr.DataArray):
@@ -41,3 +43,8 @@ def arraydelayed(value: xr.DataArray):
 def array2string(value: NDArray) -> str:
     """Convert an array to a string."""
     return np.array2string(value, separator=" ")[1:-1]  # remove brackets
+
+
+def is_dict(value: Any) -> bool:
+    """Check if the value is a dictionary."""
+    return isinstance(value, dict)

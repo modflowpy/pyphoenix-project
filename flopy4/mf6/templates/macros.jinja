@@ -1,7 +1,7 @@
 {% macro field(field) %}
-{% set kind = field|fieldkind %}
+{% set kind = field|field_kind %}
 {% if kind == 'attr' %}
-{% if field.type|isdict %}
+{% if field.type|is_dict %}
 {{ record(field) }}
 {% else %}
 {{ scalar(field) }}
@@ -13,50 +13,52 @@
 {% elif kind == 'child' %}
 {# TODO #}
 {% endif %}
-{% endmacro %}
+{%- endmacro %}
 
 {% macro scalar(field) %}
-{{ field.name }} {{ field.value }}
-{% endmacro %}
+{% set value = field|fieldvalue %}
+{% if value is not none %}
+{{ field.name }} {{ value }}
+{% endif %}
+{%- endmacro %}
 
 {% macro keystring(field) %} {# union #}
-{% for item in field.value.items() %}
+{% for item in (field|fieldvalue).items() %}
 {{ field(item) }}
 {% endfor %}
-{% endmacro %}
+{%- endmacro %}
 
 {% macro record(field) %}
-{% for item in field.values() %}{% if item.tagged %}{{ item.name }} {% endif %}{{ field(field) }}{%
-endfor
-%}
-{% endmacro %}
+{% for item in field|fieldvalue %}
+{% if item.tagged %}{{ item.name }} {% endif %}{{ field(field) }}
+{% endfor %}
+{%- endmacro %}
 
 {% macro array(field, how="internal") %}
 {% if how == "layered constant" %}
 {{ field.name }} LAYERED
-{% for val in field.value %}
+{% for val in field|fieldvalue %}
 CONSTANT
 {% endfor %}
 {% elif how == "constant" %}
-{{ field.name }} CONSTANT {{ field.value }}
+{{ field.name }} CONSTANT {{ field|fieldvalue }}
 {% elif how == "layered" %}
 {% if layered %}
-{{ field.name }}
-{% for val in field.value %}{{ val }}{% endfor %}
+{{ field.name }}{% for val in field|fieldvalue %} {{ val }}{% endfor %}
 {% endif %}
 {% elif how == "internal" %}
 {{ field.name }} {{ internal_array(field) }}
 {% elif how == "external" %}
-{{ field.name}} OPEN/CLOSE {{ field.value }}
+{{ field.name}} OPEN/CLOSE {{ field|fieldvalue }}
 {% endif %}
-{% endmacro %}
+{%- endmacro %}
 
 {% macro internal_array(field) %}
 {% for chunk in field|fieldvalue|arraydelayed %}
 {{ chunk|array2string }}
 {% endfor %}
-{% endmacro %}
+{%- endmacro %}
 
 {% macro list(field) %}
 {# TODO #}
-{% endmacro %}
+{%- endmacro %}

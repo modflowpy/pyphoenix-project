@@ -13,10 +13,11 @@ JINJA_ENV = Environment(
     trim_blocks=True,
     lstrip_blocks=True,
 )
-JINJA_ENV.filters["fieldkind"] = filters.fieldkind
+JINJA_ENV.filters["field_kind"] = filters.field_kind
 JINJA_ENV.filters["fieldvalue"] = filters.fieldvalue
 JINJA_ENV.filters["arraydelayed"] = filters.arraydelayed
 JINJA_ENV.filters["array2string"] = filters.array2string
+JINJA_ENV.filters["is_dict"] = filters.is_dict
 JINJA_TEMPLATE_NAME = "blocks.jinja"
 
 
