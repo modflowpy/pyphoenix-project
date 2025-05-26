@@ -15,13 +15,13 @@ def fieldkind(field: Attribute) -> str:
     - 'dim' for integer fields describing a dimension's size
     - 'attr' for all other fields
     """
-    if meta := field.metadata is None:
+    if (meta := field.metadata) is None:
         raise TypeError(f"Field {field.name} has no metadata")
-    if xatmeta := meta.get("xattree", None) is None:
+    if (xatmeta := meta.get("xattree", None)) is None:
         raise TypeError(f"Field {field.name} has no xattree metadata")
-    if kind := xatmeta.get("kind", None) is None:
+    if "kind" not in xatmeta:
         raise TypeError(f"Field {field.name} has no kind")
-    return kind
+    return xatmeta.get("kind", "attr")
 
 
 @pass_context
@@ -32,7 +32,9 @@ def fieldvalue(ctx, field: Attribute):
 
 def arraydelayed(value: xr.DataArray):
     """Yield chunks (lines) from a Dask array."""
-    for chunk in value.data.to_delayed():
+    # TODO: Determine a good chunk size,
+    # because if the underlying array is only numpy, it will stay one block.
+    for chunk in value.chunk():
         yield chunk.compute()
 
 

@@ -2,31 +2,31 @@
 {% set kind = field|fieldkind %}
 {% if kind == 'attr' %}
 {% if field.type|isdict %}
-{{ macros.record(field) }}
+{{ record(field) }}
 {% else %}
-{{ macros.scalar(field) }}
+{{ scalar(field) }}
 {% endif %}
 {% elif kind in ['array', 'coord'] %}
-{{ macros.array(field) }}
+{{ array(field) }}
 {% elif kind == 'dim' %}
-{{ macros.scalar(field) }}
+{{ scalar(field) }}
 {% elif kind == 'child' %}
 {# TODO #}
 {% endif %}
 {% endmacro %}
 
 {% macro scalar(field) %}
-{{ field.name }} {% endif %}{{ field.value }}
+{{ field.name }} {{ field.value }}
 {% endmacro %}
 
 {% macro keystring(field) %} {# union #}
 {% for item in field.value.items() %}
-{{ macros.field(item) }}
+{{ field(item) }}
 {% endfor %}
 {% endmacro %}
 
 {% macro record(field) %}
-{% for item in field.values() %}{% if item.tagged %}{{ item.name }} {% endif %}{{ macros.field(field) }}{%
+{% for item in field.values() %}{% if item.tagged %}{{ item.name }} {% endif %}{{ field(field) }}{%
 endfor
 %}
 {% endmacro %}
@@ -43,8 +43,9 @@ CONSTANT
 {% if layered %}
 {{ field.name }}
 {% for val in field.value %}{{ val }}{% endfor %}
+{% endif %}
 {% elif how == "internal" %}
-{{ field.name }} {{ macro.internal_array(field) }}
+{{ field.name }} {{ internal_array(field) }}
 {% elif how == "external" %}
 {{ field.name}} OPEN/CLOSE {{ field.value }}
 {% endif %}
