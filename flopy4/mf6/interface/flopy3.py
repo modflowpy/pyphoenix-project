@@ -2,15 +2,15 @@ import re
 from typing import Optional
 
 import numpy as np
+from flopy import export
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization import StructuredGrid
 from flopy.discretization.grid import Grid
 from flopy.discretization.modeltime import ModelTime
-from flopy.export.utils import model_export, package_export
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
-from xattree import Xattribute, get_xatspec
+from xattree import Xattribute, _get_xatspec
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
@@ -23,7 +23,7 @@ class Flopy3Model(ModelInterface):
         modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
         ims: Optional[Package] = None,
-        crs: Optional[int] = None,
+        **kwargs,
     ):
         self._model = model
         self._grid = modelgrid
@@ -57,8 +57,8 @@ class Flopy3Model(ModelInterface):
                     botm=model.dis.botm.data,
                     idomain=model.dis.idomain.data,
                     lenuni=lenuni,
-                    crs=crs,
-                    prjfile=None,
+                    crs=kwargs.get("crs", None),
+                    prjfile=kwargs.get("prjfile", None),
                     xoff=xoff,
                     yoff=yoff,
                     angrot=angrot,
@@ -98,7 +98,7 @@ class Flopy3Model(ModelInterface):
         return ""
 
     @property
-    def exe_name(self):
+    def exename(self):
         return ""
 
     @property
@@ -166,7 +166,7 @@ class Flopy3Model(ModelInterface):
         return PlotUtilities._plot_model_helper(self, SelPackList=packages, **kwargs)
 
     def export(self, f, **kwargs):
-        return model_export(f, self, **kwargs)
+        return export.utils.model_export(f, self, **kwargs)
 
 
 class Flopy3Package(PackageInterface):
@@ -182,7 +182,7 @@ class Flopy3Package(PackageInterface):
             self._data = package.data
         else:
             raise Exception("Input package has no data")
-        self._spec = get_xatspec(type(package))
+        self._spec = _get_xatspec(type(package))
         if modelgrid:
             self._grid = modelgrid
         elif model:
@@ -197,12 +197,12 @@ class Flopy3Package(PackageInterface):
                 continue
             if (
                 self._data.attrs[a] is not None
-                and a in self._spec
-                and self._spec[a].type is not None
+                and a in self._spec.flat
+                and self._spec.flat[a].type is not None
             ):
                 d_fp3 = Flopy3Data(
                     data=self._data.attrs[a],
-                    spec=self._spec[a],
+                    spec=self._spec.flat[a],
                     name=a,
                     modelname=self.parent,
                     modelgrid=self._grid,
@@ -214,12 +214,12 @@ class Flopy3Package(PackageInterface):
         for v in self._data.data_vars:
             if (
                 self._data.data_vars[v] is not None
-                and v in self._spec
-                and self._spec[v].type is not None
+                and v in self._spec.flat
+                and self._spec.flat[v].type is not None
             ):
                 d_fp3 = Flopy3Data(
                     data=self._data.data_vars[v],
-                    spec=self._spec[v],
+                    spec=self._spec.flat[v],
                     name=v,
                     modelname=self.parent,
                     modelgrid=self._grid,
@@ -274,7 +274,7 @@ class Flopy3Package(PackageInterface):
         return PlotUtilities._plot_package_helper(self, **kwargs)
 
     def export(self, f, **kwargs):
-        return package_export(f, self, **kwargs)
+        return export.utils.package_export(f, self, **kwargs)
 
 
 class Flopy3Data(DataInterface):
@@ -379,6 +379,22 @@ class Flopy3Data(DataInterface):
         if self.data_type == DataType.scalar:
             return False
         return True
+
+    def export(self, f, **kwargs):
+        if self._spec.type.__name__ == "ndarray":
+            if (
+                self.data_type == DataType.array2d
+                and len(self.array.shape) == 2
+                and self.array.shape[1] > 0
+            ):
+                return export.utils.array2d_export(f, self, **kwargs)
+            elif self.data_type == DataType.array3d:
+                return export.utils.array3d_export(f, self, **kwargs)
+            elif self.data_type == DataType.transient2d:
+                return export.utils.transient2d_export(f, self, **kwargs)
+            elif self.data_type == DataType.transientlist:
+                return export.utils.mflist_export(f, self, **kwargs)
+            return export.utils.transient2d_export(f, self, **kwargs)
 
 
 class Flopy3ListData(DataListInterface):

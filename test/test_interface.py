@@ -315,6 +315,7 @@ def test_flopy3_export():
     Path("output/flopy3_package/shape").mkdir(parents=True, exist_ok=True)
     Path("output/flopy3_model/netcdf").mkdir(parents=True, exist_ok=True)
     Path("output/flopy3_package/netcdf").mkdir(parents=True, exist_ok=True)
+    Path("output/flopy3_package/vtk").mkdir(parents=True, exist_ok=True)
 
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
 
@@ -332,13 +333,19 @@ def test_flopy3_export():
 
     # model netcdf export
     nc_mpth = Path("output/flopy3_model/netcdf/flopy3_model.nc")
-    # TODO: needs flopy3 fix
+    # TODO: needs flopy3 #2513
     # gwf3.export(f=nc_mpth)
 
     # package netcdf export
     nc_ppth = Path("output/flopy3_package/netcdf/flopy3_package.nc")
-    # TODO: needs flopy3 fix
+    # TODO: needs flopy3 #2513
     # dis3.export(f=nc_ppth)
+
+    for d in dis3.data_list:
+        print(d.name)
+        if d.array is not None:
+            vtk_pth = Path(f"output/flopy3_package/vtk/{d.name}.vtk")
+            # d.export(vtk_pth, name=d.name, fmt="vtk", binary=False)
 
 
 @pytest.mark.xfail(
