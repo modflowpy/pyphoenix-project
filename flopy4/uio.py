@@ -1,6 +1,6 @@
 """
-Core IO framework. Program interfaces can plug in bespoke
-load/write methods for particular components and formats.
+Unified IO framework. Program interfaces can plug in custom
+load/write routines for pairs of component class and format.
 
 Most of this module is stolen/simplified from astropy, at:
 - https://github.com/astropy/astropy/tree/main/astropy/io.
@@ -78,8 +78,8 @@ class IO(property):
 class IODescriptor:
     """Base class for file IO operations, implemented as descriptors."""
 
-    def __init__(self, instance, cls, op: Op, registry: Registry = None):
-        self._registry = registry
+    def __init__(self, instance, cls, op: Op, registry: Registry | None = None):
+        self._registry = registry or DEFAULT_REGISTRY
         self._instance = instance
         self._cls = cls
         self._op: Op = op
