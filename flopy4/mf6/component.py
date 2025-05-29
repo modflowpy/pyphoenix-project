@@ -5,8 +5,8 @@ from attrs import Attribute
 from modflow_devtools.dfn import Dfn, Var
 from xattree import xattree
 
-from flopy4.io import IOMethod, Loader, Writer
 from flopy4.mf6.spec import fields_dict
+from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS = {}
 """MF6 component registry."""
@@ -25,8 +25,8 @@ class Component(ABC, MutableMapping):
     children are also `Component`s, but mypy does not. TODO: fix??
     """
 
-    _load = IOMethod(Loader)  # type: ignore
-    _write = IOMethod(Writer)  # type: ignore
+    _load = IO(Loader)  # type: ignore
+    _write = IO(Writer)  # type: ignore
 
     @classmethod
     def __attrs_init_subclass__(cls):

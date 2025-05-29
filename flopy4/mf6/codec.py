@@ -3,10 +3,10 @@ import sys
 import numpy as np
 from jinja2 import Environment, PackageLoader
 
-from flopy4.io import DEFAULT_REGISTRY
 from flopy4.mf6 import filters
 from flopy4.mf6.component import Component
 from flopy4.mf6.spec import blocks_dict, fields_dict
+from flopy4.uio import DEFAULT_REGISTRY
 
 JINJA_ENV = Environment(
     loader=PackageLoader("flopy4.mf6"),
