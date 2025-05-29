@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
 from flopy.discretization import StructuredGrid
@@ -268,3 +270,20 @@ def test_ims_dfn():
     assert dfn["sln"] == Sln(abbr="ims", pattern="*")
     assert "complexity" in set(dfn["options"].keys())
     assert "inner_maximum" in set(dfn["linear"].keys())
+
+
+@pytest.mark.xfail(reason="TODO")
+def test_write_ascii(tmp_path):
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+    sim = Simulation(tdis=time, path=tmp_path)
+    gwf = Gwf(parent=sim, dis=grid)
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+
+    sim.write("ascii")
+
+    files = Path(tmp_path).glob("*")
+    assert "mfsim.nam" in files

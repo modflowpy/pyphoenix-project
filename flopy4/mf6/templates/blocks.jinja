@@ -1,0 +1,8 @@
+{% import 'macros.jinja' as macros with context %}
+{% for block_name, block_ in blocks.items() %}
+BEGIN {{ block_name }}
+{% for field in block_.values() %}
+{{ macros.field(field) }}
+{% endfor %}
+END {{ block_name }}
+{% endfor %}

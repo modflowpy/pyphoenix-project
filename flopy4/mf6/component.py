@@ -6,6 +6,7 @@ from modflow_devtools.dfn import Dfn, Var
 from xattree import xattree
 
 from flopy4.mf6.spec import fields_dict
+from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS = {}
 """MF6 component registry."""
@@ -13,8 +14,23 @@ COMPONENTS = {}
 
 @xattree
 class Component(ABC, MutableMapping):
+    """
+    Base class for MF6 components.
+
+    Notes
+    -----
+    All subclasses of `Component` must be decorated with `xattree`.
+
+    We use the `children` attribute provided by `xattree`. We know
+    children are also `Component`s, but mypy does not. TODO: fix??
+    """
+
+    _load = IO(Loader)  # type: ignore
+    _write = IO(Writer)  # type: ignore
+
     @classmethod
     def __attrs_init_subclass__(cls):
+        # add class to the component registry
         COMPONENTS[cls.__name__.lower()] = cls
 
     def __attrs_post_init__(self):
@@ -70,11 +86,11 @@ class Component(ABC, MutableMapping):
         )
 
     def load(self) -> None:
-        # TODO: load
+        self._load(format=format)
         for child in self.children.values():  # type: ignore
             child.load()
 
     def write(self) -> None:
-        # TODO: write
+        self._write(format=format)
         for child in self.children.values():  # type: ignore
             child.write()
