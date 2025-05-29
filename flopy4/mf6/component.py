@@ -26,8 +26,8 @@ class Component(ABC, MutableMapping):
     children are also `Component`s, but mypy does not. TODO: fix??
     """
 
-    _read = IOMethod(ComponentReader)  # type: ignore
-    _write = IOMethod(ComponentWriter)  # type: ignore
+    _load = IOMethod(Loader)  # type: ignore
+    _write = IOMethod(Writer)  # type: ignore
 
     @classmethod
     def __attrs_init_subclass__(cls):
