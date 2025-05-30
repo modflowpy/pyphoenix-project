@@ -13,7 +13,7 @@ JINJA_ENV = Environment(
     lstrip_blocks=True,
 )
 JINJA_ENV.filters["blocks"] = filters.blocks
-JINJA_ENV.filters["field_kind"] = filters.field_type
+JINJA_ENV.filters["field_type"] = filters.field_type
 JINJA_ENV.filters["field_value"] = filters.field_value
 JINJA_ENV.filters["array_delay"] = filters.array_delay
 JINJA_ENV.filters["array2string"] = filters.array2string
