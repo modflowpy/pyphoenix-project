@@ -1,10 +1,7 @@
 {% macro field(field) %}
 {% set kind = field|field_kind %}
 {% if kind == 'attr' %}
-{% if field.type|is_dict %}
-{{ record(field) }}
-{% else %}
-{{ scalar(field) }}
+{% if field.type|is_dict %}{{ record(field) }}{% else %}{{ scalar(field) }}
 {% endif %}
 {% elif kind in ['array', 'coord'] %}
 {{ array(field) }}
@@ -12,24 +9,22 @@
 {{ scalar(field) }}
 {% elif kind == 'child' %}
 {# TODO #}
-{% endif %}
+{% endif -%}
 {%- endmacro %}
 
-{% macro scalar(field) %}
-{% set value = field|fieldvalue %}
-{% if value is not none %}
-{{ field.name }} {{ value }}
-{% endif %}
+{% macro scalar(field) -%}
+{% set value = field|field_value %}
+{% if value is not none %}{{ field.name }} {{ value }}{% endif %}
 {%- endmacro %}
 
 {% macro keystring(field) %} {# union #}
-{% for item in (field|fieldvalue).items() %}
+{% for item in (field|field_value).items() %}
 {{ field(item) }}
 {% endfor %}
 {%- endmacro %}
 
 {% macro record(field) %}
-{% for item in field|fieldvalue %}
+{% for item in field|field_value %}
 {% if item.tagged %}{{ item.name }} {% endif %}{{ field(field) }}
 {% endfor %}
 {%- endmacro %}
@@ -37,24 +32,24 @@
 {% macro array(field, how="internal") %}
 {% if how == "layered constant" %}
 {{ field.name }} LAYERED
-{% for val in field|fieldvalue %}
+{% for val in field|field_value %}
 CONSTANT
 {% endfor %}
 {% elif how == "constant" %}
-{{ field.name }} CONSTANT {{ field|fieldvalue }}
+{{ field.name }} CONSTANT {{ field|field_value }}
 {% elif how == "layered" %}
 {% if layered %}
-{{ field.name }}{% for val in field|fieldvalue %} {{ val }}{% endfor %}
+{{ field.name }}{% for val in field|field_value %} {{ val }}{% endfor %}
 {% endif %}
 {% elif how == "internal" %}
 {{ field.name }} {{ internal_array(field) }}
 {% elif how == "external" %}
-{{ field.name}} OPEN/CLOSE {{ field|fieldvalue }}
+{{ field.name}} OPEN/CLOSE {{ field|field_value }}
 {% endif %}
 {%- endmacro %}
 
 {% macro internal_array(field) %}
-{% for chunk in field|fieldvalue|arraydelayed %}
+{% for chunk in field|field_value|array_delay %}
 {{ chunk|array2string }}
 {% endfor %}
 {%- endmacro %}

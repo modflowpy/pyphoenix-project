@@ -3,7 +3,13 @@ Wrap `xattree` and `attrs` specification utilities for MF6.
 These include field decorators and introspection functions.
 """
 
+import builtins
+import types
+from typing import Union, get_args, get_origin
+
+import numpy as np
 from attrs import NOTHING, Attribute
+from modflow_devtools.dfn import Field, FieldType
 
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
@@ -162,3 +168,63 @@ def fields_dict(cls) -> dict[str, Attribute]:
     """
     fields = flopy_fields_dict(cls)
     return {k: v for k, v in fields.items() if "block" in v.metadata}
+
+
+def get_dfn_field_type(attribute: Attribute) -> FieldType:
+    """
+    Get a `xattree` field's type as defined by the MODFLOW 6 input
+    definition language:
+    https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types
+
+    The type of the field is determined from `xattree` metadata.
+    """
+    if (xatmeta := attribute.metadata.get("xattree", None)) is None:
+        raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no xattree metadata.")
+    kind = xatmeta["kind"]
+    match kind:
+        case "child":
+            raise ValueError(f"Top-level field should not be a child: {attribute.name}")
+        case "array":
+            return "recarray"
+        case "coord":
+            return "recarray"
+        case "dim":
+            return "integer"
+        case "attr":
+            match attribute.type:
+                case builtins.str | np.str_:
+                    return "string"
+                case builtins.bool | np.bool:
+                    return "keyword"
+                case builtins.int | np.integer:
+                    return "integer"
+                case builtins.float | np.floating:
+                    return "double precision"
+
+                case t if (
+                    get_origin(t) in (Union, types.UnionType) and get_args(t)[-1] is types.NoneType
+                ):
+                    return "union"
+                case _:
+                    return "record"
+    raise ValueError(f"Could not map {attribute.name} to a valid MF6 type.")
+
+
+def to_dfn_field(attribute: Attribute) -> Field:
+    """
+    Convert a `xattree` field specification to a field as defined by the
+    MODFLOW 6 input definition language:
+    https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types.
+    """
+    if (xatmeta := attribute.metadata.get("xattree", None)) is None:
+        raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no xattree metadata.")
+    return Field(
+        name=attribute.name,
+        type=get_dfn_field_type(attribute),
+        shape=xatmeta.get("dims", None),
+        block=attribute.metadata.get("block", None),
+        default=attribute.default,
+        children={k: to_dfn_field(v) for k, v in fields_dict(attribute.type)}  # type: ignore
+        if attribute.metadata.get("kind", None) == "child"  # type: ignore
+        else None,  # type: ignore
+    )

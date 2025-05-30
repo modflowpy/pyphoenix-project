@@ -1,11 +1,10 @@
 from abc import ABC
 from collections.abc import MutableMapping
 
-from attrs import Attribute
-from modflow_devtools.dfn import Dfn, Var
+from modflow_devtools.dfn import Dfn, Field
 from xattree import xattree
 
-from flopy4.mf6.spec import fields_dict
+from flopy4.mf6.spec import fields_dict, to_dfn_field
 from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS = {}
@@ -30,11 +29,8 @@ class Component(ABC, MutableMapping):
 
     @classmethod
     def __attrs_init_subclass__(cls):
-        # add class to the component registry
         COMPONENTS[cls.__name__.lower()] = cls
-
-    def __attrs_post_init__(self):
-        self._dfn = self._get_dfn()
+        cls.dfn = cls.get_dfn()
 
     def __getitem__(self, key):
         return self.children[key]  # type: ignore
@@ -51,37 +47,22 @@ class Component(ABC, MutableMapping):
     def __len__(self):
         return len(self.children)  # type: ignore
 
-    @property
-    def dfn(self) -> Dfn:
-        """Return the component's definition."""
-        return self._dfn
-
-    def _get_dfn(self) -> Dfn:
-        def _to_dfn_spec(attribute: Attribute) -> Var:
-            return Var(
-                name=attribute.name,
-                type=attribute.type,
-                shape=attribute.metadata.get("dims", None),
-                block=attribute.metadata.get("block", None),
-                default=attribute.default,
-                children={k: _to_dfn_spec(v) for k, v in fields_dict(attribute.type)}  # type: ignore
-                if attribute.metadata.get("kind", None) == "child"  # type: ignore
-                else None,  # type: ignore
-            )
-
-        fields = {k: _to_dfn_spec(v) for k, v in fields_dict(self.__class__).items()}
-        blocks: dict[str, dict[str, Var]] = {}
-        for k, v in fields.items():
-            if (block := v.get("block", None)) is not None:
-                blocks.setdefault(block, {})[k] = v
+    @classmethod
+    def get_dfn(cls) -> Dfn:
+        fields = {field_name: to_dfn_field(field) for field_name, field in fields_dict(cls).items()}
+        blocks: dict[str, dict[str, Field]] = {}
+        for field_name, field in fields.items():
+            if (block := field.get("block", None)) is not None:
+                blocks.setdefault(block, {})[field_name] = field
             else:
-                blocks[k] = v
+                blocks[field_name] = field
+
         return Dfn(
-            name=self.name,  # type: ignore
-            advanced=getattr(self, "advanced_package", False),
-            multi=getattr(self, "multi_package", False),
-            ref=getattr(self, "sub_package", None),
-            sln=getattr(self, "solution_package", None),
+            name=cls.__name__.lower(),
+            advanced=getattr(cls, "advanced_package", False),
+            multi=getattr(cls, "multi_package", False),
+            ref=getattr(cls, "sub_package", None),
+            sln=getattr(cls, "solution_package", None),
             **blocks,
         )
 
