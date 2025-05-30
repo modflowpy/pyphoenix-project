@@ -2,37 +2,30 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
-from attrs import Attribute
 from jinja2 import pass_context
+from modflow_devtools.dfn import Dfn, Field
 from numpy.typing import NDArray
 
 
-def field_kind(field: Attribute) -> str:
-    """
-    Get a field's `xattree` kind. Kind is either:
+def blocks(dfn: Dfn) -> dict:
+    return {k: v for k, v in dfn.items() if k not in Dfn.__annotations__}
 
-    - 'child' for child fields
-    - 'array' for array fields
-    - 'coord' for coordinate array fields
-    - 'dim' for integer fields describing a dimension's size
-    - 'attr' for all other fields
+
+def field_type(field: Field) -> str:
     """
-    if (meta := field.metadata) is None:
-        raise TypeError(f"Field {field.name} has no metadata")
-    if (xatmeta := meta.get("xattree", None)) is None:
-        raise TypeError(f"Field {field.name} has no xattree metadata")
-    if "kind" not in xatmeta:
-        raise TypeError(f"Field {field.name} has no kind")
-    return xatmeta.get("kind") or "attr"
+    Get a field's type as defined by the MODFLOW 6 input definition language:
+    https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types
+    """
+    return field["type"]
 
 
 @pass_context
-def fieldvalue(ctx, field: Attribute):
-    """Get a field's value from the data tree via the template context."""
-    return ctx["data"].attrs.get(field.name) or ctx["data"].get(field.name)
+def field_value(ctx, field: Field):
+    """Get a field's value via the template context."""
+    return getattr(ctx["data"], field["name"])
 
 
-def arraydelayed(value: xr.DataArray):
+def array_delay(value: xr.DataArray):
     """Yield chunks (lines) from a Dask array."""
     # TODO: Determine a good chunk size,
     # because if the underlying array is only numpy, it will stay one block.
