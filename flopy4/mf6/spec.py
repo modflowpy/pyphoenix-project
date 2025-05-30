@@ -119,7 +119,7 @@ def array(
 Block = dict[str, Attribute]
 
 
-def _block_sort_key(item) -> int:
+def block_sort_key(item: tuple[str, dict]) -> int:
     k, _ = item
     if k == "options":
         return 0
@@ -153,7 +153,7 @@ def blocks_dict(cls) -> dict[str, Block]:
         if block not in blocks:
             blocks[block] = {}
         blocks[block][k] = v
-    return dict(sorted(blocks.items(), key=_block_sort_key))
+    return dict(sorted(blocks.items(), key=block_sort_key))
 
 
 def fields(cls) -> list[Attribute]:
