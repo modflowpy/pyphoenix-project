@@ -3,13 +3,21 @@ from typing import Any, Tuple
 import numpy as np
 import sparse
 from numpy.typing import NDArray
+from xarray import DataArray
 from xattree import get_xatspec
 
 from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
 
 
-def convert_array(value, self_, field) -> NDArray:
+# TODO: convert to a cattrs structuring hook so we don't have to
+# apply separately to all array fields?
+def structure_array(value, self_, field) -> NDArray:
+    """
+    Convert a sparse dictionary representation of an array to a
+    dense numpy array or a sparse COO array.
+    """
+
     if not isinstance(value, dict):
         # if not a dict, assume it's a numpy array
         # and let xarray deal with it if it isn't
@@ -91,3 +99,31 @@ def convert_array(value, self_, field) -> NDArray:
             # a[(nn,)] = v
 
     return final(a)
+
+
+def unstructure_array(value: DataArray) -> dict:
+    """
+    Convert a dense numpy array or a sparse COO array to a sparse
+    dictionary representation suitable for serialization into the
+    MF6 list-based input format.
+    """
+    # make sure dim 'kper' is present
+    if "kper" not in value.dims:
+        raise ValueError("array must have 'kper' dimension")
+
+    if isinstance(value.data, sparse.COO):
+        coords = value.coords
+        data = value.data
+    else:
+        coords = np.array(np.nonzero(value)).T  # type: ignore
+        data = value[tuple(coords.T)]  # type: ignore
+    if not coords.size:  # type: ignore
+        return {}
+    match value.ndim:
+        case 1:
+            return {k: v for k, v in zip(coords[:, 0], data)}  # type: ignore
+        case 2:
+            return {(k, j): v for (k, j), v in zip(coords, data)}  # type: ignore
+        case 3:
+            return {(k, i, j): v for (k, i, j), v in zip(coords, data)}  # type: ignore
+    return {}

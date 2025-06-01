@@ -17,38 +17,47 @@
 {% endmacro %}
 
 {% macro keystring(field) %}
-{% for item in (field|field_value).values() -%}
+{% for item in field.children.values() -%}
 {{ field(item) }}
 {%- endfor %}
 {% endmacro %}
 
 {% macro record(field) %}
-{% for item in (field|field_value).values() -%}
+{% for item in field.children.values() -%}
 {% if item.tagged %}{{ item.name }} {% endif %}{{ field(item) }}
 {%- endfor %}
 {% endmacro %}
 
-{% macro recarray(field, how="internal") %}
-{% if how == "layered constant" %}
-{{ field.name }} LAYERED
-{% for val in field|field_value %}
-CONSTANT
-{% endfor %}
-{%- elif how == "constant" %}
-{{ field.name }} CONSTANT {{ field|field_value }}
-{%- elif how == "layered" %}
-{% if layered %}
-{{ field.name }}{% for val in field|field_value %} {{ val }}{% endfor %}
-{% endif %}
-{%- elif how == "internal" %}
-{{ field.name }} {{ internal_array(field) }}
-{%- elif how == "external" %}
-{{ field.name}} OPEN/CLOSE {{ field|field_value }}
+{% macro recarray(field) %}
+{% set value = field|field_value %}
+{% if value|is_list %}
+{{ list(value) }}
+{% else %}
+{{ array(field.name, value, how=field|array_how) }}
 {% endif %}
 {% endmacro %}
 
-{% macro internal_array(field) %}
-{% for chunk in field|field_value|array_delay -%}
+{% macro array(name, value, how="internal") %}
+{{ name }}{% if "layered" in how %} LAYERED{% endif %}
+
+{% if how == "constant" %}
+CONSTANT {{ value.item() }}
+{% elif how == "layered constant" %}
+{% for layer in value -%}
+CONSTANT {{ layer.item() }}
+{%- endfor %}
+{% elif how == "internal" %}
+INTERNAL
+{% for chunk in value|array_chunks -%}
 {{ chunk|array2string }}
 {%- endfor %}
+{% elif how == "external" %}
+OPEN/CLOSE {{ value }}
+{% endif %}
+{% endmacro %}
+
+{% macro list(field) %}
+{% for item in field.children.values() %}
+{{ field(item) }}
+{% endfor %}
 {% endmacro %}

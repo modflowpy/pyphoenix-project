@@ -31,6 +31,8 @@ class Flopy3Model(ModelInterface):
         self._time = modeltime
         self._ims = ims
         self._plist = list()
+        self.type = "Model"
+        self.name = model.name  # type: ignore
 
         if self._model is None:
             raise Exception("Model Interface needs a model")

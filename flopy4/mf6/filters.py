@@ -1,3 +1,5 @@
+from collections.abc import Hashable, Mapping
+from io import StringIO
 from typing import Any
 
 import numpy as np
@@ -36,28 +38,74 @@ def field_value(ctx, field: Field):
     return getattr(ctx["data"], field["name"])
 
 
-def array_delay(value: xr.DataArray, chunks=None):
+def array_how(value: xr.DataArray) -> str:
+    return "internal"
+
+
+def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
     """
-    Yield chunks from an array. Each chunk becomes a line in the file.
-    If the array is not already chunked, it is chunked using the given
-    chunk size. If no chunk size is provided, the entire array becomes
-    a single chunk.
+    Yield chunks from an array of up to 3 dimensions. If the
+    array is not already chunked, split it into chunks of the
+    specified sizes, given as a dictionary mapping dimension
+    names to chunk sizes.
+
+    If chunk sizes are not specified, chunk the array with at
+    most 2 dimensions per chunk, where:
+
+    - If the array is 3D, assume the first dimension is the
+    vertical (i.e. layers) and the others horizontal (rows and
+    columns, in that order), and yield a chunk per layer, such
+    that an array with indices (k, i, j) becomes k chunks, each
+    of shape (i, j).
+
+    - If the array is 1D or 2D, yield it as a single chunk.
     """
+
     if value.chunks is None:
-        chunk_shape = chunks or {dim: size for dim, size in zip(value.dims, value.shape)}
-        value = value.chunk(chunk_shape)
+        if chunks is None:
+            match value.ndim:
+                case 1:
+                    # 1D array, single chunk
+                    chunks = {value.dims[0]: value.shape[0]}
+                case 2:
+                    # 2D array, single chunk
+                    chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
+                case 3:
+                    # 3D array, chunk for each layer
+                    chunks = {
+                        value.dims[0]: 1,
+                        value.dims[1]: value.shape[1],
+                        value.dims[2]: value.shape[2],
+                    }
+        value = value.chunk(chunks)
     for chunk in value.data.blocks:
         yield chunk.compute()
 
 
 def array2string(value: NDArray) -> str:
-    """Convert an array to a string."""
-    s = np.array2string(value, separator=" ")
-    if value.shape != ():
-        s = s[1:-1]  # remove brackets
-    return s.replace("'", "").replace('"', "")  # remove quotes
+    """
+    Convert an array to a string. The array can be 1D or 2D.
+    If the array is 1D, it is converted to a 1-line string,
+    with elements separated by whitespace. If the array is
+    2D, each row becomes a line in the string.
+    """
+    buffer = StringIO()
+    value = np.asarray(value)
+    if value.ndim > 2:
+        raise ValueError("Only 1D and 2D arrays are supported.")
+    if value.ndim == 1:
+        # add an axis to 1d arrays so np.savetxt writes elements on 1 line
+        value = value[None]
+    format = (
+        "%d"
+        if np.issubdtype(value.dtype, np.integer)
+        else "%f"
+        if np.issubdtype(value.dtype, np.floating)
+        else "%s"
+    )
+    np.savetxt(buffer, value, fmt=format, delimiter=" ")
+    return buffer.getvalue().strip()
 
 
-def is_dict(value: Any) -> bool:
-    """Check if the value is a dictionary."""
-    return isinstance(value, dict)
+def is_list(value: Any) -> bool:
+    return isinstance(value, list)
