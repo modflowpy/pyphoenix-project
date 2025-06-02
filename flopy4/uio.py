@@ -28,7 +28,7 @@ class Registry:
             iter(
                 [
                     fn
-                    for ((fmt, cls_), fn) in self._loaders.items()
+                    for (cls_, fmt), fn in self._loaders.items()
                     if fmt == format and issubclass(cls, cls_)
                 ]
             )
@@ -39,7 +39,7 @@ class Registry:
             iter(
                 [
                     fn
-                    for ((fmt, cls_), fn) in self._writers.items()
+                    for (cls_, fmt), fn in self._writers.items()
                     if fmt == format and issubclass(cls, cls_)
                 ]
             )
@@ -48,18 +48,20 @@ class Registry:
     def register_loader(self, cls, format, function):
         if format in self._loaders:
             raise ValueError(f"Loader for format {format} already registered.")
-        self._loaders[cls, format] = (cls, function)
+        self._loaders[cls, format] = function
 
     def register_writer(self, cls, format, function):
         if format in self._writers:
             raise ValueError(f"Writer for format {format} already registered.")
-        self._writers[cls, format] = (cls, function)
+        self._writers[cls, format] = function
 
-    def load(self, cls, *args, format=None, **kwargs):
-        return self.get_loader(cls, format)(*args, **kwargs)
+    def load(self, cls, instance, *args, format=None, **kwargs):
+        _load = self.get_loader(cls, format)
+        _load(instance, *args, **kwargs)
 
-    def write(self, cls, *args, format=None, **kwargs):
-        return self.get_writer(cls, format)(*args, **kwargs)
+    def write(self, cls, instance, *args, format=None, **kwargs):
+        _write = self.get_writer(cls, format)
+        _write(instance, *args, **kwargs)
 
 
 DEFAULT_REGISTRY = Registry()
@@ -103,17 +105,17 @@ class Loader(IODescriptor):
     """Descriptor for loading data from file."""
 
     def __init__(self, instance, cls):
-        super().__init__(instance, cls, "load", registry=None)
+        super().__init__(instance, cls, "load", registry=DEFAULT_REGISTRY)
 
     def __call__(self, *args, **kwargs) -> None:
-        return self.registry.load(self._cls, *args, **kwargs)
+        return self.registry.load(self._cls, self._instance, *args, **kwargs)
 
 
 class Writer(IODescriptor):
     """Descriptor for writing data to file."""
 
     def __init__(self, instance, cls):
-        super().__init__(instance, cls, "write", registry=None)
+        super().__init__(instance, cls, "write", registry=DEFAULT_REGISTRY)
 
     def __call__(self, *args, **kwargs) -> None:
-        return self.registry.write(self._cls, *args, **kwargs)
+        return self.registry.write(self._cls, self._instance, *args, **kwargs)

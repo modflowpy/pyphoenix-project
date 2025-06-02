@@ -1,8 +1,9 @@
 from os import PathLike
 from pathlib import Path
+from typing import ClassVar
 
 from flopy.discretization.modeltime import ModelTime
-from modflow_devtools.misc import run_cmd, set_dir
+from modflow_devtools.misc import cd, run_cmd
 from xattree import field, xattree
 
 from flopy4.mf6.component import Component
@@ -29,6 +30,7 @@ class Simulation(Component):
     # TODO: decorator for components bound
     # to some directory or file path?
     path: Path = field(default=None)
+    filename: ClassVar[str] = "mfsim.nam"
 
     @property
     def time(self) -> ModelTime:
@@ -38,10 +40,18 @@ class Simulation(Component):
         """Run the simulation using the given executable."""
         if self.path is None:
             raise ValueError(f"Simulation {self.name} has no workspace path.")
-        with set_dir(self.path):
+        with cd(self.path):
             stdout, stderr, retcode = run_cmd(exe, verbose=verbose)
             if retcode != 0:
                 raise RuntimeError(
                     f"Simulation {self.name}: {exe} failed to run with returncode "  # type: ignore
                     f"{retcode}, and error message:\n\n{stdout + stderr} "
                 )
+
+    def load(self, format):
+        with cd(self.path):
+            super().load(format)
+
+    def write(self, format):
+        with cd(self.path):
+            super().write(format)

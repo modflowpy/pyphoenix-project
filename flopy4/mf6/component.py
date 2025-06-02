@@ -66,12 +66,12 @@ class Component(ABC, MutableMapping):
             **blocks,
         )
 
-    def load(self) -> None:
+    def load(self, format: str) -> None:
         self._load(format=format)
         for child in self.children.values():  # type: ignore
-            child.load()
+            child.load(format)
 
-    def write(self) -> None:
+    def write(self, format: str) -> None:
         self._write(format=format)
         for child in self.children.values():  # type: ignore
-            child.write()
+            child.write(format)
