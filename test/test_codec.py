@@ -1,5 +1,6 @@
-from flopy4.mf6.codec import dumps
 import pytest
+
+from flopy4.mf6.codec import dumps
 
 
 def test_dumps_ic():
