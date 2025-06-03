@@ -7,8 +7,8 @@ from flopy4.uio import DEFAULT_REGISTRY
 
 def _default_filename(component: Component) -> str:
     """Default path for a component, based on its name."""
-    if hasattr(component, "filename") and component.filename is not None:
-        return component.filename
+    if filename := component.filename:
+        return filename
     name = component.name  # type: ignore
     cls_name = component.__class__.__name__.lower()
     return f"{name}.{cls_name}"

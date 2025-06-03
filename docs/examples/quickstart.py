@@ -13,7 +13,7 @@ name = "quickstart"
 workspace = Path(__file__).parent / name
 time = ModelTime(perlen=[1.0], nstp=[1])
 grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
-sim = Simulation(name=name, path=workspace, tdis=time)
+sim = Simulation(name=name, workspace=workspace, tdis=time)
 ims = Ims(parent=sim)
 gwf_name = "mymodel"
 gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)

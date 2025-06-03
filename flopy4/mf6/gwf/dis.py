@@ -75,6 +75,7 @@ class Dis(Package):
     )
 
     def __attrs_post_init__(self):
+        super().__attrs_post_init__()
         self.nnodes = self.ncol * self.nrow * self.nlay
 
     def to_grid(self) -> StructuredGrid:
