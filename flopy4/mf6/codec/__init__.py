@@ -3,6 +3,8 @@ from os import PathLike
 from typing import Any
 
 import numpy as np
+import xattree
+from cattrs import Converter
 from jinja2 import Environment, PackageLoader
 
 from flopy4.mf6 import filters
@@ -29,13 +31,13 @@ _PRINT_OPTIONS = {
     "threshold": sys.maxsize,
 }
 
+_CONVERTER = Converter()
+_CONVERTER.register_unstructure_hook_factory(
+    lambda cls: xattree.has(cls), lambda cls: xattree.asdict
+)
 
-def unstructure(data):
-    # TODO unstructure arrays into sparse dicts
-    # TODO combine OC fields into list input as defined in the MF6 dfn
-    # TODO return a dictionary instead of the component itself, then
-    # update filters to use dictinoary access instead of getattr()
-    return data
+# TODO unstructure arrays into sparse dicts
+# TODO combine OC fields into list input as defined in the MF6 dfn
 
 
 def loads(data: str) -> Any:
@@ -51,12 +53,12 @@ def load(path: str | PathLike) -> Any:
 def dumps(data) -> str:
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
     with np.printoptions(**_PRINT_OPTIONS):  # type: ignore
-        return template.render(dfn=type(data).dfn, data=unstructure(data))
+        return template.render(dfn=type(data).dfn, data=_CONVERTER.unstructure(data))
 
 
 def dump(data, path: str | PathLike) -> None:
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
-    iterator = template.generate(dfn=type(data).dfn, data=unstructure(data))
+    iterator = template.generate(dfn=type(data).dfn, data=_CONVERTER.unstructure(data))
     with np.printoptions(**_PRINT_OPTIONS), open(path, "w") as f:  # type: ignore
         f.writelines(iterator)
 

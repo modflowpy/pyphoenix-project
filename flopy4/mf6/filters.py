@@ -35,7 +35,7 @@ def field_type(field: Field) -> str:
 @pass_context
 def field_value(ctx, field: Field):
     """Get a field's value via the template context."""
-    return getattr(ctx["data"], field["name"])
+    return ctx["data"][field["name"]]
 
 
 def array_how(value: xr.DataArray) -> str:

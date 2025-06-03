@@ -4,7 +4,7 @@ import sys
 
 import pytest
 from modflow_devtools.markers import requires_exe
-from modflow_devtools.misc import run_cmd
+from modflow_devtools.misc import cd, run_cmd
 
 
 @pytest.mark.slow
@@ -16,7 +16,7 @@ def test_scripts(example_script):
 
 @pytest.mark.slow
 @requires_exe("jupytext")
-def test_notebooks(example_script):
+def test_notebooks(example_script, tmp_path):
     args = [
         "jupytext",
         "--from",
@@ -26,5 +26,6 @@ def test_notebooks(example_script):
         "--execute",
         example_script,
     ]
-    stdout, stderr, retcode = run_cmd(*args, verbose=True)
-    assert not retcode, stdout + stderr
+    with cd(tmp_path):
+        out, err, ret = run_cmd(*args, verbose=True)
+    assert not ret, out + err
