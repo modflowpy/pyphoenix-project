@@ -12,8 +12,9 @@
 {% endmacro %}
 
 {% macro scalar(field) %}
+{% set type = field|field_type %}
 {% set value = field|field_value %}
-{% if value is not none %}{{ field.name }} {{ value }}{% endif %}
+{% if value is not none %}{{ field.name.upper() }}{% if type != 'keyword' %} {{ value }}{% endif %}{% endif %}
 {% endmacro %}
 
 {% macro keystring(field) %}
@@ -24,7 +25,7 @@
 
 {% macro record(field) %}
 {% for item in field.children.values() -%}
-{% if item.tagged %}{{ item.name }} {% endif %}{{ field(item) }}
+{% if item.tagged %}{{ item.name.upper() }} {% endif %}{{ field(item) }}
 {%- endfor %}
 {% endmacro %}
 
@@ -38,7 +39,7 @@
 {% endmacro %}
 
 {% macro array(name, value, how="internal") %}
-{{ name }}{% if "layered" in how %} LAYERED{% endif %}
+{{ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
 CONSTANT {{ value.item() }}
