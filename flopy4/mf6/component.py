@@ -1,5 +1,6 @@
 from abc import ABC
 from collections.abc import MutableMapping
+from pathlib import Path
 
 from modflow_devtools.dfn import Dfn, Field
 from xattree import xattree
@@ -32,10 +33,23 @@ class Component(ABC, MutableMapping):
 
     filename: str = field(default=None)
 
+    @property
+    def path(self) -> Path:
+        return Path.cwd() / self.filename
+
+    def _default_filename(self) -> str:
+        name = self.name  # type: ignore
+        cls_name = self.__class__.__name__.lower()
+        return f"{name}.{cls_name}"
+
     @classmethod
     def __attrs_init_subclass__(cls):
         COMPONENTS[cls.__name__.lower()] = cls
         cls.dfn = cls.get_dfn()
+
+    def __attrs_post_init__(self):
+        if not self.filename:
+            self.filename = self._default_filename()
 
     def __getitem__(self, key):
         return self.children[key]  # type: ignore

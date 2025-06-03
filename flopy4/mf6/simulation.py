@@ -1,12 +1,11 @@
 from os import PathLike
-from pathlib import Path
 from warnings import warn
 
 from flopy.discretization.modeltime import ModelTime
 from modflow_devtools.misc import cd, run_cmd
 from xattree import xattree
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.context import Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
@@ -23,29 +22,20 @@ def convert_time(value):
 
 
 @xattree
-class Simulation(Component):
+class Simulation(Context):
     models: dict[str, Model] = field()
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()
     tdis: Tdis = field(converter=convert_time)
-    workspace: Path = field(default=None)
-    filename: str = field(default="mfsim.nam")
+    filename: str = field(default="mfsim.nam", init=False)
 
     def __attrs_post_init__(self):
-        super().__attrs_post_init__()
         if self.filename != "mfsim.nam":
             warn(
                 "Simulation filename must be 'mfsim.nam'.",
                 UserWarning,
             )
             self.filename = "mfsim.nam"
-
-    @property
-    def path(self) -> Path:
-        """Return the path to the simulation namefile."""
-        if self.workspace is None:
-            raise ValueError("Simulation has no workspace path.")
-        return Path(self.workspace).expanduser().resolve() / self.filename
 
     @property
     def time(self) -> ModelTime:
@@ -66,10 +56,8 @@ class Simulation(Component):
 
     def load(self, format="ascii"):
         """Load the simulation in the specified format."""
-        with cd(self.workspace):
-            super().load(format)
+        super().load(format)
 
     def write(self, format="ascii"):
         """Write the simulation in the specified format."""
-        with cd(self.workspace):
-            super().write(format)
+        super().write(format)

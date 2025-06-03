@@ -1,5 +1,6 @@
 import re
 from typing import Optional
+from warnings import warn
 
 import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
@@ -332,7 +333,7 @@ class Flopy3Data(DataInterface):
                         return DataType.array3d
             # TODO: boundname, auxvar arrays of strings?
             case _:
-                raise Exception(f"UNMATCHED data_type {self._name}: {self._spec.type.__name__}")
+                warn(f"UNMATCHED data_type {self._name}: {self._spec.type.__name__}", UserWarning)
 
     @property
     def dtype(self):
