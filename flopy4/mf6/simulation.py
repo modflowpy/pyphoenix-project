@@ -44,20 +44,20 @@ class Simulation(Context):
 
     def run(self, exe: str | PathLike = "mf6", verbose: bool = False) -> None:
         """Run the simulation using the given executable."""
-        if self.workspace is None:
-            raise ValueError(f"Simulation {self.name} has no workspace path.")
         with cd(self.workspace):
-            stdout, stderr, retcode = run_cmd(exe, verbose=verbose)
-            if retcode != 0:
+            out, err, ret = run_cmd(exe, verbose=verbose)
+            if ret != 0:
                 raise RuntimeError(
-                    f"Simulation {self.name}: {exe} failed to run with returncode "  # type: ignore
-                    f"{retcode}, and error message:\n\n{stdout + stderr} "
+                    f"Simulation {self.name}: {exe} failed with "  # type: ignore
+                    f"return code {ret}, output:\n\n{out + err} "
                 )
 
     def load(self, format="ascii"):
         """Load the simulation in the specified format."""
-        super().load(format)
+        with cd(self.workspace):
+            super().load(format)
 
     def write(self, format="ascii"):
         """Write the simulation in the specified format."""
-        super().write(format)
+        with cd(self.workspace):
+            super().write(format)

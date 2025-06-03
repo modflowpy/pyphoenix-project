@@ -37,7 +37,7 @@ def quickstart_model():
     return gwf
 
 
-def test_flopy3_model():
+def test_flopy3_model(tmp_path):
     from flopy.mbase import ModelInterface
     from flopy.pakbase import PackageInterface
 
@@ -114,12 +114,12 @@ def test_flopy3_model():
             print(f"data_type: {d.data_type}")
             print(f"array: {d.array}\n")
 
-    bpth = Path("output/flopy3_model/flopy3_model")
-    Path("output/flopy3_model").mkdir(parents=True, exist_ok=True)
+    bpth = Path(tmp_path) / "flopy3_model" / "flopy3_model"
+    (Path(tmp_path) / "flopy3_model").mkdir(parents=True, exist_ok=True)
     gwf3.plot(filename_base=bpth)
 
 
-def test_flopy3_package():
+def test_flopy3_package(tmp_path):
     from flopy.mbase import ModelInterface
     from flopy.pakbase import PackageInterface
 
@@ -236,12 +236,12 @@ def test_flopy3_package():
             if di.name == k:
                 assert np.all(np.equal(di.array, v))
 
-    bpth = Path("output/flopy3_package/flopy3_package")
-    Path("output/flopy3_package").mkdir(parents=True, exist_ok=True)
+    bpth = Path(tmp_path) / "flopy3_package" / "flopy3_package"
+    (Path(tmp_path) / "flopy3_package").mkdir(parents=True, exist_ok=True)
     dis3.plot(filename_base=bpth)
 
 
-def norun_test_flopy3_cbd_small():
+def norun_test_flopy3_cbd_small(tmp_path):
     import sys
 
     sys.path.append("/home/mjreno/.clone/usgs/flopy/autotest")
@@ -262,13 +262,13 @@ def norun_test_flopy3_cbd_small():
         dis=dis,
         dims=dims,
     )
-    bpth = Path("output/flopy3_cbd_small/flopy3_cbd_small")
-    Path("output/flopy3_cbd_small").mkdir(parents=True, exist_ok=True)
+    bpth = Path(tmp_path) / "flopy3_cbd_small" / "flopy3_cbd_small"
+    (Path(tmp_path) / "flopy3_cbd_small").mkdir(parents=True, exist_ok=True)
     gwf3 = Flopy3Model(model=gwf, modelgrid=cbd_small, modeltime=time)
     gwf3.plot(filename_base=bpth)
 
 
-def test_flopy3_grid2():
+def test_flopy3_grid2(tmp_path):
     lx = 5.0
     lz = 1.0
     nlay = 1
@@ -303,18 +303,18 @@ def test_flopy3_grid2():
         dis=dis,
         dims=dims,
     )
-    bpth = Path("output/flopy3_grid2/flopy3_grid2")
-    Path("output/flopy3_grid2").mkdir(parents=True, exist_ok=True)
+    bpth = Path(tmp_path) / "flopy3_grid2" / "flopy3_grid2"
+    (Path(tmp_path) / "flopy3_grid2").mkdir(parents=True, exist_ok=True)
     gwf3 = Flopy3Model(model=gwf, modeltime=time)
     gwf3.plot(filename_base=bpth)
 
 
-def test_flopy3_export():
+def test_flopy3_export(tmp_path):
     # see flopy test_export.py test_export_output()
-    Path("output/flopy3_model/shape").mkdir(parents=True, exist_ok=True)
-    Path("output/flopy3_package/shape").mkdir(parents=True, exist_ok=True)
-    Path("output/flopy3_model/netcdf").mkdir(parents=True, exist_ok=True)
-    Path("output/flopy3_package/netcdf").mkdir(parents=True, exist_ok=True)
+    (Path(tmp_path) / "flopy3_model" / "shape").mkdir(parents=True, exist_ok=True)
+    (Path(tmp_path) / "flopy3_package/shape").mkdir(parents=True, exist_ok=True)
+    (Path(tmp_path) / "flopy3_model/netcdf").mkdir(parents=True, exist_ok=True)
+    (Path(tmp_path) / "flopy3_package/netcdf").mkdir(parents=True, exist_ok=True)
 
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
 
@@ -323,20 +323,20 @@ def test_flopy3_export():
     dis3 = Flopy3Package(gwf.dis, model=gwf3)
 
     # model shapefile export
-    shp_mpth = Path("output/flopy3_model/shape/flopy3_model.shp")
+    shp_mpth = Path(tmp_path / "flopy3_model" / "shape" / "flopy3_model.shp")
     gwf3.export(f=shp_mpth)
 
     # package shapefile export
-    shp_ppth = Path("output/flopy3_package/shape/flopy3_package.shp")
+    shp_ppth = Path(tmp_path / "flopy3_package" / "shape" / "flopy3_package.shp")
     dis3.export(f=shp_ppth)
 
     # model netcdf export
-    nc_mpth = Path("output/flopy3_model/netcdf/flopy3_model.nc")
+    nc_mpth = Path(tmp_path / "flopy3_model" / "netcdf" / "flopy3_model.nc")
     # TODO: needs flopy3 fix
     # gwf3.export(f=nc_mpth)
 
     # package netcdf export
-    nc_ppth = Path("output/flopy3_package/netcdf/flopy3_package.nc")
+    nc_ppth = Path(tmp_path / "flopy3_package" / "netcdf" / "flopy3_package.nc")
     # TODO: needs flopy3 fix
     # dis3.export(f=nc_ppth)
 
