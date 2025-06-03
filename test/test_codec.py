@@ -14,19 +14,10 @@ def test_dumps_ic():
         export_array_netcdf=True,
     )
 
-    # TODO figure out how to adapt simulation_data
-    # and get this working, then compare results?
-    # old_gwf = Flopy3Model(model=gwf)
-    # old_ic = ModflowGwfic(
-    #     old_gwf,
-    #     save_flows=True,
-    #     save_initial_conditions=True,
-    #     export_array_ascii=True,
-    #     export_array_netcdf=True,
-    # )
-
     result = dumps(ic)
+    print()
     print(result)
+    print()
     assert result
 
 
