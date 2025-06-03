@@ -4,7 +4,7 @@ from flopy.discretization.structuredgrid import StructuredGrid
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converters import convert_array
+from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -42,31 +42,31 @@ class Dis(Package):
         block="griddata",
         default=1.0,
         dims=("ncol",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     delc: NDArray[np.floating] = array(
         block="griddata",
         default=1.0,
         dims=("nrow",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     top: NDArray[np.floating] = array(
         block="griddata",
         default=1.0,
         dims=("nrow", "ncol"),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.floating] = array(
         block="griddata",
         default=0.0,
         dims=("nlay", "nrow", "ncol"),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     idomain: NDArray[np.integer] = array(
         block="griddata",
         default=1,
         dims=("nlay", "nrow", "ncol"),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     nnodes: int = dim(
         coord="node",

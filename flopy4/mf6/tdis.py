@@ -7,7 +7,7 @@ from flopy.discretization.modeltime import ModelTime
 from numpy.typing import NDArray
 from xattree import ROOT, xattree
 
-from flopy4.mf6.converters import convert_array
+from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -32,19 +32,19 @@ class Tdis(Package):
         block="perioddata",
         default=1.0,
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     nstp: NDArray[np.integer] = array(
         block="perioddata",
         default=1,
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     tsmult: NDArray[np.floating] = array(
         block="perioddata",
         default=1.0,
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
 
     def to_time(self) -> ModelTime:

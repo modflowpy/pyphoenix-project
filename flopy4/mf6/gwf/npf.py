@@ -6,7 +6,7 @@ from attrs import Converter, define
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converters import convert_array
+from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -51,47 +51,47 @@ class Npf(Package):
         block="griddata",
         dims=("nnodes",),
         default=0,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     k: NDArray[np.floating] = array(
         block="griddata",
         dims=("nnodes",),
         default=1.0,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     k22: Optional[NDArray[np.floating]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     k33: Optional[NDArray[np.floating]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     angle1: Optional[NDArray[np.floating]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     angle2: Optional[NDArray[np.floating]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     angle3: Optional[NDArray[np.floating]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     wetdry: Optional[NDArray[np.floating]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )

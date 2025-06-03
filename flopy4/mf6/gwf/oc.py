@@ -6,7 +6,7 @@ from attrs import Converter, define
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converters import convert_array
+from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 from flopy4.utils import to_path
@@ -55,26 +55,26 @@ class Oc(Package):
         block="perioddata",
         default="all",
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     save_budget: Optional[NDArray[np.object_]] = array(
         Steps,
         block="perioddata",
         default="all",
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     print_head: Optional[NDArray[np.object_]] = array(
         Steps,
         block="perioddata",
         default="all",
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     print_budget: Optional[NDArray[np.object_]] = array(
         Steps,
         block="perioddata",
         default="all",
         dims=("nper",),
-        converter=Converter(convert_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
