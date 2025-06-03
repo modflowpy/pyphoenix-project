@@ -275,7 +275,7 @@ def test_ims_dfn():
 def test_write_ascii(tmp_path):
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
-    sim = Simulation(tdis=time, path=tmp_path)
+    sim = Simulation(tdis=time, workspace=tmp_path)
     # TODO fix errors
     # gwf = Gwf(parent=sim, dis=grid)
     # ic = Ic(parent=gwf)
@@ -283,7 +283,7 @@ def test_write_ascii(tmp_path):
     # npf = Npf(parent=gwf)
     # chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
 
-    sim.write("ascii")
+    sim.write()
 
     files = list(Path(tmp_path).glob("*"))
     file_names = [f.name for f in files]

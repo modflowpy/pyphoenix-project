@@ -1,15 +1,15 @@
 from os import PathLike
-from pathlib import Path
-from typing import ClassVar
+from warnings import warn
 
 from flopy.discretization.modeltime import ModelTime
 from modflow_devtools.misc import cd, run_cmd
-from xattree import field, xattree
+from xattree import xattree
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.context import Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
+from flopy4.mf6.spec import field
 from flopy4.mf6.tdis import Tdis
 
 
@@ -22,25 +22,31 @@ def convert_time(value):
 
 
 @xattree
-class Simulation(Component):
+class Simulation(Context):
     models: dict[str, Model] = field()
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()
     tdis: Tdis = field(converter=convert_time)
-    # TODO: decorator for components bound
-    # to some directory or file path?
-    path: Path = field(default=None)
-    filename: ClassVar[str] = "mfsim.nam"
+    filename: str = field(default="mfsim.nam", init=False)
+
+    def __attrs_post_init__(self):
+        if self.filename != "mfsim.nam":
+            warn(
+                "Simulation filename must be 'mfsim.nam'.",
+                UserWarning,
+            )
+            self.filename = "mfsim.nam"
 
     @property
     def time(self) -> ModelTime:
+        """Return the simulation time discretization."""
         return self.tdis.to_time()
 
     def run(self, exe: str | PathLike = "mf6", verbose: bool = False) -> None:
         """Run the simulation using the given executable."""
-        if self.path is None:
+        if self.workspace is None:
             raise ValueError(f"Simulation {self.name} has no workspace path.")
-        with cd(self.path):
+        with cd(self.workspace):
             stdout, stderr, retcode = run_cmd(exe, verbose=verbose)
             if retcode != 0:
                 raise RuntimeError(
@@ -48,10 +54,10 @@ class Simulation(Component):
                     f"{retcode}, and error message:\n\n{stdout + stderr} "
                 )
 
-    def load(self, format):
-        with cd(self.path):
-            super().load(format)
+    def load(self, format="ascii"):
+        """Load the simulation in the specified format."""
+        super().load(format)
 
-    def write(self, format):
-        with cd(self.path):
-            super().write(format)
+    def write(self, format="ascii"):
+        """Write the simulation in the specified format."""
+        super().write(format)
