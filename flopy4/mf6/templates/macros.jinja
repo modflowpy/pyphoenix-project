@@ -50,7 +50,7 @@ OPEN/CLOSE {{ value }}
 {% endif %}
 {% endmacro %}
 
-{% macro list(block_name, block, transient=False) %}
+{% macro list(block_name, block, stress=False) %}
 {#
 from mf6's perspective, a list block (e.g. period data)
 always has just one variable, whose elements might be
@@ -66,7 +66,7 @@ an array. we need to expand this into a block for
 each stress period.
 #}
 {% set d = data[block_name] %}
-{% if transient %}
+{% if stress %}
 {% for kper, value in d.items() %}
 BEGIN {{ block_name.upper() }} {{ kper }}
 {% for line in value %}
