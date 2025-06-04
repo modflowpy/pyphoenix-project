@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 import numpy as np
 from attrs import Converter, define
-from modflow_devtools.dfn import Dfn, Field
+from modflow_devtools.dfn import Field
 from numpy.typing import NDArray
 from xattree import xattree
 
@@ -111,7 +111,7 @@ class Oc(Package):
     format: Optional[Format] = field(block="options", default=None, init=False)
     save_head: Optional[NDArray[np.object_]] = array(
         Steps,
-        block="perioddata",
+        block="period",
         default="all",
         dims=("nper",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
@@ -119,7 +119,7 @@ class Oc(Package):
     )
     save_budget: Optional[NDArray[np.object_]] = array(
         Steps,
-        block="perioddata",
+        block="period",
         default="all",
         dims=("nper",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
@@ -127,7 +127,7 @@ class Oc(Package):
     )
     print_head: Optional[NDArray[np.object_]] = array(
         Steps,
-        block="perioddata",
+        block="period",
         default="all",
         dims=("nper",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
@@ -135,19 +135,20 @@ class Oc(Package):
     )
     print_budget: Optional[NDArray[np.object_]] = array(
         Steps,
-        block="perioddata",
+        block="period",
         default="all",
         dims=("nper",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         reader="urword",
     )
 
-    @classmethod
-    def get_dfn(cls) -> Dfn:
-        """Generate the component's MODFLOW 6 definition."""
-        dfn = super().get_dfn()
-        for field_name in list(dfn["perioddata"].keys()):
-            dfn["perioddata"].pop(field_name)
-        dfn["perioddata"]["saverecord"] = _oc_action_field("save")
-        dfn["perioddata"]["printrecord"] = _oc_action_field("print")
-        return dfn
+    # original DFN
+    # @classmethod
+    # def get_dfn(cls) -> Dfn:
+    #     """Generate the component's MODFLOW 6 definition."""
+    #     dfn = super().get_dfn()
+    #     for field_name in list(dfn["perioddata"].keys()):
+    #         dfn["perioddata"].pop(field_name)
+    #     dfn["perioddata"]["saverecord"] = _oc_action_field("save")
+    #     dfn["perioddata"]["printrecord"] = _oc_action_field("print")
+    #     return dfn

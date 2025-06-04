@@ -146,52 +146,33 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 def unstructure_oc(value: Any) -> dict[str, Any]:
     data = xattree.asdict(value)
     for block_name, block in get_blocks(value.dfn).items():
-        if block_name == "perioddata":
-            # Unstructure all four arrays
-            save_head = unstructure_array(data.get("save_head", {}))
-            save_budget = unstructure_array(data.get("save_budget", {}))
-            print_head = unstructure_array(data.get("print_head", {}))
-            print_budget = unstructure_array(data.get("print_budget", {}))
+        if block_name == "period":
+            # Dynamically collect all recarray fields in perioddata block
+            array_fields = []
+            for field_name, field in block.items():
+                # Try to split field_name into action and kind, e.g. save_head -> ("save", "head")
+                action, rtype = field_name.split("_")
+                array_fields.append((action, rtype, field_name))
 
-            # Collect all unique periods
+            # Unstructure all arrays and collect all unique periods
+            arrays = {}
             all_periods = set()  # type: ignore
-            for d in (save_head, save_budget, print_head, print_budget):
-                if isinstance(d, dict):
-                    all_periods.update(d.keys())
+            for action, rtype, field_name in array_fields:
+                arr = unstructure_array(data.get(field_name, {}))
+                arrays[(action, rtype)] = arr
+                if isinstance(arr, dict):
+                    all_periods.update(arr.keys())
             all_periods = sorted(all_periods)  # type: ignore
 
-            saverecord = {}  # type: ignore
-            printrecord = {}  # type: ignore
+            perioddata = {}  # type: ignore
             for kper in all_periods:
-                # Save head
-                if kper in save_head:
-                    v = save_head[kper]
-                    if kper not in saverecord:
-                        saverecord[kper] = []
-                    saverecord[kper].append({"action": "save", "type": "head", "ocsetting": v})
-                # Save budget
-                if kper in save_budget:
-                    v = save_budget[kper]
-                    if kper not in saverecord:
-                        saverecord[kper] = []
-                    saverecord[kper].append({"action": "save", "type": "budget", "ocsetting": v})
-                # Print head
-                if kper in print_head:
-                    v = print_head[kper]
-                    if kper not in printrecord:
-                        printrecord[kper] = []
-                    printrecord[kper].append({"action": "print", "type": "head", "ocsetting": v})
-                # Print budget
-                if kper in print_budget:
-                    v = print_budget[kper]
-                    if kper not in printrecord:
-                        printrecord[kper] = []
-                    printrecord[kper].append({"action": "print", "type": "budget", "ocsetting": v})
+                for (action, rtype), arr in arrays.items():
+                    if kper in arr:
+                        if kper not in perioddata:
+                            perioddata[kper] = []
+                        perioddata[kper].append((action, rtype, arr[kper]))
 
-            data["saverecord"] = saverecord
-            data["printrecord"] = printrecord
-            data["save"] = "save"
-            data["print"] = "print"
+            data["period"] = perioddata
         else:
             for field_name, field in block.items():
                 # unstructure arrays destined for list-based input

@@ -1,5 +1,5 @@
 {% import 'macros.jinja' as macros with context %}
-{% for block_name, block_ in (dfn|blocks).items() %}
+{% for block_name, block_ in (dfn|dict_blocks).items() %}
 BEGIN {{ block_name.upper() }}
 {% for field in block_.values() -%}
 {{ macros.field(field) }}
@@ -7,3 +7,7 @@ BEGIN {{ block_name.upper() }}
 END {{ block_name.upper() }}
 
 {% endfor %}
+
+{% for block_name, block_ in (dfn|list_blocks).items() -%}
+{{ macros.list(block_name, block_) }}
+{%- endfor%}

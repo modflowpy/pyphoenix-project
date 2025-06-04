@@ -21,7 +21,6 @@ def test_dumps_ic():
     assert result
 
 
-@pytest.mark.xfail(reason="TODO period block unstructuring")
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc
 
