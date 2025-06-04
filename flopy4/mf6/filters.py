@@ -95,7 +95,7 @@ def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
                     }
         value = value.chunk(chunks)
     for chunk in value.data.blocks:
-        yield chunk.compute()
+        yield np.squeeze(chunk.compute())
 
 
 def array2string(value: NDArray) -> str:
@@ -112,6 +112,7 @@ def array2string(value: NDArray) -> str:
     if value.ndim == 1:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
         value = value[None]
+    value = np.atleast_1d(value)
     format = (
         "%d"
         if np.issubdtype(value.dtype, np.integer)
