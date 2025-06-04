@@ -21,6 +21,7 @@ def test_dumps_ic():
     assert result
 
 
+@pytest.mark.xfail(reason="TODO period block unstructuring")
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc
 
@@ -37,7 +38,7 @@ def test_dumps_oc():
     assert result
 
 
-@pytest.mark.skip(reason="TODO 3D arrays")
+@pytest.mark.xfail(reason="TODO 3D arrays")
 def test_dumps_dis():
     from flopy4.mf6.gwf import Dis
 

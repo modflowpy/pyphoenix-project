@@ -1,27 +1,11 @@
 from collections.abc import Hashable, Mapping
 from io import StringIO
-from typing import Any
 
 import numpy as np
 import xarray as xr
 from jinja2 import pass_context
-from modflow_devtools.dfn import Dfn, Field
+from modflow_devtools.dfn import Field
 from numpy.typing import NDArray
-
-from flopy4.mf6.spec import block_sort_key
-
-
-def blocks(dfn: Dfn) -> dict:
-    """
-    Get blocks from an MF6 input definition. Anything not an
-    explicitly defined key in the `Dfn` typed dict is a block.
-    """
-    return dict(
-        sorted(
-            {k: v for k, v in dfn.items() if k not in Dfn.__annotations__}.items(),
-            key=block_sort_key,
-        )
-    )
 
 
 def field_type(field: Field) -> str:
@@ -105,7 +89,3 @@ def array2string(value: NDArray) -> str:
     )
     np.savetxt(buffer, value, fmt=format, delimiter=" ")
     return buffer.getvalue().strip()
-
-
-def is_list(value: Any) -> bool:
-    return isinstance(value, list)

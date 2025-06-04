@@ -8,17 +8,22 @@ from cattrs import Converter
 from jinja2 import Environment, PackageLoader
 
 from flopy4.mf6 import filters
-from flopy4.mf6.codec.converter import structure_array, unstructure_array
+from flopy4.mf6.codec.converter import (
+    structure_array,
+    unstructure_array,
+    unstructure_component,
+    unstructure_oc,
+)
+from flopy4.mf6.spec import get_blocks
 
 _JINJA_ENV = Environment(
     loader=PackageLoader("flopy4.mf6"),
     trim_blocks=True,
     lstrip_blocks=True,
 )
-_JINJA_ENV.filters["blocks"] = filters.blocks
+_JINJA_ENV.filters["blocks"] = get_blocks
 _JINJA_ENV.filters["field_type"] = filters.field_type
 _JINJA_ENV.filters["field_value"] = filters.field_value
-_JINJA_ENV.filters["is_list"] = filters.is_list
 _JINJA_ENV.filters["array_how"] = filters.array_how
 _JINJA_ENV.filters["array_chunks"] = filters.array_chunks
 _JINJA_ENV.filters["array2string"] = filters.array2string
@@ -31,10 +36,20 @@ _PRINT_OPTIONS = {
     "threshold": sys.maxsize,
 }
 
-_CONVERTER = Converter()
-_CONVERTER.register_unstructure_hook_factory(
-    lambda cls: xattree.has(cls), lambda cls: xattree.asdict
-)
+
+def _make_converter() -> Converter:
+    from flopy4.mf6.component import Component
+    from flopy4.mf6.gwf.oc import Oc
+
+    converter = Converter()
+    converter.register_unstructure_hook_factory(xattree.has, lambda _: xattree.asdict)
+    converter.register_unstructure_hook(Component, unstructure_component)
+    converter.register_unstructure_hook(Oc, unstructure_oc)
+    return converter
+
+
+_CONVERTER = _make_converter()
+
 
 # TODO unstructure arrays into sparse dicts
 # TODO combine OC fields into list input as defined in the MF6 dfn

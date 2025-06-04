@@ -9,7 +9,7 @@ from typing import Union, get_args, get_origin
 
 import numpy as np
 from attrs import NOTHING, Attribute
-from modflow_devtools.dfn import Field, FieldType
+from modflow_devtools.dfn import Dfn, Field, FieldType, Reader
 
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
@@ -32,6 +32,7 @@ def field(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
+        metadata["reader"] = "urword"
     return flopy_field(
         default=default,
         validator=validator,
@@ -57,6 +58,7 @@ def dim(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
+        metadata["reader"] = "urword"
     return flopy_dim(
         scope=scope,
         coord=coord,
@@ -80,6 +82,7 @@ def coord(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
+        metadata["reader"] = "readarray"
     return flopy_coord(
         scope=scope,
         default=default,
@@ -99,11 +102,13 @@ def array(
     eq=None,
     metadata=None,
     block: str | None = None,
+    reader: Reader = "readarray",
 ):
     """Define an array field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
+        metadata["reader"] = reader
     return flopy_array(
         cls=cls,
         dims=dims,
@@ -227,4 +232,18 @@ def to_dfn_field(attribute: Attribute) -> Field:
         children={k: to_dfn_field(v) for k, v in fields_dict(attribute.type)}  # type: ignore
         if attribute.metadata.get("kind", None) == "child"  # type: ignore
         else None,  # type: ignore
+        reader=attribute.metadata.get("reader", "urword"),
+    )
+
+
+def get_blocks(dfn: Dfn) -> dict:
+    """
+    Get blocks from an MF6 input definition. Anything not an
+    explicitly defined key in the `Dfn` typed dict is a block.
+    """
+    return dict(
+        sorted(
+            {k: v for k, v in dfn.items() if k not in Dfn.__annotations__}.items(),
+            key=block_sort_key,
+        )
     )

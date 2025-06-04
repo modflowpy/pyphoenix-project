@@ -1,40 +1,40 @@
-{% macro field(field) %}
-{% set type = field|field_type %}
+{% macro field(f) %}
+{% set type = f|field_type %}
 {% if type in ['keyword', 'integer', 'double precision', 'string'] %}
-{{ scalar(field) }}
+{{ scalar(f) }}
 {% elif type == 'record' %}
-{{ record(field) }}
+{{ record(f) }}
 {% elif type == 'keystring' %}
-{{ keystring(field) }}
+{{ keystring(f) }}
 {% elif type == 'recarray' %}
-{{ recarray(field) }}
+{{ recarray(f) }}
 {% endif %}
 {% endmacro %}
 
-{% macro scalar(field) %}
-{% set type = field|field_type %}
-{% set value = field|field_value %}
-{% if value is not none %}{{ field.name.upper() }}{% if type != 'keyword' %} {{ value }}{% endif %}{% endif %}
+{% macro scalar(f) %}
+{% set type = f|field_type %}
+{% set value = f|field_value %}
+{% if value is not none %}{{ f.name.upper() }}{% if type != 'keyword' %} {{ value }}{% endif %}{% endif %}
 {% endmacro %}
 
-{% macro keystring(field) %}
-{% for item in field.children.values() -%}
+{% macro keystring(f) %}
+{% for item in f.children.values() -%}
 {{ field(item) }}
 {%- endfor %}
 {% endmacro %}
 
-{% macro record(field) %}
-{% for item in field.children.values() -%}
+{% macro record(f) %}
+{% for item in f.children.values() -%}
 {% if item.tagged %}{{ item.name.upper() }} {% endif %}{{ field(item) }}
 {%- endfor %}
 {% endmacro %}
 
-{% macro recarray(field) %}
-{% set value = field|field_value %}
-{% if value|is_list %}
-{{ list(value) }}
+{% macro recarray(f) %}
+{% set value = f|field_value %}
+{% if f.reader != 'readarray' %}
+{{ list(f) }}
 {% else %}
-{{ array(field.name, value, how=field|array_how) }}
+{{ array(f.name, value, how=f|array_how) }}
 {% endif %}
 {% endmacro %}
 
@@ -57,8 +57,9 @@ OPEN/CLOSE {{ value }}
 {% endif %}
 {% endmacro %}
 
-{% macro list(field) %}
-{% for item in field.children.values() %}
+{% macro list(f) %}
+{{ f }}
+{% for item in f.children.values() %}
 {{ field(item) }}
 {% endfor %}
 {% endmacro %}

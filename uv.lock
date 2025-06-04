@@ -1800,7 +1800,7 @@ wheels = [
 [[package]]
 name = "modflow-devtools"
 version = "1.7.0.dev0"
-source = { git = "https://github.com/MODFLOW-USGS/modflow-devtools.git#d169e61db1b039e56d6755993500e2d6567f723e" }
+source = { git = "https://github.com/MODFLOW-USGS/modflow-devtools.git#9704d96d3377ed4947e536a8834909f20f0b010f" }
 
 [package.optional-dependencies]
 dfn = [

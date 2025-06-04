@@ -2,12 +2,15 @@ from typing import Any, Tuple
 
 import numpy as np
 import sparse
+import xattree
 from numpy.typing import NDArray
 from xarray import DataArray
 from xattree import get_xatspec
 
+from flopy4.mf6.component import Component
 from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.spec import get_blocks
 
 
 # TODO: convert to a cattrs structuring hook so we don't have to
@@ -108,22 +111,90 @@ def unstructure_array(value: DataArray) -> dict:
     MF6 list-based input format.
     """
     # make sure dim 'kper' is present
-    if "kper" not in value.dims:
-        raise ValueError("array must have 'kper' dimension")
+    time_dim = "nper"
+    if time_dim not in value.dims:
+        raise ValueError(f"Array must have dimension '{time_dim}'")
 
     if isinstance(value.data, sparse.COO):
         coords = value.coords
         data = value.data
     else:
-        coords = np.array(np.nonzero(value)).T  # type: ignore
-        data = value[tuple(coords.T)]  # type: ignore
+        coords = np.array(np.nonzero(value.data)).T  # type: ignore
+        data = value.data[tuple(coords.T)]  # type: ignore
     if not coords.size:  # type: ignore
         return {}
     match value.ndim:
         case 1:
-            return {k: v for k, v in zip(coords[:, 0], data)}  # type: ignore
+            return {int(k): v for k, v in zip(coords[:, 0], data)}  # type: ignore
         case 2:
-            return {(k, j): v for (k, j), v in zip(coords, data)}  # type: ignore
+            return {(int(k), int(j)): v for (k, j), v in zip(coords, data)}  # type: ignore
         case 3:
-            return {(k, i, j): v for (k, i, j), v in zip(coords, data)}  # type: ignore
+            return {(int(k), int(i), int(j)): v for (k, i, j), v in zip(coords, data)}  # type: ignore
     return {}
+
+
+def unstructure_component(value: Component) -> dict[str, Any]:
+    data = xattree.asdict(value)
+    for block in get_blocks(value.dfn).values():
+        for field_name, field in block.items():
+            # unstructure arrays destined for list-based input
+            if field["type"] == "recarray" and field["reader"] != "readarray":
+                data[field_name] = unstructure_array(data[field_name])
+    return data
+
+
+def unstructure_oc(value: Any) -> dict[str, Any]:
+    data = xattree.asdict(value)
+    for block_name, block in get_blocks(value.dfn).items():
+        if block_name == "perioddata":
+            # Unstructure all four arrays
+            save_head = unstructure_array(data.get("save_head", {}))
+            save_budget = unstructure_array(data.get("save_budget", {}))
+            print_head = unstructure_array(data.get("print_head", {}))
+            print_budget = unstructure_array(data.get("print_budget", {}))
+
+            # Collect all unique periods
+            all_periods = set()  # type: ignore
+            for d in (save_head, save_budget, print_head, print_budget):
+                if isinstance(d, dict):
+                    all_periods.update(d.keys())
+            all_periods = sorted(all_periods)  # type: ignore
+
+            saverecord = {}  # type: ignore
+            printrecord = {}  # type: ignore
+            for kper in all_periods:
+                # Save head
+                if kper in save_head:
+                    v = save_head[kper]
+                    if kper not in saverecord:
+                        saverecord[kper] = []
+                    saverecord[kper].append({"action": "save", "type": "head", "ocsetting": v})
+                # Save budget
+                if kper in save_budget:
+                    v = save_budget[kper]
+                    if kper not in saverecord:
+                        saverecord[kper] = []
+                    saverecord[kper].append({"action": "save", "type": "budget", "ocsetting": v})
+                # Print head
+                if kper in print_head:
+                    v = print_head[kper]
+                    if kper not in printrecord:
+                        printrecord[kper] = []
+                    printrecord[kper].append({"action": "print", "type": "head", "ocsetting": v})
+                # Print budget
+                if kper in print_budget:
+                    v = print_budget[kper]
+                    if kper not in printrecord:
+                        printrecord[kper] = []
+                    printrecord[kper].append({"action": "print", "type": "budget", "ocsetting": v})
+
+            data["saverecord"] = saverecord
+            data["printrecord"] = printrecord
+            data["save"] = "save"
+            data["print"] = "print"
+        else:
+            for field_name, field in block.items():
+                # unstructure arrays destined for list-based input
+                if field["type"] == "recarray" and field["reader"] != "readarray":
+                    data[field_name] = unstructure_array(data[field_name])
+    return data
