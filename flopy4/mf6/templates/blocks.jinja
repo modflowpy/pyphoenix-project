@@ -1,7 +1,7 @@
 {% import 'macros.jinja' as macros with context %}
 {% for block_name, block_ in (dfn|dict_blocks).items() %}
 BEGIN {{ block_name.upper() }}
-{% for field in block_.values() -%}
+{% for field in block_.values() if (field|field_value) is not none -%}
 {{ macros.field(field) }}
 {%- endfor %}
 END {{ block_name.upper() }}

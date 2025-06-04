@@ -30,6 +30,7 @@ class Simulation(Context):
     filename: str = field(default="mfsim.nam", init=False)
 
     def __attrs_post_init__(self):
+        super().__attrs_post_init__()
         if self.filename != "mfsim.nam":
             warn(
                 "Simulation filename must be 'mfsim.nam'.",

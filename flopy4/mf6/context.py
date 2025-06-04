@@ -12,6 +12,7 @@ class Context(Component, ABC):
     workspace: Path = field(default=None)
 
     def __attrs_post_init__(self):
+        super().__attrs_post_init__()
         if self.workspace is None:
             self.workspace = Path.cwd()
 

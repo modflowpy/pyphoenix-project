@@ -1,5 +1,3 @@
-import pytest
-
 from flopy4.mf6.codec import dumps
 
 
@@ -37,7 +35,6 @@ def test_dumps_oc():
     assert result
 
 
-@pytest.mark.xfail(reason="TODO 3D arrays")
 def test_dumps_dis():
     from flopy4.mf6.gwf import Dis
 

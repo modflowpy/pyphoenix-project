@@ -38,9 +38,18 @@ class Component(ABC, MutableMapping):
 
     @property
     def path(self) -> Path:
+        """Get the path to the component's input file."""
         return Path.cwd() / self.filename
 
-    def _default_filename(self) -> str:
+    def default_filename(self) -> str:
+        """
+        Generate a default filename for the component.
+        By default, this is the component's name then
+        the class name in lowercase, separated by dot.
+
+        Override this method in subclasses to provide
+        a custom default filename.
+        """
         name = self.name  # type: ignore
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
@@ -49,10 +58,6 @@ class Component(ABC, MutableMapping):
     def __attrs_init_subclass__(cls):
         COMPONENTS[cls.__name__.lower()] = cls
         cls.dfn = cls.get_dfn()
-
-    def __attrs_post_init__(self):
-        if not self.filename:
-            self.filename = self._default_filename()
 
     def __getitem__(self, key):
         return self.children[key]  # type: ignore
@@ -89,12 +94,21 @@ class Component(ABC, MutableMapping):
             **blocks,
         )
 
+    def _preio(self, format: str) -> None:
+        """Place for any pre-IO setup"""
+        if not self.filename:
+            self.filename = self.default_filename()
+
     def load(self, format: str) -> None:
+        """Load the component from an input file."""
+        self._preio(format=format)
         self._load(format=format)
         for child in self.children.values():  # type: ignore
-            child.load(format)
+            child.load(format=format)
 
     def write(self, format: str) -> None:
+        """Write the component to an input file."""
+        self._preio(format=format)
         self._write(format=format)
         for child in self.children.values():  # type: ignore
-            child.write(format)
+            child.write(format=format)

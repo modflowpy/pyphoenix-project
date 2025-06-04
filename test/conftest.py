@@ -1,5 +1,7 @@
 from pathlib import Path
 
+pytest_plugins = ["modflow_devtools.fixtures"]
+
 PROJ_ROOT_PATH = Path(__file__).parents[1]
 DOCS_PATH = PROJ_ROOT_PATH / "docs"
 EXAMPLES_PATH = DOCS_PATH / "examples"

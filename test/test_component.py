@@ -272,11 +272,27 @@ def test_ims_dfn():
     assert "inner_maximum" in set(dfn["linear"].keys())
 
 
-def test_write_ascii(tmp_path):
+def test_write_ascii(function_tmpdir):
+    sim_name = "sim"
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    sim = Simulation(tdis=time, workspace=tmp_path)
+    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+    sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name)
+    gwf_name = "gwf"
+    gwf = Gwf(parent=sim, dis=grid, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+
     sim.write()
 
-    files = list(Path(tmp_path).glob("*"))
+    files = list(Path(function_tmpdir).glob("*"))
     file_names = [f.name for f in files]
     assert "mfsim.nam" in file_names
+    assert f"{sim_name}.tdis" in file_names
+    assert f"{gwf_name}.nam" in file_names
+    assert f"{gwf_name}.dis" in file_names
+    assert f"{gwf_name}.ic" in file_names
+    assert f"{gwf_name}.oc" in file_names
+    assert f"{gwf_name}.npf" in file_names
+    assert f"{gwf_name}.chd" in file_names
