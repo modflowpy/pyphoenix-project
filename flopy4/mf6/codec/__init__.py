@@ -14,14 +14,14 @@ from flopy4.mf6.codec.converter import (
     unstructure_component,
     unstructure_oc,
 )
-from flopy4.mf6.spec import get_blocks
 
 _JINJA_ENV = Environment(
     loader=PackageLoader("flopy4.mf6"),
     trim_blocks=True,
     lstrip_blocks=True,
 )
-_JINJA_ENV.filters["blocks"] = get_blocks
+_JINJA_ENV.filters["dict_blocks"] = filters.dict_blocks
+_JINJA_ENV.filters["list_blocks"] = filters.list_blocks
 _JINJA_ENV.filters["field_type"] = filters.field_type
 _JINJA_ENV.filters["field_value"] = filters.field_value
 _JINJA_ENV.filters["array_how"] = filters.array_how

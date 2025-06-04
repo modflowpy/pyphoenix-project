@@ -4,8 +4,40 @@ from io import StringIO
 import numpy as np
 import xarray as xr
 from jinja2 import pass_context
-from modflow_devtools.dfn import Field
+from modflow_devtools.dfn import Dfn, Field
 from numpy.typing import NDArray
+
+from flopy4.mf6.spec import get_blocks
+
+
+def _is_list_block(block: dict) -> bool:
+    return (
+        len(block) == 1
+        and (field := next(iter(block.values())))["type"] == "recarray"
+        and field["reader"] != "readarray"
+    ) or (all(f["type"] == "recarray" and f["reader"] != "readarray" for f in block.values()))
+
+
+def dict_blocks(dfn: Dfn) -> dict:
+    """
+    Get dictionary blocks from an MF6 input definition. A
+    dictionary block is a standard block which can contain
+    one or more fields, as opposed to a list block, which
+    may only contain one recarray field, using list input.
+    """
+    x = {
+        block_name: block
+        for block_name, block in get_blocks(dfn).items()
+        if not _is_list_block(block)
+    }
+    return x
+
+
+def list_blocks(dfn: Dfn) -> dict:
+    x = {
+        block_name: block for block_name, block in get_blocks(dfn).items() if _is_list_block(block)
+    }
+    return x
 
 
 def field_type(field: Field) -> str:

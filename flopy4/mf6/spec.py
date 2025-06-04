@@ -134,7 +134,8 @@ def block_sort_key(item: tuple[str, dict]) -> int:
         return 2
     elif k == "packagedata":
         return 3
-    elif k == "perioddata":
+    elif "period" in k:
+        # some packages have block "period", some have "perioddata"
         return 4
     else:
         return 5

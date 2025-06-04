@@ -7,7 +7,7 @@
 {% elif type == 'keystring' %}
 {{ keystring(f) }}
 {% elif type == 'recarray' %}
-{{ recarray(f) }}
+{{ recarray(f, how=f|array_how) }}
 {% endif %}
 {% endmacro %}
 
@@ -29,16 +29,9 @@
 {%- endfor %}
 {% endmacro %}
 
-{% macro recarray(f) %}
+{% macro recarray(f, how="internal") %}
+{% set name = f.name %}
 {% set value = f|field_value %}
-{% if f.reader != 'readarray' %}
-{{ list(f) }}
-{% else %}
-{{ array(f.name, value, how=f|array_how) }}
-{% endif %}
-{% endmacro %}
-
-{% macro array(name, value, how="internal") %}
 {{ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
@@ -57,9 +50,28 @@ OPEN/CLOSE {{ value }}
 {% endif %}
 {% endmacro %}
 
-{% macro list(f) %}
-{{ f }}
-{% for item in f.children.values() %}
-{{ field(item) }}
+{% macro list(block_name, block) %}
+{#
+from mf6's perspective, a list block (e.g. period data)
+always has just one variable, whose elements might be
+records or unions. where we spin those out into arrays
+for each individual leaf field to fit the xarray data
+model, we have to combine them back here.
+
+this macro receives the block definition. from that
+it looks up the value of the one variable with the
+same name as the block, which custom converter has
+made sure exists in a sparse dict representation of
+an array. we need to spin this out into a block for
+each stress period.
+#}
+{% set dict = data[block_name] %}
+{% for kper, value in dict.items() %}
+BEGIN {{ block_name.upper() }} {{ kper }}
+{% for line in value %}
+{{ line|join(" ")|upper }}
+{% endfor %}
+END {{ block_name.upper() }} {{ kper }}
+
 {% endfor %}
 {% endmacro %}
