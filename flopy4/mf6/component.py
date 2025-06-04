@@ -1,6 +1,7 @@
 from abc import ABC
 from collections.abc import MutableMapping
 from pathlib import Path
+from typing import ClassVar
 
 from modflow_devtools.dfn import Dfn, Field
 from xattree import xattree
@@ -32,6 +33,8 @@ class Component(ABC, MutableMapping):
     _write = IO(Writer)  # type: ignore
 
     filename: str = field(default=None)
+
+    dfn: ClassVar[Dfn]
 
     @property
     def path(self) -> Path:
