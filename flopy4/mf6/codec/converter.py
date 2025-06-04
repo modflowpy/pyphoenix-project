@@ -143,9 +143,39 @@ def unstructure_component(value: Component) -> dict[str, Any]:
     return data
 
 
+def unstructure_tdis(value: Any) -> dict[str, Any]:
+    data = xattree.asdict(value)
+    blocks = get_blocks(value.dfn)
+    for block_name, block in blocks.items():
+        if block_name == "perioddata":
+            array_fields = list(block.keys())
+
+            # Unstructure all arrays and collect all unique periods
+            arrays = {}
+            periods = set()  # type: ignore
+            for field_name in array_fields:
+                arr = unstructure_array(data.get(field_name, {}))
+                arrays[field_name] = arr
+                periods.update(arr.keys())
+            periods = sorted(periods)  # type: ignore
+
+            perioddata = {}  # type: ignore
+            for kper in periods:
+                line = []
+                for arr in arrays.values():
+                    if kper not in perioddata:
+                        perioddata[kper] = []  # type: ignore
+                    line.append(arr[kper])
+                perioddata[kper] = tuple(line)
+
+            data["perioddata"] = perioddata
+    return data
+
+
 def unstructure_oc(value: Any) -> dict[str, Any]:
     data = xattree.asdict(value)
-    for block_name, block in get_blocks(value.dfn).items():
+    blocks = get_blocks(value.dfn)
+    for block_name, block in blocks.items():
         if block_name == "period":
             # Dynamically collect all recarray fields in perioddata block
             array_fields = []
@@ -156,16 +186,15 @@ def unstructure_oc(value: Any) -> dict[str, Any]:
 
             # Unstructure all arrays and collect all unique periods
             arrays = {}
-            all_periods = set()  # type: ignore
+            periods = set()  # type: ignore
             for action, rtype, field_name in array_fields:
                 arr = unstructure_array(data.get(field_name, {}))
                 arrays[(action, rtype)] = arr
-                if isinstance(arr, dict):
-                    all_periods.update(arr.keys())
-            all_periods = sorted(all_periods)  # type: ignore
+                periods.update(arr.keys())
+            periods = sorted(periods)  # type: ignore
 
             perioddata = {}  # type: ignore
-            for kper in all_periods:
+            for kper in periods:
                 for (action, rtype), arr in arrays.items():
                     if kper in arr:
                         if kper not in perioddata:

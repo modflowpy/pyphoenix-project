@@ -13,6 +13,7 @@ from flopy4.mf6.codec.converter import (
     unstructure_array,
     unstructure_component,
     unstructure_oc,
+    unstructure_tdis,
 )
 
 _JINJA_ENV = Environment(
@@ -40,10 +41,12 @@ _PRINT_OPTIONS = {
 def _make_converter() -> Converter:
     from flopy4.mf6.component import Component
     from flopy4.mf6.gwf.oc import Oc
+    from flopy4.mf6.tdis import Tdis
 
     converter = Converter()
     converter.register_unstructure_hook_factory(xattree.has, lambda _: xattree.asdict)
     converter.register_unstructure_hook(Component, unstructure_component)
+    converter.register_unstructure_hook(Tdis, unstructure_tdis)
     converter.register_unstructure_hook(Oc, unstructure_oc)
     return converter
 
