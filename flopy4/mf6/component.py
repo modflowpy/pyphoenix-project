@@ -100,14 +100,14 @@ class Component(ABC, MutableMapping):
             self.filename = self.default_filename()
 
     def load(self, format: str) -> None:
-        """Load the component from an input file."""
+        """Load the component and any children."""
         self._preio(format=format)
         self._load(format=format)
         for child in self.children.values():  # type: ignore
             child.load(format=format)
 
     def write(self, format: str) -> None:
-        """Write the component to an input file."""
+        """Write the component and any children."""
         self._preio(format=format)
         self._write(format=format)
         for child in self.children.values():  # type: ignore

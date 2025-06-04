@@ -25,19 +25,17 @@ def dict_blocks(dfn: Dfn) -> dict:
     one or more fields, as opposed to a list block, which
     may only contain one recarray field, using list input.
     """
-    x = {
+    return {
         block_name: block
         for block_name, block in get_blocks(dfn).items()
         if not _is_list_block(block)
     }
-    return x
 
 
 def list_blocks(dfn: Dfn) -> dict:
-    x = {
+    return {
         block_name: block for block_name, block in get_blocks(dfn).items() if _is_list_block(block)
     }
-    return x
 
 
 def field_type(field: Field) -> str:

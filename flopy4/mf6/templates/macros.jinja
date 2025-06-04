@@ -50,7 +50,7 @@ OPEN/CLOSE {{ value }}
 {% endif %}
 {% endmacro %}
 
-{% macro list(block_name, block) %}
+{% macro list(block_name, block, stress=False) %}
 {#
 from mf6's perspective, a list block (e.g. period data)
 always has just one variable, whose elements might be
@@ -65,8 +65,9 @@ made sure exists in a sparse dict representation of
 an array. we need to expand this into a block for
 each stress period.
 #}
-{% set dict = data[block_name] %}
-{% for kper, value in dict.items() %}
+{% set d = data[block_name] %}
+{% if stress %}
+{% for kper, value in d.items() %}
 BEGIN {{ block_name.upper() }} {{ kper }}
 {% for line in value %}
 {{ line|join(" ")|upper }}
@@ -74,4 +75,11 @@ BEGIN {{ block_name.upper() }} {{ kper }}
 END {{ block_name.upper() }} {{ kper }}
 
 {% endfor %}
+{% else %}
+BEGIN {{ block_name.upper() }}
+{% for line in d.values() %}
+{{ line|join(" ")|upper }}
+{% endfor %}
+END {{ block_name.upper() }}
+{% endif %}
 {% endmacro %}

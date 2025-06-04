@@ -54,11 +54,11 @@ class Simulation(Context):
                 )
 
     def load(self, format="ascii"):
-        """Load the simulation in the specified format."""
+        """Load the simulation."""
         with cd(self.workspace):
-            super().load(format)
+            super().load(format=format)
 
     def write(self, format="ascii"):
-        """Write the simulation in the specified format."""
+        """Write the simulation."""
         with cd(self.workspace):
-            super().write(format)
+            super().write(format=format)
