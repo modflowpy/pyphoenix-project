@@ -9,5 +9,5 @@ END {{ block_name.upper() }}
 {% endfor %}
 
 {% for block_name, block_ in (dfn|list_blocks).items() -%}
-{{ macros.list(block_name, block_) }}
+{{ macros.list(block_name, block_, transient=block_name == "period") }}
 {%- endfor%}
