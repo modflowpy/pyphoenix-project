@@ -7,15 +7,7 @@ from jinja2 import pass_context
 from modflow_devtools.dfn import Dfn, Field
 from numpy.typing import NDArray
 
-from flopy4.mf6.spec import get_blocks
-
-
-def _is_list_block(block: dict) -> bool:
-    return (
-        len(block) == 1
-        and (field := next(iter(block.values())))["type"] == "recarray"
-        and field["reader"] != "readarray"
-    ) or (all(f["type"] == "recarray" and f["reader"] != "readarray" for f in block.values()))
+from flopy4.mf6.spec import get_blocks, is_list_block
 
 
 def dict_blocks(dfn: Dfn) -> dict:
@@ -28,13 +20,13 @@ def dict_blocks(dfn: Dfn) -> dict:
     return {
         block_name: block
         for block_name, block in get_blocks(dfn).items()
-        if not _is_list_block(block)
+        if not is_list_block(block)
     }
 
 
 def list_blocks(dfn: Dfn) -> dict:
     return {
-        block_name: block for block_name, block in get_blocks(dfn).items() if _is_list_block(block)
+        block_name: block for block_name, block in get_blocks(dfn).items() if is_list_block(block)
     }
 
 

@@ -13,9 +13,7 @@ def test_dumps_ic():
     )
 
     result = dumps(ic)
-    print()
     print(result)
-    print()
     assert result
 
 
@@ -49,5 +47,41 @@ def test_dumps_dis():
     )
 
     result = dumps(dis)
+    print(result)
+    assert result
+
+
+def test_dumps_tdis():
+    from flopy.discretization.modeltime import ModelTime
+
+    from flopy4.mf6.tdis import Tdis
+
+    tdis = Tdis.from_time(ModelTime(perlen=[1.0, 2.0], nstp=[1, 2]))
+    tdis.time_units = "days"
+
+    result = dumps(tdis)
+    print(result)
+    assert result
+
+
+def test_dumps_chd():
+    from flopy4.mf6.gwf import Chd, Dis, Gwf
+
+    dis = Dis(nrow=10, ncol=10)
+    gwf = Gwf(dis=dis)
+    chd = Chd(
+        parent=gwf,
+        head={
+            0: {
+                (0, 0, 0): 10.0,
+                (0, 9, 9): 20.0,
+            }
+        },
+        save_flows=True,
+        print_input=True,
+        dims={"nper": 1},
+    )
+
+    result = dumps(chd)
     print(result)
     assert result

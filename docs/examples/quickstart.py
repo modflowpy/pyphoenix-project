@@ -30,6 +30,7 @@ oc = Oc(
     save_budget={"*": "all"},
 )
 
+# sim.write()
 sim.run(verbose=True)
 
 # check CHD
