@@ -5,6 +5,8 @@ These include field decorators and introspection functions.
 
 import builtins
 import types
+from datetime import datetime
+from pathlib import Path
 from typing import Union, get_args, get_origin
 
 import numpy as np
@@ -176,6 +178,39 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
+def to_dfn_field_type(t: type) -> FieldType:
+    match t:
+        case builtins.str | np.str_:
+            return "string"
+        case builtins.bool | np.bool:
+            return "keyword"
+        case builtins.int | np.integer:
+            return "integer"  # type: ignore
+        case builtins.float | np.floating:
+            return "double precision"  # type: ignore
+        case t if t is Path or t is datetime:
+            return "string"
+        case t if get_origin(t) in (Union, types.UnionType):
+            args = get_args(t)
+            if args[-1] is types.NoneType:
+                match args[0]:
+                    case builtins.str | np.str_:
+                        return "string"
+                    case builtins.bool | np.bool:
+                        return "keyword"
+                    case builtins.int | np.integer:
+                        return "integer"
+                    case builtins.float | np.floating:
+                        return "double precision"
+                    case tt if tt is Path or tt is datetime:
+                        return "string"
+                    case _:
+                        return "record"
+            return "keystring"
+        case _:
+            return "record"
+
+
 def get_dfn_field_type(attribute: Attribute) -> FieldType:
     """
     Get a `xattree` field's type as defined by the MODFLOW 6 input
@@ -197,22 +232,9 @@ def get_dfn_field_type(attribute: Attribute) -> FieldType:
         case "dim":
             return "integer"
         case "attr":
-            match attribute.type:
-                case builtins.str | np.str_:
-                    return "string"
-                case builtins.bool | np.bool:
-                    return "keyword"
-                case builtins.int | np.integer:
-                    return "integer"
-                case builtins.float | np.floating:
-                    return "double precision"
-
-                case t if (
-                    get_origin(t) in (Union, types.UnionType) and get_args(t)[-1] is types.NoneType
-                ):
-                    return "union"
-                case _:
-                    return "record"
+            if (t := attribute.type) is None:
+                raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no type.")
+            return to_dfn_field_type(t)
     raise ValueError(f"Could not map {attribute.name} to a valid MF6 type.")
 
 
@@ -248,3 +270,20 @@ def get_blocks(dfn: Dfn) -> dict:
             key=block_sort_key,
         )
     )
+
+
+def is_list_field(field: Field) -> bool:
+    """
+    Check if a field is a list field, which is a recarray
+    field that uses list input. This is determined by the
+    reader being "readarray" and the type being "recarray".
+    """
+    return field["type"] == "recarray" and field["reader"] != "readarray"
+
+
+def is_list_block(block: dict) -> bool:
+    return (
+        len(block) == 1
+        and (field := next(iter(block.values())))["type"] == "recarray"
+        and field["reader"] != "readarray"
+    ) or (all(f["type"] == "recarray" and f["reader"] != "readarray" for f in block.values()))

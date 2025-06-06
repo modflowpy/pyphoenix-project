@@ -11,6 +11,7 @@ from flopy4.mf6 import filters
 from flopy4.mf6.codec.converter import (
     structure_array,
     unstructure_array,
+    unstructure_chd,
     unstructure_component,
     unstructure_oc,
     unstructure_tdis,
@@ -40,6 +41,7 @@ _PRINT_OPTIONS = {
 
 def _make_converter() -> Converter:
     from flopy4.mf6.component import Component
+    from flopy4.mf6.gwf.chd import Chd
     from flopy4.mf6.gwf.oc import Oc
     from flopy4.mf6.tdis import Tdis
 
@@ -47,15 +49,12 @@ def _make_converter() -> Converter:
     converter.register_unstructure_hook_factory(xattree.has, lambda _: xattree.asdict)
     converter.register_unstructure_hook(Component, unstructure_component)
     converter.register_unstructure_hook(Tdis, unstructure_tdis)
+    converter.register_unstructure_hook(Chd, unstructure_chd)
     converter.register_unstructure_hook(Oc, unstructure_oc)
     return converter
 
 
 _CONVERTER = _make_converter()
-
-
-# TODO unstructure arrays into sparse dicts
-# TODO combine OC fields into list input as defined in the MF6 dfn
 
 
 def loads(data: str) -> Any:

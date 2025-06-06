@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.codec import structure_array
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -41,6 +42,7 @@ class Chd(Package):
         ),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        reader="urword",
     )
     aux: Optional[NDArray[np.floating]] = array(
         block="period",
@@ -50,6 +52,7 @@ class Chd(Package):
         ),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        reader="urword",
     )
     boundname: Optional[NDArray[np.str_]] = array(
         block="period",
@@ -59,6 +62,7 @@ class Chd(Package):
         ),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        reader="urword",
     )
     steps: Optional[NDArray[np.object_]] = array(
         Steps,
@@ -66,4 +70,17 @@ class Chd(Package):
         dims=("nper", "nnodes"),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        reader="urword",
     )
+
+    def __attrs_post_init__(self):
+        # TODO set up on_setattr hooks for period block
+        # arrays to update maxbound? for now do it here
+        # in post init. but this only works when values
+        # are set in the initializer, not when they are
+        # set later.
+        maxhead = len(np.where(self.head != FILL_DNODATA)) if self.head is not None else 0
+        maxaux = len(np.where(self.aux != FILL_DNODATA)) if self.aux is not None else 0
+        maxboundname = len(np.where(self.boundname != "")) if self.boundname is not None else 0
+        # maxsteps = len(np.where(self.steps != None)) if self.steps is not None else 0
+        self.maxbound = max(maxhead, maxaux, maxboundname)
