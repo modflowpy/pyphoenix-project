@@ -26,23 +26,22 @@ oc = Oc(
     parent=gwf,
     budget_file=f"{gwf.name}.bud",
     head_file=f"{gwf.name}.hds",
-    save_head={"*": "all"},
-    save_budget={"*": "all"},
+    saverecord={"*": {"head": "all", "budget": "all"}},
 )
 
 # sim.write()
 sim.run(verbose=True)
 
 # check CHD
-assert chd.data["head"][0, 0] == 1.0
-assert chd.data.head.sel(per=0)[99] == 0.0
-assert np.allclose(chd.data.head[:, 1:99], np.full(98, 1e30))
+assert chd.data.perioddata[0, 0].head == 1.0
+assert chd.data.perioddata.sel(per=0, node=99).head == 0.0
+assert chd.data.perioddata.sel(per=0, node=98).head == 1e30
 
 # check DIS
 assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 
 # check OC
-assert oc.data["save_head"][0] == "all"
+assert oc.data["saverecord"][0] == "all"
 assert oc.data.save_head.sel(per=0) == "all"
 
 # get head and budget results

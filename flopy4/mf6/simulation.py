@@ -23,6 +23,8 @@ def convert_time(value):
 
 @xattree
 class Simulation(Context):
+    """MF6 simulation."""
+
     models: dict[str, Model] = field()
     exchanges: dict[str, Exchange] = field()
     solutions: dict[str, Solution] = field()

@@ -3,7 +3,6 @@ from typing import Literal, Optional
 
 import numpy as np
 from attrs import Converter, define
-from modflow_devtools.dfn import Field
 from numpy.typing import NDArray
 from xattree import xattree
 
@@ -12,86 +11,37 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 from flopy4.utils import to_path
 
-_OCSETTING = Field(
-    name="ocsetting",
-    type="keystring",
-    reader="urword",
-    children={
-        "all": Field(
-            name="all",
-            type="keyword",
-            reader="urword",
-        ),
-        "first": Field(
-            name="first",
-            type="keyword",
-            reader="urword",
-        ),
-        "last": Field(
-            name="last",
-            type="keyword",
-            reader="urword",
-        ),
-        "steps": Field(
-            name="steps",
-            type="integer",
-            reader="urword",
-        ),
-        "frequency": Field(
-            name="frequency",
-            type="integer",
-            reader="urword",
-        ),
-    },
-)
-
-_RTYPE = Field(
-    name="rtype",
-    type="string",
-    reader="urword",
-)
-
-
-def _oc_action_field(action: str) -> Field:
-    return Field(
-        name=f"{action}record",
-        type="recarray",
-        dims=("nper",),
-        block="perioddata",
-        reader="urword",
-        children={
-            action: Field(
-                name=action,
-                type="keyword",
-                reader="urword",
-            ),
-            "rtype": _RTYPE,
-            "ocsetting": _OCSETTING,
-        },
-    )
-
 
 @xattree
 class Oc(Package):
     @define(slots=False)
-    class Format:
+    class FormatRecord:
         columns: int = field(default=10)
         width: int = field(default=11)
         digits: int = field(default=4)
         format: Literal["exponential", "fixed", "general", "scientific"] = field(default="general")
 
     @define(slots=False)
-    class Steps:
-        all: bool = field()
-        first: bool = field()
-        last: bool = field()
-        steps: list[int] = field()
-        frequency: int = field()
+    class OCSettingOption:
+        first: bool = field(default=True)
+        last: bool = field(default=False)
+        all: bool = field(default=False)
+        steps: Optional[list[int]] = field(default=None)
+        frequency: Optional[int] = field(default=None)
 
     @define(slots=False)
-    class Period:
+    class OCSetting:
+        ocsetting: Optional[list["Oc.OCSettingOption"]] = field(default=None)
+
+    @define(slots=False)
+    class SaveRecord:
         rtype: str = field()
-        steps: "Oc.Steps" = field()
+        ocsetting: "Oc.OCSetting" = field()
+
+    @define(slots=False)
+    class PrintRecord:
+        rtype: str = field()
+        ocsetting: "Oc.OCSetting" = field()
 
     budget_file: Optional[Path] = field(
         block="options",
@@ -108,47 +58,20 @@ class Oc(Package):
         converter=to_path,
         default=None,
     )
-    format: Optional[Format] = field(block="options", default=None, init=False)
-    save_head: Optional[NDArray[np.object_]] = array(
-        Steps,
+    headprintrecord: Optional[FormatRecord] = field(block="options", default=None, init=False)
+    saverecord: Optional[NDArray[np.object_]] = array(
+        SaveRecord,
         block="period",
-        default="all",
+        default=None,
         dims=("nper",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         reader="urword",
     )
-    save_budget: Optional[NDArray[np.object_]] = array(
-        Steps,
+    printrecord: Optional[NDArray[np.object_]] = array(
+        PrintRecord,
         block="period",
-        default="all",
+        default=None,
         dims=("nper",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         reader="urword",
     )
-    print_head: Optional[NDArray[np.object_]] = array(
-        Steps,
-        block="period",
-        default="all",
-        dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        reader="urword",
-    )
-    print_budget: Optional[NDArray[np.object_]] = array(
-        Steps,
-        block="period",
-        default="all",
-        dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        reader="urword",
-    )
-
-    # original DFN
-    # @classmethod
-    # def get_dfn(cls) -> Dfn:
-    #     """Generate the component's MODFLOW 6 definition."""
-    #     dfn = super().get_dfn()
-    #     for field_name in list(dfn["perioddata"].keys()):
-    #         dfn["perioddata"].pop(field_name)
-    #     dfn["perioddata"]["saverecord"] = _oc_action_field("save")
-    #     dfn["perioddata"]["printrecord"] = _oc_action_field("print")
-    #     return dfn

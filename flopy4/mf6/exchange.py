@@ -9,7 +9,9 @@ from flopy4.mf6.package import Package
 
 @xattree
 class Exchange(Package, ABC):
-    # mypy doesn't understand that kw_only=True on the
+    """Base class for MF6 exchange packages."""
+
+    # mypy doesn't understand that kw_only=True on base
     # Component means we can have required fields here
     exgtype: type = field()  # type: ignore
     exgfile: Path = field()  # type: ignore

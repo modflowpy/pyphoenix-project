@@ -9,6 +9,8 @@ from flopy4.mf6.spec import field
 
 @xattree
 class Context(Component, ABC):
+    """Base class for MF6 components associated with a workspace directory on disk."""
+
     workspace: Path = field(default=None)
 
     def __attrs_post_init__(self):
