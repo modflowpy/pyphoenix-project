@@ -3,14 +3,11 @@ from typing import Any, Tuple
 import numpy as np
 import sparse
 import xattree
-from flopy.discretization.grid import Grid
-from flopy.discretization.structuredgrid import StructuredGrid
-from flopy.discretization.unstructuredgrid import UnstructuredGrid
-from flopy.discretization.vertexgrid import VertexGrid
 from numpy.typing import NDArray
 from xarray import DataArray
 from xattree import get_xatspec
 
+from flopy4.adapters import get_cellid
 from flopy4.mf6.component import Component
 from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
@@ -147,7 +144,8 @@ def unstructure_array(value: DataArray) -> dict:
 
 def unstructure_component(value: Component) -> dict[str, Any]:
     data = xattree.asdict(value)
-    for block in get_blocks(value.dfn).values():
+    blocks = get_blocks(value.dfn)
+    for block in blocks.values():
         for field_name, field in block.items():
             if is_list_field(field):
                 data[field_name] = unstructure_array(data[field_name])
@@ -178,37 +176,6 @@ def unstructure_tdis(value: Any) -> dict[str, Any]:
                 perioddata[kper] = tuple(line)
             data["perioddata"] = perioddata
     return data
-
-
-def get_kij(nn: int, nlay: int, nrow: int, ncol: int) -> tuple[int, int, int]:
-    nodes = nlay * nrow * ncol
-    if nn < 0 or nn >= nodes:
-        raise ValueError(f"Node number {nn} is out of bounds (1 to {nodes})")
-    k = (nn - 1) / (ncol * nrow) + 1
-    ij = nn - (k - 1) * ncol * nrow
-    i = (ij - 1) / ncol + 1
-    j = ij - (i - 1) * ncol
-    return int(k), int(i), int(j)
-
-
-def get_jk(nn: int, ncpl: int) -> tuple[int, int]:
-    if nn < 0 or nn >= ncpl:
-        raise ValueError(f"Node number {nn} is out of bounds (1 to {ncpl})")
-    k = (nn - 1) / ncpl + 1
-    j = nn - (k - 1) * ncpl
-    return int(j), int(k)
-
-
-def get_cellid(nn: int, grid: Grid) -> tuple[int, ...]:
-    match grid:
-        case StructuredGrid():
-            return get_kij(nn, *grid.shape)
-        case VertexGrid():
-            return get_jk(nn, grid.ncpl)
-        case UnstructuredGrid():
-            return (nn,)
-        case _:
-            raise TypeError(f"Unsupported grid type: {type(grid)}")
 
 
 def unstructure_chd(value: Any) -> dict[str, Any]:

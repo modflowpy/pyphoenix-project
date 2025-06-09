@@ -40,6 +40,10 @@ _PRINT_OPTIONS = {
 
 
 def _make_converter() -> Converter:
+    # TODO: document what is converter's responsibility vs Jinja's
+    # TODO: how can we make sure writing remains lazy for list input?
+    # don't eagerly unstructure to dict, lazily access from the template?
+
     from flopy4.mf6.component import Component
     from flopy4.mf6.gwf.chd import Chd
     from flopy4.mf6.gwf.oc import Oc
