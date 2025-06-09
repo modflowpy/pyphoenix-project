@@ -1,6 +1,9 @@
 import os
 
-from flopy.discretization import StructuredGrid
+from flopy.discretization.grid import Grid
+from flopy.discretization.structuredgrid import StructuredGrid
+from flopy.discretization.unstructuredgrid import UnstructuredGrid
+from flopy.discretization.vertexgrid import VertexGrid
 
 
 class StructuredGridWrapper(StructuredGrid):
@@ -108,3 +111,34 @@ class StructuredGridWrapper(StructuredGrid):
             ia=grb_obj.ia,
             ja=grb_obj.ja,
         )
+
+
+def get_kij(nn: int, nlay: int, nrow: int, ncol: int) -> tuple[int, int, int]:
+    nodes = nlay * nrow * ncol
+    if nn < 0 or nn >= nodes:
+        raise ValueError(f"Node number {nn} is out of bounds (1 to {nodes})")
+    k = (nn - 1) / (ncol * nrow) + 1
+    ij = nn - (k - 1) * ncol * nrow
+    i = (ij - 1) / ncol + 1
+    j = ij - (i - 1) * ncol
+    return int(k), int(i), int(j)
+
+
+def get_jk(nn: int, ncpl: int) -> tuple[int, int]:
+    if nn < 0 or nn >= ncpl:
+        raise ValueError(f"Node number {nn} is out of bounds (1 to {ncpl})")
+    k = (nn - 1) / ncpl + 1
+    j = nn - (k - 1) * ncpl
+    return int(j), int(k)
+
+
+def get_cellid(nn: int, grid: Grid) -> tuple[int, ...]:
+    match grid:
+        case StructuredGrid():
+            return get_kij(nn, *grid.shape)
+        case VertexGrid():
+            return get_jk(nn, grid.ncpl)
+        case UnstructuredGrid():
+            return (nn,)
+        case _:
+            raise TypeError(f"Unsupported grid type: {type(grid)}")

@@ -23,10 +23,6 @@ class Component(ABC, MutableMapping):
     Notes
     -----
     All subclasses of `Component` must be decorated with `xattree`.
-
-    We use the `children` attribute provided by `xattree`. We know
-    children are also `Component`s, but mypy does not. TODO: fix??
-    Then we can remove the `# type: ignore` comments.
     """
 
     _load = IO(Loader)  # type: ignore
@@ -60,6 +56,9 @@ class Component(ABC, MutableMapping):
         cls.dfn = cls.get_dfn()
 
     def __getitem__(self, key):
+        # We use `children` from `xattree` to implement MutableMapping.
+        # children are also `Component`s, but mypy doesn't know this..
+        # TODO fix, then we can remove the `# type: ignore` comments.
         return self.children[key]  # type: ignore
 
     def __setitem__(self, key, value):
@@ -76,7 +75,7 @@ class Component(ABC, MutableMapping):
 
     @classmethod
     def get_dfn(cls) -> Dfn:
-        """Generate the component's MODFLOW 6 definition."""
+        """Get the component's definition (i.e. specification)."""
         fields = {field_name: to_dfn_field(field) for field_name, field in fields_dict(cls).items()}
         blocks: dict[str, dict[str, Field]] = {}
         for field_name, field_ in fields.items():
@@ -95,7 +94,7 @@ class Component(ABC, MutableMapping):
         )
 
     def _preio(self, format: str) -> None:
-        """Place for any pre-IO setup"""
+        # prep for io operations
         if not self.filename:
             self.filename = self.default_filename()
 
