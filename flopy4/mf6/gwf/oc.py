@@ -22,16 +22,12 @@ class Oc(Package):
         format: Literal["exponential", "fixed", "general", "scientific"] = field(default="general")
 
     @define(slots=False)
-    class OCSettingOption:
+    class OCSetting:
         first: bool = field(default=True)
         last: bool = field(default=False)
         all: bool = field(default=False)
-        steps: Optional[list[int]] = field(default=None)
+        steps: Optional[tuple[int]] = field(default=None)
         frequency: Optional[int] = field(default=None)
-
-    @define(slots=False)
-    class OCSetting:
-        ocsetting: Optional[list["Oc.OCSettingOption"]] = field(default=None)
 
     @define(slots=False)
     class SaveRecord:
@@ -42,6 +38,11 @@ class Oc(Package):
     class PrintRecord:
         rtype: str = field()
         ocsetting: "Oc.OCSetting" = field()
+
+    @define(slots=False)
+    class PeriodData:
+        saverecord: Optional[tuple["Oc.SaveRecord"]] = field(default=None)
+        printrecord: Optional[tuple["Oc.PrintRecord"]] = field(default=None)
 
     budget_file: Optional[Path] = field(
         block="options",
@@ -59,16 +60,8 @@ class Oc(Package):
         default=None,
     )
     headprintrecord: Optional[FormatRecord] = field(block="options", default=None, init=False)
-    saverecord: Optional[NDArray[np.object_]] = array(
-        SaveRecord,
-        block="period",
-        default=None,
-        dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        reader="urword",
-    )
-    printrecord: Optional[NDArray[np.object_]] = array(
-        PrintRecord,
+    perioddata: Optional[NDArray[np.object_]] = array(
+        PeriodData,
         block="period",
         default=None,
         dims=("nper",),

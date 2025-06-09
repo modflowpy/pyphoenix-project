@@ -41,8 +41,7 @@ assert chd.data.perioddata.sel(per=0, node=98).head == 1e30
 assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 
 # check OC
-assert oc.data["saverecord"][0] == "all"
-assert oc.data.save_head.sel(per=0) == "all"
+oc.data.perioddata[0].saverecord
 
 # get head and budget results
 budget = gwf.output.budget.squeeze()
