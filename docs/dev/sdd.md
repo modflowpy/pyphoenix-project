@@ -24,196 +24,107 @@
 
 This is the Software Design Description (SDD) document for FloPy 4, also called *the product*.
 
-This document describes a tentative design, focusing on "core" functional requirements. Some attention may be given to architecture, but non-functional requirements are largely out of scope here.
+This document describes a tentative design, focusing on functional requirements. Some attention may be given to architecture, but non-functional requirements are largely out of scope.
 
 ## Conceptual model
 
 This document follows MODFLOW 6 terminology where applicable, with modifications/translations where appropriate.
 
-MODFLOW 6 is designed as a hierarchy of modular **components**.
+A MODFLOW 6 simulation is as a hierarchy of modular **components**. Components encapsulate related data and functionality. 
 
-Components encapsulate related functionality and data. Components may have user-specified configuration and/or data **variables**.
+Components may have zero or more user-specified **variables** &mdash; we use this term interchangeably with **field**, with the latter preferred due to "variable"'s genericity. A field might be a model parameter, e.g. a numeric scalar or array value. Fields which configure non-numerical features of the simulation are called **options**. A field can be required or optional.
 
-Most components must have one particular parent (e.g., models are children of a simulation), but some relax this requirement.
+Components come in several subtypes:
 
-Component types include:
-
-- **simulation**: MF6's "unit of work", consisting of 1+ (possibly coupled) hydrologic processes
+- **simulation**: the fundamental "unit of work" in MF6, consisting of 1+ (possibly coupled) hydrologic process(es)
 - **model**: a simulated hydrological process
 - **package**: a subcomponent of a model or simulation
 
-Certain subsets of packages have distinguishing characteristics. A **stress package** represents a forcing. A **basic package** contains only input variables applying statically to the entire simulation. An **advanced package** contains time-variable (i.e. transient) input data. Usually only a single instance of a package is expected &mdash; when arbitrarily many are permitted, the package is called a **multi-package**. A **subpackage** is a concept only recognized by the product, not by MODFLOW 6 &mdash; a package linked to its parent not by a separate input file, but directly (i.e., subpackage data provided to the parent's initializer method). Subpackages may be attached to packages, models, or simulations.
+The simulation is the root of the tree, with models and packages under it, each of which itself might have other packages.
+
+Most components must have one particular parent (e.g., models are children of a simulation), but some relax this requirement.
+
+Packages come in several flavors, not necessarily mutually exclusive.
+
+- A **stress package** represents a forcing.
+- A **basic package** contains only input variables applying statically to the entire simulation.
+- An **advanced package** contains time-varying input variables.
+- Most packages are singular &mdash; the parent component may have one and only one instance. When arbitrarily many are permitted, the package is called a **multi-package**.
+- A **subpackage** is a package whose parent is another package.
 
 ```mermaid
 classDiagram
     Simulation *-- "1+" Package
     Simulation *-- "1+" Model
     Simulation *-- "1+" Variable
-    Simulation *-- "1+" Subpackage
     Model *-- "1+" Package
-    Model *-- "1+" Subpackage
     Model *-- "1+" Variable
     Package *-- "1+" Subpackage
     Package *-- "1+" Variable
     Subpackage *-- "1+" Variable
 ```
 
-Components are specified by **definition files**. A **definition** specifies input variables for a single MF6 component. A **block** is a named collection of input variables. A definition file specifies exactly one component. A component may contain zero or more blocks. Each block must contain at least one variable.
+Components are specified by **definition files**. A definition file specifies a single component and its fields. A definition file consists of top-level metadata and a collection of **blocks**. A block is a named collection of fields. A component may contain zero or more blocks. Each block must contain at least one variable. Most components will have a block named "Options" &mdash; see the [MODFLOW 6 DFN file specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) for more info.
 
 ## Object model
 
-The product's main use cases will include creating, manipulating, running, and inspecting MODFLOW 6 simulations (FUNC-3, FUNC-4). It is natural to provide an object-oriented interface in which every MF6 component module will generally have a corresponding class.
+The product's main use cases will include creating, manipulating, running, and inspecting MODFLOW 6 simulations. It is natural to provide an object-oriented interface in which every MF6 component module will generally have a corresponding class.
 
-Component classes will provide access to both **specification** and **data** &mdash; that is, to **form** and **content**, respectively. It should be straightforward to read a component's specification off its class definition, or to inspect it programmatically (FUNC-21). Likewise it should be easy to retrieve the value of a variable from an instance of a component (FUNC-4).
+There are many ways to implement an object model in Python: dictionaries, named tuples, plain classes, `dataclasses`, etc.
 
-There are many ways to implement an object model in Python: dictionaries, named tuples, plain classes, `dataclasses`, etc. There are fewer options if the object model must be self-describing.
+Two requirements in particular motivate the design described below: 1) the object model is a tree, and 2) it must be self-describing.
 
-### `attrs`
+Component classes must provide access to both **specification** and **data** &mdash; form and content, respectively. A component's specification should be legible from its class definition, to people and programs.
 
-`dataclasses` are derived from an older project called [`attrs`](https://www.attrs.org/en/stable/) which has  [extra powers](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/).
+Moreover, MODFLOW 6 components are situated in a hierarchy, with the simulation at the root, a branch for each model, and so on for packages, etc. This is true of both specification and data &mdash; the specification tree defines how components may be connected together, while a simulation instantiates some subset of the specification. 
 
-Our first proof of concept demonstrated a nested hierarchy of hand-rolled classes forming a component tree. Each component stored its data in-house. The specification was attached via metaclass magic.
+A third motivation is consistency with [`imod-python`](https://github.com/Deltares/imod-python), which the product follows in several ways including:
 
-We propose to follow the same general pattern, using `attrs` instead for introspection and data access.
+- Using [`xarray`](https://docs.xarray.dev/en/stable/index.html) for the underlying data model
+- Providing dictionary-style access and modification
 
-### `xarray`
+Components in `imod-python` encode parent/child relations in a dictionary, which is filtered as needed for subcomponents of a particular type. The structure of a simulation (or of any component with respect to its children) is thus flexible. "Structural" checks (i.e., what may be attached to what?) run in a separate validation step. 
 
-XArray provides abstractions for working with multiple datasets related in a hierarchical context, some of which may share the same spatial/temporal indices and/or coordinate systems. 
+The product aims instead for typed components, where children can be read off the class definition. This pulls structural validation from runtime to type-checking time, so invalid arrangements are visible in e.g. IDEs with Intellisense.
 
-We propose to follow [imod-python](https://github.com/Deltares/imod-python) in adopting [xarray](https://docs.xarray.dev/en/stable/index.html) as our components' onboard data store.
+The product adopts the standard library `dataclasses` paradigm for class definitions. The `dataclasses` module is derived from a project called [`attrs`](https://www.attrs.org/en/stable/) with [more power](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/). `attrs` permits terse class definitions, e.g.
 
-### `attrs` + `xarray`
+```python
+from flopy.mf6.gwf import Ic
+from attrs import define, field
+from numpy.typing import NDArray
+import numpy as np
 
-Combining these patterns naively would result in several challenges, involving duplication, synchronization, and a more general problem reminiscent of [object-relational impedance mismatch](https://en.wikipedia.org/wiki/Object%E2%80%93relational_impedance_mismatch), where the list-oriented and array-oriented paradigms conflict.
-
-Ultimately, we'd like a mapping between an abstract hierarchy of components and variables, as defined in MF6 definition files, to a Python representation which is self-describing (courtesy of `attrs`) and self-aligning (courtesy of `xarray`).
-
-The [`DataTree`](https://docs.xarray.dev/en/stable/generated/xarray.DataTree.html) is a recently developed `xarray` extension, now in the core package, which provides [many of the features we want from a hierarchical data store](https://docs.xarray.dev/en/stable/user-guide/hierarchical-data.html).
-
-## Data types
-
-MODFLOW 6 defines a [type system for input variables](https://github.com/MODFLOW-USGS/modflow6/tree/develop/doc/mf6io/mf6ivar#variable-types). We adapt this for Python.
-
-A variable is either a scalar or a composite.
-
-Scalars include integer, double precision, boolean, string, and path types. The product can represent scalars as builtin Python primitives.
-
-Composites include array, list, product (record), and sum (union) types.
-
-Translating from MF6:
-
-- A "keystring" is a union. 
-- A "recarray" is a list. 
-
-MF6 places some constraints on composite variables. These are explained below.
-
-### Records
-
-MODFLOW 6 requires that records contain only scalar fields. A record may not contain another record.
-
-In MF6 input files, a record appears as a whitespace-delimited line of text. While in principle a record's fields are named, MF6 may or may not expect particular values to be "tagged" (as indicated in definition files). "Tagging" is a concern of the product's MF6 IO layer, not the core object model.
-
-We expect the product to represent records as full-fledged `attrs` classes.
-
-### Unions
-
-MODFLOW 6 requires that unions contain only records. Unions may not contain scalars directly. A union may not contain another union.
-
-To represent unions, the product can simply use `typing.Union`.
-
-### Arrays
-
-MODFLOW 6 supports N-dimensional arrays of homogeneous (scalar) type, where 1 <= N <= 3.
-
-We can accept any `numpy.typing.ArrayLike` value, whether a standard `ndarray` or some other flavor (i.e. "duck arrays"). A common case will be lazy (e.g. dask) arrays for larger-than-memory operations. We can [implement custom array-likes](https://numpy.org/doc/stable/user/basics.interoperability.html) if there is a good case for it.
-
-Arrays can be type hinted in full detail in component classes, e.g. `NDArray[np.floating]`, while methods can generally have more lenient type hints (e.g. `ArrayLike`) and perform any necessary type checks at runtime.
-
-### Lists
-
-MODFLOW 6 lists may contain records or unions of records. Lists may not contain raw scalars. Collections of scalars should be provided as arrays.
-
-A list of records is regular, i.e. tabular. A list of unions can be irregular (i.e. rows can have different element counts) and cannot be treated as tabular data.
-
-For instance:
-
-- A `packagedata` block is typically a list of records of a single type (thus regular/tabular).
-- A `period` block is typically a list of unions, where each item may be a different record type (thus irregular).
-
-The product can accept regular list data as Python builtin collections, NumPy arrays of dtype `np.object_`, `xarray.DataArray` or other duck arrays, or tabular data structures, e.g. `np.recarray`, `pd.DataFrame`.
-
-**Note**: If storing a regular list in a tabular data structure, the product should avoid columns of dtype `np.object_` &mdash; e.g. prefer to store grid cell indices as separate columns `i`, `j`, `k`, not a single column.
-
-The product can accept irregular lists as builtin collections, NumPy arrays of dtype `np.object_`,  or `xarray.DataArray` or other duck arrays.
-
-## Developer workflow
-
-The product is a core element in day-to-day MODFLOW 6 development. Most critically, the product must be able to generate a MODFLOW 6 interface layer from a specification (FUNC-20).
-
-Typically, a MODFLOW 6 developer will write a new component specification and module in MODFLOW 6, run the product's code-generation utilities, and use the regenerated MODFLOW 6 interface layer to write integration tests for the ew component.
-
-
-
-```mermaid
-C4Container
-  title [Containers] Code generation workflow
-
-    Boundary(mf6, "MODFLOW 6"){
-      SystemDb(dfn, "Specification")
-    }
-
-    Boundary(flopy, "FloPy") {
-      Boundary(devs, "Developer APIs") {
-        System(fpycore, "Core framework")
-        System(fpycodegen, "Code generation")
-      }
-      Boundary(users, "User APIs") {
-          System(fpymf6, "MF6 module")
-      }
-      Rel(fpymf6, fpycore, "imports")
-    
-      Rel(fpycodegen, dfn, "inspects")
-      Rel(fpycodegen, fpymf6, "generates")
-    }
-
-    Person(dev, "Developer", "")
-    Person(user, "User", "")
-
-    Rel(dev, dfn, "develops")
-    Rel(dev, fpycore, "develops")
-    Rel(dev, fpycodegen, "develops/uses")
-    Rel(user, fpymf6, "uses")
-    UpdateRelStyle(dev, dfn, $lineColor="blue", $offsetX="-20" $offsetY="-30")
-    UpdateRelStyle(dev, fpycore, $lineColor="blue", $offsetY="90")
-    UpdateRelStyle(dev, fpycodegen, $lineColor="blue", $offsetY="50")
-    UpdateRelStyle(user, fpymf6, $lineColor="blue", $offsetY="50")
-    UpdateRelStyle(user, fpycore, $lineColor="blue", $offsetX="-20" $offsetY="-10")
-
+@define
+class Ic(Package):
+    """Initial conditions package"""
+    strt: NDArray[np.floating] = field(...)
+    export_array_ascii: bool = field(...)
+    export_array_netcdf: bool = field(...)
 ```
 
-From the MODFLOW 6 developer's perspective, the product's code generation workflow will remain more or less unchanged.
+Minimal class definitions are easier to read and to generate from definition files. The trick is in mapping the MODFLOW 6 input specification to the Python type system. With this transformation defined, the original specification can be derived in reverse from the class definition.
 
-We propose a few changes to the underlying implementation: 
+The product bolts on dictionary-style behavior by implementing `MutableMapping` in a component base class.
 
-1. Use `Jinja2` for code generation
-2. Keep the specification in MODFLOW 6 only
-3. Distribute the specification with MODFLOW 6
+Where `imod-python` components expose their fields via [a `Dataset`](https://github.com/Deltares/imod-python/blob/master/imod/common/interfaces/ipackagebase.py), components in the product expose a `DataTree` node. The [`DataTree`](https://docs.xarray.dev/en/stable/generated/xarray.DataTree.html) is a recently developed `xarray` feature implementing [a hierarchical data store](https://docs.xarray.dev/en/stable/user-guide/hierarchical-data.html). Components in the product are an [experimental hybrid](https://github.com/modflowpy/xattree) of `attrs` and `xarray` where `attrs` properties, as well as parent/child references, are proxied through the `DataTree`.
 
-Item 1 is an implementation detail.
+Combining `attrs` and `xarray` in this way presents challenges involving duplication (`xarray` prefers copies to in-place updates) and synchronization. Some careful management of parent/child links is still required, even though `DataTree` does the majority of the work.
 
-Item 2 will deduplicate the MODFLOW 6 specification and reduce the maintenance/synchronization burden for the product's developers.
-
-Item 3 will allow the product to generate a corresponding MODFLOW 6 interface layer when a new MF6 executable is installed.
+The sparse, record-based list input format used by MODFLOW 6 is also in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
 
 ## IO
 
-TODO
+IO is at the boundary of the product. Details of any particular input or output format should not contaminate the product's object model.
 
-### Reading input files
+The product provides an IO framework with which de/serializers can be registered for arbitrary components and formats.
 
+The product will allow IO to be configured globally, on a per-simulation basis, or at read/write time via method parameters.
 
-### Writing input files
+IO is implemented in several layers:
 
+- IO operations, implemented as descriptors, backing `load` and `write` methods on the base component class
+- `cattrs` converters to map the object model to/from Python primitives and containers (i.e. un/structuring)
+- Encoders/decoders for any number of serialization formats, which translate primitives/containers to strings
 
-### Reading output files
-
+In particular, the product will implement a conversion layer and a serialization layer for the MODFLOW 6 input file format. The serialization layer implements a file writer via `Jinja2` templates and a file parser via a `lark` parser generated from an EBNF language specification.

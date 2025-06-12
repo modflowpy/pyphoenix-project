@@ -67,6 +67,8 @@ Other libraries and tools may build upon the product to offer more advanced, dom
 
 - A MODFLOW developer is setting up a worked example to demonstrate how to use a new feature...
 
+- A MODFLOW 6 developer writes a new component specification and corresponding module, generates a compatible Python interface, and uses it to write integration tests for the new component...
+
 ```mermaid
 C4Context
   title [Context] Product use cases
@@ -91,6 +93,43 @@ C4Context
     UpdateRelStyle(professor, flopy, $lineColor="blue")
     UpdateRelStyle(institution, flopy, $lineColor="blue", $offsetX="-190", $offsetY="10")
     UpdateRelStyle(developer, flopy, $lineColor="blue")
+
+```
+
+```mermaid
+C4Context
+  title [Context] Code generation workflow
+
+    Boundary(mf6, "MODFLOW 6"){
+      SystemDb(dfn, "Specification")
+    }
+
+    Boundary(flopy, "FloPy") {
+      Boundary(devs, "Developer APIs") {
+        System(fpycore, "Core framework")
+        System(fpycodegen, "Code generation")
+      }
+      Boundary(users, "User APIs") {
+          System(fpymf6, "MF6 module")
+      }
+      Rel(fpymf6, fpycore, "imports")
+    
+      Rel(fpycodegen, dfn, "inspects")
+      Rel(fpycodegen, fpymf6, "generates")
+    }
+
+    Person(dev, "Developer", "")
+    Person(user, "User", "")
+
+    Rel(dev, dfn, "develops")
+    Rel(dev, fpycore, "develops")
+    Rel(dev, fpycodegen, "develops/uses")
+    Rel(user, fpymf6, "uses")
+    UpdateRelStyle(dev, dfn, $lineColor="blue", $offsetX="-20" $offsetY="-30")
+    UpdateRelStyle(dev, fpycore, $lineColor="blue", $offsetY="90")
+    UpdateRelStyle(dev, fpycodegen, $lineColor="blue", $offsetY="50")
+    UpdateRelStyle(user, fpymf6, $lineColor="blue", $offsetY="50")
+    UpdateRelStyle(user, fpycore, $lineColor="blue", $offsetX="-20" $offsetY="-10")
 
 ```
 
