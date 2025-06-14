@@ -142,3 +142,18 @@ def get_cellid(nn: int, grid: Grid) -> tuple[int, ...]:
             return (nn,)
         case _:
             raise TypeError(f"Unsupported grid type: {type(grid)}")
+
+
+def get_nn(cellid, **kwargs):
+    ndim = len(cellid)
+    match ndim:
+        case 1:
+            return cellid[0]
+        case 2:
+            k, j = cellid
+            return k * kwargs["ncpl"] + j
+        case 3:
+            k, i, j = cellid
+            return k * kwargs["nrow"] * kwargs["ncol"] + i * kwargs["ncol"] + j
+        case _:
+            raise ValueError(f"Invalid cellid: {cellid}")
