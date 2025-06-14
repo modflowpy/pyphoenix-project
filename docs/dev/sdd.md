@@ -3,22 +3,9 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Conceptual model](#conceptual-model)
 - [Object model](#object-model)
-  - [`attrs`](#attrs)
-  - [`xarray`](#xarray)
-  - [`attrs` + `xarray`](#attrs--xarray)
-- [Data types](#data-types)
-  - [Records](#records)
-  - [Unions](#unions)
-  - [Arrays](#arrays)
-  - [Lists](#lists)
-- [Developer workflow](#developer-workflow)
 - [IO](#io)
-  - [Reading input files](#reading-input-files)
-  - [Writing input files](#writing-input-files)
-  - [Reading output files](#reading-output-files)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
