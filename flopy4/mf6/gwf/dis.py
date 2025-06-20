@@ -1,10 +1,8 @@
 import numpy as np
-from attrs import Converter
 from flopy.discretization.structuredgrid import StructuredGrid
 from numpy.typing import NDArray
-from xattree import xattree
+from xattree import dict_to_array_converter, xattree
 
-from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -25,48 +23,51 @@ class Dis(Package):
         coord="lay",
         scope="gwf",
         default=1,
+        group="grid",
     )
     ncol: int = dim(
         block="dimensions",
         coord="col",
         scope="gwf",
         default=2,
+        group="grid",
     )
     nrow: int = dim(
         block="dimensions",
         coord="row",
         scope="gwf",
         default=2,
+        group="grid",
     )
-    delr: NDArray[np.floating] = array(
+    delr: NDArray[np.float64] = array(
         block="griddata",
         default=1.0,
         dims=("ncol",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
     )
-    delc: NDArray[np.floating] = array(
+    delc: NDArray[np.float64] = array(
         block="griddata",
         default=1.0,
         dims=("nrow",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
     )
-    top: NDArray[np.floating] = array(
+    top: NDArray[np.float64] = array(
         block="griddata",
         default=1.0,
         dims=("nrow", "ncol"),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
     )
-    botm: NDArray[np.floating] = array(
+    botm: NDArray[np.float64] = array(
         block="griddata",
         default=0.0,
         dims=("nlay", "nrow", "ncol"),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
     )
-    idomain: NDArray[np.integer] = array(
+    idomain: NDArray[np.int32] = array(
         block="griddata",
         default=1,
         dims=("nlay", "nrow", "ncol"),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
     )
     nnodes: int = dim(
         coord="node",

@@ -85,7 +85,7 @@ import numpy as np
 @define
 class Ic(Package):
     """Initial conditions package"""
-    strt: NDArray[np.floating] = field(...)
+    strt: NDArray[np.float64] = field(...)
     export_array_ascii: bool = field(...)
     export_array_netcdf: bool = field(...)
 ```

@@ -2,73 +2,13 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-from attrs import Converter, define
-from modflow_devtools.dfn import Field
+from attrs import define
 from numpy.typing import NDArray
-from xattree import xattree
+from xattree import dict_to_array_converter, xattree
 
-from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 from flopy4.utils import to_path
-
-_OCSETTING = Field(
-    name="ocsetting",
-    type="keystring",
-    reader="urword",
-    children={
-        "all": Field(
-            name="all",
-            type="keyword",
-            reader="urword",
-        ),
-        "first": Field(
-            name="first",
-            type="keyword",
-            reader="urword",
-        ),
-        "last": Field(
-            name="last",
-            type="keyword",
-            reader="urword",
-        ),
-        "steps": Field(
-            name="steps",
-            type="integer",
-            reader="urword",
-        ),
-        "frequency": Field(
-            name="frequency",
-            type="integer",
-            reader="urword",
-        ),
-    },
-)
-
-_RTYPE = Field(
-    name="rtype",
-    type="string",
-    reader="urword",
-)
-
-
-def _oc_action_field(action: str) -> Field:
-    return Field(
-        name=f"{action}record",
-        type="recarray",
-        dims=("nper",),
-        block="perioddata",
-        reader="urword",
-        children={
-            action: Field(
-                name=action,
-                type="keyword",
-                reader="urword",
-            ),
-            "rtype": _RTYPE,
-            "ocsetting": _OCSETTING,
-        },
-    )
 
 
 @xattree
@@ -114,7 +54,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
     save_budget: Optional[NDArray[np.object_]] = array(
@@ -122,7 +62,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
     print_head: Optional[NDArray[np.object_]] = array(
@@ -130,7 +70,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
     print_budget: Optional[NDArray[np.object_]] = array(
@@ -138,7 +78,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
 

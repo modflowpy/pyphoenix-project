@@ -2,11 +2,10 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import numpy as np
-from attrs import Converter, define
+from attrs import define
 from numpy.typing import NDArray
-from xattree import xattree
+from xattree import dict_to_array_converter, xattree
 
-from flopy4.mf6.codec import structure_array
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
@@ -34,24 +33,24 @@ class Chd(Package):
     obs_filerecord: Optional[Path] = field(block="options", default=None)
     dev_no_newton: bool = field(default=False, metadata={"block": "options"})
     maxbound: Optional[int] = field(block="dimensions", default=None)
-    head: Optional[NDArray[np.floating]] = array(
+    head: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=(
             "nper",
             "nnodes",
         ),
         default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
-    aux: Optional[NDArray[np.floating]] = array(
+    aux: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=(
             "nper",
             "nnodes",
         ),
         default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
     boundname: Optional[NDArray[np.str_]] = array(
@@ -61,7 +60,7 @@ class Chd(Package):
             "nnodes",
         ),
         default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
     steps: Optional[NDArray[np.object_]] = array(
@@ -69,7 +68,7 @@ class Chd(Package):
         block="period",
         dims=("nper", "nnodes"),
         default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
 
@@ -79,8 +78,25 @@ class Chd(Package):
         # in post init. but this only works when values
         # are set in the initializer, not when they are
         # set later.
-        maxhead = len(np.where(self.head != FILL_DNODATA)) if self.head is not None else 0
-        maxaux = len(np.where(self.aux != FILL_DNODATA)) if self.aux is not None else 0
-        maxboundname = len(np.where(self.boundname != "")) if self.boundname is not None else 0
+        if self.head is None:
+            maxhead = 0
+        else:
+            head = self.head if self.head.data.shape == self.head.shape else self.head.todense()
+            maxhead = len(np.where(head != FILL_DNODATA))
+        if self.aux is None:
+            maxaux = 0
+        else:
+            aux = self.aux if self.aux.data.shape == self.aux.shape else self.aux.todense()
+            maxaux = len(np.where(aux != FILL_DNODATA))
+        if self.boundname is None:
+            maxboundname = 0
+        else:
+            boundname = (
+                self.boundname
+                if self.boundname.data.shape == self.boundname.shape
+                else self.boundname.todense()
+            )
+            maxboundname = len(np.where(boundname != ""))
+
         # maxsteps = len(np.where(self.steps != None)) if self.steps is not None else 0
         self.maxbound = max(maxhead, maxaux, maxboundname)
