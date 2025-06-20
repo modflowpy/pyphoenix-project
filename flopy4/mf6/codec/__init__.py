@@ -9,7 +9,6 @@ from jinja2 import Environment, PackageLoader
 
 from flopy4.mf6 import filters
 from flopy4.mf6.codec.converter import (
-    structure_array,
     unstructure_array,
     unstructure_chd,
     unstructure_component,
@@ -85,7 +84,6 @@ def dump(data, path: str | PathLike) -> None:
 
 
 __all__ = [
-    "structure_array",
     "unstructure_array",
     "loads",
     "load",

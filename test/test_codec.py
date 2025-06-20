@@ -23,8 +23,8 @@ def test_dumps_oc():
     oc = Oc(
         budget_file="test.bud",
         head_file="test.hds",
-        save_head={"*": "all"},
-        save_budget={"*": "all"},
+        save_head={0: "all"},
+        save_budget={0: "all"},
         dims={"nper": 1},
     )
 

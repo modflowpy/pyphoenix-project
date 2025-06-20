@@ -6,9 +6,9 @@ from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
 from modflow_devtools.dfn import Sln
 from xarray import DataTree
+from xattree import sparse_config
 
 from flopy4.mf6.component import COMPONENTS
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
@@ -168,7 +168,22 @@ def test_init_sim_explicit_dims():
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
     npf = Npf(dims=dims)
-    chd = Chd(dims=dims, head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+    # TODO: wrap xattree dict_to_array_converter
+    # to handle arrays which declare only dims
+    # nper and nnodes intelligently based on the
+    # type of discretization the model has. the
+    # dim_groups feature is not sufficient for
+    # this, since it expects arrays to declare
+    # the dimensions they will be indexed with,
+    # but in mf6 dfns an array that'd we really
+    # know is grid-shaped is defined with dims
+    # nper and nnodes, regardless of grid type.
+    # (dim_groups seems like a dumb idea anyway,
+    # in retrospect, reinventing some of what an
+    # xarray index is/does. it should be removed
+    # from xattree. a component index, if provided,
+    # should be inspected for linked coordinates??)
+    chd = Chd(dims=dims, head={0: {0: 1.0, 99: 0.0}})
     gwf = Gwf(
         dis=dis,
         ic=ic,
@@ -194,24 +209,26 @@ def test_init_sim_explicit_dims():
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(100))
     assert chd.head[0, 0] == 1.0
     assert chd.head[0, 99] == 0.0
-    assert np.array_equal(chd.head[0, 1:99].data, np.full((98,), FILL_DNODATA))
-    assert np.array_equal(chd.head.data, chd.data.head.data)
+    assert np.array_equal(chd.head[0, 1:99].data, np.full((98,), np.nan), equal_nan=True)
+    assert np.array_equal(chd.head.data, chd.data.head.data, equal_nan=True)
     assert np.array_equal(
         chd.head.data,
         sim.models["gwf"].chd[0].data.head.data,
+        equal_nan=True,
     )
 
 
 def test_init_big_sim():
     # if size over threshold, arrays should be sparse
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(nlay=1, nrow=100, ncol=100)
-    sim = Simulation(tdis=time)
-    gwf = Gwf(parent=sim, dis=grid)
-    ic = Ic(parent=gwf)
-    oc = Oc(parent=gwf)
-    npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 99, 99): 0.0}})
+    with sparse_config(threshold=1000):
+        time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+        grid = StructuredGrid(nlay=1, nrow=100, ncol=100)
+        sim = Simulation(tdis=time)
+        gwf = Gwf(parent=sim, dis=grid)
+        ic = Ic(parent=gwf)
+        oc = Oc(parent=gwf)
+        npf = Npf(parent=gwf)
+        chd = Chd(parent=gwf, head={0: {0: 1.0, 9999: 0.0}})
 
     assert sim.models["gwf"] is gwf
     assert isinstance(sim.data, DataTree)
@@ -222,13 +239,16 @@ def test_init_big_sim():
     assert gwf.chd[0] is chd
     assert np.array_equal(sim.models["gwf"].npf.k, np.ones(10000))
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(10000))
-    assert chd.head[0, 0] == 1.0
-    assert chd.head[0, 9999] == 0.0
-    assert np.array_equal(chd.head[0, 1:9999].data.todense(), np.full((9998,), FILL_DNODATA))
-    assert np.array_equal(chd.head.data.todense(), chd.data.head.data.todense())
+    assert chd.head[0, 0].item() == 1.0
+    assert chd.head[0, 9999].item() == 0.0
+    assert np.array_equal(
+        chd.head[0, 1:9999].data.todense(), np.full((9998,), np.nan), equal_nan=True
+    )
+    assert np.array_equal(chd.head.data.todense(), chd.data.head.data.todense(), equal_nan=True)
     assert np.array_equal(
         chd.head.data.todense(),
         sim.models["gwf"].chd[0].data.head.data.todense(),
+        equal_nan=True,
     )
 
     # test dictionary access/deletion
@@ -282,7 +302,7 @@ def test_write_ascii(function_tmpdir):
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
 
     sim.write()
 

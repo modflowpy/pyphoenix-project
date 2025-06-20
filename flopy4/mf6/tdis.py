@@ -2,12 +2,11 @@ from datetime import datetime
 from typing import Optional
 
 import numpy as np
-from attrs import Converter, define
+from attrs import define
 from flopy.discretization.modeltime import ModelTime
 from numpy.typing import NDArray
-from xattree import ROOT, xattree
+from xattree import ROOT, dict_to_array_converter, xattree
 
-from flopy4.mf6.codec import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -20,33 +19,28 @@ class Tdis(Package):
         nstp: int
         tsmult: float
 
-    nper: int = dim(
-        block="dimensions",
-        coord="per",
-        default=1,
-        scope=ROOT,
-    )
+    nper: int = dim(block="dimensions", coord="per", default=1, scope=ROOT, group="time")
     time_units: Optional[str] = field(block="options", default=None)
     start_date_time: Optional[datetime] = field(block="options", default=None)
-    perlen: NDArray[np.floating] = array(
+    perlen: NDArray[np.float64] = array(
         block="perioddata",
         default=1.0,
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
     nstp: NDArray[np.integer] = array(
         block="perioddata",
         default=1,
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
-    tsmult: NDArray[np.floating] = array(
+    tsmult: NDArray[np.float64] = array(
         block="perioddata",
         default=1.0,
         dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        converter=dict_to_array_converter,
         reader="urword",
     )
 

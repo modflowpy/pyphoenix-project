@@ -1,91 +1,14 @@
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 import sparse
 import xattree
-from numpy.typing import NDArray
 from xarray import DataArray
-from xattree import get_xatspec
 
-from flopy4.adapters import get_cellid, get_nn
+from flopy4.adapters import get_cellid
 from flopy4.mf6.component import Component
-from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.spec import get_blocks, is_list_field
-
-
-# TODO: convert to a cattrs structuring hook so we don't have to
-# apply separately to all array fields?
-def structure_array(value, self_, field) -> NDArray:
-    """
-    Convert a sparse dictionary representation of an array to a
-    dense numpy array or a sparse COO array.
-    """
-
-    if not isinstance(value, dict):
-        # if not a dict, assume it's a numpy array
-        # and let xarray deal with it if it isn't
-        return value
-
-    # get spec
-    spec = get_xatspec(type(self_))
-    field = spec[field.name]
-    if not field.dims:
-        raise ValueError(f"Field {field} missing dims")
-
-    # resolve dims
-    explicit_dims = self_.__dict__.get("dims", {})
-    inherited_dims = dict(self_.parent.data.dims) if self_.parent else {}
-    dims = inherited_dims | explicit_dims
-    shape = [dims.get(d, d) for d in field.dims]
-    unresolved = [d for d in shape if isinstance(d, str)]
-    if any(unresolved):
-        raise ValueError(f"Couldn't resolve dims: {unresolved}")
-
-    if np.prod(shape) > SPARSE_THRESHOLD:
-        a: dict[Tuple[Any, ...], Any] = dict()
-
-        def set_(arr, val, *ind):
-            arr[tuple(ind)] = val
-
-        def final(arr):
-            coords = np.array(list(map(list, zip(*arr.keys()))))
-            return sparse.COO(
-                coords,
-                list(arr.values()),
-                shape=shape,
-                fill_value=field.default or FILL_DNODATA,
-            )
-    else:
-        a = np.full(shape, FILL_DNODATA, dtype=field.dtype)  # type: ignore
-
-        def set_(arr, val, *ind):
-            arr[ind] = val
-
-        def final(arr):
-            arr[arr == FILL_DNODATA] = field.default or FILL_DNODATA
-            return arr
-
-    # populate array. TODO: is there a way to do this
-    # without hardcoding awareness of kper and cellid?
-    if "nper" in dims:
-        for kper, period in value.items():
-            if kper == "*":
-                kper = 0
-            match len(shape):
-                case 1:
-                    set_(a, period, kper)
-                case _:
-                    for cellid, v in period.items():
-                        nn = get_nn(cellid, **dims)
-                        set_(a, v, kper, nn)
-            if kper == "*":
-                break
-    else:
-        for cellid, v in value.items():
-            nn = get_nn(cellid, **dims)
-            set_(a, v, nn)
-    return final(a)
 
 
 def unstructure_array(value: DataArray) -> dict:

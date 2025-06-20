@@ -20,14 +20,14 @@ gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
 npf = Npf(parent=gwf, save_specific_discharge=True)
 chd = Chd(
     parent=gwf,
-    head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+    head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
 )
 oc = Oc(
     parent=gwf,
     budget_file=f"{gwf.name}.bud",
     head_file=f"{gwf.name}.hds",
-    save_head={"*": "all"},
-    save_budget={"*": "all"},
+    save_head={0: "all"},
+    save_budget={0: "all"},
 )
 
 # sim.write()
