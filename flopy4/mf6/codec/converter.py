@@ -29,7 +29,7 @@ def structure_array(value, self_, field) -> NDArray:
 
     # get spec
     spec = get_xatspec(type(self_))
-    field = spec[field.name]
+    field = spec.flat[field.name]
     if not field.dims:
         raise ValueError(f"Field {field} missing dims")
 

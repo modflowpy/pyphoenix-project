@@ -185,7 +185,7 @@ class Flopy3Package(PackageInterface):
             self._data = package.data
         else:
             raise Exception("Input package has no data")
-        self._spec = get_xatspec(type(package))
+        self._spec = get_xatspec(type(package)).flat
         if modelgrid:
             self._grid = modelgrid
         elif model:
