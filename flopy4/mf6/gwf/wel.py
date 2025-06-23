@@ -3,15 +3,14 @@ from typing import ClassVar, Optional
 
 import numpy as np
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter, xattree
+from xattree import dict_to_array_converter
 
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
 
-@xattree
-class Chd(Package):
+class Wel(Package):
     multi_package: ClassVar[bool] = True
 
     auxiliary: Optional[list[str]] = array(block="options", default=None)
@@ -20,11 +19,13 @@ class Chd(Package):
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
+    auto_flow_reduce: float = field(block="options", default=None)
+    afrcsv_filerecord: Optional[Path] = field(block="options", default=None)
     ts_filerecord: Optional[Path] = field(block="options", default=None)
     obs_filerecord: Optional[Path] = field(block="options", default=None)
-    dev_no_newton: bool = field(default=False, block="options")
+    mover: bool = field(block="options", default=False)
     maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
-    head: Optional[NDArray[np.float64]] = array(
+    q: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=(
             "nper",
@@ -61,11 +62,11 @@ class Chd(Package):
         # in post init. but this only works when values
         # are set in the initializer, not when they are
         # set later.
-        if self.head is None:
-            maxhead = 0
+        if self.q is None:
+            maxq = 0
         else:
-            head = self.head if self.head.data.shape == self.head.shape else self.head.todense()
-            maxhead = len(np.where(head != FILL_DNODATA))
+            q = self.q if self.q.data.shape == self.q.shape else self.q.todense()
+            maxq = len(np.where(q != FILL_DNODATA))
         if self.aux is None:
             maxaux = 0
         else:
@@ -81,4 +82,4 @@ class Chd(Package):
             )
             maxboundname = len(np.where(boundname != ""))
 
-        self.maxbound = max(maxhead, maxaux, maxboundname)
+        self.maxbound = max(maxq, maxaux, maxboundname)

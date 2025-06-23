@@ -3,33 +3,38 @@ from typing import ClassVar, Optional
 
 import numpy as np
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter, xattree
+from xattree import dict_to_array_converter
 
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
 
-@xattree
-class Chd(Package):
+class Drn(Package):
     multi_package: ClassVar[bool] = True
 
     auxiliary: Optional[list[str]] = array(block="options", default=None)
     auxmultname: Optional[str] = field(block="options", default=None)
+    auxdepthname: Optional[str] = field(block="options", default=None)
     boundnames: bool = field(block="options", default=False)
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
     ts_filerecord: Optional[Path] = field(block="options", default=None)
     obs_filerecord: Optional[Path] = field(block="options", default=None)
-    dev_no_newton: bool = field(default=False, block="options")
+    mover: bool = field(block="options", default=False)
+    dev_cubic_scaling: bool = field(default=False, block="options")
     maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
-    head: Optional[NDArray[np.float64]] = array(
+    elev: Optional[NDArray[np.float64]] = array(
         block="period",
-        dims=(
-            "nper",
-            "nnodes",
-        ),
+        dims=("nper", "nnodes"),
+        default=None,
+        converter=dict_to_array_converter,
+        reader="urword",
+    )
+    cond: Optional[NDArray[np.float64]] = array(
+        block="period",
+        dims=("nper", "nnodes"),
         default=None,
         converter=dict_to_array_converter,
         reader="urword",
@@ -66,6 +71,11 @@ class Chd(Package):
         else:
             head = self.head if self.head.data.shape == self.head.shape else self.head.todense()
             maxhead = len(np.where(head != FILL_DNODATA))
+        if self.cond is None:
+            maxcond = 0
+        else:
+            cond = self.cond if self.cond.data.shape == self.cond.shape else self.cond.todense()
+            maxcond = len(np.where(cond != FILL_DNODATA))
         if self.aux is None:
             maxaux = 0
         else:
@@ -81,4 +91,4 @@ class Chd(Package):
             )
             maxboundname = len(np.where(boundname != ""))
 
-        self.maxbound = max(maxhead, maxaux, maxboundname)
+        self.maxbound = max(maxhead, maxcond, maxaux, maxboundname)
