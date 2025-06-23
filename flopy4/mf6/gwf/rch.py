@@ -11,9 +11,10 @@ from flopy4.mf6.spec import array, field
 
 
 @xattree
-class Chd(Package):
+class Rch(Package):
     multi_package: ClassVar[bool] = True
 
+    fixed_cell: bool = field(block="options", default=False)
     auxiliary: Optional[list[str]] = array(block="options", default=None)
     auxmultname: Optional[str] = field(block="options", default=None)
     boundnames: bool = field(block="options", default=False)
@@ -22,9 +23,8 @@ class Chd(Package):
     save_flows: bool = field(block="options", default=False)
     ts_filerecord: Optional[Path] = field(block="options", default=None)
     obs_filerecord: Optional[Path] = field(block="options", default=None)
-    dev_no_newton: bool = field(default=False, block="options")
     maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
-    head: Optional[NDArray[np.float64]] = array(
+    recharge: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=(
             "nper",
@@ -61,11 +61,11 @@ class Chd(Package):
         # in post init. but this only works when values
         # are set in the initializer, not when they are
         # set later.
-        if self.head is None:
-            maxhead = 0
+        if self.recharge is None:
+            maxrecharge = 0
         else:
-            head = self.head if self.head.data.shape == self.head.shape else self.head.todense()
-            maxhead = len(np.where(head != FILL_DNODATA))
+            recharge = self.head if self.head.data.shape == self.head.shape else self.head.todense()
+            maxrecharge = len(np.where(recharge != FILL_DNODATA))
         if self.aux is None:
             maxaux = 0
         else:
@@ -81,4 +81,4 @@ class Chd(Package):
             )
             maxboundname = len(np.where(boundname != ""))
 
-        self.maxbound = max(maxhead, maxaux, maxboundname)
+        self.maxbound = max(maxrecharge, maxaux, maxboundname)
