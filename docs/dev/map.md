@@ -2,6 +2,7 @@
 
 ## Phase 1: Minimum Viable Product
 
+Core functionality. Shortcuts are OK.
 Read/write input files, run simulations, get/set data.
 Initial deliverable for alpha testing (USGS, Deltares).
 Alpha testers include Joeri, Huite, and the core MF6 team.
