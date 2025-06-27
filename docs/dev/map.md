@@ -25,7 +25,7 @@ Adopt features from e.g. `imod-python`.
 Incorporate feedback from alpha testing.
 Beta testers include alpha testers and additional volunteers from USGS and Deltares.
 Release via `pip install` from github URL of our development sandbox.
-Tentative timeframe: October.
+Tentative timeframe: by end of year?
 
 - [ ] reimplement object model (maintainability over magic)
 - [ ] structured xarray index for topology/geometry-aware selections
@@ -35,9 +35,6 @@ Tentative timeframe: October.
 - [ ] IO optimization (tuning, laziness/concurrency, etc)
 - [ ] comprehensive logging and error handling
 - [ ] validation framework, model checks
-- [ ] command line interface
-- [ ] cell inspector
-- [ ] unit-awareness
 
 ## Phase 3: Rollout
 
@@ -45,7 +42,6 @@ Integrate the product with the existing repository.
 Evaluate feature-parity and fill any remaining gaps.
 Release via standard channels (PyPI, Conda).
 Dial 3.x down to maintenance mode.
-Tentative timeframe: January 2026
 
 - [ ] implement 3.x adapters, compare tests/examples
 - [ ] finalize 3.x maintenance plan and 4.x release plan
