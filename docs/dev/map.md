@@ -9,7 +9,7 @@ Release via `pip install ` from github URL of our development sandbox.
 Tentative timeframe: July.
 
 - [x] DFN spec to TOML
-- [x] xarray/attrs backend
+- [x] draft object model
 - [x] unified IO framework
 - [ ] MF6 input file parser
 - [ ] MF6 input file writer
@@ -18,6 +18,7 @@ Tentative timeframe: July.
 
 ## Phase 2: Minimum Marketable Product
 
+Refactor to make production-ready.
 Achieve rough feature-parity with 3.x.
 Adopt features from e.g. `imod-python`.
 Incorporate feedback from alpha testing.
@@ -25,6 +26,7 @@ Beta testers include alpha testers and additional volunteers from USGS and Delta
 Release via `pip install` from github URL of our development sandbox.
 Tentative timeframe: October.
 
+- [ ] reimplement object model (maintainability over magic)
 - [ ] structured xarray index for topology/geometry-aware selections
 - [ ] xarray accessors for cross-cutting concerns (plot, export)
 - [ ] xugrid integration for UGRID-compliance (DIS/DISV grids)
