@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from attrs import define
+from attrs import Converter, define
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter, xattree
+from xattree import xattree
 
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -50,47 +51,47 @@ class Npf(Package):
         block="griddata",
         dims=("nnodes",),
         default=0,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     k: NDArray[np.float64] = array(
         block="griddata",
         dims=("nnodes",),
         default=1.0,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     k22: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     k33: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     angle1: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     angle2: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     angle3: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     wetdry: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nnodes",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )

@@ -2,17 +2,19 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import numpy as np
+from attrs import Converter
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter
+from xattree import xattree
 
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
 
+@xattree
 class Wel(Package):
     multi_package: ClassVar[bool] = True
-
     auxiliary: Optional[list[str]] = array(block="options", default=None)
     auxmultname: Optional[str] = field(block="options", default=None)
     boundnames: bool = field(block="options", default=False)
@@ -32,7 +34,7 @@ class Wel(Package):
             "nnodes",
         ),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     aux: Optional[NDArray[np.float64]] = array(
@@ -42,7 +44,7 @@ class Wel(Package):
             "nnodes",
         ),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     boundname: Optional[NDArray[np.str_]] = array(
@@ -52,7 +54,7 @@ class Wel(Package):
             "nnodes",
         ),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
 

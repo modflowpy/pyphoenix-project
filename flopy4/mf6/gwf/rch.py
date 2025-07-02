@@ -2,10 +2,12 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import numpy as np
+from attrs import Converter
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter, xattree
+from xattree import xattree
 
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -31,7 +33,7 @@ class Rch(Package):
             "nnodes",
         ),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     aux: Optional[NDArray[np.float64]] = array(
@@ -41,7 +43,7 @@ class Rch(Package):
             "nnodes",
         ),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     boundname: Optional[NDArray[np.str_]] = array(
@@ -51,7 +53,7 @@ class Rch(Package):
             "nnodes",
         ),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
 

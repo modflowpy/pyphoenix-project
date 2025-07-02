@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-from attrs import define
+from attrs import Converter, define
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter, xattree
+from xattree import xattree
 
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 from flopy4.utils import to_path
@@ -54,7 +55,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     save_budget: Optional[NDArray[np.object_]] = array(
@@ -62,7 +63,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     print_head: Optional[NDArray[np.object_]] = array(
@@ -70,7 +71,7 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     print_budget: Optional[NDArray[np.object_]] = array(
@@ -78,17 +79,6 @@ class Oc(Package):
         block="period",
         default="all",
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
-
-    # original DFN
-    # @classmethod
-    # def get_dfn(cls) -> Dfn:
-    #     """Generate the component's MODFLOW 6 definition."""
-    #     dfn = super().get_dfn()
-    #     for field_name in list(dfn["perioddata"].keys()):
-    #         dfn["perioddata"].pop(field_name)
-    #     dfn["perioddata"]["saverecord"] = _oc_action_field("save")
-    #     dfn["perioddata"]["printrecord"] = _oc_action_field("print")
-    #     return dfn
