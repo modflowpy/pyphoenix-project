@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from attrs import Converter
 from flopy.discretization.structuredgrid import StructuredGrid
@@ -65,7 +66,7 @@ class Dis(Package):
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    idomain: NDArray[np.int32] = array(
+    idomain: Optional[NDArray[np.int32]] = array(
         block="griddata",
         default=1,
         dims=("nlay", "nrow", "ncol"),
