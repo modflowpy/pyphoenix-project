@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import Optional
 
 import numpy as np
-from attrs import define
+from attrs import Converter, define
 from flopy.discretization.modeltime import ModelTime
 from numpy.typing import NDArray
-from xattree import ROOT, dict_to_array_converter, xattree
+from xattree import ROOT, xattree
 
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -26,21 +27,21 @@ class Tdis(Package):
         block="perioddata",
         default=1.0,
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     nstp: NDArray[np.integer] = array(
         block="perioddata",
         default=1,
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     tsmult: NDArray[np.float64] = array(
         block="perioddata",
         default=1.0,
         dims=("nper",),
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
 

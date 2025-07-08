@@ -1,7 +1,9 @@
 import numpy as np
+from attrs import Converter
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter, xattree
+from xattree import xattree
 
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -12,7 +14,7 @@ class Ic(Package):
         block="packagedata",
         dims=("nnodes",),
         default=1.0,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     export_array_ascii: bool = field(block="options", default=False)
     export_array_netcdf: bool = field(block="options", default=False)

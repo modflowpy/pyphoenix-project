@@ -2,13 +2,16 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from attrs import Converter
 from numpy.typing import NDArray
-from xattree import dict_to_array_converter
+from xattree import xattree
 
+from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
 
+@xattree
 class Sto(Package):
     save_flows: bool = field(block="options", default=False)
     storagecoefficient: bool = field(block="options", default=False)
@@ -22,31 +25,31 @@ class Sto(Package):
         block="griddata",
         dims=("nnodes",),
         default=0,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     ss: NDArray[np.float64] = array(
         block="griddata",
         dims=("nnodes",),
         default=1e-5,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     sy: NDArray[np.float64] = array(
         block="griddata",
         dims=("nnodes",),
         default=0.15,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     steady_state: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
     transient: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
-        converter=dict_to_array_converter,
+        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
     )
