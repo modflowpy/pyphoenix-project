@@ -1,12 +1,14 @@
+import argparse
 import cmd
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 from modflow_devtools.dfn2toml import convert as dfn2toml
 from modflow_devtools.download import download_and_unzip
 
-from codegen import make_all
+from .make import make_all
 
 _PROJ_ROOT_PATH = Path(__file__).parents[1].expanduser().resolve().absolute()
 _MF6_AUTOGEN_PATH = _PROJ_ROOT_PATH / "flopy4" / "mf6" / "modflow"
@@ -95,8 +97,6 @@ def generate_classes(
 
 def cli_main():
     """Command-line interface for generate_classes()."""
-    import argparse
-    import sys
 
     parser = argparse.ArgumentParser(
         description=generate_classes.__doc__.split("\n\n")[0],

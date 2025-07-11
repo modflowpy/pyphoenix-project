@@ -6,6 +6,7 @@ from pprint import pformat
 from typing import Any, List, Optional
 
 from boltons.iterutils import default_enter, remap
+from modflow_devtools.dfn import _SCALAR_TYPES
 
 
 def _try_get_enum_value(v: Any) -> Any:
@@ -228,7 +229,6 @@ class Filters:
         where applicable. TODO: this should get much simpler if we can drop
         all the `ListTemplateGenerator`/`ArrayTemplateGenerator` attributes.
         """
-        from modflow_devtools.dfn import _SCALAR_TYPES
 
         component_base = Filters.base(component_name)
         component_vars = _get_vars(dfn)
@@ -453,15 +453,14 @@ class Filters:
                     if subpkg and subpkg["key"] not in refs and component_name[1] != "nam":
                         refs[subpkg["key"]] = subpkg
                         stmts.append(
-                            f"self._{subpkg['key']} "
-                            f"= self.build_mfdata('{subpkg['key']}', None)"
+                            f"self._{subpkg['key']} = self.build_mfdata('{subpkg['key']}', None)"
                         )
                         args = (
                             f"'{subpkg['abbr']}', {subpkg['val']}, "
                             f"'{subpkg['param']}', self._{subpkg['key']}"
                         )
                         stmts.append(
-                            f"self._{subpkg['abbr']}_package " f"= self.build_child_package({args})"
+                            f"self._{subpkg['abbr']}_package = self.build_child_package({args})"
                         )
 
             return stmts

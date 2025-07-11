@@ -134,6 +134,7 @@ test313 = { features = ["py313", "test"], solve-group = "py313" }
 dev = { features = ["py311", "test", "lint", "build"], solve-group = "py311" }
 
 [tool.pixi.feature.build.tasks]
+generate-classes = { cmd = "python -m codegen.generate_classes" }
 build = { cmd = "python -m build" }
 
 [tool.pixi.feature.test.tasks]

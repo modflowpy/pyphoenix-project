@@ -1,7 +1,4 @@
-from typing import (
-    Iterator,
-    TypedDict,
-)
+from typing import Iterator, TypedDict
 
 from modflow_devtools.dfn import Dfn
 
