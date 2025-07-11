@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: generate-classes",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "codegen.generate_classes",
+            "args": [
+                "--dfnpath=c:/Users/kraus/Source/Repos/pyphoenix-project/dfn/"
+            ]
+        },
+        {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
