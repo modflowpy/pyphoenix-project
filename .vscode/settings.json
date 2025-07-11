@@ -22,6 +22,8 @@
         "**/Thumbs.db": true,
         ".pixi": true,
         ".ruff_cache": true,
-        ".pytest_cache": true
+        ".pytest_cache": true,
+        "**/__pycache__": true,
+        ".mypy_cache": true
     },
 }
