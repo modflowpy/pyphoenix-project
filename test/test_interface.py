@@ -6,10 +6,10 @@ from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
 
 from flopy4.mf6.adapters import Flopy3Model, Flopy3Package
-from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
-from flopy4.mf6.ims import Ims
-from flopy4.mf6.simulation import Simulation
-from flopy4.mf6.tdis import Tdis
+from flopy4.mf6.modflow.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.modflow.ims import Ims
+from flopy4.mf6.modflow.simulation import Simulation
+from flopy4.mf6.modflow.tdis import Tdis
 
 
 def quickstart_model():

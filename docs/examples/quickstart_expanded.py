@@ -26,8 +26,8 @@ and some which would probably need DFN
 changes to support.
 """
 
-from flopy4.mf6 import Simulation, Tdis
-from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.modflow import Simulation, Tdis
+from flopy4.mf6.modflow.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
 ws = "./mymodel"
 name = "mymodel"

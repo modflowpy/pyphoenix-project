@@ -8,9 +8,9 @@ from xattree import xattree
 from flopy4.mf6.context import Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
+from flopy4.mf6.modflow.tdis import Tdis
 from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import field
-from flopy4.mf6.tdis import Tdis
 
 
 def convert_time(value):

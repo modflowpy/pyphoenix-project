@@ -7,21 +7,25 @@ from attrs import define
 from flopy.discretization.grid import Grid
 from xattree import xattree
 
-from flopy4.mf6.gwf.chd import Chd
-from flopy4.mf6.gwf.dis import Dis
-from flopy4.mf6.gwf.drn import Drn
-from flopy4.mf6.gwf.ic import Ic
-from flopy4.mf6.gwf.npf import Npf
-from flopy4.mf6.gwf.oc import Oc
-from flopy4.mf6.gwf.wel import Wel
+from flopy4.mf6.modflow.gwf.chd import Chd
+from flopy4.mf6.modflow.gwf.dis import Dis
+from flopy4.mf6.modflow.gwf.drn import Drn
+from flopy4.mf6.modflow.gwf.ic import Ic
+from flopy4.mf6.modflow.gwf.npf import Npf
+from flopy4.mf6.modflow.gwf.oc import Oc
+from flopy4.mf6.modflow.gwf.wel import Wel
 from flopy4.mf6.model import Model
+from flopy4.mf6.modflow.gwf.chd import Chd
+from flopy4.mf6.modflow.gwf.dis import Dis
+from flopy4.mf6.modflow.gwf.ic import Ic
+from flopy4.mf6.modflow.gwf.npf import Npf
+from flopy4.mf6.modflow.gwf.oc import Oc
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils import open_cbc, open_hds
 
 __all__ = ["Gwf", "Chd", "Dis", "Drn", "Ic", "Npf", "Oc", "Wel"]
 
-
-def convert_grid(value):
+def _convert_grid(value):
     if isinstance(value, Grid):
         return Dis.from_grid(value)
     if isinstance(value, Dis):
