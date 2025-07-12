@@ -65,8 +65,9 @@ field(
 {%- endmacro %}
 
 {% macro dims_in_field(attr) %}
-{# TODO: Fix splitting of shapes. Can be comma or semi-colon. #}
-, dims=("{{attr.shape[1:-1]}}",)
+{% set trimmed_shape_str = attr.shape[1:-1]|replace(";",",") %}
+{% set dims = trimmed_shape_str.split(",") %}
+, dims=({% for dim in dims %}"{{dim|trim}}",{% endfor %})
 {%- endmacro %}
 
 {% macro converter_in_field(attr) %}

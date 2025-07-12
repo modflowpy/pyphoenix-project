@@ -5,15 +5,17 @@
 {% set description = name|description %}
 {% set container = dfn.ref is defined and name[0] not in ["sln", "sim"] and name[1] not in ["hpc"] %}
 
-import numpy as np
-from os import PathLike, curdir
+from pathlib import Path
 from typing import ClassVar
 
-from numpy.typing import NDArray
-from flopy4.mf6.package import Package
-from flopy4.mf6.converters import dict_to_array
-from xattree import xattree, field, array
+import numpy as np
 from attrs import Converter
+from numpy.typing import NDArray
+from xattree import array, field, xattree
+
+from flopy4.mf6.converters import dict_to_array
+from flopy4.mf6.package import Package
+
 
 @xattree
 class Modflow{{ title }}(Package):

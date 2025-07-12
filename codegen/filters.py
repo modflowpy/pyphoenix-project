@@ -415,6 +415,7 @@ class Filters:
             "string": "str",
             "keyword": "bool",
             "recarray": "dict",
+            "record": "Path",
         }
 
         # options with a shape are lists
