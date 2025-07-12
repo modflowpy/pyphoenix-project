@@ -36,6 +36,7 @@ def _get_template_env():
     env.filters["value"] = Filters.value
     env.filters["math"] = Filters.math
     env.filters["clean"] = Filters.clean
+    env.filters["python_type"] = Filters.python_type
 
     return env
 

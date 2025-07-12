@@ -1,12 +1,8 @@
-import sys
 from enum import Enum
 from keyword import kwlist
-from pathlib import Path
-from pprint import pformat
 from typing import Any, List, Optional
 
 from boltons.iterutils import default_enter, remap
-from modflow_devtools.dfn import _SCALAR_TYPES
 
 
 def _try_get_enum_value(v: Any) -> Any:
@@ -136,6 +132,7 @@ class Filters:
                 return ["method", "interpolation_method_single", "sfac"]
             return []
 
+    @staticmethod
     def untag(var: dict) -> dict:
         """
         If the variable is a tagged record, remove the leading
@@ -220,133 +217,17 @@ class Filters:
             return _default
         return None
 
-    def variables(dfn: dict) -> List[str]:
+    @staticmethod
+    def variables(dfn: dict) -> dict[str, dict]:
         return _get_vars(dfn)
 
-    def attrs(dfn: dict, component_name: tuple[str, str]) -> List[str]:
+    @staticmethod
+    def attrs(dfn: dict) -> list[dict]:
         """
-        Map the context's input variables to corresponding class attributes,
-        where applicable. TODO: this should get much simpler if we can drop
-        all the `ListTemplateGenerator`/`ArrayTemplateGenerator` attributes.
+        Map the context's input variables to corresponding class attributes, where applicable.
         """
-
-        component_base = Filters.base(component_name)
         component_vars = _get_vars(dfn)
-
-        def _attr(var: dict) -> Optional[str]:
-            var_name = var["name"]
-            var_type = var["type"]
-            var_block = var["block"]
-            var_shape = var.get("shape", None)
-            var_subpkg = var.get("ref", None)
-
-            if (
-                (var_type in _SCALAR_TYPES and not var_shape) or var_name in ["cvoptions", "output"]
-                # or (component_name[1] == "dis" and var_name == "packagedata")
-            ):
-                return None
-
-            if var_subpkg:
-                # if the variable is a subpackage reference, use the original key
-                # (which has been replaced already with the referenced variable)
-                args = [
-                    f"'{component_name[1]}'",
-                    f"'{var_block}'",
-                    f"'{var_subpkg['key']}'",
-                ]
-                if component_name[0] not in [
-                    None,
-                    "sim",
-                    "sln",
-                    "utl",
-                    "exg",
-                ]:
-                    args.insert(0, f"'{component_name[0]}6'")
-                return f"{var_subpkg['key']} = ListTemplateGenerator(({', '.join(args)}))"
-            is_array = var_type in ["string", "integer", "double precision"] and var_shape
-            is_composite = var_type in ["recarray", "record", "keystring"]
-            if is_array or is_composite:
-
-                def _args():
-                    args = [
-                        f"'{component_name[1]}'",
-                        f"'{var_block}'",
-                        f"'{var_name}'",
-                    ]
-                    if component_name[0] is not None and component_name[0] not in [
-                        "sim",
-                        "sln",
-                        "utl",
-                        "exg",
-                    ]:
-                        args.insert(0, f"'{component_name[0]}6'")
-                    return args
-
-                kind = "array" if is_array else "list"
-                return f"{var_name} = {kind.title()}TemplateGenerator(({', '.join(_args())}))"
-
-            return None
-
-        attrs = list(filter(None, [_attr(v) for v in component_vars.values()]))
-
-        dfn_file_name = Filters.dfn_file_name(component_name)
-        dfn_header = ["header"]
-        if dfn.get("multi", None):
-            dfn_header.append("multi-package")
-        if dfn.get("advanced", None):
-            dfn_header.append("package-type advanced-stress-package")
-        if dfn.get("sln", None):
-            dfn_header.append(["solution_package", "*"])
-
-        dfn_dir = Path(__file__).parents[2] / "data" / "dfn"
-
-        def _dfn(definition, metadata) -> List[List[str]]:
-            def _meta():
-                exclude = ["subpackage", "parent_name_type"]
-                return [v for v in metadata if not any(p in v for p in exclude)]
-
-            def __dfn():
-                def _var(var: dict) -> List[str]:
-                    exclude = ["longname", "description"]
-                    name = var["name"]
-                    subpkg = dfn.get("fkeys", dict()).get(name, None)
-                    if subpkg:
-                        var["construct_package"] = subpkg["abbr"]
-                        var["construct_data"] = subpkg["val"]
-                        var["parameter_name"] = subpkg["param"]
-                    return [" ".join([k, v]).strip() for k, v in var.items() if k not in exclude]
-
-                return [_var(var) for var in list(definition.values(multi=True))]
-
-            return [["header"] + _meta()] + __dfn()
-
-        def _filter_metadata(metadata):
-            meta_ = list()
-            for m in metadata:
-                if "multi" in m:
-                    meta_.append(m)
-                elif "solution" in m:
-                    s = m.split()
-                    meta_.append([s[0], s[2]])
-                elif "package-type" in m:
-                    s = m.split()
-                    meta_.append(" ".join(s))
-            return meta_
-
-        legacy_dfn = dfn.get("legacy_dfn", {})
-        legacy_meta = dfn.get("legacy_meta", [])
-        legacy_dfn = _dfn(legacy_dfn, _filter_metadata(legacy_meta))
-        if component_base == "MFPackage":
-            attrs.extend(
-                [
-                    f"package_abbr = '{Filters.package_abbr(component_name)}'",
-                    f"_package_type = '{component_name[1]}'",
-                    f"dfn_file_name = '{dfn_file_name}'",
-                    f"dfn = {pformat(legacy_dfn, indent=10, width=sys.maxsize)}",
-                ]
-            )
-
-        return attrs
+        return list(component_vars.values())
 
     def init(dfn: dict, component_name: tuple[str, str]) -> List[str]:
         component_base = Filters.base(component_name)
@@ -467,6 +348,7 @@ class Filters:
 
         return list(filter(None, _statements()))
 
+    @staticmethod
     def safe_name(v: str) -> str:
         """
         Make sure a string is safe to use as a variable name in Python code.
@@ -519,3 +401,29 @@ class Filters:
         if isinstance(v, str) and v[0] not in ["'", '"']:
             v = f"'{v}'"
         return v
+
+    @staticmethod
+    def python_type(attr: dict) -> str:
+        """
+        Get the Python type of the attribute, e.g. 'int', 'str', 'float',
+        'list', 'dict', etc.
+        """
+        types = {
+            "integer": "int",
+            "real": "float",
+            "string": "str",
+            "keyword": "bool",
+            "recarray": "dict",
+        }
+
+        py_type = types.get(attr["type"], "Any")
+        if py_type == "dict":
+            children = Filters.children(attr)
+            if children:
+                py_type = "dict[str, Any]"
+            else:
+                py_type = "dict"
+        if attr.get("optional", False):
+            py_type = f"{py_type} | None"
+
+        return py_type

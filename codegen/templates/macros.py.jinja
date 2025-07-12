@@ -25,3 +25,11 @@
 {% endif %}
 {% endfor %}
 {% endmacro %}
+
+{% macro inner_class(vars) %}
+@define
+class {{ vars.name|capitalize}}:
+    {% for key, attr in vars.fields.items() %}
+    {{ key }}: {{ attr|python_type }} = field()
+    {% endfor %}
+{% endmacro %}

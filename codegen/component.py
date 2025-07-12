@@ -15,12 +15,10 @@ def get_component_names(dfn: dict) -> list[tuple[str, str]]:
     if name[1] == "nam":
         if name[0] == "sim":
             return [
-                (None, name[1]),  # nam pkg
                 tuple([*name]),  # simulation
             ]
         else:
             return [
-                tuple([*name]),  # nam pkg
                 (name[0], None),  # model
             ]
     elif name in [
