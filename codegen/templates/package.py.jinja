@@ -11,7 +11,9 @@ from typing import ClassVar
 
 from numpy.typing import NDArray
 from flopy4.mf6.package import Package
+from flopy4.mf6.converters import dict_to_array
 from xattree import xattree, field, array
+from attrs import Converter
 
 @xattree
 class Modflow{{ title }}(Package):

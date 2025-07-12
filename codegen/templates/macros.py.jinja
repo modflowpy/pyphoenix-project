@@ -37,9 +37,18 @@ class {{ vars.name|capitalize}}:
 {% macro xattree_field(attr) %}
 {% set metadata = "{\"block\": \"" + attr.block + "\"}" %}
 {% if "shape" in attr %}
-array(metadata={{metadata}}{{ default_in_field(attr) }}{{ dims_in_field(attr) }})
+array(
+    metadata={{metadata}}
+    {{ default_in_field(attr) }}
+    {{ dims_in_field(attr) }}
+    {{ converter_in_field(attr) }}
+)
 {%- else %}
-field(metadata={{metadata}}{{ default_in_field(attr) }}{{ init_in_field(attr) }})
+field(
+    metadata={{metadata}}
+    {{ default_in_field(attr) }}
+    {{ init_in_field(attr) }}
+)
 {%- endif %}
 {%- endmacro %}
 
@@ -56,6 +65,10 @@ field(metadata={{metadata}}{{ default_in_field(attr) }}{{ init_in_field(attr) }}
 {%- endmacro %}
 
 {% macro dims_in_field(attr) %}
-{# TODO: Fix splitting of shapes#}
+{# TODO: Fix splitting of shapes. Can be comma or semi-colon. #}
 , dims=("{{attr.shape[1:-1]}}",)
+{%- endmacro %}
+
+{% macro converter_in_field(attr) %}
+, converter=Converter(dict_to_array, takes_self=True, takes_field=True)
 {%- endmacro %}
