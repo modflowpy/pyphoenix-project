@@ -403,7 +403,7 @@ class Filters:
         return v
 
     @staticmethod
-    def python_type(attr: dict) -> str:
+    def python_type(attr: dict[str, Any]) -> str:
         """
         Get the Python type of the attribute, e.g. 'int', 'str', 'float',
         'list', 'dict', etc.
@@ -411,18 +411,28 @@ class Filters:
         types = {
             "integer": "int",
             "real": "float",
+            "double precision": "float",
             "string": "str",
             "keyword": "bool",
             "recarray": "dict",
         }
 
-        py_type = types.get(attr["type"], "Any")
-        if py_type == "dict":
+        # options with a shape are lists
+        if attr.get("shape", None) and attr["type"] == "string":
+            py_type = "list[str]"
+        elif attr.get("shape", None) and attr["type"] in ["real", "double precision"]:
+            py_type = "NDArray[np.float64]"
+        elif attr.get("shape", None) and attr["type"] == "integer":
+            py_type = "NDArray[np.int64]"
+        elif attr["type"] == "recarray":
             children = Filters.children(attr)
             if children:
                 py_type = "dict[str, Any]"
             else:
                 py_type = "dict"
+        else:
+            py_type = types.get(attr["type"], "Any")
+
         if attr.get("optional", False):
             py_type = f"{py_type} | None"
 

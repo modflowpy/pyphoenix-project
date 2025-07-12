@@ -27,9 +27,35 @@
 {% endmacro %}
 
 {% macro inner_class(vars) %}
-@define
+@xattree
 class {{ vars.name|capitalize}}:
     {% for key, attr in vars.fields.items() %}
     {{ key }}: {{ attr|python_type }} = field()
     {% endfor %}
-{% endmacro %}
+{%- endmacro %}
+
+{% macro xattree_field(attr) %}
+{% set metadata = "{\"block\": \"" + attr.block + "\"}" %}
+{% if "shape" in attr %}
+array(metadata={{metadata}}{{ default_in_field(attr) }}{{ dims_in_field(attr) }})
+{%- else %}
+field(metadata={{metadata}}{{ default_in_field(attr) }}{{ init_in_field(attr) }})
+{%- endif %}
+{%- endmacro %}
+
+{% macro default_in_field(attr) %}
+{% if attr.default %}
+, default = {{ attr.default }}
+{%- elif attr.optional %}
+, default=None
+{%- endif %}
+{%- endmacro %}
+
+{% macro init_in_field(attr) %}
+{% if attr.block == "dimensions" %}, init=False{% endif %}
+{%- endmacro %}
+
+{% macro dims_in_field(attr) %}
+{# TODO: Fix splitting of shapes#}
+, dims=("{{attr.shape[1:-1]}}",)
+{%- endmacro %}
