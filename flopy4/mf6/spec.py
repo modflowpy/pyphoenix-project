@@ -28,6 +28,7 @@ def field(
     eq=True,
     init=True,
     metadata=None,
+    on_setattr=None,
     block: str | None = None,
 ):
     """Define a field."""
@@ -42,6 +43,7 @@ def field(
         repr=repr,
         eq=eq,
         init=init,
+        on_setattr=on_setattr,
         metadata=metadata,
     )
 
@@ -105,6 +107,7 @@ def array(
     repr=True,
     eq=None,
     metadata=None,
+    on_setattr=None,
     block: str | None = None,
     reader: Reader = "readarray",
 ):
@@ -121,6 +124,7 @@ def array(
         converter=converter,
         repr=repr,
         eq=eq,
+        on_setattr=on_setattr,
         metadata=metadata,
     )
 
@@ -261,7 +265,7 @@ def to_dfn_field(attribute: Attribute) -> Field:
     )
 
 
-def get_blocks(dfn: Dfn) -> dict:
+def get_blocks(dfn: Dfn) -> dict[str, Block]:
     """
     Get blocks from an MF6 input definition. Anything not an
     explicitly defined key in the `Dfn` typed dict is a block.
@@ -283,9 +287,14 @@ def is_list_field(field: Field) -> bool:
     return field["type"] == "recarray" and field["reader"] != "readarray"
 
 
-def is_list_block(block: dict) -> bool:
+def is_list_block(block: Block) -> bool:
     return (
         len(block) == 1
-        and (field := next(iter(block.values())))["type"] == "recarray"
-        and field["reader"] != "readarray"
-    ) or (all(f["type"] == "recarray" and f["reader"] != "readarray" for f in block.values()))
+        and (field := next(iter(block.values()))).metadata.get("type") == "recarray"
+        and field.metadata.get("reader") != "readarray"
+    ) or (
+        all(
+            f.metadata.get("type") == "recarray" and f.metadata.get("reader") != "readarray"
+            for f in block.values()
+        )
+    )

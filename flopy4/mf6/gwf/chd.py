@@ -6,7 +6,7 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.attr_hooks import update_maxbound
 from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
@@ -15,7 +15,6 @@ from flopy4.mf6.spec import array, field
 @xattree
 class Chd(Package):
     multi_package: ClassVar[bool] = True
-
     auxiliary: Optional[list[str]] = array(block="options", default=None)
     auxmultname: Optional[str] = field(block="options", default=None)
     boundnames: bool = field(block="options", default=False)
@@ -35,6 +34,7 @@ class Chd(Package):
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        on_setattr=update_maxbound,
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -45,6 +45,7 @@ class Chd(Package):
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        on_setattr=update_maxbound,
     )
     boundname: Optional[NDArray[np.str_]] = array(
         block="period",
@@ -55,32 +56,9 @@ class Chd(Package):
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        on_setattr=update_maxbound,
     )
 
     def __attrs_post_init__(self):
-        # TODO set up on_setattr hooks for period block
-        # arrays to update maxbound? for now do it here
-        # in post init. but this only works when values
-        # are set in the initializer, not when they are
-        # set later.
-        if self.head is None:
-            maxhead = 0
-        else:
-            head = self.head if self.head.data.shape == self.head.shape else self.head.todense()
-            maxhead = len(np.where(head != FILL_DNODATA))
-        if self.aux is None:
-            maxaux = 0
-        else:
-            aux = self.aux if self.aux.data.shape == self.aux.shape else self.aux.todense()
-            maxaux = len(np.where(aux != FILL_DNODATA))
-        if self.boundname is None:
-            maxboundname = 0
-        else:
-            boundname = (
-                self.boundname
-                if self.boundname.data.shape == self.boundname.shape
-                else self.boundname.todense()
-            )
-            maxboundname = len(np.where(boundname != ""))
-
-        self.maxbound = max(maxhead, maxaux, maxboundname)
+        if self.head is not None or self.aux is not None or self.boundname is not None:
+            update_maxbound(self, None, None)
