@@ -28,14 +28,14 @@ def _get_template_env():
     env.filters["variables"] = Filters.variables
     env.filters["attrs"] = Filters.attrs
     env.filters["init"] = Filters.init
-    env.filters["type"] = Filters.type
     env.filters["children"] = Filters.children
     env.filters["default_value"] = Filters.default_value
     env.filters["safe_name"] = Filters.safe_name
     env.filters["value"] = Filters.value
     env.filters["math"] = Filters.math
     env.filters["clean"] = Filters.clean
-    env.filters["python_type"] = Filters.python_type
+    env.filters["type_str"] = Filters.type_str
+    env.filters["type_docstr"] = Filters.type_docstr
     env.filters["has_optional_or_default"] = Filters.has_optional_or_default
     env.filters["class_name"] = Filters.class_name
 

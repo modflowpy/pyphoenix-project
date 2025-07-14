@@ -36,9 +36,9 @@ class Modflow{{ title }}(Model):
 
     {# All non-optional parameters go first. #}
     {% for attr in dfn | attrs if not attr | has_optional_or_default %}
-    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}
     {# Optional parameters go last. #}
     {% for attr in dfn | attrs if attr | has_optional_or_default %}
-    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}

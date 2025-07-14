@@ -42,7 +42,7 @@ class MFSimulation(Context):
     {% endfor %}
 
     {% for attr in dfn|attrs %}
-    {{ attr.name | safe_name }}: {{ attr | python_type }} = field()
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = field()
     {% endfor %}
 
     def __attrs_post_init__(self):

@@ -1,5 +1,5 @@
     @define
     class {{ attr.name|class_name}}:
         {% for _, field in attr.fields.items() %}
-        {{ field.name }}: {{ field | python_type }} = field({{ macros.metadata(field) }}{{ macros.default_in_field(field) }})
+        {{ field.name }}: {{ field | type_str }} = field({{ macros.metadata(field) }}{{ macros.default_in_field(field) }})
         {% endfor %}
