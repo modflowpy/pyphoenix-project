@@ -3,8 +3,12 @@
 {% set title = (name|title).title() %}
 {% set description = name|description %}
 
+from pathlib import Path
+
+from xattree import xattree, field, define
+
 from flopy4.mf6.model import Model
-from xattree import xattree, field
+
 
 def _convert_grid(value):
     if isinstance(value, Grid):
@@ -12,6 +16,7 @@ def _convert_grid(value):
     if isinstance(value, Dis):
         return value
     raise TypeError(f"Expected Grid or Dis, got {type(value)}")
+
 
 @xattree
 class Modflow{{ title }}(Model):
@@ -23,6 +28,17 @@ class Modflow{{ title }}(Model):
     {{ macros.docstrings(dfn|variables)|indent(4) }}
     """
 
-    {% for attr in dfn | attrs %}
-    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) }}
+    {# Create inner classes for records #}
+    {% for attr in dfn|attrs if attr.type == "record" %}
+    {% include "record.py.jinja" %}
+
+    {% endfor %}
+
+    {# All non-optional parameters go first. #}
+    {% for attr in dfn | attrs if not attr | has_optional_or_default %}
+    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
+    {% endfor %}
+    {# Optional parameters go last. #}
+    {% for attr in dfn | attrs if attr | has_optional_or_default %}
+    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}

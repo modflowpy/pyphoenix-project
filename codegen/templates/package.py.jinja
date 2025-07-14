@@ -2,7 +2,6 @@
 {% import 'macros.py.jinja' as macros %}
 {% set parent = dfn|parent(name) %}
 {% set title = (name|title).title() %}
-{% set description = name|description %}
 {% set container = dfn.ref is defined and name[0] not in ["sln", "sim"] and name[1] not in ["hpc"] %}
 
 from pathlib import Path
@@ -11,7 +10,7 @@ from typing import ClassVar
 import numpy as np
 from attrs import Converter
 from numpy.typing import NDArray
-from xattree import array, field, xattree
+from xattree import array, field, xattree, define
 
 from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
@@ -20,7 +19,7 @@ from flopy4.mf6.package import Package
 @xattree
 class Modflow{{ title }}(Package):
     """
-    {{ description }}
+    {{ name|description }}
 
     Parameters
     ----------
@@ -30,9 +29,17 @@ class Modflow{{ title }}(Package):
     multi_package: ClassVar[bool] = True
     {% endif %}
 
+    {# Create inner classes for records #}
+    {% for attr in dfn|attrs if attr.type == "record" %}
+    {% include "record.py.jinja" %}
+
+    {% endfor %}
+
+    {# All non-optional parameters go first. #}
     {% for attr in dfn | attrs if not attr | has_optional_or_default %}
     {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}
+    {# Optional parameters go last. #}
     {% for attr in dfn | attrs if attr | has_optional_or_default %}
     {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}

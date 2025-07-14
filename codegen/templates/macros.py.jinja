@@ -1,6 +1,6 @@
 {% macro init_params(vars, alias=false, skip=none) %}
 {% for name, var in vars.items() if name not in skip %}
-{% set v = var|untag %}
+{% set v = var %}
 {% set n = (name if alias else v.name)|safe_name %}
 {{ n }}={{ v|default_value|value }},
 {% endfor %}
@@ -8,7 +8,7 @@
 
 {% macro docstrings(vars, recurse=true) %}
 {% for var in vars.values() recursive %}
-{% set v = var|untag %}
+{% set v = var %}
 {% set n = v.name|safe_name %}
 {% set children = v|children %}
 {% if loop.depth > 1 %}* {% endif %}{{ n }} : {{ v|type }}
@@ -35,21 +35,22 @@ class {{ vars.name|capitalize}}:
 {%- endmacro %}
 
 {% macro xattree_field(attr) %}
-{% set metadata = "{\"block\": \"" + attr.block + "\"}" %}
 {% if "shape" in attr %}
 array(
-    metadata={{metadata}}
+    {{- metadata(attr) }}
     {{- default_in_field(attr) }}
     {{- dims_in_field(attr) }}
-    {{- converter_in_field(attr) }}
-)
+    {{- converter_in_field(attr) }})
 {%- else %}
 field(
-    metadata={{metadata}}
+    {{- metadata(attr) }}
     {{- default_in_field(attr) }}
-    {{- init_in_field(attr) }}
-)
+    {{- init_in_field(attr) }})
 {%- endif %}
+{%- endmacro %}
+
+{% macro metadata(attr) %}
+metadata={"block": "{{attr.block}}" }
 {%- endmacro %}
 
 {% macro default_in_field(attr) %}

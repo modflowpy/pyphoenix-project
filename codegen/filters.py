@@ -132,43 +132,6 @@ class Filters:
                 return ["method", "interpolation_method_single", "sfac"]
             return []
 
-    @staticmethod
-    def untag(var: dict) -> dict:
-        """
-        If the variable is a tagged record, remove the leading
-        tag field. If the variable is a tagged file path input
-        record, remove both leading tag and 'filein'/'fileout'
-        keyword following it.
-        """
-        name = var["name"]
-        tagged = var.get("tagged", False)
-        fields = var.get("fields", None)
-
-        if not fields:
-            return var
-
-        # if tagged, remove the leading keyword
-        elif tagged:
-            keyword = next(iter(fields), None)
-            if keyword:
-                fields.pop(keyword)
-
-        # if the record represents a file...
-        elif "file" in name:
-            # remove filein/fileout
-            field_names = list(fields.keys())
-            for term in ["filein", "fileout"]:
-                if term in field_names:
-                    fields.pop(term)
-
-            # remove leading keyword
-            keyword = next(iter(fields), None)
-            if keyword:
-                fields.pop(keyword)
-
-        var["fields"] = fields
-        return var
-
     def type(var: dict) -> str:
         """
         Get a readable representation of the variable's type.
@@ -415,7 +378,6 @@ class Filters:
             "string": "str",
             "keyword": "bool",
             "recarray": "dict",
-            "record": "Path",
         }
 
         # options with a shape are lists
@@ -425,12 +387,16 @@ class Filters:
             py_type = "NDArray[np.float64]"
         elif attr.get("shape", None) and attr["type"] == "integer":
             py_type = "NDArray[np.int64]"
+        elif attr["type"] == "record":
+            py_type = Filters.class_name(attr["name"])
         elif attr["type"] == "recarray":
             children = Filters.children(attr)
             if children:
                 py_type = "dict[str, Any]"
             else:
                 py_type = "dict"
+        elif "file" in attr["name"]:
+            py_type = "Path"
         else:
             py_type = types.get(attr["type"], "Any")
 
@@ -443,3 +409,11 @@ class Filters:
     def has_optional_or_default(attr: dict[str, Any]) -> bool:
         """Check if the attribute has an optional type or a default value."""
         return attr.get("optional", False) or "default" in attr
+
+    @staticmethod
+    def class_name(name: str) -> str:
+        """Convert a string to a valid Python class name.
+        The incoming name consists of snake_case words.
+        The output is CamelCase.
+        """
+        return "".join(word.capitalize() for word in name.split("_"))

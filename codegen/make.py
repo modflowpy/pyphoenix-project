@@ -28,7 +28,6 @@ def _get_template_env():
     env.filters["variables"] = Filters.variables
     env.filters["attrs"] = Filters.attrs
     env.filters["init"] = Filters.init
-    env.filters["untag"] = Filters.untag
     env.filters["type"] = Filters.type
     env.filters["children"] = Filters.children
     env.filters["default_value"] = Filters.default_value
@@ -38,6 +37,7 @@ def _get_template_env():
     env.filters["clean"] = Filters.clean
     env.filters["python_type"] = Filters.python_type
     env.filters["has_optional_or_default"] = Filters.has_optional_or_default
+    env.filters["class_name"] = Filters.class_name
 
     return env
 
