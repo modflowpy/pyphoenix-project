@@ -241,7 +241,7 @@ def keystring2list_multifield(field_arrays: dict, period_idx: int):
         return
 
     # get period slice
-    period_slices = {}
+    period_slices: dict[str, Any] = {}
     for field_name, field_array in field_arrays.items():
         if isinstance(field_array, xr.DataArray):
             period_data = field_array.isel(nper=period_idx)
@@ -250,7 +250,7 @@ def keystring2list_multifield(field_arrays: dict, period_idx: int):
             period_slices[field_name] = field_array[period_idx]
 
     # Find all locations where at least one field has meaningful data
-    combined_mask = None
+    combined_mask: Any = None
     for field_name, period_data in period_slices.items():
         meaningful_mask = (
             (period_data != 0) & (period_data != FILL_DNODATA) & ~np.isnan(period_data)

@@ -14,38 +14,46 @@ from flopy4.mf6.spec import array, field
 
 def _update_maxbound(instance, attribute, new_value):
     """Update maxbound when period block arrays change."""
-    if hasattr(instance, '_updating_maxbound'):
+    if hasattr(instance, "_updating_maxbound"):
         return new_value
-    
+
     # Calculate maxbound from all relevant arrays
     maxbound_values = []
-    
+
     # Check q array
-    q_val = new_value if attribute and attribute.name == 'q' else getattr(instance, 'q', None)
+    q_val = new_value if attribute and attribute.name == "q" else getattr(instance, "q", None)
     if q_val is not None:
         q = q_val if q_val.data.shape == q_val.shape else q_val.todense()
         maxbound_values.append(len(np.where(q != FILL_DNODATA)[0]))
-    
-    # Check aux array  
-    aux_val = new_value if attribute and attribute.name == 'aux' else getattr(instance, 'aux', None)
+
+    # Check aux array
+    aux_val = new_value if attribute and attribute.name == "aux" else getattr(instance, "aux", None)
     if aux_val is not None:
         aux = aux_val if aux_val.data.shape == aux_val.shape else aux_val.todense()
         maxbound_values.append(len(np.where(aux != FILL_DNODATA)[0]))
-    
+
     # Check boundname array
-    boundname_val = new_value if attribute and attribute.name == 'boundname' else getattr(instance, 'boundname', None)
+    boundname_val = (
+        new_value
+        if attribute and attribute.name == "boundname"
+        else getattr(instance, "boundname", None)
+    )
     if boundname_val is not None:
-        boundname = boundname_val if boundname_val.data.shape == boundname_val.shape else boundname_val.todense()
+        boundname = (
+            boundname_val
+            if boundname_val.data.shape == boundname_val.shape
+            else boundname_val.todense()
+        )
         maxbound_values.append(len(np.where(boundname != "")[0]))
-    
+
     # Update maxbound if we have values
     if maxbound_values:
         instance._updating_maxbound = True
         try:
             instance.maxbound = max(maxbound_values)
         finally:
-            delattr(instance, '_updating_maxbound')
-    
+            delattr(instance, "_updating_maxbound")
+
     return new_value
 
 

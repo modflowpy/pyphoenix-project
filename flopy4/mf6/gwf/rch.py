@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import numpy as np
-from attrs import Converter, setters
+from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
@@ -14,38 +14,54 @@ from flopy4.mf6.spec import array, field
 
 def _update_maxbound(instance, attribute, new_value):
     """Update maxbound when period block arrays change."""
-    if hasattr(instance, '_updating_maxbound'):
+    if hasattr(instance, "_updating_maxbound"):
         return new_value
-    
+
     # Calculate maxbound from all relevant arrays
     maxbound_values = []
-    
+
     # Check recharge array
-    recharge_val = new_value if attribute and attribute.name == 'recharge' else getattr(instance, 'recharge', None)
+    recharge_val = (
+        new_value
+        if attribute and attribute.name == "recharge"
+        else getattr(instance, "recharge", None)
+    )
     if recharge_val is not None:
-        recharge = recharge_val if recharge_val.data.shape == recharge_val.shape else recharge_val.todense()
+        recharge = (
+            recharge_val
+            if recharge_val.data.shape == recharge_val.shape
+            else recharge_val.todense()
+        )
         maxbound_values.append(len(np.where(recharge != FILL_DNODATA)[0]))
-    
-    # Check aux array  
-    aux_val = new_value if attribute and attribute.name == 'aux' else getattr(instance, 'aux', None)
+
+    # Check aux array
+    aux_val = new_value if attribute and attribute.name == "aux" else getattr(instance, "aux", None)
     if aux_val is not None:
         aux = aux_val if aux_val.data.shape == aux_val.shape else aux_val.todense()
         maxbound_values.append(len(np.where(aux != FILL_DNODATA)[0]))
-    
+
     # Check boundname array
-    boundname_val = new_value if attribute and attribute.name == 'boundname' else getattr(instance, 'boundname', None)
+    boundname_val = (
+        new_value
+        if attribute and attribute.name == "boundname"
+        else getattr(instance, "boundname", None)
+    )
     if boundname_val is not None:
-        boundname = boundname_val if boundname_val.data.shape == boundname_val.shape else boundname_val.todense()
+        boundname = (
+            boundname_val
+            if boundname_val.data.shape == boundname_val.shape
+            else boundname_val.todense()
+        )
         maxbound_values.append(len(np.where(boundname != "")[0]))
-    
+
     # Update maxbound if we have values
     if maxbound_values:
         instance._updating_maxbound = True
         try:
             instance.maxbound = max(maxbound_values)
         finally:
-            delattr(instance, '_updating_maxbound')
-    
+            delattr(instance, "_updating_maxbound")
+
     return new_value
 
 

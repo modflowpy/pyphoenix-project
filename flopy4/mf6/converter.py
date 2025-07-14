@@ -2,13 +2,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import xarray as xr
 import xattree
 from cattrs import Converter
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.spec import get_blocks
 
 
@@ -26,7 +23,7 @@ def _transform_path_to_record(field_name: str, path_value: Path) -> tuple:
 def unstructure_component(value: Component) -> dict[str, Any]:
     data = xattree.asdict(value)
     blockspec = get_blocks(value.dfn)
-    blocks = {}
+    blocks: dict[str, dict[str, Any]] = {}
     for block_name, block in blockspec.items():
         blocks[block_name] = {}
         for field_name in block.keys():

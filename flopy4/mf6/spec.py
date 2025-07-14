@@ -290,6 +290,11 @@ def is_list_field(field: Field) -> bool:
 def is_list_block(block: Block) -> bool:
     return (
         len(block) == 1
-        and (field := next(iter(block.values())))["type"] == "recarray"
-        and field["reader"] != "readarray"
-    ) or (all(f["type"] == "recarray" and f["reader"] != "readarray" for f in block.values()))
+        and (field := next(iter(block.values()))).metadata.get("type") == "recarray"
+        and field.metadata.get("reader") != "readarray"
+    ) or (
+        all(
+            f.metadata.get("type") == "recarray" and f.metadata.get("reader") != "readarray"
+            for f in block.values()
+        )
+    )
