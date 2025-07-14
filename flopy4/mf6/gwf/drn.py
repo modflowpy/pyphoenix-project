@@ -68,11 +68,11 @@ class Drn(Package):
         # in post init. but this only works when values
         # are set in the initializer, not when they are
         # set later.
-        if self.head is None:
-            maxhead = 0
+        if self.elev is None:
+            maxelev = 0
         else:
-            head = self.head if self.head.data.shape == self.head.shape else self.head.todense()
-            maxhead = len(np.where(head != FILL_DNODATA))
+            elev = self.elev if self.elev.data.shape == self.elev.shape else self.elev.todense()
+            maxelev = len(np.where(elev != FILL_DNODATA))
         if self.cond is None:
             maxcond = 0
         else:
@@ -93,4 +93,4 @@ class Drn(Package):
             )
             maxboundname = len(np.where(boundname != ""))
 
-        self.maxbound = max(maxhead, maxcond, maxaux, maxboundname)
+        self.maxbound = max(maxelev, maxcond, maxaux, maxboundname)

@@ -261,7 +261,7 @@ def to_dfn_field(attribute: Attribute) -> Field:
     )
 
 
-def get_blocks(dfn: Dfn) -> dict:
+def get_blocks(dfn: Dfn) -> dict[str, Block]:
     """
     Get blocks from an MF6 input definition. Anything not an
     explicitly defined key in the `Dfn` typed dict is a block.
@@ -283,7 +283,7 @@ def is_list_field(field: Field) -> bool:
     return field["type"] == "recarray" and field["reader"] != "readarray"
 
 
-def is_list_block(block: dict) -> bool:
+def is_list_block(block: Block) -> bool:
     return (
         len(block) == 1
         and (field := next(iter(block.values())))["type"] == "recarray"

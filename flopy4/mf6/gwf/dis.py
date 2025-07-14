@@ -1,4 +1,5 @@
 from typing import Optional
+
 import numpy as np
 from attrs import Converter
 from flopy.discretization.structuredgrid import StructuredGrid

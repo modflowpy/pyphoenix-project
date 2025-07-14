@@ -15,7 +15,6 @@ from flopy4.mf6.spec import array, field
 @xattree
 class Chd(Package):
     multi_package: ClassVar[bool] = True
-
     auxiliary: Optional[list[str]] = array(block="options", default=None)
     auxmultname: Optional[str] = field(block="options", default=None)
     boundnames: bool = field(block="options", default=False)

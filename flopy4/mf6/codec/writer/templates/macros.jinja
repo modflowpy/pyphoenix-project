@@ -1,0 +1,83 @@
+{% macro field(name, value) %}
+{% set type = value|field_type %}
+{% if type in ['keyword', 'integer', 'double precision', 'string'] %}
+{{ scalar(name, value) }}
+{% elif type == 'record' %}
+{{ record(name, value) }}
+{% elif type == 'keystring' %}
+{{ keystring(name, value) }}
+{% elif type == 'recarray' %}
+{{ recarray(name, value, how=value|array_how) }}
+{% endif %}
+{% endmacro %}
+
+{% macro scalar(name, value) %}
+{% set type = value|field_type %}
+{% if value is not none %}{{ name.upper() }}{% if type != 'keyword' %} {{ value }}{% endif %}{% endif %}
+{% endmacro %}
+
+{% macro keystring(name, value) %}
+{% for item in value.values() -%}
+{{ field(item) }}
+{%- endfor %}
+{% endmacro %}
+
+{% macro record(name, value) %}
+{% for itemitem in value.values() -%}
+{% if item.tagged %}{{ item.name.upper() }} {% endif %}{{ field(item) }}
+{%- endfor %}
+{% endmacro %}
+
+{% macro recarray(name, value, how="internal") %}
+{{ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
+
+{% if how == "constant" %}
+CONSTANT {{ value.item() }}
+{% elif how == "layered constant" %}
+{% for layer in value -%}
+CONSTANT {{ layer.item() }}
+{%- endfor %}
+{% elif how == "internal" %}
+INTERNAL
+{% for chunk in value|array_chunks -%}
+{{ chunk|array2string }}
+{%- endfor %}
+{% elif how == "external" %}
+OPEN/CLOSE {{ value }}
+{% endif %}
+{% endmacro %}
+
+{% macro list(name, value, multi=False) %}
+{% if multi %}
+{# iterate through time periods and combine fields #}
+{% set field_arrays = {} %}
+{% for field_name, field_value in value.items() %}
+{% if field_value is not none %}
+{% set _ = field_arrays.update({field_name: field_value}) %}
+{% endif %}
+{% endfor %}
+
+{% set first_array = field_arrays.values() | list | first %}
+{% if first_array is not none %}
+{% set nper = first_array.shape[0] %}
+{% for period_idx in range(nper) %}
+BEGIN {{ name.upper() }} {{ period_idx + 1 }}
+{% for row in (field_arrays|keystring2list_multifield(period_idx)) %}
+{{ row|join(" ") }}
+{% endfor %}
+END {{ name.upper() }} {{ period_idx + 1 }}
+
+{% endfor %}
+{% endif %}
+{% else %}
+{% for field_name, field_value in value.items() %}
+{% if field_value is not none %}
+BEGIN {{ name.upper() }}
+{% for row in (field_value|array2list) %}
+{{ row|join(" ") }}
+{% endfor %}
+END {{ name.upper() }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endmacro %}
