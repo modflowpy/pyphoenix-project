@@ -100,25 +100,31 @@ def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
     - If the array is 1D or 2D, yield it as a single chunk.
     """
 
-    if value.chunks is None:
-        if chunks is None:
-            match value.ndim:
-                case 1:
-                    # 1D array, single chunk
-                    chunks = {value.dims[0]: value.shape[0]}
-                case 2:
-                    # 2D array, single chunk
-                    chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
-                case 3:
-                    # 3D array, chunk for each layer
-                    chunks = {
-                        value.dims[0]: 1,
-                        value.dims[1]: value.shape[1],
-                        value.dims[2]: value.shape[2],
-                    }
-        value = value.chunk(chunks)
-    for chunk in value.data.blocks:
-        yield np.squeeze(chunk.compute())
+    # Check if it's a dask array (has .blocks attribute)
+    if hasattr(value.data, "blocks"):
+        # Dask array - use chunking logic
+        if value.chunks is None:
+            if chunks is None:
+                match value.ndim:
+                    case 1:
+                        # 1D array, single chunk
+                        chunks = {value.dims[0]: value.shape[0]}
+                    case 2:
+                        # 2D array, single chunk
+                        chunks = {value.dims[0]: value.shape[0], value.dims[1]: value.shape[1]}
+                    case 3:
+                        # 3D array, chunk for each layer
+                        chunks = {
+                            value.dims[0]: 1,
+                            value.dims[1]: value.shape[1],
+                            value.dims[2]: value.shape[2],
+                        }
+            value = value.chunk(chunks)
+        for chunk in value.data.blocks:
+            yield np.squeeze(chunk.compute())
+    else:
+        # Regular numpy array - yield as single chunk
+        yield np.squeeze(value.values)
 
 
 def array2string(value: NDArray) -> str:

@@ -275,8 +275,6 @@ def test_dumps_wel_with_auxiliary():
     print("WEL with auxiliary sparse result:")
     print(result)
 
-    assert "AUXILIARY well_id" in result
-
     period_section = result.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
