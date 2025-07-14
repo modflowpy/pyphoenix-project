@@ -1,6 +1,5 @@
 import sys
 from os import PathLike
-from typing import Any
 
 import numpy as np
 from jinja2 import Environment, PackageLoader
@@ -27,16 +26,6 @@ _PRINT_OPTIONS = {
     "linewidth": sys.maxsize,
     "threshold": sys.maxsize,
 }
-
-
-def loads(data: str) -> Any:
-    # TODO
-    pass
-
-
-def load(path: str | PathLike) -> Any:
-    # TODO
-    pass
 
 
 def dumps(data) -> str:
