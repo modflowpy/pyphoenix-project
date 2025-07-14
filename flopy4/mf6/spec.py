@@ -28,6 +28,7 @@ def field(
     eq=True,
     init=True,
     metadata=None,
+    on_setattr=None,
     block: str | None = None,
 ):
     """Define a field."""
@@ -42,6 +43,7 @@ def field(
         repr=repr,
         eq=eq,
         init=init,
+        on_setattr=on_setattr,
         metadata=metadata,
     )
 
@@ -105,6 +107,7 @@ def array(
     repr=True,
     eq=None,
     metadata=None,
+    on_setattr=None,
     block: str | None = None,
     reader: Reader = "readarray",
 ):
@@ -121,6 +124,7 @@ def array(
         converter=converter,
         repr=repr,
         eq=eq,
+        on_setattr=on_setattr,
         metadata=metadata,
     )
 

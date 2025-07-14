@@ -12,6 +12,43 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
 
+def _update_maxbound(instance, attribute, new_value):
+    """Update maxbound when period block arrays change."""
+    if hasattr(instance, '_updating_maxbound'):
+        return new_value
+    
+    # Calculate maxbound from all relevant arrays
+    maxbound_values = []
+    
+    # Check q array
+    q_val = new_value if attribute and attribute.name == 'q' else getattr(instance, 'q', None)
+    if q_val is not None:
+        q = q_val if q_val.data.shape == q_val.shape else q_val.todense()
+        maxbound_values.append(len(np.where(q != FILL_DNODATA)[0]))
+    
+    # Check aux array  
+    aux_val = new_value if attribute and attribute.name == 'aux' else getattr(instance, 'aux', None)
+    if aux_val is not None:
+        aux = aux_val if aux_val.data.shape == aux_val.shape else aux_val.todense()
+        maxbound_values.append(len(np.where(aux != FILL_DNODATA)[0]))
+    
+    # Check boundname array
+    boundname_val = new_value if attribute and attribute.name == 'boundname' else getattr(instance, 'boundname', None)
+    if boundname_val is not None:
+        boundname = boundname_val if boundname_val.data.shape == boundname_val.shape else boundname_val.todense()
+        maxbound_values.append(len(np.where(boundname != "")[0]))
+    
+    # Update maxbound if we have values
+    if maxbound_values:
+        instance._updating_maxbound = True
+        try:
+            instance.maxbound = max(maxbound_values)
+        finally:
+            delattr(instance, '_updating_maxbound')
+    
+    return new_value
+
+
 @xattree
 class Wel(Package):
     multi_package: ClassVar[bool] = True
@@ -36,6 +73,7 @@ class Wel(Package):
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        on_setattr=_update_maxbound,
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -46,6 +84,7 @@ class Wel(Package):
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        on_setattr=_update_maxbound,
     )
     boundname: Optional[NDArray[np.str_]] = array(
         block="period",
@@ -56,32 +95,9 @@ class Wel(Package):
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        on_setattr=_update_maxbound,
     )
 
     def __attrs_post_init__(self):
-        # TODO set up on_setattr hooks for period block
-        # arrays to update maxbound? for now do it here
-        # in post init. but this only works when values
-        # are set in the initializer, not when they are
-        # set later.
-        if self.q is None:
-            maxq = 0
-        else:
-            q = self.q if self.q.data.shape == self.q.shape else self.q.todense()
-            maxq = len(np.where(q != FILL_DNODATA))
-        if self.aux is None:
-            maxaux = 0
-        else:
-            aux = self.aux if self.aux.data.shape == self.aux.shape else self.aux.todense()
-            maxaux = len(np.where(aux != FILL_DNODATA))
-        if self.boundname is None:
-            maxboundname = 0
-        else:
-            boundname = (
-                self.boundname
-                if self.boundname.data.shape == self.boundname.shape
-                else self.boundname.todense()
-            )
-            maxboundname = len(np.where(boundname != ""))
-
-        self.maxbound = max(maxq, maxaux, maxboundname)
+        if self.q is not None or self.aux is not None or self.boundname is not None:
+            _update_maxbound(self, None, None)

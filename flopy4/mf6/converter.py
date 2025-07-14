@@ -2,10 +2,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import xarray as xr
 import xattree
 from cattrs import Converter
 
 from flopy4.mf6.component import Component
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.spec import get_blocks
 
 

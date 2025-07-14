@@ -19,6 +19,7 @@ def field(
     eq=True,
     init=True,
     metadata=None,
+    on_setattr=None,
 ):
     """Define a field."""
     return xattree_field(
@@ -29,6 +30,7 @@ def field(
         eq=eq,
         init=init,
         metadata=metadata,
+        on_setattr=on_setattr,
     )
 
 
@@ -81,6 +83,7 @@ def array(
     repr=True,
     eq=None,
     metadata=None,
+    on_setattr=None,
 ):
     """Define an array field."""
     return xattree_array(
@@ -92,6 +95,7 @@ def array(
         repr=repr,
         eq=eq,
         metadata=metadata,
+        on_setattr=on_setattr,
     )
 
 

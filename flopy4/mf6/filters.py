@@ -66,8 +66,10 @@ def field_type(value: Any) -> str:
     """
     if isinstance(value, bool):
         return "keyword"
-    if isinstance(value, (int, float)):
-        return "scalar"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "double precision"
     if isinstance(value, str):
         return "string"
     if isinstance(value, (dict, tuple)):
