@@ -30,6 +30,9 @@ class Modflow{{ title }}(Package):
     multi_package: ClassVar[bool] = True
     {% endif %}
 
-    {% for attr in dfn | attrs %}
-    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) }}
+    {% for attr in dfn | attrs if not attr | has_optional_or_default %}
+    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
+    {% endfor %}
+    {% for attr in dfn | attrs if attr | has_optional_or_default %}
+    {{ attr.name | safe_name }}: {{ attr | python_type }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}

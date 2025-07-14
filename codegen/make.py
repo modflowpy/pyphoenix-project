@@ -37,6 +37,7 @@ def _get_template_env():
     env.filters["math"] = Filters.math
     env.filters["clean"] = Filters.clean
     env.filters["python_type"] = Filters.python_type
+    env.filters["has_optional_or_default"] = Filters.has_optional_or_default
 
     return env
 

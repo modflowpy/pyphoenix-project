@@ -39,15 +39,15 @@ class {{ vars.name|capitalize}}:
 {% if "shape" in attr %}
 array(
     metadata={{metadata}}
-    {{ default_in_field(attr) }}
-    {{ dims_in_field(attr) }}
-    {{ converter_in_field(attr) }}
+    {{- default_in_field(attr) }}
+    {{- dims_in_field(attr) }}
+    {{- converter_in_field(attr) }}
 )
 {%- else %}
 field(
     metadata={{metadata}}
-    {{ default_in_field(attr) }}
-    {{ init_in_field(attr) }}
+    {{- default_in_field(attr) }}
+    {{- init_in_field(attr) }}
 )
 {%- endif %}
 {%- endmacro %}

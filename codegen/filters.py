@@ -438,3 +438,8 @@ class Filters:
             py_type = f"{py_type} | None"
 
         return py_type
+
+    @staticmethod
+    def has_optional_or_default(attr: dict[str, Any]) -> bool:
+        """Check if the attribute has an optional type or a default value."""
+        return attr.get("optional", False) or "default" in attr
