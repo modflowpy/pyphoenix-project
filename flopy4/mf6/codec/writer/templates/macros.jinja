@@ -1,38 +1,40 @@
 {% macro field(name, value) %}
-{% set type = value|field_type %}
-{% if type in ['keyword', 'integer', 'double precision', 'string'] %}
+{% set format = value|field_format %}
+{% if format in ['keyword', 'integer', 'double precision', 'string'] %}
 {{ scalar(name, value) }}
-{% elif type == 'record' %}
+{% elif format == 'record' %}
 {{ record(name, value) }}
-{% elif type == 'keystring' %}
+{% elif format == 'keystring' %}
 {{ keystring(name, value) }}
-{% elif type == 'recarray' %}
-{{ recarray(name, value, how=value|array_how) }}
+{% elif format == 'array' %}
+{{ array(name, value, how=value|array_how) }}
+{% elif format == 'list' %}
+{{ list(name, value) }}
 {% endif %}
 {% endmacro %}
 
 {% macro scalar(name, value) %}
-{% set type = value|field_type %}
-{% if value is not none %}{{ name.upper() }}{% if type != 'keyword' %} {{ value }}{% endif %}{% endif %}
+{% set format = value|field_format %}
+{% if value is not none %}{{ name.upper() }}{% if format != 'keyword' %} {{ value }}{% endif %}{% endif %}
 {% endmacro %}
 
 {% macro keystring(name, value) %}
-{% for item in value.values() -%}
-{{ field(item) }}
-{%- endfor %}
+{% for option in (value|data2keystring) -%}
+{{ record("", option) }}
+{% endfor %}
 {% endmacro %}
 
 {% macro record(name, value) %}
-{% if value is mapping %}
-{% for item in value.values() -%}
-{{ item.name.upper() }} {{ field(item) }}
+{%- if value is mapping %}
+{% for field_name, field_value in value.items() -%}
+{{ field_name.upper() }} {{ field(field_value) }}
 {%- endfor %}
 {% else %}
 {{ value|join(" ") }}
-{% endif %}
+{%- endif %}
 {% endmacro %}
 
-{% macro recarray(name, value, how="internal") %}
+{% macro array(name, value, how="internal") %}
 {{ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
@@ -51,37 +53,8 @@ OPEN/CLOSE {{ value }}
 {% endif %}
 {% endmacro %}
 
-{% macro list(name, value, multi=False) %}
-{% if multi %}
-{# iterate through time periods and combine fields #}
-{% set field_arrays = {} %}
-{% for field_name, field_value in value.items() %}
-{% if field_value is not none %}
-{% set _ = field_arrays.update({field_name: field_value}) %}
-{% endif %}
-{% endfor %}
-
-{% set first_array = field_arrays.values() | list | first %}
-{% if first_array is not none %}
-{% set nper = first_array.shape[0] %}
-{% for period_idx in range(nper) %}
-BEGIN {{ name.upper() }} {{ period_idx + 1 }}
-{% for row in (field_arrays|keystring2list_multifield(period_idx)) %}
+{% macro list(name, value) %}
+{% for row in (value|data2list) %}
 {{ row|join(" ") }}
 {% endfor %}
-END {{ name.upper() }} {{ period_idx + 1 }}
-
-{% endfor %}
-{% endif %}
-{% else %}
-{% for field_name, field_value in value.items() %}
-{% if field_value is not none %}
-BEGIN {{ name.upper() }}
-{% for row in (field_value|array2list) %}
-{{ row|join(" ") }}
-{% endfor %}
-END {{ name.upper() }}
-{% endif %}
-{% endfor %}
-{% endif %}
 {% endmacro %}

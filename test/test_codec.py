@@ -1,34 +1,5 @@
-import numpy as np
-import xarray as xr
-
 from flopy4.mf6.codec import dumps
 from flopy4.mf6.converter import COMPONENT_CONVERTER
-
-
-def test_list_template_rendering():
-    """Test that list blocks render correctly with sparse arrays."""
-
-    nnodes = 9
-    data = np.full((1, nnodes), 1e30)
-
-    data[0, 4] = -500.0
-    data[0, 8] = -250.0
-
-    wel_data = xr.DataArray(
-        data, dims=["nper", "nnodes"], coords={"node": ("nnodes", range(nnodes))}
-    )
-
-    test_data = {"period": {"q": wel_data}}
-
-    result = dumps(test_data)
-    print("List template result:")
-    print(result)
-
-    assert "BEGIN PERIOD" in result
-    assert "END PERIOD" in result
-    assert "5 -500.0" in result  # Node 5 (1-based) with -500.0
-    assert "9 -250.0" in result  # Node 9 (1-based) with -250.0
-    assert "1e+30" not in result
 
 
 def test_dumps_ic():
@@ -113,6 +84,7 @@ def test_dumps_chd():
     )
 
     result = dumps(COMPONENT_CONVERTER.unstructure(chd))
+    print(result)
 
     assert "BEGIN PERIOD 1" in result
     assert "END PERIOD 1" in result
@@ -123,7 +95,8 @@ def test_dumps_chd():
     assert len(lines) == 2
     assert "1 10.0" in result  # First CHD cell - node 1
     assert "100 20.0" in result  # Second CHD cell - node 100
-    assert result
+    assert "1e+30" not in result
+    assert "1.0e+30" not in result
 
 
 def test_dumps_wel_sparse():
@@ -156,10 +129,12 @@ def test_dumps_wel_sparse():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 3
-    result_lower = result.lower()
-    assert "-100" in result_lower or "100" in result_lower
-    assert "-50" in result_lower or "50" in result_lower
-    assert "25" in result_lower
+    # node q (nodes are 1-based)
+    assert "24 -100.0" in result  # (0,2,3) -> node 24
+    assert "158 -50.0" in result  # (1,5,7) -> node 158
+    assert "282 25.0" in result  # (2,8,1) -> node 282
+    assert "1e+30" not in result
+    assert "1.0e+30" not in result
 
 
 def test_dumps_drn_sparse_multiperiod():
@@ -211,11 +186,14 @@ def test_dumps_drn_sparse_multiperiod():
     assert len(period1_lines) == 2
     assert len(period2_lines) == 3
 
-    assert "5 10.0 1.0" in result
-    assert "46 8.0 2.0" in result
-    assert "7 12.0 1.5" in result
-    assert "14 9.0 0.8" in result
-    assert "43 7.0 2.2" in result
+    # node elev cond
+    assert "5 10.0 1.0" in result  # Period 1: (0,0,4)
+    assert "46 8.0 2.0" in result  # Period 1: (1,4,0)
+    assert "7 12.0 1.5" in result  # Period 2: (0,1,1)
+    assert "14 9.0 0.8" in result  # Period 2: (0,2,3)
+    assert "43 7.0 2.2" in result  # Period 2: (1,3,2)
+    assert "1e+30" not in result
+    assert "1.0e+30" not in result
 
 
 def test_dumps_chd_sparse_realistic():
@@ -242,9 +220,11 @@ def test_dumps_chd_sparse_realistic():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 24
-    assert "100" in result
-    assert "95" in result
-    assert "98" in result
+    assert "100.0" in result  # Left boundary
+    assert "95.0" in result  # Right boundary
+    assert "98.0" in result  # Bottom boundary
+    assert "1e+30" not in result
+    assert "1.0e+30" not in result
 
 
 def test_dumps_wel_with_auxiliary():
@@ -279,5 +259,8 @@ def test_dumps_wel_with_auxiliary():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 2
-    assert "-75" in result or "75" in result
-    assert "-25" in result or "25" in result
+    # node q aux_value
+    assert "8 -75.0 1.0" in result  # (0,1,2) -> node 8, q=-75.0, aux=1.0
+    assert "45 -25.0 2.0" in result  # (1,3,4) -> node 45, q=-25.0, aux=2.0
+    assert "1e+30" not in result
+    assert "1.0e+30" not in result

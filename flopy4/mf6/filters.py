@@ -3,65 +3,32 @@ from io import StringIO
 from typing import Any
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 from numpy.typing import NDArray
 
 from flopy4.mf6.constants import FILL_DNODATA
 
 
-def is_list_block(block: dict) -> bool:
+def _is_keystring_format(dataset: xr.Dataset) -> bool:
+    """Check if dataset should use keystring format based on metadata."""
+    field_metadata = dataset.attrs.get("field_metadata", {})
+    return any(meta.get("format") == "keystring" for meta in field_metadata.values())
+
+
+def _is_tabular_time_format(dataset: xr.Dataset) -> bool:
+    """True if a dataset has multiple columns and only one dimension 'nper'."""
+    return len(dataset.data_vars) > 1 and all(
+        "nper" in var.dims and len(var.dims) == 1 for var in dataset.data_vars.values()
+    )
+
+
+def is_dataset(value: Any) -> bool:
+    return isinstance(value, xr.Dataset)
+
+
+def field_format(value: Any) -> str:
     """
-    Check if a block is a list block, which is a block that
-    contains only one recarray field using list input.
-    """
-    meaningful_fields = {k: v for k, v in block.items() if v is not None}
-    if len(meaningful_fields) == 0:
-        return False
-
-    # TODO: how to not hard-code these?
-    stress_fields = {
-        "head",
-        "q",
-        "elev",
-        "cond",
-        "rate",
-        "flux",
-        "concentration",
-        "stage",
-        "bhead",
-        "aux",
-        "boundname",
-    }
-    for field_name in meaningful_fields.keys():
-        if field_name.lower() not in stress_fields:
-            return False
-    return True
-
-
-def dict_blocks(data: dict) -> dict:
-    """
-    Get dictionary blocks: blocks which can contain
-    one or more fields, as opposed to a list block, which
-    may only contain one recarray field, using list input.
-    """
-    return {
-        name: block
-        for name, block in data.items()
-        if block is not None and not is_list_block(block)
-    }
-
-
-def list_blocks(data: dict) -> dict:
-    """Get list blocks, which contain only one recarray field."""
-    return {
-        name: block for name, block in data.items() if block is not None and is_list_block(block)
-    }
-
-
-def field_type(value: Any) -> str:
-    """
-    Get a field's type as defined by the MODFLOW 6 input definition language:
+    Get a field's formatting type as defined by the MF6 definition language:
     https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types
     """
     if isinstance(value, bool):
@@ -74,19 +41,35 @@ def field_type(value: Any) -> str:
         return "string"
     if isinstance(value, (dict, tuple)):
         return "record"
-    if isinstance(value, (list, np.ndarray, xr.DataArray)):
-        return "recarray"
+    if isinstance(value, xr.DataArray):
+        if value.dtype == "object":
+            return "list"
+        return "array"
+    if isinstance(value, (xr.Dataset, list)):
+        if isinstance(value, xr.Dataset):
+            if _is_keystring_format(value):
+                return "keystring"
+            if _is_tabular_time_format(value):
+                return "list"
+        return "list"
     return "keystring"
 
 
+def has_time_dim(value: Any) -> bool:
+    return isinstance(value, xr.DataArray) and "nper" in value.dims
+
+
 def array_how(value: xr.DataArray) -> str:
+    # TODO
+    # - detect constant arrays?
+    # - above certain size, use external?
     return "internal"
 
 
 def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
     """
-    Yield chunks from an array of up to 3 dimensions. If the
-    array is not already chunked, split it into chunks of the
+    Yield chunks from a dask-backed array of up to 3 dimensions.
+    If it's not already chunked, split it into chunks of the
     specified sizes, given as a dictionary mapping dimension
     names to chunk sizes.
 
@@ -100,11 +83,11 @@ def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
     of shape (i, j).
 
     - If the array is 1D or 2D, yield it as a single chunk.
+
+    If the array is not a dask array, yield it as a single chunk.
     """
 
-    # Check if it's a dask array (has .blocks attribute)
     if hasattr(value.data, "blocks"):
-        # Dask array - use chunking logic
         if value.chunks is None:
             if chunks is None:
                 match value.ndim:
@@ -125,7 +108,7 @@ def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
         for chunk in value.data.blocks:
             yield np.squeeze(chunk.compute())
     else:
-        # Regular numpy array - yield as single chunk
+        # regular array, single chunk
         yield np.squeeze(value.values)
 
 
@@ -135,6 +118,8 @@ def array2string(value: NDArray) -> str:
     If the array is 1D, it is converted to a 1-line string,
     with elements separated by whitespace. If the array is
     2D, each row becomes a line in the string.
+
+    Used for writing array-based input to MF6 input files.
     """
     buffer = StringIO()
     value = np.asarray(value)
@@ -155,121 +140,129 @@ def array2string(value: NDArray) -> str:
     return buffer.getvalue().strip()
 
 
-def array2list(value: xr.DataArray, include_zeros: bool = False):
-    """
-    Generator that yields sparse (indices, value, *aux) tuples from a `DataArray`.
-    Iterates only over meaningful values (excludes zeros, NaN, and `FILL_DNODATA`).
+def nonempty(arr: NDArray | xr.DataArray) -> NDArray:
+    if isinstance(arr, xr.DataArray):
+        arr = arr.values
+    if arr.dtype == "object":
+        mask = arr != None  # noqa: E711
+    else:
+        mask = ~np.ma.masked_invalid(arr).mask
+        mask = mask & (arr != FILL_DNODATA)
+    return mask
 
-    Parameters
-    ----------
-    value : xr.DataArray
-        The input array to iterate over sparsely
-    include_zeros : bool, optional
-        If True, include zero values in iteration. Default False.
+
+def data2list(value: list | xr.DataArray | xr.Dataset):
+    """
+    Yield record tuples from a list, `DataArray` or `Dataset`.
 
     Yields
     ------
     tuple
-        Tuples of (layer, row, col, value) with 1-based indexing for MF6
+        Tuples of (*cellid, *values) or (*values) depending on spatial dimensions
     """
-    from flopy4.mf6.constants import FILL_DNODATA
 
-    if not include_zeros:
-        mask = (value != 0) & (value != FILL_DNODATA) & ~np.isnan(value)
-    else:
-        mask = (value != FILL_DNODATA) & ~np.isnan(value)
+    if isinstance(value, list):
+        for item in value:
+            yield item
+        return
 
+    if isinstance(value, xr.Dataset):
+        yield from dataset2list(value)
+        return
+
+    # handle scalar
+    if value.ndim == 0:
+        if not np.isnan(value.item()) and value.item() is not None:
+            yield (value.item(),)
+        return
+
+    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "nnodes")]
+    has_spatial_dims = len(spatial_dims) > 0
+    mask = nonempty(value)
     indices = np.where(mask)
     values = value.values[mask]
     for i, val in enumerate(values):
-        idx_1based = tuple(idx[i] + 1 for idx in indices)
-        yield idx_1based + (val,)
-
-
-def keystring2list(value: xr.DataArray):
-    """
-    Generator for object arrays containing structured data (keystrings).
-    Yields structured records for non-null entries.
-
-    Parameters
-    ----------
-    value : xr.DataArray
-        Array with object dtype containing structured data
-
-    Yields
-    ------
-    tuple
-        Tuples of (layer, row, col, *structured_values) with 1-based indexing
-    """
-    coord_arrays = np.meshgrid(*[np.arange(s) for s in value.shape], indexing="ij")
-    flat_values = value.values.flat
-    flat_coords = zip(*[arr.flat for arr in coord_arrays])
-    for coords, val in zip(flat_coords, flat_values):
-        if val is not None and not pd.isna(val):
-            coords_1based = tuple(c + 1 for c in coords)
-            if hasattr(val, "_asdict"):  # Named tuple
-                yield coords_1based + tuple(val._asdict().values())
-            elif isinstance(val, dict):
-                yield coords_1based + tuple(val.values())
-            else:
-                yield coords_1based + (val,)
-
-
-def keystring2list_multifield(field_arrays: dict, period_idx: int):
-    """
-    Combines multiple fields (e.g., elev, cond) for a given stress period
-
-    Parameters
-    ----------
-    field_arrays : dict
-        Dictionary of field_name -> xarray.DataArray
-    period_idx : int
-        Time period index (0-based)
-
-    Yields
-    ------
-    tuple
-        Tuples of (layer, row, col, field1_value, field2_value, ...)
-        with 1-based indexing
-    """
-    if not field_arrays:
-        return
-
-    # determine spatial structure from first array
-    first_field = next(iter(field_arrays.values()))
-    if not isinstance(first_field, (np.ndarray, xr.DataArray)):
-        return
-
-    # get period slice
-    period_slices: dict[str, Any] = {}
-    for field_name, field_array in field_arrays.items():
-        if isinstance(field_array, xr.DataArray):
-            period_data = field_array.isel(nper=period_idx)
-            period_slices[field_name] = period_data.values
-        elif isinstance(field_array, np.ndarray):
-            period_slices[field_name] = field_array[period_idx]
-
-    # Find all locations where at least one field has meaningful data
-    combined_mask: Any = None
-    for field_name, period_data in period_slices.items():
-        meaningful_mask = (
-            (period_data != 0) & (period_data != FILL_DNODATA) & ~np.isnan(period_data)
-        )
-        if combined_mask is None:
-            combined_mask = meaningful_mask
+        if has_spatial_dims:
+            cellid = tuple(idx[i] + 1 for idx in indices)
+            result = cellid + (val,)
         else:
-            combined_mask = combined_mask | meaningful_mask
+            result = (val,)
+        yield result
 
+
+def dataset2list(value: xr.Dataset):
+    """
+    Yield record tuples from an xarray Dataset. For regular/tabular list-based format.
+
+    Yields
+    ------
+    tuple
+        Tuples of (*cellid, *values) or (*values) depending on spatial dimensions
+    """
+    if value is None or not any(value.data_vars):
+        return
+
+    # handle scalar
+    first_arr = next(iter(value.data_vars.values()))
+    if first_arr.ndim == 0:
+        field_vals = []
+        for field_name in value.data_vars.keys():
+            field_val = value[field_name]
+            if hasattr(field_val, "item"):
+                field_vals.append(field_val.item())
+            else:
+                field_vals.append(field_val)
+        yield tuple(field_vals)
+        return
+
+    # build mask
+    combined_mask: Any = None
+    for field_name, arr in value.data_vars.items():
+        mask = nonempty(arr)
+        combined_mask = mask if combined_mask is None else combined_mask | mask
     if combined_mask is None or not np.any(combined_mask):
         return
 
+    spatial_dims = [d for d in first_arr.dims if d in ("nlay", "nrow", "ncol", "nnodes")]
+    has_spatial_dims = len(spatial_dims) > 0
     indices = np.where(combined_mask)
     for i in range(len(indices[0])):
-        idx_1based = tuple(idx[i] + 1 for idx in indices)
-        field_values = []
-        for field_name in field_arrays.keys():
-            period_data = period_slices[field_name]
-            val = period_data[tuple(idx[i] for idx in indices)]
-            field_values.append(val)
+        field_vals = []
+        for field_name in value.data_vars.keys():
+            field_val = value[field_name][tuple(idx[i] for idx in indices)]
+            if hasattr(field_val, "item"):
+                field_vals.append(field_val.item())
+            else:
+                field_vals.append(field_val)
+        if has_spatial_dims:
+            cellid = tuple(idx[i] + 1 for idx in indices)
+            yield cellid + tuple(field_vals)
+        else:
+            yield tuple(field_vals)
 
-        yield idx_1based + tuple(field_values)
+
+def data2keystring(value: dict | xr.Dataset):
+    """
+    Yield record tuples from a dict or dataset. For irregular list-based format, i.e. keystrings.
+
+    Yields
+    ------
+    tuple
+        Tuples of (field_name, value) for use with record macro
+    """
+    if isinstance(value, dict):
+        if not value:
+            return
+        for field_name, field_val in value.items():
+            yield (field_name.upper(), field_val)
+    elif isinstance(value, xr.Dataset):
+        if value is None or not any(value.data_vars):
+            return
+
+        for field_name in value.data_vars.keys():
+            field_val = value[field_name]
+            if hasattr(field_val, "item"):
+                val = field_val.item()
+            else:
+                val = field_val
+            yield (field_name.upper(), val)
