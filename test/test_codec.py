@@ -264,3 +264,83 @@ def test_dumps_wel_with_auxiliary():
     assert "45 -25.0 2.0" in result  # (1,3,4) -> node 45, q=-25.0, aux=2.0
     assert "1e+30" not in result
     assert "1.0e+30" not in result
+
+
+def test_dumps_gwf():
+    from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+
+    dis = Dis(nlay=1, nrow=10, ncol=10, delr=100.0, delc=100.0)
+    gwf = Gwf(name="test_model", dis=dis)
+    ic = Ic(parent=gwf, strt=1.0)
+    npf = Npf(parent=gwf, k=1.0)
+    oc = Oc(parent=gwf, head_file="test.hds", budget_file="test.bud", dims={"nper": 1})
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 10.0}}, dims={"nper": 1})
+
+    gwf = Gwf(
+        name="test_model",
+        dis=dis,
+        ic=ic,
+        npf=npf,
+        oc=oc,
+        chd=[chd],
+    )
+
+    result = dumps(COMPONENT_CONVERTER.unstructure(gwf))
+    print("GWF model result:")
+    print(result)
+
+    # Check that child component bindings are included
+    assert "DIS6" in result
+    assert "IC6" in result
+    assert "NPF6" in result
+    assert "OC6" in result
+    assert "test_model.dis" in result
+    assert "test_model.ic" in result
+    assert "test_model.npf" in result
+    assert "test_model.oc" in result
+
+
+def test_dumps_simulation():
+    from flopy.discretization.modeltime import ModelTime
+
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
+    from flopy4.mf6.simulation import Simulation
+    from flopy4.mf6.tdis import Tdis
+
+    # Create model components
+    dis = Dis(nlay=1, nrow=5, ncol=5, delr=100.0, delc=100.0)
+    gwf = Gwf(name="model1", dis=dis)
+    ic = Ic(parent=gwf, strt=1.0)
+    npf = Npf(parent=gwf, k=1.0)
+    oc = Oc(parent=gwf, head_file="model1.hds", budget_file="model1.bud", dims={"nper": 1})
+
+    # Create model
+    gwf = Gwf(
+        name="model1",
+        dis=dis,
+        ic=ic,
+        npf=npf,
+        oc=oc,
+    )
+
+    # Create time discretization
+    time = ModelTime(perlen=[1.0], nstp=[1])
+    tdis = Tdis.from_time(time)
+
+    # Create simulation
+    sim = Simulation(
+        name="test_sim",
+        models={"model1": gwf},
+        exchanges={},
+        solutions={},
+        tdis=tdis,
+    )
+
+    result = dumps(COMPONENT_CONVERTER.unstructure(sim))
+    print("Simulation result:")
+    print(result)
+
+    # Check that model bindings are included
+    assert "GWF6" in result
+    assert "model1" in result
+    assert "TDIS6" in result

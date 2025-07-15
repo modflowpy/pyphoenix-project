@@ -23,10 +23,10 @@ def convert_time(value):
 
 @xattree
 class Simulation(Context):
-    models: dict[str, Model] = field()
-    exchanges: dict[str, Exchange] = field()
-    solutions: dict[str, Solution] = field()
-    tdis: Tdis = field(converter=convert_time)
+    models: dict[str, Model] = field(block="models")
+    exchanges: dict[str, Exchange] = field(block="exchanges")
+    solutions: dict[str, Solution] = field(block="solutiongroup")
+    tdis: Tdis = field(converter=convert_time, block="timing")
     filename: str = field(default="mfsim.nam", init=False)
 
     def __attrs_post_init__(self):
@@ -52,13 +52,3 @@ class Simulation(Context):
                     f"Simulation {self.name}: {exe} failed with "  # type: ignore
                     f"return code {ret}, output:\n\n{out + err} "
                 )
-
-    def load(self, format="ascii"):
-        """Load the simulation."""
-        with cd(self.workspace):
-            super().load(format=format)
-
-    def write(self, format="ascii"):
-        """Write the simulation."""
-        with cd(self.workspace):
-            super().write(format=format)

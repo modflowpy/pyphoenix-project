@@ -51,13 +51,13 @@ class Gwf(Model):
                 self.parent.parent.workspace / f"{self.parent.name}.dis.grb",
             )
 
-    dis: Dis = field(converter=convert_grid)
-    ic: Ic = field()
-    oc: Oc = field()
-    npf: Npf = field()
-    chd: list[Chd] = field()
-    wel: list[Wel] = field()
-    drn: list[Drn] = field()
+    dis: Dis = field(converter=convert_grid, block="packages")
+    ic: Ic = field(block="packages")
+    oc: Oc = field(block="packages")
+    npf: Npf = field(block="packages")
+    chd: list[Chd] = field(block="packages")
+    wel: list[Wel] = field(block="packages")
+    drn: list[Drn] = field(block="packages")
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )
