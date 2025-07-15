@@ -110,12 +110,15 @@ def array(
     on_setattr=None,
     block: str | None = None,
     reader: Reader = "readarray",
+    format: str | None = None,
 ):
     """Define an array field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
         metadata["reader"] = reader
+        if format:
+            metadata["format"] = format
     return flopy_array(
         cls=cls,
         dims=dims,

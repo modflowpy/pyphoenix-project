@@ -26,7 +26,11 @@ def update_maxbound(instance, attribute, new_value):
     period_arrays = []
     instance_fields = fields(instance.__class__)
     for field in instance_fields:
-        if field.metadata and field.metadata.get("block") == "period" and "dims" in field.metadata:
+        if (
+            field.metadata
+            and field.metadata.get("block") == "period"
+            and field.metadata.get("xattree", {}).get("dims")
+        ):
             period_arrays.append(field.name)
 
     maxbound_values = []

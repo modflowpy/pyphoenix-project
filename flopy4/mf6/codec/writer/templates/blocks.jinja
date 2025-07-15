@@ -1,5 +1,5 @@
 {% import 'macros.jinja' as macros with context %}
-{% for block_name, block_value in (data|dict_blocks).items() %}
+{% for block_name, block_value in blocks.items() %}
 BEGIN {{ block_name.upper() }}
 {% for field_name, field_value in block_value.items() if (field_value) is not none -%}
 {{ macros.field(field_name, field_value) }}
@@ -7,7 +7,3 @@ BEGIN {{ block_name.upper() }}
 END {{ block_name.upper() }}
 
 {% endfor %}
-
-{% for block_name, block_value in (data|list_blocks).items() -%}
-{{ macros.list(block_name, block_value, multi=block_name in ["period"]) }}
-{%- endfor %}

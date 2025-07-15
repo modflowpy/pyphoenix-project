@@ -23,11 +23,11 @@ class Oc(Package):
 
     @define(slots=False)
     class Steps:
-        all: bool = field()
-        first: bool = field()
-        last: bool = field()
-        steps: list[int] = field()
-        frequency: int = field()
+        all: bool = field(default=True)
+        first: bool | None = field(default=None)
+        last: bool | None = field(default=None)
+        steps: list[int] | None = field(default=None)
+        frequency: int | None = field(default=None)
 
     @define(slots=False)
     class Period:
@@ -51,34 +51,38 @@ class Oc(Package):
     )
     format: Optional[Format] = field(block="options", default=None, init=False)
     save_head: Optional[NDArray[np.object_]] = array(
-        Steps,
+        object,
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        format="keystring",
     )
     save_budget: Optional[NDArray[np.object_]] = array(
-        Steps,
+        object,
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        format="keystring",
     )
     print_head: Optional[NDArray[np.object_]] = array(
-        Steps,
+        object,
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        format="keystring",
     )
     print_budget: Optional[NDArray[np.object_]] = array(
-        Steps,
+        object,
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
         reader="urword",
+        format="keystring",
     )
