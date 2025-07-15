@@ -18,14 +18,6 @@
 {% endfor %}
 {%- endmacro %}
 
-{% macro inner_class(vars) %}
-@xattree
-class {{ vars.name|capitalize}}:
-    {% for key, attr in vars.fields.items() %}
-    {{ key }}: {{ attr|type_str }} = field()
-    {% endfor %}
-{%- endmacro %}
-
 {% macro xattree_field(attr) %}
 {% if "shape" in attr %}
 array(
@@ -42,7 +34,7 @@ field(
 {%- endmacro %}
 
 {% macro metadata(attr) %}
-metadata={"block": "{{attr.block}}" }
+metadata={"block": "{{attr.block}}"}
 {%- endmacro %}
 
 {% macro default_in_field(attr) %}

@@ -1,0 +1,5 @@
+    @define
+    class {{ attr.item.name|class_name}}:
+        {% for _, field in attr.item.fields.items() %}
+        {{ field.name }}: {{ field | type_str }} = field({{ macros.metadata(field) }}{{ macros.default_in_field(field) }})
+        {% endfor %}
