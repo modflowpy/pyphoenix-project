@@ -176,6 +176,8 @@ class Filters:
             "recarray": dict,
         }
 
+        # TODO: If it's a record with a filein or fileout, use PathLike.
+
         # options with a shape are lists
         if attr.get("shape", None) and attr["type"] == "string":
             py_type: Any = list[str]
