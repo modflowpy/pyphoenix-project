@@ -23,10 +23,10 @@ def convert_time(value):
 
 @xattree
 class Simulation(Context):
+    tdis: Tdis = field(converter=convert_time, block="timing")
     models: dict[str, Model] = field(block="models")
     exchanges: dict[str, Exchange] = field(block="exchanges")
     solutions: dict[str, Solution] = field(block="solutiongroup")
-    tdis: Tdis = field(converter=convert_time, block="timing")
     filename: str = field(default="mfsim.nam", init=False)
 
     def __attrs_post_init__(self):

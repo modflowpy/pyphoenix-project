@@ -13,6 +13,7 @@ from flopy4.mf6.context import Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import fields_dict, get_blocks
 
 
@@ -45,9 +46,10 @@ class _Binding:
         def _get_binding_terms(component: Component) -> tuple[str, ...] | None:
             if isinstance(component, Exchange):
                 return (component.exgmnamea, component.exgmnameb)  # type: ignore
+            elif isinstance(component, Solution):
+                return tuple(component.models)
             elif isinstance(component, (Model, Package)):
                 return (component.name,)  # type: ignore
-            # TODO solutions
             return None
 
         return cls(
@@ -178,7 +180,18 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             _attach_field_metadata(dataset, type(value), list(block.keys()))
             blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
 
-    return {name: block for name, block in blocks.items() if block}
+    # make sure options block always comes first
+    if "options" in blocks:
+        options_block = blocks.pop("options")
+        blocks = {"options": options_block, **blocks}
+
+    # total temporary hack! manually set solutiongroup 1. still need to support multiple..
+    if "solutiongroup" in blocks:
+        sg = blocks["solutiongroup"]
+        blocks["solutiongroup 1"] = sg
+        del blocks["solutiongroup"]
+
+    return {name: block for name, block in blocks.items() if name != "period"}
 
 
 def _make_converter() -> Converter:
