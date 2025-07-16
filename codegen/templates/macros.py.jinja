@@ -34,7 +34,7 @@ field(
 {%- endmacro %}
 
 {% macro metadata(attr) %}
-metadata={"block": "{{attr.block}}"}
+block="{{ attr.block }}"
 {%- endmacro %}
 
 {% macro default_in_field(attr) %}

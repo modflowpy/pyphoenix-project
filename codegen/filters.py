@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from keyword import kwlist
 from os import PathLike
@@ -176,8 +177,6 @@ class Filters:
             "recarray": dict,
         }
 
-        # TODO: If it's a record with a filein or fileout, use PathLike.
-
         # options with a shape are lists
         if attr.get("shape", None) and attr["type"] == "string":
             py_type: Any = list[str]
@@ -186,7 +185,12 @@ class Filters:
         elif attr.get("shape", None) and attr["type"] == "integer":
             py_type = NDArray[np.int64]
         elif attr["type"] == "record":
-            py_type = ForwardRef(Filters.class_name(attr["name"]), is_argument=False, is_class=True)
+            if any(field in attr["fields"] for field in ["filein", "fileout"]):
+                py_type = os.PathLike
+            else:
+                py_type = ForwardRef(
+                    Filters.class_name(attr["name"]), is_argument=False, is_class=True
+                )
         elif "file" in attr["name"]:
             py_type = PathLike
         else:
