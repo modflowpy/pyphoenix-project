@@ -233,7 +233,7 @@ def get_dfn_field_type(attribute: Attribute) -> FieldType:
     kind = xatmeta["kind"]
     match kind:
         case "child":
-            raise ValueError(f"Top-level field should not be a child: {attribute.name}")
+            return "recarray"  # Child components become tabular bindings
         case "array":
             return "recarray"
         case "coord":

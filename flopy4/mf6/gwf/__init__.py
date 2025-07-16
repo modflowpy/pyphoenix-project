@@ -32,6 +32,11 @@ def convert_grid(value):
 @xattree
 class Gwf(Model):
     @define
+    class NewtonOptions:
+        newton: bool = field()
+        under_relaxation: bool = field()
+
+    @define
     class Output:
         parent: "Gwf" = attrs.field(repr=False)
 
@@ -51,23 +56,7 @@ class Gwf(Model):
                 self.parent.parent.workspace / f"{self.parent.name}.dis.grb",
             )
 
-    dis: Dis = field(converter=convert_grid)
-    ic: Ic = field()
-    oc: Oc = field()
-    npf: Npf = field()
-    chd: list[Chd] = field()
-    wel: list[Wel] = field()
-    drn: list[Drn] = field()
-    output: Output = attrs.field(
-        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
-    )
-
-    @define
-    class NewtonOptions:
-        newton: bool = field()
-        under_relaxation: bool = field()
-
-    list: Optional[str] = field(block="options", default=None)
+    _list: Optional[str] = field(block="options", default=None)
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
@@ -75,6 +64,16 @@ class Gwf(Model):
     nc_mesh2d_filerecord: Optional[Path] = field(block="options", default=None)
     nc_structured_filerecord: Optional[Path] = field(block="options", default=None)
     nc_filerecord: Optional[Path] = field(block="options", default=None)
+    dis: Dis = field(converter=convert_grid, block="packages")
+    ic: Ic = field(block="packages")
+    oc: Oc = field(block="packages")
+    npf: Npf = field(block="packages")
+    chd: list[Chd] = field(block="packages")
+    wel: list[Wel] = field(block="packages")
+    drn: list[Drn] = field(block="packages")
+    output: Output = attrs.field(
+        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
+    )
 
     @property
     def grid(self) -> Grid:

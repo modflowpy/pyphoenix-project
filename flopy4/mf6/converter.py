@@ -1,13 +1,62 @@
+from collections.abc import MutableMapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import xarray as xr
 import xattree
+from attrs import define
 from cattrs import Converter
 
 from flopy4.mf6.component import Component
+from flopy4.mf6.context import Context
+from flopy4.mf6.exchange import Exchange
+from flopy4.mf6.model import Model
+from flopy4.mf6.package import Package
+from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import fields_dict, get_blocks
+
+
+@define
+class _Binding:
+    """
+    An MF6 component binding: a record representation of the
+    component for writing to a parent component's name file.
+    """
+
+    type: str
+    fname: str
+    terms: tuple[str, ...] | None = None
+
+    def to_tuple(self):
+        if self.terms and any(self.terms):
+            return (self.type, self.fname, *self.terms)
+        else:
+            return (self.type, self.fname)
+
+    @classmethod
+    def from_component(cls, component: Component) -> "_Binding":
+        def _get_binding_type(component: Component) -> str:
+            cls_name = component.__class__.__name__
+            if isinstance(component, Exchange):
+                return f"{'-'.join([cls_name[:2], cls_name[3:]]).upper()}6"
+            else:
+                return f"{cls_name.upper()}6"
+
+        def _get_binding_terms(component: Component) -> tuple[str, ...] | None:
+            if isinstance(component, Exchange):
+                return (component.exgmnamea, component.exgmnameb)  # type: ignore
+            elif isinstance(component, Solution):
+                return tuple(component.models)
+            elif isinstance(component, (Model, Package)):
+                return (component.name,)  # type: ignore
+            return None
+
+        return cls(
+            type=_get_binding_type(component),
+            fname=component.filename or component.default_filename(),
+            terms=_get_binding_terms(component),
+        )
 
 
 def _attach_field_metadata(
@@ -29,14 +78,56 @@ def _path_to_record(field_name: str, path_value: Path) -> tuple:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    data = xattree.asdict(value)
     blockspec = get_blocks(value.dfn)
     blocks: dict[str, dict[str, Any]] = {}
+    xatspec = xattree.get_xatspec(type(value))
+
+    # Handle child component bindings before converting to dict
+    if isinstance(value, Context):
+        for field_name, child_spec in xatspec.children.items():
+            if hasattr(child_spec, "metadata") and "block" in child_spec.metadata:  # type: ignore
+                block_name = child_spec.metadata["block"]  # type: ignore
+                field_value = getattr(value, field_name, None)
+
+                if block_name not in blocks:
+                    blocks[block_name] = {}
+
+                if isinstance(field_value, Component):
+                    components = [_Binding.from_component(field_value).to_tuple()]
+                elif isinstance(field_value, MutableMapping):
+                    components = [
+                        _Binding.from_component(comp).to_tuple()
+                        for comp in field_value.values()
+                        if comp is not None
+                    ]
+                elif isinstance(field_value, (list, tuple)):
+                    components = [
+                        _Binding.from_component(comp).to_tuple()
+                        for comp in field_value
+                        if comp is not None
+                    ]
+                else:
+                    continue
+
+                if components:
+                    blocks[block_name][field_name] = components
+
+    data = xattree.asdict(value)
+
     for block_name, block in blockspec.items():
-        blocks[block_name] = {}
+        if block_name not in blocks:
+            blocks[block_name] = {}
         period_data = {}
         period_blocks = {}  # type: ignore
+
         for field_name in block.keys():
+            # Skip child components that have been processed as bindings
+            if isinstance(value, Context) and field_name in xatspec.children:
+                child_spec = xatspec.children[field_name]
+                if hasattr(child_spec, "metadata") and "block" in child_spec.metadata:  # type: ignore
+                    if child_spec.metadata["block"] == block_name:  # type: ignore
+                        continue
+
             field_value = data[field_name]
             # convert:
             #   - paths to records
@@ -89,7 +180,18 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             _attach_field_metadata(dataset, type(value), list(block.keys()))
             blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
 
-    return {name: block for name, block in blocks.items() if block}
+    # make sure options block always comes first
+    if "options" in blocks:
+        options_block = blocks.pop("options")
+        blocks = {"options": options_block, **blocks}
+
+    # total temporary hack! manually set solutiongroup 1. still need to support multiple..
+    if "solutiongroup" in blocks:
+        sg = blocks["solutiongroup"]
+        blocks["solutiongroup 1"] = sg
+        del blocks["solutiongroup"]
+
+    return {name: block for name, block in blocks.items() if name != "period"}
 
 
 def _make_converter() -> Converter:

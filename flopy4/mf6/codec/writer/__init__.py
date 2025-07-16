@@ -4,7 +4,7 @@ from os import PathLike
 import numpy as np
 from jinja2 import Environment, PackageLoader
 
-from flopy4.mf6 import filters
+from flopy4.mf6.codec.writer import filters
 
 _JINJA_ENV = Environment(
     loader=PackageLoader("flopy4.mf6.codec.writer"),

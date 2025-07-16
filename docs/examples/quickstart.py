@@ -5,23 +5,32 @@ import numpy as np
 from flopy.discretization.modeltime import ModelTime
 from flopy.discretization.structuredgrid import StructuredGrid
 
-from flopy4.mf6.gwf import Chd, Gwf, Npf, Oc
+from flopy4.mf6.gwf import Chd, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 
 name = "quickstart"
 workspace = Path(__file__).parent / name
 time = ModelTime(perlen=[1.0], nstp=[1])
-grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+grid = StructuredGrid(
+    nlay=1,
+    nrow=10,
+    ncol=10,
+    delr=1.0 * np.ones(10),
+    delc=1.0 * np.ones(10),
+    top=1.0 * np.ones((10, 10)),
+    botm=0.0 * np.ones((1, 10, 10)),
+)
 sim = Simulation(name=name, workspace=workspace, tdis=time)
-ims = Ims(parent=sim)
 gwf_name = "mymodel"
+ims = Ims(parent=sim, models=[gwf_name])  # temporary hack
 gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
 npf = Npf(parent=gwf, save_specific_discharge=True)
 chd = Chd(
     parent=gwf,
     head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
 )
+ic = Ic(parent=gwf, strt=1.0)
 oc = Oc(
     parent=gwf,
     budget_file=f"{gwf.name}.bud",
@@ -30,18 +39,15 @@ oc = Oc(
     save_budget={0: "all"},
 )
 
-# sim.write()
+sim.write()
 sim.run(verbose=True)
 
-# check CHD
 assert chd.data["head"][0, 0] == 1.0
 assert chd.data.head.sel(per=0)[99] == 0.0
 assert np.allclose(chd.data.head[:, 1:99], np.full(98, 1e30))
 
-# check DIS
 assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 
-# check OC
 assert oc.data["save_head"][0] == "all"
 assert oc.data.save_head.sel(per=0) == "all"
 

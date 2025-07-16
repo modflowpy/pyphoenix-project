@@ -12,7 +12,7 @@ from flopy4.mf6.spec import field
 class Ims(Solution):
     solution_package: ClassVar[Sln] = Sln(abbr="ims", pattern="*")
 
-    print_option: bool = field(block="options", default=False)
+    print_option: Optional[str] = field(block="options", default=None)
     complexity: str = field(block="options", default="simple")
     csv_outer_output_file: Optional[Path] = field(default=None, block="options")
     csv_inner_output_file: Optional[Path] = field(block="options", default=None)
