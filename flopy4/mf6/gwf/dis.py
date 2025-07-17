@@ -14,8 +14,8 @@ from flopy4.mf6.spec import array, dim, field
 @xattree
 class Dis(Package):
     length_units: str = field(
+        block="options",
         default=None,
-        metadata={"block": "options"},
     )
     nogrb: bool = field(block="options", default=False)
     xorigin: float = field(block="options", default=None)
