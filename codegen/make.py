@@ -77,7 +77,6 @@ def make_all(
     outdir: PathLike,
     verbose: bool = False,
     version: int = 1,
-    legacydir: PathLike | None = None,
 ):
     """Generate Python source files from the DFN files in the given location."""
     dfndir = Path(dfndir).expanduser().resolve().absolute()
