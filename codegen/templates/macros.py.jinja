@@ -1,21 +1,8 @@
-{% macro docstrings(vars, recurse=true) %}
-{% for var in vars.values() recursive %}
-{% set v = var %}
-{% set n = v.name|safe_name %}
-{% set children = v|children %}
-{% if loop.depth > 1 %}* {% endif %}{{ n }} : {{ v|type_docstr }}
-{% if v.description is defined and v.description is not none %}
-{{ v.description|clean|math|wordwrap|indent(loop.depth * 4, first=true) }}
+{% macro docstrings(var) %}
+{{ var.name|safe_name }} : {{ var|type_docstr }}
+{% if var.description is defined and var.description is not none %}
+    {{ var.description|clean|math|wordwrap|indent(4) }}
 {% endif %}
-{% if recurse and children is not none %}
-{% if v.type == "list" and children|length == 1 and (children.values()|first).type in ["record", "union"] %}
-{% set grandchildren = (children.values()|first)|children %}
-{{ loop(grandchildren.values())|indent(loop.depth * 4, first=true) }}
-{% else %}
-{{ loop(children.values())|indent(loop.depth * 4, first=true) }}
-{% endif %}
-{% endif %}
-{% endfor %}
 {%- endmacro %}
 
 {% macro xattree_field(attr) %}

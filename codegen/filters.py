@@ -54,10 +54,6 @@ class Filters:
         return None
 
     @staticmethod
-    def variables(dfn: dict) -> dict[str, dict]:
-        return _get_vars(dfn)
-
-    @staticmethod
     def attrs(dfn: dict) -> list[dict]:
         """
         Map the context's input variables to corresponding class attributes, where applicable.
@@ -130,11 +126,6 @@ class Filters:
     def type_docstr(attr: dict[str, Any]) -> str:
         py_type = Filters._python_type(attr)
         return Filters._type_to_string(py_type, docstring=True)
-
-    @staticmethod
-    def has_optional_or_default(attr: dict[str, Any]) -> bool:
-        """Check if the attribute has an optional type or a default value."""
-        return attr.get("optional", False) or "default" in attr
 
     @staticmethod
     def class_name(name: str) -> str:

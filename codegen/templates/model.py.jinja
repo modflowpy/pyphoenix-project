@@ -13,11 +13,13 @@ from flopy4.mf6.spec import field
 @xattree(kw_only=True)
 class MF{{ dfn.name|class_name }}(Model):
     """
-    MF{dfn.name|class_name} defines a {dfn.name} model."
+    MF{{ dfn.name|class_name }} defines a {{ dfn.name }} model.
 
     Parameters
     ----------
-    {{ macros.docstrings(dfn|variables)|indent(4) }}
+    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
+    {{ macros.docstrings(attr)|indent(4) -}}
+    {% endfor %}
     """
 
     {# Create inner classes for records #}
@@ -26,6 +28,6 @@ class MF{{ dfn.name|class_name }}(Model):
 
     {% endfor %}
 
-    {% for attr in dfn | attrs  %}
+    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)  %}
     {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}

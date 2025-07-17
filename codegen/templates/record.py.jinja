@@ -1,5 +1,15 @@
     @define
     class {{ attr.name|class_name}}:
+        """
+        {{ attr.longname }}
+        {{ attr.description }}
+
+        Parameters
+        ----------
+        {% for _, field in attr.fields.items() %}
+        {{ macros.docstrings(field)|indent(8) }}
+        {% endfor %}
+        """
         {% for _, field in attr.fields.items() %}
         {{ field.name }}: {{ field | type_str }} = field({{ macros.metadata(field) }}{{ macros.default_in_field(field) }})
         {% endfor %}

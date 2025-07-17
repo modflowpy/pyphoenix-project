@@ -33,7 +33,9 @@ class MF{{dfn.name|class_name}}(Context):
 
     Parameters
     ----------
-    {{ macros.docstrings(dfn|variables)|indent(4) }}
+    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)%}
+    {{ macros.docstrings(attr)|indent(4) -}}
+    {% endfor %}
     """
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
     {% if attr.type == "record" %}

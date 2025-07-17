@@ -17,7 +17,6 @@ def _get_template_env():
         keep_trailing_newline=True,
     )
 
-    env.filters["variables"] = Filters.variables
     env.filters["attrs"] = Filters.attrs
     env.filters["children"] = Filters.children
     env.filters["safe_name"] = Filters.safe_name
