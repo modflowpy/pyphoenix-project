@@ -25,13 +25,15 @@ def convert_time(value):
     raise TypeError(f"Expected ModelTime or Tdis, got {type(value)}")
 
 @xattree
-class MF{{dfn.name|title}}(Context):
+class MF{{dfn.name|class_name}}(Context):
     """
-    {{ dfn|description }}
+    MF{{dfn.name|class_name}} is used to load, build, and/or save a MODFLOW 6 simulation.
+    A MF{{dfn.name|class_name}} object must be created before creating any of the MODFLOW 6
+    model objects.
 
     Parameters
     ----------
-{{ macros.docstrings(dfn|variables)|indent(4, first=true) }}
+    {{ macros.docstrings(dfn|variables)|indent(4) }}
     """
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
     {% if attr.type == "record" %}

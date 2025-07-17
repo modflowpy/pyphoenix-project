@@ -37,21 +37,6 @@ def _get_vars(d: dict) -> dict[str, dict]:
 
 class Filters:
     @staticmethod
-    def description(dfn: dict[str, Any]) -> str:
-        """A description of the input context."""
-        parent = dfn.get("parent", None)
-        if parent == "sim":
-            return f"Modflow{dfn['name'].title()} defines a {dfn['name']} model."
-        elif parent is not None:
-            return f"Modflow{dfn['name'].title()} defines a {dfn['name']} package."
-        else:
-            return (
-                "MFSim is used to load, build, and/or save a MODFLOW 6 simulation.\n"
-                "A MFSim object must be created before creating any of the MODFLOW 6\n"
-                "model objects."
-            )
-
-    @staticmethod
     def children(var: dict) -> Optional[dict]:
         _type = var["type"]
         items = var.get("items", None)
