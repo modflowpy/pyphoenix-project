@@ -10,7 +10,7 @@
             "request": "launch",
             "module": "codegen.generate_classes",
             "args": [
-                "--dfnpath=c:/Users/kraus/Source/Repos/pyphoenix-project/dfn/"
+                "--dfnpath=${workspaceFolder}/dfn/"
             ]
         },
         {
