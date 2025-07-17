@@ -26,7 +26,6 @@ def _get_template_env():
     env.filters["clean"] = Filters.clean
     env.filters["type_str"] = Filters.type_str
     env.filters["type_docstr"] = Filters.type_docstr
-    env.filters["has_optional_or_default"] = Filters.has_optional_or_default
     env.filters["class_name"] = Filters.class_name
 
     return env

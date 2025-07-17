@@ -24,7 +24,7 @@ def convert_time(value):
         return value
     raise TypeError(f"Expected ModelTime or Tdis, got {type(value)}")
 
-@xattree
+@xattree(kw_only=True)
 class MF{{dfn.name|class_name}}(Context):
     """
     MF{{dfn.name|class_name}} is used to load, build, and/or save a MODFLOW 6 simulation.
@@ -45,12 +45,7 @@ class MF{{dfn.name|class_name}}(Context):
     {% endif %}
     {% endfor %}
 
-    {# All non-optional parameters go first. #}
-    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) if not attr|has_optional_or_default %}
-    {{ attr.name|safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr)|indent(4) }}
-    {% endfor %}
-    {# Optional parameters go last. #}
-    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) if attr|has_optional_or_default %}
+    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
     {{ attr.name|safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr)|indent(4) }}
     {% endfor %}
     models: dict[str, Model] = field(metadata={"block": "models"}, default={})

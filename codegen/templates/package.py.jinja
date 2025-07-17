@@ -14,7 +14,7 @@ from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 
 
-@xattree
+@xattree(kw_only=True)
 class MF{{ dfn.name|class_name }}(Package):
     """
     MF{{dfn.name|class_name}} defines a {{dfn.name}} package.
@@ -33,11 +33,6 @@ class MF{{ dfn.name|class_name }}(Package):
 
     {% endfor %}
 
-    {# All non-optional parameters go first. #}
-    {% for attr in dfn | attrs if not attr | has_optional_or_default %}
-    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
-    {% endfor %}
-    {# Optional parameters go last. #}
-    {% for attr in dfn | attrs if attr | has_optional_or_default %}
+    {% for attr in dfn | attrs %}
     {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
     {% endfor %}
