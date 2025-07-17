@@ -22,7 +22,15 @@ def _get_vars(d: dict) -> dict[str, dict]:
 
     def visit(p, k, v):
         if isinstance(v, dict) and "type" in v:
-            vars_[k] = v
+            if v.get("type") == "recarray":
+                # Add extra dimension to recarray items
+                for _, item in v["item"]["fields"].items():
+                    if v.get("shape", None) is not None:
+                        item["shape"] = v["shape"]
+                # Add all info from every item to vars_
+                vars_.update(v["item"]["fields"].items())
+            else:
+                vars_[k] = v
         return True
 
     def enter(p, k, v):
@@ -36,23 +44,6 @@ def _get_vars(d: dict) -> dict[str, dict]:
 
 
 class Filters:
-    @staticmethod
-    def children(var: dict) -> Optional[dict]:
-        _type = var["type"]
-        items = var.get("items", None)
-        fields = var.get("fields", None)
-        choices = var.get("choices", None)
-        if items:
-            assert _type == "recarray"
-            return items
-        if fields:
-            assert _type == "record"
-            return fields
-        if choices:
-            assert _type == "keystring"
-            return choices
-        return None
-
     @staticmethod
     def attrs(dfn: dict) -> list[dict]:
         """
@@ -106,6 +97,7 @@ class Filters:
                 v = v.replace(s1, s2)
         return v
 
+    @staticmethod
     def value(v: Any) -> str:
         """
         Format a value to appear in the RHS of an assignment or argument-
@@ -150,12 +142,11 @@ class Filters:
             "double precision": float,
             "string": str,
             "keyword": bool,
-            "recarray": dict,
         }
 
         # options with a shape are lists
         if attr.get("shape", None) and attr["type"] == "string":
-            py_type: Any = list[str]
+            py_type: Any = NDArray[np.object_]
         elif attr.get("shape", None) and attr["type"] in ["real", "double precision"]:
             py_type = NDArray[np.float64]
         elif attr.get("shape", None) and attr["type"] == "integer":

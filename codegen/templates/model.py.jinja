@@ -27,9 +27,6 @@ class MF{{ dfn.name|class_name }}(Model):
     {% if attr.type == "record" and not "filein" in attr.fields and not "fileout" in attr.fields %}
     {% include "record.py.jinja" %}
 
-    {% elif attr.type == "recarray" %}
-    {% include "recarray.py.jinja" %}
-
     {% endif %}
     {% endfor %}
 
