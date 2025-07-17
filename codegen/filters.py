@@ -43,6 +43,110 @@ def _get_vars(d: dict) -> dict[str, dict]:
     return vars_
 
 
+def _python_type(attr: dict[str, Any]) -> type | ForwardRef:
+    """
+    Get the Python type of the attribute, e.g. int, str, float,
+    list, dict, etc.
+    """
+    types: dict[str, type] = {
+        "integer": int,
+        "real": float,
+        "double precision": float,
+        "string": str,
+        "keyword": bool,
+    }
+
+    # options with a shape are lists
+    if attr.get("shape", None) and attr["type"] == "string":
+        py_type: Any = NDArray[np.object_]
+    elif attr.get("shape", None) and attr["type"] in ["real", "double precision"]:
+        py_type = NDArray[np.float64]
+    elif attr.get("shape", None) and attr["type"] == "integer":
+        py_type = NDArray[np.int64]
+    elif attr["type"] == "record":
+        if any(field in attr["fields"] for field in ["filein", "fileout"]):
+            py_type = os.PathLike
+        else:
+            py_type = ForwardRef(Filters.class_name(attr["name"]), is_argument=False, is_class=True)
+    elif "file" in attr["name"]:
+        py_type = PathLike
+    else:
+        py_type = types.get(attr["type"], Any)
+
+    if attr.get("optional", False):
+        py_type = Optional[py_type]
+
+    return py_type
+
+
+def _type_to_string(
+    t: type | ForwardRef,
+    *,
+    type_sep: Literal["|", "or"],
+    optional: Literal[", optional", "| None"],
+) -> str:
+    """Convert a type to its string representation.
+
+    Args:
+        t: The type to convert
+        type_sep: The separator to use for multiple types (either '|' or 'or')
+        optional: The string to append for optional types (either '| None' or ', optional')
+    """
+
+    # Handle None type
+    if t is type(None):
+        return "None"
+
+    if type(t) is ForwardRef:
+        return t.__forward_arg__
+
+    # Handle basic types with __name__
+    if hasattr(t, "__name__") and not hasattr(t, "__origin__"):
+        return t.__name__
+
+    # Handle generic types and special forms
+    origin = get_origin(t)
+    args = get_args(t)
+
+    if origin is None:
+        # Fallback for types without origin
+        return getattr(t, "__name__", str(t))
+
+    # Handle Union types (including Optional)
+    if origin is Union:
+        if len(args) == 2 and type(None) in args:
+            # This is Optional[T] which is Union[T, None]
+            non_none_type = args[0] if args[1] is type(None) else args[1]
+            non_none_str = _type_to_string(non_none_type, type_sep=type_sep, optional=optional)
+            return f"{non_none_str}{optional}"
+        else:
+            # Regular Union
+            arg_strs = [_type_to_string(arg, type_sep=type_sep, optional=optional) for arg in args]
+            return f" {type_sep} ".join(arg_strs)
+
+    if origin is np.ndarray:
+        if args:
+            if len(args) >= 2:
+                # Extract the dtype from the second argument
+                dtype_arg = args[1].__args__[0]
+            else:
+                dtype_arg = args[0].__args__[0]
+            dtype_str = _type_to_string(dtype_arg, type_sep=type_sep, optional=optional)
+            return f"NDArray[np.{dtype_str}]"
+        return "NDArray"
+
+    # Handle other generic types (list, dict, NDArray, etc.)
+    if hasattr(origin, "__name__"):
+        origin_name = origin.__name__
+        if args:
+            arg_strs = [_type_to_string(arg, type_sep=type_sep, optional=optional) for arg in args]
+            return f"{origin_name}[{', '.join(arg_strs)}]"
+        return origin_name
+
+    # Fallback
+    return str(t)
+
+
 class Filters:
     @staticmethod
     def attrs(dfn: dict) -> list[dict]:
@@ -111,13 +215,13 @@ class Filters:
 
     @staticmethod
     def type_str(attr: dict[str, Any]) -> str:
-        py_type = Filters._python_type(attr)
-        return Filters._type_to_string(py_type, type_sep="|", optional="| None")
+        py_type = _python_type(attr)
+        return _type_to_string(py_type, type_sep="|", optional="| None")
 
     @staticmethod
     def type_docstr(attr: dict[str, Any]) -> str:
-        py_type = Filters._python_type(attr)
-        return Filters._type_to_string(py_type, type_sep="or", optional=", optional")
+        py_type = _python_type(attr)
+        return _type_to_string(py_type, type_sep="or", optional=", optional")
 
     @staticmethod
     def class_name(name: str) -> str:
@@ -129,117 +233,3 @@ class Filters:
         name = name.replace("-", "_")
         # capitalize each word and join them
         return "".join(word.capitalize() for word in name.split("_"))
-
-    @staticmethod
-    def _python_type(attr: dict[str, Any]) -> type | ForwardRef:
-        """
-        Get the Python type of the attribute, e.g. int, str, float,
-        list, dict, etc.
-        """
-        types: dict[str, type] = {
-            "integer": int,
-            "real": float,
-            "double precision": float,
-            "string": str,
-            "keyword": bool,
-        }
-
-        # options with a shape are lists
-        if attr.get("shape", None) and attr["type"] == "string":
-            py_type: Any = NDArray[np.object_]
-        elif attr.get("shape", None) and attr["type"] in ["real", "double precision"]:
-            py_type = NDArray[np.float64]
-        elif attr.get("shape", None) and attr["type"] == "integer":
-            py_type = NDArray[np.int64]
-        elif attr["type"] == "record":
-            if any(field in attr["fields"] for field in ["filein", "fileout"]):
-                py_type = os.PathLike
-            else:
-                py_type = ForwardRef(
-                    Filters.class_name(attr["name"]), is_argument=False, is_class=True
-                )
-        elif "file" in attr["name"]:
-            py_type = PathLike
-        else:
-            py_type = types.get(attr["type"], Any)
-
-        if attr.get("optional", False):
-            py_type = Optional[py_type]
-
-        return py_type
-
-    @staticmethod
-    def _type_to_string(
-        t: type | ForwardRef,
-        *,
-        type_sep: Literal["|", "or"],
-        optional: Literal[", optional", "| None"],
-    ) -> str:
-        """Convert a type to its string representation.
-
-        Args:
-            t: The type to convert
-            type_sep: The separator to use for multiple types (either '|' or 'or')
-            optional: The string to append for optional types (either '| None' or ', optional')
-        """
-
-        # Handle None type
-        if t is type(None):
-            return "None"
-
-        if type(t) is ForwardRef:
-            return t.__forward_arg__
-
-        # Handle basic types with __name__
-        if hasattr(t, "__name__") and not hasattr(t, "__origin__"):
-            return t.__name__
-
-        # Handle generic types and special forms
-        origin = get_origin(t)
-        args = get_args(t)
-
-        if origin is None:
-            # Fallback for types without origin
-            return getattr(t, "__name__", str(t))
-
-        # Handle Union types (including Optional)
-        if origin is Union:
-            if len(args) == 2 and type(None) in args:
-                # This is Optional[T] which is Union[T, None]
-                non_none_type = args[0] if args[1] is type(None) else args[1]
-                non_none_str = Filters._type_to_string(
-                    non_none_type, type_sep=type_sep, optional=optional
-                )
-                return f"{non_none_str}{optional}"
-            else:
-                # Regular Union
-                arg_strs = [
-                    Filters._type_to_string(arg, type_sep=type_sep, optional=optional)
-                    for arg in args
-                ]
-                return f" {type_sep} ".join(arg_strs)
-
-        if origin is np.ndarray:
-            if args:
-                if len(args) >= 2:
-                    # Extract the dtype from the second argument
-                    dtype_arg = args[1].__args__[0]
-                else:
-                    dtype_arg = args[0].__args__[0]
-                dtype_str = Filters._type_to_string(dtype_arg, type_sep=type_sep, optional=optional)
-                return f"NDArray[np.{dtype_str}]"
-            return "NDArray"
-
-        # Handle other generic types (list, dict, NDArray, etc.)
-        if hasattr(origin, "__name__"):
-            origin_name = origin.__name__
-            if args:
-                arg_strs = [
-                    Filters._type_to_string(arg, type_sep=type_sep, optional=optional)
-                    for arg in args
-                ]
-                return f"{origin_name}[{', '.join(arg_strs)}]"
-            return origin_name
-
-        # Fallback
-        return str(t)
