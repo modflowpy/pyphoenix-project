@@ -1,5 +1,35 @@
-from flopy4.mf6.codec import dumps
+from pprint import pprint
+
+from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
+
+
+def test_loads_dis_generic_simple():
+    mf6_input = """
+BEGIN options
+  print_input
+END options
+BEGIN dimensions
+  ncol 10
+  nrow 10
+  nlay 1
+END dimensions
+BEGIN griddata
+  delr
+    constant 100.0
+  delc
+    constant 100.0
+END griddata
+"""
+
+    result = loads(mf6_input)
+    pprint(result)
+    assert "options" in result
+    assert "dimensions" in result
+    assert "griddata" in result
+    assert result["options"] == [["print_input"]]
+    assert result["dimensions"] == [["ncol", 10], ["nrow", 10], ["nlay", 1]]
+    assert result["griddata"] == [["delr"], ["constant", 100.0], ["delc"], ["constant", 100.0]]
 
 
 def test_dumps_ic():
@@ -13,9 +43,14 @@ def test_dumps_ic():
         export_array_netcdf=True,
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(ic))
-    print(result)
-    assert result
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(ic))
+    print("IC dump:")
+    print(dumped)
+    assert dumped
+
+    loaded = loads(dumped)
+    print("IC load:")
+    pprint(loaded)
 
 
 def test_dumps_oc():
@@ -29,9 +64,14 @@ def test_dumps_oc():
         dims={"nper": 1},
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(oc))
-    print(result)
-    assert result
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
+    print("OC dump:")
+    print(dumped)
+    assert dumped
+
+    loaded = loads(dumped)
+    print("OC load:")
+    pprint(loaded)
 
 
 def test_dumps_dis():
@@ -47,9 +87,19 @@ def test_dumps_dis():
         length_units="feet",
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(dis))
-    print(result)
-    assert result
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(dis))
+    print("DIS dump:")
+    print(dumped)
+    assert dumped
+
+    loaded = loads(dumped)
+    print("DIS load:")
+    pprint(loaded)
+
+    assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
+    assert loaded["DIMENSIONS"] == [["NLAY", 1], ["NCOL", 10], ["NROW", 10]]
+    assert ["DELR"] in loaded["GRIDDATA"]
+    assert ["DELC"] in loaded["GRIDDATA"]
 
 
 def test_dumps_tdis():
@@ -60,9 +110,14 @@ def test_dumps_tdis():
     tdis = Tdis.from_time(ModelTime(perlen=[1.0, 2.0], nstp=[1, 2]))
     tdis.time_units = "days"
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(tdis))
-    print(result)
-    assert result
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(tdis))
+    print("TDIS dump:")
+    print(dumped)
+    assert dumped
+
+    loaded = loads(dumped)
+    print("TDIS load:")
+    pprint(loaded)
 
 
 def test_dumps_chd():
@@ -83,23 +138,28 @@ def test_dumps_chd():
         dims={"nper": 1},
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(chd))
-    print(result)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+    print("CHD dump:")
+    print(dumped)
 
-    assert "BEGIN PERIOD 1" in result
-    assert "END PERIOD 1" in result
+    assert "BEGIN PERIOD 1" in dumped
+    assert "END PERIOD 1" in dumped
 
-    period_section = result.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 2
-    assert "1 10.0" in result  # First CHD cell - node 1
-    assert "100 20.0" in result  # Second CHD cell - node 100
-    assert "1e+30" not in result
-    assert "1.0e+30" not in result
+    assert "1 10.0" in dumped  # First CHD cell - node 1
+    assert "100 20.0" in dumped  # Second CHD cell - node 100
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("CHD load:")
+    pprint(loaded)
 
 
-def test_dumps_wel_sparse():
+def test_dumps_wel():
     from flopy4.mf6.gwf import Dis, Gwf, Wel
 
     dis = Dis(nlay=3, nrow=10, ncol=10)
@@ -118,26 +178,30 @@ def test_dumps_wel_sparse():
         dims={"nper": 1},
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(wel))
-    print("WEL sparse result:")
-    print(result)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(wel))
+    print("WEL dump:")
+    print(dumped)
 
-    assert "BEGIN PERIOD 1" in result
-    assert "END PERIOD 1" in result
+    assert "BEGIN PERIOD 1" in dumped
+    assert "END PERIOD 1" in dumped
 
-    period_section = result.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 3
     # node q (nodes are 1-based)
-    assert "24 -100.0" in result  # (0,2,3) -> node 24
-    assert "158 -50.0" in result  # (1,5,7) -> node 158
-    assert "282 25.0" in result  # (2,8,1) -> node 282
-    assert "1e+30" not in result
-    assert "1.0e+30" not in result
+    assert "24 -100.0" in dumped  # (0,2,3) -> node 24
+    assert "158 -50.0" in dumped  # (1,5,7) -> node 158
+    assert "282 25.0" in dumped  # (2,8,1) -> node 282
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("WEL load:")
+    pprint(loaded)
 
 
-def test_dumps_drn_sparse_multiperiod():
+def test_dumps_drn():
     from flopy4.mf6.gwf import Dis, Drn, Gwf
 
     dis = Dis(nlay=2, nrow=5, ncol=5)
@@ -170,15 +234,17 @@ def test_dumps_drn_sparse_multiperiod():
         dims={"nper": 2},
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(drn))
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(drn))
+    print("DRN dump:")
+    print(dumped)
 
-    assert "BEGIN PERIOD 1" in result
-    assert "END PERIOD 1" in result
-    assert "BEGIN PERIOD 2" in result
-    assert "END PERIOD 2" in result
+    assert "BEGIN PERIOD 1" in dumped
+    assert "END PERIOD 1" in dumped
+    assert "BEGIN PERIOD 2" in dumped
+    assert "END PERIOD 2" in dumped
 
-    period1_section = result.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
-    period2_section = result.split("BEGIN PERIOD 2")[1].split("END PERIOD 2")[0].strip()
+    period1_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    period2_section = dumped.split("BEGIN PERIOD 2")[1].split("END PERIOD 2")[0].strip()
 
     period1_lines = [line.strip() for line in period1_section.split("\n") if line.strip()]
     period2_lines = [line.strip() for line in period2_section.split("\n") if line.strip()]
@@ -187,16 +253,20 @@ def test_dumps_drn_sparse_multiperiod():
     assert len(period2_lines) == 3
 
     # node elev cond
-    assert "5 10.0 1.0" in result  # Period 1: (0,0,4)
-    assert "46 8.0 2.0" in result  # Period 1: (1,4,0)
-    assert "7 12.0 1.5" in result  # Period 2: (0,1,1)
-    assert "14 9.0 0.8" in result  # Period 2: (0,2,3)
-    assert "43 7.0 2.2" in result  # Period 2: (1,3,2)
-    assert "1e+30" not in result
-    assert "1.0e+30" not in result
+    assert "5 10.0 1.0" in dumped  # Period 1: (0,0,4)
+    assert "46 8.0 2.0" in dumped  # Period 1: (1,4,0)
+    assert "7 12.0 1.5" in dumped  # Period 2: (0,1,1)
+    assert "14 9.0 0.8" in dumped  # Period 2: (0,2,3)
+    assert "43 7.0 2.2" in dumped  # Period 2: (1,3,2)
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("DRN load:")
+    pprint(loaded)
 
 
-def test_dumps_chd_sparse_realistic():
+def test_dumps_chd_2():
     from flopy4.mf6.gwf import Chd, Dis, Gwf
 
     dis = Dis(nlay=1, nrow=20, ncol=30)
@@ -212,22 +282,26 @@ def test_dumps_chd_sparse_realistic():
 
     chd = Chd(parent=gwf, head={0: boundaries}, print_input=True, save_flows=True, dims={"nper": 1})
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(chd))
-    print("CHD realistic sparse result:")
-    print(result)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+    print("CHD dump:")
+    print(dumped)
 
-    period_section = result.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 24
-    assert "100.0" in result  # Left boundary
-    assert "95.0" in result  # Right boundary
-    assert "98.0" in result  # Bottom boundary
-    assert "1e+30" not in result
-    assert "1.0e+30" not in result
+    assert "100.0" in dumped  # Left boundary
+    assert "95.0" in dumped  # Right boundary
+    assert "98.0" in dumped  # Bottom boundary
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("CHD load:")
+    pprint(loaded)
 
 
-def test_dumps_wel_with_auxiliary():
+def test_dumps_wel_with_aux():
     from flopy4.mf6.gwf import Dis, Gwf, Wel
 
     dis = Dis(nlay=2, nrow=5, ncol=5)
@@ -251,19 +325,23 @@ def test_dumps_wel_with_auxiliary():
         dims={"nper": 1},
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(wel))
-    print("WEL with auxiliary sparse result:")
-    print(result)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(wel))
+    print("WEL+aux dump:")
+    print(dumped)
 
-    period_section = result.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 2
     # node q aux_value
-    assert "8 -75.0 1.0" in result  # (0,1,2) -> node 8, q=-75.0, aux=1.0
-    assert "45 -25.0 2.0" in result  # (1,3,4) -> node 45, q=-25.0, aux=2.0
-    assert "1e+30" not in result
-    assert "1.0e+30" not in result
+    assert "8 -75.0 1.0" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
+    assert "45 -25.0 2.0" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("WEL+aux load:")
+    pprint(loaded)
 
 
 def test_dumps_gwf():
@@ -285,19 +363,23 @@ def test_dumps_gwf():
         chd=[chd],
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(gwf))
-    print("GWF model result:")
-    print(result)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(gwf))
+    print("GWF dump:")
+    print(dumped)
 
     # Check that child component bindings are included
-    assert "DIS6" in result
-    assert "IC6" in result
-    assert "NPF6" in result
-    assert "OC6" in result
-    assert "test_model.dis" in result
-    assert "test_model.ic" in result
-    assert "test_model.npf" in result
-    assert "test_model.oc" in result
+    assert "DIS6" in dumped
+    assert "IC6" in dumped
+    assert "NPF6" in dumped
+    assert "OC6" in dumped
+    assert "test_model.dis" in dumped
+    assert "test_model.ic" in dumped
+    assert "test_model.npf" in dumped
+    assert "test_model.oc" in dumped
+
+    loaded = loads(dumped)
+    print("GWF load:")
+    pprint(loaded)
 
 
 def test_dumps_simulation():
@@ -336,11 +418,15 @@ def test_dumps_simulation():
         tdis=tdis,
     )
 
-    result = dumps(COMPONENT_CONVERTER.unstructure(sim))
-    print("Simulation result:")
-    print(result)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(sim))
+    print("Simulation dump:")
+    print(dumped)
 
     # Check that model bindings are included
-    assert "GWF6" in result
-    assert "model1" in result
-    assert "TDIS6" in result
+    assert "GWF6" in dumped
+    assert "model1" in dumped
+    assert "TDIS6" in dumped
+
+    loaded = loads(dumped)
+    print("Simulation load:")
+    pprint(loaded)
