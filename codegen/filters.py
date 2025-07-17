@@ -219,6 +219,17 @@ class Filters:
                 ]
                 return f" {type_sep} ".join(arg_strs)
 
+        if origin is np.ndarray:
+            if args:
+                if len(args) >= 2:
+                    # Extract the dtype from the second argument
+                    dtype_arg = args[1].__args__[0]
+                else:
+                    dtype_arg = args[0].__args__[0]
+                dtype_str = Filters._type_to_string(dtype_arg, type_sep=type_sep, optional=optional)
+                return f"NDArray[np.{dtype_str}]"
+            return "NDArray"
+
         # Handle other generic types (list, dict, NDArray, etc.)
         if hasattr(origin, "__name__"):
             origin_name = origin.__name__
