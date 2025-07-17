@@ -42,3 +42,11 @@ class MF{{ dfn.name|class_name }}(Package):
     {% for attr in dfn | attrs %}
     {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
     {% endfor %}
+
+    {% if dfn.period %}
+    def __attrs_post_init__(self) -> None:
+        # TODO: Check if this code actually works as intended
+        periods = [getattr(self, x.name) for x in self.__attrs_attrs__ if x.metadata.get("block") == "period"]
+        if any(x is not None for x in periods):
+            update_maxbound(self, None, None)
+    {% endif %}
