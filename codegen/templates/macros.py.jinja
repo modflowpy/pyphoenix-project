@@ -11,7 +11,10 @@ array(
     {{- metadata(attr) }}
     {{- default_in_field(attr) }}
     {{- dims_in_field(attr) }}
-    {{- converter_in_field(attr) }})
+    {{- converter_in_field(attr) }}
+    {{- on_setattr_in_field(attr) }}
+    {{- reader_in_field(attr) }}
+)
 {%- elif attr["block"]  == "dimensions" and dfn|is_dis_or_tdis %}
 dim(
     {{- metadata(attr) }}
@@ -22,12 +25,21 @@ dim(
 field(
     {{- metadata(attr) }}
     {{- default_in_field(attr) }}
-    {{- init_in_field(attr) }})
+    {{- init_in_field(attr) }}
+)
 {%- endif %}
 {%- endmacro %}
 
 {% macro scope_in_field(dfn) %}
 , scope="{{ dfn.parent }}"
+{%- endmacro %}
+
+{% macro reader_in_field(attr) %}
+, reader="{{ attr.reader }}"
+{%- endmacro %}
+
+{% macro on_setattr_in_field(attr) %}
+{% if attr.block == "period" %}, on_setattr=update_maxbound{% endif %}
 {%- endmacro %}
 
 {% macro metadata(attr) %}
