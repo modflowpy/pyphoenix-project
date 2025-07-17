@@ -2,7 +2,7 @@ import os
 from enum import Enum
 from keyword import kwlist
 from os import PathLike
-from typing import Any, ForwardRef, Optional, Union, get_args, get_origin
+from typing import Any, ForwardRef, Literal, Optional, Union, get_args, get_origin
 
 import numpy as np
 from boltons.iterutils import default_enter, remap
@@ -120,12 +120,12 @@ class Filters:
     @staticmethod
     def type_str(attr: dict[str, Any]) -> str:
         py_type = Filters._python_type(attr)
-        return Filters._type_to_string(py_type, docstring=False)
+        return Filters._type_to_string(py_type, type_sep="|", optional="| None")
 
     @staticmethod
     def type_docstr(attr: dict[str, Any]) -> str:
         py_type = Filters._python_type(attr)
-        return Filters._type_to_string(py_type, docstring=True)
+        return Filters._type_to_string(py_type, type_sep="or", optional=", optional")
 
     @staticmethod
     def class_name(name: str) -> str:
@@ -178,13 +178,18 @@ class Filters:
         return py_type
 
     @staticmethod
-    def _type_to_string(t: type | ForwardRef, docstring: bool = False) -> str:
+    def _type_to_string(
+        t: type | ForwardRef,
+        *,
+        type_sep: Literal["|", "or"],
+        optional: Literal[", optional", "| None"],
+    ) -> str:
         """Convert a type to its string representation.
 
         Args:
             t: The type to convert
-            docstring: If True, format for docstrings (use 'or', 'optional').
-                       If False, format for code (use '|', '| None').
+            type_sep: The separator to use for multiple types (either '|' or 'or')
+            optional: The string to append for optional types (either '| None' or ', optional')
         """
 
         # Handle None type
@@ -211,24 +216,26 @@ class Filters:
             if len(args) == 2 and type(None) in args:
                 # This is Optional[T] which is Union[T, None]
                 non_none_type = args[0] if args[1] is type(None) else args[1]
-                non_none_str = Filters._type_to_string(non_none_type, docstring)
-                if docstring:
-                    return f"{non_none_str}, optional"
-                else:
-                    return f"{non_none_str} | None"
+                non_none_str = Filters._type_to_string(
+                    non_none_type, type_sep=type_sep, optional=optional
+                )
+                return f"{non_none_str}{optional}"
             else:
                 # Regular Union
-                arg_strs = [Filters._type_to_string(arg, docstring) for arg in args]
-                if docstring:
-                    return " or ".join(arg_strs)
-                else:
-                    return " | ".join(arg_strs)
+                arg_strs = [
+                    Filters._type_to_string(arg, type_sep=type_sep, optional=optional)
+                    for arg in args
+                ]
+                return f" {type_sep} ".join(arg_strs)
 
         # Handle other generic types (list, dict, NDArray, etc.)
         if hasattr(origin, "__name__"):
             origin_name = origin.__name__
             if args:
-                arg_strs = [Filters._type_to_string(arg, docstring) for arg in args]
+                arg_strs = [
+                    Filters._type_to_string(arg, type_sep=type_sep, optional=optional)
+                    for arg in args
+                ]
                 return f"{origin_name}[{', '.join(arg_strs)}]"
             return origin_name
 

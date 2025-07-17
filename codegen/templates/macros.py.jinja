@@ -37,8 +37,7 @@ block="{{ attr.block }}"
 {%- endmacro %}
 
 {% macro dims_in_field(attr) %}
-{# TODO: Just use the last one on a semi-colon, throw away the rest #}
-{% set trimmed_shape_str = attr.shape[1:-1]|replace(";",",") %}
+{% set trimmed_shape_str = attr.shape[1:-1] %}
 {% set dims = trimmed_shape_str.split(",") %}
 , dims=({% for dim in dims %}"{{dim|trim}}",{% endfor %})
 {%- endmacro %}
