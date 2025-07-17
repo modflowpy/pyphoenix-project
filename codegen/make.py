@@ -58,7 +58,7 @@ def make_targets(dfn, outdir: PathLike, verbose: bool = False):
         parent = dfn.get("parent", None)
         if parent is None:
             return "simulation.py.jinja"
-        elif parent == "sim":
+        elif parent == "sim" and not dfn["name"].startswith("sim-"):
             return "model.py.jinja"
         else:
             return "package.py.jinja"
