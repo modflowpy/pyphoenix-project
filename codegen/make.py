@@ -30,7 +30,7 @@ def _get_template_env():
     return env
 
 
-def make_init(dfns: dict, outdir: PathLike, verbose: bool = False):
+def _make_init(dfns: dict, *, outdir: PathLike, verbose: bool = False):
     """Generate a Python __init__.py file for the given input definitions."""
     env = _get_template_env()
     outdir = Path(outdir).expanduser().absolute()
@@ -49,7 +49,7 @@ def _format_files(folder: PathLike):
     subprocess.run(["ruff", "check", "--fix", folder], check=True, text=True)
 
 
-def make_targets(dfn, outdir: PathLike, verbose: bool = False):
+def _make_targets(dfn, *, outdir: PathLike, verbose: bool = False):
     """Generate Python source file(s) from the given input definition."""
     env = _get_template_env()
     outdir = Path(outdir).expanduser().resolve().absolute()
@@ -73,6 +73,7 @@ def make_targets(dfn, outdir: PathLike, verbose: bool = False):
 
 
 def make_all(
+    *,
     dfndir: PathLike,
     outdir: PathLike,
     verbose: bool = False,
@@ -82,7 +83,7 @@ def make_all(
     dfndir = Path(dfndir).expanduser().resolve().absolute()
     dfns = Dfn.load_all(dfndir, version=version)
 
-    make_init(dfns, outdir, verbose)
+    _make_init(dfns, outdir=outdir, verbose=verbose)
     for dfn in dfns.values():
-        make_targets(dfn, outdir, verbose)
+        _make_targets(dfn, outdir=outdir, verbose=verbose)
     _format_files(outdir)
