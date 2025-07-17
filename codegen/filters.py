@@ -233,3 +233,8 @@ class Filters:
         name = name.replace("-", "_")
         # capitalize each word and join them
         return "".join(word.capitalize() for word in name.split("_"))
+
+    @staticmethod
+    def is_dis_or_tdis(dfn: dict[str, Any]) -> bool:
+        name_split = dfn["name"].split("-")
+        return len(name_split) > 1 and name_split[1] in ["dis", "tdis"]

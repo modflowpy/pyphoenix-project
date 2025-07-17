@@ -31,5 +31,5 @@ class MF{{ dfn.name|class_name }}(Model):
     {% endfor %}
 
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)  %}
-    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
     {% endfor %}

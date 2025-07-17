@@ -12,7 +12,7 @@ from xattree import xattree, define
 
 from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field
+from flopy4.mf6.spec import array, field, dim
 
 
 @xattree(kw_only=True)
@@ -39,5 +39,5 @@ class MF{{ dfn.name|class_name }}(Package):
     {% endfor %}
 
     {% for attr in dfn | attrs %}
-    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr) | indent(4) }}
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
     {% endfor %}

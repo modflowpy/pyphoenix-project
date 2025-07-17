@@ -25,6 +25,7 @@ def _get_template_env():
     env.filters["type_str"] = Filters.type_str
     env.filters["type_docstr"] = Filters.type_docstr
     env.filters["class_name"] = Filters.class_name
+    env.filters["is_dis_or_tdis"] = Filters.is_dis_or_tdis
 
     return env
 

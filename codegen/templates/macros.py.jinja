@@ -5,19 +5,29 @@
 {% endif %}
 {%- endmacro %}
 
-{% macro xattree_field(attr) %}
+{% macro xattree_field(attr, dfn) %}
 {% if "shape" in attr %}
 array(
     {{- metadata(attr) }}
     {{- default_in_field(attr) }}
     {{- dims_in_field(attr) }}
     {{- converter_in_field(attr) }})
+{%- elif attr["block"]  == "dimensions" and dfn|is_dis_or_tdis %}
+dim(
+    {{- metadata(attr) }}
+    {{- scope_in_field(dfn)}}
+    {{- default_in_field(attr) }}
+)
 {%- else %}
 field(
     {{- metadata(attr) }}
     {{- default_in_field(attr) }}
     {{- init_in_field(attr) }})
 {%- endif %}
+{%- endmacro %}
+
+{% macro scope_in_field(dfn) %}
+, scope="{{ dfn.parent }}"
 {%- endmacro %}
 
 {% macro metadata(attr) %}
