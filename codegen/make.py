@@ -1,3 +1,4 @@
+import subprocess
 from os import PathLike
 from pathlib import Path
 
@@ -46,6 +47,11 @@ def make_init(dfns: dict, outdir: PathLike, verbose: bool = False):
             print(f"Wrote {target_path}")
 
 
+def _format_files(folder: PathLike):
+    subprocess.run(["ruff", "format", folder], check=True, text=True)
+    subprocess.run(["ruff", "check", "--fix", folder], check=True, text=True)
+
+
 def make_targets(dfn, outdir: PathLike, verbose: bool = False):
     """Generate Python source file(s) from the given input definition."""
     env = _get_template_env()
@@ -83,3 +89,4 @@ def make_all(
     make_init(dfns, outdir, verbose)
     for dfn in dfns.values():
         make_targets(dfn, outdir, verbose)
+    _format_files(outdir)

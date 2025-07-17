@@ -46,9 +46,9 @@ class Filters:
             return f"Modflow{dfn['name'].title()} defines a {dfn['name']} package."
         else:
             return (
-                "MFSimulation is used to load, build, and/or save a MODFLOW 6 simulation."
-                " A MFSimulation object must be created before creating any of the MODFLOW"
-                " 6 model objects."
+                "MFSim is used to load, build, and/or save a MODFLOW 6 simulation.\n"
+                "A MFSim object must be created before creating any of the MODFLOW 6\n"
+                "model objects."
             )
 
     @staticmethod
