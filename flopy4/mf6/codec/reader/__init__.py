@@ -2,8 +2,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
-from flopy4.mf6.codec.reader.parser import make_generic_parser
-from flopy4.mf6.codec.reader.transformer import GenericTransformer
+from flopy4.mf6.codec.reader.parser import make_basic_parser
+from flopy4.mf6.codec.reader.transformer import BasicTransformer
 
 
 def load(path: str | PathLike) -> Any:
@@ -41,6 +41,6 @@ def loads(data: str) -> Any:
         Parsed MF6 input file structure
     """
 
-    parser = make_generic_parser()
-    transformer = GenericTransformer()
+    parser = make_basic_parser()
+    transformer = BasicTransformer()
     return transformer.transform(parser.parse(data))
