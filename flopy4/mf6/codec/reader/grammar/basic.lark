@@ -15,5 +15,6 @@ word: /[a-zA-Z0-9._'~,-\\(\\)]+/
 %import common.INT
 %import common.SH_COMMENT
 %import common._STRING_INNER
+
 %ignore WS_INLINE
 %ignore SH_COMMENT
