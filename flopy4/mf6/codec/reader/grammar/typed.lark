@@ -1,22 +1,28 @@
-start: readarray
-readarray: (single_array | layered_array)
-single_array: [netcdf] array
-layered_array: layered [netcdf] array+
+integer: _integer
+double: _number
+string: ESCAPED_STRING | record
+record: _token+ _NL
+list: record*
+array: (single_array | layered_array)
+single_array: [netcdf] readarray
+layered_array: layered [netcdf] readarray+
 layered: "layered"i
 netcdf: "netcdf"i
-array: control [data]
+readarray: control [data]
 control: constant | internal | external
 constant: "constant"i _number
 internal: "internal"i [factor] [iprn]
 external: "open/close"i filename [factor] [binary] [iprn]
 factor: "factor"i _number
-iprn: "iprn"i _signed_integer
-binary: "(" "binary"i ")"
+iprn: "iprn"i _integer
+binary: "(binary)"i
 filename: ESCAPED_STRING | _word
 data: _number+
-_number: SIGNED_NUMBER | NUMBER
-_signed_integer: SIGNED_INT | INT
+
 _word: /[a-zA-Z0-9._'~,-\\(\\)]+/
+_number: SIGNED_NUMBER | NUMBER
+_integer: SIGNED_INT | INT
+_token: _word | _number
 
 %import common.NEWLINE -> _NL
 %import common.WS
