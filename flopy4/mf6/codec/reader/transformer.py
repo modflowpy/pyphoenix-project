@@ -62,10 +62,10 @@ class ArrayTransformer(Transformer):
     MF6 input format specification.
     """
 
-    def start(self, items: list[Any]) -> xr.DataArray | Path:
+    def start(self, items: list[Any]) -> dict:
         return items[0]
 
-    def readarray(self, items: list[Any]) -> xr.DataArray | Path:
+    def readarray(self, items: list[Any]) -> dict:
         infos = items[0]
         if isinstance(infos, list):
             data = xr.concat([info["data"] for info in infos if "data" in info], dim="layer")
@@ -77,14 +77,14 @@ class ArrayTransformer(Transformer):
             }
         return infos
 
-    def single_array(self, items: list[Any]) -> xr.DataArray | Path:
+    def single_array(self, items: list[Any]) -> dict:
         netcdf = items[0]
         info = items[-1]
         if netcdf:
             info["netcdf"] = netcdf
         return ArrayTransformer.try_create_dataarray(info)
 
-    def layered_array(self, items: list[Any]) -> xr.DataArray | list[Path]:
+    def layered_array(self, items: list[Any]) -> list[dict]:
         netcdf = items[0]
         infos = []
         for info in items[2:]:
@@ -95,7 +95,7 @@ class ArrayTransformer(Transformer):
             infos.append(ArrayTransformer.try_create_dataarray(info))
         return infos
 
-    def array(self, items: list[Any]) -> dict[str, Any] | Path:
+    def array(self, items: list[Any]) -> dict[str, Any]:
         control = items[0]
         data = items[1] if len(items) > 1 else None
         if (value := control.get("value", None)) is not None:
@@ -115,7 +115,7 @@ class ArrayTransformer(Transformer):
                 result.update(item)
         return result
 
-    def external(self, items: list[Any]) -> Path:
+    def external(self, items: list[Any]) -> dict[str, Any]:
         return {"type": "external", "value": items[0]}
 
     def factor(self, items: list[Any]) -> dict[str, float]:
