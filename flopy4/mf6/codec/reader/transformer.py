@@ -27,6 +27,9 @@ class BasicTransformer(Transformer):
     def block_name(self, items: list[Any]) -> str:
         return " ".join([str(item) for item in items if item is not None])
 
+    def _list(self, items: list[Any]) -> list[Any]:
+        return items[0] if items else []
+
     def line(self, items: list[Any]) -> list[Any]:
         return items[1:]
 
@@ -53,19 +56,13 @@ class BasicTransformer(Transformer):
         return int(token)
 
 
-class ArrayTransformer(Transformer):
-    """
-    Transformer for MF6 array input format. Returns xarray DataArrays
-    for internal/constant arrays and Path objects for external arrays,
-    inside a dictionary which also contains control information. This
-    is a first step towards a smarter parser/transformer for the full
-    MF6 input format specification.
-    """
+class TypedTransformer(Transformer):
+    """Type-aware transformer for MF6 input files."""
 
     def start(self, items: list[Any]) -> dict:
         return items[0]
 
-    def readarray(self, items: list[Any]) -> dict:
+    def array(self, items: list[Any]) -> dict:
         infos = items[0]
         if isinstance(infos, list):
             data = xr.concat([info["data"] for info in infos if "data" in info], dim="layer")
@@ -82,7 +79,7 @@ class ArrayTransformer(Transformer):
         info = items[-1]
         if netcdf:
             info["netcdf"] = netcdf
-        return ArrayTransformer.try_create_dataarray(info)
+        return TypedTransformer.try_create_dataarray(info)
 
     def layered_array(self, items: list[Any]) -> list[dict]:
         netcdf = items[0]
@@ -92,10 +89,10 @@ class ArrayTransformer(Transformer):
                 continue
             if netcdf:
                 info["netcdf"] = netcdf
-            infos.append(ArrayTransformer.try_create_dataarray(info))
+            infos.append(TypedTransformer.try_create_dataarray(info))
         return infos
 
-    def array(self, items: list[Any]) -> dict[str, Any]:
+    def readarray(self, items: list[Any]) -> dict[str, Any]:
         control = items[0]
         data = items[1] if len(items) > 1 else None
         if (value := control.get("value", None)) is not None:
@@ -116,7 +113,11 @@ class ArrayTransformer(Transformer):
         return result
 
     def external(self, items: list[Any]) -> dict[str, Any]:
-        return {"type": "external", "value": items[0]}
+        result = {"type": "external", "value": items[0]}
+        for item in items[1:]:
+            if item is not None:
+                result.update(item)
+        return result
 
     def factor(self, items: list[Any]) -> dict[str, float]:
         return {"factor": items[0]}
@@ -129,6 +130,15 @@ class ArrayTransformer(Transformer):
 
     def filename(self, items: list[Any]) -> Path:
         return Path(items[0])
+
+    def string(self, items: list[Any]) -> str:
+        return items[0].strip("\"'")
+
+    def integer(self, items: list[Any]) -> int:
+        return int(items[0])
+
+    def double(self, items: list[Any]) -> float:
+        return float(items[0])
 
     def data(self, items: list[Any]) -> np.ndarray:
         return np.array(items)
@@ -157,17 +167,12 @@ class ArrayTransformer(Transformer):
 
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
-        """Create an xarray DataArray from MF6 array information."""
         control = array_info["control"]
         match control["type"]:
             case "constant":
-                data = control["value"]
-                array_info["data"] = xr.DataArray(data=data)
+                array_info["data"] = xr.DataArray(data=control["value"])
             case "internal":
-                data = array_info["data"]
-                factor = control.get("factor", 1.0)
-                data = data * factor
-                array_info["data"] = xr.DataArray(data=data)
+                array_info["data"] = xr.DataArray(data=array_info["data"])
             case "external":
                 pass
         return array_info
