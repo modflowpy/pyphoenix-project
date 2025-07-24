@@ -1,9 +1,12 @@
+from collections import ChainMap
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
+from modflow_devtools.dfn import _SCALAR_TYPES, Dfn, get_blocks, get_fields
 
 
 class BasicTransformer(Transformer):
@@ -59,7 +62,16 @@ class BasicTransformer(Transformer):
 class TypedTransformer(Transformer):
     """Type-aware transformer for MF6 input files."""
 
-    def start(self, items: list[Any]) -> dict:
+    def __init__(self, visit_tokens=True, dfn: Dfn = None):
+        super().__init__(visit_tokens)
+        self.dfn = dfn
+        self.blocks = get_blocks(dfn) if dfn else None
+        self.fields = get_fields(dfn) if dfn else None
+
+    def start(self, items: list[Any]) -> Mapping:
+        return ChainMap(*items)
+
+    def block(self, items: list[Any]) -> dict:
         return items[0]
 
     def array(self, items: list[Any]) -> dict:
@@ -157,3 +169,19 @@ class TypedTransformer(Transformer):
             case "external":
                 pass
         return array_info
+
+    def __default__(self, data, children, meta):
+        if self.blocks is None or self.fields is None:
+            return super().__default__(data, children, meta)
+        if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
+            return {block_name: children[0]}
+        elif data.endswith("_vars"):
+            return {item[0].lower(): item[1] for item in children}
+        elif (field := self.fields.get(data, None)) is not None:
+            if field["type"] == "keyword":
+                return data, True
+            elif field["type"] in _SCALAR_TYPES and field.get("shape", None):
+                return data, TypedTransformer.try_create_dataarray(children[0])
+            else:
+                return data, children[0]
+        return super().__default__(data, children, meta)

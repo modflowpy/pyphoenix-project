@@ -1,7 +1,5 @@
 import os
-from collections import ChainMap
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -151,48 +149,22 @@ y: "y"i array
 z: "z"i array
 """
     parser = make_typed_parser(grammar)
-
-    class BlockTransformer(TypedTransformer):
-        def start(self, items: list[Any]) -> dict:
-            return ChainMap(*items)
-
-        def block(self, items: list[Any]) -> dict:
-            return items[0]
-
-        def options_block(self, items: list[Any]) -> dict:
-            return {"options": items[0]}
-
-        def arrays_block(self, items: list[Any]) -> dict:
-            return {"arrays": items[0]}
-
-        def options_vars(self, items: list[Any]) -> dict:
-            return {item[0].lower(): item[1] for item in items}
-
-        def arrays_vars(self, items: list[Any]) -> dict:
-            return {item[0].lower(): item[1] for item in items}
-
-        def r2d2(self, _: list[Any]) -> bool:
-            return "r2d2", True
-
-        def b(self, items: list[Any]) -> tuple[str, str]:
-            return "b", items[0]
-
-        def c(self, items: list[Any]) -> tuple[str, int]:
-            return "c", items[0]
-
-        def p(self, items: list[Any]) -> tuple[str, float]:
-            return "p", items[0]
-
-        def x(self, items: list[Any]) -> tuple[str, dict]:
-            return "x", TypedTransformer.try_create_dataarray(items[0])
-
-        def y(self, items: list[Any]) -> tuple[str, dict]:
-            return "y", TypedTransformer.try_create_dataarray(items[0])
-
-        def z(self, items: list[Any]) -> tuple[str, dict]:
-            return "z", TypedTransformer.try_create_dataarray(items[0])
-
-    transformer = BlockTransformer(visit_tokens=False)
+    transformer = TypedTransformer(
+        visit_tokens=False,
+        dfn={
+            "options": {
+                "r2d2": {"name": "r2d2", "type": "keyword"},
+                "b": {"name": "b", "type": "string"},
+                "c": {"name": "c", "type": "integer"},
+                "p": {"name": "p", "type": "double"},
+            },
+            "arrays": {
+                "x": {"name": "x", "type": "double", "shape": None},
+                "y": {"name": "y", "type": "array", "shape": None},
+                "z": {"name": "z", "type": "array", "shape": None},
+            },
+        },
+    )
     result = transformer.transform(
         parser.parse("""
 BEGIN OPTIONS
