@@ -75,34 +75,34 @@ class TypedTransformer(Transformer):
         return items[0]
 
     def array(self, items: list[Any]) -> dict:
-        infos = items[0]
-        if isinstance(infos, list):
-            data = xr.concat([info["data"] for info in infos if "data" in info], dim="layer")
+        arrs = items[0]
+        if isinstance(arrs, list):
+            data = xr.concat([arr["data"] for arr in arrs if "data" in arr], dim="layer")
             return {
-                "control": [info["control"] for info in infos if "control" in info],
+                "control": [arr["control"] for arr in arrs if "control" in arr],
                 "data": data,
-                "attrs": {k: v for k, v in infos[0].items() if k not in ["data"]},
-                "dims": {"layer": len(infos)},
+                "attrs": {k: v for k, v in arrs[0].items() if k not in ["data"]},
+                "dims": {"layer": len(arrs)},
             }
-        return infos
+        return arrs
 
     def single_array(self, items: list[Any]) -> dict:
         netcdf = items[0]
-        info = items[-1]
+        arr = items[-1]
         if netcdf:
-            info["netcdf"] = netcdf
-        return TypedTransformer.try_create_dataarray(info)
+            arr["netcdf"] = netcdf
+        return TypedTransformer.try_create_dataarray(arr)
 
     def layered_array(self, items: list[Any]) -> list[dict]:
         netcdf = items[0]
-        infos = []
-        for info in items[2:]:
-            if info is None:
+        layers = []
+        for arr in items[2:]:
+            if arr is None:
                 continue
             if netcdf:
-                info["netcdf"] = netcdf
-            infos.append(TypedTransformer.try_create_dataarray(info))
-        return infos
+                arr["netcdf"] = netcdf
+            layers.append(TypedTransformer.try_create_dataarray(arr))
+        return layers
 
     def readarray(self, items: list[Any]) -> dict[str, Any]:
         control = items[0]
