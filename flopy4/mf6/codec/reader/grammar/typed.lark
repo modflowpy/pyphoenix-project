@@ -10,14 +10,14 @@ layered: "layered"i
 netcdf: "netcdf"i
 readarray: control [data]
 control: constant | internal | external
-constant: "constant"i _number
+constant: "constant"i double
 internal: "internal"i [factor] [iprn]
 external: "open/close"i filename [factor] [binary] [iprn]
-factor: "factor"i _number
-iprn: "iprn"i _integer
+factor: "factor"i double
+iprn: "iprn"i integer
 binary: "(binary)"i
 filename: ESCAPED_STRING | _word
-data: _number+
+data: double+
 
 _word: /[a-zA-Z0-9._'~,-\\(\\)]+/
 _number: SIGNED_NUMBER | NUMBER
