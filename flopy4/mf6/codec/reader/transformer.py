@@ -129,7 +129,7 @@ class TypedTransformer(Transformer):
         return {"binary": True}
 
     def filename(self, items: list[Any]) -> Path:
-        return Path(items[0])
+        return Path(items[0].strip("\"'"))
 
     def string(self, items: list[Any]) -> str:
         return items[0].strip("\"'")
@@ -145,25 +145,6 @@ class TypedTransformer(Transformer):
 
     def netcdf(self, items: list[Any]) -> dict[str, bool]:
         return {"netcdf": True}
-
-    def NUMBER(self, token: Token) -> int | float:
-        return float(token)
-
-    def SIGNED_NUMBER(self, token: Token) -> int | float:
-        return self.NUMBER(token)
-
-    def INT(self, token: Token) -> int:
-        return int(token)
-
-    def SIGNED_INT(self, token: Token) -> int:
-        return int(token)
-
-    def ESCAPED_STRING(self, token: Token) -> str:
-        # Remove quotes from escaped string
-        value = str(token)
-        if value.startswith('"') and value.endswith('"'):
-            return value[1:-1]
-        return value
 
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:

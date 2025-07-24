@@ -72,7 +72,7 @@ OPEN/CLOSE "some.file"
 
 def test_transform_internal_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer()
+    transformer = TypedTransformer(visit_tokens=False)
     result = transformer.transform(
         parser.parse("""
 INTERNAL FACTOR 1.5 IPRN 3
@@ -90,19 +90,19 @@ INTERNAL FACTOR 1.5 IPRN 3
 
 def test_transform_constant_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer()
+    transformer = TypedTransformer(visit_tokens=False)
     result = transformer.transform(
         parser.parse("""
 CONSTANT 42.5
     """)
     )
     assert result["control"]["type"] == "constant"
-    assert result["data"] == 42.5
+    assert np.array_equal(result["data"], np.array(42.5))
 
 
 def test_transform_external_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer()
+    transformer = TypedTransformer(visit_tokens=False)
     result = transformer.transform(
         parser.parse("""
 OPEN/CLOSE "data/heads.dat" FACTOR 1.0 (BINARY)
@@ -114,7 +114,7 @@ OPEN/CLOSE "data/heads.dat" FACTOR 1.0 (BINARY)
 
 def test_transform_layered_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer()
+    transformer = TypedTransformer(visit_tokens=False)
     result = transformer.transform(
         parser.parse("""
 LAYERED
@@ -192,7 +192,7 @@ z: "z"i array
         def z(self, items: list[Any]) -> tuple[str, dict]:
             return "z", TypedTransformer.try_create_dataarray(items[0])
 
-    transformer = BlockTransformer()
+    transformer = BlockTransformer(visit_tokens=False)
     result = transformer.transform(
         parser.parse("""
 BEGIN OPTIONS
