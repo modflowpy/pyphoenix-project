@@ -70,7 +70,7 @@ OPEN/CLOSE "some.file"
 
 def test_transform_internal_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer(visit_tokens=False)
+    transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
 INTERNAL FACTOR 1.5 IPRN 3
@@ -88,7 +88,7 @@ INTERNAL FACTOR 1.5 IPRN 3
 
 def test_transform_constant_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer(visit_tokens=False)
+    transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
 CONSTANT 42.5
@@ -100,7 +100,7 @@ CONSTANT 42.5
 
 def test_transform_external_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer(visit_tokens=False)
+    transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
 OPEN/CLOSE "data/heads.dat" FACTOR 1.0 (BINARY)
@@ -112,7 +112,7 @@ OPEN/CLOSE "data/heads.dat" FACTOR 1.0 (BINARY)
 
 def test_transform_layered_array():
     parser = make_typed_parser("start: array")
-    transformer = TypedTransformer(visit_tokens=False)
+    transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
 LAYERED
@@ -133,6 +133,19 @@ INTERNAL FACTOR 2.0
 
 
 def test_transform_full_component():
+    dfn = {
+        "options": {
+            "r2d2": {"name": "r2d2", "type": "keyword"},
+            "b": {"name": "b", "type": "string"},
+            "c": {"name": "c", "type": "integer"},
+            "p": {"name": "p", "type": "double"},
+        },
+        "arrays": {
+            "x": {"name": "x", "type": "double", "shape": None},
+            "y": {"name": "y", "type": "array", "shape": None},
+            "z": {"name": "z", "type": "array", "shape": None},
+        },
+    }
     grammar = """
 start: block*
 block: options_block | arrays_block
@@ -149,22 +162,7 @@ y: "y"i array
 z: "z"i array
 """
     parser = make_typed_parser(grammar)
-    transformer = TypedTransformer(
-        visit_tokens=False,
-        dfn={
-            "options": {
-                "r2d2": {"name": "r2d2", "type": "keyword"},
-                "b": {"name": "b", "type": "string"},
-                "c": {"name": "c", "type": "integer"},
-                "p": {"name": "p", "type": "double"},
-            },
-            "arrays": {
-                "x": {"name": "x", "type": "double", "shape": None},
-                "y": {"name": "y", "type": "array", "shape": None},
-                "z": {"name": "z", "type": "array", "shape": None},
-            },
-        },
-    )
+    transformer = TypedTransformer(dfn=dfn)
     result = transformer.transform(
         parser.parse("""
 BEGIN OPTIONS

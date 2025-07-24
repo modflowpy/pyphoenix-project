@@ -62,7 +62,7 @@ class BasicTransformer(Transformer):
 class TypedTransformer(Transformer):
     """Type-aware transformer for MF6 input files."""
 
-    def __init__(self, visit_tokens=True, dfn: Dfn = None):
+    def __init__(self, visit_tokens=False, dfn: Dfn = None):
         super().__init__(visit_tokens)
         self.dfn = dfn
         self.blocks = get_blocks(dfn) if dfn else None
