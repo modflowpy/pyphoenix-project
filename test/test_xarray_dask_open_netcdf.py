@@ -1,13 +1,15 @@
+"""
+These tests show how we could use a chunked and lazy dask array
+to read a netcdf file.
+In this case we want to write the data to a single file,
+so we need to ensure that the data is sequential and in the right order.
+We can't use xr.map_blocks, because it is a parallel operation.
+Instead we need to loop over the blocks and compute them one by one. (test 2)
+"""
+
 import numpy as np
 import pytest
 import xarray as xr
-
-# These tests show how we could use a chunked and lazy dask array
-# to read a netcdf file.
-# In this case we want to write the data to a single file,
-# so we need to ensure that the data is sequential and in the right order.
-# We can't use xr.map_blocks, because it is a parallel operation.
-# Instead we need to loop over the blocks and compute them one by one. (test 2)
 
 
 @pytest.mark.slow

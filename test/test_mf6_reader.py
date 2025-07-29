@@ -1,3 +1,5 @@
+"""Test the MF6 input file reader as implemented with lark."""
+
 import os
 from pathlib import Path
 
