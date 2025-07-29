@@ -1,0 +1,45 @@
+// Auto-generated grammar for MF6 GWF-UZF
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | wc_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | simulate_et | linear_gwet | square_gwet | simulate_gwseep | unsat_etwc | unsat_etae)*
+dimensions_fields: (nuzfcells | ntrailwaves | nwavesets)*
+packagedata_fields: (packagedata)*
+period_fields: (ifno | finf | pet | extdp | extwc | ha | hroot | rootact | aux)*
+auxiliary: "auxiliary"i array
+auxmultname: "auxmultname"i string
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+wc_filerecord: "wc_filerecord"i record
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+package_convergence_filerecord: "package_convergence_filerecord"i record
+ts_filerecord: "ts_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+mover: "mover"i 
+simulate_et: "simulate_et"i 
+linear_gwet: "linear_gwet"i 
+square_gwet: "square_gwet"i 
+simulate_gwseep: "simulate_gwseep"i 
+unsat_etwc: "unsat_etwc"i 
+unsat_etae: "unsat_etae"i 
+nuzfcells: "nuzfcells"i integer
+ntrailwaves: "ntrailwaves"i integer
+nwavesets: "nwavesets"i integer
+packagedata: "packagedata"i recarray
+ifno: "ifno"i list
+finf: "finf"i list
+pet: "pet"i list
+extdp: "extdp"i list
+extwc: "extwc"i list
+ha: "ha"i list
+hroot: "hroot"i list
+rootact: "rootact"i list
+aux: "aux"i list

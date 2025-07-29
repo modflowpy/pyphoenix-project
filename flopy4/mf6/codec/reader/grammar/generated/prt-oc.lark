@@ -1,0 +1,30 @@
+// Auto-generated grammar for MF6 PRT-OC
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block | tracktimes_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+tracktimes_block: "begin"i "tracktimes"i tracktimes_fields "end"i "tracktimes"i
+options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_timestep | track_terminate | track_weaksink | track_usertime | track_timesrecord | track_timesfilerecord | dev_dump_event_trace)*
+dimensions_fields: (ntracktimes)*
+period_fields: (saverecord | printrecord)*
+tracktimes_fields: (tracktimes)*
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+track_filerecord: "track_filerecord"i record
+trackcsv_filerecord: "trackcsv_filerecord"i record
+track_release: "track_release"i 
+track_exit: "track_exit"i 
+track_timestep: "track_timestep"i 
+track_terminate: "track_terminate"i 
+track_weaksink: "track_weaksink"i 
+track_usertime: "track_usertime"i 
+track_timesrecord: "track_timesrecord"i record
+track_timesfilerecord: "track_timesfilerecord"i record
+dev_dump_event_trace: "dev_dump_event_trace"i 
+ntracktimes: "ntracktimes"i integer
+saverecord: "saverecord"i record
+printrecord: "printrecord"i record
+tracktimes: "tracktimes"i recarray

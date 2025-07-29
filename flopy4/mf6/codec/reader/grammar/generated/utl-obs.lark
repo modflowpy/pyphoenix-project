@@ -1,0 +1,12 @@
+// Auto-generated grammar for MF6 UTL-OBS
+%import "typed.lark"
+
+start: block*
+block: options_block | continuous_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+continuous_block: "begin"i "continuous"i continuous_fields "end"i "continuous"i
+options_fields: (digits | print_input)*
+continuous_fields: (continuous)*
+digits: "digits"i integer
+print_input: "print_input"i 
+continuous: "continuous"i recarray

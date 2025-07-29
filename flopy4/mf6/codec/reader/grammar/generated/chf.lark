@@ -1,0 +1,15 @@
+// Auto-generated grammar for MF6 CHF
+%import "typed.lark"
+
+start: block*
+block: options_block | packages_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+packages_block: "begin"i "packages"i packages_fields "end"i "packages"i
+options_fields: (list | print_input | print_flows | save_flows | newtonoptions)*
+packages_fields: (packages)*
+list: "list"i string
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+newtonoptions: "newtonoptions"i record
+packages: "packages"i recarray

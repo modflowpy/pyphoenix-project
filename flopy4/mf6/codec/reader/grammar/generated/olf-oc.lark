@@ -1,0 +1,16 @@
+// Auto-generated grammar for MF6 OLF-OC
+%import "typed.lark"
+
+start: block*
+block: options_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (budget_filerecord | budgetcsv_filerecord | qoutflow_filerecord | stage_filerecord | qoutflowprintrecord)*
+period_fields: (saverecord | printrecord)*
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+qoutflow_filerecord: "qoutflow_filerecord"i record
+stage_filerecord: "stage_filerecord"i record
+qoutflowprintrecord: "qoutflowprintrecord"i record
+saverecord: "saverecord"i record
+printrecord: "printrecord"i record

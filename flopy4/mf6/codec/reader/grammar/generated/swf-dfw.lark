@@ -1,0 +1,20 @@
+// Auto-generated grammar for MF6 SWF-DFW
+%import "typed.lark"
+
+start: block*
+block: options_block | griddata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+options_fields: (central_in_space | length_conversion | time_conversion | save_flows | print_flows | save_velocity | obs_filerecord | export_array_ascii | dev_swr_conductance)*
+griddata_fields: (manningsn | idcxs)*
+central_in_space: "central_in_space"i 
+length_conversion: "length_conversion"i double precision
+time_conversion: "time_conversion"i double precision
+save_flows: "save_flows"i 
+print_flows: "print_flows"i 
+save_velocity: "save_velocity"i 
+obs_filerecord: "obs_filerecord"i record
+export_array_ascii: "export_array_ascii"i 
+dev_swr_conductance: "dev_swr_conductance"i 
+manningsn: "manningsn"i array
+idcxs: "idcxs"i array

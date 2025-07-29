@@ -17,13 +17,13 @@ BASE_GRAMMAR_PATH = (
 )
 
 
-def make_typed_parser(grammar: str):
+def typed_parser(grammar: str):
     with open(BASE_GRAMMAR_PATH, "r") as f:
         return Lark(grammar + os.linesep + f.read(), parser="lalr", debug=True)
 
 
 def test_parse_internal_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     tree = parser.parse("""
 INTERNAL FACTOR 1.0 IPRN 3
 1.2 3.7 9.3 4.2 2.2 9.9 1.0 
@@ -35,7 +35,7 @@ INTERNAL FACTOR 1.0 IPRN 3
 
 
 def test_parse_layered_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     tree = parser.parse("""
 LAYERED
 CONSTANT 1.0
@@ -49,7 +49,7 @@ INTERNAL FACTOR 1.0 IPRN 3
 
 
 def test_parse_constant_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     tree = parser.parse("""
 CONSTANT 1.0
     """)
@@ -57,7 +57,7 @@ CONSTANT 1.0
 
 
 def test_parse_external_array_no_quotation_marks():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     tree = parser.parse("""
 OPEN/CLOSE some.file
     """)
@@ -65,7 +65,7 @@ OPEN/CLOSE some.file
 
 
 def test_parse_external_array_with_quotation_marks():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     tree = parser.parse("""
 OPEN/CLOSE "some.file"
     """)
@@ -73,7 +73,7 @@ OPEN/CLOSE "some.file"
 
 
 def test_transform_internal_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
@@ -91,7 +91,7 @@ INTERNAL FACTOR 1.5 IPRN 3
 
 
 def test_transform_constant_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
@@ -103,7 +103,7 @@ CONSTANT 42.5
 
 
 def test_transform_external_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
@@ -115,7 +115,7 @@ OPEN/CLOSE "data/heads.dat" FACTOR 1.0 (BINARY)
 
 
 def test_transform_layered_array():
-    parser = make_typed_parser("start: array")
+    parser = typed_parser("start: array")
     transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
@@ -160,8 +160,8 @@ def test_transform_full_component():
 start: block*
 block: options_block | arrays_block
 options_block: "begin"i "options"i options_vars "end"i "options"i
-options_vars: (r2d2 | b | c | p)*
 arrays_block: "begin"i "arrays"i arrays_vars "end"i "arrays"i
+options_vars: (r2d2 | b | c | p)*
 arrays_vars: (x | y | z)*
 r2d2: "r2d2"i // keyword
 b: "b"i string
@@ -171,7 +171,7 @@ x: "x"i array
 y: "y"i array
 z: "z"i array
 """
-    parser = make_typed_parser(grammar)
+    parser = typed_parser(grammar)
     transformer = TypedTransformer(dfn=dfn)
     result = transformer.transform(
         parser.parse("""

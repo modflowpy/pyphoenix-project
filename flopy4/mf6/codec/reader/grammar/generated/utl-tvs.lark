@@ -1,0 +1,13 @@
+// Auto-generated grammar for MF6 UTL-TVS
+%import "typed.lark"
+
+start: block*
+block: options_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (disable_storage_change_integration | print_input | ts_filerecord)*
+period_fields: (tvssetting)*
+disable_storage_change_integration: "disable_storage_change_integration"i 
+print_input: "print_input"i 
+ts_filerecord: "ts_filerecord"i record
+tvssetting: "tvssetting"i record

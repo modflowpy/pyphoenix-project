@@ -1,0 +1,14 @@
+// Auto-generated grammar for MF6 UTL-SPCA
+%import "typed.lark"
+
+start: block*
+block: options_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (readasarrays | print_input | tas_filerecord)*
+period_fields: (concentration | temperature)*
+readasarrays: "readasarrays"i 
+print_input: "print_input"i 
+tas_filerecord: "tas_filerecord"i record
+concentration: "concentration"i list
+temperature: "temperature"i list

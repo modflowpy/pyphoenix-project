@@ -1,0 +1,31 @@
+// Auto-generated grammar for MF6 GWF-EVT
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (fixed_cell | auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | ts_filerecord | obs_filerecord | surf_rate_specified)*
+dimensions_fields: (maxbound | nseg)*
+period_fields: (surface | rate | depth | pxdp | petm | petm0 | aux | boundname)*
+fixed_cell: "fixed_cell"i 
+auxiliary: "auxiliary"i array
+auxmultname: "auxmultname"i string
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+ts_filerecord: "ts_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+surf_rate_specified: "surf_rate_specified"i 
+maxbound: "maxbound"i integer
+nseg: "nseg"i integer
+surface: "surface"i list
+rate: "rate"i list
+depth: "depth"i list
+pxdp: "pxdp"i list
+petm: "petm"i list
+petm0: "petm0"i list
+aux: "aux"i list
+boundname: "boundname"i list

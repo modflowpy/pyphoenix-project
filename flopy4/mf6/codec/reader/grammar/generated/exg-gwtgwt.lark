@@ -1,0 +1,26 @@
+// Auto-generated grammar for MF6 EXG-GWTGWT
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | exchangedata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+exchangedata_block: "begin"i "exchangedata"i exchangedata_fields "end"i "exchangedata"i
+options_fields: (gwfmodelname1 | gwfmodelname2 | auxiliary | boundnames | print_input | print_flows | save_flows | adv_scheme | dsp_xt3d_off | dsp_xt3d_rhs | mvt_filerecord | obs_filerecord | dev_interfacemodel_on)*
+dimensions_fields: (nexg)*
+exchangedata_fields: (exchangedata)*
+gwfmodelname1: "gwfmodelname1"i string
+gwfmodelname2: "gwfmodelname2"i string
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+adv_scheme: "adv_scheme"i string
+dsp_xt3d_off: "dsp_xt3d_off"i 
+dsp_xt3d_rhs: "dsp_xt3d_rhs"i 
+mvt_filerecord: "mvt_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+dev_interfacemodel_on: "dev_interfacemodel_on"i 
+nexg: "nexg"i integer
+exchangedata: "exchangedata"i recarray

@@ -1,0 +1,18 @@
+// Auto-generated grammar for MF6 CHF-CXS
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block | crosssectiondata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+crosssectiondata_block: "begin"i "crosssectiondata"i crosssectiondata_fields "end"i "crosssectiondata"i
+options_fields: (print_input)*
+dimensions_fields: (nsections | npoints)*
+packagedata_fields: (packagedata)*
+crosssectiondata_fields: (crosssectiondata)*
+print_input: "print_input"i 
+nsections: "nsections"i integer
+npoints: "npoints"i integer
+packagedata: "packagedata"i recarray
+crosssectiondata: "crosssectiondata"i recarray

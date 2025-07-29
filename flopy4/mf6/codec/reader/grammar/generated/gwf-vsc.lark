@@ -1,0 +1,20 @@
+// Auto-generated grammar for MF6 GWF-VSC
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+options_fields: (viscref | temperature_species_name | thermal_formulation | thermal_a2 | thermal_a3 | thermal_a4 | viscosity_filerecord)*
+dimensions_fields: (nviscspecies)*
+packagedata_fields: (packagedata)*
+viscref: "viscref"i double precision
+temperature_species_name: "temperature_species_name"i string
+thermal_formulation: "thermal_formulation"i string
+thermal_a2: "thermal_a2"i double precision
+thermal_a3: "thermal_a3"i double precision
+thermal_a4: "thermal_a4"i double precision
+viscosity_filerecord: "viscosity_filerecord"i record
+nviscspecies: "nviscspecies"i integer
+packagedata: "packagedata"i recarray

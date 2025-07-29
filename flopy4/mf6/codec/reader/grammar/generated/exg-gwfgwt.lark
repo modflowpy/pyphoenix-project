@@ -1,0 +1,5 @@
+// Auto-generated grammar for MF6 EXG-GWFGWT
+%import "typed.lark"
+
+start: block*
+block: 

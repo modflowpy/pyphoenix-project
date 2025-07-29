@@ -1,0 +1,15 @@
+// Auto-generated grammar for MF6 GWE-SSM
+%import "typed.lark"
+
+start: block*
+block: options_block | sources_block | fileinput_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+sources_block: "begin"i "sources"i sources_fields "end"i "sources"i
+fileinput_block: "begin"i "fileinput"i fileinput_fields "end"i "fileinput"i
+options_fields: (print_flows | save_flows)*
+sources_fields: (sources)*
+fileinput_fields: (fileinput)*
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+sources: "sources"i recarray
+fileinput: "fileinput"i recarray

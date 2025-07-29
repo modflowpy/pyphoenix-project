@@ -12,8 +12,8 @@ from typing import Literal, Union, get_args, get_origin
 import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema.block import block_sort_key
+from modflow_devtools.dfn.schema.v2 import SCALAR_T7PES, FieldType
 from modflow_devtools.dfn.schema.v2 import Field as FieldV2
-from modflow_devtools.dfn.schema.v2 import FieldType
 
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
@@ -274,3 +274,22 @@ def to_field(attribute: Attribute) -> FieldV2:
         if attribute.metadata.get("kind", None) == "child"  # type: ignore
         else None,  # type: ignore
     )
+
+
+def is_array_field(field: FieldV2) -> bool:
+    """Check if a field should be provided in MF6 array input format."""
+    return field["type"] in SCALAR_T7PES and "shape" in field
+
+
+def is_list_field(field: FieldV2) -> bool:
+    """
+    Check if a field should be provided in MF6 list input format.
+    """
+    return field["type"] == "list" and "period" in field["block"]
+
+
+def is_list_block(block: Block) -> bool:
+    """
+    Check if a block should be provided in MF6 list input format.
+    """
+    return is_list_field(next(iter(block.values())))

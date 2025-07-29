@@ -1,0 +1,11 @@
+// Auto-generated grammar for MF6 PRT-FMI
+%import "typed.lark"
+
+start: block*
+block: options_block | packagedata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+options_fields: (save_flows)*
+packagedata_fields: (packagedata)*
+save_flows: "save_flows"i 
+packagedata: "packagedata"i recarray

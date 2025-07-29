@@ -1,0 +1,29 @@
+// Auto-generated grammar for MF6 GWF-MVR
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block | packages_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+packages_block: "begin"i "packages"i packages_fields "end"i "packages"i
+options_fields: (print_input | print_flows | modelnames | budget_filerecord | budgetcsv_filerecord)*
+dimensions_fields: (maxmvr | maxpackages)*
+period_fields: (mname1 | pname1 | id1 | mname2 | pname2 | id2 | mvrtype | value)*
+packages_fields: (packages)*
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+modelnames: "modelnames"i 
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+maxmvr: "maxmvr"i integer
+maxpackages: "maxpackages"i integer
+mname1: "mname1"i list
+pname1: "pname1"i list
+id1: "id1"i list
+mname2: "mname2"i list
+pname2: "pname2"i list
+id2: "id2"i list
+mvrtype: "mvrtype"i list
+value: "value"i list
+packages: "packages"i recarray

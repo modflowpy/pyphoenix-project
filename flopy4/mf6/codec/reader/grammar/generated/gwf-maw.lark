@@ -1,0 +1,38 @@
+// Auto-generated grammar for MF6 GWF-MAW
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block | period_block | connectiondata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+options_fields: (auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
+dimensions_fields: (nmawwells)*
+packagedata_fields: (packagedata)*
+period_fields: (ifno | mawsetting)*
+connectiondata_fields: (connectiondata)*
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_head: "print_head"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+head_filerecord: "head_filerecord"i record
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+no_well_storage: "no_well_storage"i 
+flow_correction: "flow_correction"i 
+flowing_wells: "flowing_wells"i 
+shutdown_theta: "shutdown_theta"i double precision
+shutdown_kappa: "shutdown_kappa"i double precision
+mfrcsv_filerecord: "mfrcsv_filerecord"i record
+ts_filerecord: "ts_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+mover: "mover"i 
+nmawwells: "nmawwells"i integer
+packagedata: "packagedata"i recarray
+ifno: "ifno"i list
+mawsetting: "mawsetting"i record
+connectiondata: "connectiondata"i recarray

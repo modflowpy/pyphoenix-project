@@ -1,0 +1,44 @@
+// Auto-generated grammar for MF6 PRT-PRP
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block | period_block | releasetimes_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+releasetimes_block: "begin"i "releasetimes"i releasetimes_fields "end"i "releasetimes"i
+options_fields: (boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency)*
+dimensions_fields: (nreleasepts | nreleasetimes)*
+packagedata_fields: (packagedata)*
+period_fields: (all | first | last | frequency | steps | fraction)*
+releasetimes_fields: (releasetimes)*
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+dev_exit_solve_method: "dev_exit_solve_method"i integer
+exit_solve_tolerance: "exit_solve_tolerance"i double precision
+local_z: "local_z"i 
+extend_tracking: "extend_tracking"i 
+track_filerecord: "track_filerecord"i record
+trackcsv_filerecord: "trackcsv_filerecord"i record
+stoptime: "stoptime"i double precision
+stoptraveltime: "stoptraveltime"i double precision
+stop_at_weak_sink: "stop_at_weak_sink"i 
+istopzone: "istopzone"i integer
+drape: "drape"i 
+release_timesrecord: "release_timesrecord"i record
+release_timesfilerecord: "release_timesfilerecord"i record
+dry_tracking_method: "dry_tracking_method"i string
+dev_forceternary: "dev_forceternary"i 
+release_time_tolerance: "release_time_tolerance"i double precision
+release_time_frequency: "release_time_frequency"i double precision
+nreleasepts: "nreleasepts"i integer
+nreleasetimes: "nreleasetimes"i integer
+packagedata: "packagedata"i recarray
+all: "all"i 
+first: "first"i 
+last: "last"i 
+frequency: "frequency"i list
+steps: "steps"i list
+fraction: "fraction"i list
+releasetimes: "releasetimes"i recarray

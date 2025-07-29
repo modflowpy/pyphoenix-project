@@ -1,0 +1,20 @@
+// Auto-generated grammar for MF6 GWE-EST
+%import "typed.lark"
+
+start: block*
+block: options_block | griddata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+options_fields: (save_flows | zero_order_decay_water | zero_order_decay_solid | density_water | heat_capacity_water | latent_heat_vaporization)*
+griddata_fields: (porosity | decay_water | decay_solid | heat_capacity_solid | density_solid)*
+save_flows: "save_flows"i 
+zero_order_decay_water: "zero_order_decay_water"i 
+zero_order_decay_solid: "zero_order_decay_solid"i 
+density_water: "density_water"i double precision
+heat_capacity_water: "heat_capacity_water"i double precision
+latent_heat_vaporization: "latent_heat_vaporization"i double precision
+porosity: "porosity"i array
+decay_water: "decay_water"i array
+decay_solid: "decay_solid"i array
+heat_capacity_solid: "heat_capacity_solid"i array
+density_solid: "density_solid"i array

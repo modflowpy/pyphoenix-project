@@ -1,0 +1,16 @@
+// Auto-generated grammar for MF6 UTL-SPC
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (print_input | ts_filerecord)*
+dimensions_fields: (maxbound)*
+period_fields: (bndno | spcsetting)*
+print_input: "print_input"i 
+ts_filerecord: "ts_filerecord"i record
+maxbound: "maxbound"i integer
+bndno: "bndno"i list
+spcsetting: "spcsetting"i record

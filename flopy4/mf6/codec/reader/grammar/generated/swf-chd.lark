@@ -1,0 +1,23 @@
+// Auto-generated grammar for MF6 SWF-CHD
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | ts_filerecord | obs_filerecord)*
+dimensions_fields: (maxbound)*
+period_fields: (head | aux | boundname)*
+auxiliary: "auxiliary"i array
+auxmultname: "auxmultname"i string
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+ts_filerecord: "ts_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+maxbound: "maxbound"i integer
+head: "head"i list
+aux: "aux"i list
+boundname: "boundname"i list

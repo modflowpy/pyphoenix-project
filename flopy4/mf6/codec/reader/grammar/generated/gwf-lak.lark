@@ -1,0 +1,46 @@
+// Auto-generated grammar for MF6 GWF-LAK
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block | period_block | connectiondata_block | tables_block | outlets_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+tables_block: "begin"i "tables"i tables_fields "end"i "tables"i
+outlets_block: "begin"i "outlets"i outlets_fields "end"i "outlets"i
+options_fields: (auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | surfdep | maximum_iterations | maximum_stage_change | time_conversion | length_conversion)*
+dimensions_fields: (nlakes | noutlets | ntables)*
+packagedata_fields: (packagedata)*
+period_fields: (number | laksetting)*
+connectiondata_fields: (connectiondata)*
+tables_fields: (tables)*
+outlets_fields: (outlets)*
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_stage: "print_stage"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+stage_filerecord: "stage_filerecord"i record
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+package_convergence_filerecord: "package_convergence_filerecord"i record
+ts_filerecord: "ts_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+mover: "mover"i 
+surfdep: "surfdep"i double precision
+maximum_iterations: "maximum_iterations"i integer
+maximum_stage_change: "maximum_stage_change"i double precision
+time_conversion: "time_conversion"i double precision
+length_conversion: "length_conversion"i double precision
+nlakes: "nlakes"i integer
+noutlets: "noutlets"i integer
+ntables: "ntables"i integer
+packagedata: "packagedata"i recarray
+number: "number"i list
+laksetting: "laksetting"i record
+connectiondata: "connectiondata"i recarray
+tables: "tables"i recarray
+outlets: "outlets"i recarray

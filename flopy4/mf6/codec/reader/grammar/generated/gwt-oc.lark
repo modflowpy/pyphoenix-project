@@ -1,0 +1,15 @@
+// Auto-generated grammar for MF6 GWT-OC
+%import "typed.lark"
+
+start: block*
+block: options_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (budget_filerecord | budgetcsv_filerecord | concentration_filerecord | concentrationprintrecord)*
+period_fields: (saverecord | printrecord)*
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+concentration_filerecord: "concentration_filerecord"i record
+concentrationprintrecord: "concentrationprintrecord"i record
+saverecord: "saverecord"i record
+printrecord: "printrecord"i record

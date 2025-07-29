@@ -1,0 +1,24 @@
+// Auto-generated grammar for MF6 GWF-GHBG
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | obs_filerecord | mover | export_array_netcdf)*
+dimensions_fields: (maxbound)*
+period_fields: (bhead | cond | aux)*
+readarraygrid: "readarraygrid"i 
+auxiliary: "auxiliary"i array
+auxmultname: "auxmultname"i string
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+obs_filerecord: "obs_filerecord"i record
+mover: "mover"i 
+export_array_netcdf: "export_array_netcdf"i 
+maxbound: "maxbound"i integer
+bhead: "bhead"i list
+cond: "cond"i list
+aux: "aux"i list

@@ -1,0 +1,16 @@
+// Auto-generated grammar for MF6 GWF-HFB
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (print_input)*
+dimensions_fields: (maxhfb)*
+period_fields: (cellid1 | cellid2 | hydchr)*
+print_input: "print_input"i 
+maxhfb: "maxhfb"i integer
+cellid1: "cellid1"i list
+cellid2: "cellid2"i list
+hydchr: "hydchr"i list

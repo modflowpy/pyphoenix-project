@@ -1,0 +1,22 @@
+// Auto-generated grammar for MF6 GWT-MST
+%import "typed.lark"
+
+start: block*
+block: options_block | griddata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+options_fields: (save_flows | first_order_decay | zero_order_decay | sorption | sorbate_filerecord | export_array_ascii | export_array_netcdf)*
+griddata_fields: (porosity | decay | decay_sorbed | bulk_density | distcoef | sp2)*
+save_flows: "save_flows"i 
+first_order_decay: "first_order_decay"i 
+zero_order_decay: "zero_order_decay"i 
+sorption: "sorption"i string
+sorbate_filerecord: "sorbate_filerecord"i record
+export_array_ascii: "export_array_ascii"i 
+export_array_netcdf: "export_array_netcdf"i 
+porosity: "porosity"i array
+decay: "decay"i array
+decay_sorbed: "decay_sorbed"i array
+bulk_density: "bulk_density"i array
+distcoef: "distcoef"i array
+sp2: "sp2"i array

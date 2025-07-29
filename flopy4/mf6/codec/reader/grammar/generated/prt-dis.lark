@@ -1,0 +1,29 @@
+// Auto-generated grammar for MF6 PRT-DIS
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | griddata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+options_fields: (length_units | nogrb | grb_filerecord | xorigin | yorigin | angrot | export_array_ascii | export_array_netcdf | crs | ncf_filerecord)*
+dimensions_fields: (nlay | nrow | ncol)*
+griddata_fields: (delr | delc | top | botm | idomain)*
+length_units: "length_units"i string
+nogrb: "nogrb"i 
+grb_filerecord: "grb_filerecord"i record
+xorigin: "xorigin"i double precision
+yorigin: "yorigin"i double precision
+angrot: "angrot"i double precision
+export_array_ascii: "export_array_ascii"i 
+export_array_netcdf: "export_array_netcdf"i 
+crs: "crs"i array
+ncf_filerecord: "ncf_filerecord"i record
+nlay: "nlay"i integer
+nrow: "nrow"i integer
+ncol: "ncol"i integer
+delr: "delr"i array
+delc: "delc"i array
+top: "top"i array
+botm: "botm"i array
+idomain: "idomain"i array

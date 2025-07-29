@@ -1,0 +1,13 @@
+// Auto-generated grammar for MF6 OLF-STO
+%import "typed.lark"
+
+start: block*
+block: options_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (save_flows | export_array_ascii)*
+period_fields: (steady-state | transient)*
+save_flows: "save_flows"i 
+export_array_ascii: "export_array_ascii"i 
+steady-state: "steady-state"i 
+transient: "transient"i 

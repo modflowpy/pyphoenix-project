@@ -1,0 +1,12 @@
+// Auto-generated grammar for MF6 GWF-IC
+%import "typed.lark"
+
+start: block*
+block: options_block | griddata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+options_fields: (export_array_ascii | export_array_netcdf)*
+griddata_fields: (strt)*
+export_array_ascii: "export_array_ascii"i 
+export_array_netcdf: "export_array_netcdf"i 
+strt: "strt"i array

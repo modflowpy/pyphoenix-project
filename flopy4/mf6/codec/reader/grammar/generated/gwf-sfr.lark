@@ -1,0 +1,50 @@
+// Auto-generated grammar for MF6 GWF-SFR
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | packagedata_block | period_block | crosssections_block | connectiondata_block | diversions_block | initialstages_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+crosssections_block: "begin"i "crosssections"i crosssections_fields "end"i "crosssections"i
+connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+diversions_block: "begin"i "diversions"i diversions_fields "end"i "diversions"i
+initialstages_block: "begin"i "initialstages"i initialstages_fields "end"i "initialstages"i
+options_fields: (storage | auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight)*
+dimensions_fields: (nreaches)*
+packagedata_fields: (packagedata)*
+period_fields: (ifno | sfrsetting)*
+crosssections_fields: (crosssections)*
+connectiondata_fields: (connectiondata)*
+diversions_fields: (diversions)*
+initialstages_fields: (initialstages)*
+storage: "storage"i 
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_stage: "print_stage"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+stage_filerecord: "stage_filerecord"i record
+budget_filerecord: "budget_filerecord"i record
+budgetcsv_filerecord: "budgetcsv_filerecord"i record
+package_convergence_filerecord: "package_convergence_filerecord"i record
+ts_filerecord: "ts_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+mover: "mover"i 
+maximum_picard_iterations: "maximum_picard_iterations"i integer
+maximum_iterations: "maximum_iterations"i integer
+maximum_depth_change: "maximum_depth_change"i double precision
+unit_conversion: "unit_conversion"i double precision
+length_conversion: "length_conversion"i double precision
+time_conversion: "time_conversion"i double precision
+dev_storage_weight: "dev_storage_weight"i double precision
+nreaches: "nreaches"i integer
+packagedata: "packagedata"i recarray
+ifno: "ifno"i list
+sfrsetting: "sfrsetting"i record
+crosssections: "crosssections"i recarray
+connectiondata: "connectiondata"i recarray
+diversions: "diversions"i recarray
+initialstages: "initialstages"i recarray

@@ -1,9 +1,9 @@
 from typing import IO, Any
 
-from flopy4.mf6.codec.reader.parser import make_basic_parser
+from flopy4.mf6.codec.reader.parser import get_basic_parser
 from flopy4.mf6.codec.reader.transformer import BasicTransformer
 
-BASIC_PARSER = make_basic_parser()
+BASIC_PARSER = get_basic_parser()
 BASIC_TRANSFORMER = BasicTransformer()
 
 

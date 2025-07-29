@@ -1,0 +1,5 @@
+// Auto-generated grammar for MF6 SLN-EMS
+%import "typed.lark"
+
+start: block*
+block: 

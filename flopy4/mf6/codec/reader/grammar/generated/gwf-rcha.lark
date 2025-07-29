@@ -1,0 +1,22 @@
+// Auto-generated grammar for MF6 GWF-RCHA
+%import "typed.lark"
+
+start: block*
+block: options_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+period_block: "begin"i "period"i period_fields "end"i "period"i
+options_fields: (readasarrays | fixed_cell | auxiliary | auxmultname | print_input | print_flows | save_flows | tas_filerecord | obs_filerecord | export_array_netcdf)*
+period_fields: (irch | recharge | aux)*
+readasarrays: "readasarrays"i 
+fixed_cell: "fixed_cell"i 
+auxiliary: "auxiliary"i array
+auxmultname: "auxmultname"i string
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+tas_filerecord: "tas_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+export_array_netcdf: "export_array_netcdf"i 
+irch: "irch"i list
+recharge: "recharge"i list
+aux: "aux"i list

@@ -1,0 +1,26 @@
+// Auto-generated grammar for MF6 EXG-GWFGWF
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | exchangedata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+exchangedata_block: "begin"i "exchangedata"i exchangedata_fields "end"i "exchangedata"i
+options_fields: (auxiliary | boundnames | print_input | print_flows | save_flows | cell_averaging | cvoptions | newton | xt3d | gnc_filerecord | mvr_filerecord | obs_filerecord | dev_interfacemodel_on)*
+dimensions_fields: (nexg)*
+exchangedata_fields: (exchangedata)*
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+cell_averaging: "cell_averaging"i string
+cvoptions: "cvoptions"i record
+newton: "newton"i 
+xt3d: "xt3d"i 
+gnc_filerecord: "gnc_filerecord"i record
+mvr_filerecord: "mvr_filerecord"i record
+obs_filerecord: "obs_filerecord"i record
+dev_interfacemodel_on: "dev_interfacemodel_on"i 
+nexg: "nexg"i integer
+exchangedata: "exchangedata"i recarray

@@ -1,0 +1,9 @@
+// Auto-generated grammar for MF6 GWT-ADV
+%import "typed.lark"
+
+start: block*
+block: options_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+options_fields: (scheme | ats_percel)*
+scheme: "scheme"i string
+ats_percel: "ats_percel"i double precision

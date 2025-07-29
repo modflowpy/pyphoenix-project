@@ -1,0 +1,42 @@
+// Auto-generated grammar for MF6 SLN-IMS
+%import "typed.lark"
+
+start: block*
+block: options_block | nonlinear_block | linear_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+nonlinear_block: "begin"i "nonlinear"i nonlinear_fields "end"i "nonlinear"i
+linear_block: "begin"i "linear"i linear_fields "end"i "linear"i
+options_fields: (print_option | complexity | csv_output_filerecord | csv_outer_output_filerecord | csv_inner_output_filerecord | no_ptcrecord | ats_outer_maximum_fraction)*
+nonlinear_fields: (outer_hclose | outer_dvclose | outer_rclosebnd | outer_maximum | under_relaxation | under_relaxation_gamma | under_relaxation_theta | under_relaxation_kappa | under_relaxation_momentum | backtracking_number | backtracking_tolerance | backtracking_reduction_factor | backtracking_residual_limit)*
+linear_fields: (inner_maximum | inner_hclose | inner_dvclose | rcloserecord | linear_acceleration | relaxation_factor | preconditioner_levels | preconditioner_drop_tolerance | number_orthogonalizations | scaling_method | reordering_method)*
+print_option: "print_option"i string
+complexity: "complexity"i string
+csv_output_filerecord: "csv_output_filerecord"i record
+csv_outer_output_filerecord: "csv_outer_output_filerecord"i record
+csv_inner_output_filerecord: "csv_inner_output_filerecord"i record
+no_ptcrecord: "no_ptcrecord"i record
+ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double precision
+outer_hclose: "outer_hclose"i double precision
+outer_dvclose: "outer_dvclose"i double precision
+outer_rclosebnd: "outer_rclosebnd"i double precision
+outer_maximum: "outer_maximum"i integer
+under_relaxation: "under_relaxation"i string
+under_relaxation_gamma: "under_relaxation_gamma"i double precision
+under_relaxation_theta: "under_relaxation_theta"i double precision
+under_relaxation_kappa: "under_relaxation_kappa"i double precision
+under_relaxation_momentum: "under_relaxation_momentum"i double precision
+backtracking_number: "backtracking_number"i integer
+backtracking_tolerance: "backtracking_tolerance"i double precision
+backtracking_reduction_factor: "backtracking_reduction_factor"i double precision
+backtracking_residual_limit: "backtracking_residual_limit"i double precision
+inner_maximum: "inner_maximum"i integer
+inner_hclose: "inner_hclose"i double precision
+inner_dvclose: "inner_dvclose"i double precision
+rcloserecord: "rcloserecord"i record
+linear_acceleration: "linear_acceleration"i string
+relaxation_factor: "relaxation_factor"i double precision
+preconditioner_levels: "preconditioner_levels"i integer
+preconditioner_drop_tolerance: "preconditioner_drop_tolerance"i double precision
+number_orthogonalizations: "number_orthogonalizations"i integer
+scaling_method: "scaling_method"i string
+reordering_method: "reordering_method"i string

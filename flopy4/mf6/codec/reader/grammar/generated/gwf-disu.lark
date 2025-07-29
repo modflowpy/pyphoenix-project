@@ -1,0 +1,41 @@
+// Auto-generated grammar for MF6 GWF-DISU
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | griddata_block | connectiondata_block | vertices_block | cell2d_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+vertices_block: "begin"i "vertices"i vertices_fields "end"i "vertices"i
+cell2d_block: "begin"i "cell2d"i cell2d_fields "end"i "cell2d"i
+options_fields: (length_units | nogrb | grb_filerecord | xorigin | yorigin | angrot | vertical_offset_tolerance | export_array_ascii | crs)*
+dimensions_fields: (nodes | nja | nvert)*
+griddata_fields: (top | bot | area | idomain)*
+connectiondata_fields: (iac | ja | ihc | cl12 | hwva | angldegx)*
+vertices_fields: (vertices)*
+cell2d_fields: (cell2d)*
+length_units: "length_units"i string
+nogrb: "nogrb"i 
+grb_filerecord: "grb_filerecord"i record
+xorigin: "xorigin"i double precision
+yorigin: "yorigin"i double precision
+angrot: "angrot"i double precision
+vertical_offset_tolerance: "vertical_offset_tolerance"i double precision
+export_array_ascii: "export_array_ascii"i 
+crs: "crs"i array
+nodes: "nodes"i integer
+nja: "nja"i integer
+nvert: "nvert"i integer
+top: "top"i array
+bot: "bot"i array
+area: "area"i array
+idomain: "idomain"i array
+iac: "iac"i array
+ja: "ja"i array
+ihc: "ihc"i array
+cl12: "cl12"i array
+hwva: "hwva"i array
+angldegx: "angldegx"i array
+vertices: "vertices"i recarray
+cell2d: "cell2d"i recarray

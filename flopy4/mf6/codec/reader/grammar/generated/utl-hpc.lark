@@ -1,0 +1,12 @@
+// Auto-generated grammar for MF6 UTL-HPC
+%import "typed.lark"
+
+start: block*
+block: options_block | partitions_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+partitions_block: "begin"i "partitions"i partitions_fields "end"i "partitions"i
+options_fields: (print_table | dev_log_mpi)*
+partitions_fields: (partitions)*
+print_table: "print_table"i 
+dev_log_mpi: "dev_log_mpi"i 
+partitions: "partitions"i recarray

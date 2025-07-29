@@ -1,0 +1,23 @@
+// Auto-generated grammar for MF6 UTL-NCF
+%import "typed.lark"
+
+start: block*
+block: options_block | dimensions_block | griddata_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+options_fields: (wkt | deflate | shuffle | chunk_time | chunk_face | chunk_z | chunk_y | chunk_x | modflow6_attr_off)*
+dimensions_fields: (ncpl)*
+griddata_fields: (latitude | longitude)*
+wkt: "wkt"i array
+deflate: "deflate"i integer
+shuffle: "shuffle"i 
+chunk_time: "chunk_time"i integer
+chunk_face: "chunk_face"i integer
+chunk_z: "chunk_z"i integer
+chunk_y: "chunk_y"i integer
+chunk_x: "chunk_x"i integer
+modflow6_attr_off: "modflow6_attr_off"i 
+ncpl: "ncpl"i integer
+latitude: "latitude"i array
+longitude: "longitude"i array

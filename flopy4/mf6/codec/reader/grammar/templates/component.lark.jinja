@@ -1,0 +1,17 @@
+// Auto-generated grammar for MF6 {{ name|upper }}
+%import "typed.lark"
+
+start: block*
+block: {% for block_name in blocks.keys() %}{{ block_name }}_block{% if not loop.last %} | {% endif %}{% endfor %}
+
+{% for block_name, block_ in blocks.items() %}
+{{ block_name }}_block: "begin"i "{{ block_name }}"i {{ block_name }}_fields "end"i "{{ block_name }}"i
+{% endfor %}
+{% for block_name, block_ in blocks.items() %}
+{{ block_name }}_fields: ({% for field_name, field in block_.items() %}{{ field_name }}{% if not loop.last %} | {% endif
+%}{% endfor %})*
+{% endfor %}
+{% for field_name, field in fields.items() %}
+{% set field_type = field|field_type %}
+{{ field_name }}: "{{ field['name'] }}"i {{ field_type }}
+{% endfor %}
