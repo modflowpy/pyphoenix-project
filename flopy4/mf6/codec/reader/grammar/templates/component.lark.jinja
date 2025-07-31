@@ -13,5 +13,11 @@ block: {% for block_name in blocks.keys() %}{{ block_name }}_block{% if not loop
 {% endfor %}
 {% for field_name, field in fields.items() %}
 {% set field_type = field|field_type %}
+{% if field['type'] == 'record' and field.get('children') %}
+{{ field_name }}: "{{ field['name'] }}"i {{ field_name }}_record
+{{ field_name }}_record: {% for child_name, child in field['children'].items() %}{% set child_type = child|record_child_type %}{% if child['type'] == 'keyword' %}"{{ child['name'] }}"i{% else %}{{ child_type }}{% endif %}{% if not loop.last %} {% endif %}{% endfor %}
+
+{% else %}
 {{ field_name }}: "{{ field['name'] }}"i {{ field_type }}
+{% endif %}
 {% endfor %}
