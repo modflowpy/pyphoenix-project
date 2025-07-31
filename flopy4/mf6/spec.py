@@ -56,7 +56,6 @@ def dim(
     eq=True,
     init=True,
     metadata=None,
-    group=None,
     block: str | None = None,
 ):
     """Define a dimension field."""
@@ -72,7 +71,6 @@ def dim(
         eq=eq,
         init=init,
         metadata=metadata,
-        group=group,
     )
 
 

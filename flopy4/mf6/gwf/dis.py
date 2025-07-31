@@ -27,21 +27,18 @@ class Dis(Package):
         coord="lay",
         scope="gwf",
         default=1,
-        group="grid",
     )
     ncol: int = dim(
         block="dimensions",
         coord="col",
         scope="gwf",
         default=2,
-        group="grid",
     )
     nrow: int = dim(
         block="dimensions",
         coord="row",
         scope="gwf",
         default=2,
-        group="grid",
     )
     delr: NDArray[np.float64] = array(
         block="griddata",

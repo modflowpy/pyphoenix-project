@@ -42,7 +42,6 @@ def dim(
     eq=True,
     init=True,
     metadata=None,
-    group=None,
 ):
     """Define a dimension field."""
     return xattree_dim(
@@ -53,7 +52,6 @@ def dim(
         eq=eq,
         init=init,
         metadata=metadata,
-        group=group,
     )
 
 
