@@ -6,7 +6,7 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.attr_hooks import update_maxbound
+from flopy4.mf6.component import update_maxbound
 from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
@@ -65,12 +65,3 @@ class Drn(Package):
         reader="urword",
         on_setattr=update_maxbound,
     )
-
-    def __attrs_post_init__(self):
-        if (
-            self.elev is not None
-            or self.cond is not None
-            or self.aux is not None
-            or self.boundname is not None
-        ):
-            update_maxbound(self, None, None)
