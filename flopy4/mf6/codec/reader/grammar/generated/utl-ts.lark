@@ -7,12 +7,12 @@ attributes_block: "begin"i "attributes"i attributes_fields "end"i "attributes"i
 timeseries_block: "begin"i "timeseries"i timeseries_fields "end"i "timeseries"i
 attributes_fields: (time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | method | interpolation_method_single | sfacrecord | sfacrecord_single | sfac)*
 timeseries_fields: (timeseries)*
-time_series_namerecord: "time_series_namerecord"i record
-interpolation_methodrecord: "interpolation_methodrecord"i record
+time_series_namerecord: "names"i string
+interpolation_methodrecord: "methods"i string
 interpolation_methodrecord_single: "interpolation_methodrecord_single"i record
 method: "method"i 
 interpolation_method_single: "interpolation_method_single"i string
-sfacrecord: "sfacrecord"i record
-sfacrecord_single: "sfacrecord_single"i record
+sfacrecord: "sfacs"i double
+sfacrecord_single: double
 sfac: "sfac"i 
 timeseries: "timeseries"i recarray

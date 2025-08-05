@@ -8,5 +8,10 @@ period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (print_input | ts_filerecord)*
 period_fields: (tvksetting)*
 print_input: "print_input"i 
-ts_filerecord: "ts_filerecord"i record
-tvksetting: "tvksetting"i record
+ts_filerecord: "ts6"i "filein"i string
+tvksetting: tvksetting_k | tvksetting_k22 | tvksetting_k33
+tvksetting_k: "k"i double precision
+
+tvksetting_k22: "k22"i double precision
+
+tvksetting_k33: "k33"i double precision

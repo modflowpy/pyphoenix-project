@@ -11,20 +11,27 @@ options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | t
 dimensions_fields: (ntracktimes)*
 period_fields: (saverecord | printrecord)*
 tracktimes_fields: (tracktimes)*
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
-track_filerecord: "track_filerecord"i record
-trackcsv_filerecord: "trackcsv_filerecord"i record
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+track_filerecord: "track"i "fileout"i string
+trackcsv_filerecord: "trackcsv"i "fileout"i string
 track_release: "track_release"i 
 track_exit: "track_exit"i 
 track_timestep: "track_timestep"i 
 track_terminate: "track_terminate"i 
 track_weaksink: "track_weaksink"i 
 track_usertime: "track_usertime"i 
-track_timesrecord: "track_timesrecord"i record
-track_timesfilerecord: "track_timesfilerecord"i record
+track_timesrecord: "track_times"i double
+track_timesfilerecord: "track_timesfile"i string
 dev_dump_event_trace: "dev_dump_event_trace"i 
 ntracktimes: "ntracktimes"i integer
-saverecord: "saverecord"i record
-printrecord: "printrecord"i record
+saverecord: "save"i string ocsetting
+printrecord: "print"i string ocsetting
 tracktimes: "tracktimes"i recarray
+ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
+ocsetting_all: "all"i
+ocsetting_first: "first"i
+ocsetting_last: "last"i
+ocsetting_frequency: "frequency"i integer
+ocsetting_steps: "steps"i integer
+

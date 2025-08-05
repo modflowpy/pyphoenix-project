@@ -15,6 +15,6 @@ thermal_formulation: "thermal_formulation"i string
 thermal_a2: "thermal_a2"i double precision
 thermal_a3: "thermal_a3"i double precision
 thermal_a4: "thermal_a4"i double precision
-viscosity_filerecord: "viscosity_filerecord"i record
+viscosity_filerecord: "viscosity"i "fileout"i string
 nviscspecies: "nviscspecies"i integer
 packagedata: "packagedata"i recarray

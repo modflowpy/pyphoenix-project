@@ -11,15 +11,15 @@ save_flows: "save_flows"i
 print_flows: "print_flows"i 
 alternative_cell_averaging: "alternative_cell_averaging"i string
 thickstrt: "thickstrt"i 
-cvoptions: "cvoptions"i record
+cvoptions: "variablecv"i "dewatered"i
 perched: "perched"i 
-rewet_record: "rewet_record"i record
-xt3doptions: "xt3doptions"i record
+rewet_record: "rewet"i double integer integer
+xt3doptions: "xt3d"i "rhs"i
 save_specific_discharge: "save_specific_discharge"i 
 save_saturation: "save_saturation"i 
 k22overk: "k22overk"i 
 k33overk: "k33overk"i 
-tvk_filerecord: "tvk_filerecord"i record
+tvk_filerecord: "tvk6"i "filein"i string
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 dev_no_newton: "dev_no_newton"i 

@@ -15,12 +15,12 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 cell_averaging: "cell_averaging"i string
-cvoptions: "cvoptions"i record
+cvoptions: "variablecv"i "dewatered"i
 newton: "newton"i 
 xt3d: "xt3d"i 
-gnc_filerecord: "gnc_filerecord"i record
-mvr_filerecord: "mvr_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+gnc_filerecord: "gnc6"i "filein"i string
+mvr_filerecord: "mvr6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
 exchangedata: "exchangedata"i recarray

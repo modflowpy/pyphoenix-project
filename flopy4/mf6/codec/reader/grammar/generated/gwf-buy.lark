@@ -11,7 +11,7 @@ dimensions_fields: (nrhospecies)*
 packagedata_fields: (packagedata)*
 hhformulation_rhs: "hhformulation_rhs"i 
 denseref: "denseref"i double precision
-density_filerecord: "density_filerecord"i record
+density_filerecord: "density"i "fileout"i string
 dev_efh_formulation: "dev_efh_formulation"i 
 nrhospecies: "nrhospecies"i integer
 packagedata: "packagedata"i recarray

@@ -8,5 +8,5 @@ options_fields: (print_input | print_flows | save_flows | budget_filerecord | bu
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string

@@ -23,12 +23,12 @@ print_input: "print_input"i
 print_stage: "print_stage"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-stage_filerecord: "stage_filerecord"i record
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
-package_convergence_filerecord: "package_convergence_filerecord"i record
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+stage_filerecord: string "fileout"i string
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+package_convergence_filerecord: "package_convergence"i "fileout"i string
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 surfdep: "surfdep"i double precision
 maximum_iterations: "maximum_iterations"i integer
@@ -40,7 +40,32 @@ noutlets: "noutlets"i integer
 ntables: "ntables"i integer
 packagedata: "packagedata"i recarray
 number: "number"i list
-laksetting: "laksetting"i record
+laksetting: laksetting_stage | laksetting_invert | laksetting_width | laksetting_rough | laksetting_slope | laksetting_status | laksetting_rainfall | laksetting_evaporation | laksetting_runoff | laksetting_inflow | laksetting_withdrawal | laksetting_rate | laksetting_auxiliaryrecord
+laksetting_stage: "stage"i string
+
+laksetting_invert: "invert"i string
+
+laksetting_width: "width"i string
+
+laksetting_rough: "rough"i string
+
+laksetting_slope: "slope"i string
+
+laksetting_status: "status"i string
+
+laksetting_rainfall: "rainfall"i string
+
+laksetting_evaporation: "evaporation"i string
+
+laksetting_runoff: "runoff"i string
+
+laksetting_inflow: "inflow"i string
+
+laksetting_withdrawal: "withdrawal"i string
+
+laksetting_rate: "rate"i string
+
+laksetting_auxiliaryrecord: "auxiliaryrecord"i record
 connectiondata: "connectiondata"i recarray
 tables: "tables"i recarray
 outlets: "outlets"i recarray

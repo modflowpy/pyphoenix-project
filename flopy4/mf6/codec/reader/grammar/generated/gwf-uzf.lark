@@ -17,12 +17,12 @@ boundnames: "boundnames"i
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-wc_filerecord: "wc_filerecord"i record
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
-package_convergence_filerecord: "package_convergence_filerecord"i record
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+wc_filerecord: "water_content"i "fileout"i string
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+package_convergence_filerecord: "package_convergence"i "fileout"i string
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 simulate_et: "simulate_et"i 
 linear_gwet: "linear_gwet"i 

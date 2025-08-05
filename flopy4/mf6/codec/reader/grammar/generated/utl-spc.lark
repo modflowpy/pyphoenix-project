@@ -10,7 +10,10 @@ options_fields: (print_input | ts_filerecord)*
 dimensions_fields: (maxbound)*
 period_fields: (bndno | spcsetting)*
 print_input: "print_input"i 
-ts_filerecord: "ts_filerecord"i record
+ts_filerecord: "ts6"i "filein"i string
 maxbound: "maxbound"i integer
 bndno: "bndno"i list
-spcsetting: "spcsetting"i record
+spcsetting: spcsetting_concentration | spcsetting_temperature
+spcsetting_concentration: "concentration"i double precision
+
+spcsetting_temperature: "temperature"i double precision

@@ -4,7 +4,11 @@ from pathlib import Path
 import jinja2
 from modflow_devtools.dfn import Dfn, get_blocks, get_fields
 
-from flopy4.mf6.codec.reader.grammar.filters import field_type, record_child_type
+from flopy4.mf6.codec.reader.grammar.filters import (
+    field_type,
+    keystring_children,
+    record_child_type,
+)
 
 
 def _get_template_env():
@@ -17,6 +21,7 @@ def _get_template_env():
     )
     env.filters["field_type"] = field_type
     env.filters["record_child_type"] = record_child_type
+    env.filters["keystring_children"] = keystring_children
     return env
 
 

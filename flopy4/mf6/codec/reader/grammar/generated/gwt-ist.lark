@@ -8,14 +8,14 @@ griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
 options_fields: (save_flows | budget_filerecord | budgetcsv_filerecord | sorption | first_order_decay | zero_order_decay | cim_filerecord | cimprintrecord | sorbate_filerecord | export_array_ascii | export_array_netcdf)*
 griddata_fields: (porosity | volfrac | zetaim | cim | decay | decay_sorbed | bulk_density | distcoef | sp2)*
 save_flows: "save_flows"i 
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
 sorption: "sorption"i string
 first_order_decay: "first_order_decay"i 
 zero_order_decay: "zero_order_decay"i 
-cim_filerecord: "cim_filerecord"i record
-cimprintrecord: "cimprintrecord"i record
-sorbate_filerecord: "sorbate_filerecord"i record
+cim_filerecord: "fileout"i string
+cimprintrecord: "print_format"i
+sorbate_filerecord: "sorbate"i "fileout"i string
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 porosity: "porosity"i array

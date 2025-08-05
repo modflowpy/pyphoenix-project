@@ -15,8 +15,8 @@ boundnames: "boundnames"i
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 maxbound: "maxbound"i integer
 temp: "temp"i list
 aux: "aux"i list

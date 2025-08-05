@@ -14,8 +14,8 @@ packages_fields: (packages)*
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 modelnames: "modelnames"i 
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
 maxmvr: "maxmvr"i integer
 maxpackages: "maxpackages"i integer
 mname1: "mname1"i list

@@ -10,7 +10,7 @@ def field_type(field: Field) -> str:
         case "keyword":
             return ""
         case "keystring":
-            return "record"
+            return ""  # keystrings generate their own union rules
         case _:
             return field["type"]
 
@@ -26,5 +26,14 @@ def record_child_type(field: Field) -> str:
             return "double"
         case "keyword":
             return ""
+        case "keystring":
+            return ""  # keystrings generate their own union rules
         case _:
             return field["type"]
+
+
+def keystring_children(field: Field) -> dict:
+    """Get the children of a keystring field for union generation."""
+    if field["type"] != "keystring":
+        return {}
+    return field.get("children", {})

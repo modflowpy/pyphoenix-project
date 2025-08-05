@@ -19,8 +19,8 @@ save_flows: "save_flows"i
 adv_scheme: "adv_scheme"i string
 dsp_xt3d_off: "dsp_xt3d_off"i 
 dsp_xt3d_rhs: "dsp_xt3d_rhs"i 
-mvt_filerecord: "mvt_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+mvt_filerecord: "mvt6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
 exchangedata: "exchangedata"i recarray

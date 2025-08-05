@@ -17,11 +17,24 @@ print_input: "print_input"i
 print_concentration: "print_concentration"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-concentration_filerecord: "concentration_filerecord"i record
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+concentration_filerecord: string "fileout"i string
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 packagedata: "packagedata"i recarray
 ifno: "ifno"i list
-laksetting: "laksetting"i record
+laksetting: laksetting_concentration | laksetting_status | laksetting_rainfall | laksetting_evaporation | laksetting_runoff | laksetting_ext-inflow | laksetting_auxiliaryrecord
+laksetting_concentration: "concentration"i string
+
+laksetting_status: "status"i string
+
+laksetting_rainfall: "rainfall"i string
+
+laksetting_evaporation: "evaporation"i string
+
+laksetting_runoff: "runoff"i string
+
+laksetting_ext-inflow: "ext-inflow"i string
+
+laksetting_auxiliaryrecord: "auxiliaryrecord"i record

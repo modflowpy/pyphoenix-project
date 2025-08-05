@@ -12,7 +12,7 @@ period_fields: (steady-state | transient)*
 save_flows: "save_flows"i 
 storagecoefficient: "storagecoefficient"i 
 ss_confined_only: "ss_confined_only"i 
-tvs_filerecord: "tvs_filerecord"i record
+tvs_filerecord: "tvs6"i "filein"i string
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 dev_original_specific_storage: "dev_original_specific_storage"i 

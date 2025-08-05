@@ -15,7 +15,7 @@ vertices_fields: (vertices)*
 cell2d_fields: (cell2d)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
-grb_filerecord: "grb_filerecord"i record
+grb_filerecord: "grb6"i "fileout"i string
 xorigin: "xorigin"i double precision
 yorigin: "yorigin"i double precision
 angrot: "angrot"i double precision

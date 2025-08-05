@@ -19,7 +19,7 @@ memory_print_option: "memory_print_option"i string
 profile_option: "profile_option"i string
 maxerrors: "maxerrors"i integer
 print_input: "print_input"i 
-hpc_filerecord: "hpc_filerecord"i record
+hpc_filerecord: "hpc6"i "filein"i string
 tdis6: "tdis6"i string
 models: "models"i recarray
 exchanges: "exchanges"i recarray

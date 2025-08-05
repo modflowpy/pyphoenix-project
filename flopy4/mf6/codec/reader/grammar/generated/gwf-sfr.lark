@@ -26,12 +26,12 @@ print_input: "print_input"i
 print_stage: "print_stage"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-stage_filerecord: "stage_filerecord"i record
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
-package_convergence_filerecord: "package_convergence_filerecord"i record
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+stage_filerecord: string "fileout"i string
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+package_convergence_filerecord: "package_convergence"i "fileout"i string
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 maximum_picard_iterations: "maximum_picard_iterations"i integer
 maximum_iterations: "maximum_iterations"i integer
@@ -43,7 +43,30 @@ dev_storage_weight: "dev_storage_weight"i double precision
 nreaches: "nreaches"i integer
 packagedata: "packagedata"i recarray
 ifno: "ifno"i list
-sfrsetting: "sfrsetting"i record
+sfrsetting: sfrsetting_stage | sfrsetting_status | sfrsetting_bedk | sfrsetting_manning | sfrsetting_inflow | sfrsetting_rainfall | sfrsetting_evaporation | sfrsetting_runoff | sfrsetting_diversionrecord | sfrsetting_upstream_fraction | sfrsetting_cross_sectionrecord | sfrsetting_auxiliaryrecord
+sfrsetting_stage: "stage"i string
+
+sfrsetting_status: "status"i string
+
+sfrsetting_bedk: "bedk"i string
+
+sfrsetting_manning: "manning"i string
+
+sfrsetting_inflow: "inflow"i string
+
+sfrsetting_rainfall: "rainfall"i string
+
+sfrsetting_evaporation: "evaporation"i string
+
+sfrsetting_runoff: "runoff"i string
+
+sfrsetting_diversionrecord: "diversionrecord"i record
+
+sfrsetting_upstream_fraction: "upstream_fraction"i double precision
+
+sfrsetting_cross_sectionrecord: "cross_sectionrecord"i record
+
+sfrsetting_auxiliaryrecord: "auxiliaryrecord"i record
 crosssections: "crosssections"i recarray
 connectiondata: "connectiondata"i recarray
 diversions: "diversions"i recarray

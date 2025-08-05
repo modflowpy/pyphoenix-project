@@ -14,8 +14,8 @@ auxmultname: "auxmultname"i string
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-tas_filerecord: "tas_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+tas_filerecord: "tas6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 export_array_netcdf: "export_array_netcdf"i 
 ievt: "ievt"i list
 surface: "surface"i list

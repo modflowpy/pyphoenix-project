@@ -11,6 +11,6 @@ dimensions_fields: (nper)*
 perioddata_fields: (perioddata)*
 time_units: "time_units"i string
 start_date_time: "start_date_time"i string
-ats_filerecord: "ats_filerecord"i record
+ats_filerecord: "ats6"i "filein"i string
 nper: "nper"i integer
 perioddata: "perioddata"i recarray

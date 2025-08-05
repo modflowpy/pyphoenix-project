@@ -9,6 +9,6 @@ options_fields: (readasarrays | print_input | tas_filerecord)*
 period_fields: (concentration | temperature)*
 readasarrays: "readasarrays"i 
 print_input: "print_input"i 
-tas_filerecord: "tas_filerecord"i record
+tas_filerecord: "tas6"i "filein"i string
 concentration: "concentration"i list
 temperature: "temperature"i list

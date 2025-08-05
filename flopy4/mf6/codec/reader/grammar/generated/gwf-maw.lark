@@ -19,20 +19,35 @@ print_input: "print_input"i
 print_head: "print_head"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-head_filerecord: "head_filerecord"i record
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
+head_filerecord: "head"i "fileout"i string
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
 no_well_storage: "no_well_storage"i 
 flow_correction: "flow_correction"i 
 flowing_wells: "flowing_wells"i 
 shutdown_theta: "shutdown_theta"i double precision
 shutdown_kappa: "shutdown_kappa"i double precision
-mfrcsv_filerecord: "mfrcsv_filerecord"i record
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+mfrcsv_filerecord: "maw_flow_reduce_csv"i "fileout"i string
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 nmawwells: "nmawwells"i integer
 packagedata: "packagedata"i recarray
 ifno: "ifno"i list
-mawsetting: "mawsetting"i record
+mawsetting: mawsetting_status | mawsetting_flowing_wellrecord | mawsetting_rate | mawsetting_well_head | mawsetting_head_limit | mawsetting_shutoffrecord | mawsetting_rate_scalingrecord | mawsetting_auxiliaryrecord
+mawsetting_status: "status"i string
+
+mawsetting_flowing_wellrecord: "flowing_wellrecord"i record
+
+mawsetting_rate: "rate"i double precision
+
+mawsetting_well_head: "well_head"i double precision
+
+mawsetting_head_limit: "head_limit"i string
+
+mawsetting_shutoffrecord: "shutoffrecord"i record
+
+mawsetting_rate_scalingrecord: "rate_scalingrecord"i record
+
+mawsetting_auxiliaryrecord: "auxiliaryrecord"i record
 connectiondata: "connectiondata"i recarray

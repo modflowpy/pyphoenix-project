@@ -11,8 +11,8 @@ list: "list"i string
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-newtonoptions: "newtonoptions"i record
-nc_mesh2d_filerecord: "nc_mesh2d_filerecord"i record
-nc_structured_filerecord: "nc_structured_filerecord"i record
-nc_filerecord: "nc_filerecord"i record
+newtonoptions: "newton"i "under_relaxation"i
+nc_mesh2d_filerecord: "netcdf_mesh2d"i "fileout"i string
+nc_structured_filerecord: "netcdf_structured"i "fileout"i string
+nc_filerecord: "netcdf"i "filein"i string
 packages: "packages"i recarray

@@ -7,7 +7,7 @@ attributes_block: "begin"i "attributes"i attributes_fields "end"i "attributes"i
 time_block: "begin"i "time"i time_fields "end"i "time"i
 attributes_fields: (time_series_namerecord | interpolation_methodrecord | sfacrecord)*
 time_fields: (tas_array)*
-time_series_namerecord: "time_series_namerecord"i record
-interpolation_methodrecord: "interpolation_methodrecord"i record
-sfacrecord: "sfacrecord"i record
+time_series_namerecord: "name"i string
+interpolation_methodrecord: "method"i string
+sfacrecord: "sfac"i double
 tas_array: "tas_array"i array

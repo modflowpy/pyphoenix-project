@@ -1,4 +1,4 @@
-// Auto-generated grammar for MF6 OLF-FLW
+// Auto-generated grammar for MF6 GWF-RIVG
 %import "typed.lark"
 
 start: block*
@@ -6,18 +6,20 @@ block: options_block | dimensions_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
-options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | ts_filerecord | obs_filerecord)*
+options_fields: (readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | obs_filerecord | mover | export_array_netcdf)*
 dimensions_fields: (maxbound)*
-period_fields: (q | aux | boundname)*
+period_fields: (stage | cond | rbot | aux)*
+readarraygrid: "readarraygrid"i 
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
-boundnames: "boundnames"i 
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "obs6"i "filein"i string
+mover: "mover"i 
+export_array_netcdf: "export_array_netcdf"i 
 maxbound: "maxbound"i integer
-q: "q"i list
+stage: "stage"i list
+cond: "cond"i list
+rbot: "rbot"i list
 aux: "aux"i list
-boundname: "boundname"i list

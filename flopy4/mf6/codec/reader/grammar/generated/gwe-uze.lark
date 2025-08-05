@@ -17,11 +17,20 @@ print_input: "print_input"i
 print_temperature: "print_temperature"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-temperature_filerecord: "temperature_filerecord"i record
-budget_filerecord: "budget_filerecord"i record
-budgetcsv_filerecord: "budgetcsv_filerecord"i record
-ts_filerecord: "ts_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+temperature_filerecord: string "fileout"i string
+budget_filerecord: "budget"i "fileout"i string
+budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i string
 packagedata: "packagedata"i recarray
 uzfno: "uzfno"i list
-uzesetting: "uzesetting"i record
+uzesetting: uzesetting_temperature | uzesetting_status | uzesetting_infiltration | uzesetting_uzet | uzesetting_auxiliaryrecord
+uzesetting_temperature: "temperature"i string
+
+uzesetting_status: "status"i string
+
+uzesetting_infiltration: "infiltration"i string
+
+uzesetting_uzet: "uzet"i string
+
+uzesetting_auxiliaryrecord: "auxiliaryrecord"i record

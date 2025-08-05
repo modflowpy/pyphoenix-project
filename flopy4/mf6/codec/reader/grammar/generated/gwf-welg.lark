@@ -16,8 +16,8 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 auto_flow_reduce: "auto_flow_reduce"i double precision
-afrcsv_filerecord: "afrcsv_filerecord"i record
-obs_filerecord: "obs_filerecord"i record
+afrcsv_filerecord: "auto_flow_reduce_csv"i "fileout"i string
+obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 export_array_netcdf: "export_array_netcdf"i 
 maxbound: "maxbound"i integer

@@ -11,7 +11,7 @@ save_flows: "save_flows"i
 first_order_decay: "first_order_decay"i 
 zero_order_decay: "zero_order_decay"i 
 sorption: "sorption"i string
-sorbate_filerecord: "sorbate_filerecord"i record
+sorbate_filerecord: "sorbate"i "fileout"i string
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 porosity: "porosity"i array
