@@ -45,8 +45,8 @@ def _make_init(dfns: dict, *, outdir: PathLike, verbose: bool = False):
 
 
 def _format_files(folder: PathLike):
-    subprocess.run(["ruff", "format", folder], check=True, text=True)
-    subprocess.run(["ruff", "check", "--fix", folder], check=True, text=True)
+    subprocess.run(["python", "-m", "ruff", "format", folder], check=True, text=True)
+    subprocess.run(["python", "-m", "ruff", "check", "--fix", folder], check=True, text=True)
 
 
 def _make_targets(dfn, *, outdir: PathLike, verbose: bool = False):
