@@ -6,8 +6,8 @@ from flopy.discretization.modeltime import ModelTime
 from flopy.discretization.structuredgrid import StructuredGrid
 
 from flopy4.mf6.modflow.gwf import Chd, Gwf, Ic, Npf, Oc
-from flopy4.mf6.modflow.ims import Ims
-from flopy4.mf6.modflow.simulation import Simulation
+from flopy4.mf6.modflow.sim import Simulation
+from flopy4.mf6.modflow.slnims import Ims
 
 name = "quickstart"
 workspace = Path(__file__).parent / name

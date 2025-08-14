@@ -55,7 +55,7 @@ def test_dumps_dis():
 def test_dumps_tdis():
     from flopy.discretization.modeltime import ModelTime
 
-    from flopy4.mf6.modflow.tdis import Tdis
+    from flopy4.mf6.modflow.simtdis import Tdis
 
     tdis = Tdis.from_time(ModelTime(perlen=[1.0, 2.0], nstp=[1, 2]))
     tdis.time_units = "days"
