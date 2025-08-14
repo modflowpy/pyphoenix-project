@@ -7,19 +7,19 @@ from attrs import define
 from flopy.discretization.grid import Grid
 from xattree import xattree
 
-from flopy4.mf6.modflow.gwf.chd import Chd
-from flopy4.mf6.modflow.gwf.dis import Dis
-from flopy4.mf6.modflow.gwf.drn import Drn
-from flopy4.mf6.modflow.gwf.ic import Ic
-from flopy4.mf6.modflow.gwf.npf import Npf
-from flopy4.mf6.modflow.gwf.oc import Oc
-from flopy4.mf6.modflow.gwf.wel import Wel
+from flopy4.mf6.modflow.gwf.gwfchd import Chd
+from flopy4.mf6.modflow.gwf.gwfdis import Dis
+from flopy4.mf6.modflow.gwf.gwfdrn import Drn
+from flopy4.mf6.modflow.gwf.gwfic import Ic
+from flopy4.mf6.modflow.gwf.gwfnpf import Npf
+from flopy4.mf6.modflow.gwf.gwfoc import Oc
+from flopy4.mf6.modflow.gwf.gwfwel import Wel
 from flopy4.mf6.model import Model
-from flopy4.mf6.modflow.gwf.chd import Chd
-from flopy4.mf6.modflow.gwf.dis import Dis
-from flopy4.mf6.modflow.gwf.ic import Ic
-from flopy4.mf6.modflow.gwf.npf import Npf
-from flopy4.mf6.modflow.gwf.oc import Oc
+from flopy4.mf6.modflow.gwf.gwfchd import Chd
+from flopy4.mf6.modflow.gwf.gwfdis import Dis
+from flopy4.mf6.modflow.gwf.gwfic import Ic
+from flopy4.mf6.modflow.gwf.gwfnpf import Npf
+from flopy4.mf6.modflow.gwf.gwfoc import Oc
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils import open_cbc, open_hds
 
