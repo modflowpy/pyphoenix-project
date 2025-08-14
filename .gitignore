@@ -9,6 +9,3 @@ venv/
 # pixi environments
 .pixi
 *.egg-info
-
-# uv lockfile
-uv.lock
