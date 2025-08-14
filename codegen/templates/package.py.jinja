@@ -17,9 +17,9 @@ from flopy4.mf6.spec import array, field, dim
 
 
 @xattree(kw_only=True)
-class MF{{ dfn.name|class_name }}(Package):
+class {{ dfn.name|class_name }}(Package):
     """
-    MF{{ dfn.name|class_name }} defines a {{ dfn.name }} package.
+    {{ dfn.name|class_name }} defines a {{ dfn.name }} package.
 
     Parameters
     ----------
@@ -27,13 +27,9 @@ class MF{{ dfn.name|class_name }}(Package):
     {{ macros.docstrings(attr)|indent(4) -}}
     {% endfor %}
     """
-    {% if dfn.multi %}
-    multi_package: ClassVar[bool] = True
-    {% endif %}
-
     {# Create inner classes for records #}
     {% for attr in dfn|attrs  %}
-    {% if attr.type == "record" and not "filein" in attr.fields and not "fileout" in attr.fields %}
+    {% if attr.type == "record" and not "filein" in attr.children and not "fileout" in attr.children %}
     {% include "record.py.jinja" %}
 
     {% endif %}

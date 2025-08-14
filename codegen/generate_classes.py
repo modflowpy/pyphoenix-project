@@ -1,5 +1,5 @@
 import argparse
-import cmd
+import logging
 import shutil
 import sys
 import tempfile
@@ -10,11 +10,12 @@ from modflow_devtools.download import download_and_unzip
 
 from .make import make_all
 
+logger = logging.getLogger(__name__)
+
 _PROJ_ROOT_PATH = Path(__file__).parents[1].expanduser().resolve().absolute()
 _MF6_AUTOGEN_PATH = _PROJ_ROOT_PATH / "flopy4" / "mf6" / "modflow"
 _MF6_REPO_OWNER = "MODFLOW-ORG"
 _MF6_REPO_NAME = "modflow6"
-_CMD = cmd.Cmd()  # for pretty printing
 
 
 def generate_classes(
@@ -22,7 +23,6 @@ def generate_classes(
     repo=_MF6_REPO_NAME,
     ref=None,
     dfnpath=None,
-    verbose=False,
 ):
     """
     Generate Python classes for MODFLOW 6 using definition files fetched
@@ -45,8 +45,6 @@ def generate_classes(
     backup : bool, default True
         Keep a backup of the definition files in dfn_backup with a date and
         timestamp from when the definition files were replaced.
-    verbose : bool, default False
-        If True, print information about the code generation process.
     """
 
     if dfnpath is None and ref is None:
@@ -62,23 +60,22 @@ def generate_classes(
                     f"Specified DFN path '{dfnpath}' does not exist or is not a directory."
                 )
         else:
-            if verbose:
-                print(f"Fetching MODFLOW 6 definitions from: {owner}/{repo}/{ref}")
+            logger.info(f"Fetching MODFLOW 6 definitions from: {owner}/{repo}/{ref}")
 
             url = f"https://github.com/{owner}/{repo}/archive/{ref}.zip"
-            dl_path = download_and_unzip(url=url, path=tmpdir, verbose=verbose)
+            dl_path = download_and_unzip(
+                url=url, path=tmpdir, verbose=logger.isEnabledFor(logging.INFO)
+            )
             if (proj_root := next(iter(dl_path.glob("modflow6-*")), None)) is None:
                 raise ValueError(f"Could not find MODFLOW 6 project root in: {dl_path}")
             dfnpath = tmpdir / "dfn"
             shutil.copytree(proj_root / "doc" / "mf6io" / "mf6ivar" / "dfn", dfnpath)
 
-        if verbose:
-            dfns = list(dfnpath.glob("*.dfn"))
-            module_name = ".".join(_MF6_AUTOGEN_PATH.relative_to(_PROJ_ROOT_PATH).parts)
-            print(f"Generating module {module_name} from {len(dfns)} DFNs in: {dfnpath}")
-            print()
-            _CMD.columnize([f.name for f in dfns])
-            print()
+        dfns = list(dfnpath.glob("*.dfn"))
+        module_name = ".".join(_MF6_AUTOGEN_PATH.relative_to(_PROJ_ROOT_PATH).parts)
+        logger.info(f"Generating module {module_name} from {len(dfns)} DFNs in: {dfnpath}")
+        for dfn in dfns:
+            logger.info(f" - {dfn.name}")
 
         tomlpath = dfnpath / "toml"
         tomlpath.mkdir(exist_ok=True)
@@ -87,12 +84,11 @@ def generate_classes(
         shutil.rmtree(_MF6_AUTOGEN_PATH, ignore_errors=True)
         _MF6_AUTOGEN_PATH.mkdir(parents=True)
         make_all(dfndir=tomlpath, outdir=_MF6_AUTOGEN_PATH, version=2)
-        if verbose:
-            files = list(_MF6_AUTOGEN_PATH.glob("*.py"))
-            print(f"Generated {len(files)} module files in: {_MF6_AUTOGEN_PATH}")
-            print()
-            _CMD.columnize([f.name for f in files])
-            print()
+
+        files = list(_MF6_AUTOGEN_PATH.glob("*.py"))
+        logger.info(f"Generated {len(files)} module files in: {_MF6_AUTOGEN_PATH}")
+        for f in files:
+            logger.info(f" - {f.name}")
 
 
 def cli_main():
@@ -153,6 +149,9 @@ def cli_main():
             "The '--no-backup' option is no longer supported. "
             "Exclude DFNs and corresponding source files manually."
         )
+
+    if args.pop("verbose"):
+        logger.setLevel(logging.INFO)
 
     try:
         generate_classes(**args)

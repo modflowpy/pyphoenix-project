@@ -1,11 +1,14 @@
+import builtins
+import keyword
 import os
 from enum import Enum
-from keyword import kwlist
 from os import PathLike
-from typing import Any, ForwardRef, Literal, Optional, Union, get_args, get_origin
+from typing import Any, ForwardRef, Literal, Optional, Union, cast, get_args, get_origin
 
+import jinja2
 import numpy as np
-from boltons.iterutils import default_enter, remap
+from boltons.iterutils import remap
+from modflow_devtools.dfn import get_fields
 from numpy.typing import NDArray
 
 
@@ -15,32 +18,6 @@ def _try_get_enum_value(v: Any) -> Any:
     of an enumeration, otherwise return it unaltered.
     """
     return v.value if isinstance(v, Enum) else v
-
-
-def _get_vars(d: dict) -> dict[str, dict]:
-    vars_ = dict()
-
-    def visit(p, k, v):
-        if isinstance(v, dict) and "type" in v:
-            if v.get("type") == "recarray":
-                # Add extra dimension to recarray items
-                for _, item in v["item"]["fields"].items():
-                    if v.get("shape", None) is not None:
-                        item["shape"] = v["shape"]
-                # Add all info from every item to vars_
-                vars_.update(v["item"]["fields"].items())
-            else:
-                vars_[k] = v
-        return True
-
-    def enter(p, k, v):
-        if isinstance(v, dict) and "type" in v:
-            return (v, False)
-        return default_enter(p, k, v)
-
-    dd = d.copy()
-    remap(dd, enter=enter, visit=visit)
-    return vars_
 
 
 def _python_type(attr: dict[str, Any]) -> type | ForwardRef:
@@ -64,7 +41,7 @@ def _python_type(attr: dict[str, Any]) -> type | ForwardRef:
     elif attr.get("shape", None) and attr["type"] == "integer":
         py_type = NDArray[np.int64]
     elif attr["type"] == "record":
-        if any(field in attr["fields"] for field in ["filein", "fileout"]):
+        if any(field in attr["children"] for field in ["filein", "fileout"]):
             py_type = os.PathLike
         else:
             py_type = ForwardRef(Filters.class_name(attr["name"]), is_argument=False, is_class=True)
@@ -153,8 +130,7 @@ class Filters:
         """
         Map the context's input variables to corresponding class attributes, where applicable.
         """
-        component_vars = _get_vars(dfn)
-        return list(component_vars.values())
+        return list(get_fields(dfn).values())
 
     @staticmethod
     def safe_name(v: str) -> str:
@@ -163,7 +139,7 @@ class Filters:
         If the string is a reserved keyword, add a trailing underscore to it.
         Also replace any hyphens with underscores.
         """
-        return (f"{v}_" if v in kwlist else v).replace("-", "_")
+        return (f"{v}_" if keyword.iskeyword(v) or v in dir(builtins) else v).replace("-", "_")
 
     @staticmethod
     def math(v: str) -> str:
@@ -235,6 +211,15 @@ class Filters:
         return "".join(word.capitalize() for word in name.split("_"))
 
     @staticmethod
-    def is_dis_or_tdis(dfn: dict[str, Any]) -> bool:
-        name_split = dfn["name"].split("-")
-        return len(name_split) > 1 and name_split[1] in ["dis", "tdis"]
+    @jinja2.pass_environment
+    def children(env: jinja2.Environment, dfn: dict[str, Any]) -> list[dict[str, Any]]:
+        result = []
+
+        def visit(_, k, v):
+            if isinstance(v, dict) and v.get("parent", None) == dfn["name"]:
+                result.append(v)
+            return True
+
+        tree = cast(dict, env.globals["dfn_tree"]).copy()
+        remap(tree, visit=visit)
+        return result

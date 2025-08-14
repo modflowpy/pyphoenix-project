@@ -1,11 +1,17 @@
+import inspect
+import logging
 import subprocess
+import sys
 from os import PathLike
 from pathlib import Path
 
 import jinja2
-from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfn import Dfn, infer_tree
 
 from .filters import Filters
+from .jinja_tests import Tests
+
+logger = logging.getLogger()
 
 
 def _get_template_env():
@@ -17,41 +23,41 @@ def _get_template_env():
         keep_trailing_newline=True,
     )
 
-    env.filters["attrs"] = Filters.attrs
-    env.filters["safe_name"] = Filters.safe_name
-    env.filters["value"] = Filters.value
-    env.filters["math"] = Filters.math
-    env.filters["clean"] = Filters.clean
-    env.filters["type_str"] = Filters.type_str
-    env.filters["type_docstr"] = Filters.type_docstr
-    env.filters["class_name"] = Filters.class_name
-    env.filters["is_dis_or_tdis"] = Filters.is_dis_or_tdis
+    env.filters.update(inspect.getmembers(Filters, predicate=inspect.isfunction))
+    env.tests.update(inspect.getmembers(Tests, predicate=inspect.isfunction))
 
     return env
 
 
-def _make_init(dfns: dict, *, outdir: PathLike, verbose: bool = False):
-    """Generate a Python __init__.py file for the given input definitions."""
-    env = _get_template_env()
+def _make_init(dfns: list[dict], *, env: jinja2.Environment, outdir: PathLike):
+    """Generate a Python __init__.py file for the given input definitions.
+
+    Parameters
+    ----------
+    dfns : list[dict]
+        The list of DFN dictionaries to use for rendering the template.
+    env : jinja2.Environment
+        The Jinja2 environment to use for rendering templates.
+    outdir : PathLike
+        The output directory where the generated files will be saved.
+    """
     outdir = Path(outdir).expanduser().absolute()
 
     target_name = "__init__.py"
     target_path = outdir / target_name
     template = env.get_template(f"{target_name}.jinja")
     with open(target_path, "w") as f:
-        f.write(template.render(components=dfns.values()))
-        if verbose:
-            print(f"Wrote {target_path}")
+        f.write(template.render(components=dfns))
+    logger.info(f"Wrote {target_path}")
 
 
 def _format_files(folder: PathLike):
-    subprocess.run(["python", "-m", "ruff", "format", folder], check=True, text=True)
-    subprocess.run(["python", "-m", "ruff", "check", "--fix", folder], check=True, text=True)
+    subprocess.run([sys.executable, "-m", "ruff", "format", folder], check=True, text=True)
+    subprocess.run([sys.executable, "-m", "ruff", "check", "--fix", folder], check=True, text=True)
 
 
-def _make_targets(dfn, *, outdir: PathLike, verbose: bool = False):
+def _make_targets(dfn, *, outdir: PathLike, env: jinja2.Environment):
     """Generate Python source file(s) from the given input definition."""
-    env = _get_template_env()
     outdir = Path(outdir).expanduser().resolve().absolute()
 
     def _get_template_name(dfn) -> str:
@@ -64,26 +70,28 @@ def _make_targets(dfn, *, outdir: PathLike, verbose: bool = False):
             return "package.py.jinja"
 
     component_name = dfn["name"].replace("-", "")
-    target_path = outdir / f"mf{component_name}.py"
+    target_path = outdir / f"{component_name}.py"
     template = env.get_template(_get_template_name(dfn))
     with open(target_path, "w") as f:
         f.write(template.render(dfn=dfn))
-        if verbose:
-            print(f"Wrote {target_path}")
+    logger.info(f"Wrote {target_path}")
 
 
 def make_all(
     *,
     dfndir: PathLike,
     outdir: PathLike,
-    verbose: bool = False,
     version: int = 1,
 ):
     """Generate Python source files from the DFN files in the given location."""
     dfndir = Path(dfndir).expanduser().resolve().absolute()
-    dfns = Dfn.load_all(dfndir, version=version)
+    loaded_dfns = Dfn.load_all(dfndir, version=version)
+    dfns = list(loaded_dfns.values())
 
-    _make_init(dfns, outdir=outdir, verbose=verbose)
-    for dfn in dfns.values():
-        _make_targets(dfn, outdir=outdir, verbose=verbose)
+    env = _get_template_env()
+    env.globals["dfn_tree"] = infer_tree(loaded_dfns)
+
+    _make_init(dfns, outdir=outdir, env=env)
+    for dfn in dfns:
+        _make_targets(dfn, outdir=outdir, env=env)
     _format_files(outdir)

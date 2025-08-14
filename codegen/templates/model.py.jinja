@@ -4,32 +4,57 @@
 
 from os import PathLike
 
+from flopy.discretization.grid import Grid
 from xattree import define, xattree
+from attrs import Converter
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field
+from flopy4.mf6.modflow import {{ dfn|children|map(attribute="name")|map("class_name")|join(",") }}
 
+def _convert_grid(value, _, __):
+    if isinstance(value, Grid):
+        return {{ dfn.name|class_name }}Dis.from_grid(value)
+    if isinstance(value, {{ dfn.name|class_name }}Dis):
+        return value
+    raise TypeError(f"Expected Grid or {{ dfn.name|class_name }}Dis, got {type(value)}")
 
 @xattree(kw_only=True)
-class MF{{ dfn.name|class_name }}(Model):
+class {{ dfn.name|class_name }}(Model):
     """
-    MF{{ dfn.name|class_name }} defines a {{ dfn.name }} model.
+    {{ dfn.name|class_name }} defines a {{ dfn.name }} model.
 
     Parameters
     ----------
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
-    {{ macros.docstrings(attr)|indent(4) -}}
-    {% endfor %}
+    {{ macros.docstrings(attr)|indent(4) }}
+    {%- endfor %}
     """
 
-    {# Create inner classes for records #}
+    {# Create inner classes for records. #}
     {% for attr in dfn|attrs  %}
-    {% if attr.type == "record" and not "filein" in attr.fields and not "fileout" in attr.fields %}
+    {% if attr.type == "record" and not "filein" in attr.children and not "fileout" in attr.children %}
     {% include "record.py.jinja" %}
-
     {% endif %}
+
     {% endfor %}
 
+    {# Create attributes for every field in the definition. #}
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)  %}
     {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
     {% endfor %}
+    {# Create attributes for every package that can be added to the model. #}
+    {% for child_attr in dfn|children %}
+    {{ child_attr.name | safe_name | replace(dfn.name + "_", "") }}: {{ macros.child_type(child_attr) }} = {{ macros.xattree_field(child_attr, dfn, block="packages", converter=("_convert_grid" if child_attr is dis_package else None)) | indent(4) }}
+    {% endfor %}
+
+    {# Find a package in dfn|children that has a name starting with dis. Then create a grid function. #}
+    {% set dis_package = dfn|children|select("dis_package")|first %}
+    {% if dis_package %}
+    @property
+    def grid(self) -> Grid:
+        """
+        Returns the grid associated with the model.
+        """
+        return self.{{ dis_package.name | safe_name | replace(dfn.name + "_", "") }}.to_grid()
+    {% endif %}

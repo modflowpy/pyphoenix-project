@@ -5,26 +5,27 @@
 {% endif %}
 {%- endmacro %}
 
-{% macro xattree_field(attr, dfn) %}
-{% if "shape" in attr %}
-array(
-    {{- metadata(attr) }}
-    {{- default_in_field(attr) }}
-    {{- dims_in_field(attr) }}
-    {{- converter_in_field(attr) }}
-    {{- on_setattr_in_field(attr) }}
-    {{- reader_in_field(attr) }}
-)
-{%- elif attr["block"]  == "dimensions" and dfn|is_dis_or_tdis %}
+{% macro xattree_field(attr, dfn, block=None, converter=None) %}
+{%- if attr.block  == "dimensions" and dfn is dis_or_tdis_package %}
 dim(
-    {{- metadata(attr) }}
+    {{- metadata(attr, block=block) }}
     {{- scope_in_field(dfn)}}
     {{- default_in_field(attr) }}
 )
+{%- elif "shape" in attr %}
+array(
+    {{- metadata(attr, block=block) }}
+    {{- default_in_field(attr) }}
+    {{- dims_in_field(attr) }}
+    {{- converter_in_field(attr, "dict_to_array") }}
+    {{- on_setattr_in_field(attr) }}
+    {{- reader_in_field(attr) }}
+)
 {%- else %}
 field(
-    {{- metadata(attr) }}
+    {{- metadata(attr, block=block) }}
     {{- default_in_field(attr) }}
+    {{- converter_in_field(attr, converter) }}
     {{- init_in_field(attr) }}
 )
 {%- endif %}
@@ -42,8 +43,9 @@ field(
 {% if attr.block == "period" %}, on_setattr=update_maxbound{% endif %}
 {%- endmacro %}
 
-{% macro metadata(attr) %}
-block="{{ attr.block }}"
+{% macro metadata(attr, block=None) %}
+{% set block = block or attr.block %}
+block="{{ block }}"
 {%- endmacro %}
 
 {% macro default_in_field(attr) %}
@@ -64,6 +66,16 @@ block="{{ attr.block }}"
 , dims=({% for dim in dims %}"{{dim|trim}}",{% endfor %})
 {%- endmacro %}
 
-{% macro converter_in_field(attr) %}
-, converter=Converter(dict_to_array, takes_self=True, takes_field=True)
+{% macro converter_in_field(attr, func_name) %}
+{% if func_name %}
+, converter=Converter({{func_name}}, takes_self=True, takes_field=True)
+{%- endif %}
+{%- endmacro %}
+
+{% macro child_type(attr) %}
+{% if attr.multi %}
+list[{{ attr.name | class_name }}]
+{%- else %}
+{{ attr.name | class_name }} | None
+{%- endif %}
 {%- endmacro %}
