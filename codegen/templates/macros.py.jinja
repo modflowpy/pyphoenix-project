@@ -20,7 +20,7 @@ array(
     {{- default_in_field(attr) }}
     {{- dims_in_field(attr) }}
     {{- converter_in_field(attr, "dict_to_array") }}
-    {{- on_setattr_in_field(attr) }}
+    {{- on_setattr_in_field(attr, dfn) }}
 )
 {%- else %}
 field(
@@ -37,8 +37,8 @@ field(
 {%- endmacro %}
 
 {# ASSUMPTION: fields that are arrays and have block=period are part of the maxbound specification. #}
-{% macro on_setattr_in_field(attr) %}
-{% if attr.block == "period" %}, on_setattr=update_maxbound{% endif %}
+{% macro on_setattr_in_field(attr, dfn) %}
+{% if attr.block == "period" and "maxbound" in dfn|attrs|map(attribute="name") %}, on_setattr=update_maxbound{% endif %}
 {%- endmacro %}
 
 {% macro metadata(attr, block=None) %}
