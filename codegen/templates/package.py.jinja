@@ -10,7 +10,7 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree, define
 
-from flopy4.mf6.attr_hooks import update_maxbound
+from flopy4.mf6.component import update_maxbound
 from flopy4.mf6.converters import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, dim
@@ -32,13 +32,5 @@ class {{ dfn.name|class_name }}(Package):
 
     {# Create attributes for all definitions in the dfn. #}
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
-    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) }}
     {% endfor %}
-
-    {# ASSUMPTION: packages with period blocks will have a maxbound variable. #}
-    {% if dfn.period %}
-    def __attrs_post_init__(self) -> None:
-        # TODO: Should new_value be the maximum of all the bounds?
-        # Or can update_maxbound figure that out?
-        update_maxbound(self, None, None)
-    {% endif %}

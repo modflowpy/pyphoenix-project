@@ -36,11 +36,11 @@ class {{ dfn.name|class_name }}(Model):
 
     {# Create attributes for every field in the definition. #}
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)  %}
-    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
+    {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) }}
     {% endfor %}
     {# Create attributes for every package that can be added to the model. #}
     {% for child_attr in dfn|children %}
-    {{ child_attr.name | safe_name | replace(dfn.name + "_", "") }}: {{ macros.child_type(child_attr) }} = {{ macros.xattree_field(child_attr, dfn, block="packages", converter=("_convert_grid" if child_attr is dis_package else None)) | indent(4) }}
+    {{ child_attr.name | safe_name | replace(dfn.name + "_", "") }}: {{ macros.child_type(child_attr) }} = {{ macros.xattree_field(child_attr, dfn, block="packages", converter=("_convert_grid" if child_attr is dis_package else None)) }}
     {% endfor %}
 
     {# Find a package in dfn|children that has a name starting with dis. Then create a grid function. #}

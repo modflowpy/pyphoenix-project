@@ -8,14 +8,14 @@ from warnings import warn
 
 from flopy.discretization.modeltime import ModelTime
 from modflow_devtools.misc import cd, run_cmd
-from xattree import xattree, define
+from xattree import fields, xattree
 
 from flopy4.mf6.context import Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
-from flopy4.mf6.modflow.simtdis import SimTdis
 from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import field
+from flopy4.mf6.modflow import {{ dfn|children|map(attribute="name")|map("class_name")|join(",") }}
 
 
 {# ASSUMPTION: SimTdis is assumed to exist here for now. Better to find this package in the dfns. #}
@@ -46,16 +46,25 @@ class {{dfn.name|class_name}}(Context):
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
     {{ attr.name|safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) }}
     {% endfor %}
-    models: dict[str, Model] = field(block="models")
+
+    {% for child_attr in dfn|children %}
+    {% if child_attr.name.startswith(dfn.name) %}
+    {{ child_attr.name | safe_name | replace(dfn.name + "_", "") }}: {{ macros.child_type(child_attr) }} = {{ macros.xattree_field(child_attr, dfn, block="packages") }}
+    {% elif child_attr.name.startswith("sln") %}
+    {{ child_attr.name | safe_name | replace("sln_", "") }}: {{ macros.child_type(child_attr) }} = {{ macros.xattree_field(child_attr, dfn, block="solutiongroup") }}
+    {% else %}
+    {{ child_attr.name | safe_name }}: {{ macros.child_type(child_attr) }} = {{ macros.xattree_field(child_attr, dfn, block="models") }}
+    {% endif %}
+    {% endfor %}
+
     exchanges: dict[str, Exchange] = field(block="exchanges")
-    solutions: dict[str, Solution] = field(block="solutiongroup")
 
     {# ASSUMPTION: sim always contains a timing block with one item. #}
-    {% set tdis_attr = dfn|attrs|selectattr("block", "eq", "timing")|first %}
+    {% set tdis_attr = dfn|children|selectattr("name", "endswith", "tdis")|first %}
     @property
     def time(self) -> ModelTime:
         """Return the simulation time discretization."""
-        return self.{{ tdis_attr.name|safe_name }}.to_time()
+        return self.{{ tdis_attr.name|safe_name|replace(dfn.name + "_", "") }}.to_time()
 
     def run(self, exe: str | PathLike = "mf6", verbose: bool = False) -> None:
         """Run the simulation using the given executable."""

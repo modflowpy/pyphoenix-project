@@ -75,6 +75,7 @@ block="{{ block }}"
 {% if attr.multi %}
 list[{{ attr.name | class_name }}]
 {%- else %}
+{# ASSUMPTION: All single instances are optional, because the dfn doesn't tell us yet. #}
 {{ attr.name | class_name }} | None
 {%- endif %}
 {%- endmacro %}
