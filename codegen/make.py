@@ -59,13 +59,18 @@ def _format_files(folder: PathLike):
 def _make_targets(dfn, *, outdir: PathLike, env: jinja2.Environment):
     """Generate Python source file(s) from the given input definition."""
     outdir = Path(outdir).expanduser().resolve().absolute()
+    assert env.loader is not None
+    all_templates = env.loader.list_templates()
 
     def _get_template_name(dfn) -> str:
         parent = dfn.get("parent", None)
-        if parent is None:
-            return "simulation.py.jinja"
-        elif parent == "sim" and "-" not in dfn["name"]:
+        full_template_name = dfn["name"] + ".py.jinja"
+        if full_template_name in all_templates:
+            return full_template_name
+        if parent == "sim" and "-" not in dfn["name"]:
             return "model.py.jinja"
+        if dfn["name"].endswith("-dis"):
+            return "dis.py.jinja"
         else:
             return "package.py.jinja"
 
