@@ -14,8 +14,8 @@ from flopy4.mf6.spec import array, dim, field
 @xattree
 class Dis(Package):
     length_units: str = field(
+        block="options",
         default=None,
-        metadata={"block": "options"},
     )
     nogrb: bool = field(block="options", default=False)
     xorigin: float = field(block="options", default=None)
@@ -27,21 +27,18 @@ class Dis(Package):
         coord="lay",
         scope="gwf",
         default=1,
-        group="grid",
     )
     ncol: int = dim(
         block="dimensions",
         coord="col",
         scope="gwf",
         default=2,
-        group="grid",
     )
     nrow: int = dim(
         block="dimensions",
         coord="row",
         scope="gwf",
         default=2,
-        group="grid",
     )
     delr: NDArray[np.float64] = array(
         block="griddata",

@@ -3,11 +3,66 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar
 
+import numpy as np
+from attrs import fields
 from modflow_devtools.dfn import Dfn, Field
 from xattree import xattree
 
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.spec import field, fields_dict, to_dfn_field
 from flopy4.uio import IO, Loader, Writer
+
+
+def update_maxbound(instance, attribute, new_value):
+    """
+    Generalized function to update maxbound when period block arrays change.
+
+    This function automatically finds all period block arrays in the instance
+    and calculates maxbound based on the maximum number of non-default values
+    across all arrays.
+
+    Args:
+        instance: The package instance
+        attribute: The attribute being set (from attrs on_setattr)
+        new_value: The new value being set
+
+    Returns:
+        The new_value (unchanged)
+    """
+
+    period_arrays = []
+    instance_fields = fields(instance.__class__)
+    for f in instance_fields:
+        if (
+            f.metadata
+            and f.metadata.get("block") == "period"
+            and f.metadata.get("xattree", {}).get("dims")
+        ):
+            period_arrays.append(f.name)
+
+    maxbound_values = []
+    for array_name in period_arrays:
+        if attribute and attribute.name == array_name:
+            array_val = new_value
+        else:
+            array_val = getattr(instance, array_name, None)
+
+        if array_val is not None:
+            array_data = (
+                array_val if array_val.data.shape == array_val.shape else array_val.todense()
+            )
+
+            if array_data.dtype.kind in ["U", "S"]:  # String arrays
+                non_default_count = len(np.where(array_data != "")[0])
+            else:  # Numeric arrays
+                non_default_count = len(np.where(array_data != FILL_DNODATA)[0])
+
+            maxbound_values.append(non_default_count)
+    if maxbound_values:
+        instance.maxbound = max(maxbound_values)
+
+    return new_value
+
 
 COMPONENTS = {}
 """MF6 component registry."""
@@ -49,6 +104,36 @@ class Component(ABC, MutableMapping):
         name = self.name  # type: ignore
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
+
+    def __attrs_post_init__(self):
+        """
+        Post-initialization hook for all components.
+
+        Automatically handles common post-init tasks like computing maxbound
+        for components with period block arrays.
+        """
+        self._update_maxbound_if_needed()
+
+    def _update_maxbound_if_needed(self):
+        """
+        Update maxbound if this component has period block arrays.
+
+        This method checks if the component has any period block arrays defined
+        and calls update_maxbound if needed. This generalizes the pattern that
+        was previously repeated in multiple component classes.
+        """
+        # Check if component has a maxbound field and period block arrays
+        component_fields = fields(self.__class__)
+        has_maxbound = any(f.name == "maxbound" for f in component_fields)
+        has_period_arrays = any(
+            f.metadata
+            and f.metadata.get("block") == "period"
+            and f.metadata.get("xattree", {}).get("dims")
+            for f in component_fields
+        )
+
+        if has_maxbound and has_period_arrays:
+            update_maxbound(self, None, None)
 
     @classmethod
     def __attrs_init_subclass__(cls):
