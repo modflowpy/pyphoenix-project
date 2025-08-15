@@ -6,6 +6,8 @@
 {%- endmacro %}
 
 {% macro xattree_field(attr, dfn, block=None, converter=None) %}
+{# ASSUMPTION: dis and tdis packages can have dim attributes instead of fields.
+   These look different from dynamic dimension fields, like maxbound. #}
 {%- if attr.block  == "dimensions" and dfn is dis_or_tdis_package %}
 dim(
     {{- metadata(attr, block=block) }}
@@ -19,7 +21,6 @@ array(
     {{- dims_in_field(attr) }}
     {{- converter_in_field(attr, "dict_to_array") }}
     {{- on_setattr_in_field(attr) }}
-    {{- reader_in_field(attr) }}
 )
 {%- else %}
 field(
@@ -35,10 +36,7 @@ field(
 , scope="{{ dfn.parent }}"
 {%- endmacro %}
 
-{% macro reader_in_field(attr) %}
-, reader="{{ attr.reader }}"
-{%- endmacro %}
-
+{# ASSUMPTION: fields that are arrays and have block=period are part of the maxbound specification. #}
 {% macro on_setattr_in_field(attr) %}
 {% if attr.block == "period" %}, on_setattr=update_maxbound{% endif %}
 {%- endmacro %}
@@ -56,6 +54,7 @@ block="{{ block }}"
 {%- endif %}
 {%- endmacro %}
 
+{# ASSUMPTION: dimension fields don't need initialization, because they are dynamically updated with on_setattr. #}
 {% macro init_in_field(attr) %}
 {% if attr.block == "dimensions" %}, init=False{% endif %}
 {%- endmacro %}
@@ -78,4 +77,13 @@ list[{{ attr.name | class_name }}]
 {%- else %}
 {{ attr.name | class_name }} | None
 {%- endif %}
+{%- endmacro %}
+
+{% macro create_inner_classes(dfn) %}
+{% for attr in dfn|attrs|selectattr("type", "eq", "record")|reject("file_record") %}
+{% filter indent(4, first=true) %}
+{% include "record.py.jinja" %}
+{% endfilter %}
+
+{% endfor %}
 {%- endmacro %}

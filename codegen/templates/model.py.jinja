@@ -12,6 +12,7 @@ from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field
 from flopy4.mf6.modflow import {{ dfn|children|map(attribute="name")|map("class_name")|join(",") }}
 
+{# ASSUMPTION: The grid is always DIS for now. Needs to change for DISU and DISV. #}
 def _convert_grid(value, _, __):
     if isinstance(value, Grid):
         return {{ dfn.name|class_name }}Dis.from_grid(value)
@@ -31,13 +32,7 @@ class {{ dfn.name|class_name }}(Model):
     {%- endfor %}
     """
 
-    {# Create inner classes for records. #}
-    {% for attr in dfn|attrs  %}
-    {% if attr.type == "record" and not "filein" in attr.children and not "fileout" in attr.children %}
-    {% include "record.py.jinja" %}
-    {% endif %}
-
-    {% endfor %}
+{{ macros.create_inner_classes(dfn) }}
 
     {# Create attributes for every field in the definition. #}
     {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)  %}
@@ -50,11 +45,9 @@ class {{ dfn.name|class_name }}(Model):
 
     {# Find a package in dfn|children that has a name starting with dis. Then create a grid function. #}
     {% set dis_package = dfn|children|select("dis_package")|first %}
-    {% if dis_package %}
     @property
     def grid(self) -> Grid:
         """
         Returns the grid associated with the model.
         """
         return self.{{ dis_package.name | safe_name | replace(dfn.name + "_", "") }}.to_grid()
-    {% endif %}

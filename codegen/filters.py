@@ -48,6 +48,7 @@ def _python_type(attr: dict[str, Any]) -> type | ForwardRef:
     elif "file" in attr["name"]:
         py_type = PathLike
     else:
+        # TODO: Error on unknown type
         py_type = types.get(attr["type"], Any)
 
     if attr.get("optional", False):
@@ -223,3 +224,7 @@ class Filters:
         tree = cast(dict, env.globals["dfn_tree"]).copy()
         remap(tree, visit=visit)
         return result
+
+    @staticmethod
+    def double_quote(str: str) -> str:
+        return f'"{str}"'

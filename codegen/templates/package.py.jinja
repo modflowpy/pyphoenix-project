@@ -27,22 +27,18 @@ class {{ dfn.name|class_name }}(Package):
     {{ macros.docstrings(attr)|indent(4) -}}
     {% endfor %}
     """
-    {# Create inner classes for records #}
-    {% for attr in dfn|attrs  %}
-    {% if attr.type == "record" and not "filein" in attr.children and not "fileout" in attr.children %}
-    {% include "record.py.jinja" %}
 
-    {% endif %}
-    {% endfor %}
+{{ macros.create_inner_classes(dfn) }}
 
-    {% for attr in dfn | attrs %}
+    {# Create attributes for all definitions in the dfn. #}
+    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
     {{ attr.name | safe_name }}: {{ attr | type_str }} = {{ macros.xattree_field(attr, dfn) | indent(4) }}
     {% endfor %}
 
+    {# ASSUMPTION: packages with period blocks will have a maxbound variable. #}
     {% if dfn.period %}
     def __attrs_post_init__(self) -> None:
-        # TODO: Check if this code actually works as intended
-        periods = [getattr(self, x.name) for x in self.__attrs_attrs__ if x.metadata.get("block") == "period"]
-        if any(x is not None for x in periods):
-            update_maxbound(self, None, None)
+        # TODO: Should new_value be the maximum of all the bounds?
+        # Or can update_maxbound figure that out?
+        update_maxbound(self, None, None)
     {% endif %}

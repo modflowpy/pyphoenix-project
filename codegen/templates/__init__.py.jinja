@@ -4,7 +4,5 @@ from .{{ c.name|replace("-","") }} import {{ c.name|class_name }}
 {% endfor %}
 
 __all__ = [
-    {% for c in components %}
-    "{{c.name|class_name}}",
-    {% endfor %}
+    {{ components | map(attribute="name") | map("class_name") | map("double_quote") | join(",")}}
 ]
