@@ -23,8 +23,8 @@ class {{ dfn.name|class_name }}(Package):
 
     Parameters
     ----------
-    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields)%}
-    {{ macros.docstrings(attr)|indent(4) -}}
+    {% for attr in dfn|attrs|rejectattr("name", "in", custom_fields) %}
+    {{ macros.docstrings(attr, indent=4)|indent(4) }}
     {% endfor %}
     """
 

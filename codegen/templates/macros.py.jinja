@@ -1,8 +1,12 @@
-{% macro docstrings(var) %}
-{{ var.name|safe_name }} : {{ var|type_docstr }}
+{% macro doc_description(var, indent=0) %}
 {% if var.description is defined and var.description is not none %}
-    {{ var.description|clean|math|wordwrap|indent(4) }}
-{% endif %}
+{{ var.description|clean|math|wordwrap(line_width-indent) }}
+{%- endif %}
+{%- endmacro %}
+
+{% macro docstrings(var, indent=0) %}
+{{ var.name|safe_name }} : {{ var|type_docstr }}
+    {{ doc_description(var, indent=indent+4)|indent(4) }}
 {%- endmacro %}
 
 {% macro xattree_field(attr, dfn, block=None, converter=None) %}
@@ -71,12 +75,12 @@ block="{{ block }}"
 {%- endif %}
 {%- endmacro %}
 
-{% macro child_type(attr) %}
+{% macro child_type(attr, optional="| None") %}
 {% if attr.multi %}
 list[{{ attr.name | class_name }}]
 {%- else %}
 {# ASSUMPTION: All single instances are optional, because the dfn doesn't tell us yet. #}
-{{ attr.name | class_name }} | None
+{{ attr.name | class_name }}{{ optional }}
 {%- endif %}
 {%- endmacro %}
 

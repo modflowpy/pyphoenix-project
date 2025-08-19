@@ -95,6 +95,7 @@ def make_all(
 
     env = _get_template_env()
     env.globals["dfn_tree"] = infer_tree(loaded_dfns)
+    env.globals["line_width"] = 100
 
     _make_init(dfns, outdir=outdir, env=env)
     for dfn in dfns:
