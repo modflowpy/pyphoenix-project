@@ -151,6 +151,32 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                     dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nnodes"]
                 )
                 if has_spatial_dims:
+                    # terrible hack to convert flat nodes dimension to 3d structured dims.
+                    # long term solution for this is to use a custom xarray index. filters
+                    # should then have access to all dimensions needed.
+                    dims_ = set(field_value.dims).copy()
+                    dims_.remove("nper")
+                    if dims_ == {"nnodes"}:
+                        parent = value.parent  # type: ignore
+                        field_value = xr.DataArray(
+                            field_value.data.reshape(
+                                (
+                                    field_value.sizes["nper"],
+                                    parent.dims["nlay"],
+                                    parent.dims["ncol"],
+                                    parent.dims["nrow"],
+                                )
+                            ),
+                            dims=("nper", "nlay", "ncol", "nrow"),
+                            coords={
+                                "nper": field_value.coords["nper"],
+                                "nlay": range(parent.dims["nlay"]),
+                                "ncol": range(parent.dims["ncol"]),
+                                "nrow": range(parent.dims["nrow"]),
+                            },
+                            name=field_value.name,
+                        )
+
                     period_data[field_name] = {
                         kper: field_value.isel(nper=kper)
                         for kper in range(field_value.sizes["nper"])

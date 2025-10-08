@@ -149,8 +149,8 @@ def test_dumps_chd():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 2
-    assert "1 10.0" in dumped  # First CHD cell - node 1
-    assert "100 20.0" in dumped  # Second CHD cell - node 100
+    assert "1 1 1 10.0" in dumped  # First CHD cell - node 1
+    assert "1 10 10 20.0" in dumped  # Second CHD cell - node 100
     assert "1e+30" not in dumped
     assert "1.0e+30" not in dumped
 
@@ -190,9 +190,9 @@ def test_dumps_wel():
 
     assert len(lines) == 3
     # node q (nodes are 1-based)
-    assert "24 -100.0" in dumped  # (0,2,3) -> node 24
-    assert "158 -50.0" in dumped  # (1,5,7) -> node 158
-    assert "282 25.0" in dumped  # (2,8,1) -> node 282
+    assert "1 3 4 -100.0" in dumped  # (0,2,3) -> node 24
+    assert "2 6 8 -50.0" in dumped  # (1,5,7) -> node 158
+    assert "3 9 2 25.0" in dumped  # (2,8,1) -> node 282
     assert "1e+30" not in dumped
     assert "1.0e+30" not in dumped
 
@@ -253,11 +253,11 @@ def test_dumps_drn():
     assert len(period2_lines) == 3
 
     # node elev cond
-    assert "5 10.0 1.0" in dumped  # Period 1: (0,0,4)
-    assert "46 8.0 2.0" in dumped  # Period 1: (1,4,0)
-    assert "7 12.0 1.5" in dumped  # Period 2: (0,1,1)
-    assert "14 9.0 0.8" in dumped  # Period 2: (0,2,3)
-    assert "43 7.0 2.2" in dumped  # Period 2: (1,3,2)
+    assert "1 1 5 10.0 1.0" in dumped  # Period 1: (0,0,4)
+    assert "2 5 1 8.0 2.0" in dumped  # Period 1: (1,4,0)
+    assert "1 2 2 12.0 1.5" in dumped  # Period 2: (0,1,1)
+    assert "1 3 4 9.0 0.8" in dumped  # Period 2: (0,2,3)
+    assert "2 4 3 7.0 2.2" in dumped  # Period 2: (1,3,2)
     assert "1e+30" not in dumped
     assert "1.0e+30" not in dumped
 
@@ -334,8 +334,8 @@ def test_dumps_wel_with_aux():
 
     assert len(lines) == 2
     # node q aux_value
-    assert "8 -75.0 1.0" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
-    assert "45 -25.0 2.0" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
+    assert "1 2 3 -75.0 1.0" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
+    assert "2 4 5 -25.0 2.0" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
     assert "1e+30" not in dumped
     assert "1.0e+30" not in dumped
 
