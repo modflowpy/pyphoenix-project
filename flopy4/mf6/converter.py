@@ -157,7 +157,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                     dims_ = set(field_value.dims).copy()
                     dims_.remove("nper")
                     if dims_ == {"nnodes"}:
-                        parent = value.parent
+                        parent = value.parent  # type: ignore
                         field_value = xr.DataArray(
                             field_value.data.reshape(
                                 (
