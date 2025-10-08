@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.component import update_maxbound
-from flopy4.mf6.converters import dict_to_array
+from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -31,7 +31,7 @@ class Wel(Package):
         block="period",
         dims=(
             "nper",
-            "nnodes",
+            "nodes",
         ),
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
@@ -42,7 +42,7 @@ class Wel(Package):
         block="period",
         dims=(
             "nper",
-            "nnodes",
+            "nodes",
         ),
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
@@ -53,7 +53,7 @@ class Wel(Package):
         block="period",
         dims=(
             "nper",
-            "nnodes",
+            "nodes",
         ),
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),

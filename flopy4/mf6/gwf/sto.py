@@ -6,7 +6,7 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converters import dict_to_array
+from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -23,19 +23,19 @@ class Sto(Package):
     dev_oldstorageformulation: bool = field(block="options", default=False)
     iconvert: NDArray[np.int32] = array(
         block="griddata",
-        dims=("nnodes",),
+        dims=("nodes",),
         default=0,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     ss: NDArray[np.float64] = array(
         block="griddata",
-        dims=("nnodes",),
+        dims=("nodes",),
         default=1e-5,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     sy: NDArray[np.float64] = array(
         block="griddata",
-        dims=("nnodes",),
+        dims=("nodes",),
         default=0.15,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )

@@ -176,7 +176,7 @@ def data2list(value: list | xr.DataArray | xr.Dataset):
             yield (value.item(),)
         return
 
-    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "nnodes")]
+    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "nodes")]
     has_spatial_dims = len(spatial_dims) > 0
     mask = nonempty(value)
     indices = np.where(mask)
@@ -223,7 +223,7 @@ def dataset2list(value: xr.Dataset):
     if combined_mask is None or not np.any(combined_mask):
         return
 
-    spatial_dims = [d for d in first_arr.dims if d in ("nlay", "nrow", "ncol", "nnodes")]
+    spatial_dims = [d for d in first_arr.dims if d in ("nlay", "nrow", "ncol", "nodes")]
     has_spatial_dims = len(spatial_dims) > 0
     indices = np.where(combined_mask)
     for i in range(len(indices[0])):

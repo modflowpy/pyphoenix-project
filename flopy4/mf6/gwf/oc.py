@@ -6,7 +6,7 @@ from attrs import Converter, define
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converters import dict_to_array
+from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 from flopy4.utils import to_path

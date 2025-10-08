@@ -7,7 +7,7 @@ from flopy.discretization.modeltime import ModelTime
 from numpy.typing import NDArray
 from xattree import ROOT, xattree
 
-from flopy4.mf6.converters import dict_to_array
+from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 

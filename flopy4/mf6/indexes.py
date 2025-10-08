@@ -46,13 +46,9 @@ class MetaIndex(Index):
 def grid_index(dataset: xr.Dataset) -> MetaIndex:
     return MetaIndex(
         {
-            # TODO add 'per' (stress period)
             "lay": alias(dataset, "nlay", "lay"),
             "col": alias(dataset, "ncol", "col"),
             "row": alias(dataset, "nrow", "row"),
-            # "node": alias(dataset, "nnodes", "node"),
-            # TODO: adding node breaks the other three.
-            # and just having node by itself works. why?
         }
     )
 

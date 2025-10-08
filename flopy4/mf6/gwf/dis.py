@@ -6,7 +6,7 @@ from flopy.discretization.structuredgrid import StructuredGrid
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converters import dict_to_array
+from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -70,14 +70,14 @@ class Dis(Package):
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    nnodes: int = dim(
+    nodes: int = dim(
         coord="node",
         scope="gwf",
         init=False,
     )
 
     def __attrs_post_init__(self):
-        self.nnodes = self.ncol * self.nrow * self.nlay
+        self.nodes = self.ncol * self.nrow * self.nlay
         super().__attrs_post_init__()
 
     def to_grid(self) -> StructuredGrid:
