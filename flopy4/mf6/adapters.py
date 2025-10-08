@@ -319,7 +319,7 @@ class Flopy3Data(DataInterface):
             case "ndarray":
                 if "nper" in self._data.dims:
                     if self._data.ndim == 2:
-                        if "nnodes" in self._data.dims:
+                        if "nodes" in self._data.dims:
                             return DataType.transient2d  # nodes?
                     if self._data.ndim == 3:
                         return DataType.transient3d  # ncpl?
@@ -327,7 +327,7 @@ class Flopy3Data(DataInterface):
                         return DataType.transient2d  # nodes?
                 else:
                     if self._data.ndim == 1:
-                        if "nnodes" in self._data.dims:
+                        if "nodes" in self._data.dims:
                             return DataType.array3d
                     if self._data.ndim == 2:
                         return DataType.array2d
@@ -351,7 +351,7 @@ class Flopy3Data(DataInterface):
     @property
     def array(self):
         if self._spec.type.__name__ == "ndarray":
-            if "nnodes" in self._data.dims:
+            if "nodes" in self._data.dims:
                 if "nper" in self._data.dims:
                     shape = (
                         self._time.nper,

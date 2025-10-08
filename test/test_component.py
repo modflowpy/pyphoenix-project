@@ -36,7 +36,7 @@ def test_init_gwf_explicit_dims():
         "nlay": grid.nlay,
         "nrow": grid.nrow,
         "ncol": grid.ncol,
-        "nnodes": grid.nnodes,
+        "nodes": grid.nnodes,
     }
     dis = Dis(dims=dims)
     ic = Ic(dims=dims)
@@ -164,7 +164,7 @@ def test_init_sim_explicit_dims():
     }
     dis = Dis(**dims)
     dims["nper"] = time.nper
-    dims["nnodes"] = grid.nnodes
+    dims["nodes"] = grid.nnodes
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
     npf = Npf(dims=dims)

@@ -56,7 +56,7 @@ def test_flopy3_model(tmp_path):
     dis.yorigin = 0.0
 
     dims["nper"] = time.nper
-    dims["nnodes"] = grid.nnodes
+    dims["nodes"] = grid.nnodes
 
     # ims = Ims(dims=dims)
     ims = Ims()
@@ -182,7 +182,7 @@ def test_flopy3_package(tmp_path):
     dis.botm = botm
 
     dims["nper"] = time.nper
-    dims["nnodes"] = grid.nnodes
+    dims["nodes"] = grid.nnodes
 
     gwf = Gwf(
         dis=dis,
@@ -257,7 +257,7 @@ def norun_test_flopy3_cbd_small(tmp_path):
     }
     dis = Dis(**dims)
     dims["nper"] = time.nper
-    dims["nnodes"] = cbd_small.nnodes
+    dims["nodes"] = cbd_small.nnodes
     gwf = Gwf(
         dis=dis,
         dims=dims,
@@ -298,7 +298,7 @@ def test_flopy3_grid2(tmp_path):
     dis.botm = botm
     dis.idomain = idomain
     dims["nper"] = time.nper
-    dims["nnodes"] = nlay * nrow * ncol
+    dims["nodes"] = nlay * nrow * ncol
     gwf = Gwf(
         dis=dis,
         dims=dims,
