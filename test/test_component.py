@@ -264,7 +264,7 @@ def test_chd_dfn():
 
 
 def test_ims_dfn():
-    ims = Ims(strict=False)
+    ims = Ims(slntype="ims", strict=False)
     dfn = ims.dfn
     assert dfn["name"] == "ims"
     assert not dfn["advanced"]
@@ -275,31 +275,66 @@ def test_ims_dfn():
     assert "inner_maximum" in set(dfn["linear"].keys())
 
 
-def test_chd02(function_tmpdir):
-    sim_name = "chd02"
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    sln = Solution(models=["gwf"])
-    dis = Dis(
-        nlay=1,
-        nrow=1,
-        ncol=10,
-        delr=1.0,
-        delc=1.0,
-        top=10.0,
-        botm=0.0,
+def test_gwf_chd01(function_tmpdir):
+    sim_name = "chd01"
+    gwf_name = "gwf_chd01"
+    time = ModelTime(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        slntype="ims",
+        slnfname="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1.00000000e-06,
+        outer_maximum=100,
+        under_relaxation="none",
+        inner_maximum=300,
+        inner_dvclose=1.00000000e-06,
+        inner_rclose=1.00000000e-06,
+        linear_acceleration="cg",
+        relaxation_factor=1.0,
+        scaling_method="none",
+        reordering_method="none",
     )
+
     sim = Simulation(
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": sln},
+        solutions={"ims": ims},
     )
-    gwf_name = "gwf"
-    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
-    ic = Ic(parent=gwf, strt=10.0)
+
+    dis = Dis(
+        nlay=1,
+        nrow=1,
+        ncol=100,
+        delr=1.0,
+        delc=1.0,
+        top=1.0,
+        botm=0.0,
+        idomain=1,
+    )
+
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+
+    ic = Ic(parent=gwf, strt=1.0)
+
     oc = Oc(parent=gwf)
-    npf = Npf(parent=gwf, icelltype=1)
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 10.0, (0, 0, 9): 5.0}})
+
+    npf = Npf(
+        parent=gwf,
+        save_specific_discharge=True,
+        k=1.0,
+        k33=1.0,
+        icelltype=0,
+    )
+
+    chd = Chd(
+        parent=gwf,
+        print_flows=True,
+        head={0: {(0, 0, 0): 1.0, (0, 0, 99): 0.0}},
+        name="chd-1",
+    )
 
     sim.write()
 

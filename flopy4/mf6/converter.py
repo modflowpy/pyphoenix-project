@@ -48,7 +48,7 @@ class _Binding:
             if isinstance(component, Exchange):
                 return f"{'-'.join([cls_name[:2], cls_name[3:]]).upper()}6"
             elif isinstance(component, Solution):
-                return "IMS6"
+                return f"{component.slntype}6"
             else:
                 return f"{cls_name.upper()}6"
 
@@ -196,7 +196,11 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                     period_data[block_name][field_name] = field_value  # type: ignore
             else:
                 if field_value is not None:
-                    blocks[block_name][field_name] = field_value
+                    if isinstance(field_value, bool):
+                        if field_value:
+                            blocks[block_name][field_name] = field_value
+                    else:
+                        blocks[block_name][field_name] = field_value
 
         if block_name in period_data and isinstance(period_data[block_name], dict):
             dataset = xr.Dataset(period_data[block_name])
