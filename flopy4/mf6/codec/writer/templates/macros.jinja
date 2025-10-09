@@ -1,3 +1,5 @@
+{% set inset = "  " %}
+
 {% macro field(name, value) %}
 {% set format = value|field_format %}
 {% if format in ['keyword', 'integer', 'double precision', 'string'] %}
@@ -15,7 +17,7 @@
 
 {% macro scalar(name, value) %}
 {% set format = value|field_format %}
-{% if value is not none %}{{ name.upper() }}{% if format != 'keyword' %} {{ value }}{% endif %}{% endif %}
+{% if value is not none %}{{ inset ~ name.upper() }}{% if format != 'keyword' %} {{ value }}{% endif %}{% endif %}
 {% endmacro %}
 
 {% macro keystring(name, value) %}
@@ -55,6 +57,6 @@ OPEN/CLOSE {{ value }}
 
 {% macro list(name, value) %}
 {% for row in (value|data2list) %}
-{{ row|join(" ") }}
+{{ inset ~ row|join(" ") }}
 {% endfor %}
 {% endmacro %}

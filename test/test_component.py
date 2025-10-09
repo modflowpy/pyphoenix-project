@@ -12,6 +12,7 @@ from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.solution import Solution
 from flopy4.mf6.tdis import Tdis
 
 
@@ -274,13 +275,56 @@ def test_ims_dfn():
     assert "inner_maximum" in set(dfn["linear"].keys())
 
 
+def test_chd02(function_tmpdir):
+    sim_name = "chd02"
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    sln = Solution(models=["gwf"])
+    dis = Dis(
+        nlay=1,
+        nrow=1,
+        ncol=10,
+        delr=1.0,
+        delc=1.0,
+        top=10.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": sln},
+    )
+    gwf_name = "gwf"
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=10.0)
+    oc = Oc(parent=gwf)
+    npf = Npf(parent=gwf, icelltype=1)
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 10.0, (0, 0, 9): 5.0}})
+
+    sim.write()
+
+
 def test_write_ascii(function_tmpdir):
     sim_name = "sim"
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
-    sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name)
+    sln = Solution(models=["gwf"])
+    dis = Dis(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+        delr=1.0,
+        delc=1.0,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": sln},
+    )
     gwf_name = "gwf"
-    gwf = Gwf(parent=sim, dis=grid, name=gwf_name)
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)

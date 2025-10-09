@@ -47,6 +47,8 @@ class _Binding:
             cls_name = component.__class__.__name__
             if isinstance(component, Exchange):
                 return f"{'-'.join([cls_name[:2], cls_name[3:]]).upper()}6"
+            elif isinstance(component, Solution):
+                return "IMS6"
             else:
                 return f"{cls_name.upper()}6"
 
@@ -107,7 +109,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for comp in field_value.values()
                         if comp is not None
                     ]
-                elif isinstance(field_value, (list, tuple)):
+                elif isinstance(field_value, (list, tuple, xattree.DataTreeList)):
                     components = [
                         _Binding.from_component(comp).to_tuple()
                         for comp in field_value
@@ -170,16 +172,16 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                                 (
                                     field_value.sizes["nper"],
                                     parent.dims["nlay"],
-                                    parent.dims["ncol"],
                                     parent.dims["nrow"],
+                                    parent.dims["ncol"],
                                 )
                             ),
-                            dims=("nper", "nlay", "ncol", "nrow"),
+                            dims=("nper", "nlay", "nrow", "ncol"),
                             coords={
                                 "nper": field_value.coords["nper"],
                                 "nlay": range(parent.dims["nlay"]),
-                                "ncol": range(parent.dims["ncol"]),
                                 "nrow": range(parent.dims["nrow"]),
+                                "ncol": range(parent.dims["ncol"]),
                             },
                             name=field_value.name,
                         )
