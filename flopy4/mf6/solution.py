@@ -18,4 +18,4 @@ class Solution(Package, ABC):
     def default_filename(self) -> str:
         name = self.slntype.lower() if self.slntype else "sln"
         cls_name = self.__class__.__name__.lower()
-        return self.slnfname if self.slnfname else f"{cls_name}.{name}"
+        return str(self.slnfname) if self.slnfname else f"{cls_name}.{name}"
