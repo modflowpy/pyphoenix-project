@@ -3,9 +3,17 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
+
 - [Conceptual model](#conceptual-model)
 - [Object model](#object-model)
 - [IO](#io)
+  - [Input](#input)
+    - [Unified IO](#unified-io)
+    - [Conversion](#conversion)
+    - [Serialization](#serialization)
+      - [Writer](#writer)
+      - [Reader](#reader)
+  - [Output](#output)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -19,25 +27,24 @@ This document follows MODFLOW 6 terminology where applicable, with modifications
 
 A MODFLOW 6 simulation is as a hierarchy of modular **components**. Components encapsulate related data and functionality. 
 
-Components may have zero or more user-specified **variables** &mdash; we use this term interchangeably with **field**, with the latter preferred due to "variable"'s genericity. A field might be a model parameter, e.g. a numeric scalar or array value. Fields which configure non-numerical features of the simulation are called **options**. A field can be required or optional.
+Components may have zero or more user-specified **variables** &mdash; the product calls these **field**, as the latter is more conventional in the Python world. A field might be a numeric parameter, e.g. a scalar or array value, or a configuration value. Fields which configure non-numerical features of the simulation are called **options**. A field may or may not be mandatory.
 
-Components come in several subtypes:
+The fundamental component flavors are
 
-- **simulation**: the fundamental "unit of work" in MF6, consisting of 1+ (possibly coupled) hydrologic process(es)
-- **model**: a simulated hydrological process
-- **package**: a subcomponent of a model or simulation
+- **simulation**: MF6's "unit of work", consisting of 1+ models, possibly coupled
+- **model**: a simulated hydrological process, possibly coupled to others
+- **package**: a subcomponent of a simulation, model, or package
 
-The simulation is the root of the tree, with models and packages under it, each of which itself might have other packages.
+The simulation is the root of a tree whose internal nodes are models and whose leaves are packages. A package is not necessarily a leaf; packages may have packages as children.
 
-Most components must have one particular parent (e.g., models are children of a simulation), but some relax this requirement.
+Most components have only one possible parent (e.g., models are children of the simulation), but some relax this requirement.
 
-Packages come in several flavors, not necessarily mutually exclusive.
+There are several special kinds of package, not necessarily mutually exclusive.
 
-- A **stress package** represents a forcing.
-- A **basic package** contains only input variables applying statically to the entire simulation.
-- An **advanced package** contains time-varying input variables.
-- Most packages are singular &mdash; the parent component may have one and only one instance. When arbitrarily many are permitted, the package is called a **multi-package**.
-- A **subpackage** is a package whose parent is another package.
+- A **stress package** represents a forcing
+- A **basic package** contains only input variables applying statically to the entire simulation
+- An **advanced package** contains time-varying input variables
+- A **subpackage** is a package whose parent is another package
 
 ```mermaid
 classDiagram
@@ -51,7 +58,7 @@ classDiagram
     Subpackage *-- "1+" Variable
 ```
 
-Components are specified by **definition files**. A definition file specifies a single component and its fields. A definition file consists of top-level metadata and a collection of **blocks**. A block is a named collection of fields. A component may contain zero or more blocks. Each block must contain at least one variable. Most components will have a block named "Options" &mdash; see the [MODFLOW 6 DFN file specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) for more info.
+Components are specified by **definition files**. A definition file specifies a single component and its fields. A definition file consists of top-level metadata and **blocks** (named collections) of variables. A component may contain zero or more blocks. Each block must contain at least one variable. Most components will have a block named "options" &mdash; see the [MODFLOW 6 DFN file specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) for more info.
 
 ## Object model
 
@@ -108,10 +115,103 @@ The product provides an IO framework with which de/serializers can be registered
 
 The product will allow IO to be configured globally, on a per-simulation basis, or at read/write time via method parameters.
 
-IO is implemented in several layers:
+### Input
 
-- IO operations, implemented as descriptors, backing `load` and `write` methods on the base component class
-- `cattrs` converters to map the object model to/from Python primitives and containers (i.e. un/structuring)
-- Encoders/decoders for any number of serialization formats, which translate primitives/containers to strings
+Input file IO is implemented in three layers:
 
-In particular, the product will implement a conversion layer and a serialization layer for the MODFLOW 6 input file format. The serialization layer implements a file writer via `Jinja2` templates and a file parser via a `lark` parser generated from an EBNF language specification.
+1. **Unified IO layer**: Registry and descriptors implementing `load` and `write` methods on the base `Component` class
+2. **Conversion layer**: Uses `cattrs` to map the object model to/from Python primitives and containers (i.e. un/structuring)
+3. **Serialization layer**: Format-specific encoders/decoders translating primitives and containers to/from strings or binary data
+
+#### Unified IO
+
+The `flopy4.uio` module provides a pluggable IO framework adapted from [`astropy`](https://github.com/astropy/astropy/tree/main/astropy/io). A global `Registry` maintains mappings from `(component_class, format)` pairs to load and write functions. The `Component` base class implements user-facing `load` and `write` methods via descriptors which dispatch functions in the registry.
+
+Loaders and writers can be registered for any component class and format. The registry supports inheritance: a loader/writer registered for a base class is available to all subclasses.
+
+```python
+from flopy4.uio import DEFAULT_REGISTRY
+from flopy4.mf6.component import Component
+
+DEFAULT_REGISTRY.register_writer(Component, "ascii", write_ascii)
+DEFAULT_REGISTRY.register_writer(Component, "netcdf", write_netcdf)
+```
+
+The user may then select a format at call time, e.g. `component.write(format="netcdf")`.
+
+#### Conversion
+
+The conversion layer uses `cattrs` to transform between the product's `xarray`/`attrs`-based object model and plain Python data structures suitable for serialization. This layer is format-agnostic and handles structural transformations common across formats.
+
+**Unstructuring (write path)**: A `cattrs` converter with appropriate hooks will convert components to nested dictionaries organized by block, handling tasks like
+
+- Organizing fields into blocks according to their `block` metadata from DFN files
+- Converting child components to binding records for parent component name files
+- Sliceing time-varying (period block) arrays by stress period
+- Converting `Path` objects to records (`FILEOUT` etc)
+
+**Structuring (read path)**: The reverse transformation turns dictionaries of primitives into component instances. A `cattrs` converter with appropriate hooks will, among other things,
+
+- Instantiate child components from binding records
+- Convert sparse list-input representations to arrays
+- Reconstruct time-varying array variables from indexed blocks
+- Guarantee `xarray` objects have proper dimensions/coordinates
+
+#### Serialization
+
+The serialization layer implements format-specific encoding and decoding. The product minimally aims to implement serializers for the MODFLOW 6 text-based input format and MODFLOW 6 binary output formats.
+
+##### Writer
+
+The writer in `flopy4.mf6.codec.writer` uses [Jinja2](https://jinja.palletsprojects.com/) templates to render unstructured component dictionaries as MF6 input files.
+
+A top-level-template `blocks.jinja` iterates over blocks, calling field macros defined in `macros.jinja`. Macros dispatch on field format (detected via custom Jinja filters) to render:
+
+- **Scalars**: keywords, integers, floats, strings
+- **Records**: tuples of values (e.g., file specifications, cell IDs with values)
+- **Arrays**: numeric arrays with control records (`CONSTANT`, `INTERNAL`, `OPEN/CLOSE`)
+- **Lists**: stress period data, either tabular or keystring format
+- **Keystrings**: option records with keyword-value pairs
+
+Custom Jinja filters in `flopy4.mf6.codec.writer.filters` implement field-specific logic.
+
+The writer handles several MF6-specific concerns:
+- **Layered arrays**: 3D arrays are chunked by layer for `LAYERED` array input
+- **External files**: Large arrays can reference external files via `OPEN/CLOSE`
+- **NetCDF output**: Array control records can specify `NETCDF` for array output
+- **Fill values**: Sparse data representation elides cells with fill value `DNODATA`
+
+##### Reader
+
+The reader in `flopy4.mf6.codec.reader` uses [Lark](https://lark-parser.readthedocs.io/) to parse MF6 input files. Parsing is implemented in two stages: a parser generates a parse tree from input text, then a transformer converts the tree to Python data structures.
+
+The reader currently provides two grammar/transformer pairs:
+
+**Basic grammar**: A minimal grammar recognizing only the block structure of MF6 input files. Blocks are delimited by `BEGIN <name>` and `END <name>` markers and contain lines of whitespace-separated tokens (words and numbers). The corresponding transformer simply yields blocks as lists of lines, each a list of tokens.
+
+**Typed grammar**: A type-aware grammar with rules for specific MF6 constructs:
+- Array control records: `CONSTANT`, `INTERNAL`, `OPEN/CLOSE` with modifiers (`FACTOR`, `IPRN`, `BINARY`)
+- Layered arrays: `LAYERED` keyword preceding multiple array control records
+- NetCDF arrays: `NETCDF` keyword
+- Numeric types: integers and doubles
+- Strings: quoted strings and bare words
+- Lists and records: whitespace-delimited values
+
+A grammar inheriting from and using the typed base grammar can then be generated for each component.
+
+A typed transformer can use the DFN specification to identify fields by keyword, and can handle data types properly, for instance creating `xarray.DataArray` objects for array fields and handling external file references.
+
+This "push knowledge into the parser" approach
+
+- creates more structured parse trees
+- reduces post-parsing transformation complexity
+- speeds up validation
+- generates better error messages
+
+After parsing and transformation, a `cattrs` converter structures the resulting dicts into components.
+
+### Output
+
+Binary output readers are provided for binary head and budget output files.
+
+These readers parse the binary formats specified in the MODFLOW 6 documentation and return data as `xarray` structures. The approach is largely borrowed from `imod-python`.
