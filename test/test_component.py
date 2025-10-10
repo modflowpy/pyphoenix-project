@@ -12,7 +12,6 @@ from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
-from flopy4.mf6.solution import Solution
 from flopy4.mf6.tdis import Tdis
 
 
@@ -264,7 +263,7 @@ def test_chd_dfn():
 
 
 def test_ims_dfn():
-    ims = Ims(slntype="ims", strict=False)
+    ims = Ims(strict=False)
     dfn = ims.dfn
     assert dfn["name"] == "ims"
     assert not dfn["advanced"]
@@ -281,7 +280,6 @@ def test_gwf_chd01(function_tmpdir):
     time = ModelTime(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
 
     ims = Ims(
-        slntype="ims",
         slnfname="sln1.ims",
         models=[gwf_name],
         print_option="summary",
@@ -341,8 +339,9 @@ def test_gwf_chd01(function_tmpdir):
 
 def test_write_ascii(function_tmpdir):
     sim_name = "sim"
+    gwf_name = "gwf"
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    sln = Solution(models=["gwf"])
+    ims = Ims(models=[gwf_name])
     dis = Dis(
         nlay=1,
         nrow=10,
@@ -356,9 +355,8 @@ def test_write_ascii(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": sln},
+        solutions={"ims": ims},
     )
-    gwf_name = "gwf"
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)

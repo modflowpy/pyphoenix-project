@@ -11,7 +11,9 @@ from flopy4.mf6.spec import field
 @xattree
 class Ims(Solution):
     solution_package: ClassVar[Sln] = Sln(abbr="ims", pattern="*")
+    slntype: ClassVar[str] = "ims"
 
+    mxiter: Optional[int] = field(default=1)
     print_option: Optional[str] = field(block="options", default=None)
     complexity: str = field(block="options", default="simple")
     csv_outer_output_file: Optional[Path] = field(default=None, block="options")
