@@ -1,4 +1,4 @@
-from collections.abc import MutableMapping
+from collections.abc import Iterable, MutableMapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -47,6 +47,8 @@ class _Binding:
             cls_name = component.__class__.__name__
             if isinstance(component, Exchange):
                 return f"{'-'.join([cls_name[:2], cls_name[3:]]).upper()}6"
+            elif isinstance(component, Solution):
+                return f"{component.slntype}6"
             else:
                 return f"{cls_name.upper()}6"
 
@@ -107,7 +109,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for comp in field_value.values()
                         if comp is not None
                     ]
-                elif isinstance(field_value, (list, tuple)):
+                elif isinstance(field_value, Iterable):
                     components = [
                         _Binding.from_component(comp).to_tuple()
                         for comp in field_value
@@ -170,16 +172,16 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                                 (
                                     field_value.sizes["nper"],
                                     parent.dims["nlay"],
-                                    parent.dims["ncol"],
                                     parent.dims["nrow"],
+                                    parent.dims["ncol"],
                                 )
                             ),
-                            dims=("nper", "nlay", "ncol", "nrow"),
+                            dims=("nper", "nlay", "nrow", "ncol"),
                             coords={
                                 "nper": field_value.coords["nper"],
                                 "nlay": range(parent.dims["nlay"]),
-                                "ncol": range(parent.dims["ncol"]),
                                 "nrow": range(parent.dims["nrow"]),
+                                "ncol": range(parent.dims["ncol"]),
                             },
                             name=field_value.name,
                         )
@@ -189,12 +191,28 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for kper in range(field_value.sizes["nper"])
                     }
                 else:
-                    if block_name not in period_data:
-                        period_data[block_name] = {}
-                    period_data[block_name][field_name] = field_value  # type: ignore
+                    if (
+                        # TODO: refactor
+                        # field_name == "save_budget"
+                        # or field_name == "save_head"
+                        # or field_name == "print_budget"
+                        # or field_name == "print_head"
+                        np.issubdtype(field_value.dtype, np.str_)
+                    ):
+                        period_data[field_name] = {
+                            kper: field_value[kper] for kper in range(field_value.sizes["nper"])
+                        }
+                    else:
+                        if block_name not in period_data:
+                            period_data[block_name] = {}
+                        period_data[block_name][field_name] = field_value  # type: ignore
             else:
                 if field_value is not None:
-                    blocks[block_name][field_name] = field_value
+                    if isinstance(field_value, bool):
+                        if field_value:
+                            blocks[block_name][field_name] = field_value
+                    else:
+                        blocks[block_name][field_name] = field_value
 
         if block_name in period_data and isinstance(period_data[block_name], dict):
             dataset = xr.Dataset(period_data[block_name])

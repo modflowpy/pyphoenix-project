@@ -274,13 +274,135 @@ def test_ims_dfn():
     assert "inner_maximum" in set(dfn["linear"].keys())
 
 
+def test_gwf_chd01(function_tmpdir):
+    sim_name = "chd01"
+    gwf_name = "gwf_chd01"
+    time = ModelTime(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        slnfname="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1.00000000e-06,
+        outer_maximum=100,
+        under_relaxation="none",
+        inner_maximum=300,
+        inner_dvclose=1.00000000e-06,
+        inner_rclose=1.00000000e-06,
+        linear_acceleration="cg",
+        relaxation_factor=1.0,
+        scaling_method="none",
+        reordering_method="none",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(
+        nlay=1,
+        nrow=1,
+        ncol=100,
+        delr=1.0,
+        delc=1.0,
+        top=1.0,
+        botm=0.0,
+        idomain=1,
+    )
+
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+
+    ic = Ic(parent=gwf, strt=1.0)
+
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        # COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL
+        save_head=["last"],
+        # save_head={0: "last"},
+        save_budget=["last"],
+        print_head=["last"],
+        print_budget=["last"],
+    )
+
+    npf = Npf(
+        parent=gwf,
+        save_specific_discharge=True,
+        k=1.0,
+        k33=1.0,
+        icelltype=0,
+    )
+
+    chd = Chd(
+        parent=gwf,
+        print_flows=True,
+        head={0: {(0, 0, 0): 1.0, (0, 0, 99): 0.0}},
+        name="chd-1",
+    )
+
+    sim.write()
+    sim.run()
+
+
+def test_quickstart(function_tmpdir):
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(models=[gwf_name])
+    dis = Dis(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        save_head=["all"],
+        save_budget=["all"],
+    )
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+
+    sim.write()
+    sim.run()
+
+
 def test_write_ascii(function_tmpdir):
     sim_name = "sim"
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
-    sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name)
     gwf_name = "gwf"
-    gwf = Gwf(parent=sim, dis=grid, name=gwf_name)
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(models=[gwf_name])
+    dis = Dis(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+        delr=1.0,
+        delc=1.0,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)

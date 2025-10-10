@@ -242,9 +242,6 @@ def test_flopy3_package(tmp_path):
 
 
 def norun_test_flopy3_cbd_small(tmp_path):
-    import sys
-
-    sys.path.append("/home/mjreno/.clone/usgs/flopy/autotest")
     from test_grid_cases import GridCases
 
     time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])

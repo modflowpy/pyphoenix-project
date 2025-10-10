@@ -260,9 +260,14 @@ def data2keystring(value: dict | xr.Dataset):
             return
 
         for field_name in value.data_vars.keys():
+            name = (
+                field_name.replace("_", " ").upper()
+                if np.issubdtype(value.data_vars[field_name].dtype, np.str_)
+                else field_name.upper()
+            )
             field_val = value[field_name]
             if hasattr(field_val, "item"):
                 val = field_val.item()
             else:
                 val = field_val
-            yield (field_name.upper(), val)
+            yield (name, val)

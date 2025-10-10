@@ -11,7 +11,9 @@ from flopy4.mf6.spec import field
 @xattree
 class Ims(Solution):
     solution_package: ClassVar[Sln] = Sln(abbr="ims", pattern="*")
+    slntype: ClassVar[str] = "ims"
 
+    mxiter: Optional[int] = field(default=1)
     print_option: Optional[str] = field(block="options", default=None)
     complexity: str = field(block="options", default="simple")
     csv_outer_output_file: Optional[Path] = field(default=None, block="options")
@@ -19,9 +21,9 @@ class Ims(Solution):
     no_ptc: bool = field(default=False, block="options")
     no_ptc_option: Optional[str] = field(default=None, block="options")
     ats_outer_maximum_fraction: Optional[float] = field(block="options", default=None)
-    outer_dvclose: Optional[float] = field(default=None, block="options")
-    outer_maximum: Optional[int] = field(default=None, block="options")
-    under_relaxation: Optional[str] = field(default=None, block="options")
+    outer_dvclose: Optional[float] = field(default=None, block="nonlinear")
+    outer_maximum: Optional[int] = field(default=None, block="nonlinear")
+    under_relaxation: Optional[str] = field(default=None, block="nonlinear")
     under_relaxation_gamma: Optional[float] = field(block="nonlinear", default=None)
     under_relaxation_theta: Optional[float] = field(block="nonlinear", default=None)
     under_relaxation_kappa: Optional[float] = field(block="nonlinear", default=None)
