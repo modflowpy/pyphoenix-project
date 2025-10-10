@@ -323,6 +323,7 @@ def test_gwf_chd01(function_tmpdir):
         head_file=f"{gwf_name}.hds",
         # COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL
         save_head=["last"],
+        # save_head={0: "last"},
         save_budget=["last"],
         print_head=["last"],
         print_budget=["last"],
@@ -344,6 +345,41 @@ def test_gwf_chd01(function_tmpdir):
     )
 
     sim.write()
+    sim.run()
+
+
+def test_quickstart(function_tmpdir):
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(models=[gwf_name])
+    dis = Dis(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        save_head=["all"],
+        save_budget=["all"],
+    )
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+
+    sim.write()
+    sim.run()
 
 
 def test_write_ascii(function_tmpdir):
