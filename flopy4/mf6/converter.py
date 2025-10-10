@@ -1,4 +1,4 @@
-from collections.abc import MutableMapping
+from collections.abc import Iterable, MutableMapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -109,7 +109,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for comp in field_value.values()
                         if comp is not None
                     ]
-                elif isinstance(field_value, (list, tuple, xattree.DataTreeList)):
+                elif isinstance(field_value, Iterable):
                     components = [
                         _Binding.from_component(comp).to_tuple()
                         for comp in field_value
@@ -191,9 +191,21 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for kper in range(field_value.sizes["nper"])
                     }
                 else:
-                    if block_name not in period_data:
-                        period_data[block_name] = {}
-                    period_data[block_name][field_name] = field_value  # type: ignore
+                    if (
+                        # TODO: refactor
+                        # field_name == "save_budget"
+                        # or field_name == "save_head"
+                        # or field_name == "print_budget"
+                        # or field_name == "print_head"
+                        np.issubdtype(field_value.dtype, np.str_)
+                    ):
+                        period_data[field_name] = {
+                            kper: field_value[kper] for kper in range(field_value.sizes["nper"])
+                        }
+                    else:
+                        if block_name not in period_data:
+                            period_data[block_name] = {}
+                        period_data[block_name][field_name] = field_value  # type: ignore
             else:
                 if field_value is not None:
                     if isinstance(field_value, bool):

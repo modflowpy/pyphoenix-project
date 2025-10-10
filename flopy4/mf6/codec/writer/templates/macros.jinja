@@ -32,7 +32,7 @@
 {{ field_name.upper() }} {{ field(field_value) }}
 {%- endfor %}
 {% else %}
-{{ value|join(" ") }}
+{{ inset ~ value|join(" ") }}
 {%- endif %}
 {% endmacro %}
 

@@ -317,7 +317,16 @@ def test_gwf_chd01(function_tmpdir):
 
     ic = Ic(parent=gwf, strt=1.0)
 
-    oc = Oc(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        # COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL
+        save_head=["last"],
+        save_budget=["last"],
+        print_head=["last"],
+        print_budget=["last"],
+    )
 
     npf = Npf(
         parent=gwf,
