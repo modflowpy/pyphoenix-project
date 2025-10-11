@@ -16,6 +16,7 @@ from flopy4.utils import to_path
 class Oc(Package):
     @define(slots=False)
     class Format:
+        fmt_kw: str = field(default="print_format")
         columns: int = field(default=10)
         width: int = field(default=11)
         digits: int = field(default=4)
@@ -49,7 +50,8 @@ class Oc(Package):
         converter=to_path,
         default=None,
     )
-    format: Optional[Format] = field(block="options", default=None, init=False)
+    # TODO: needs coverter and then rename?
+    head: Optional[Format] = field(block="options", default=None)
     save_head: Optional[NDArray[np.object_]] = array(
         object,
         block="period",
