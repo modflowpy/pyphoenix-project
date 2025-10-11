@@ -22,8 +22,8 @@
 
 {% macro keystring(name, value) %}
 {% for option in (value|data2keystring) -%}
-{{ record("", option) }}
-{% endfor %}
+{{ record("", option) }}{% if not loop.last %}{{ "\n" }}{% endif %}
+{%- endfor %}
 {% endmacro %}
 
 {% macro record(name, value) %}
@@ -37,26 +37,26 @@
 {% endmacro %}
 
 {% macro array(name, value, how="internal") %}
-{{ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
+{{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
-CONSTANT {{ value.item() }}
+    CONSTANT {{ value.item() }}
 {% elif how == "layered constant" %}
 {% for layer in value -%}
-CONSTANT {{ layer.item() }}
+    CONSTANT {{ layer.item() }}
 {%- endfor %}
 {% elif how == "internal" %}
-INTERNAL
+    INTERNAL
 {% for chunk in value|array_chunks -%}
-{{ chunk|array2string }}
+{{ (2 * inset) ~ chunk|array2string }}
 {%- endfor %}
 {% elif how == "external" %}
-OPEN/CLOSE {{ value }}
+    OPEN/CLOSE {{ value }}
 {% endif %}
 {% endmacro %}
 
 {% macro list(name, value) %}
 {% for row in (value|data2list) %}
-{{ inset ~ row|join(" ") }}
-{% endfor %}
+{{ inset ~ row|join(" ") }}{% if not loop.last %}{{ "\n" }}{% endif %}
+{%- endfor %}
 {% endmacro %}
