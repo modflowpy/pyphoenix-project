@@ -135,17 +135,7 @@ Input file IO is implemented in three layers:
 
 The `flopy4.uio` module provides a pluggable IO framework adapted from [`astropy`](https://github.com/astropy/astropy/tree/main/astropy/io). A global `Registry` maintains mappings from `(component_class, format)` pairs to load and write functions. The `Component` base class implements user-facing `load` and `write` methods via descriptors which dispatch functions in the registry.
 
-Loaders and writers can be registered for any component class and format. The registry supports inheritance: a loader/writer registered for a base class is available to all subclasses.
-
-```python
-from flopy4.uio import DEFAULT_REGISTRY
-from flopy4.mf6.component import Component
-
-DEFAULT_REGISTRY.register_writer(Component, "ascii", write_ascii)
-DEFAULT_REGISTRY.register_writer(Component, "netcdf", write_netcdf)
-```
-
-The user may then select a format at call time, e.g. `component.write(format="netcdf")`.
+Loaders and writers can be registered for any component class and format. The registry supports inheritance: a loader/writer registered for a base class is available to all subclasses. The user may then select a format at call time.
 
 #### Conversion
 

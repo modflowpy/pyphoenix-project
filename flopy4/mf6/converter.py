@@ -326,3 +326,15 @@ def dict_to_array(value, self_, field) -> NDArray:
             set_(a, v, nn)
 
     return final(a)
+
+
+def structure(data: dict[str, Any], path: Path) -> Component:
+    component = COMPONENT_CONVERTER.structure(data, Component)
+    if isinstance(component, Context):
+        component.workspace = path.parent
+    component.filename = path.name
+    return component
+
+
+def unstructure(component: Component) -> dict[str, Any]:
+    return COMPONENT_CONVERTER.unstructure(component)
