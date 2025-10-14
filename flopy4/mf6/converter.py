@@ -259,6 +259,9 @@ def dict_to_array(value, self_, field) -> NDArray:
     """
     Convert a sparse dictionary representation of an array to a
     dense numpy array or a sparse COO array.
+
+    TODO: generalize this not only to dictionaries but to any
+    form that can be converted to an array (e.g. nested list)
     """
 
     if not isinstance(value, dict):
