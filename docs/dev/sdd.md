@@ -62,7 +62,7 @@ Components are specified by **definition files**. A definition file specifies a 
 
 ## Object model
 
-The product's main use cases will include creating, manipulating, running, and inspecting MODFLOW 6 simulations. It is natural to provide an object-oriented interface in which every MF6 component module will generally have a corresponding class.
+The product's main use cases include creating, manipulating, running, and inspecting MODFLOW 6 simulations. It is natural to provide an object-oriented interface in which every MF6 component module will generally have a corresponding class.
 
 There are many ways to implement an object model in Python: dictionaries, named tuples, plain classes, `dataclasses`, etc.
 
@@ -80,6 +80,8 @@ A third motivation is consistency with [`imod-python`](https://github.com/Deltar
 Components in `imod-python` encode parent/child relations in a dictionary, which is filtered as needed for subcomponents of a particular type. The structure of a simulation (or of any component with respect to its children) is thus flexible. "Structural" checks (i.e., what may be attached to what?) run in a separate validation step. 
 
 The product aims instead for typed components, where children can be read off the class definition. This pulls structural validation from runtime to type-checking time, so invalid arrangements are visible in e.g. IDEs with Intellisense.
+
+### Core design
 
 The product adopts the standard library `dataclasses` paradigm for class definitions. The `dataclasses` module is derived from a project called [`attrs`](https://www.attrs.org/en/stable/) with [more power](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/). `attrs` permits terse class definitions, e.g.
 
@@ -107,13 +109,19 @@ Combining `attrs` and `xarray` in this way presents challenges involving duplica
 
 The sparse, record-based list input format used by MODFLOW 6 is also in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
 
+### Convention compliance
+
+Being based on `xarray`, the product can support the [MODFLOW 6 NetCDF specification](https://github.com/MODFLOW-ORG/modflow6/wiki/MODFLOW-NetCDF-Format) via `xarray` extension points: custom indices and accessors.
+
+Different "views" of the same underlying components may be provided for each relevant convention through these extension points.
+
+The product can define a custom index and accessor (e.g. `.grid`) providing a structured grid specification. The product can adopt the [`xugrid` library](https://github.com/Deltares/xugrid) for UGRID support.
+
+While custom indices will enable indexing and selection directly on datasets, the accessors can provide utilities for plotting, export, etc. For instance, `xugrid` provides a [`.to_netcdf()` function](https://deltares.github.io/xugrid/api/xugrid.UgridDatasetAccessor.to_netcdf.html). Selecting the scheme in which to write simulation input files then reduces simply to calling `.to_netcdf()` through the appropriate accessor.
+
 ## IO
 
-IO is at the boundary of the product. Details of any particular input or output format should not contaminate the product's object model.
-
-The product provides an IO framework with which de/serializers can be registered for arbitrary components and formats.
-
-The product will allow IO to be configured globally, on a per-simulation basis, or at read/write time via method parameters.
+IO is at the product's boundary. Details of any input or output format should not be coupled to the object model.
 
 ### Input
 
