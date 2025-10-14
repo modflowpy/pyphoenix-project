@@ -1,5 +1,5 @@
 import sys
-from os import PathLike
+from typing import IO
 
 import numpy as np
 from jinja2 import Environment, PackageLoader
@@ -32,8 +32,8 @@ def dumps(data) -> str:
         return template.render(blocks=data)
 
 
-def dump(data, path: str | PathLike) -> None:
+def dump(data, fp: IO[str]) -> None:
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
     iterator = template.generate(blocks=data)
-    with np.printoptions(**_PRINT_OPTIONS), open(path, "w") as f:  # type: ignore
-        f.writelines(iterator)
+    with np.printoptions(**_PRINT_OPTIONS):  # type: ignore
+        fp.writelines(iterator)

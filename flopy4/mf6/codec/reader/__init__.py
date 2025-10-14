@@ -1,12 +1,13 @@
-from os import PathLike
-from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 from flopy4.mf6.codec.reader.parser import make_basic_parser
 from flopy4.mf6.codec.reader.transformer import BasicTransformer
 
+BASIC_PARSER = make_basic_parser()
+BASIC_TRANSFORMER = BasicTransformer()
 
-def load(path: str | PathLike) -> Any:
+
+def load(fp: IO[str]) -> Any:
     """
     Load and parse an MF6 input file.
 
@@ -20,10 +21,7 @@ def load(path: str | PathLike) -> Any:
     Any
         Parsed MF6 input file structure
     """
-    path = Path(path)
-    with open(path, "r") as f:
-        data = f.read()
-    return loads(data)
+    return loads(fp.read())
 
 
 def loads(data: str) -> Any:
@@ -41,6 +39,4 @@ def loads(data: str) -> Any:
         Parsed MF6 input file structure
     """
 
-    parser = make_basic_parser()
-    transformer = BasicTransformer()
-    return transformer.transform(parser.parse(data))
+    return BASIC_TRANSFORMER.transform(BASIC_PARSER.parse(data))

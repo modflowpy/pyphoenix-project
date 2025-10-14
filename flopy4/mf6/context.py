@@ -5,6 +5,7 @@ from modflow_devtools.misc import cd
 from xattree import xattree
 
 from flopy4.mf6.component import Component
+from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field
 
 
@@ -23,12 +24,13 @@ class Context(Component, ABC):
 
     @property
     def path(self) -> Path:
+        self.filename = self.filename or self.default_filename()
         return self.workspace / self.filename
 
-    def load(self, format="ascii"):
+    def load(self, format=MF6):
         with cd(self.workspace):
             super().load(format=format)
 
-    def write(self, format="ascii"):
+    def write(self, format=MF6):
         with cd(self.workspace):
             super().write(format=format)
