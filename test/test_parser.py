@@ -5,7 +5,6 @@ import numpy as np
 import xarray as xr
 from lark import Lark
 from modflow_devtools.dfn import Dfn
-from modflow_devtools.dfn.schema.v2 import FieldV2
 from packaging.version import Version
 
 from flopy4.mf6.codec.reader.transformer import TypedTransformer
@@ -136,22 +135,24 @@ INTERNAL FACTOR 2.0
 
 
 def test_transform_full_component():
-    dfn = Dfn(
-        name="test_transform",
-        schema_version=Version("2"),
-        blocks={
-            "options": {
-                "r2d2": FieldV2(name="r2d2", type="keyword"),
-                "b": FieldV2(name="b", type="string"),
-                "c": FieldV2(name="c", type="integer"),
-                "p": FieldV2(name="p", type="double"),
+    dfn = Dfn.from_dict(
+        {
+            "name": "test_transform",
+            "schema_version": Version("2"),
+            "blocks": {
+                "options": {
+                    "r2d2": {"name": "r2d2", "type": "keyword"},
+                    "b": {"name": "b", "type": "string"},
+                    "c": {"name": "c", "type": "integer"},
+                    "p": {"name": "p", "type": "double"},
+                },
+                "arrays": {
+                    "x": {"name": "x", "type": "double", "shape": None},
+                    "y": {"name": "y", "type": "array", "shape": None},
+                    "z": {"name": "z", "type": "array", "shape": None},
+                },
             },
-            "arrays": {
-                "x": FieldV2(name="x", type="double", shape=None),
-                "y": FieldV2(name="y", type="array", shape=None),
-                "z": FieldV2(name="z", type="array", shape=None),
-            },
-        },
+        }
     )
     grammar = """
 start: block*

@@ -9,7 +9,7 @@ from modflow_devtools.dfn import Dfn, Field
 from packaging.version import Version
 from xattree import xattree
 
-from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.constants import FILL_DNODATA, MF6
 from flopy4.mf6.spec import field, fields_dict, to_field
 from flopy4.uio import IO, Loader, Writer
 
@@ -84,9 +84,8 @@ class Component(ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: str | None = field(default=None)
-
     dfn: ClassVar[Dfn]
+    filename: str | None = field(default=None)
 
     @property
     def path(self) -> Path:
@@ -180,19 +179,19 @@ class Component(ABC, MutableMapping):
             blocks=blocks,
         )
 
-    def _preio(self, format: str) -> None:
+    def _preio(self, format: str = MF6) -> None:
         # prep for io operations
         if not self.filename:
             self.filename = self.default_filename()
 
-    def load(self, format: str) -> None:
+    def load(self, format: str = MF6) -> None:
         """Load the component and any children."""
         self._preio(format=format)
         self._load(format=format)
         for child in self.children.values():  # type: ignore
             child.load(format=format)
 
-    def write(self, format: str) -> None:
+    def write(self, format: str = MF6) -> None:
         """Write the component and any children."""
         self._preio(format=format)
         self._write(format=format)

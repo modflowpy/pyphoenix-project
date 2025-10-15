@@ -57,7 +57,7 @@ class Registry:
 
     def load(self, cls, instance, *args, format=None, **kwargs):
         _load = self.get_loader(cls, format)
-        _load(instance, *args, **kwargs)
+        return _load(instance, *args, **kwargs)
 
     def write(self, cls, instance, *args, format=None, **kwargs):
         _write = self.get_writer(cls, format)
@@ -71,14 +71,17 @@ Op = Literal["load", "write"]
 
 
 class IO(property):
-    """Wrap a file IO descriptor as a property."""
+    """
+    Custom property wrapper for IO operation descriptors.
+    See the `astropy` source for more details/motivation.
+    """
 
     def __get__(self, instance, owner_cls):
         return self.fget(instance, owner_cls)
 
 
 class IODescriptor:
-    """Base class for file IO operations, implemented as descriptors."""
+    """Base class for file IO operation descriptors."""
 
     def __init__(self, instance, cls, op: Op, registry: Registry | None = None):
         self._registry = registry or DEFAULT_REGISTRY
@@ -107,7 +110,7 @@ class Loader(IODescriptor):
     def __init__(self, instance, cls):
         super().__init__(instance, cls, "load", registry=DEFAULT_REGISTRY)
 
-    def __call__(self, *args, **kwargs) -> None:
+    def __call__(self, *args, **kwargs):
         return self.registry.load(self._cls, self._instance, *args, **kwargs)
 
 
@@ -118,4 +121,4 @@ class Writer(IODescriptor):
         super().__init__(instance, cls, "write", registry=DEFAULT_REGISTRY)
 
     def __call__(self, *args, **kwargs) -> None:
-        return self.registry.write(self._cls, self._instance, *args, **kwargs)
+        self.registry.write(self._cls, self._instance, *args, **kwargs)
