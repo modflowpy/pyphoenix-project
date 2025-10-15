@@ -6,10 +6,11 @@ from typing import ClassVar
 import numpy as np
 from attrs import fields
 from modflow_devtools.dfn import Dfn, Field
+from packaging.version import Version
 from xattree import xattree
 
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.spec import field, fields_dict, to_dfn_field
+from flopy4.mf6.spec import field, fields_dict, to_field
 from flopy4.uio import IO, Loader, Writer
 
 
@@ -162,21 +163,21 @@ class Component(ABC, MutableMapping):
     @classmethod
     def get_dfn(cls) -> Dfn:
         """Get the component's definition (i.e. specification)."""
-        fields = {field_name: to_dfn_field(field) for field_name, field in fields_dict(cls).items()}
+        fields = {field_name: to_field(field) for field_name, field in fields_dict(cls).items()}
         blocks: dict[str, dict[str, Field]] = {}
         for field_name, field_ in fields.items():
-            if (block := field_.get("block", None)) is not None:
+            if (block := field_.block) is not None:
                 blocks.setdefault(block, {})[field_name] = field_
             else:
                 blocks[field_name] = field_
 
         return Dfn(
+            schema_version=Version("2"),
             name=cls.__name__.lower(),
             advanced=getattr(cls, "advanced_package", False),
             multi=getattr(cls, "multi_package", False),
             ref=getattr(cls, "sub_package", None),
-            sln=getattr(cls, "solution_package", None),
-            **blocks,
+            blocks=blocks,
         )
 
     def _preio(self, format: str) -> None:

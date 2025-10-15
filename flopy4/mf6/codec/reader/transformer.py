@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfn import _SCALAR_TYPES, Dfn, get_blocks, get_fields
+from modflow_devtools.dfn import SCALAR_TYPES, Dfn
 
 
 class BasicTransformer(Transformer):
@@ -65,8 +65,8 @@ class TypedTransformer(Transformer):
     def __init__(self, visit_tokens=False, dfn: Dfn = None):
         super().__init__(visit_tokens)
         self.dfn = dfn
-        self.blocks = get_blocks(dfn) if dfn else None
-        self.fields = get_fields(dfn) if dfn else None
+        self.blocks = dfn.blocks if dfn else None
+        self.fields = dfn.fields if dfn else None
 
     def start(self, items: list[Any]) -> Mapping:
         return ChainMap(*items)
@@ -178,9 +178,9 @@ class TypedTransformer(Transformer):
         elif data.endswith("_vars"):
             return {item[0].lower(): item[1] for item in children}
         elif (field := self.fields.get(data, None)) is not None:
-            if field["type"] == "keyword":
+            if field.type == "keyword":
                 return data, True
-            elif field["type"] in _SCALAR_TYPES and field.get("shape", None):
+            elif field.type in SCALAR_TYPES and field.shape is not None:
                 return data, TypedTransformer.try_create_dataarray(children[0])
             else:
                 return data, children[0]

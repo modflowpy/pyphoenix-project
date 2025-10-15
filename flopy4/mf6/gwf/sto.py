@@ -44,12 +44,10 @@ class Sto(Package):
         dims=("nper",),
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        reader="urword",
     )
     transient: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        reader="urword",
     )
