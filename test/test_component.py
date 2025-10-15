@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 from flopy.discretization import StructuredGrid
 from flopy.discretization.modeltime import ModelTime
-from modflow_devtools.dfn import Sln
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
@@ -242,36 +241,33 @@ def test_init_big_sim():
 def test_gwf_dfn():
     gwf = Gwf()
     dfn = gwf.dfn
-    assert dfn["name"] == "gwf"
-    assert not dfn["advanced"]
-    assert not dfn["multi"]
-    assert dfn["ref"] is None
-    assert dfn["sln"] is None
-    assert "save_flows" in set(dfn["options"].keys())
+    assert dfn.name == "gwf"
+    assert not dfn.advanced
+    assert not dfn.multi
+    assert dfn.ref is None
+    assert "save_flows" in set(dfn.blocks["options"].keys())
 
 
 def test_chd_dfn():
     chd = Chd(strict=False)
     dfn = chd.dfn
-    assert dfn["name"] == "chd"
-    assert not dfn["advanced"]
-    assert dfn["multi"]
-    assert dfn["ref"] is None
-    assert dfn["sln"] is None
-    assert "print_input" in set(dfn["options"].keys())
-    assert "head" in set(dfn["period"].keys())
+    assert dfn.name == "chd"
+    assert not dfn.advanced
+    assert dfn.multi
+    assert dfn.ref is None
+    assert "print_input" in set(dfn.blocks["options"].keys())
+    assert "head" in set(dfn.blocks["period"].keys())
 
 
 def test_ims_dfn():
     ims = Ims(strict=False)
     dfn = ims.dfn
-    assert dfn["name"] == "ims"
-    assert not dfn["advanced"]
-    assert not dfn["multi"]
-    assert dfn["ref"] is None
-    assert dfn["sln"] == Sln(abbr="ims", pattern="*")
-    assert "complexity" in set(dfn["options"].keys())
-    assert "inner_maximum" in set(dfn["linear"].keys())
+    assert dfn.name == "ims"
+    assert not dfn.advanced
+    assert not dfn.multi
+    assert dfn.ref is None
+    assert "complexity" in set(dfn.blocks["options"].keys())
+    assert "inner_maximum" in set(dfn.blocks["linear"].keys())
 
 
 def test_gwf_chd01(function_tmpdir):

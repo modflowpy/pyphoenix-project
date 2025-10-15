@@ -28,21 +28,18 @@ class Tdis(Package):
         default=1.0,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        reader="urword",
     )
     nstp: NDArray[np.integer] = array(
         block="perioddata",
         default=1,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        reader="urword",
     )
     tsmult: NDArray[np.float64] = array(
         block="perioddata",
         default=1.0,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        reader="urword",
     )
 
     def to_time(self) -> ModelTime:

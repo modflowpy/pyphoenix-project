@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-from modflow_devtools.dfn import Sln
 from xattree import xattree
 
 from flopy4.mf6.solution import Solution
@@ -10,7 +9,6 @@ from flopy4.mf6.spec import field
 
 @xattree
 class Ims(Solution):
-    solution_package: ClassVar[Sln] = Sln(abbr="ims", pattern="*")
     slntype: ClassVar[str] = "ims"
 
     print_option: Optional[str] = field(block="options", default=None)

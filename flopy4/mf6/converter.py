@@ -9,6 +9,7 @@ import xarray as xr
 import xattree
 from attrs import define
 from cattrs import Converter
+from modflow_devtools.dfn.schema.block import block_sort_key
 from numpy.typing import NDArray
 from xattree import get_xatspec
 
@@ -21,7 +22,7 @@ from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import fields_dict, get_blocks
+from flopy4.mf6.spec import fields_dict
 
 
 @define
@@ -87,7 +88,7 @@ def _path_to_record(field_name: str, path_value: Path) -> tuple:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    blockspec = get_blocks(value.dfn)
+    blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))
 
