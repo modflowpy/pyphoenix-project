@@ -264,7 +264,6 @@ class Flopy3Package(PackageInterface):
 
     @property
     def has_stress_period_data(self):
-        # TODO oc returns true? is stress package?
         return "nper" in self._data.dims
 
     def check(self, f=None, verbose=True, level=1, checktype=None):

@@ -6,6 +6,7 @@ import numpy as np
 import xarray as xr
 from modflow_devtools.dfn.schema.v2 import FieldType
 from numpy.typing import NDArray
+from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
@@ -36,10 +37,12 @@ def array_how(value: xr.DataArray) -> str:
     # TODO
     # - detect constant arrays?
     # - above certain size, use external?
+    if value.max() == value.min():
+        return "constant"
     return "internal"
 
 
-def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
+def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
     """
     Yield chunks from a dask-backed array of up to 3 dimensions.
     If it's not already chunked, split it into chunks of the
@@ -126,6 +129,13 @@ def nonempty(value: NDArray | xr.DataArray) -> NDArray:
         mask = ~np.ma.masked_invalid(value).mask
         mask = mask & (value != FILL_DNODATA)
     return mask
+
+
+def array2const(value: xr.DataArray) -> Scalar:
+    if np.issubdtype(value.dtype, np.integer):
+        return value.max().item()
+    if np.issubdtype(value.dtype, np.floating):
+        return f"{value.max().item():.8f}"
 
 
 def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):

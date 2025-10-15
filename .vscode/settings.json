@@ -13,6 +13,7 @@
         }
     },
     "mypy-type-checker.importStrategy": "fromEnvironment",
+    "python.analysis.typeCheckingMode": "off",
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,

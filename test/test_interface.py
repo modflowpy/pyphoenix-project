@@ -97,8 +97,7 @@ def test_flopy3_model(tmp_path):
         assert p.name == pnames[i]
         assert p.package_type == ptypes[i]
         assert p.parent is gwf3
-        # TODO oc?
-        if p.name == "chd0" or p.name == "oc":
+        if p.name == "chd0":
             assert p.has_stress_period_data
         else:
             assert not p.has_stress_period_data

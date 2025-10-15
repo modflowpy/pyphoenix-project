@@ -13,8 +13,9 @@ _JINJA_ENV = Environment(
 )
 _JINJA_ENV.filters["field_type"] = filters.field_type
 _JINJA_ENV.filters["array_how"] = filters.array_how
-_JINJA_ENV.filters["array_chunks"] = filters.array_chunks
+_JINJA_ENV.filters["array2chunks"] = filters.array2chunks
 _JINJA_ENV.filters["array2string"] = filters.array2string
+_JINJA_ENV.filters["array2const"] = filters.array2const
 _JINJA_ENV.filters["data2list"] = filters.data2list
 _JINJA_TEMPLATE_NAME = "blocks.jinja"
 _PRINT_OPTIONS = {

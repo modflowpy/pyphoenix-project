@@ -39,13 +39,7 @@ class Sto(Package):
         default=0.15,
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    steady_state: Optional[NDArray[np.bool_]] = array(
-        block="period",
-        dims=("nper",),
-        default=None,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-    )
-    transient: Optional[NDArray[np.bool_]] = array(
+    storage: Optional[NDArray[np.str_]] = array(
         block="period",
         dims=("nper",),
         default=None,
