@@ -58,7 +58,6 @@ class Oc(Package):
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        format="keystring",
     )
     save_budget: Optional[NDArray[np.object_]] = array(
         object,
@@ -66,7 +65,6 @@ class Oc(Package):
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        format="keystring",
     )
     print_head: Optional[NDArray[np.object_]] = array(
         object,
@@ -74,7 +72,6 @@ class Oc(Package):
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        format="keystring",
     )
     print_budget: Optional[NDArray[np.object_]] = array(
         object,
@@ -82,5 +79,4 @@ class Oc(Package):
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
-        format="keystring",
     )

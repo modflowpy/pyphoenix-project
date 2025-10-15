@@ -12,8 +12,8 @@ from typing import Union, get_args, get_origin
 import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema.block import block_sort_key
-from modflow_devtools.dfn.schema.field import FieldType
 from modflow_devtools.dfn.schema.v2 import Field as FieldV2
+from modflow_devtools.dfn.schema.v2 import FieldType
 
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
@@ -106,14 +106,11 @@ def array(
     metadata=None,
     on_setattr=None,
     block: str | None = None,
-    format: str | None = None,
 ):
     """Define an array field."""
     if block:
         metadata = metadata or {}
         metadata["block"] = block
-        if format:
-            metadata["format"] = format
     return flopy_array(
         cls=cls,
         dims=dims,
@@ -174,7 +171,7 @@ def to_field_type(t: type) -> FieldType:
         case builtins.int | np.integer:
             return "integer"  # type: ignore
         case builtins.float | np.floating:
-            return "double precision"  # type: ignore
+            return "double"  # type: ignore
         case t if t is Path or t is datetime:
             return "string"
         case t if get_origin(t) in (Union, types.UnionType):
@@ -188,12 +185,13 @@ def to_field_type(t: type) -> FieldType:
                     case builtins.int | np.integer:
                         return "integer"
                     case builtins.float | np.floating:
-                        return "double precision"
+                        return "double"
                     case tt if tt is Path or tt is datetime:
                         return "string"
                     case _:
                         return "record"
-            return "keystring"
+            return "list"
+        # TODO handle arrays
         case _:
             return "record"
 
@@ -208,14 +206,13 @@ def get_field_type(attribute: Attribute) -> FieldType:
     """
     if (xatmeta := attribute.metadata.get("xattree", None)) is None:
         raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no xattree metadata.")
-    kind = xatmeta["kind"]
-    match kind:
+    match xatmeta["kind"]:
         case "child":
-            return "recarray"  # Child components become tabular bindings
+            return "list"  # Child components become tabular bindings
         case "array":
-            return "recarray"
+            return "array"
         case "coord":
-            return "recarray"
+            return "array"
         case "dim":
             return "integer"
         case "attr":

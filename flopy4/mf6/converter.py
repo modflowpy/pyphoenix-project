@@ -72,6 +72,7 @@ class _Binding:
 def _attach_field_metadata(
     dataset: xr.Dataset, component_type: type, field_names: list[str]
 ) -> None:
+    # TODO: attach metadata to array attrs instead of dataset attrs
     field_metadata = {}
     component_fields = fields_dict(component_type)
     for field_name in field_names:
