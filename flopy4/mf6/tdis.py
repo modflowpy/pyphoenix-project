@@ -58,7 +58,7 @@ class Tdis(Package):
         """Create a time discretization from a `ModelTime`."""
         return cls(
             nper=time.nper,
-            time_units=time.time_units,
+            time_units=None if time.time_units in [None, "unknown"] else time.time_units,
             start_date_time=time.start_datetime,
             perlen=time.perlen,
             nstp=time.nstp,

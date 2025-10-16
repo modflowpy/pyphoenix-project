@@ -11,13 +11,11 @@ _JINJA_ENV = Environment(
     trim_blocks=True,
     lstrip_blocks=True,
 )
-_JINJA_ENV.filters["is_dataset"] = filters.is_dataset
-_JINJA_ENV.filters["field_format"] = filters.field_format
+_JINJA_ENV.filters["field_type"] = filters.field_type
 _JINJA_ENV.filters["array_how"] = filters.array_how
 _JINJA_ENV.filters["array_chunks"] = filters.array_chunks
 _JINJA_ENV.filters["array2string"] = filters.array2string
 _JINJA_ENV.filters["data2list"] = filters.data2list
-_JINJA_ENV.filters["data2keystring"] = filters.data2keystring
 _JINJA_TEMPLATE_NAME = "blocks.jinja"
 _PRINT_OPTIONS = {
     "precision": 4,

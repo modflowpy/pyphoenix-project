@@ -72,6 +72,7 @@ class _Binding:
 def _attach_field_metadata(
     dataset: xr.Dataset, component_type: type, field_names: list[str]
 ) -> None:
+    # TODO: attach metadata to array attrs instead of dataset attrs
     field_metadata = {}
     component_fields = fields_dict(component_type)
     for field_name in field_names:
@@ -80,7 +81,7 @@ def _attach_field_metadata(
     dataset.attrs["field_metadata"] = field_metadata
 
 
-def _path_to_record(field_name: str, path_value: Path) -> tuple:
+def _path_to_tuple(field_name: str, path_value: Path) -> tuple:
     if field_name.endswith("_file"):
         base_name = field_name.replace("_file", "").upper()
         return (base_name, "FILEOUT", str(path_value))
@@ -146,9 +147,11 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             #   - xarray DataArrays with 'nper' dimension to kper-sliced datasets
             #     (and split the period data into separate kper-indexed blocks)
             #   - other values to their original form
-            if isinstance(field_value, Path) and field_value is not None:
-                blocks[block_name][field_name] = _path_to_record(field_name, field_value)
-            elif isinstance(field_value, datetime) and field_value is not None:
+            if isinstance(field_value, Path):
+                rec = _path_to_tuple(field_name, field_value)
+                # name may have changed e.g dropping '_file' suffix
+                blocks[block_name][rec[0]] = rec
+            elif isinstance(field_value, datetime):
                 blocks[block_name][field_name] = field_value.isoformat()
             elif (
                 field_name == "auxiliary"
@@ -192,14 +195,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for kper in range(field_value.sizes["nper"])
                     }
                 else:
-                    if (
-                        # TODO: refactor
-                        # field_name == "save_budget"
-                        # or field_name == "save_head"
-                        # or field_name == "print_budget"
-                        # or field_name == "print_head"
-                        np.issubdtype(field_value.dtype, np.str_)
-                    ):
+                    if np.issubdtype(field_value.dtype, np.str_):
                         period_data[field_name] = {
                             kper: field_value[kper] for kper in range(field_value.sizes["nper"])
                         }

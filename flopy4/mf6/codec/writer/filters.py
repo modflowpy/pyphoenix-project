@@ -4,59 +4,32 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
+from modflow_devtools.dfn.schema.v2 import FieldType
 from numpy.typing import NDArray
 
 from flopy4.mf6.constants import FILL_DNODATA
 
 
-def _is_keystring_format(dataset: xr.Dataset) -> bool:
-    """Check if dataset should use keystring format based on metadata."""
-    field_metadata = dataset.attrs.get("field_metadata", {})
-    return any(meta.get("format") == "keystring" for meta in field_metadata.values())
+def field_type(value: Any) -> FieldType:
+    """Get a value's type according to the MF6 specification."""
 
-
-def _is_tabular_time_format(dataset: xr.Dataset) -> bool:
-    """True if a dataset has multiple columns and only one dimension 'nper'."""
-    return len(dataset.data_vars) > 1 and all(
-        "nper" in var.dims and len(var.dims) == 1 for var in dataset.data_vars.values()
-    )
-
-
-def is_dataset(value: Any) -> bool:
-    return isinstance(value, xr.Dataset)
-
-
-def field_format(value: Any) -> str:
-    """
-    Get a field's formatting type as defined by the MF6 definition language:
-    https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types
-    """
     if isinstance(value, bool):
         return "keyword"
     if isinstance(value, int):
         return "integer"
     if isinstance(value, float):
-        return "double precision"
+        return "double"
     if isinstance(value, str):
         return "string"
-    if isinstance(value, (dict, tuple)):
+    if isinstance(value, tuple):
         return "record"
     if isinstance(value, xr.DataArray):
         if value.dtype == "object":
             return "list"
         return "array"
-    if isinstance(value, (xr.Dataset, list)):
-        if isinstance(value, xr.Dataset):
-            if _is_keystring_format(value):
-                return "keystring"
-            if _is_tabular_time_format(value):
-                return "list"
+    if isinstance(value, (list, dict, xr.Dataset)):
         return "list"
-    return "keystring"
-
-
-def has_time_dim(value: Any) -> bool:
-    return isinstance(value, xr.DataArray) and "nper" in value.dims
+    raise ValueError(f"Unsupported field type: {type(value)}")
 
 
 def array_how(value: xr.DataArray) -> str:
@@ -140,38 +113,42 @@ def array2string(value: NDArray) -> str:
     return buffer.getvalue().strip()
 
 
-def nonempty(arr: NDArray | xr.DataArray) -> NDArray:
-    if isinstance(arr, xr.DataArray):
-        arr = arr.values
-    if arr.dtype == "object":
-        mask = arr != None  # noqa: E711
+def nonempty(value: NDArray | xr.DataArray) -> NDArray:
+    """
+    Return a boolean mask of non-empty (non-nodata) values in an array.
+    TODO: don't hardcode FILL_DNODATA, support different fill values
+    """
+    if isinstance(value, xr.DataArray):
+        value = value.values
+    if value.dtype == "object":
+        mask = value != None  # noqa: E711
     else:
-        mask = ~np.ma.masked_invalid(arr).mask
-        mask = mask & (arr != FILL_DNODATA)
+        mask = ~np.ma.masked_invalid(value).mask
+        mask = mask & (value != FILL_DNODATA)
     return mask
 
 
-def data2list(value: list | xr.DataArray | xr.Dataset):
+def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     """
-    Yield record tuples from a list, `DataArray` or `Dataset`.
-
-    Yields
-    ------
-    tuple
-        Tuples of (*cellid, *values) or (*values) depending on spatial dimensions
+    Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
     """
 
-    if isinstance(value, list):
-        for item in value:
-            yield item
+    if isinstance(value, (list, tuple)):
+        for rec in value:
+            yield rec
+        return
+
+    if isinstance(value, dict):
+        for name, val in value.values():
+            yield (name, val)
         return
 
     if isinstance(value, xr.Dataset):
         yield from dataset2list(value)
         return
 
-    # handle scalar
-    if value.ndim == 0:
+    # otherwise we have a DataArray
+    if value.ndim == 0:  # handle scalar
         if not np.isnan(value.item()) and value.item() is not None:
             yield (value.item(),)
         return
@@ -184,90 +161,67 @@ def data2list(value: list | xr.DataArray | xr.Dataset):
     for i, val in enumerate(values):
         if has_spatial_dims:
             cellid = tuple(idx[i] + 1 for idx in indices)
-            result = cellid + (val,)
+            rec = cellid + (val,)
         else:
-            result = (val,)
-        yield result
+            rec = (val,)
+        yield rec
 
 
 def dataset2list(value: xr.Dataset):
     """
-    Yield record tuples from an xarray Dataset. For regular/tabular list-based format.
+    Yield records (tuples) from an `xarray.Dataset`.
 
-    Yields
-    ------
-    tuple
-        Tuples of (*cellid, *values) or (*values) depending on spatial dimensions
+    If the first data variable is a string type, assume all are
+    string type. Then the dataset represents a keystring; yield
+    tuples of (name, *value). Otherwise, yield tuples: (*value)
+    if no spatial dimensions, or (*cellid, *value) when spatial
+    dimensions are present.
     """
     if value is None or not any(value.data_vars):
         return
 
-    # handle scalar
-    first_arr = next(iter(value.data_vars.values()))
-    if first_arr.ndim == 0:
-        field_vals = []
-        for field_name in value.data_vars.keys():
-            field_val = value[field_name]
-            if hasattr(field_val, "item"):
-                field_vals.append(field_val.item())
-            else:
-                field_vals.append(field_val)
-        yield tuple(field_vals)
+    first = next(iter(value.data_vars.values()))
+    is_union = first.dtype.type is np.str_
+
+    if first.ndim == 0:  # handle scalar
+        if is_union:
+            for name in value.data_vars.keys():
+                val = value[name]
+                val = val.item() if val.shape == () else val
+                yield (*name.split("_"), val)
+        else:
+            vals = []
+            for name in value.data_vars.keys():
+                val = value[name]
+                val = val.item() if val.shape == () else val
+                vals.append(val)
+            yield tuple(vals)
         return
 
-    # build mask
     combined_mask: Any = None
-    for field_name, arr in value.data_vars.items():
-        mask = nonempty(arr)
+    for name, first in value.data_vars.items():
+        mask = nonempty(first)
         combined_mask = mask if combined_mask is None else combined_mask | mask
     if combined_mask is None or not np.any(combined_mask):
         return
 
-    spatial_dims = [d for d in first_arr.dims if d in ("nlay", "nrow", "ncol", "nodes")]
+    spatial_dims = [d for d in first.dims if d in ("nlay", "nrow", "ncol", "nodes")]
     has_spatial_dims = len(spatial_dims) > 0
     indices = np.where(combined_mask)
     for i in range(len(indices[0])):
-        field_vals = []
-        for field_name in value.data_vars.keys():
-            field_val = value[field_name][tuple(idx[i] for idx in indices)]
-            if hasattr(field_val, "item"):
-                field_vals.append(field_val.item())
-            else:
-                field_vals.append(field_val)
-        if has_spatial_dims:
-            cellid = tuple(idx[i] + 1 for idx in indices)
-            yield cellid + tuple(field_vals)
+        if is_union:
+            for name in value.data_vars.keys():
+                val = value[name][tuple(idx[i] for idx in indices)]
+                val = val.item() if val.shape == () else val
+                yield (*name.split("_"), val)
         else:
-            yield tuple(field_vals)
-
-
-def data2keystring(value: dict | xr.Dataset):
-    """
-    Yield record tuples from a dict or dataset. For irregular list-based format, i.e. keystrings.
-
-    Yields
-    ------
-    tuple
-        Tuples of (field_name, value) for use with record macro
-    """
-    if isinstance(value, dict):
-        if not value:
-            return
-        for field_name, field_val in value.items():
-            yield (field_name.upper(), field_val)
-    elif isinstance(value, xr.Dataset):
-        if value is None or not any(value.data_vars):
-            return
-
-        for field_name in value.data_vars.keys():
-            name = (
-                field_name.replace("_", " ").upper()
-                if np.issubdtype(value.data_vars[field_name].dtype, np.str_)
-                else field_name.upper()
-            )
-            field_val = value[field_name]
-            if hasattr(field_val, "item"):
-                val = field_val.item()
+            vals = []
+            for name in value.data_vars.keys():
+                val = value[name][tuple(idx[i] for idx in indices)]
+                val = val.item() if val.shape == () else val
+                vals.append(val)
+            if has_spatial_dims:
+                cellid = tuple(idx[i] + 1 for idx in indices)
+                yield cellid + tuple(vals)
             else:
-                val = field_val
-            yield (name, val)
+                yield tuple(vals)

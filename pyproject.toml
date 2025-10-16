@@ -60,7 +60,6 @@ dynamic = ["version"]
 dev = ["flopy4[lint,test,build]"]
 lint = ["ruff", "pre-commit>=4.0.1,<5", "mypy"]
 test = [
-    "flopy4[lint]",
     "coverage",
     "GitPython",
     "jupyter",
