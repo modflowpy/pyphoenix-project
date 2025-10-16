@@ -9,7 +9,6 @@ import xarray as xr
 import xattree
 from attrs import define
 from cattrs import Converter
-from modflow_devtools.dfn.schema.block import block_sort_key
 from numpy.typing import NDArray
 from xattree import get_xatspec
 
@@ -88,7 +87,7 @@ def _path_to_tuple(field_name: str, path_value: Path) -> tuple:
     return (field_name.upper(), "FILEOUT", str(path_value))
 
 
-def _user_dims(value, field_value):
+def _hack_spatial_dims(value, field_value):
     # terrible hack to convert flat nodes dimension to 3d structured dims.
     # long term solution for this is to use a custom xarray index. filters
     # should then have access to all dimensions needed.
@@ -162,14 +161,17 @@ def _get_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple]]]:
                 if block_name not in blocks:
                     blocks[block_name] = {}
                 blocks[block_name][name] = [
-                    _Binding.from_component(comp).to_tuple()
-                    for comp in child
-                    if comp is not None
+                    _Binding.from_component(comp).to_tuple() for comp in child if comp is not None
                 ]
             case _:
                 raise ValueError(f"Unexpected child type: {type(child)}")
 
     return blocks
+
+
+def _has_spatial_dims(value: xr.DataArray) -> bool:
+    return any(dim in value.dims for dim in ["nlay", "nrow", "ncol", "nodes"])
+
 
 def unstructure_component(value: Component) -> dict[str, Any]:
     dfnspec = value.dfn
@@ -183,13 +185,13 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         for field_name in block.keys():
             # Skip child components that have been processed as bindings
-            if isinstance(value, Context) and field_name in xatspec.children:
-                child_spec = xatspec.children[field_name]
-                if hasattr(child_spec, "metadata") and "block" in child_spec.metadata:  # type: ignore
-                    if child_spec.metadata["block"] == block_name:  # type: ignore
-                        continue
+            if (
+                isinstance(value, Context)
+                and (child_spec := xatspec.children.get(field_name, None))
+                and child_spec.metadata["block"] == block_name
+            ):
+                continue
 
-            field_value = data[field_name]
             # convert:
             #   - bools to keywords
             #   - paths to records
@@ -198,73 +200,74 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             #   - xarray DataArrays with 'nper' dimension to kper-sliced datasets
             #     (and split the period data into separate kper-indexed blocks)
             #   - other values to their original form
-            if isinstance(field_value, bool):
-                if field_value:  # only write if true
-                    blocks[block_name][field_name] = field_value
-            if isinstance(field_value, Path):
-                rec = _path_to_tuple(field_name, field_value)
-                field_name = rec[0] # '_file' suffix dropped
-                blocks[block_name][field_name] = rec
-            elif isinstance(field_value, datetime):
-                blocks[block_name][field_name] = field_value.isoformat()
-            elif isinstance(field_value, xr.DataArray):
-                if field_name == "auxiliary":
-                    blocks[block_name][field_name] = tuple(field_value.values.tolist())
-                elif "nper" not in field_value.dims:
-                    blocks[block_name][field_name] = _user_dims(value, field_value)
-                else:
-                    period_data = {}
-                    period_blocks = {}
-                    has_spatial_dims = any(
-                        dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
-                    )
-                    if has_spatial_dims:
-                        field_value = _user_dims(value, field_value)
-
-                        period_data[field_name] = {
-                            kper: field_value.isel(nper=kper)
-                            for kper in range(field_value.sizes["nper"])
-                        }
+            match field_value := data[field_name]:
+                case None:
+                    pass
+                case bool():
+                    if field_value:  # only write if true
+                        blocks[block_name][field_name] = field_value
+                case Path():
+                    rec = _path_to_tuple(field_name, field_value)
+                    field_name = rec[0]  # '_file' suffix dropped
+                    blocks[block_name][field_name] = rec
+                case datetime():
+                    blocks[block_name][field_name] = field_value.isoformat()
+                case xr.DataArray():
+                    if field_name == "auxiliary":
+                        blocks[block_name][field_name] = tuple(field_value.values.tolist())
+                    elif "nper" not in field_value.dims:
+                        blocks[block_name][field_name] = _hack_spatial_dims(value, field_value)
                     else:
-                        if np.issubdtype(field_value.dtype, np.str_):
+                        period_data = {}
+                        period_blocks = {}
+                        if _has_spatial_dims(field_value):
+                            field_value = _hack_spatial_dims(value, field_value)
                             period_data[field_name] = {
-                                kper: field_value[kper]
+                                kper: field_value.isel(nper=kper)
                                 for kper in range(field_value.sizes["nper"])
-                                if field_value[kper] is not None
                             }
                         else:
-                            if block_name not in period_data:
-                                period_data[block_name] = {}
-                            period_data[block_name][field_name] = field_value  # type: ignore
+                            if np.issubdtype(field_value.dtype, np.str_):
+                                period_data[field_name] = {
+                                    kper: field_value[kper]
+                                    for kper in range(field_value.sizes["nper"])
+                                    if field_value[kper] is not None
+                                }
+                            else:
+                                if block_name not in period_data:
+                                    period_data[block_name] = {}
+                                period_data[block_name][field_name] = field_value  # type: ignore
 
-                    dataset = xr.Dataset(period_data[block_name])
-                    _attach_field_metadata(dataset, type(value), list(period_data[block_name].keys()))  # type: ignore
-                    blocks[block_name] = {block_name: dataset}
-                    del period_data[block_name]
+                        dataset = xr.Dataset(period_data[block_name])
+                        _attach_field_metadata(
+                            dataset, type(value), list(period_data[block_name].keys())
+                        )  # type: ignore
+                        blocks[block_name] = {block_name: dataset}
+                        del period_data[block_name]
 
-                    for arr_name, periods in period_data.items():
-                        for kper, arr in periods.items():
-                            if isinstance(arr, xr.DataArray):
-                                max = arr.max()
-                                if max == arr.min() and max == FILL_DNODATA:
-                                    # don't write empty period blocks unless
-                                    # to intentionally reset data
-                                    pass
+                        for arr_name, periods in period_data.items():
+                            for kper, arr in periods.items():
+                                if isinstance(arr, xr.DataArray):
+                                    max = arr.max()
+                                    if max == arr.min() and max == FILL_DNODATA:
+                                        # don't write empty period blocks unless
+                                        # to intentionally reset data
+                                        pass
+                                    else:
+                                        if kper not in period_blocks:
+                                            period_blocks[kper] = {}
+                                        period_blocks[kper][arr_name] = arr
                                 else:
                                     if kper not in period_blocks:
                                         period_blocks[kper] = {}
-                                    period_blocks[kper][arr_name] = arr
-                            else:
-                                if kper not in period_blocks:
-                                    period_blocks[kper] = {}
-                                period_blocks[kper][arr_name] = arr.upper()
+                                    period_blocks[kper][arr_name] = arr.upper()
 
-                    for kper, block in period_blocks.items():
-                        dataset = xr.Dataset(block)
-                        _attach_field_metadata(dataset, type(value), list(block.keys()))
-                        blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
-            elif field_value is not None:
-                blocks[block_name][field_name] = field_value
+                        for kper, block in period_blocks.items():
+                            dataset = xr.Dataset(block)
+                            _attach_field_metadata(dataset, type(value), list(block.keys()))
+                            blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
+                case _:
+                    blocks[block_name][field_name] = field_value
 
     # make sure options block always comes first
     # TODO: blocks should already be sorted here

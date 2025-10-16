@@ -34,9 +34,7 @@ def field_type(value: Any) -> FieldType:
 
 
 def array_how(value: xr.DataArray) -> str:
-    # TODO
-    # - detect constant arrays?
-    # - above certain size, use external?
+    # TODO above certain size, use external?
     if value.max() == value.min():
         return "constant"
     return "internal"
