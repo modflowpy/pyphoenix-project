@@ -6,6 +6,8 @@
 
 - [Conceptual model](#conceptual-model)
 - [Object model](#object-model)
+  - [Design](#design)
+  - [Conventions](#conventions)
 - [IO](#io)
   - [Input](#input)
     - [Unified IO](#unified-io)
@@ -25,7 +27,7 @@ This document describes a tentative design, focusing on functional requirements.
 
 This document follows MODFLOW 6 terminology where applicable, with modifications/translations where appropriate.
 
-A MODFLOW 6 simulation is as a hierarchy of modular **components**. Components encapsulate related data and functionality. 
+A MODFLOW 6 simulation is as a hierarchy of modular **components**. Components encapsulate related data and functionality.
 
 Components may have zero or more user-specified **variables** &mdash; the product calls these **field**, as the latter is more conventional in the Python world. A field might be a numeric parameter, e.g. a scalar or array value, or a configuration value. Fields which configure non-numerical features of the simulation are called **options**. A field may or may not be mandatory.
 
@@ -70,18 +72,18 @@ Two requirements in particular motivate the design described below: 1) the objec
 
 Component classes must provide access to both **specification** and **data** &mdash; form and content, respectively. A component's specification should be legible from its class definition, to people and programs.
 
-Moreover, MODFLOW 6 components are situated in a hierarchy, with the simulation at the root, a branch for each model, and so on for packages, etc. This is true of both specification and data &mdash; the specification tree defines how components may be connected together, while a simulation instantiates some subset of the specification. 
+Moreover, MODFLOW 6 components are situated in a hierarchy, with the simulation at the root, a branch for each model, and so on for packages, etc. This is true of both specification and data &mdash; the specification tree defines how components may be connected together, while a simulation instantiates some subset of the specification.
 
 A third motivation is consistency with [`imod-python`](https://github.com/Deltares/imod-python), which the product follows in several ways including:
 
 - Using [`xarray`](https://docs.xarray.dev/en/stable/index.html) for the underlying data model
 - Providing dictionary-style access and modification
 
-Components in `imod-python` encode parent/child relations in a dictionary, which is filtered as needed for subcomponents of a particular type. The structure of a simulation (or of any component with respect to its children) is thus flexible. "Structural" checks (i.e., what may be attached to what?) run in a separate validation step. 
+Components in `imod-python` encode parent/child relations in a dictionary, which is filtered as needed for subcomponents of a particular type. The structure of a simulation (or of any component with respect to its children) is thus flexible. "Structural" checks (i.e., what may be attached to what?) run in a separate validation step.
 
 The product aims instead for typed components, where children can be read off the class definition. This pulls structural validation from runtime to type-checking time, so invalid arrangements are visible in e.g. IDEs with Intellisense.
 
-### Core design
+### Design
 
 The product adopts the standard library `dataclasses` paradigm for class definitions. The `dataclasses` module is derived from a project called [`attrs`](https://www.attrs.org/en/stable/) with [more power](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/). `attrs` permits terse class definitions, e.g.
 
@@ -109,7 +111,7 @@ Combining `attrs` and `xarray` in this way presents challenges involving duplica
 
 The sparse, record-based list input format used by MODFLOW 6 is also in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
 
-### Convention compliance
+### Conventions
 
 Being based on `xarray`, the product can support the [MODFLOW 6 NetCDF specification](https://github.com/MODFLOW-ORG/modflow6/wiki/MODFLOW-NetCDF-Format) via `xarray` extension points: custom indices and accessors.
 
