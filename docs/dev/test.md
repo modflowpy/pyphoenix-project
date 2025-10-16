@@ -1,5 +1,13 @@
 # FloPy 4 testing plan
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Phase 1: MVP testing](#phase-1-mvp-testing)
+- [Phase 2: MMP testing](#phase-2-mmp-testing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Phase 1: MVP testing
 
 Reproduce the FloPy3 quickstart.
