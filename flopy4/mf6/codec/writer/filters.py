@@ -21,13 +21,13 @@ def field_type(value: Any) -> FieldType:
         return "double"
     if isinstance(value, str):
         return "string"
-    if isinstance(value, (dict, tuple)):
+    if isinstance(value, tuple):
         return "record"
     if isinstance(value, xr.DataArray):
         if value.dtype == "object":
             return "list"
         return "array"
-    if isinstance(value, (list, xr.Dataset)):
+    if isinstance(value, (list, dict, xr.Dataset)):
         return "list"
     raise ValueError(f"Unsupported field type: {type(value)}")
 
@@ -128,26 +128,19 @@ def nonempty(value: NDArray | xr.DataArray) -> NDArray:
     return mask
 
 
-def data2list(value: list | dict | xr.Dataset | xr.DataArray):
+def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     """
     Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
-    Data can be regular or irregular: every item in a `list` is of the same record
-    type, while items in a `dict` or `Dataset` can be of different types.
-
-    Yields
-    ------
-    tuple
-        Tuples of (*cellid, *values) or (*values) depending on spatial dimensions
     """
 
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         for rec in value:
             yield rec
         return
 
     if isinstance(value, dict):
-        for name, val in value.items():
-            yield (name.upper(), val)
+        for name, val in value.values():
+            yield (name, val)
         return
 
     if isinstance(value, xr.Dataset):
@@ -176,24 +169,33 @@ def data2list(value: list | dict | xr.Dataset | xr.DataArray):
 
 def dataset2list(value: xr.Dataset):
     """
-    Yield record tuples from an `xarray.Dataset`. For regular/tabular list-based format.
+    Yield records (tuples) from an `xarray.Dataset`.
 
-    Yields
-    ------
-    tuple
-        Tuples of (*cellid, *values) or (*values) depending on spatial dimensions
+    If the first data variable is a string type, assume all are
+    string type. Then the dataset represents a keystring; yield
+    tuples of (name, *value). Otherwise, yield tuples: (*value)
+    if no spatial dimensions, or (*cellid, *value) when spatial
+    dimensions are present.
     """
     if value is None or not any(value.data_vars):
         return
 
     first = next(iter(value.data_vars.values()))
+    is_union = first.dtype.type is np.str_
+
     if first.ndim == 0:  # handle scalar
-        vals = []
-        for name in value.data_vars.keys():
-            val = value[name]
-            val = val.item() if val.shape == () else val
-            vals.append(val)
-        yield tuple(vals)
+        if is_union:
+            for name in value.data_vars.keys():
+                val = value[name]
+                val = val.item() if val.shape == () else val
+                yield (*name.split("_"), val)
+        else:
+            vals = []
+            for name in value.data_vars.keys():
+                val = value[name]
+                val = val.item() if val.shape == () else val
+                vals.append(val)
+            yield tuple(vals)
         return
 
     combined_mask: Any = None
@@ -207,15 +209,19 @@ def dataset2list(value: xr.Dataset):
     has_spatial_dims = len(spatial_dims) > 0
     indices = np.where(combined_mask)
     for i in range(len(indices[0])):
-        vals = []
-        for name in value.data_vars.keys():
-            val = value[name][tuple(idx[i] for idx in indices)]
-            if hasattr(val, "item"):
-                vals.append(val.item())
-            else:
-                vals.append(val)
-        if has_spatial_dims:
-            cellid = tuple(idx[i] + 1 for idx in indices)
-            yield cellid + tuple(vals)
+        if is_union:
+            for name in value.data_vars.keys():
+                val = value[name][tuple(idx[i] for idx in indices)]
+                val = val.item() if val.shape == () else val
+                yield (*name.split("_"), val)
         else:
-            yield tuple(vals)
+            vals = []
+            for name in value.data_vars.keys():
+                val = value[name][tuple(idx[i] for idx in indices)]
+                val = val.item() if val.shape == () else val
+                vals.append(val)
+            if has_spatial_dims:
+                cellid = tuple(idx[i] + 1 for idx in indices)
+                yield cellid + tuple(vals)
+            else:
+                yield tuple(vals)

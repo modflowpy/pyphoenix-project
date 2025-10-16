@@ -5,7 +5,7 @@
 {% if type in ['keyword', 'integer', 'double', 'string'] %}
 {{ scalar(name, value) }}
 {% elif type == 'record' %}
-{{ record([name, value]) }}
+{{ record(value) }}
 {% elif type == 'array' %}
 {{ array(name, value, how=value|array_how) }}
 {% elif type == 'list' %}
@@ -19,13 +19,7 @@
 {% endmacro %}
 
 {% macro record(value) %}
-{%- if value is mapping %}
-{% for field_name, field_value in value.items() -%}
-{{ field_name.upper() }} {{ field(field_value) }}
-{%- endfor %}
-{% else %}
-{{ inset ~ value|join(" ") }}
-{%- endif %}
+{{ inset ~ value|join(" ") -}}
 {% endmacro %}
 
 {% macro list(name, value) %}
