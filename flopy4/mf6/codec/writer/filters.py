@@ -136,13 +136,15 @@ def array2const(value: xr.DataArray) -> Scalar:
         return f"{value.max().item():.8f}"
 
 
-def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
+def data2list(value: list | dict | xr.Dataset | xr.DataArray):
     """
     Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
     """
 
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list):
         for rec in value:
+            if not isinstance(rec, tuple):
+                raise ValueError(f"Unsupported record type: {type(rec)}")
             yield rec
         return
 

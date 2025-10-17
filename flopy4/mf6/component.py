@@ -1,12 +1,13 @@
 from abc import ABC
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 from attrs import fields
 from modflow_devtools.dfn import Dfn, Field
 from packaging.version import Version
+from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import FILL_DNODATA, MF6
@@ -197,3 +198,16 @@ class Component(ABC, MutableMapping):
         self._write(format=format)
         for child in self.children.values():  # type: ignore
             child.write(format=format)
+
+    def to_dict(self, blocks: bool = False) -> dict[str, Any]:
+        """Convert the component to a dictionary representation."""
+        data = xattree_asdict(self)
+        if blocks:
+            blocks_ = {}
+            for field_name, field_meta in self.data.attrs["metadata"].items():
+                block_name = field_meta["block"]
+                if block_name not in blocks_:
+                    blocks_[block_name] = {}
+                blocks_[block_name][field_name] = data[field_name]
+            return blocks_
+        return data
