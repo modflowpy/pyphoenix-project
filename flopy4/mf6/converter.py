@@ -32,13 +32,13 @@ def get_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, 
     if not isinstance(value, Context):
         return {}
 
-    blocks = {}
+    blocks = {}  # type: ignore
     xatspec = xattree.get_xatspec(type(value))
 
     for child_name, child_spec in xatspec.children.items():
         if (child := getattr(value, child_name, None)) is None:
             continue
-        if (block_name := child_spec.metadata["block"]) not in blocks:
+        if (block_name := child_spec.metadata["block"]) not in blocks:  # type: ignore
             blocks[block_name] = {}
         match child:
             case Component():
@@ -80,55 +80,57 @@ def has_tdis_dims(value: xr.DataArray) -> bool:
     return "nper" in value.dims
 
 
-def _hack_grid_dims(value, field_value):
-    # terrible hack to convert flat nodes dimension to 3d structured dims.
-    # long term solution for this is to use a custom xarray index. filters
-    # should then have access to all dimensions needed.
-    dims_ = set(field_value.dims).copy()
-    parent = value.parent  # type: ignore
-    if parent is None:
-        # TODO for standalone packages
-        return field_value
+def _hack_structured_grid_dims(value: xr.DataArray, structured_grid_dims: Mapping):
+    """
+    Temporary hack to convert flat nodes dimension to 3d structured dims.
+    long term solution for this is to use a custom xarray index. filters
+    should then have access to all dimensions needed.
+    """
 
-    if "nper" in dims_:
-        dims_.remove("nper")
-        shape = (
-            field_value.sizes["nper"],
-            parent.dims["nlay"],
-            parent.dims["nrow"],
-            parent.dims["ncol"],
+    if "nper" in (old_dims := set(value.dims).copy()):
+        old_dims.remove("nper")
+        shape: tuple[int, ...] = (
+            value.sizes["nper"],
+            structured_grid_dims["nlay"],
+            structured_grid_dims["nrow"],
+            structured_grid_dims["ncol"],
         )
-        dims = ("nper", "nlay", "nrow", "ncol")
+        dims: tuple[str, ...] = ("nper", "nlay", "nrow", "ncol")
         coords = {
-            "nper": field_value.coords["nper"],
-            "nlay": range(parent.dims["nlay"]),
-            "nrow": range(parent.dims["nrow"]),
-            "ncol": range(parent.dims["ncol"]),
+            "nper": value.coords["nper"],
+            "nlay": range(structured_grid_dims["nlay"]),
+            "nrow": range(structured_grid_dims["nrow"]),
+            "ncol": range(structured_grid_dims["ncol"]),
         }
     else:
         shape = (
-            parent.dims["nlay"],
-            parent.dims["nrow"],
-            parent.dims["ncol"],
+            structured_grid_dims["nlay"],
+            structured_grid_dims["nrow"],
+            structured_grid_dims["ncol"],
         )
         dims = ("nlay", "nrow", "ncol")
         coords = {
-            "nlay": range(parent.dims["nlay"]),
-            "nrow": range(parent.dims["nrow"]),
-            "ncol": range(parent.dims["ncol"]),
+            "nlay": range(structured_grid_dims["nlay"]),
+            "nrow": range(structured_grid_dims["nrow"]),
+            "ncol": range(structured_grid_dims["ncol"]),
         }
 
-    if dims_ == {"nodes"}:
-        field_value = xr.DataArray(
-            field_value.data.reshape(shape),
+    if old_dims == {"nodes"}:
+        value = xr.DataArray(
+            value.data.reshape(shape),
             dims=dims,
             coords=coords,
         )
 
-    return field_value
+    return value
 
 
-def unstructure_field(name: str, value: Any) -> tuple[str, Any]:
+def unstructure_field(
+    name: str,
+    value: Any,
+    # TODO: temporary, remove not needed
+    structured_grid_dims: Mapping | None,
+) -> tuple[str, Any]:
     """
     Convert:
 
@@ -166,9 +168,11 @@ def unstructure_field(name: str, value: Any) -> tuple[str, Any]:
             return name, value.isoformat()
         case xr.DataArray():
             if name == "auxiliary":
-                value = tuple(value.values.tolist())
+                return name, tuple(value.values.tolist())
             if has_grid_dims(value):
-                value = _hack_grid_dims(value, value)
+                if structured_grid_dims is None:
+                    raise ValueError("Need structured grid dimension sizes")
+                value = _hack_structured_grid_dims(value, structured_grid_dims=structured_grid_dims)
             if has_tdis_dims(value):
                 value = {kper: value.isel(nper=kper) for kper in range(value.sizes["nper"])}
             return name, value
@@ -176,9 +180,22 @@ def unstructure_field(name: str, value: Any) -> tuple[str, Any]:
             return name, value
 
 
-def unstructure_block(block: dict[str, Any]) -> dict[str, Any]:
+def unstructure_block(
+    block: dict[str, Any],
+    # TODO: temporary, remove not needed
+    structured_grid_dims: Mapping | None,
+) -> dict[str, Any]:
     """Unstructure a block of data, converting fields to a suitable format."""
-    return dict([unstructure_field(block.get(field_name, None)) for field_name in block.keys()])
+    return dict(
+        [
+            unstructure_field(
+                name=field_name,
+                value=block.get(field_name, None),
+                structured_grid_dims=structured_grid_dims,
+            )
+            for field_name in block.keys()
+        ]
+    )
 
 
 def _hack_field_metadata(
@@ -195,8 +212,8 @@ def _hack_field_metadata(
 
 def segment_period_data(block: dict[str, Any], cls: type[Component]) -> dict[str, dict[str, Any]]:
     """Partition period data by stress period"""
-    arrays = {}
-    blocks = {}
+    arrays = {}  # type: ignore
+    blocks = {}  # type: ignore
     period = PERIOD.upper()
 
     for arr_name, periods in block.items():
@@ -220,14 +237,26 @@ def unstructure_component(value: Component) -> dict[str, Any]:
     data = value.to_dict(blocks=True)
     blocks: dict[str, dict[str, Any]] = {}
     blocks.update(binding_blocks := get_binding_blocks(value))
+
+    # temporary hack! TODO remove once we have a structured grid index
+    if "nlay" in value.data.dims:  # type: ignore
+        structured_grid_dims = value.data.dims  # type: ignore
+    elif value.data.parent is not None and "nlay" in value.data.parent.dims:  # type: ignore
+        structured_grid_dims = value.data.parent.dims  # type: ignore
+    else:
+        structured_grid_dims = None
+
     blocks.update(
         {
-            block_name: unstructure_block(data[block_name])
+            block_name: unstructure_block(
+                data[block_name], structured_grid_dims=structured_grid_dims
+            )
             for block_name in dfn.blocks.keys()
             if block_name not in binding_blocks
         }
     )
     if period_block := blocks.pop(PERIOD, None):
+        period_block = {k: v for k, v in period_block.items() if v is not None}
         blocks.update(segment_period_data(period_block, cls))
 
     # total temporary hack! manually set solutiongroup 1.

@@ -134,6 +134,7 @@ def array2const(value: xr.DataArray) -> Scalar:
         return value.max().item()
     if np.issubdtype(value.dtype, np.floating):
         return f"{value.max().item():.8f}"
+    return value.ravel()[0]
 
 
 def data2list(value: list | dict | xr.Dataset | xr.DataArray):
@@ -149,7 +150,7 @@ def data2list(value: list | dict | xr.Dataset | xr.DataArray):
         return
 
     if isinstance(value, dict):
-        for name, val in value.values():
+        for name, val in value.items():
             yield (name, val)
         return
 

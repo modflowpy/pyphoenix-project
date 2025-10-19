@@ -13,7 +13,7 @@ def test_gwf_chd01(function_tmpdir):
     time = ModelTime(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
 
     ims = Ims(
-        slnfname="sln1.ims",
+        filename="sln1.ims",
         models=[gwf_name],
         print_option="summary",
         outer_dvclose=1.00000000e-06,
@@ -91,7 +91,7 @@ def test_gwf_npf01(function_tmpdir):
     )
 
     ims = Ims(
-        # slnfname="sln1.ims",
+        filename="sln1.ims",
         models=[gwf_name],
         print_option="summary",
         outer_dvclose=1.00000000e-06,

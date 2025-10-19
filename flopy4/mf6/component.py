@@ -202,12 +202,15 @@ class Component(ABC, MutableMapping):
     def to_dict(self, blocks: bool = False) -> dict[str, Any]:
         """Convert the component to a dictionary representation."""
         data = xattree_asdict(self)
+        data.pop("filename")
+        data.pop("workspace", None)
+        data.pop("nodes", None)  # TODO: find a better way to omit
         if blocks:
-            blocks_ = {}
-            for field_name, field_meta in self.data.attrs["metadata"].items():
-                block_name = field_meta["block"]
+            blocks_ = {}  # type: ignore
+            for field_name, field_value in data.items():
+                block_name = self.dfn.fields[field_name].block
                 if block_name not in blocks_:
                     blocks_[block_name] = {}
-                blocks_[block_name][field_name] = data[field_name]
+                blocks_[block_name][field_name] = field_value
             return blocks_
         return data

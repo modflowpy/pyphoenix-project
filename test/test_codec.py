@@ -253,11 +253,11 @@ def test_dumps_drn():
     assert len(period2_lines) == 3
 
     # node elev cond
-    assert "1 1 5 10.00000000 1.00000000" in dumped  # Period 1: (0,0,4)
-    assert "2 5 1 8.00000000 2.00000000" in dumped  # Period 1: (1,4,0)
-    assert "1 2 2 12.00000000 1.50000000" in dumped  # Period 2: (0,1,1)
-    assert "1 3 4 9.00000000 0.80000000" in dumped  # Period 2: (0,2,3)
-    assert "2 4 3 7.00000000 2.20000000" in dumped  # Period 2: (1,3,2)
+    assert "1 1 5 10.0 1.0" in dumped  # Period 1: (0,0,4)
+    assert "2 5 1 8.0 2.0" in dumped  # Period 1: (1,4,0)
+    assert "1 2 2 12.0 1.5" in dumped  # Period 2: (0,1,1)
+    assert "1 3 4 9.0 0.8" in dumped  # Period 2: (0,2,3)
+    assert "2 4 3 7.0 2.2" in dumped  # Period 2: (1,3,2)
     assert "1e+30" not in dumped
     assert "1.0e+30" not in dumped
 
@@ -334,8 +334,8 @@ def test_dumps_wel_with_aux():
 
     assert len(lines) == 2
     # node q aux_value
-    assert "1 2 3 -75.00000000 1.00000000" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
-    assert "2 4 5 -25.00000000 2.00000000" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
+    assert "1 2 3 -75.0 1.0" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
+    assert "2 4 5 -25.0 2.0" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
     assert "1e+30" not in dumped
     assert "1.0e+30" not in dumped
 
