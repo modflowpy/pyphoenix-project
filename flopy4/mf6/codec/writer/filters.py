@@ -1,11 +1,12 @@
 from collections.abc import Hashable, Mapping
 from io import StringIO
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import xarray as xr
 from modflow_devtools.dfn.schema.v2 import FieldType
 from numpy.typing import NDArray
+from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
@@ -32,14 +33,34 @@ def field_type(value: Any) -> FieldType:
     raise ValueError(f"Unsupported field type: {type(value)}")
 
 
-def array_how(value: xr.DataArray) -> str:
-    # TODO
-    # - detect constant arrays?
-    # - above certain size, use external?
+ArrayHow = Literal["constant", "internal", "external"]
+
+
+def array_how(value: xr.DataArray) -> ArrayHow:
+    """
+    Determine how an array should be represented in MF6 input.
+    Options are "constant", "internal", or "external". If the
+    array dask-backed, assumed it's big and return "external".
+    Otherwise there is no materialization cost to check if all
+    values are the same, so return "constant" or "internal" as
+    appropriate.
+    """
+    if hasattr(value.data, "blocks"):
+        return "external"
+    if value.max() == value.min():
+        return "constant"
     return "internal"
 
 
-def array_chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
+def array2const(value: xr.DataArray) -> Scalar:
+    if np.issubdtype(value.dtype, np.integer):
+        return value.max().item()
+    if np.issubdtype(value.dtype, np.floating):
+        return f"{value.max().item():.8f}"
+    return value.ravel()[0]
+
+
+def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = None):
     """
     Yield chunks from a dask-backed array of up to 3 dimensions.
     If it's not already chunked, split it into chunks of the
