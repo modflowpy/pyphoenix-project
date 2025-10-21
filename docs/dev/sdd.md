@@ -143,19 +143,21 @@ Loaders and writers can be registered for any component class and format. The re
 
 The conversion layer uses `cattrs` to transform between the product's `xarray`/`attrs`-based object model and plain Python data structures suitable for serialization. This layer is format-agnostic and handles structural transformations common across formats.
 
-**Unstructuring (write path)**: A `cattrs` converter with appropriate hooks will convert components to nested dictionaries organized by block, handling tasks like
+**Unstructuring (write time)**: A `cattrs` converter with appropriate unstructuring hooks converts components to a form suitable for serialization, handling transformations like:
 
-- Organizing fields into blocks according to their `block` metadata from DFN files
-- Converting child components to binding records for parent component name files
-- Sliceing time-varying (period block) arrays by stress period
-- Converting `Path` objects to records (`FILEOUT` etc)
+- Grouping fields into blocks according to their `block` metadata from DFNs
+- Converting child components to binding tables for parent component name files
+- Slicing time-varying arrays by stress period, returned in a period-indexed `dict`
+- Converting `Path` objects to tuples (`<name>`, `FILEIN`/`FILEOUT`, `<path>`)
 
-**Structuring (read path)**: The reverse transformation turns dictionaries of primitives into component instances. A `cattrs` converter with appropriate hooks will, among other things,
+The unstructuring phase aims to avoid a) unnecessary copies and b) materializing data in memory.
 
-- Instantiate child components from binding records
-- Convert sparse list-input representations to arrays
-- Reconstruct time-varying array variables from indexed blocks
-- Guarantee `xarray` objects have proper dimensions/coordinates
+**Structuring (load time)**: A `cattrs` converter with appropriate structuring hooks converts dictionaries of primitives into component instances, including:
+
+- Instantiating child components from bindings
+- Converting sparse list input data representations to arrays
+- Reconstructing time-varying array variables from indexed blocks
+- Guaranteeing `xarray` objects have proper dimensions/coordinates
 
 #### Serialization
 
