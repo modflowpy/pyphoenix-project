@@ -9,7 +9,7 @@
 {% elif type == 'array' %}
 {{ array(name, value, how=value|array_how) }}
 {% elif type == 'list' %}
-{{ list(name, value) }}
+{{ list(value) }}
 {% endif %}
 {% endmacro %}
 
@@ -22,7 +22,7 @@
 {{ inset ~ value|join(" ") -}}
 {% endmacro %}
 
-{% macro list(name, value) %}
+{% macro list(value) %}
 {% for row in (value|data2list) %}
 {{ record(row) }}{% if not loop.last %}{{ "\n" }}{% endif %}
 {%- endfor %}
