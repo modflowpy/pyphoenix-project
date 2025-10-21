@@ -9,7 +9,8 @@ from xattree import xattree
 from flopy4.mf6.component import update_maxbound
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field
+from flopy4.mf6.spec import array, field, path
+from flopy4.utils import to_path
 
 
 @xattree
@@ -22,8 +23,12 @@ class Rch(Package):
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
-    ts_filerecord: Optional[Path] = field(block="options", default=None)
-    obs_filerecord: Optional[Path] = field(block="options", default=None)
+    ts_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="filein"
+    )
+    obs_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
     maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
     recharge: Optional[NDArray[np.float64]] = array(
         block="period",

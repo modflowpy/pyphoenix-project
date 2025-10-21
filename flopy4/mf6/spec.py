@@ -7,7 +7,7 @@ import builtins
 import types
 from datetime import datetime
 from pathlib import Path
-from typing import Union, get_args, get_origin
+from typing import Literal, Union, get_args, get_origin
 
 import numpy as np
 from attrs import NOTHING, Attribute
@@ -37,6 +37,40 @@ def field(
     if block:
         metadata = metadata or {}
         metadata["block"] = block
+    return flopy_field(
+        default=default,
+        validator=validator,
+        converter=converter,
+        repr=repr,
+        eq=eq,
+        init=init,
+        on_setattr=on_setattr,
+        metadata=metadata,
+    )
+
+
+FileInOut = Literal[None, "filein", "fileout"]
+
+
+def path(
+    default=NOTHING,
+    validator=None,
+    converter=None,
+    repr=True,
+    eq=True,
+    init=True,
+    metadata=None,
+    on_setattr=None,
+    block: str | None = None,
+    inout: FileInOut | None = None,
+):
+    """Define a path field."""
+    if block:
+        metadata = metadata or {}
+        metadata["block"] = block
+    if inout:
+        metadata = metadata or {}
+        metadata["inout"] = inout
     return flopy_field(
         default=default,
         validator=validator,

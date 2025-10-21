@@ -8,7 +8,8 @@ from xattree import xattree
 
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field
+from flopy4.mf6.spec import array, field, path
+from flopy4.utils import to_path
 
 
 @xattree
@@ -16,7 +17,9 @@ class Sto(Package):
     save_flows: bool = field(block="options", default=False)
     storagecoefficient: bool = field(block="options", default=False)
     ss_confined_only: bool = field(block="options", default=False)
-    tvs_filerecord: Optional[Path] = field(block="options", default=None)
+    tvs_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="filein"
+    )
     export_array_ascii: bool = field(block="options", default=False)
     export_array_netcdf: bool = field(block="options", default=False)
     dev_original_specific_storage: bool = field(block="options", default=False)

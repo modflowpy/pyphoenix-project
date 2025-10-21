@@ -4,7 +4,8 @@ from typing import ClassVar, Optional
 from xattree import xattree
 
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import field, path
+from flopy4.utils import to_path
 
 
 @xattree
@@ -13,14 +14,18 @@ class Ims(Solution):
 
     print_option: Optional[str] = field(block="options", default=None)
     complexity: str = field(block="options", default="simple")
-    csv_outer_output_file: Optional[Path] = field(default=None, block="options")
-    csv_inner_output_file: Optional[Path] = field(block="options", default=None)
-    no_ptc: bool = field(default=False, block="options")
-    no_ptc_option: Optional[str] = field(default=None, block="options")
+    csv_outer_output_file: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    csv_inner_output_file: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    no_ptc: bool = field(block="options", default=False)
+    no_ptc_option: Optional[str] = field(block="options", default=None)
     ats_outer_maximum_fraction: Optional[float] = field(block="options", default=None)
-    outer_dvclose: Optional[float] = field(default=None, block="nonlinear")
-    outer_maximum: Optional[int] = field(default=None, block="nonlinear")
-    under_relaxation: Optional[str] = field(default=None, block="nonlinear")
+    outer_dvclose: Optional[float] = field(block="nonlinear", default=None)
+    outer_maximum: Optional[int] = field(block="nonlinear", default=None)
+    under_relaxation: Optional[str] = field(block="nonlinear", default=None)
     under_relaxation_gamma: Optional[float] = field(block="nonlinear", default=None)
     under_relaxation_theta: Optional[float] = field(block="nonlinear", default=None)
     under_relaxation_kappa: Optional[float] = field(block="nonlinear", default=None)

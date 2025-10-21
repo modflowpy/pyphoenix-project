@@ -8,7 +8,8 @@ from xattree import xattree
 
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field
+from flopy4.mf6.spec import array, field, path
+from flopy4.utils import to_path
 
 
 @xattree
@@ -42,7 +43,9 @@ class Npf(Package):
     save_saturation: bool = field(block="options", default=None)
     k22overk: bool = field(block="options", default=None)
     k33overk: bool = field(block="options", default=None)
-    tvk_filerecord: Optional[Path] = field(block="options", default=None)
+    tvk_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="filein"
+    )
     export_array_ascii: bool = field(block="options", default=False)
     export_array_netcdf: bool = field(block="options", default=False)
     dev_no_newton: bool = field(block="options", default=False)
