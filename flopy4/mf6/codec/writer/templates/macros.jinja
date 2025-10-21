@@ -32,14 +32,14 @@
 {{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
-CONSTANT {{ value.item() }}
+CONSTANT {{ value|array2const }}
 {% elif how == "layered constant" %}
 {% for layer in value -%}
-CONSTANT {{ layer.item() }}
+CONSTANT {{ layer|array2const }}
 {%- endfor %}
 {% elif how == "internal" %}
 INTERNAL
-{% for chunk in value|array_chunks -%}
+{% for chunk in value|array2chunks -%}
 {{ (2 * inset) ~ chunk|array2string }}
 {%- endfor %}
 {% elif how == "external" %}
