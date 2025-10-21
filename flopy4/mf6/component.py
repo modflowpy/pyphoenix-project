@@ -1,12 +1,13 @@
 from abc import ABC
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 from attrs import fields
 from modflow_devtools.dfn import Dfn, Field
 from packaging.version import Version
+from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import FILL_DNODATA, MF6
@@ -179,21 +180,40 @@ class Component(ABC, MutableMapping):
             blocks=blocks,
         )
 
-    def _preio(self, format: str = MF6) -> None:
-        # prep for io operations
-        if not self.filename:
-            self.filename = self.default_filename()
-
     def load(self, format: str = MF6) -> None:
         """Load the component and any children."""
-        self._preio(format=format)
+        # TODO: setting filename is a temp hack to get the parent's
+        # name as this component's filename stem, if it has one. an
+        # actual solution is to auto-set the filename when children
+        # are attached to parents.
+        self.filename = self.filename or self.default_filename()
         self._load(format=format)
         for child in self.children.values():  # type: ignore
             child.load(format=format)
 
     def write(self, format: str = MF6) -> None:
         """Write the component and any children."""
-        self._preio(format=format)
+        # TODO: setting filename is a temp hack to get the parent's
+        # name as this component's filename stem, if it has one. an
+        # actual solution is to auto-set the filename when children
+        # are attached to parents.
+        self.filename = self.filename or self.default_filename()
         self._write(format=format)
         for child in self.children.values():  # type: ignore
             child.write(format=format)
+
+    def to_dict(self, blocks: bool = False) -> dict[str, Any]:
+        """Convert the component to a dictionary representation."""
+        data = xattree_asdict(self)
+        data.pop("filename")
+        data.pop("workspace", None)  # might be a Context
+        data.pop("nodes", None)  # TODO: find a better way to omit
+        if blocks:
+            blocks_ = {}  # type: ignore
+            for field_name, field_value in data.items():
+                block_name = self.dfn.fields[field_name].block
+                if block_name not in blocks_:
+                    blocks_[block_name] = {}
+                blocks_[block_name][field_name] = field_value
+            return blocks_
+        return data

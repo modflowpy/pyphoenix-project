@@ -416,3 +416,114 @@ def test_write_ascii(function_tmpdir):
     assert f"{gwf_name}.oc" in file_names
     assert f"{gwf_name}.npf" in file_names
     assert f"{gwf_name}.chd" in file_names
+
+
+def test_to_dict_fields():
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+    dims = {
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+        "nper": time.nper,
+        "nodes": grid.nnodes,
+    }
+
+    chd = Chd(dims=dims, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+    result = chd.to_dict()
+
+    assert "head" in result
+    assert result["head"][0, 0] == 1.0
+    assert result["head"][0, 99] == 0.0
+
+    npf = Npf(dims=dims, k=5.0)
+    result = npf.to_dict()
+
+    assert "filename" not in result
+    assert "k" in result
+    assert "icelltype" in result
+    assert "k33" in result
+    assert np.array_equal(result["k"], np.full(100, 5.0))
+
+
+def test_to_dict_blocks():
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
+    dims = {
+        "nlay": grid.nlay,
+        "nrow": grid.nrow,
+        "ncol": grid.ncol,
+        "nper": time.nper,
+        "nodes": grid.nnodes,
+    }
+
+    chd = Chd(
+        dims=dims,
+        print_flows=True,
+        head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+    )
+    result = chd.to_dict(blocks=True)
+
+    assert "options" in result
+    assert "period" in result
+    assert "print_flows" in result["options"]
+    assert result["options"]["print_flows"] is True
+    assert "head" in result["period"]
+    assert result["period"]["head"][0, 0] == 1.0
+    assert result["period"]["head"][0, 99] == 0.0
+
+    npf = Npf(dims=dims, save_flows=True, k=2.0)
+    result = npf.to_dict(blocks=True)
+
+    assert "options" in result
+    assert "griddata" in result
+    assert "save_flows" in result["options"]
+    assert result["options"]["save_flows"] is True
+    assert "k" in result["griddata"]
+    assert np.array_equal(result["griddata"]["k"], np.full(100, 2.0))
+
+
+def test_to_dict_on_component():
+    dims = {
+        "nper": 1,
+        "nlay": 1,
+        "nrow": 2,
+        "ncol": 2,
+        "nodes": 4,
+    }
+    dis = Dis(dims=dims)
+    result = dis.to_dict()
+
+    assert "filename" not in result
+    assert "nlay" in result
+
+
+def test_to_dict_on_context():
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(models=["gwf"])
+    sim = Simulation(tdis=time, solutions={"ims": ims})
+
+    result = sim.to_dict()
+
+    assert "filename" not in result
+    assert "workspace" not in result
+    assert "tdis" in result
+
+
+def test_to_dict_excludes_derived_dims():
+    # TODO eventually revise to test exclusion of all derived dimensions,
+    # once we have a mechanism to mark them as such
+    dims = {
+        "nper": 1,
+        "nlay": 1,
+        "nrow": 2,
+        "ncol": 2,
+        "nodes": 4,
+    }
+    dis = Dis(dims=dims)
+    result = dis.to_dict()
+
+    assert "nlay" in result
+    assert "nrow" in result
+    assert "ncol" in result
+    assert "nodes" not in result
