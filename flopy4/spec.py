@@ -1,6 +1,8 @@
 """
 Wrap `xattree` and `attrs` specification utilities.
 These include field decorators and introspection functions.
+TODO: add `derived` option to dims? or more generic option
+to any field indicating it is not part of the formal spec?
 """
 
 from attrs import NOTHING, Attribute
