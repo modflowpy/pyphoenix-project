@@ -111,7 +111,7 @@ ignore = [
 [project.entry-points.flopy4]
 plot = "flopy4.singledispatch.plot_int"
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64"]
 
