@@ -187,11 +187,6 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             dataset = xr.Dataset(block)
             blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
 
-    # make sure options block always comes first
-    if "options" in blocks:
-        options_block = blocks.pop("options")
-        blocks = {"options": options_block, **blocks}
-
     # total temporary hack! manually set solutiongroup 1. still need to support multiple..
     if "solutiongroup" in blocks:
         sg = blocks["solutiongroup"]
