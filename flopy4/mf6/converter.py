@@ -60,6 +60,43 @@ def get_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, 
     return blocks
 
 
+def _hack_structured_grid_dims(
+    value: xr.DataArray, structured_grid_dims: Mapping[str, int]
+) -> xr.DataArray:
+    """
+    Temporary hack to convert flat nodes dimension to 3d structured dims.
+    long term solution for this is to use a custom xarray index. filters
+    should then have access to all dimensions needed.
+    """
+
+    if "nodes" not in value.dims:
+        return value
+
+    shape = [
+        structured_grid_dims["nlay"],
+        structured_grid_dims["nrow"],
+        structured_grid_dims["ncol"],
+    ]
+    dims = ["nlay", "nrow", "ncol"]
+    coords = {
+        "nlay": range(structured_grid_dims["nlay"]),
+        "nrow": range(structured_grid_dims["nrow"]),
+        "ncol": range(structured_grid_dims["ncol"]),
+    }
+
+    if "nper" in value.dims:
+        shape.insert(0, value.sizes["nper"])
+        dims.insert(0, "nper")
+        coords = {"nper": value.coords["nper"], **coords}
+
+    return xr.DataArray(
+        value.data.reshape(shape),
+        dims=dims,
+        coords=coords,
+        name=value.name,
+    )
+
+
 def unstructure_component(value: Component) -> dict[str, Any]:
     blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
     blocks: dict[str, dict[str, Any]] = {}
@@ -109,31 +146,10 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                     dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
                 )
                 if has_spatial_dims:
-                    # terrible hack to convert flat nodes dimension to 3d structured dims.
-                    # long term solution for this is to use a custom xarray index. filters
-                    # should then have access to all dimensions needed.
-                    dims_ = set(field_value.dims).copy()
-                    dims_.remove("nper")
-                    if dims_ == {"nodes"}:
-                        parent = value.parent  # type: ignore
-                        field_value = xr.DataArray(
-                            field_value.data.reshape(
-                                (
-                                    field_value.sizes["nper"],
-                                    parent.dims["nlay"],
-                                    parent.dims["nrow"],
-                                    parent.dims["ncol"],
-                                )
-                            ),
-                            dims=("nper", "nlay", "nrow", "ncol"),
-                            coords={
-                                "nper": field_value.coords["nper"],
-                                "nlay": range(parent.dims["nlay"]),
-                                "nrow": range(parent.dims["nrow"]),
-                                "ncol": range(parent.dims["ncol"]),
-                            },
-                            name=field_value.name,
-                        )
+                    field_value = _hack_structured_grid_dims(
+                        field_value,
+                        structured_grid_dims=value.parent.data.dims,  # type: ignore
+                    )
 
                     period_data[field_name] = {
                         kper: field_value.isel(nper=kper)
