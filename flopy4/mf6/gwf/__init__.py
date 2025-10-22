@@ -15,8 +15,9 @@ from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
+from flopy4.utils import to_path
 
 __all__ = ["Gwf", "Chd", "Dis", "Drn", "Ic", "Npf", "Oc", "Wel"]
 
@@ -61,9 +62,15 @@ class Gwf(Model):
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
     newtonoptions: Optional[NewtonOptions] = field(block="options", default=None)
-    nc_mesh2d_filerecord: Optional[Path] = field(block="options", default=None)
-    nc_structured_filerecord: Optional[Path] = field(block="options", default=None)
-    nc_filerecord: Optional[Path] = field(block="options", default=None)
+    nc_mesh2d_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    nc_structured_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    nc_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
     dis: Dis = field(converter=convert_grid, block="packages")
     ic: Ic = field(block="packages")
     oc: Oc = field(block="packages")

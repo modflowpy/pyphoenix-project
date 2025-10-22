@@ -9,7 +9,8 @@ from xattree import xattree
 from flopy4.mf6.component import update_maxbound
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field
+from flopy4.mf6.spec import array, field, path
+from flopy4.utils import to_path
 
 
 @xattree
@@ -22,9 +23,15 @@ class Wel(Package):
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
     auto_flow_reduce: float = field(block="options", default=None)
-    afrcsv_filerecord: Optional[Path] = field(block="options", default=None)
-    ts_filerecord: Optional[Path] = field(block="options", default=None)
-    obs_filerecord: Optional[Path] = field(block="options", default=None)
+    afrcsv_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    ts_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="filein"
+    )
+    obs_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
     mover: bool = field(block="options", default=False)
     maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
     q: Optional[NDArray[np.float64]] = array(

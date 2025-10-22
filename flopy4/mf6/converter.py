@@ -18,26 +18,17 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
-from flopy4.mf6.spec import fields_dict
+from flopy4.mf6.spec import FileInOut
 
 
-def _attach_field_metadata(
-    dataset: xr.Dataset, component_type: type, field_names: list[str]
-) -> None:
-    # TODO: attach metadata to array attrs instead of dataset attrs
-    field_metadata = {}
-    component_fields = fields_dict(component_type)
-    for field_name in field_names:
-        if field_name in component_fields:
-            field_metadata[field_name] = component_fields[field_name].metadata
-    dataset.attrs["field_metadata"] = field_metadata
-
-
-def _path_to_tuple(field_name: str, path_value: Path) -> tuple:
-    if field_name.endswith("_file"):
-        base_name = field_name.replace("_file", "").upper()
-        return (base_name, "FILEOUT", str(path_value))
-    return (field_name.upper(), "FILEOUT", str(path_value))
+def path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
+    t = [name.upper()]
+    if name.endswith("_file"):
+        t[0] = name.replace("_file", "").upper()
+    if inout:
+        t.append(inout.upper())
+    t.append(str(value))
+    return tuple(t)
 
 
 def get_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
@@ -100,9 +91,11 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             #     (and split the period data into separate kper-indexed blocks)
             #   - other values to their original form
             if isinstance(field_value, Path):
-                rec = _path_to_tuple(field_name, field_value)
+                field_spec = xatspec.attrs[field_name]
+                field_meta = getattr(field_spec, "metadata", {})
+                t = path_to_tuple(field_name, field_value, inout=field_meta.get("inout", "fileout"))
                 # name may have changed e.g dropping '_file' suffix
-                blocks[block_name][rec[0]] = rec
+                blocks[block_name][t[0]] = t
             elif isinstance(field_value, datetime):
                 blocks[block_name][field_name] = field_value.isoformat()
             elif (
@@ -165,7 +158,6 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         if block_name in period_data and isinstance(period_data[block_name], dict):
             dataset = xr.Dataset(period_data[block_name])
-            _attach_field_metadata(dataset, type(value), list(period_data[block_name].keys()))  # type: ignore
             blocks[block_name] = {block_name: dataset}
             del period_data[block_name]
 
@@ -177,7 +169,6 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         for kper, block in period_blocks.items():
             dataset = xr.Dataset(block)
-            _attach_field_metadata(dataset, type(value), list(block.keys()))
             blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
 
     # make sure options block always comes first

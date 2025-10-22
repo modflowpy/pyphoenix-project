@@ -8,7 +8,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field
+from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
 
 
@@ -35,20 +35,14 @@ class Oc(Package):
         rtype: str = field()
         steps: "Oc.Steps" = field()
 
-    budget_file: Optional[Path] = field(
-        block="options",
-        converter=to_path,
-        default=None,
+    budget_file: Optional[Path] = path(
+        block="options", converter=to_path, default=None, inout="fileout"
     )
-    budget_csv_file: Optional[Path] = field(
-        block="options",
-        converter=to_path,
-        default=None,
+    budget_csv_file: Optional[Path] = path(
+        block="options", converter=to_path, default=None, inout="fileout"
     )
-    head_file: Optional[Path] = field(
-        block="options",
-        converter=to_path,
-        default=None,
+    head_file: Optional[Path] = path(
+        block="options", converter=to_path, default=None, inout="fileout"
     )
     # TODO: needs coverter and then rename?
     head: Optional[Format] = field(block="options", default=None)
