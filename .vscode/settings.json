@@ -12,7 +12,8 @@
             "source.fixAll": "explicit"
         }
     },
-    "mypy-type-checker.importStrategy": "fromEnvironment",
+    "python.analysis.typeCheckingMode": "off",
+    "debugpy.debugJustMyCode": false,
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,

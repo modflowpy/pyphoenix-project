@@ -156,6 +156,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for kper in range(field_value.sizes["nper"])
                     }
                 else:
+                    # TODO why not putting in block here but doing below? how does this even work
                     if np.issubdtype(field_value.dtype, np.str_):
                         period_data[field_name] = {
                             kper: field_value[kper] for kper in range(field_value.sizes["nper"])
@@ -186,11 +187,6 @@ def unstructure_component(value: Component) -> dict[str, Any]:
         for kper, block in period_blocks.items():
             dataset = xr.Dataset(block)
             blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
-
-    # make sure options block always comes first
-    if "options" in blocks:
-        options_block = blocks.pop("options")
-        blocks = {"options": options_block, **blocks}
 
     # total temporary hack! manually set solutiongroup 1. still need to support multiple..
     if "solutiongroup" in blocks:

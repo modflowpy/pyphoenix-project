@@ -5,6 +5,7 @@ TODO: add `derived` option to dims? or more generic option
 to any field indicating it is not part of the formal spec?
 """
 
+import numpy as np
 from attrs import NOTHING, Attribute
 from xattree import array as xattree_array
 from xattree import coord as xattree_coord
@@ -75,7 +76,7 @@ def coord(
 
 
 def array(
-    cls=None,
+    dtype: np.dtype | str | type | None = None,
     dims=None,
     default=NOTHING,
     validator=None,
@@ -87,7 +88,7 @@ def array(
 ):
     """Define an array field."""
     return xattree_array(
-        cls=cls,
+        dtype=dtype,
         dims=dims,
         default=default,
         validator=validator,

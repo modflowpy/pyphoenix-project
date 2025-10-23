@@ -64,7 +64,7 @@ class Dis(Package):
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    idomain: Optional[NDArray[np.int32]] = array(
+    idomain: Optional[NDArray[np.int64]] = array(
         block="griddata",
         default=1,
         dims=("nlay", "nrow", "ncol"),

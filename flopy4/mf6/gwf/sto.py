@@ -24,7 +24,7 @@ class Sto(Package):
     export_array_netcdf: bool = field(block="options", default=False)
     dev_original_specific_storage: bool = field(block="options", default=False)
     dev_oldstorageformulation: bool = field(block="options", default=False)
-    iconvert: NDArray[np.int32] = array(
+    iconvert: NDArray[np.int64] = array(
         block="griddata",
         dims=("nodes",),
         default=0,

@@ -130,7 +130,7 @@ def coord(
 
 
 def array(
-    cls=None,
+    dtype: np.dtype | str | type | None = None,
     dims=None,
     default=NOTHING,
     validator=None,
@@ -146,7 +146,7 @@ def array(
         metadata = metadata or {}
         metadata["block"] = block
     return flopy_array(
-        cls=cls,
+        dtype=dtype,
         dims=dims,
         default=default,
         validator=validator,
