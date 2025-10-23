@@ -201,11 +201,15 @@ def dataset2list(value: xr.Dataset):
     if value is None or not any(value.data_vars):
         return
 
-    first = next(iter(value.data_vars.values()))
-    is_union = first.dtype.type is np.str_
+    # special case OC for now.
+    is_oc = all(
+        str(v.name).startswith("save_") or str(v.name).startswith("print_")
+        for v in value.data_vars.values()
+    )
 
-    if first.ndim == 0:  # handle scalar
-        if is_union:
+    # handle scalar
+    if (first := next(iter(value.data_vars.values()))).ndim == 0:
+        if is_oc:
             for name in value.data_vars.keys():
                 val = value[name]
                 val = val.item() if val.shape == () else val
@@ -230,7 +234,7 @@ def dataset2list(value: xr.Dataset):
     has_spatial_dims = len(spatial_dims) > 0
     indices = np.where(combined_mask)
     for i in range(len(indices[0])):
-        if is_union:
+        if is_oc:
             for name in value.data_vars.keys():
                 val = value[name][tuple(idx[i] for idx in indices)]
                 val = val.item() if val.shape == () else val

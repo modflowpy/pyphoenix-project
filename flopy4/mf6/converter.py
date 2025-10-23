@@ -31,7 +31,7 @@ def path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
     return tuple(t)
 
 
-def get_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
+def make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
     if not isinstance(value, Context):
         return {}
 
@@ -103,13 +103,19 @@ def unstructure_component(value: Component) -> dict[str, Any]:
     xatspec = xattree.get_xatspec(type(value))
     data = xattree.asdict(value)
 
-    blocks.update(binding_blocks := get_binding_blocks(value))
+    # create child component binding blocks
+    blocks.update(make_binding_blocks(value))
 
+    # process blocks in order, unstructuring fields as needed,
+    # then slice period data into separate kper-indexed blocks
+    # each of which contains a dataset indexed for that period.
     for block_name, block in blockspec.items():
+        period_data = {}  # type: ignore
+        period_blocks = {}  # type: ignore
+        period_block_name = None
+
         if block_name not in blocks:
             blocks[block_name] = {}
-        period_data = {}
-        period_blocks = {}  # type: ignore
 
         for field_name in block.keys():
             # Skip child components that have been processed as bindings
@@ -119,82 +125,78 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                     if child_spec.metadata["block"] == block_name:  # type: ignore
                         continue
 
-            field_value = data[field_name]
-            # convert:
+            # filter out empty values and false keywords, and convert:
             #   - paths to records
-            #   - datetime to ISO format
-            #   - auxiliary fields to tuples
-            #   - xarray DataArrays with 'nper' dimension to kper-sliced datasets
-            #     (and split the period data into separate kper-indexed blocks)
+            #   - datetimes to ISO format
+            #   - filter out false keywords
+            #   - 'auxiliary' fields to tuples
+            #   - xarray DataArrays with 'nper' dim to dict of kper-sliced datasets
             #   - other values to their original form
-            if isinstance(field_value, Path):
-                field_spec = xatspec.attrs[field_name]
-                field_meta = getattr(field_spec, "metadata", {})
-                t = path_to_tuple(field_name, field_value, inout=field_meta.get("inout", "fileout"))
-                # name may have changed e.g dropping '_file' suffix
-                blocks[block_name][t[0]] = t
-            elif isinstance(field_value, datetime):
-                blocks[block_name][field_name] = field_value.isoformat()
-            elif (
-                field_name == "auxiliary"
-                and hasattr(field_value, "values")
-                and field_value is not None
-            ):
-                blocks[block_name][field_name] = tuple(field_value.values.tolist())
-            elif isinstance(field_value, xr.DataArray) and "nper" in field_value.dims:
-                has_spatial_dims = any(
-                    dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
-                )
-                if has_spatial_dims:
-                    field_value = _hack_structured_grid_dims(
-                        field_value,
-                        structured_grid_dims=value.parent.data.dims,  # type: ignore
+            match field_value := data[field_name]:
+                case None:
+                    continue
+                case bool():
+                    if field_value:
+                        blocks[block_name][field_name] = field_value
+                case Path():
+                    field_spec = xatspec.attrs[field_name]
+                    field_meta = getattr(field_spec, "metadata", {})
+                    t = path_to_tuple(
+                        field_name, field_value, inout=field_meta.get("inout", "fileout")
                     )
-
-                    period_data[field_name] = {
-                        kper: field_value.isel(nper=kper)
-                        for kper in range(field_value.sizes["nper"])
-                    }
-                else:
-                    # TODO why not putting in block here but doing below? how does this even work
-                    if np.issubdtype(field_value.dtype, np.str_):
+                    # name may have changed e.g dropping '_file' suffix
+                    blocks[block_name][t[0]] = t
+                case datetime():
+                    blocks[block_name][field_name] = field_value.isoformat()
+                case t if (
+                    field_name == "auxiliary"
+                    and hasattr(field_value, "values")
+                    and field_value is not None
+                ):
+                    blocks[block_name][field_name] = tuple(field_value.values.tolist())
+                case xr.DataArray() if "nper" in field_value.dims:
+                    has_spatial_dims = any(
+                        dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
+                    )
+                    if has_spatial_dims:
+                        field_value = _hack_structured_grid_dims(
+                            field_value,
+                            structured_grid_dims=value.parent.data.dims,  # type: ignore
+                        )
+                    if "period" in block_name:
+                        period_block_name = block_name
                         period_data[field_name] = {
-                            kper: field_value[kper] for kper in range(field_value.sizes["nper"])
+                            kper: field_value.isel(nper=kper)
+                            for kper in range(field_value.sizes["nper"])
                         }
-                    else:
-                        if block_name not in period_data:
-                            period_data[block_name] = {}
-                        period_data[block_name][field_name] = field_value  # type: ignore
-            else:
-                if field_value is not None:
-                    if isinstance(field_value, bool):
-                        if field_value:
-                            blocks[block_name][field_name] = field_value
                     else:
                         blocks[block_name][field_name] = field_value
 
-        if block_name in period_data and isinstance(period_data[block_name], dict):
-            dataset = xr.Dataset(period_data[block_name])
-            blocks[block_name] = {block_name: dataset}
-            del period_data[block_name]
+                case _:
+                    blocks[block_name][field_name] = field_value
 
+        # invert key order, (arr_name, kper) -> (kper, arr_name)
         for arr_name, periods in period_data.items():
             for kper, arr in periods.items():
                 if kper not in period_blocks:
                     period_blocks[kper] = {}
                 period_blocks[kper][arr_name] = arr
 
+        # setup indexed period blocks, combine arrays into datasets
         for kper, block in period_blocks.items():
-            dataset = xr.Dataset(block)
-            blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
+            assert isinstance(period_block_name, str)
+            blocks[f"{period_block_name} {kper + 1}"] = {
+                period_block_name: xr.Dataset(block, coords=block[arr_name].coords)
+            }
 
-    # total temporary hack! manually set solutiongroup 1. still need to support multiple..
+    # total temporary hack! manually set solutiongroup 1.
+    # TODO still need to support multiple..
     if "solutiongroup" in blocks:
         sg = blocks["solutiongroup"]
         blocks["solutiongroup 1"] = sg
         del blocks["solutiongroup"]
 
-    return {name: block for name, block in blocks.items() if name != "period"}
+    return {name: block for name, block in blocks.items() if name != period_block_name}
 
 
 def _make_converter() -> Converter:

@@ -63,7 +63,7 @@ def test_flopy3_model(tmp_path):
     ims.inner_hclose = 1e-6
     ims.inner_rclose = 0.1000000
     ic = Ic(dims=dims)
-    oc = Oc(dims=dims)
+    oc = Oc(dims=dims, save_head={0: "all"}, save_budget={0: "all"})
     npf = Npf(dims=dims)
     chd = Chd(dims=dims, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
 

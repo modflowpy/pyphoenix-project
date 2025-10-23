@@ -6,11 +6,11 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.component import update_maxbound
 from flopy4.mf6.constants import LENBOUNDNAME
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
+from flopy4.mf6.utils.grid_utils import update_maxbound
 from flopy4.utils import to_path
 
 

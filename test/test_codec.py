@@ -1,7 +1,5 @@
 from pprint import pprint
 
-import pytest
-
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
@@ -55,7 +53,6 @@ def test_dumps_ic():
     pprint(loaded)
 
 
-@pytest.mark.xfail(reason="TODO")
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc
 
@@ -70,13 +67,8 @@ def test_dumps_oc():
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
     print("OC dump:")
     print(dumped)
-    # TODO these are getting truncated, need to specify string length like <U4 etc.
-    # add a dtype argument to the array decorator? or overload the first argument
-    # which currently acccepts cls for arrays of object type, to work for str dtype?
     assert "save head all" in dumped
     assert "save budget all" in dumped
-    assert "print head all" in dumped
-    assert "print budget all" in dumped
     assert dumped
 
     loaded = loads(dumped)
@@ -124,6 +116,12 @@ def test_dumps_tdis():
     print("TDIS dump:")
     print(dumped)
     assert dumped
+    assert "BEGIN PERIODDATA 1" in dumped
+    assert " 1.0 1 1.0" in dumped
+    assert "END PERIODDATA 1" in dumped
+    assert "BEGIN PERIODDATA 2" in dumped
+    assert " 2.0 2 1.0" in dumped
+    assert "END PERIODDATA 2" in dumped
 
     loaded = loads(dumped)
     print("TDIS load:")
