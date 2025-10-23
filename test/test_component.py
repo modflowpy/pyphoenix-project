@@ -526,9 +526,7 @@ def test_to_dict_on_context():
     assert "tdis" in result
 
 
-def test_to_dict_excludes_derived_dims():
-    # TODO eventually revise to test exclusion of all derived dimensions,
-    # once we have a mechanism to mark them as such
+def test_to_dict_with_strict_excludes_fields_without_block_metadata():
     dims = {
         "nper": 1,
         "nlay": 1,
@@ -537,7 +535,7 @@ def test_to_dict_excludes_derived_dims():
         "nodes": 4,
     }
     dis = Dis(dims=dims)
-    result = dis.to_dict()
+    result = dis.to_dict(strict=True)
 
     assert "nlay" in result
     assert "nrow" in result

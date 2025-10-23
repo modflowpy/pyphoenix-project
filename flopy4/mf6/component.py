@@ -202,18 +202,45 @@ class Component(ABC, MutableMapping):
         for child in self.children.values():  # type: ignore
             child.write(format=format)
 
-    def to_dict(self, blocks: bool = False) -> dict[str, Any]:
-        """Convert the component to a dictionary representation."""
+    def to_dict(self, blocks: bool = False, strict: bool = False) -> dict[str, Any]:
+        """
+        Convert the component to a dictionary representation.
+
+        Parameters
+        ----------
+        blocks : bool, optional
+            If True, return a nested dict keyed by block name
+            with values as dicts of fields. Default is False.
+        strict : bool, optional
+            If True, include only fields in the DFN specification.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing component data, either
+            in terms of fields (flat) or blocks (nested).
+        """
         data = xattree_asdict(self)
-        data.pop("filename")
-        data.pop("workspace", None)  # might be a Context
-        data.pop("nodes", None)  # TODO: find a better way to omit
+        spec = self.dfn.fields
+
+        if strict:
+            data.pop("filename")
+            data.pop("workspace", None)  # might be a Context
+
         if blocks:
             blocks_ = {}  # type: ignore
-            for field_name, field_value in data.items():
-                block_name = self.dfn.fields[field_name].block
+            for field_name in spec.keys():
+                field_value = data[field_name]
+                block_name = spec[field_name].block
+                if strict and block_name is None:
+                    continue
                 if block_name not in blocks_:
                     blocks_[block_name] = {}
                 blocks_[block_name][field_name] = field_value
             return blocks_
-        return data
+        else:
+            return {
+                field_name: data[field_name]
+                for field_name in spec.keys()
+                if spec[field_name].block or not strict
+            }
