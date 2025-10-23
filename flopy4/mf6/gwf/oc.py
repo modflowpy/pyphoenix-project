@@ -46,29 +46,25 @@ class Oc(Package):
     )
     # TODO: needs coverter and then rename?
     head: Optional[Format] = field(block="options", default=None)
-    save_head: Optional[NDArray[np.object_]] = array(
-        object,
+    save_head: Optional[NDArray[np.str_]] = array(
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    save_budget: Optional[NDArray[np.object_]] = array(
-        object,
+    save_budget: Optional[NDArray[np.str_]] = array(
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    print_head: Optional[NDArray[np.object_]] = array(
-        object,
+    print_head: Optional[NDArray[np.str_]] = array(
         block="period",
         default="all",
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    print_budget: Optional[NDArray[np.object_]] = array(
-        object,
+    print_budget: Optional[NDArray[np.str_]] = array(
         block="period",
         default="all",
         dims=("nper",),
