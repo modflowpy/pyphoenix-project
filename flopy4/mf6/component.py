@@ -34,11 +34,14 @@ class Component(ABC, MutableMapping):
     _write = IO(Writer)  # type: ignore
 
     dfn: ClassVar[Dfn]
+    """The component's definition (i.e. specification)."""
+
     filename: str | None = field(default=None)
+    """The name of the component's input file."""
 
     @property
     def path(self) -> Path:
-        """Get the path to the component's input file."""
+        """The path to the component's input file."""
         self.filename = self.filename or self.default_filename()
         return Path.cwd() / self.filename
 
