@@ -49,28 +49,28 @@ class Oc(Package):
     save_head: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
         block="period",
-        default="all",
+        default=None,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     save_budget: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
         block="period",
-        default="all",
+        default=None,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     print_head: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
         block="period",
-        default="all",
+        default=None,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
     print_budget: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
         block="period",
-        default="all",
+        default=None,
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
