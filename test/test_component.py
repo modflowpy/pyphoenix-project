@@ -283,7 +283,7 @@ def test_gwf_chd01(function_tmpdir):
     time = ModelTime(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
 
     ims = Ims(
-        slnfname="sln1.ims",
+        filename="sln1.ims",
         models=[gwf_name],
         print_option="summary",
         outer_dvclose=1.00000000e-06,
@@ -349,6 +349,15 @@ def test_gwf_chd01(function_tmpdir):
 
     sim.write()
     sim.run()
+
+    assert Path(function_tmpdir, f"{sim_name}.tdis").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.nam").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.dis").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.ic").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.chd").is_file()
+    assert Path(function_tmpdir, "sln1.ims").is_file()
 
 
 def test_quickstart(function_tmpdir):
