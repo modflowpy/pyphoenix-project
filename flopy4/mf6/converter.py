@@ -110,6 +110,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             blocks[block_name] = {}
         period_data = {}
         period_blocks = {}  # type: ignore
+        period_block_name = None
 
         for field_name in block.keys():
             # Skip child components that have been processed as bindings
@@ -150,33 +151,22 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         field_value,
                         structured_grid_dims=value.parent.data.dims,  # type: ignore
                     )
-
+                if "period" in block_name:
+                    period_block_name = block_name
                     period_data[field_name] = {
                         kper: field_value.isel(nper=kper)
                         for kper in range(field_value.sizes["nper"])
                     }
                 else:
-                    # TODO why not putting in block here but doing below? how does this even work
-                    if np.issubdtype(field_value.dtype, np.str_):
-                        period_data[field_name] = {
-                            kper: field_value[kper] for kper in range(field_value.sizes["nper"])
-                        }
-                    else:
-                        if block_name not in period_data:
-                            period_data[block_name] = {}
-                        period_data[block_name][field_name] = field_value  # type: ignore
+                    blocks[block_name][field_name] = field_value
             else:
                 if field_value is not None:
+                    # only include boolean fields (keywords) if true
                     if isinstance(field_value, bool):
                         if field_value:
                             blocks[block_name][field_name] = field_value
                     else:
                         blocks[block_name][field_name] = field_value
-
-        if block_name in period_data and isinstance(period_data[block_name], dict):
-            dataset = xr.Dataset(period_data[block_name])
-            blocks[block_name] = {block_name: dataset}
-            del period_data[block_name]
 
         for arr_name, periods in period_data.items():
             for kper, arr in periods.items():
@@ -185,16 +175,19 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                 period_blocks[kper][arr_name] = arr
 
         for kper, block in period_blocks.items():
-            dataset = xr.Dataset(block)
-            blocks[f"{block_name} {kper + 1}"] = {block_name: dataset}
+            assert isinstance(period_block_name, str)
+            blocks[f"{period_block_name} {kper + 1}"] = {
+                period_block_name: xr.Dataset(block, coords=block[arr_name].coords)
+            }
 
-    # total temporary hack! manually set solutiongroup 1. still need to support multiple..
+    # total temporary hack! manually set solutiongroup 1.
+    # TODO still need to support multiple..
     if "solutiongroup" in blocks:
         sg = blocks["solutiongroup"]
         blocks["solutiongroup 1"] = sg
         del blocks["solutiongroup"]
 
-    return {name: block for name, block in blocks.items() if name != "period"}
+    return {name: block for name, block in blocks.items() if name != period_block_name}
 
 
 def _make_converter() -> Converter:
