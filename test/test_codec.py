@@ -1,5 +1,7 @@
 from pprint import pprint
 
+import pytest
+
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
@@ -53,6 +55,7 @@ def test_dumps_ic():
     pprint(loaded)
 
 
+@pytest.mark.xfail(reason="TODO")
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc
 

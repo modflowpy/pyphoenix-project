@@ -29,7 +29,7 @@ class Tdis(Package):
         dims=("nper",),
         converter=Converter(dict_to_array, takes_self=True, takes_field=True),
     )
-    nstp: NDArray[np.integer] = array(
+    nstp: NDArray[np.int64] = array(
         block="perioddata",
         default=1,
         dims=("nper",),

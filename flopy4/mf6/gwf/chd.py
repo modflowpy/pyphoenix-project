@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.component import update_maxbound
+from flopy4.mf6.constants import LENBOUNDNAME
 from flopy4.mf6.converter import dict_to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
@@ -51,6 +52,7 @@ class Chd(Package):
         on_setattr=update_maxbound,
     )
     boundname: Optional[NDArray[np.str_]] = array(
+        dtype=f"<U{LENBOUNDNAME}",
         block="period",
         dims=(
             "nper",

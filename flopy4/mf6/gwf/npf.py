@@ -50,7 +50,7 @@ class Npf(Package):
     export_array_netcdf: bool = field(block="options", default=False)
     dev_no_newton: bool = field(block="options", default=False)
     dev_omega: Optional[float] = field(block="options", default=None)
-    icelltype: NDArray[np.integer] = array(
+    icelltype: NDArray[np.int64] = array(
         block="griddata",
         dims=("nodes",),
         default=0,

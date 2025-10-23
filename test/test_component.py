@@ -7,7 +7,7 @@ from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
-from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
@@ -167,7 +167,11 @@ def test_init_sim_explicit_dims():
     ic = Ic(dims=dims)
     oc = Oc(dims=dims)
     npf = Npf(dims=dims)
-    chd = Chd(dims=dims, head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+    chd = Chd(
+        dims=dims,
+        head={"*": {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+        boundname={"*": {(0, 0, 0): "INLET", (0, 9, 9): "OUTLET"}},
+    )
     gwf = Gwf(
         dis=dis,
         ic=ic,
@@ -193,6 +197,9 @@ def test_init_sim_explicit_dims():
     assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(100))
     assert chd.head[0, 0] == 1.0
     assert chd.head[0, 99] == 0.0
+    assert chd.boundname[0, 0] == "INLET"
+    assert chd.boundname[0, 99] == "OUTLET"
+    assert chd.boundname.dtype == np.dtype(f"<U{LENBOUNDNAME}")
     assert np.array_equal(chd.head[0, 1:99].data, np.full((98,), FILL_DNODATA))
     assert np.array_equal(chd.head.data, chd.data.head.data)
     assert np.array_equal(
