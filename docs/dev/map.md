@@ -1,48 +1,41 @@
 # FloPy 4 development roadmap
 
-## Phase 1: Minimum Viable Product
+## Demo
 
-Core functionality. Shortcuts are OK.
-Read/write input files, run simulations, get/set data.
-Initial deliverable for alpha testing (USGS, Deltares).
-Alpha testers include Joeri, Huite, and the core MF6 team.
-Release via `pip install ` from github URL of our development sandbox.
-Tentative timeframe: July.
+Showcase a limited set of core functionality, such as:
 
-- [x] DFN spec to TOML
-- [x] draft object model
-- [x] unified IO framework
-- [ ] MF6 input file parser
-- [ ] MF6 input file writer
-- [ ] code generation from spec
-- [ ] minimal docs (quickstart, etc)
+- the v2 DFN specification schema and format
+- object model, data model, user-facing APIs
+- IO framework and ASCII file loading/writing
+- constructing, running, modifying simulations
 
-## Phase 2: Minimum Marketable Product
+Design and implementation are provisional. Implementation may take shortcuts, e.g. components hand-written instead of generated from the DFN specification.
 
-Refactor to make production-ready.
-Achieve rough feature-parity with 3.x.
-Adopt features from e.g. `imod-python`.
-Incorporate feedback from alpha testing.
-Beta testers include alpha testers and additional volunteers from USGS and Deltares.
-Release via `pip install` from github URL of our development sandbox.
-Tentative timeframe: by end of year?
+Release to demo participants via `pip install` from github URL.
 
-- [ ] reimplement object model (maintainability over magic)
-- [ ] structured xarray index for topology/geometry-aware selections
-- [ ] xarray accessors for cross-cutting concerns (plot, export)
-- [ ] xugrid integration for UGRID-compliance (DIS/DISV grids)
-- [ ] more extensive docs (converted from old flopy examples)
-- [ ] IO optimization (tuning, laziness/concurrency, etc)
-- [ ] comprehensive logging and error handling
-- [ ] validation framework, model checks
+## MVP
 
-## Phase 3: Rollout
+Support all core functionality, with components generated from the DFN spec. Prioritize functionality over performance/polish.
 
-Integrate the product with the existing repository.
-Evaluate feature-parity and fill any remaining gaps.
-Release via standard channels (PyPI, Conda).
-Dial 3.x down to maintenance mode.
+Release to initial USGS and Deltares testers via `pip install ` from github URL. Begin alpha versioning.
 
-- [ ] implement 3.x adapters, compare tests/examples
-- [ ] finalize 3.x maintenance plan and 4.x release plan
-- [ ] finalize MF6 compatibility policy and codegen tooling
+## MMP
+
+Minimum marketable product implements all core and most peripheral functionality, and may involve:
+
+- Achieving rough feature-parity with 3.x
+- Adopting features from e.g. `imod-python`
+- Incorporating feedback from user testing
+- Refactoring and performance optimization
+- Adapting 3.x documentation and examples
+- Comprehensive testing and evaluation
+- Finalizing maintenance/release plans
+- Finalizing MF6 version support plan
+
+Release to wider test audience at USGS and Deltares via `pip install` from github URL. Begin beta versioning.
+
+## GA
+
+Production-ready product achieves feature-parity with 3.x, integrates with the existing repository and becomes generally available via standard channels (PyPI, Conda).
+
+3.x enters maintenance-only mode for a limited time after which support will be dropped and all effort moved to 4.x.
