@@ -70,6 +70,7 @@ test = [
     "pytest-dotenv",
     "pytest-xdist",
     "pytest-benchmark",
+    "pytest-cov",
 ]
 build = ["build", "twine"]
 

@@ -156,6 +156,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         for kper in range(field_value.sizes["nper"])
                     }
                 else:
+                    # TODO why not putting in block here but doing below? how does this even work
                     if np.issubdtype(field_value.dtype, np.str_):
                         period_data[field_name] = {
                             kper: field_value[kper] for kper in range(field_value.sizes["nper"])
