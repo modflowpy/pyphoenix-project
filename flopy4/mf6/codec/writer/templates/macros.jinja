@@ -32,10 +32,10 @@
 {{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
-CONSTANT {{ value|array2const }}
+{{ inset }}CONSTANT {{ value|array2const }}
 {% elif how == "layered constant" %}
 {% for layer in value -%}
-CONSTANT {{ layer|array2const }}
+{{ inset }}CONSTANT {{ layer|array2const }}
 {%- endfor %}
 {% elif how == "internal" %}
 INTERNAL
