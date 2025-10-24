@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.constants import LENBOUNDNAME
-from flopy4.mf6.converter import dict_to_array
+from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
 from flopy4.mf6.utils.grid_utils import update_maxbound
@@ -38,7 +38,7 @@ class Rch(Package):
             "nodes",
         ),
         default=None,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
     )
     aux: Optional[NDArray[np.float64]] = array(
@@ -48,7 +48,7 @@ class Rch(Package):
             "nodes",
         ),
         default=None,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
     )
     boundname: Optional[NDArray[np.str_]] = array(
@@ -59,6 +59,6 @@ class Rch(Package):
             "nodes",
         ),
         default=None,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
     )

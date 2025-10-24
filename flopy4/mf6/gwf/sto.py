@@ -6,7 +6,7 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converter import dict_to_array
+from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
@@ -28,29 +28,29 @@ class Sto(Package):
         block="griddata",
         dims=("nodes",),
         default=0,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     ss: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
         default=1e-5,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     sy: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
         default=0.15,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     steady_state: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     transient: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )

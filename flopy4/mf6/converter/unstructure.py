@@ -3,25 +3,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import sparse
 import xarray as xr
 import xattree
-from cattrs import Converter
 from modflow_devtools.dfn.schema.block import block_sort_key
-from numpy.typing import NDArray
-from xattree import get_xatspec
 
-from flopy4.adapters import get_nn
 from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
-from flopy4.mf6.config import SPARSE_THRESHOLD
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.spec import FileInOut
 
 
-def path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
+def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
     t = [name.upper()]
     if name.endswith("_file"):
         t[0] = name.replace("_file", "").upper()
@@ -31,7 +23,7 @@ def path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
     return tuple(t)
 
 
-def make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
+def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
     if not isinstance(value, Context):
         return {}
 
@@ -104,7 +96,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
     data = xattree.asdict(value)
 
     # create child component binding blocks
-    blocks.update(make_binding_blocks(value))
+    blocks.update(_make_binding_blocks(value))
 
     # process blocks in order, unstructuring fields as needed,
     # then slice period data into separate kper-indexed blocks
@@ -132,6 +124,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             #   - 'auxiliary' fields to tuples
             #   - xarray DataArrays with 'nper' dim to dict of kper-sliced datasets
             #   - other values to their original form
+            # TODO: use cattrs converters for field unstructuring?
             match field_value := data[field_name]:
                 case None:
                     continue
@@ -141,7 +134,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                 case Path():
                     field_spec = xatspec.attrs[field_name]
                     field_meta = getattr(field_spec, "metadata", {})
-                    t = path_to_tuple(
+                    t = _path_to_tuple(
                         field_name, field_value, inout=field_meta.get("inout", "fileout")
                     )
                     # name may have changed e.g dropping '_file' suffix
@@ -197,98 +190,3 @@ def unstructure_component(value: Component) -> dict[str, Any]:
         del blocks["solutiongroup"]
 
     return {name: block for name, block in blocks.items() if name != period_block_name}
-
-
-def _make_converter() -> Converter:
-    converter = Converter()
-    converter.register_unstructure_hook_factory(xattree.has, lambda _: xattree.asdict)
-    converter.register_unstructure_hook(Component, unstructure_component)
-    return converter
-
-
-COMPONENT_CONVERTER = _make_converter()
-
-
-def dict_to_array(value, self_, field) -> NDArray:
-    """
-    Convert a sparse dictionary representation of an array to a
-    dense numpy array or a sparse COO array.
-
-    TODO: generalize this not only to dictionaries but to any
-    form that can be converted to an array (e.g. nested list)
-    """
-
-    if not isinstance(value, dict):
-        # if not a dict, assume it's a numpy array
-        # and let xarray deal with it if it isn't
-        return value
-
-    spec = get_xatspec(type(self_)).flat
-    field = spec[field.name]
-    if not field.dims:
-        raise ValueError(f"Field {field} missing dims")
-
-    # resolve dims
-    explicit_dims = self_.__dict__.get("dims", {})
-    inherited_dims = dict(self_.parent.data.dims) if self_.parent else {}
-    dims = inherited_dims | explicit_dims
-    shape = [dims.get(d, d) for d in field.dims]
-    unresolved = [d for d in shape if isinstance(d, str)]
-    if any(unresolved):
-        raise ValueError(f"Couldn't resolve dims: {unresolved}")
-
-    if np.prod(shape) > SPARSE_THRESHOLD:
-        a: dict[tuple[Any, ...], Any] = dict()
-
-        def set_(arr, val, *ind):
-            arr[tuple(ind)] = val
-
-        def final(arr):
-            coords = np.array(list(map(list, zip(*arr.keys()))))
-            return sparse.COO(
-                coords,
-                list(arr.values()),
-                shape=shape,
-                fill_value=field.default or FILL_DNODATA,
-            )
-    else:
-        a = np.full(shape, FILL_DNODATA, dtype=field.dtype)  # type: ignore
-
-        def set_(arr, val, *ind):
-            arr[ind] = val
-
-        def final(arr):
-            arr[arr == FILL_DNODATA] = field.default or FILL_DNODATA
-            return arr
-
-    if "nper" in dims:
-        for kper, period in value.items():
-            if kper == "*":
-                kper = 0
-            match len(shape):
-                case 1:
-                    set_(a, period, kper)
-                case _:
-                    for cellid, v in period.items():
-                        nn = get_nn(cellid, **dims)
-                        set_(a, v, kper, nn)
-            if kper == "*":
-                break
-    else:
-        for cellid, v in value.items():
-            nn = get_nn(cellid, **dims)
-            set_(a, v, nn)
-
-    return final(a)
-
-
-def structure(data: dict[str, Any], path: Path) -> Component:
-    component = COMPONENT_CONVERTER.structure(data, Component)
-    if isinstance(component, Context):
-        component.workspace = path.parent
-    component.filename = path.name
-    return component
-
-
-def unstructure(component: Component) -> dict[str, Any]:
-    return COMPONENT_CONVERTER.unstructure(component)
