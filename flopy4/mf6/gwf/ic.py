@@ -3,7 +3,7 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converter import dict_to_array
+from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field
 
@@ -16,5 +16,5 @@ class Ic(Package):
         block="griddata",
         dims=("nodes",),
         default=1.0,
-        converter=Converter(dict_to_array, takes_self=True, takes_field=True),
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
     )

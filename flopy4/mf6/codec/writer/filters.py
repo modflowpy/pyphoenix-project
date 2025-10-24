@@ -2,6 +2,7 @@ from collections.abc import Hashable, Mapping
 from io import StringIO
 from typing import Any, Literal
 
+import attrs
 import numpy as np
 import xarray as xr
 from modflow_devtools.dfn.schema.v2 import FieldType
@@ -202,7 +203,8 @@ def dataset2list(value: xr.Dataset):
         return
 
     # special case OC for now.
-    is_oc = all(
+    # TODO remove after properly handling object dtype period data arrays
+    is_oc = any(
         str(v.name).startswith("save_") or str(v.name).startswith("print_")
         for v in value.data_vars.values()
     )
@@ -211,9 +213,17 @@ def dataset2list(value: xr.Dataset):
     if (first := next(iter(value.data_vars.values()))).ndim == 0:
         if is_oc:
             for name in value.data_vars.keys():
+                if not (name.startswith("save_") or name.startswith("print_")):
+                    # TODO: not working yet
+                    if name == "perioddata":
+                        val = value[name]
+                        val = val.item() if val.shape == () else val
+                        yield attrs.astuple(val, recurse=True)
+                    continue
                 val = value[name]
                 val = val.item() if val.shape == () else val
                 yield (*name.split("_"), val)
+
         else:
             vals = []
             for name in value.data_vars.keys():
