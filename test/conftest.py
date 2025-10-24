@@ -15,7 +15,7 @@ EXCLUDED_EXAMPLES = []
 @pytest.fixture(scope="session", autouse=True)
 def patch_macos_ci_matplotlib():
     # use noninteractive matplotlib backend if in Mac OS CI to avoid pytest-xdist node failure
-    if is_in_ci() and system().lower() == "darwin":
+    if is_in_ci() and system().lower() in ["darwin", "windows"]:
         import matplotlib
 
         matplotlib.use("agg")
