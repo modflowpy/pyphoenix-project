@@ -1,9 +1,12 @@
 from pprint import pprint
 
+import numpy as np
 import pytest
 
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
+
+DNODATA = 3.0e30
 
 
 def test_loads_dis_generic_simple():
@@ -319,6 +322,80 @@ def test_dumps_chd_2():
 
     loaded = loads(dumped)
     print("CHD load:")
+    pprint(loaded)
+
+
+def test_dumps_rch():
+    from flopy4.mf6.gwf import Dis, Gwf, Rch
+
+    dis = Dis(nlay=1, nrow=20, ncol=30)
+    gwf = Gwf(dis=dis)
+
+    boundaries = {}
+    for row in range(5, 15):
+        boundaries[(0, row, 0)] = 100.0
+    for row in range(8, 12):
+        boundaries[(0, row, 29)] = 95.0
+    for col in range(10, 20):
+        boundaries[(0, 19, col)] = 98.0
+
+    rch = Rch(
+        parent=gwf, recharge={0: boundaries}, print_input=True, save_flows=True, dims={"nper": 1}
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(rch))
+    print("RCH dump:")
+    print(dumped)
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
+
+    assert len(lines) == 24
+    assert "100.0" in dumped  # Left boundary
+    assert "95.0" in dumped  # Right boundary
+    assert "98.0" in dumped  # Bottom boundary
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("RCH load:")
+    pprint(loaded)
+
+
+def test_dumps_rcha():
+    from flopy4.mf6.gwf import Dis, Gwf, Rcha
+
+    dis = Dis(nlay=1, nrow=20, ncol=30)
+    gwf = Gwf(dis=dis)
+
+    boundaries = np.full((20, 30), DNODATA, dtype=float)
+    for row in range(5, 15):
+        boundaries[row, 0] = 100.0
+    for row in range(8, 12):
+        boundaries[row, 29] = 95.0
+    for col in range(10, 20):
+        boundaries[19, col] = 98.0
+
+    rch = Rcha(
+        parent=gwf, recharge={0: boundaries}, print_input=True, save_flows=True, dims={"nper": 1}
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(rch))
+    print("RCH dump:")
+    print(dumped)
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
+
+    assert len(lines) == 24
+    assert "100.0" in dumped  # Left boundary
+    assert "95.0" in dumped  # Right boundary
+    assert "98.0" in dumped  # Bottom boundary
+    assert "1e+30" not in dumped
+    assert "1.0e+30" not in dumped
+
+    loaded = loads(dumped)
+    print("RCH load:")
     pprint(loaded)
 
 
