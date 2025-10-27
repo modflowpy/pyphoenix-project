@@ -12,7 +12,7 @@ from typing import Literal, Union, get_args, get_origin
 import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema.block import block_sort_key
-from modflow_devtools.dfn.schema.v2 import SCALAR_T7PES, FieldType
+from modflow_devtools.dfn.schema.v2 import SCALAR_TYPES, FieldType
 from modflow_devtools.dfn.schema.v2 import Field as FieldV2
 
 from flopy4.spec import array as flopy_array
@@ -278,7 +278,7 @@ def to_field(attribute: Attribute) -> FieldV2:
 
 def is_array_field(field: FieldV2) -> bool:
     """Check if a field should be provided in MF6 array input format."""
-    return field["type"] in SCALAR_T7PES and "shape" in field
+    return field["type"] in SCALAR_TYPES and "shape" in field
 
 
 def is_list_field(field: FieldV2) -> bool:
