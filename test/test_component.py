@@ -8,10 +8,12 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
-from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Chdg, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
+
+DNODATA = 3.0e30
 
 
 def test_registry():
@@ -389,6 +391,46 @@ def test_quickstart(function_tmpdir):
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
     chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+
+    sim.write()
+    sim.run()
+
+
+def test_quickstart_array(function_tmpdir):
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+    nlay = 1
+    nrow = 10
+    ncol = 10
+    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(filename="mymodel.ims", models=[gwf_name])
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        save_head=["all"],
+        save_budget=["all"],
+    )
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    head = {0: np.full((nlay, nrow, ncol), DNODATA, dtype=float)}
+    head[0][0, 0, 0] = 1.0
+    head[0][0, 9, 9] = 0.0
+    chd = Chdg(parent=gwf, head=head)
 
     sim.write()
     sim.run()
