@@ -6,7 +6,8 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfn import SCALAR_TYPES, Dfn
+from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfn.schema.v2 import SCALAR_TYPES
 
 
 class BasicTransformer(Transformer):
