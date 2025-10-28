@@ -27,15 +27,15 @@ crs: "crs"i array
 nodes: "nodes"i integer
 nja: "nja"i integer
 nvert: "nvert"i integer
-top: "top"i array
-bot: "bot"i array
-area: "area"i array
+top: "top"i double precision
+bot: "bot"i double precision
+area: "area"i double precision
 idomain: "idomain"i array
 iac: "iac"i array
 ja: "ja"i array
 ihc: "ihc"i array
-cl12: "cl12"i array
-hwva: "hwva"i array
-angldegx: "angldegx"i array
+cl12: "cl12"i double precision
+hwva: "hwva"i double precision
+angldegx: "angldegx"i double precision
 vertices: "vertices"i recarray
 cell2d: "cell2d"i recarray

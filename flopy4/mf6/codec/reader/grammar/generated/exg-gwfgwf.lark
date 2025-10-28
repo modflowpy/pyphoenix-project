@@ -18,9 +18,9 @@ cell_averaging: "cell_averaging"i string
 cvoptions: "variablecv"i "dewatered"i
 newton: "newton"i 
 xt3d: "xt3d"i 
-gnc_filerecord: "gnc6"i "filein"i string
-mvr_filerecord: "mvr6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+gnc_filerecord: "filein"i "gnc6"i string
+mvr_filerecord: "filein"i "mvr6"i string
+obs_filerecord: "filein"i "obs6"i string
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
 exchangedata: "exchangedata"i recarray

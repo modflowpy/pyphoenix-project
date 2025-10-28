@@ -22,8 +22,8 @@ ncf_filerecord: "ncf6"i "filein"i string
 nlay: "nlay"i integer
 nrow: "nrow"i integer
 ncol: "ncol"i integer
-delr: "delr"i array
-delc: "delc"i array
-top: "top"i array
-botm: "botm"i array
+delr: "delr"i double precision
+delc: "delc"i double precision
+top: "top"i double precision
+botm: "botm"i double precision
 idomain: "idomain"i array

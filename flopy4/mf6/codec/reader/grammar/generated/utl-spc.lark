@@ -8,12 +8,7 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (print_input | ts_filerecord)*
 dimensions_fields: (maxbound)*
-period_fields: (bndno | spcsetting)*
+period_fields: ()*
 print_input: "print_input"i 
 ts_filerecord: "ts6"i "filein"i string
 maxbound: "maxbound"i integer
-bndno: "bndno"i list
-spcsetting: spcsetting_concentration | spcsetting_temperature
-spcsetting_concentration: "concentration"i double precision
-
-spcsetting_temperature: "temperature"i double precision

@@ -19,6 +19,6 @@ obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 export_array_netcdf: "export_array_netcdf"i 
 maxbound: "maxbound"i integer
-bhead: "bhead"i list
-cond: "cond"i list
-aux: "aux"i list
+bhead: "bhead"i double precision
+cond: "cond"i double precision
+aux: "aux"i double precision

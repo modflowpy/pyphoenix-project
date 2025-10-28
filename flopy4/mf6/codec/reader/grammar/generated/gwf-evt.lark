@@ -17,15 +17,15 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 surf_rate_specified: "surf_rate_specified"i 
 maxbound: "maxbound"i integer
 nseg: "nseg"i integer
-surface: "surface"i list
-rate: "rate"i list
-depth: "depth"i list
-pxdp: "pxdp"i list
-petm: "petm"i list
-petm0: "petm0"i list
-aux: "aux"i list
+surface: "surface"i double precision
+rate: "rate"i double precision
+depth: "depth"i double precision
+pxdp: "pxdp"i double precision
+petm: "petm"i double precision
+petm0: "petm0"i double precision
+aux: "aux"i double precision
 boundname: "boundname"i list

@@ -15,10 +15,10 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 tas_filerecord: "tas6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 export_array_netcdf: "export_array_netcdf"i 
 ievt: "ievt"i list
-surface: "surface"i list
-rate: "rate"i list
-depth: "depth"i list
-aux: "aux"i list
+surface: "surface"i double precision
+rate: "rate"i double precision
+depth: "depth"i double precision
+aux: "aux"i double precision

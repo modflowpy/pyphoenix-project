@@ -9,4 +9,4 @@ options_fields: (export_array_ascii | export_array_netcdf)*
 griddata_fields: (strt)*
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
-strt: "strt"i array
+strt: "strt"i double precision

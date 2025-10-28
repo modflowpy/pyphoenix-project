@@ -2,39 +2,12 @@
 %import "typed.lark"
 
 start: block*
-block: options_block | packagedata_block | period_block
+block: options_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
-options_fields: (flow_package_name | auxiliary | flow_package_auxiliary_name | boundnames | print_input | print_concentration | print_flows | save_flows | concentration_filerecord | budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord)*
-packagedata_fields: (packagedata)*
-period_fields: (ifno | laksetting)*
-flow_package_name: "flow_package_name"i string
-auxiliary: "auxiliary"i array
-flow_package_auxiliary_name: "flow_package_auxiliary_name"i string
-boundnames: "boundnames"i 
-print_input: "print_input"i 
-print_concentration: "print_concentration"i 
-print_flows: "print_flows"i 
-save_flows: "save_flows"i 
-concentration_filerecord: string "fileout"i string
+options_fields: (budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord)*
+period_fields: ()*
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
-packagedata: "packagedata"i recarray
-ifno: "ifno"i list
-laksetting: laksetting_concentration | laksetting_status | laksetting_rainfall | laksetting_evaporation | laksetting_runoff | laksetting_ext-inflow | laksetting_auxiliaryrecord
-laksetting_concentration: "concentration"i string
-
-laksetting_status: "status"i string
-
-laksetting_rainfall: "rainfall"i string
-
-laksetting_evaporation: "evaporation"i string
-
-laksetting_runoff: "runoff"i string
-
-laksetting_ext-inflow: "ext-inflow"i string
-
-laksetting_auxiliaryrecord: "auxiliaryrecord"i record
+obs_filerecord: "filein"i "obs6"i string

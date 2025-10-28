@@ -8,15 +8,8 @@ period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (budget_filerecord | budgetcsv_filerecord | concentration_filerecord | concentrationprintrecord)*
 period_fields: (saverecord | printrecord)*
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
-concentration_filerecord: "concentration"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
+concentration_filerecord: "fileout"i "concentration"i string
 concentrationprintrecord: "concentration"i "print_format"i
-saverecord: "save"i string ocsetting
-printrecord: "print"i string ocsetting
-ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
-ocsetting_all: "all"i
-ocsetting_first: "first"i
-ocsetting_last: "last"i
-ocsetting_frequency: "frequency"i integer
-ocsetting_steps: "steps"i integer
-
+saverecord: "save"i string keystring
+printrecord: "print"i string keystring

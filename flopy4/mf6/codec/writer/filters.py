@@ -5,34 +5,10 @@ from typing import Any, Literal
 import attrs
 import numpy as np
 import xarray as xr
-from modflow_devtools.dfn.schema.v2 import FieldType
 from numpy.typing import NDArray
 from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
-
-
-def field_type(value: Any) -> FieldType:
-    """Get a value's type according to the MF6 specification."""
-
-    if isinstance(value, bool):
-        return "keyword"
-    if isinstance(value, int):
-        return "integer"
-    if isinstance(value, float):
-        return "double"
-    if isinstance(value, str):
-        return "string"
-    if isinstance(value, tuple):
-        return "record"
-    if isinstance(value, xr.DataArray):
-        if value.dtype == "object":
-            return "list"
-        return "array"
-    if isinstance(value, (list, dict, xr.Dataset)):
-        return "list"
-    raise ValueError(f"Unsupported field type: {type(value)}")
-
 
 ArrayHow = Literal["constant", "internal", "external"]
 

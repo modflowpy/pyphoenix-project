@@ -2,16 +2,14 @@
 %import "typed.lark"
 
 start: block*
-block: options_block | dimensions_block | griddata_block | packagedata_block | period_block
+block: options_block | dimensions_block | griddata_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (boundnames | print_input | save_flows | gammaw | beta | head_based | initial_preconsolidation_head | ndelaycells | compression_indices | update_material_properties | cell_fraction | specified_initial_interbed_state | specified_initial_preconsolidation_stress | specified_initial_delay_head | effective_stress_lag | strainib_filerecord | straincg_filerecord | compaction_filerecord | compaction_elastic_filerecord | compaction_inelastic_filerecord | compaction_interbed_filerecord | compaction_coarse_filerecord | zdisplacement_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord)*
 dimensions_fields: (ninterbeds | maxsig0)*
 griddata_fields: (cg_ske_cr | cg_theta | sgm | sgs)*
-packagedata_fields: (packagedata)*
 period_fields: (sig0)*
 boundnames: "boundnames"i 
 print_input: "print_input"i 
@@ -29,21 +27,20 @@ specified_initial_preconsolidation_stress: "specified_initial_preconsolidation_s
 specified_initial_delay_head: "specified_initial_delay_head"i 
 effective_stress_lag: "effective_stress_lag"i 
 strainib_filerecord: "strain_csv_interbed"i "fileout"i string
-straincg_filerecord: "strain_csv_coarse"i "fileout"i string
-compaction_filerecord: "compaction"i "fileout"i string
-compaction_elastic_filerecord: "compaction_elastic"i "fileout"i string
-compaction_inelastic_filerecord: "compaction_inelastic"i "fileout"i string
-compaction_interbed_filerecord: "compaction_interbed"i "fileout"i string
-compaction_coarse_filerecord: "compaction_coarse"i "fileout"i string
-zdisplacement_filerecord: "zdisplacement"i "fileout"i string
-package_convergence_filerecord: "package_convergence"i "fileout"i string
+straincg_filerecord: "fileout"i "strain_csv_coarse"i string
+compaction_filerecord: "fileout"i "compaction"i string
+compaction_elastic_filerecord: "fileout"i "compaction_elastic"i string
+compaction_inelastic_filerecord: "fileout"i "compaction_inelastic"i string
+compaction_interbed_filerecord: "fileout"i "compaction_interbed"i string
+compaction_coarse_filerecord: "fileout"i "compaction_coarse"i string
+zdisplacement_filerecord: "fileout"i "zdisplacement"i string
+package_convergence_filerecord: "fileout"i "package_convergence"i string
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 ninterbeds: "ninterbeds"i integer
 maxsig0: "maxsig0"i integer
-cg_ske_cr: "cg_ske_cr"i array
-cg_theta: "cg_theta"i array
-sgm: "sgm"i array
-sgs: "sgs"i array
-packagedata: "packagedata"i recarray
-sig0: "sig0"i list
+cg_ske_cr: "cg_ske_cr"i double precision
+cg_theta: "cg_theta"i double precision
+sgm: "sgm"i double precision
+sgs: "sgs"i double precision
+sig0: "sig0"i double precision

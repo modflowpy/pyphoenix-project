@@ -13,4 +13,4 @@ print_input: "print_input"i
 maxhfb: "maxhfb"i integer
 cellid1: "cellid1"i list
 cellid2: "cellid2"i list
-hydchr: "hydchr"i list
+hydchr: "hydchr"i double precision

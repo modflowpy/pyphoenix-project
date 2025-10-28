@@ -9,4 +9,4 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string

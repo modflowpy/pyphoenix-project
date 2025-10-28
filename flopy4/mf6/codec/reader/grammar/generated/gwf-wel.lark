@@ -18,9 +18,9 @@ save_flows: "save_flows"i
 auto_flow_reduce: "auto_flow_reduce"i double precision
 afrcsv_filerecord: "auto_flow_reduce_csv"i "fileout"i string
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 mover: "mover"i 
 maxbound: "maxbound"i integer
-q: "q"i list
-aux: "aux"i list
+q: "q"i double precision
+aux: "aux"i double precision
 boundname: "boundname"i list

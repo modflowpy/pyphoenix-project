@@ -15,8 +15,8 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 tas_filerecord: "tas6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 export_array_netcdf: "export_array_netcdf"i 
 irch: "irch"i list
-recharge: "recharge"i list
-aux: "aux"i list
+recharge: "recharge"i double precision
+aux: "aux"i double precision

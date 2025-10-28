@@ -26,8 +26,8 @@ ncf_filerecord: "ncf6"i "filein"i string
 nlay: "nlay"i integer
 ncpl: "ncpl"i integer
 nvert: "nvert"i integer
-top: "top"i array
-botm: "botm"i array
+top: "top"i double precision
+botm: "botm"i double precision
 idomain: "idomain"i array
 vertices: "vertices"i recarray
 cell2d: "cell2d"i recarray

@@ -8,16 +8,9 @@ period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (budget_filerecord | budgetcsv_filerecord | qoutflow_filerecord | stage_filerecord | qoutflowprintrecord)*
 period_fields: (saverecord | printrecord)*
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
-qoutflow_filerecord: "qoutflow"i "fileout"i string
-stage_filerecord: "stage"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
+qoutflow_filerecord: "fileout"i "qoutflow"i string
+stage_filerecord: "fileout"i "stage"i string
 qoutflowprintrecord: "qoutflow"i "print_format"i
-saverecord: "save"i string ocsetting
-printrecord: "print"i string ocsetting
-ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
-ocsetting_all: "all"i
-ocsetting_first: "first"i
-ocsetting_last: "last"i
-ocsetting_frequency: "frequency"i integer
-ocsetting_steps: "steps"i integer
-
+saverecord: "save"i string keystring
+printrecord: "print"i string keystring

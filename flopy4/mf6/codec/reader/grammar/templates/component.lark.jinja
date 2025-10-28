@@ -13,35 +13,41 @@ block: {% for block_name in blocks.keys() %}{{ block_name }}_block{% if not loop
 {% endfor %}
 {% for field_name, field in fields.items() %}
 {% set field_type = field|field_type %}
-{% if field['type'] == 'record' and field.get('children') %}
-{{ field_name }}: {% for child_name, child in field['children'].items() %}{% set child_type = child|record_child_type %}{% if child['type'] == 'keyword' %}"{{ child['name'] }}"i{% elif child['type'] == 'keystring' %}{{ child_name }}{% else %}{{ child_type }}{% endif %}{% if not loop.last %} {% endif %}{% endfor %}
+{% if field.type == 'record' and field.children is not none %}
+{{ field_name }}: {% for child_name, child in field.children.items() %}{% set child_type = child|record_child_type
+%}{% if child.type == 'keyword' %}"{{ child.name }}"i{% elif child.type == 'union' %}{{ child_name }}{%
+else %}{{ child_type }}{% endif %}{% if not loop.last %} {% endif %}{% endfor %}
 
-{% elif field['type'] == 'keystring' and field.get('children') %}
-{{ field_name }}: {% for child_name, child in field['children'].items() %}{{ field_name }}_{{ child_name }}{% if not loop.last %} | {% endif %}{% endfor %}
-{% for child_name, child in field['children'].items() %}
+{% elif field.type == 'union' and field.children is not none %}
+{{ field_name }}: {% for child_name, child in field.children.items() %}{{ field_name }}_{{ child_name }}{% if not
+loop.last %} | {% endif %}{% endfor %}
+{% for child_name, child in field.children.items() %}
 
-{{ field_name }}_{{ child_name }}: {% if child['type'] == 'keyword' %}"{{ child['name'] }}"i{% else %}"{{ child['name'] }}"i {{ child['type'] }}{% endif %}
+{{ field_name }}_{{ child_name }}: {% if child.type == 'keyword' %}"{{ child.name }}"i{% else %}"{{ child.name }}"i {{
+child.type }}{% endif %}
 
 {% endfor %}
 {% else %}
-{{ field_name }}: "{{ field['name'] }}"i {{ field_type }}
+{{ field_name }}: "{{ field.name }}"i {{ field_type }}
 {% endif %}
 {% endfor %}
-{# Generate keystring rules for nested keystrings within records #}
-{% set keystrings_generated = [] %}
+{# Generate union rules for nested unions within records #}
+{% set unions_generated = [] %}
 {% for field_name, field in fields.items() %}
-{% if field['type'] == 'record' and field.get('children') %}
-{% for child_name, child in field['children'].items() %}
-{% if child['type'] == 'keystring' and child.get('children') and child_name not in keystrings_generated %}
-{{ child_name }}: {% for opt_name, opt in child['children'].items() %}{{ child_name }}_{{ opt_name }}{% if not loop.last %} | {% endif %}
+{% if field.type == 'record' and field.children is not none %}
+{% for child_name, child in field.children.items() %}
+{% if child.type == 'union' and child_name not in unions_generated %}
+{{ child_name }}: {% for opt_name, opt in child.children.items() %}{{ child_name }}_{{ opt_name }}{% if not loop.last
+%} | {% endif %}
 {% endfor %}
 
-{% for opt_name, opt in child['children'].items() %}
-{{ child_name }}_{{ opt_name }}: {% if opt['type'] == 'keyword' %}"{{ opt['name'] }}"i{% else %}"{{ opt['name'] }}"i {{ opt['type'] }}{% endif %}
+{% for opt_name, opt in child.children.items() %}
+{{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' %}"{{ opt.name }}"i{% else %}"{{ opt.name }}"i {{
+opt.type }}{% endif %}
 
 {% endfor %}
 
-{% set _ = keystrings_generated.append(child_name) %}
+{% set _ = unions_generated.append(child_name) %}
 {% endif %}
 {% endfor %}
 {% endif %}

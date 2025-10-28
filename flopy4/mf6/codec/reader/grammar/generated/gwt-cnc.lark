@@ -16,8 +16,8 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 maxbound: "maxbound"i integer
-conc: "conc"i list
-aux: "aux"i list
+conc: "conc"i double precision
+aux: "aux"i double precision
 boundname: "boundname"i list

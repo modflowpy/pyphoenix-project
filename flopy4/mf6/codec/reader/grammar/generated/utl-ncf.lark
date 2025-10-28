@@ -19,5 +19,5 @@ chunk_y: "chunk_y"i integer
 chunk_x: "chunk_x"i integer
 modflow6_attr_off: "modflow6_attr_off"i 
 ncpl: "ncpl"i integer
-latitude: "latitude"i array
-longitude: "longitude"i array
+latitude: "latitude"i double precision
+longitude: "longitude"i double precision

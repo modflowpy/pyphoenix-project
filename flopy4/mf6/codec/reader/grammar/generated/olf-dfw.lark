@@ -16,5 +16,5 @@ save_velocity: "save_velocity"i
 obs_filerecord: "obs6"i "filein"i string
 export_array_ascii: "export_array_ascii"i 
 dev_swr_conductance: "dev_swr_conductance"i 
-manningsn: "manningsn"i array
+manningsn: "manningsn"i double precision
 idcxs: "idcxs"i array

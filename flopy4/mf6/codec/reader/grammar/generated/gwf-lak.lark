@@ -2,33 +2,20 @@
 %import "typed.lark"
 
 start: block*
-block: options_block | dimensions_block | packagedata_block | period_block | connectiondata_block | tables_block | outlets_block
+block: options_block | dimensions_block | period_block | tables_block | connectiondata_block | outlets_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
-connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
 tables_block: "begin"i "tables"i tables_fields "end"i "tables"i
+connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
 outlets_block: "begin"i "outlets"i outlets_fields "end"i "outlets"i
-options_fields: (auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | surfdep | maximum_iterations | maximum_stage_change | time_conversion | length_conversion)*
+options_fields: (obs_filerecord | mover | surfdep | maximum_iterations | maximum_stage_change | time_conversion | length_conversion)*
 dimensions_fields: (nlakes | noutlets | ntables)*
-packagedata_fields: (packagedata)*
-period_fields: (number | laksetting)*
-connectiondata_fields: (connectiondata)*
+period_fields: ()*
 tables_fields: (tables)*
+connectiondata_fields: (connectiondata)*
 outlets_fields: (outlets)*
-auxiliary: "auxiliary"i array
-boundnames: "boundnames"i 
-print_input: "print_input"i 
-print_stage: "print_stage"i 
-print_flows: "print_flows"i 
-save_flows: "save_flows"i 
-stage_filerecord: string "fileout"i string
-budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
-package_convergence_filerecord: "package_convergence"i "fileout"i string
-ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "obs6"i string
 mover: "mover"i 
 surfdep: "surfdep"i double precision
 maximum_iterations: "maximum_iterations"i integer
@@ -38,34 +25,6 @@ length_conversion: "length_conversion"i double precision
 nlakes: "nlakes"i integer
 noutlets: "noutlets"i integer
 ntables: "ntables"i integer
-packagedata: "packagedata"i recarray
-number: "number"i list
-laksetting: laksetting_stage | laksetting_invert | laksetting_width | laksetting_rough | laksetting_slope | laksetting_status | laksetting_rainfall | laksetting_evaporation | laksetting_runoff | laksetting_inflow | laksetting_withdrawal | laksetting_rate | laksetting_auxiliaryrecord
-laksetting_stage: "stage"i string
-
-laksetting_invert: "invert"i string
-
-laksetting_width: "width"i string
-
-laksetting_rough: "rough"i string
-
-laksetting_slope: "slope"i string
-
-laksetting_status: "status"i string
-
-laksetting_rainfall: "rainfall"i string
-
-laksetting_evaporation: "evaporation"i string
-
-laksetting_runoff: "runoff"i string
-
-laksetting_inflow: "inflow"i string
-
-laksetting_withdrawal: "withdrawal"i string
-
-laksetting_rate: "rate"i string
-
-laksetting_auxiliaryrecord: "auxiliaryrecord"i record
-connectiondata: "connectiondata"i recarray
 tables: "tables"i recarray
+connectiondata: "connectiondata"i recarray
 outlets: "outlets"i recarray

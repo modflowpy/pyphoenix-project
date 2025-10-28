@@ -21,6 +21,6 @@ mover: "mover"i
 export_array_netcdf: "export_array_netcdf"i 
 dev_cubic_scaling: "dev_cubic_scaling"i 
 maxbound: "maxbound"i integer
-elev: "elev"i list
-cond: "cond"i list
-aux: "aux"i list
+elev: "elev"i double precision
+cond: "cond"i double precision
+aux: "aux"i double precision

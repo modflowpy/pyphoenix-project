@@ -19,7 +19,7 @@ export_array_ascii: "export_array_ascii"i
 crs: "crs"i array
 nrow: "nrow"i integer
 ncol: "ncol"i integer
-delr: "delr"i array
-delc: "delc"i array
-bottom: "bottom"i array
+delr: "delr"i double precision
+delc: "delc"i double precision
+bottom: "bottom"i double precision
 idomain: "idomain"i array

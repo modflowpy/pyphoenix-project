@@ -1,39 +1,33 @@
-from modflow_devtools.dfn import Field
+from modflow_devtools.dfn.schema.v2 import FieldV2
 
 
-def field_type(field: Field) -> str:
-    match field["type"]:
-        case t if t in ["string", "integer", "double precision"] and "shape" in field:
-            if "period" in field["block"]:
+def field_type(field: FieldV2) -> str:
+    match field.type:
+        case t if t in ["string", "integer", "double"] and field.shape:
+            if "period" in field.block:
                 return "list"
             return "array"
         case "keyword":
             return ""
-        case "keystring":
+        case "union":
             return ""  # keystrings generate their own union rules
         case _:
-            return field["type"]
+            return field.type
 
 
-def record_child_type(field: Field) -> str:
+def record_child_type(field: FieldV2) -> str:
     """Get the grammar type for a field within a record context."""
-    match field["type"]:
-        case "string":
-            return "string"
-        case "integer":
-            return "integer"
-        case "double precision":
-            return "double"
+    match field.type:
+        case t if t in ["string", "double", "integer"]:
+            return t
         case "keyword":
             return ""
-        case "keystring":
+        case "union":
             return ""  # keystrings generate their own union rules
         case _:
-            return field["type"]
+            return field.type
 
 
-def keystring_children(field: Field) -> dict:
+def keystring_children(field: FieldV2) -> dict:
     """Get the children of a keystring field for union generation."""
-    if field["type"] != "keystring":
-        return {}
-    return field.get("children", {})
+    return {} if field.type != "union" else field.children

@@ -9,10 +9,10 @@ attributes_fields: (time_series_namerecord | interpolation_methodrecord | interp
 timeseries_fields: (timeseries)*
 time_series_namerecord: "names"i string
 interpolation_methodrecord: "methods"i string
-interpolation_methodrecord_single: "interpolation_methodrecord_single"i record
+interpolation_methodrecord_single: 
 method: "method"i 
 interpolation_method_single: "interpolation_method_single"i string
-sfacrecord: "sfacs"i double
-sfacrecord_single: double
+sfacrecord: "sfacs"i double precision
+sfacrecord_single: double precision
 sfac: "sfac"i 
 timeseries: "timeseries"i recarray

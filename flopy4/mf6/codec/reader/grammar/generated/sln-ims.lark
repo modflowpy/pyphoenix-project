@@ -11,9 +11,9 @@ nonlinear_fields: (outer_hclose | outer_dvclose | outer_rclosebnd | outer_maximu
 linear_fields: (inner_maximum | inner_hclose | inner_dvclose | rcloserecord | linear_acceleration | relaxation_factor | preconditioner_levels | preconditioner_drop_tolerance | number_orthogonalizations | scaling_method | reordering_method)*
 print_option: "print_option"i string
 complexity: "complexity"i string
-csv_output_filerecord: "csv_output"i "fileout"i string
+csv_output_filerecord: "csv_output"i string "fileout"i
 csv_outer_output_filerecord: "csv_outer_output"i "fileout"i string
-csv_inner_output_filerecord: "csv_inner_output"i "fileout"i string
+csv_inner_output_filerecord: "fileout"i "csv_inner_output"i string
 no_ptcrecord: "no_ptc"i string
 ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double precision
 outer_hclose: "outer_hclose"i double precision
@@ -32,7 +32,7 @@ backtracking_residual_limit: "backtracking_residual_limit"i double precision
 inner_maximum: "inner_maximum"i integer
 inner_hclose: "inner_hclose"i double precision
 inner_dvclose: "inner_dvclose"i double precision
-rcloserecord: double string
+rcloserecord: double precision string
 linear_acceleration: "linear_acceleration"i string
 relaxation_factor: "relaxation_factor"i double precision
 preconditioner_levels: "preconditioner_levels"i integer

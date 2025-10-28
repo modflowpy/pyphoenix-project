@@ -124,8 +124,12 @@ ignore = [
     "E741", # ambiguous variable name
 ]
 
+[project.scripts]
+dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
+
 [project.entry-points.flopy4]
 plot = "flopy4.singledispatch.plot_int"
+dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]

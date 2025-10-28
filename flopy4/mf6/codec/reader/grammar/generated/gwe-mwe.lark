@@ -2,33 +2,12 @@
 %import "typed.lark"
 
 start: block*
-block: options_block | packagedata_block | period_block
+block: options_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
-options_fields: (flow_package_name | auxiliary | flow_package_auxiliary_name | boundnames | print_input | print_temperature | print_flows | save_flows | temperature_filerecord | budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord)*
-packagedata_fields: (packagedata)*
-period_fields: (mawno | mwesetting)*
-flow_package_name: "flow_package_name"i string
-auxiliary: "auxiliary"i array
-flow_package_auxiliary_name: "flow_package_auxiliary_name"i string
-boundnames: "boundnames"i 
-print_input: "print_input"i 
-print_temperature: "print_temperature"i 
-print_flows: "print_flows"i 
-save_flows: "save_flows"i 
-temperature_filerecord: string "fileout"i string
+options_fields: (budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord)*
+period_fields: ()*
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
-packagedata: "packagedata"i recarray
-mawno: "mawno"i list
-mwesetting: mwesetting_temperature | mwesetting_status | mwesetting_rate | mwesetting_auxiliaryrecord
-mwesetting_temperature: "temperature"i string
-
-mwesetting_status: "status"i string
-
-mwesetting_rate: "rate"i string
-
-mwesetting_auxiliaryrecord: "auxiliaryrecord"i record
+obs_filerecord: "filein"i "obs6"i string

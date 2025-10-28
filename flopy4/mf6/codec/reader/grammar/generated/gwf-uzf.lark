@@ -2,27 +2,25 @@
 %import "typed.lark"
 
 start: block*
-block: options_block | dimensions_block | packagedata_block | period_block
+block: options_block | dimensions_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | wc_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | simulate_et | linear_gwet | square_gwet | simulate_gwseep | unsat_etwc | unsat_etae)*
 dimensions_fields: (nuzfcells | ntrailwaves | nwavesets)*
-packagedata_fields: (packagedata)*
-period_fields: (ifno | finf | pet | extdp | extwc | ha | hroot | rootact | aux)*
+period_fields: (finf | pet | extdp | extwc | ha | hroot | rootact | aux)*
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-wc_filerecord: "water_content"i "fileout"i string
+wc_filerecord: "water_content"i string "fileout"i
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
-package_convergence_filerecord: "package_convergence"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
+package_convergence_filerecord: "fileout"i "package_convergence"i string
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 mover: "mover"i 
 simulate_et: "simulate_et"i 
 linear_gwet: "linear_gwet"i 
@@ -33,8 +31,6 @@ unsat_etae: "unsat_etae"i
 nuzfcells: "nuzfcells"i integer
 ntrailwaves: "ntrailwaves"i integer
 nwavesets: "nwavesets"i integer
-packagedata: "packagedata"i recarray
-ifno: "ifno"i list
 finf: "finf"i list
 pet: "pet"i list
 extdp: "extdp"i list
@@ -42,4 +38,4 @@ extwc: "extwc"i list
 ha: "ha"i list
 hroot: "hroot"i list
 rootact: "rootact"i list
-aux: "aux"i list
+aux: "aux"i double precision

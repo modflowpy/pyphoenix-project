@@ -8,7 +8,7 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 releasetimes_block: "begin"i "releasetimes"i releasetimes_fields "end"i "releasetimes"i
-options_fields: (boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | cycle_detection_window)*
+options_fields: (boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window)*
 dimensions_fields: (nreleasepts | nreleasetimes)*
 packagedata_fields: (packagedata)*
 period_fields: (all | first | last | frequency | steps | fraction)*
@@ -20,20 +20,20 @@ exit_solve_tolerance: "exit_solve_tolerance"i double precision
 local_z: "local_z"i 
 extend_tracking: "extend_tracking"i 
 track_filerecord: "track"i "fileout"i string
-trackcsv_filerecord: "trackcsv"i "fileout"i string
+trackcsv_filerecord: "fileout"i "trackcsv"i string
 stoptime: "stoptime"i double precision
 stoptraveltime: "stoptraveltime"i double precision
 stop_at_weak_sink: "stop_at_weak_sink"i 
 istopzone: "istopzone"i integer
 drape: "drape"i 
-release_timesrecord: "release_times"i double
+release_timesrecord: "release_times"i double precision
 release_timesfilerecord: "release_timesfile"i string
 dry_tracking_method: "dry_tracking_method"i string
 dev_forceternary: "dev_forceternary"i 
 release_time_tolerance: "release_time_tolerance"i double precision
 release_time_frequency: "release_time_frequency"i double precision
 coordinate_check_method: "coordinate_check_method"i string
-cycle_detection_window: "cycle_detection_window"i integer
+dev_cycle_detection_window: "dev_cycle_detection_window"i integer
 nreleasepts: "nreleasepts"i integer
 nreleasetimes: "nreleasetimes"i integer
 packagedata: "packagedata"i recarray
@@ -42,5 +42,5 @@ first: "first"i
 last: "last"i 
 frequency: "frequency"i list
 steps: "steps"i list
-fraction: "fraction"i list
+fraction: "fraction"i double precision
 releasetimes: "releasetimes"i recarray

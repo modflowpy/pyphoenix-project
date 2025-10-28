@@ -6,11 +6,7 @@ block: options_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (disable_storage_change_integration | print_input | ts_filerecord)*
-period_fields: (tvssetting)*
+period_fields: ()*
 disable_storage_change_integration: "disable_storage_change_integration"i 
 print_input: "print_input"i 
 ts_filerecord: "ts6"i "filein"i string
-tvssetting: tvssetting_ss | tvssetting_sy
-tvssetting_ss: "ss"i double precision
-
-tvssetting_sy: "sy"i double precision

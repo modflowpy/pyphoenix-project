@@ -23,7 +23,7 @@ export_array_ascii: "export_array_ascii"i
 crs: "crs"i array
 nodes: "nodes"i integer
 nvert: "nvert"i integer
-bottom: "bottom"i array
+bottom: "bottom"i double precision
 idomain: "idomain"i array
 vertices: "vertices"i recarray
 cell2d: "cell2d"i recarray

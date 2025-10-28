@@ -15,7 +15,7 @@ print_input: "print_input"i
 print_flows: "print_flows"i 
 modelnames: "modelnames"i 
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
 maxmvr: "maxmvr"i integer
 maxpackages: "maxpackages"i integer
 mname1: "mname1"i list
@@ -25,5 +25,5 @@ mname2: "mname2"i list
 pname2: "pname2"i list
 id2: "id2"i list
 mvrtype: "mvrtype"i list
-value: "value"i list
+value: "value"i double precision
 packages: "packages"i recarray

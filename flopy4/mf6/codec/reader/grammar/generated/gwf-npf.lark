@@ -5,7 +5,7 @@ start: block*
 block: options_block | griddata_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
-options_fields: (save_flows | print_flows | alternative_cell_averaging | thickstrt | cvoptions | perched | rewet_record | xt3doptions | save_specific_discharge | save_saturation | k22overk | k33overk | tvk_filerecord | export_array_ascii | export_array_netcdf | dev_no_newton | dev_omega)*
+options_fields: (save_flows | print_flows | alternative_cell_averaging | thickstrt | cvoptions | perched | rewet_record | xt3doptions | highest_cell_saturation | save_specific_discharge | save_saturation | k22overk | k33overk | tvk_filerecord | export_array_ascii | export_array_netcdf | dev_no_newton | dev_omega)*
 griddata_fields: (icelltype | k | k22 | k33 | angle1 | angle2 | angle3 | wetdry)*
 save_flows: "save_flows"i 
 print_flows: "print_flows"i 
@@ -13,8 +13,9 @@ alternative_cell_averaging: "alternative_cell_averaging"i string
 thickstrt: "thickstrt"i 
 cvoptions: "variablecv"i "dewatered"i
 perched: "perched"i 
-rewet_record: "rewet"i double integer integer
+rewet_record: "rewet"i double precision integer integer
 xt3doptions: "xt3d"i "rhs"i
+highest_cell_saturation: "highest_cell_saturation"i 
 save_specific_discharge: "save_specific_discharge"i 
 save_saturation: "save_saturation"i 
 k22overk: "k22overk"i 
@@ -25,10 +26,10 @@ export_array_netcdf: "export_array_netcdf"i
 dev_no_newton: "dev_no_newton"i 
 dev_omega: "dev_omega"i double precision
 icelltype: "icelltype"i array
-k: "k"i array
-k22: "k22"i array
-k33: "k33"i array
-angle1: "angle1"i array
-angle2: "angle2"i array
-angle3: "angle3"i array
-wetdry: "wetdry"i array
+k: "k"i double precision
+k22: "k22"i double precision
+k33: "k33"i double precision
+angle1: "angle1"i double precision
+angle2: "angle2"i double precision
+angle3: "angle3"i double precision
+wetdry: "wetdry"i double precision

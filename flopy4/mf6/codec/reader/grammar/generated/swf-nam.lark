@@ -11,6 +11,5 @@ list: "list"i string
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-newtonoptions: "newtonoptions"i record
+newtonoptions: "newton"i "under_relaxation"i
 packages: "packages"i recarray
-

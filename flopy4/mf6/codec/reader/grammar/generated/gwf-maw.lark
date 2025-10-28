@@ -2,52 +2,31 @@
 %import "typed.lark"
 
 start: block*
-block: options_block | dimensions_block | packagedata_block | period_block | connectiondata_block
+block: options_block | dimensions_block | period_block | connectiondata_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
-options_fields: (auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
+options_fields: (boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
 dimensions_fields: (nmawwells)*
-packagedata_fields: (packagedata)*
-period_fields: (ifno | mawsetting)*
+period_fields: ()*
 connectiondata_fields: (connectiondata)*
-auxiliary: "auxiliary"i array
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 print_head: "print_head"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-head_filerecord: "head"i "fileout"i string
+head_filerecord: "head"i string "fileout"i
 budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "budgetcsv"i "fileout"i string
+budgetcsv_filerecord: "fileout"i "budgetcsv"i string
 no_well_storage: "no_well_storage"i 
 flow_correction: "flow_correction"i 
 flowing_wells: "flowing_wells"i 
 shutdown_theta: "shutdown_theta"i double precision
 shutdown_kappa: "shutdown_kappa"i double precision
-mfrcsv_filerecord: "maw_flow_reduce_csv"i "fileout"i string
+mfrcsv_filerecord: "fileout"i "maw_flow_reduce_csv"i string
 ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
 mover: "mover"i 
 nmawwells: "nmawwells"i integer
-packagedata: "packagedata"i recarray
-ifno: "ifno"i list
-mawsetting: mawsetting_status | mawsetting_flowing_wellrecord | mawsetting_rate | mawsetting_well_head | mawsetting_head_limit | mawsetting_shutoffrecord | mawsetting_rate_scalingrecord | mawsetting_auxiliaryrecord
-mawsetting_status: "status"i string
-
-mawsetting_flowing_wellrecord: "flowing_wellrecord"i record
-
-mawsetting_rate: "rate"i double precision
-
-mawsetting_well_head: "well_head"i double precision
-
-mawsetting_head_limit: "head_limit"i string
-
-mawsetting_shutoffrecord: "shutoffrecord"i record
-
-mawsetting_rate_scalingrecord: "rate_scalingrecord"i record
-
-mawsetting_auxiliaryrecord: "auxiliaryrecord"i record
 connectiondata: "connectiondata"i recarray
