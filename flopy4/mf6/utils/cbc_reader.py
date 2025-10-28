@@ -91,7 +91,7 @@ def open_cbc(
         Whether to return the flow-ja-face values "as is" (``True``) or in a
         grid form (``False``).
     simulation_start_time : Optional datetime
-        The time and date correpsonding to the beginning of the simulation.
+        The time and date corresponding to the beginning of the simulation.
         Use this to convert the time coordinates of the output array to
         calendar time/dates. time_unit must also be present if this argument is
         present.

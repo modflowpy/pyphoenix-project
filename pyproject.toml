@@ -34,7 +34,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git",
+    "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-USGS/modflow-devtools.git@dfn",
     "xattree @ git+https://github.com/wpbonelli/xattree.git",
     "attrs>=25.4.0,<26",
     "cattrs>=25.3.0,<26",
@@ -58,7 +58,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["flopy4[lint,test,build]"]
-lint = ["ruff", "pre-commit>=4.0.1,<5", "mypy"]
+lint = ["codespell[toml] >=2.2.2", "ruff", "pre-commit>=4.0.1,<5", "mypy"]
 test = [
     "coverage",
     "GitPython",
@@ -148,3 +148,7 @@ install = { cmd = "pre-commit install --install-hooks" }
 mypy_path = "flopy4"
 ignore_missing_imports = true
 warn_unreachable = true
+
+[tool.codespell]
+skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*"
+ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt"]

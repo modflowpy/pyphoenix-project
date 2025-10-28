@@ -56,7 +56,7 @@ class Oc(Package):
     head_file: Optional[Path] = path(
         block="options", converter=to_path, default=None, inout="fileout"
     )
-    # TODO: needs coverter and then rename?
+    # TODO: needs converter and then rename?
     head: Optional[Format] = field(block="options", default=None)
     save_head: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
