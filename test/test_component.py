@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 from flopy.discretization import StructuredGrid
-from flopy.discretization.modeltime import ModelTime
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
@@ -12,6 +12,7 @@ from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
+from flopy4.mf6.utils.time import Time
 
 
 def test_registry():
@@ -28,7 +29,7 @@ def test_init_empty_sim():
 
 
 def test_init_gwf_explicit_dims():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     dims = {
         "nper": time.nper,
@@ -67,7 +68,7 @@ def test_init_gwf_explicit_dims():
 
 @pytest.mark.skip(reason="TODO")
 def test_init_gwf_from_grid_context():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=2, ncol=2)
     # TODO maybe a dumb idea, but we could put the
     # time and grid in a context manager? then you
@@ -154,7 +155,7 @@ def test_init_gwf_top_down_misaligned():
 
 
 def test_init_sim_explicit_dims():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
     dims = {
         "nlay": grid.nlay,
@@ -211,7 +212,7 @@ def test_init_sim_explicit_dims():
 
 def test_init_big_sim():
     # if size over threshold, arrays should be sparse
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=100, ncol=100)
     sim = Simulation(tdis=time)
     gwf = Gwf(parent=sim, dis=grid)
@@ -280,7 +281,7 @@ def test_ims_dfn():
 def test_gwf_chd01(function_tmpdir):
     sim_name = "chd01"
     gwf_name = "gwf_chd01"
-    time = ModelTime(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
+    time = Time(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
 
     ims = Ims(
         filename="sln1.ims",
@@ -363,7 +364,7 @@ def test_gwf_chd01(function_tmpdir):
 def test_quickstart(function_tmpdir):
     sim_name = "quickstart"
     gwf_name = "mymodel"
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     ims = Ims(models=[gwf_name])
     dis = Dis(
         nlay=1,
@@ -397,7 +398,7 @@ def test_quickstart(function_tmpdir):
 def test_write_ascii(function_tmpdir):
     sim_name = "sim"
     gwf_name = "gwf"
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     ims = Ims(models=[gwf_name])
     dis = Dis(
         nlay=1,
@@ -435,7 +436,7 @@ def test_write_ascii(function_tmpdir):
 
 
 def test_to_dict_fields():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
     dims = {
         "nlay": grid.nlay,
@@ -463,7 +464,7 @@ def test_to_dict_fields():
 
 
 def test_to_dict_blocks():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
     dims = {
         "nlay": grid.nlay,
@@ -515,7 +516,7 @@ def test_to_dict_on_component():
 
 
 def test_to_dict_on_context():
-    time = ModelTime(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     ims = Ims(models=["gwf"])
     sim = Simulation(tdis=time, solutions={"ims": ims})
 
@@ -541,3 +542,14 @@ def test_to_dict_with_strict_excludes_fields_without_block_metadata():
     assert "nrow" in result
     assert "ncol" in result
     assert "nodes" not in result
+
+
+def test_tdis_from_timestamps():
+    tdis = Tdis.from_timestamps(["2020-01-01", "2020-01-05", "2020-01-15"], nstp=5, tsmult=1.2)
+
+    assert tdis.nper == 2
+    assert tdis.time_units == "days"
+    assert tdis.start_date_time == pd.Timestamp("2020-01-01").to_pydatetime()
+    np.testing.assert_array_equal(tdis.perlen, [4.0, 10.0])
+    np.testing.assert_array_equal(tdis.nstp, [5, 5])
+    np.testing.assert_array_equal(tdis.tsmult, [1.2, 1.2])

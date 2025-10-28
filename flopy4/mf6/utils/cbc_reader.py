@@ -13,7 +13,7 @@ from attrs import define
 from flopy.discretization import StructuredGrid
 
 from flopy4.adapters import StructuredGridWrapper
-from flopy4.mf6.utils.grid_utils import get_coords
+from flopy4.mf6.utils.grid import get_coords
 
 
 @define

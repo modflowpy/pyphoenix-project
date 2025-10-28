@@ -118,11 +118,10 @@ def test_dumps_dis():
 
 
 def test_dumps_tdis():
-    from flopy.discretization.modeltime import ModelTime
-
     from flopy4.mf6.tdis import Tdis
+    from flopy4.mf6.utils.time import Time
 
-    tdis = Tdis.from_time(ModelTime(perlen=[1.0, 2.0], nstp=[1, 2]))
+    tdis = Tdis.from_time(Time(perlen=[1.0, 2.0], nstp=[1, 2]))
     tdis.time_units = "days"
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(tdis))
@@ -404,11 +403,10 @@ def test_dumps_gwf():
 
 
 def test_dumps_simulation():
-    from flopy.discretization.modeltime import ModelTime
-
     from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
     from flopy4.mf6.simulation import Simulation
     from flopy4.mf6.tdis import Tdis
+    from flopy4.mf6.utils.time import Time
 
     # Create model components
     dis = Dis(nlay=1, nrow=5, ncol=5, delr=100.0, delc=100.0)
@@ -427,7 +425,7 @@ def test_dumps_simulation():
     )
 
     # Create time discretization
-    time = ModelTime(perlen=[1.0], nstp=[1])
+    time = Time(perlen=[1.0], nstp=[1])
     tdis = Tdis.from_time(time)
 
     # Create simulation

@@ -11,7 +11,7 @@ from xattree import xattree
 
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict, to_field
-from flopy4.mf6.utils.grid_utils import update_maxbound
+from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS = {}
