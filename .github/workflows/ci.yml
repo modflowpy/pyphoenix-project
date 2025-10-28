@@ -33,6 +33,9 @@ jobs:
       - name: Run mypy
         run: pixi run mypy flopy4
 
+      - name: Run codespell
+        run: pixi run codespell
+
   build:
     name: Build
     runs-on: ubuntu-latest
