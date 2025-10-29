@@ -77,39 +77,6 @@ def get_recarray_name(block_name: str) -> str:
     return f"{block_name}data"
 
 
-def get_recarray_columns(
-    field_names: list[str], block_fields: Mapping[str, FieldV2]
-) -> list[tuple[str, bool]]:
-    """
-    Get column names for a recarray with optionality info.
-
-    Returns list of (column_name, is_optional) tuples like:
-    [('cellid', False), ('q', False), ('aux', True), ('boundname', True)]
-    """
-    columns = []
-
-    # Check if any field has spatial dimensions (indicates cellid is needed)
-    has_spatial = False
-    for name in field_names:
-        field = block_fields[name]
-        if field.shape and any(
-            dim in field.shape for dim in ["nnodes", "ncells", "nlay", "nrow", "ncol"]
-        ):
-            has_spatial = True
-            break
-
-    if has_spatial:
-        columns.append(("cellid", False))  # cellid is always required
-
-    # Add the field names as columns with their optionality
-    for name in field_names:
-        field = block_fields[name]
-        is_optional = getattr(field, "optional", False)
-        columns.append((name, is_optional))
-
-    return columns
-
-
 def get_all_grouped_field_names(blocks: Mapping[str, Mapping[str, FieldV2]]) -> set[str]:
     """
     Get all field names that are grouped into recarrays across all blocks.

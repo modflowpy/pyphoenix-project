@@ -20,7 +20,6 @@ def _get_template_env():
     env.filters["keystring_children"] = filters.keystring_children
     env.filters["group_period_fields"] = filters.group_period_fields
     env.filters["get_recarray_name"] = filters.get_recarray_name
-    env.filters["get_recarray_columns"] = filters.get_recarray_columns
     env.filters["get_all_grouped_field_names"] = filters.get_all_grouped_field_names
     return env
 

@@ -1,3 +1,50 @@
+{# Macros for field generation #}
+{% macro render_record_field(field_name, field) -%}
+{{ field_name }}: {% for child_name, child in field.children.items() -%}
+    {%- set child_type = child|record_child_type -%}
+    {%- if child.type == 'keyword' -%}
+        "{{ child.name }}"i
+    {%- elif child.type == 'union' -%}
+        {{ child_name }}
+    {%- else -%}
+        {{ child_type }}
+    {%- endif -%}
+    {%- if not loop.last %} {% endif -%}
+{%- endfor %}
+{%- endmacro %}
+
+{% macro render_union_field(field_name, field) -%}
+{{ field_name }}: {% for child_name, child in field.children.items() -%}
+    {{ field_name }}_{{ child_name }}
+    {%- if not loop.last %} | {% endif -%}
+{%- endfor %}
+{% for child_name, child in field.children.items() %}
+{{ field_name }}_{{ child_name }}: {% if child.type == 'keyword' -%}
+    "{{ child.name }}"i
+{%- else -%}
+    "{{ child.name }}"i {{ child.type }}
+{%- endif %}
+{% endfor -%}
+{%- endmacro %}
+
+{% macro render_simple_field(field_name, field, field_type) -%}
+{{ field_name }}: "{{ field.name }}"i {{ field_type }}
+{%- endmacro %}
+
+{% macro render_nested_union(child_name, child) -%}
+{{ child_name }}: {% for opt_name, opt in child.children.items() -%}
+    {{ child_name }}_{{ opt_name }}
+    {%- if not loop.last %} | {% endif -%}
+{%- endfor %}
+{% for opt_name, opt in child.children.items() %}
+{{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' -%}
+    "{{ opt.name }}"i
+{%- else -%}
+    "{{ opt.name }}"i {{ opt.type }}
+{%- endif %}
+{% endfor -%}
+{%- endmacro %}
+
 // Auto-generated grammar for MF6 {{ name|upper }}
 %import common.WS
 %import common.SH_COMMENT
@@ -5,6 +52,20 @@
 
 %ignore WS
 %ignore SH_COMMENT
+
+{# Pre-compute block metadata to avoid multiple iterations #}
+{% set block_metadata = {} %}
+{% for block_name, block_fields in blocks.items() %}
+  {% set period_groups = block_fields|group_period_fields %}
+  {% set _ = block_metadata.update({
+    block_name: {
+      'fields': block_fields,
+      'period_groups': period_groups,
+      'recarray_name': (block_name|get_recarray_name) if period_groups else none,
+      'has_index': block_name == 'period'
+    }
+  }) %}
+{% endfor %}
 
 // Top-level structure
 start: block*
@@ -14,36 +75,34 @@ block: {% for block_name in blocks.keys() %}
 {%- endfor %}
 
 // Block definitions
-{% for block_name, block_fields in blocks.items() %}
-{% if block_name == 'period' %}
+{% for block_name, meta in block_metadata.items() %}
+{% if meta.has_index %}
 {{ block_name }}_block: "begin"i "{{ block_name }}"i block_index {{ block_name }}_fields "end"i "{{ block_name }}"i block_index
 {% else %}
 {{ block_name }}_block: "begin"i "{{ block_name }}"i {{ block_name }}_fields "end"i "{{ block_name }}"i
 {% endif %}
 {% endfor %}
-{% if 'period' in blocks %}
+{% if block_metadata.values()|selectattr('has_index')|list %}
 block_index: integer
 {% endif %}
 // Block field lists
-{% for block_name, block_fields in blocks.items() %}
-{% set period_groups = block_fields|group_period_fields %}
-{% if period_groups %}
+{% for block_name, meta in block_metadata.items() %}
+{% if meta.period_groups %}
 {# This block has period data (e.g., stress_period_data), split fields accordingly #}
-{% set recarray_name = block_name|get_recarray_name %}
-{% set grouped_field_names = period_groups.values()|first %}
+{% set grouped_field_names = meta.period_groups.values()|first %}
 {% set non_grouped_fields = [] %}
-{% for field_name in block_fields.keys() %}
+{% for field_name in meta.fields.keys() %}
     {%- if field_name not in grouped_field_names %}
         {%- set _ = non_grouped_fields.append(field_name) %}
     {%- endif %}
 {%- endfor %}
 {{ block_name }}_fields: (
     {%- for field_name in non_grouped_fields %}{{ field_name }} | {% endfor -%}
-    {{ recarray_name }})*
+    {{ meta.recarray_name }})*
 {% else %}
 {# Regular block - just list all fields #}
 {{ block_name }}_fields: (
-    {%- for field_name in block_fields.keys() %}
+    {%- for field_name in meta.fields.keys() %}
         {{- field_name }}{% if not loop.last %} | {% endif %}
     {%- endfor -%}
 )*
@@ -55,21 +114,11 @@ block_index: integer
 {% if field_name not in grouped_fields %}
 {% set field_type = field|field_type %}
 {% if field.type == 'record' and field.children is not none %}
-{{ field_name }}: {% for child_name, child in field.children.items() %}{% set child_type = child|record_child_type
-%}{% if child.type == 'keyword' %}"{{ child.name }}"i{% elif child.type == 'union' %}{{ child_name }}{%
-else %}{{ child_type }}{% endif %}{% if not loop.last %} {% endif %}{% endfor %}
-
+{{ render_record_field(field_name, field) }}
 {% elif field.type == 'union' and field.children is not none %}
-{{ field_name }}: {% for child_name, child in field.children.items() %}{{ field_name }}_{{ child_name }}{% if not
-loop.last %} | {% endif %}{% endfor %}
-{% for child_name, child in field.children.items() %}
-
-{{ field_name }}_{{ child_name }}: {% if child.type == 'keyword' %}"{{ child.name }}"i{% else %}"{{ child.name }}"i {{
-child.type }}{% endif %}
-
-{% endfor %}
+{{ render_union_field(field_name, field) }}
 {% else %}
-{{ field_name }}: "{{ field.name }}"i {{ field_type }}
+{{ render_simple_field(field_name, field, field_type) }}
 {% endif %}
 {% endif %}
 {% endfor %}
@@ -79,29 +128,16 @@ child.type }}{% endif %}
 {% if field.type == 'record' and field.children is not none %}
 {% for child_name, child in field.children.items() %}
 {% if child.type == 'union' and child_name not in unions_generated %}
-{{ child_name }}: {% for opt_name, opt in child.children.items() %}{{ child_name }}_{{ opt_name }}{% if not loop.last
-%} | {% endif %}
-{% endfor %}
-
-{% for opt_name, opt in child.children.items() %}
-{{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' %}"{{ opt.name }}"i{% else %}"{{ opt.name }}"i {{
-opt.type }}{% endif %}
-
-{% endfor %}
-
+{{ render_nested_union(child_name, child) }}
 {% set _ = unions_generated.append(child_name) %}
 {% endif %}
 {% endfor %}
 {% endif %}
 {% endfor %}
 // Recarray rules for period data (stress_period_data, etc.)
-{% for block_name, block_fields in blocks.items() %}
-{% set period_groups = block_fields|group_period_fields %}
-{% if period_groups %}
-{% set recarray_name = block_name|get_recarray_name %}
-{% set field_names = period_groups.values()|first %}
-{% set columns = field_names|get_recarray_columns(block_fields) %}
-{{ recarray_name}}: (number | simple_string)+ NEWLINE
+{% for block_name, meta in block_metadata.items() %}
+{% if meta.recarray_name %}
+{{ meta.recarray_name }}: (number | simple_string)+ NEWLINE
 {% endif %}
 {% endfor %}
 
