@@ -7,20 +7,6 @@
 %ignore WS
 %ignore SH_COMMENT
 
-{# Pre-compute block metadata to avoid multiple iterations #}
-{% set block_metadata = {} %}
-{% for block_name, block_fields in blocks.items() %}
-{% set period_groups = block_fields|group_period_fields %}
-{% set _ = block_metadata.update({
-block_name: {
-'fields': block_fields,
-'period_groups': period_groups,
-'recarray_name': (block_name|get_recarray_name) if period_groups else none,
-'has_index': block_name == 'period'
-}
-}) %}
-{% endfor %}
-
 // Top-level structure
 start: block*
 block: {% for block_name in blocks.keys() %}

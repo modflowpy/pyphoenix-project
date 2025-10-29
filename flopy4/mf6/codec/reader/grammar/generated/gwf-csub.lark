@@ -6,7 +6,6 @@
 %ignore WS
 %ignore SH_COMMENT
 
-
 // Top-level structure
 start: block*
 block: options_block | dimensions_block | griddata_block | period_block

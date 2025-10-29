@@ -24,15 +24,40 @@ def _get_template_env():
     return env
 
 
+def _compute_block_metadata(blocks):
+    """Pre-compute block metadata for template rendering."""
+    block_metadata = {}
+    for block_name, block_fields in blocks.items():
+        period_groups = filters.group_period_fields(block_fields)
+        recarray_name = filters.get_recarray_name(block_name) if period_groups else None
+        has_index = block_name == "period"
+
+        block_metadata[block_name] = {
+            "fields": block_fields,
+            "period_groups": period_groups,
+            "recarray_name": recarray_name,
+            "has_index": has_index,
+        }
+    return block_metadata
+
+
 def make_grammar(dfn: Dfn, outdir: PathLike):
     """Generate a Lark grammar file for a single component."""
     outdir = Path(outdir).expanduser().resolve().absolute()
     env = _get_template_env()
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{dfn.name}.lark"
+
+    # Pre-compute block metadata
+    block_metadata = _compute_block_metadata(dfn.blocks)
+
     with open(target_path, "w") as f:
         name = dfn.name
-        f.write(template.render(name=name, blocks=dfn.blocks, fields=dfn.fields))
+        f.write(
+            template.render(
+                name=name, blocks=dfn.blocks, fields=dfn.fields, block_metadata=block_metadata
+            )
+        )
 
 
 def make_all_grammars(dfns: dict[str, Dfn], outdir: PathLike):

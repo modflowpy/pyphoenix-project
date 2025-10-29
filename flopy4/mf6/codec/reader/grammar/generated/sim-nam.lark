@@ -6,7 +6,6 @@
 %ignore WS
 %ignore SH_COMMENT
 
-
 // Top-level structure
 start: block*
 block: options_block | timing_block | models_block | exchanges_block | solutiongroup_block
