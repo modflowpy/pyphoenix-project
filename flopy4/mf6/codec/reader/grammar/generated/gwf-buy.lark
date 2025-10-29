@@ -10,7 +10,7 @@ options_fields: (hhformulation_rhs | denseref | density_filerecord | dev_efh_for
 dimensions_fields: (nrhospecies)*
 packagedata_fields: (packagedata)*
 hhformulation_rhs: "hhformulation_rhs"i 
-denseref: "denseref"i double precision
+denseref: "denseref"i double
 density_filerecord: "density"i "fileout"i string
 dev_efh_formulation: "dev_efh_formulation"i 
 nrhospecies: "nrhospecies"i integer

@@ -6,9 +6,11 @@ block: options_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (readasarrays | print_input | tas_filerecord)*
-period_fields: (concentration | temperature)*
+period_fields: (stress_period_data)*
 readasarrays: "readasarrays"i 
 print_input: "print_input"i 
 tas_filerecord: "tas6"i "filein"i string
-concentration: "concentration"i double precision
-temperature: "temperature"i double precision
+stress_period_data: cellid concentration temperature
+cellid: integer+
+concentration: double
+temperature: double

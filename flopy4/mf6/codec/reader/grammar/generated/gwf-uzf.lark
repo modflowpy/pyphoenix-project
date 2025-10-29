@@ -8,7 +8,7 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | wc_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | simulate_et | linear_gwet | square_gwet | simulate_gwseep | unsat_etwc | unsat_etae)*
 dimensions_fields: (nuzfcells | ntrailwaves | nwavesets)*
-period_fields: (finf | pet | extdp | extwc | ha | hroot | rootact | aux)*
+period_fields: (stress_period_data)*
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
 boundnames: "boundnames"i 
@@ -31,11 +31,12 @@ unsat_etae: "unsat_etae"i
 nuzfcells: "nuzfcells"i integer
 ntrailwaves: "ntrailwaves"i integer
 nwavesets: "nwavesets"i integer
-finf: "finf"i list
-pet: "pet"i list
-extdp: "extdp"i list
-extwc: "extwc"i list
-ha: "ha"i list
-hroot: "hroot"i list
-rootact: "rootact"i list
-aux: "aux"i double precision
+stress_period_data: finf pet extdp extwc ha hroot rootact aux
+finf: string
+pet: string
+extdp: string
+extwc: string
+ha: string
+hroot: string
+rootact: string
+aux: double

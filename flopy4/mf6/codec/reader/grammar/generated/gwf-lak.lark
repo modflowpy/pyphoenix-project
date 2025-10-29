@@ -17,11 +17,11 @@ connectiondata_fields: (connectiondata)*
 outlets_fields: (outlets)*
 obs_filerecord: "obs6"i string
 mover: "mover"i 
-surfdep: "surfdep"i double precision
+surfdep: "surfdep"i double
 maximum_iterations: "maximum_iterations"i integer
-maximum_stage_change: "maximum_stage_change"i double precision
-time_conversion: "time_conversion"i double precision
-length_conversion: "length_conversion"i double precision
+maximum_stage_change: "maximum_stage_change"i double
+time_conversion: "time_conversion"i double
+length_conversion: "length_conversion"i double
 nlakes: "nlakes"i integer
 noutlets: "noutlets"i integer
 ntables: "ntables"i integer

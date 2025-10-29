@@ -8,19 +8,21 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | auto_flow_reduce | afrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
 dimensions_fields: (maxbound)*
-period_fields: (q | aux | boundname)*
+period_fields: (stress_period_data)*
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-auto_flow_reduce: "auto_flow_reduce"i double precision
+auto_flow_reduce: "auto_flow_reduce"i double
 afrcsv_filerecord: "auto_flow_reduce_csv"i "fileout"i string
 ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string
 mover: "mover"i 
 maxbound: "maxbound"i integer
-q: "q"i double precision
-aux: "aux"i double precision
-boundname: "boundname"i list
+stress_period_data: cellid q aux boundname
+cellid: integer+
+q: double
+aux: double
+boundname: string

@@ -9,5 +9,5 @@ attributes_fields: (time_series_namerecord | interpolation_methodrecord | sfacre
 time_fields: (tas_array)*
 time_series_namerecord: "name"i string
 interpolation_methodrecord: "method"i string
-sfacrecord: "sfac"i double precision
-tas_array: "tas_array"i double precision
+sfacrecord: "sfac"i double
+tas_array: "tas_array"i array

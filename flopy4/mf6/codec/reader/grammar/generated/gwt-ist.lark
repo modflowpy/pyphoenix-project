@@ -11,11 +11,11 @@ cimprintrecord: "print_format"i
 sorbate_filerecord: "sorbate"i string
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
-porosity: "porosity"i double precision
-volfrac: "volfrac"i double precision
-zetaim: "zetaim"i double precision
-decay: "decay"i double precision
-decay_sorbed: "decay_sorbed"i double precision
-bulk_density: "bulk_density"i double precision
-distcoef: "distcoef"i double precision
-sp2: "sp2"i double precision
+porosity: "porosity"i array
+volfrac: "volfrac"i array
+zetaim: "zetaim"i array
+decay: "decay"i array
+decay_sorbed: "decay_sorbed"i array
+bulk_density: "bulk_density"i array
+distcoef: "distcoef"i array
+sp2: "sp2"i array

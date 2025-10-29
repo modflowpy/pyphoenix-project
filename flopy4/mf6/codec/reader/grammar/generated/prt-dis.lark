@@ -12,9 +12,9 @@ griddata_fields: (delr | delc | top | botm | idomain)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
 grb_filerecord: "grb6"i "fileout"i string
-xorigin: "xorigin"i double precision
-yorigin: "yorigin"i double precision
-angrot: "angrot"i double precision
+xorigin: "xorigin"i double
+yorigin: "yorigin"i double
+angrot: "angrot"i double
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 crs: "crs"i array
@@ -22,8 +22,8 @@ ncf_filerecord: "ncf6"i "filein"i string
 nlay: "nlay"i integer
 nrow: "nrow"i integer
 ncol: "ncol"i integer
-delr: "delr"i double precision
-delc: "delc"i double precision
-top: "top"i double precision
-botm: "botm"i double precision
+delr: "delr"i array
+delc: "delc"i array
+top: "top"i array
+botm: "botm"i array
 idomain: "idomain"i array

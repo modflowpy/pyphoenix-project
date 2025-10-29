@@ -8,7 +8,7 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | ts_filerecord | obs_filerecord)*
 dimensions_fields: (maxbound)*
-period_fields: (head | aux | boundname)*
+period_fields: (stress_period_data)*
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
 boundnames: "boundnames"i 
@@ -18,6 +18,8 @@ save_flows: "save_flows"i
 ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string
 maxbound: "maxbound"i integer
-head: "head"i double precision
-aux: "aux"i double precision
-boundname: "boundname"i list
+stress_period_data: cellid head aux boundname
+cellid: integer+
+head: double
+aux: double
+boundname: string

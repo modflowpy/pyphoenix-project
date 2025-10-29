@@ -22,8 +22,8 @@ budgetcsv_filerecord: "fileout"i "budgetcsv"i string
 no_well_storage: "no_well_storage"i 
 flow_correction: "flow_correction"i 
 flowing_wells: "flowing_wells"i 
-shutdown_theta: "shutdown_theta"i double precision
-shutdown_kappa: "shutdown_kappa"i double precision
+shutdown_theta: "shutdown_theta"i double
+shutdown_kappa: "shutdown_kappa"i double
 mfrcsv_filerecord: "fileout"i "maw_flow_reduce_csv"i string
 ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string

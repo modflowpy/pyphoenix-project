@@ -8,13 +8,13 @@ griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
 options_fields: (central_in_space | length_conversion | time_conversion | save_flows | print_flows | save_velocity | obs_filerecord | export_array_ascii | dev_swr_conductance)*
 griddata_fields: (manningsn | idcxs)*
 central_in_space: "central_in_space"i 
-length_conversion: "length_conversion"i double precision
-time_conversion: "time_conversion"i double precision
+length_conversion: "length_conversion"i double
+time_conversion: "time_conversion"i double
 save_flows: "save_flows"i 
 print_flows: "print_flows"i 
 save_velocity: "save_velocity"i 
 obs_filerecord: "obs6"i "filein"i string
 export_array_ascii: "export_array_ascii"i 
 dev_swr_conductance: "dev_swr_conductance"i 
-manningsn: "manningsn"i double precision
+manningsn: "manningsn"i array
 idcxs: "idcxs"i array

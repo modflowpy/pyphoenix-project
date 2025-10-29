@@ -13,5 +13,5 @@ csv_output_filerecord: "csv_output"i string "fileout"i
 csv_outer_output_filerecord: "csv_outer_output"i "fileout"i string
 csv_inner_output_filerecord: "fileout"i "csv_inner_output"i string
 no_ptcrecord: "no_ptc"i string
-ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double precision
+ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double
 outer_maximum: "outer_maximum"i integer

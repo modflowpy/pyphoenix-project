@@ -18,7 +18,7 @@ export_array_netcdf: "export_array_netcdf"i
 dev_original_specific_storage: "dev_original_specific_storage"i 
 dev_oldstorageformulation: "dev_oldstorageformulation"i 
 iconvert: "iconvert"i array
-ss: "ss"i double precision
-sy: "sy"i double precision
+ss: "ss"i array
+sy: "sy"i array
 steady-state: "steady-state"i 
 transient: "transient"i 

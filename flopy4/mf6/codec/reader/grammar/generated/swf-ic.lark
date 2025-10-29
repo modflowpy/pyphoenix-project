@@ -8,4 +8,4 @@ griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
 options_fields: (export_array_ascii)*
 griddata_fields: (strt)*
 export_array_ascii: "export_array_ascii"i 
-strt: "strt"i double precision
+strt: "strt"i array

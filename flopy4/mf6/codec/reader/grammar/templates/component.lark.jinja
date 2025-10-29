@@ -8,10 +8,21 @@ block: {% for block_name in blocks.keys() %}{{ block_name }}_block{% if not loop
 {{ block_name }}_block: "begin"i "{{ block_name }}"i {{ block_name }}_fields "end"i "{{ block_name }}"i
 {% endfor %}
 {% for block_name, block_ in blocks.items() %}
+{% set period_groups = block_|group_period_fields %}
+{% if period_groups %}
+{% set recarray_name = block_name|get_recarray_name %}
+{% set grouped_field_names = period_groups.values()|first %}
+{% set non_grouped_fields = [] %}
+{% for field_name in block_.keys() %}{% if field_name not in grouped_field_names %}{% set _ = non_grouped_fields.append(field_name) %}{% endif %}{% endfor %}
+{{ block_name }}_fields: ({% for field_name in non_grouped_fields %}{{ field_name }} | {% endfor %}{{ recarray_name }})*
+{% else %}
 {{ block_name }}_fields: ({% for field_name, field in block_.items() %}{{ field_name }}{% if not loop.last %} | {% endif
 %}{% endfor %})*
+{% endif %}
 {% endfor %}
+{% set grouped_fields = blocks|get_all_grouped_field_names %}
 {% for field_name, field in fields.items() %}
+{% if field_name not in grouped_fields %}
 {% set field_type = field|field_type %}
 {% if field.type == 'record' and field.children is not none %}
 {{ field_name }}: {% for child_name, child in field.children.items() %}{% set child_type = child|record_child_type
@@ -29,6 +40,7 @@ child.type }}{% endif %}
 {% endfor %}
 {% else %}
 {{ field_name }}: "{{ field.name }}"i {{ field_type }}
+{% endif %}
 {% endif %}
 {% endfor %}
 {# Generate union rules for nested unions within records #}
@@ -48,6 +60,24 @@ opt.type }}{% endif %}
 {% endfor %}
 
 {% set _ = unions_generated.append(child_name) %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{# Generate recarray rules for grouped period fields #}
+{% for block_name, block_ in blocks.items() %}
+{% set period_groups = block_|group_period_fields %}
+{% if period_groups %}
+{% set recarray_name = block_name|get_recarray_name %}
+{% set field_names = period_groups.values()|first %}
+{% set columns = field_names|get_recarray_columns(block_) %}
+{{ recarray_name }}: {% for col in columns %}{{ col }}{% if not loop.last %} {% endif %}{% endfor %}
+
+{% for col in columns %}
+{% if col == 'cellid' %}
+cellid: integer+
+{% else %}
+{{ col }}: {{ block_[col].type }}
 {% endif %}
 {% endfor %}
 {% endif %}

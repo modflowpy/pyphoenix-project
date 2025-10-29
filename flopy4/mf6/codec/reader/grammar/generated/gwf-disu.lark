@@ -18,24 +18,24 @@ cell2d_fields: (cell2d)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
 grb_filerecord: "grb6"i "fileout"i string
-xorigin: "xorigin"i double precision
-yorigin: "yorigin"i double precision
-angrot: "angrot"i double precision
-vertical_offset_tolerance: "vertical_offset_tolerance"i double precision
+xorigin: "xorigin"i double
+yorigin: "yorigin"i double
+angrot: "angrot"i double
+vertical_offset_tolerance: "vertical_offset_tolerance"i double
 export_array_ascii: "export_array_ascii"i 
 crs: "crs"i array
 nodes: "nodes"i integer
 nja: "nja"i integer
 nvert: "nvert"i integer
-top: "top"i double precision
-bot: "bot"i double precision
-area: "area"i double precision
+top: "top"i array
+bot: "bot"i array
+area: "area"i array
 idomain: "idomain"i array
 iac: "iac"i array
 ja: "ja"i array
 ihc: "ihc"i array
-cl12: "cl12"i double precision
-hwva: "hwva"i double precision
-angldegx: "angldegx"i double precision
+cl12: "cl12"i array
+hwva: "hwva"i array
+angldegx: "angldegx"i array
 vertices: "vertices"i recarray
 cell2d: "cell2d"i recarray

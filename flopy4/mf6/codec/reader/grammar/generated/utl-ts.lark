@@ -12,7 +12,7 @@ interpolation_methodrecord: "methods"i string
 interpolation_methodrecord_single: 
 method: "method"i 
 interpolation_method_single: "interpolation_method_single"i string
-sfacrecord: "sfacs"i double precision
-sfacrecord_single: double precision
+sfacrecord: "sfacs"i double
+sfacrecord_single: double
 sfac: "sfac"i 
 timeseries: "timeseries"i recarray

@@ -16,15 +16,15 @@ cell1d_fields: (cell1d)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
 grb_filerecord: "grb6"i "fileout"i string
-xorigin: "xorigin"i double precision
-yorigin: "yorigin"i double precision
-angrot: "angrot"i double precision
+xorigin: "xorigin"i double
+yorigin: "yorigin"i double
+angrot: "angrot"i double
 export_array_ascii: "export_array_ascii"i 
 crs: "crs"i array
 nodes: "nodes"i integer
 nvert: "nvert"i integer
-width: "width"i double precision
-bottom: "bottom"i double precision
+width: "width"i array
+bottom: "bottom"i array
 idomain: "idomain"i array
 vertices: "vertices"i recarray
 cell1d: "cell1d"i recarray

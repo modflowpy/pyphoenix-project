@@ -23,7 +23,7 @@ track_terminate: "track_terminate"i
 track_weaksink: "track_weaksink"i 
 track_usertime: "track_usertime"i 
 track_dropped: "track_dropped"i 
-track_timesrecord: "track_times"i double precision
+track_timesrecord: "track_times"i double
 track_timesfilerecord: "track_timesfile"i string
 dev_dump_event_trace: "dev_dump_event_trace"i 
 ntracktimes: "ntracktimes"i integer

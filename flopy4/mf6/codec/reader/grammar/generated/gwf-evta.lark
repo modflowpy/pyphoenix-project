@@ -6,7 +6,7 @@ block: options_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (readasarrays | fixed_cell | auxiliary | auxmultname | print_input | print_flows | save_flows | tas_filerecord | obs_filerecord | export_array_netcdf)*
-period_fields: (ievt | surface | rate | depth | aux)*
+period_fields: (stress_period_data)*
 readasarrays: "readasarrays"i 
 fixed_cell: "fixed_cell"i 
 auxiliary: "auxiliary"i array
@@ -17,8 +17,10 @@ save_flows: "save_flows"i
 tas_filerecord: "tas6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string
 export_array_netcdf: "export_array_netcdf"i 
-ievt: "ievt"i list
-surface: "surface"i double precision
-rate: "rate"i double precision
-depth: "depth"i double precision
-aux: "aux"i double precision
+stress_period_data: cellid ievt surface rate depth aux
+cellid: integer+
+ievt: integer
+surface: double
+rate: double
+depth: double
+aux: double

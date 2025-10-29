@@ -9,12 +9,12 @@ packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedat
 options_fields: (viscref | temperature_species_name | thermal_formulation | thermal_a2 | thermal_a3 | thermal_a4 | viscosity_filerecord)*
 dimensions_fields: (nviscspecies)*
 packagedata_fields: (packagedata)*
-viscref: "viscref"i double precision
+viscref: "viscref"i double
 temperature_species_name: "temperature_species_name"i string
 thermal_formulation: "thermal_formulation"i string
-thermal_a2: "thermal_a2"i double precision
-thermal_a3: "thermal_a3"i double precision
-thermal_a4: "thermal_a4"i double precision
+thermal_a2: "thermal_a2"i double
+thermal_a3: "thermal_a3"i double
+thermal_a4: "thermal_a4"i double
 viscosity_filerecord: "viscosity"i "fileout"i string
 nviscspecies: "nviscspecies"i integer
 packagedata: "packagedata"i recarray

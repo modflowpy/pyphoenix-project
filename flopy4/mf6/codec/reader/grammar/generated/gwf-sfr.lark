@@ -19,11 +19,11 @@ obs_filerecord: "obs6"i string
 mover: "mover"i 
 maximum_picard_iterations: "maximum_picard_iterations"i integer
 maximum_iterations: "maximum_iterations"i integer
-maximum_depth_change: "maximum_depth_change"i double precision
-unit_conversion: "unit_conversion"i double precision
-length_conversion: "length_conversion"i double precision
-time_conversion: "time_conversion"i double precision
-dev_storage_weight: "dev_storage_weight"i double precision
+maximum_depth_change: "maximum_depth_change"i double
+unit_conversion: "unit_conversion"i double
+length_conversion: "length_conversion"i double
+time_conversion: "time_conversion"i double
+dev_storage_weight: "dev_storage_weight"i double
 nreaches: "nreaches"i integer
 crosssections: "crosssections"i recarray
 connectiondata: "connectiondata"i recarray

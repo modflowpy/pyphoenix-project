@@ -11,10 +11,10 @@ xt3d_off: "xt3d_off"i
 xt3d_rhs: "xt3d_rhs"i 
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
-alh: "alh"i double precision
-alv: "alv"i double precision
-ath1: "ath1"i double precision
-ath2: "ath2"i double precision
-atv: "atv"i double precision
-ktw: "ktw"i double precision
-kts: "kts"i double precision
+alh: "alh"i array
+alv: "alv"i array
+ath1: "ath1"i array
+ath2: "ath2"i array
+atv: "atv"i array
+ktw: "ktw"i array
+kts: "kts"i array

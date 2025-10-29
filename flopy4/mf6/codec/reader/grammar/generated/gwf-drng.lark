@@ -8,7 +8,7 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (readarraygrid | auxiliary | auxmultname | auxdepthname | print_input | print_flows | save_flows | obs_filerecord | mover | export_array_netcdf | dev_cubic_scaling)*
 dimensions_fields: (maxbound)*
-period_fields: (elev | cond | aux)*
+period_fields: (stress_period_data)*
 readarraygrid: "readarraygrid"i 
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
@@ -21,6 +21,7 @@ mover: "mover"i
 export_array_netcdf: "export_array_netcdf"i 
 dev_cubic_scaling: "dev_cubic_scaling"i 
 maxbound: "maxbound"i integer
-elev: "elev"i double precision
-cond: "cond"i double precision
-aux: "aux"i double precision
+stress_period_data: elev cond aux
+elev: double
+cond: double
+aux: double

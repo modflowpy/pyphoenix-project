@@ -11,27 +11,27 @@ releasetimes_block: "begin"i "releasetimes"i releasetimes_fields "end"i "release
 options_fields: (boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window)*
 dimensions_fields: (nreleasepts | nreleasetimes)*
 packagedata_fields: (packagedata)*
-period_fields: (all | first | last | frequency | steps | fraction)*
+period_fields: (all | first | last | stress_period_data)*
 releasetimes_fields: (releasetimes)*
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 dev_exit_solve_method: "dev_exit_solve_method"i integer
-exit_solve_tolerance: "exit_solve_tolerance"i double precision
+exit_solve_tolerance: "exit_solve_tolerance"i double
 local_z: "local_z"i 
 extend_tracking: "extend_tracking"i 
 track_filerecord: "track"i "fileout"i string
 trackcsv_filerecord: "fileout"i "trackcsv"i string
-stoptime: "stoptime"i double precision
-stoptraveltime: "stoptraveltime"i double precision
+stoptime: "stoptime"i double
+stoptraveltime: "stoptraveltime"i double
 stop_at_weak_sink: "stop_at_weak_sink"i 
 istopzone: "istopzone"i integer
 drape: "drape"i 
-release_timesrecord: "release_times"i double precision
+release_timesrecord: "release_times"i double
 release_timesfilerecord: "release_timesfile"i string
 dry_tracking_method: "dry_tracking_method"i string
 dev_forceternary: "dev_forceternary"i 
-release_time_tolerance: "release_time_tolerance"i double precision
-release_time_frequency: "release_time_frequency"i double precision
+release_time_tolerance: "release_time_tolerance"i double
+release_time_frequency: "release_time_frequency"i double
 coordinate_check_method: "coordinate_check_method"i string
 dev_cycle_detection_window: "dev_cycle_detection_window"i integer
 nreleasepts: "nreleasepts"i integer
@@ -40,7 +40,8 @@ packagedata: "packagedata"i recarray
 all: "all"i 
 first: "first"i 
 last: "last"i 
-frequency: "frequency"i list
-steps: "steps"i list
-fraction: "fraction"i double precision
 releasetimes: "releasetimes"i recarray
+stress_period_data: frequency steps fraction
+frequency: integer
+steps: integer
+fraction: double

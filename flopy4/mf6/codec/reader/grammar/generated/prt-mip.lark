@@ -8,6 +8,6 @@ griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
 options_fields: (export_array_ascii)*
 griddata_fields: (porosity | retfactor | izone)*
 export_array_ascii: "export_array_ascii"i 
-porosity: "porosity"i double precision
-retfactor: "retfactor"i double precision
+porosity: "porosity"i array
+retfactor: "retfactor"i array
 izone: "izone"i array

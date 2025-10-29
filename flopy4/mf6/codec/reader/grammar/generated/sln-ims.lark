@@ -15,28 +15,28 @@ csv_output_filerecord: "csv_output"i string "fileout"i
 csv_outer_output_filerecord: "csv_outer_output"i "fileout"i string
 csv_inner_output_filerecord: "fileout"i "csv_inner_output"i string
 no_ptcrecord: "no_ptc"i string
-ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double precision
-outer_hclose: "outer_hclose"i double precision
-outer_dvclose: "outer_dvclose"i double precision
-outer_rclosebnd: "outer_rclosebnd"i double precision
+ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double
+outer_hclose: "outer_hclose"i double
+outer_dvclose: "outer_dvclose"i double
+outer_rclosebnd: "outer_rclosebnd"i double
 outer_maximum: "outer_maximum"i integer
 under_relaxation: "under_relaxation"i string
-under_relaxation_gamma: "under_relaxation_gamma"i double precision
-under_relaxation_theta: "under_relaxation_theta"i double precision
-under_relaxation_kappa: "under_relaxation_kappa"i double precision
-under_relaxation_momentum: "under_relaxation_momentum"i double precision
+under_relaxation_gamma: "under_relaxation_gamma"i double
+under_relaxation_theta: "under_relaxation_theta"i double
+under_relaxation_kappa: "under_relaxation_kappa"i double
+under_relaxation_momentum: "under_relaxation_momentum"i double
 backtracking_number: "backtracking_number"i integer
-backtracking_tolerance: "backtracking_tolerance"i double precision
-backtracking_reduction_factor: "backtracking_reduction_factor"i double precision
-backtracking_residual_limit: "backtracking_residual_limit"i double precision
+backtracking_tolerance: "backtracking_tolerance"i double
+backtracking_reduction_factor: "backtracking_reduction_factor"i double
+backtracking_residual_limit: "backtracking_residual_limit"i double
 inner_maximum: "inner_maximum"i integer
-inner_hclose: "inner_hclose"i double precision
-inner_dvclose: "inner_dvclose"i double precision
-rcloserecord: double precision string
+inner_hclose: "inner_hclose"i double
+inner_dvclose: "inner_dvclose"i double
+rcloserecord: double string
 linear_acceleration: "linear_acceleration"i string
-relaxation_factor: "relaxation_factor"i double precision
+relaxation_factor: "relaxation_factor"i double
 preconditioner_levels: "preconditioner_levels"i integer
-preconditioner_drop_tolerance: "preconditioner_drop_tolerance"i double precision
+preconditioner_drop_tolerance: "preconditioner_drop_tolerance"i double
 number_orthogonalizations: "number_orthogonalizations"i integer
 scaling_method: "scaling_method"i string
 reordering_method: "reordering_method"i string

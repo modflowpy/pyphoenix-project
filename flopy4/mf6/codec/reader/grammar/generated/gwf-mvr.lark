@@ -9,7 +9,7 @@ period_block: "begin"i "period"i period_fields "end"i "period"i
 packages_block: "begin"i "packages"i packages_fields "end"i "packages"i
 options_fields: (print_input | print_flows | modelnames | budget_filerecord | budgetcsv_filerecord)*
 dimensions_fields: (maxmvr | maxpackages)*
-period_fields: (mname1 | pname1 | id1 | mname2 | pname2 | id2 | mvrtype | value)*
+period_fields: (stress_period_data)*
 packages_fields: (packages)*
 print_input: "print_input"i 
 print_flows: "print_flows"i 
@@ -18,12 +18,13 @@ budget_filerecord: "budget"i "fileout"i string
 budgetcsv_filerecord: "fileout"i "budgetcsv"i string
 maxmvr: "maxmvr"i integer
 maxpackages: "maxpackages"i integer
-mname1: "mname1"i list
-pname1: "pname1"i list
-id1: "id1"i list
-mname2: "mname2"i list
-pname2: "pname2"i list
-id2: "id2"i list
-mvrtype: "mvrtype"i list
-value: "value"i double precision
 packages: "packages"i recarray
+stress_period_data: mname1 pname1 id1 mname2 pname2 id2 mvrtype value
+mname1: string
+pname1: string
+id1: integer
+mname2: string
+pname2: string
+id2: integer
+mvrtype: string
+value: double

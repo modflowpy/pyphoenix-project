@@ -8,9 +8,10 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i period_fields "end"i "period"i
 options_fields: (print_input)*
 dimensions_fields: (maxhfb)*
-period_fields: (cellid1 | cellid2 | hydchr)*
+period_fields: (stress_period_data)*
 print_input: "print_input"i 
 maxhfb: "maxhfb"i integer
-cellid1: "cellid1"i list
-cellid2: "cellid2"i list
-hydchr: "hydchr"i double precision
+stress_period_data: cellid1 cellid2 hydchr
+cellid1: integer
+cellid2: integer
+hydchr: double
