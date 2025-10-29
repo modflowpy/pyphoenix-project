@@ -69,8 +69,24 @@ class TypedTransformer(Transformer):
         self.blocks = dfn.blocks if dfn else None
         self.fields = dfn.fields if dfn else None
 
-    def start(self, items: list[Any]) -> Mapping:
-        return ChainMap(*items)
+    def start(self, items: list[Any]) -> dict:
+        """Collect and merge blocks, handling indexed blocks specially."""
+        merged = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            for block_name, block_data in item.items():
+                if block_name not in merged:
+                    merged[block_name] = block_data
+                else:
+                    # If both are dicts with integer keys (indexed blocks), merge them
+                    existing = merged[block_name]
+                    if (isinstance(existing, dict) and isinstance(block_data, dict) and
+                        all(isinstance(k, int) for k in existing.keys()) and
+                        all(isinstance(k, int) for k in block_data.keys())):
+                        existing.update(block_data)
+                    # Otherwise, indexed block overwrites (shouldn't happen for well-formed input)
+        return merged
 
     def block(self, items: list[Any]) -> dict:
         return items[0]
@@ -202,6 +218,10 @@ class TypedTransformer(Transformer):
     def typed__layered(self, items: list[Any]) -> dict[str, bool]:
         return {"layered": True}
 
+    def block_index(self, items: list[Any]) -> int:
+        """Extract block index (e.g., period number)."""
+        return items[0]
+
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
         control = array_info["control"]
@@ -218,7 +238,18 @@ class TypedTransformer(Transformer):
         if self.blocks is None or self.fields is None:
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
-            return {block_name: children[0]}
+            # Check if this is an indexed block (period blocks have 3 children: [index, fields, index])
+            if len(children) == 3 and isinstance(children[0], int) and isinstance(children[2], int):
+                # Indexed block: [index, fields, index]
+                block_index = children[0]
+                fields_data = children[1]
+                return {block_name: {block_index: fields_data}}
+            elif len(children) == 1:
+                # Non-indexed block: [fields]
+                return {block_name: children[0]}
+            else:
+                # Unexpected structure, fall back to default
+                return super().__default__(data, children, meta)
         elif data.endswith("_fields"):
             return {item[0].lower(): item[1] for item in children}
         elif (field := self.fields.get(data, None)) is not None:

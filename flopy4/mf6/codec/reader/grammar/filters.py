@@ -77,11 +77,12 @@ def get_recarray_name(block_name: str) -> str:
     return f"{block_name}data"
 
 
-def get_recarray_columns(field_names: list[str], block_fields: Mapping[str, FieldV2]) -> list[str]:
+def get_recarray_columns(field_names: list[str], block_fields: Mapping[str, FieldV2]) -> list[tuple[str, bool]]:
     """
-    Get column names for a recarray, similar to V1 format.
+    Get column names for a recarray with optionality info.
 
-    Returns column names in format like: ['cellid', 'q', 'aux', 'boundname']
+    Returns list of (column_name, is_optional) tuples like:
+    [('cellid', False), ('q', False), ('aux', True), ('boundname', True)]
     """
     columns = []
 
@@ -96,10 +97,13 @@ def get_recarray_columns(field_names: list[str], block_fields: Mapping[str, Fiel
             break
 
     if has_spatial:
-        columns.append("cellid")
+        columns.append(("cellid", False))  # cellid is always required
 
-    # Add the field names as columns
-    columns.extend(field_names)
+    # Add the field names as columns with their optionality
+    for name in field_names:
+        field = block_fields[name]
+        is_optional = getattr(field, 'optional', False)
+        columns.append((name, is_optional))
 
     return columns
 

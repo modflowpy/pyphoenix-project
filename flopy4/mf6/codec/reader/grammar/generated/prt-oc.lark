@@ -1,9 +1,4 @@
 // Auto-generated grammar for MF6 PRT-OC
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.string -> string
-%import typed.list -> list
-%import typed.array -> array
 %import common.WS
 %import common.SH_COMMENT
 
@@ -14,9 +9,10 @@ start: block*
 block: options_block | dimensions_block | period_block | tracktimes_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i period_fields "end"i "period"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 tracktimes_block: "begin"i "tracktimes"i tracktimes_fields "end"i "tracktimes"i
-options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_subfeature_exit | track_timestep | track_terminate | track_weaksink | track_usertime | track_dropped | track_timesrecord | track_timesfilerecord | dev_dump_event_trace)*
+block_index: integer
+options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_timestep | track_terminate | track_weaksink | track_usertime)*
 dimensions_fields: (ntracktimes)*
 period_fields: (saverecord | printrecord)*
 tracktimes_fields: (tracktimes)*
@@ -26,16 +22,47 @@ track_filerecord: "fileout"i "track"i string
 trackcsv_filerecord: "fileout"i "trackcsv"i string
 track_release: "track_release"i 
 track_exit: "track_exit"i 
-track_subfeature_exit: "track_subfeature_exit"i 
 track_timestep: "track_timestep"i 
 track_terminate: "track_terminate"i 
 track_weaksink: "track_weaksink"i 
 track_usertime: "track_usertime"i 
-track_dropped: "track_dropped"i 
-track_timesrecord: "track_times"i double
-track_timesfilerecord: "track_timesfile"i string
-dev_dump_event_trace: "dev_dump_event_trace"i 
 ntracktimes: "ntracktimes"i integer
 saverecord: "save"i string keystring
 printrecord: "print"i string keystring
 tracktimes: "tracktimes"i recarray
+
+// Inline typed grammar rules
+integer: _integer
+double.2: _number
+string: ESCAPED_STRING | record
+record.1: _token+ _NL
+list: record*
+array: (single_array | layered_array)
+single_array: [netcdf] readarray
+layered_array: layered [netcdf] readarray+
+layered: "layered"i
+netcdf: "netcdf"i
+readarray: control [data]
+control: constant | internal | external
+constant: "constant"i double
+internal: "internal"i [factor] [iprn]
+external: "open/close"i filename [factor] [binary] [iprn]
+factor: "factor"i double
+iprn: "iprn"i integer
+binary: "(binary)"i
+filename: ESCAPED_STRING | _word
+data: double+
+
+_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
+_number: SIGNED_NUMBER | NUMBER
+_integer: SIGNED_INT | INT
+_token: _word | _number
+
+%import common.NEWLINE -> _NL
+%import common.CNAME
+%import common.WORD
+%import common.NUMBER
+%import common.INT
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.SIGNED_INT
