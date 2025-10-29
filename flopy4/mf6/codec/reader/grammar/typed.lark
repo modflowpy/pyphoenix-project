@@ -1,7 +1,12 @@
-integer: _integer
-double: _number
+// Typed grammar rules for MF6 input files
+// Named fields use specific types (integer/double) for validation
+// List/recarray data uses generic 'number' - structuring step handles type conversion
+integer: SIGNED_INT | INT
+double: SIGNED_NUMBER | NUMBER
+number: SIGNED_NUMBER | NUMBER
 string: ESCAPED_STRING | record
-record: _token+ _NL
+simple_string: ESCAPED_STRING | _word
+record.1: _token+ NEWLINE
 list: record*
 array: (single_array | layered_array)
 single_array: [netcdf] readarray
@@ -19,12 +24,10 @@ binary: "(binary)"i
 filename: ESCAPED_STRING | _word
 data: double+
 
-_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_number: SIGNED_NUMBER | NUMBER
-_integer: SIGNED_INT | INT
-_token: _word | _number
+_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
+_token: _word | number
 
-%import common.NEWLINE -> _NL
+%import common.NEWLINE
 %import common.WS
 %import common.WS_INLINE
 %import common.CNAME

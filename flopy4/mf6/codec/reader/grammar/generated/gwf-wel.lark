@@ -1,6 +1,7 @@
 // Auto-generated grammar for MF6 GWF-WEL
 %import common.WS
 %import common.SH_COMMENT
+%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
@@ -16,52 +17,24 @@ dimensions_fields: (maxbound)*
 period_fields: (stress_period_data)*
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
-boundnames: "boundnames"i 
-print_input: "print_input"i 
-print_flows: "print_flows"i 
-save_flows: "save_flows"i 
+boundnames: "boundnames"i
+print_input: "print_input"i
+print_flows: "print_flows"i
+save_flows: "save_flows"i
 auto_flow_reduce: "auto_flow_reduce"i double
 afrcsv_filerecord: "auto_flow_reduce_csv"i "fileout"i string
 ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string
-mover: "mover"i 
+mover: "mover"i
 maxbound: "maxbound"i integer
-stress_period_data: (number | simple_string)+
+stress_period_data: (number | simple_string)+ NEWLINE
 
-// Inline typed grammar rules
-// Named fields use specific types (integer/double) for validation
-// List/recarray data uses generic 'number' - structuring step handles type conversion
-integer: SIGNED_INT | INT
-double: SIGNED_NUMBER | NUMBER
-number: SIGNED_NUMBER | NUMBER
-string: ESCAPED_STRING | record
-simple_string: ESCAPED_STRING | _word
-record.1: _token+ _NL
-list: record*
-array: (single_array | layered_array)
-single_array: [netcdf] readarray
-layered_array: layered [netcdf] readarray+
-layered: "layered"i
-netcdf: "netcdf"i
-readarray: control [data]
-control: constant | internal | external
-constant: "constant"i double
-internal: "internal"i [factor] [iprn]
-external: "open/close"i filename [factor] [binary] [iprn]
-factor: "factor"i double
-iprn: "iprn"i integer
-binary: "(binary)"i
-filename: ESCAPED_STRING | _word
-data: double+
-
-_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_token: _word | number
-
-%import common.NEWLINE -> _NL
-%import common.CNAME
-%import common.WORD
-%import common.ESCAPED_STRING
-%import common.NUMBER
-%import common.INT
-%import common.SIGNED_NUMBER
-%import common.SIGNED_INT
+// Import typed grammar rules
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.simple_string -> simple_string
+%import typed.record -> record
+%import typed.list -> list
+%import typed.array -> array

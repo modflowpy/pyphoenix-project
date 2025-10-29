@@ -77,7 +77,9 @@ def get_recarray_name(block_name: str) -> str:
     return f"{block_name}data"
 
 
-def get_recarray_columns(field_names: list[str], block_fields: Mapping[str, FieldV2]) -> list[tuple[str, bool]]:
+def get_recarray_columns(
+    field_names: list[str], block_fields: Mapping[str, FieldV2]
+) -> list[tuple[str, bool]]:
     """
     Get column names for a recarray with optionality info.
 
@@ -102,7 +104,7 @@ def get_recarray_columns(field_names: list[str], block_fields: Mapping[str, Fiel
     # Add the field names as columns with their optionality
     for name in field_names:
         field = block_fields[name]
-        is_optional = getattr(field, 'optional', False)
+        is_optional = getattr(field, "optional", False)
         columns.append((name, is_optional))
 
     return columns

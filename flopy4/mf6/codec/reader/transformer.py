@@ -1,5 +1,3 @@
-from collections import ChainMap
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +5,6 @@ import numpy as np
 import xarray as xr
 from lark import Token, Transformer
 from modflow_devtools.dfn import Dfn
-from modflow_devtools.dfn.schema.v2 import SCALAR_TYPES
 
 
 class BasicTransformer(Transformer):
@@ -76,22 +73,19 @@ class TypedTransformer(Transformer):
             if not isinstance(item, dict):
                 continue
             for block_name, block_data in item.items():
-                # Pluralize indexed blocks (e.g., period -> periods)
-                if isinstance(block_data, dict) and all(isinstance(k, int) for k in block_data.keys()):
-                    # This is an indexed block, use plural form
-                    if not block_name.endswith('s'):
-                        block_name = block_name + 's'
-
-                if block_name not in merged:
+                # Check if this is an indexed block (dict with integer keys)
+                if isinstance(block_data, dict) and all(
+                    isinstance(k, int) for k in block_data.keys()
+                ):
+                    # Flatten indexed blocks into separate keys like "period 1", "period 2"
+                    for index, data in block_data.items():
+                        indexed_key = f"{block_name} {index}"
+                        merged[indexed_key] = data
+                elif block_name not in merged:
                     merged[block_name] = block_data
                 else:
-                    # If both are dicts with integer keys (indexed blocks), merge them
-                    existing = merged[block_name]
-                    if (isinstance(existing, dict) and isinstance(block_data, dict) and
-                        all(isinstance(k, int) for k in existing.keys()) and
-                        all(isinstance(k, int) for k in block_data.keys())):
-                        existing.update(block_data)
-                    # Otherwise, indexed block overwrites (shouldn't happen for well-formed input)
+                    # This shouldn't happen for well-formed input
+                    pass
         return merged
 
     def block(self, items: list[Any]) -> dict:
@@ -160,7 +154,7 @@ class TypedTransformer(Transformer):
     def iprn(self, items: list[Any]) -> dict[str, int]:
         return {"iprn": items[0]}
 
-    def binary(self, items: list[Any]) -> dict[str, bool]:
+    def binary(self, _) -> dict[str, bool]:
         return {"binary": True}
 
     def filename(self, items: list[Any]) -> Path:
@@ -193,59 +187,20 @@ class TypedTransformer(Transformer):
     def data(self, items: list[Any]) -> np.ndarray:
         return np.array(items)
 
-    def netcdf(self, items: list[Any]) -> dict[str, bool]:
+    def netcdf(self, _) -> dict[str, bool]:
         return {"netcdf": True}
-
-    # Handle typed__ prefixed rules from imports
-    def typed__single_array(self, items: list[Any]) -> dict:
-        return self.single_array(items)
-
-    def typed__layered_array(self, items: list[Any]) -> list[dict]:
-        return self.layered_array(items)
-
-    def typed__readarray(self, items: list[Any]) -> dict[str, Any]:
-        return self.readarray(items)
-
-    def typed__control(self, items: list[Any]) -> dict[str, Any]:
-        return self.control(items)
-
-    def typed__constant(self, items: list[Any]) -> dict[str, Any]:
-        return self.constant(items)
-
-    def typed__internal(self, items: list[Any]) -> dict[str, Any]:
-        return self.internal(items)
-
-    def typed__external(self, items: list[Any]) -> dict[str, Any]:
-        return self.external(items)
-
-    def typed__factor(self, items: list[Any]) -> dict[str, float]:
-        return self.factor(items)
-
-    def typed__iprn(self, items: list[Any]) -> dict[str, int]:
-        return self.iprn(items)
-
-    def typed__binary(self, items: list[Any]) -> dict[str, bool]:
-        return self.binary(items)
-
-    def typed__filename(self, items: list[Any]) -> Path:
-        return self.filename(items)
-
-    def typed__data(self, items: list[Any]) -> np.ndarray:
-        return self.data(items)
-
-    def typed__netcdf(self, items: list[Any]) -> dict[str, bool]:
-        return self.netcdf(items)
-
-    def typed__layered(self, items: list[Any]) -> dict[str, bool]:
-        return {"layered": True}
 
     def block_index(self, items: list[Any]) -> int:
         """Extract block index (e.g., period number)."""
         return items[0]
 
     def stress_period_data(self, items: list[Any]) -> list[Any]:
-        """Handle stress period data (list of values for a single record)."""
-        return items
+        """Handle stress period data (one row of values).
+
+        The parser gives us the values for one row plus a NEWLINE token.
+        Filter out the NEWLINE token and return just the data values.
+        """
+        return [item for item in items if not isinstance(item, Token) or item.type != "NEWLINE"]
 
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
@@ -263,7 +218,7 @@ class TypedTransformer(Transformer):
         if self.blocks is None or self.fields is None:
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
-            # Check if this is an indexed block (period blocks have 3 children: [index, fields, index])
+            # See if this is an indexed block (period blocks have 3 children: index, fields, index
             if len(children) == 3 and isinstance(children[0], int) and isinstance(children[2], int):
                 # Indexed block: [index, fields, index]
                 block_index = children[0]

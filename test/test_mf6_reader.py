@@ -344,5 +344,14 @@ def test_transform_gwf_wel_file(model_workspace):
 
     # Check structure
     assert isinstance(result, dict)
-    assert "periods" in result  # WEL has periods
-    assert len(result["periods"]) > 0  # Should have at least one period
+
+    # Should have a period 2 entry (indexed period blocks are flattened to "period N" keys)
+    assert "period 2" in result
+    assert "stress_period_data" in result["period 2"]
+
+    # Should have 2 rows of data (MAXBOUND = 2)
+    assert len(result["period 2"]["stress_period_data"]) == 2
+
+    # Each row should have 4 values (cellid components + q value)
+    assert len(result["period 2"]["stress_period_data"][0]) == 4
+    assert len(result["period 2"]["stress_period_data"][1]) == 4

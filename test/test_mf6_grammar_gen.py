@@ -59,7 +59,9 @@ def test_make_grammar_creates_file(tmp_path, minimal_dfn):
     assert expected_file.is_file()
     content = expected_file.read_text()
     assert "// Auto-generated grammar for MF6 TEST-COMPONENT" in content
-    assert '%import "typed.lark"' in content
+    # Grammar imports typed rules from typed.lark
+    assert "%import typed.integer -> integer" in content
+    assert "%import typed.double -> double" in content
     assert "start: block*" in content
     assert "options_block" in content
 
@@ -182,7 +184,11 @@ def test_make_grammar_with_period_block(tmp_path):
     lines = content.split("\n")
     period_fields_line = [l for l in lines if "period_fields:" in l][0]
     assert "stress_period_data" in period_fields_line
-    assert "cellid" in content.lower()
+
+    # stress_period_data should accept numbers and strings, one row per line
+    assert "stress_period_data:" in content
+    stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
+    assert "NEWLINE" in stress_period_data_line
 
 
 def test_make_grammar_with_named_subfields(tmp_path):
@@ -206,6 +212,10 @@ def test_make_grammar_with_named_subfields(tmp_path):
     grammar_file = tmp_path / "gwf-rch.lark"
     content = grammar_file.read_text()
 
-    assert "stress_period_data: cellid recharge" in content
-    assert "cellid: integer+" in content
-    assert "recharge: double" in content
+    # stress_period_data should be a generic recarray accepting numbers/strings per line
+    assert "stress_period_data" in content
+    lines = content.split("\n")
+    stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
+    assert "NEWLINE" in stress_period_data_line
+    # Should accept both numbers and simple strings
+    assert "number" in stress_period_data_line or "simple_string" in stress_period_data_line
