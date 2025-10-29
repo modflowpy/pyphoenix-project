@@ -1,3 +1,7 @@
+
+
+
+
 // Auto-generated grammar for MF6 GWF-WEL
 %import common.WS
 %import common.SH_COMMENT
@@ -6,28 +10,39 @@
 %ignore WS
 %ignore SH_COMMENT
 
+
+// Top-level structure
 start: block*
 block: options_block | dimensions_block | period_block
+// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
+// Block field lists
 options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | auto_flow_reduce | afrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
 dimensions_fields: (maxbound)*
 period_fields: (stress_period_data)*
+// Individual field rules
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
-boundnames: "boundnames"i
-print_input: "print_input"i
-print_flows: "print_flows"i
-save_flows: "save_flows"i
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
 auto_flow_reduce: "auto_flow_reduce"i double
 afrcsv_filerecord: "auto_flow_reduce_csv"i "fileout"i string
 ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string
-mover: "mover"i
+mover: "mover"i 
 maxbound: "maxbound"i integer
-stress_period_data: (number | simple_string)+ NEWLINE
+// Recarray rules for period data (stress_period_data, etc.)
+stress_period_data: stress_record+
+
+// Stress period record: tokens followed by newline, but stop at structural keywords
+stress_record: stress_token+ NEWLINE
+stress_token: number | _stress_word
+_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
 
 // Import typed grammar rules
 %import typed.integer -> integer

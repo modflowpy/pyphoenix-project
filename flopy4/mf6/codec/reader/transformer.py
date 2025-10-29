@@ -192,12 +192,36 @@ class TypedTransformer(Transformer):
         return items[0]
 
     def stress_period_data(self, items: list[Any]) -> list[Any]:
-        """Handle stress period data (one row of values).
+        """Handle stress period data - now a list of stress_record trees.
 
-        The parser gives us the values for one row plus a NEWLINE token.
-        Filter out the NEWLINE token and return just the data values.
+        Each item is a stress_record tree that has already been processed by stress_record method.
+        Return the list of processed records directly.
         """
-        return [item for item in items if not self._is_newline_token(item)]
+        return items  # items are already processed stress records (lists of values)
+
+    def stress_record(self, items: list[Any]) -> list[Any]:
+        """Handle a single stress period data record.
+
+        The parser gives us stress_token trees plus a NEWLINE token.
+        Extract values from stress_token trees and filter out the NEWLINE token.
+        """
+        values = []
+        for item in items:
+            if self._is_newline_token(item):
+                continue
+            # Item is a stress_token tree - extract its value
+            if hasattr(item, "children") and len(item.children) > 0:
+                # stress_token contains either a number tree or a _stress_word
+                token_child = item.children[0]
+                if hasattr(token_child, "children") and len(token_child.children) > 0:
+                    # This is a number tree, get the actual value
+                    values.append(token_child.children[0])
+                else:
+                    # This is a direct value (string)
+                    values.append(token_child)
+            else:
+                values.append(item)
+        return values
 
     @staticmethod
     def _is_newline_token(item: Any) -> bool:
@@ -237,8 +261,14 @@ class TypedTransformer(Transformer):
             # rather than named field tuples
             if children and not isinstance(children[0], tuple):
                 # This is list data (e.g., stress_period_data records)
-                # Return as stress_period_data key
-                return {"stress_period_data": children}
+                # With the new stress_record approach, we get a list containing
+                # the stress_period_data result. If there's exactly one child and
+                # it's a list, unwrap it
+                if len(children) == 1 and isinstance(children[0], list):
+                    return {"stress_period_data": children[0]}
+                else:
+                    # Fallback to original behavior
+                    return {"stress_period_data": children}
             return {item[0].lower(): item[1] for item in children}
         elif (field := self.fields.get(data, None)) is not None:
             if field.type == "keyword":

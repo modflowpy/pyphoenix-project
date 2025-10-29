@@ -1,18 +1,28 @@
+
+
+
+
 // Auto-generated grammar for MF6 SLN-IMS
 %import common.WS
 %import common.SH_COMMENT
+%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
 
+
+// Top-level structure
 start: block*
 block: options_block | nonlinear_block | linear_block
+// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
 nonlinear_block: "begin"i "nonlinear"i nonlinear_fields "end"i "nonlinear"i
 linear_block: "begin"i "linear"i linear_fields "end"i "linear"i
+// Block field lists
 options_fields: (print_option | complexity | csv_output_filerecord | csv_outer_output_filerecord | csv_inner_output_filerecord | no_ptcrecord | ats_outer_maximum_fraction)*
 nonlinear_fields: (outer_hclose | outer_dvclose | outer_rclosebnd | outer_maximum | under_relaxation | under_relaxation_gamma | under_relaxation_theta | under_relaxation_kappa | under_relaxation_momentum | backtracking_number | backtracking_tolerance | backtracking_reduction_factor | backtracking_residual_limit)*
 linear_fields: (inner_maximum | inner_hclose | inner_dvclose | rcloserecord | linear_acceleration | relaxation_factor | preconditioner_levels | preconditioner_drop_tolerance | number_orthogonalizations | scaling_method | reordering_method)*
+// Individual field rules
 print_option: "print_option"i string
 complexity: "complexity"i string
 csv_output_filerecord: "csv_output"i string "fileout"i
@@ -44,41 +54,19 @@ preconditioner_drop_tolerance: "preconditioner_drop_tolerance"i double
 number_orthogonalizations: "number_orthogonalizations"i integer
 scaling_method: "scaling_method"i string
 reordering_method: "reordering_method"i string
+// Recarray rules for period data (stress_period_data, etc.)
 
-// Inline typed grammar rules
-// Named fields use specific types (integer/double) for validation
-// List/recarray data uses generic 'number' - structuring step handles type conversion
-integer: SIGNED_INT | INT
-double: SIGNED_NUMBER | NUMBER
-number: SIGNED_NUMBER | NUMBER
-string: ESCAPED_STRING | record
-simple_string: ESCAPED_STRING | _word
-record.1: _token+ _NL
-list: record*
-array: (single_array | layered_array)
-single_array: [netcdf] readarray
-layered_array: layered [netcdf] readarray+
-layered: "layered"i
-netcdf: "netcdf"i
-readarray: control [data]
-control: constant | internal | external
-constant: "constant"i double
-internal: "internal"i [factor] [iprn]
-external: "open/close"i filename [factor] [binary] [iprn]
-factor: "factor"i double
-iprn: "iprn"i integer
-binary: "(binary)"i
-filename: ESCAPED_STRING | _word
-data: double+
+// Stress period record: tokens followed by newline, but stop at structural keywords
+stress_record: stress_token+ NEWLINE
+stress_token: number | _stress_word
+_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
 
-_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_token: _word | number
-
-%import common.NEWLINE -> _NL
-%import common.CNAME
-%import common.WORD
-%import common.ESCAPED_STRING
-%import common.NUMBER
-%import common.INT
-%import common.SIGNED_NUMBER
-%import common.SIGNED_INT
+// Import typed grammar rules
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.simple_string -> simple_string
+%import typed.record -> record
+%import typed.list -> list
+%import typed.array -> array

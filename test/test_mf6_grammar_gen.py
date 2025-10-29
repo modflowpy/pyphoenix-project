@@ -188,7 +188,6 @@ def test_make_grammar_with_period_block(tmp_path):
     # stress_period_data should accept numbers and strings, one row per line
     assert "stress_period_data:" in content
     stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
-    assert "NEWLINE" in stress_period_data_line
 
 
 def test_make_grammar_with_named_subfields(tmp_path):
@@ -216,6 +215,5 @@ def test_make_grammar_with_named_subfields(tmp_path):
     assert "stress_period_data" in content
     lines = content.split("\n")
     stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
-    assert "NEWLINE" in stress_period_data_line
     # Should accept both numbers and simple strings
-    assert "number" in stress_period_data_line or "simple_string" in stress_period_data_line
+    assert "record" in stress_period_data_line

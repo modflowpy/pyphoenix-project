@@ -1,21 +1,31 @@
+
+
+
+
 // Auto-generated grammar for MF6 GWF-CSUB
 %import common.WS
 %import common.SH_COMMENT
+%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
 
+
+// Top-level structure
 start: block*
 block: options_block | dimensions_block | griddata_block | period_block
+// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
+// Block field lists
 options_fields: (boundnames | print_input | save_flows | gammaw | beta | head_based | initial_preconsolidation_head | ndelaycells | compression_indices | update_material_properties | cell_fraction | specified_initial_interbed_state | specified_initial_preconsolidation_stress | specified_initial_delay_head | effective_stress_lag | strainib_filerecord | straincg_filerecord | compaction_filerecord | compaction_elastic_filerecord | compaction_inelastic_filerecord | compaction_interbed_filerecord | compaction_coarse_filerecord | zdisplacement_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord)*
 dimensions_fields: (ninterbeds | maxsig0)*
 griddata_fields: (cg_ske_cr | cg_theta | sgm | sgs)*
 period_fields: (stress_period_data)*
+// Individual field rules
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 save_flows: "save_flows"i 
@@ -48,42 +58,20 @@ cg_ske_cr: "cg_ske_cr"i array
 cg_theta: "cg_theta"i array
 sgm: "sgm"i array
 sgs: "sgs"i array
-stress_period_data: (number | simple_string)+
+// Recarray rules for period data (stress_period_data, etc.)
+stress_period_data: stress_record+
 
-// Inline typed grammar rules
-// Named fields use specific types (integer/double) for validation
-// List/recarray data uses generic 'number' - structuring step handles type conversion
-integer: SIGNED_INT | INT
-double: SIGNED_NUMBER | NUMBER
-number: SIGNED_NUMBER | NUMBER
-string: ESCAPED_STRING | record
-simple_string: ESCAPED_STRING | _word
-record.1: _token+ _NL
-list: record*
-array: (single_array | layered_array)
-single_array: [netcdf] readarray
-layered_array: layered [netcdf] readarray+
-layered: "layered"i
-netcdf: "netcdf"i
-readarray: control [data]
-control: constant | internal | external
-constant: "constant"i double
-internal: "internal"i [factor] [iprn]
-external: "open/close"i filename [factor] [binary] [iprn]
-factor: "factor"i double
-iprn: "iprn"i integer
-binary: "(binary)"i
-filename: ESCAPED_STRING | _word
-data: double+
+// Stress period record: tokens followed by newline, but stop at structural keywords
+stress_record: stress_token+ NEWLINE
+stress_token: number | _stress_word
+_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
 
-_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_token: _word | number
-
-%import common.NEWLINE -> _NL
-%import common.CNAME
-%import common.WORD
-%import common.ESCAPED_STRING
-%import common.NUMBER
-%import common.INT
-%import common.SIGNED_NUMBER
-%import common.SIGNED_INT
+// Import typed grammar rules
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.simple_string -> simple_string
+%import typed.record -> record
+%import typed.list -> list
+%import typed.array -> array

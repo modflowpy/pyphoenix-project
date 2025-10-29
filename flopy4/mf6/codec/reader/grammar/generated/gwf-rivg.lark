@@ -1,23 +1,29 @@
+
+
+
+
 // Auto-generated grammar for MF6 GWF-RIVG
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.string -> string
-%import typed.list -> list
-%import typed.array -> array
 %import common.WS
 %import common.SH_COMMENT
+%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
 
+
+// Top-level structure
 start: block*
 block: options_block | dimensions_block | period_block
+// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i period_fields "end"i "period"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+block_index: integer
+// Block field lists
 options_fields: (readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | obs_filerecord | mover | export_array_netcdf)*
 dimensions_fields: (maxbound)*
 period_fields: (stress_period_data)*
+// Individual field rules
 readarraygrid: "readarraygrid"i 
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
@@ -28,8 +34,20 @@ obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 export_array_netcdf: "export_array_netcdf"i 
 maxbound: "maxbound"i integer
-stress_period_data: stage cond rbot aux
-stage: double
-cond: double
-rbot: double
-aux: double
+// Recarray rules for period data (stress_period_data, etc.)
+stress_period_data: stress_record+
+
+// Stress period record: tokens followed by newline, but stop at structural keywords
+stress_record: stress_token+ NEWLINE
+stress_token: number | _stress_word
+_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
+
+// Import typed grammar rules
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.simple_string -> simple_string
+%import typed.record -> record
+%import typed.list -> list
+%import typed.array -> array

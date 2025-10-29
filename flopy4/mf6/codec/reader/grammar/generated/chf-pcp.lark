@@ -1,19 +1,29 @@
+
+
+
+
 // Auto-generated grammar for MF6 CHF-PCP
 %import common.WS
 %import common.SH_COMMENT
+%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
 
+
+// Top-level structure
 start: block*
 block: options_block | dimensions_block | period_block
+// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
+// Block field lists
 options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | ts_filerecord | obs_filerecord)*
 dimensions_fields: (maxbound)*
 period_fields: (stress_period_data)*
+// Individual field rules
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
 boundnames: "boundnames"i 
@@ -23,42 +33,20 @@ save_flows: "save_flows"i
 ts_filerecord: "ts6"i "filein"i string
 obs_filerecord: "filein"i "obs6"i string
 maxbound: "maxbound"i integer
-stress_period_data: (number | simple_string)+
+// Recarray rules for period data (stress_period_data, etc.)
+stress_period_data: stress_record+
 
-// Inline typed grammar rules
-// Named fields use specific types (integer/double) for validation
-// List/recarray data uses generic 'number' - structuring step handles type conversion
-integer: SIGNED_INT | INT
-double: SIGNED_NUMBER | NUMBER
-number: SIGNED_NUMBER | NUMBER
-string: ESCAPED_STRING | record
-simple_string: ESCAPED_STRING | _word
-record.1: _token+ _NL
-list: record*
-array: (single_array | layered_array)
-single_array: [netcdf] readarray
-layered_array: layered [netcdf] readarray+
-layered: "layered"i
-netcdf: "netcdf"i
-readarray: control [data]
-control: constant | internal | external
-constant: "constant"i double
-internal: "internal"i [factor] [iprn]
-external: "open/close"i filename [factor] [binary] [iprn]
-factor: "factor"i double
-iprn: "iprn"i integer
-binary: "(binary)"i
-filename: ESCAPED_STRING | _word
-data: double+
+// Stress period record: tokens followed by newline, but stop at structural keywords
+stress_record: stress_token+ NEWLINE
+stress_token: number | _stress_word
+_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
 
-_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_token: _word | number
-
-%import common.NEWLINE -> _NL
-%import common.CNAME
-%import common.WORD
-%import common.ESCAPED_STRING
-%import common.NUMBER
-%import common.INT
-%import common.SIGNED_NUMBER
-%import common.SIGNED_INT
+// Import typed grammar rules
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.simple_string -> simple_string
+%import typed.record -> record
+%import typed.list -> list
+%import typed.array -> array
