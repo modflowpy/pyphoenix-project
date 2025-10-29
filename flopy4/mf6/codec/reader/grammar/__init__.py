@@ -23,6 +23,8 @@ def _get_template_env():
 def _compute_block_metadata(blocks):
     """Pre-compute block metadata for template rendering."""
     blocks_list = []
+    all_fields = {}  # Collect all unique fields
+
     for block_name, block_fields in blocks.items():
         period_groups = filters.group_period_fields(block_fields)
         has_index = block_name == "period"
@@ -40,6 +42,9 @@ def _compute_block_metadata(blocks):
         all_field_names = list(block_fields.keys())
         standalone_fields = [f for f in all_field_names if f not in grouped_field_names]
 
+        # Collect field objects
+        all_fields.update(block_fields)
+
         blocks_list.append(
             {
                 "name": block_name,
@@ -49,7 +54,7 @@ def _compute_block_metadata(blocks):
             }
         )
 
-    return blocks_list
+    return blocks_list, all_fields
 
 
 def make_grammar(dfn: Dfn, outdir: PathLike):
@@ -59,12 +64,12 @@ def make_grammar(dfn: Dfn, outdir: PathLike):
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{dfn.name}.lark"
 
-    # Pre-compute block metadata
-    blocks_list = _compute_block_metadata(dfn.blocks)
+    # Pre-compute block metadata and collect all fields
+    blocks_list, fields = _compute_block_metadata(dfn.blocks)
 
     with open(target_path, "w") as f:
         name = dfn.name
-        f.write(template.render(name=name, blocks=blocks_list, fields=dfn.fields))
+        f.write(template.render(name=name, blocks=blocks_list, fields=fields))
 
 
 def make_all_grammars(dfns: dict[str, Dfn], outdir: PathLike):
