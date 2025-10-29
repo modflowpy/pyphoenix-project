@@ -1,11 +1,7 @@
 
-
-
-
 // Auto-generated grammar for MF6 GWF-SFR
 %import common.WS
 %import common.SH_COMMENT
-%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
@@ -16,19 +12,31 @@ start: block*
 block: options_block | dimensions_block | period_block | crosssections_block | connectiondata_block | initialstages_block
 // Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
+
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+
 crosssections_block: "begin"i "crosssections"i crosssections_fields "end"i "crosssections"i
+
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+
 initialstages_block: "begin"i "initialstages"i initialstages_fields "end"i "initialstages"i
+
 block_index: integer
 // Block field lists
 options_fields: (obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight)*
+
 dimensions_fields: (nreaches)*
+
 period_fields: ()*
+
 crosssections_fields: (crosssections)*
+
 connectiondata_fields: (connectiondata)*
+
 initialstages_fields: (initialstages)*
+
 // Individual field rules
 obs_filerecord: "obs6"i string
 mover: "mover"i 
@@ -45,14 +53,10 @@ connectiondata: "connectiondata"i recarray
 initialstages: "initialstages"i recarray
 // Recarray rules for period data (stress_period_data, etc.)
 
-// Stress period record: tokens followed by newline, but stop at structural keywords
-record: token+ NEWLINE
-token: number | _word
-_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
-
-// Import typed grammar rules
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
 %import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE

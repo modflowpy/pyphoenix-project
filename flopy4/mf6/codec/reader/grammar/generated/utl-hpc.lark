@@ -1,11 +1,7 @@
 
-
-
-
 // Auto-generated grammar for MF6 UTL-HPC
 %import common.WS
 %import common.SH_COMMENT
-%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
@@ -16,24 +12,24 @@ start: block*
 block: options_block | partitions_block
 // Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
+
 partitions_block: "begin"i "partitions"i partitions_fields "end"i "partitions"i
+
 // Block field lists
 options_fields: (print_table | dev_log_mpi)*
+
 partitions_fields: (partitions)*
+
 // Individual field rules
 print_table: "print_table"i 
 dev_log_mpi: "dev_log_mpi"i 
 partitions: "partitions"i recarray
 // Recarray rules for period data (stress_period_data, etc.)
 
-// Stress period record: tokens followed by newline, but stop at structural keywords
-record: token+ NEWLINE
-token: number | _word
-_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
-
-// Import typed grammar rules
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
 %import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE

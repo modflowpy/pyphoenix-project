@@ -1,11 +1,7 @@
 
-
-
-
 // Auto-generated grammar for MF6 GWF-CSUB
 %import common.WS
 %import common.SH_COMMENT
-%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
@@ -16,15 +12,23 @@ start: block*
 block: options_block | dimensions_block | griddata_block | period_block
 // Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
+
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+
 griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
+
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+
 block_index: integer
 // Block field lists
 options_fields: (boundnames | print_input | save_flows | gammaw | beta | head_based | initial_preconsolidation_head | ndelaycells | compression_indices | update_material_properties | cell_fraction | specified_initial_interbed_state | specified_initial_preconsolidation_stress | specified_initial_delay_head | effective_stress_lag | strainib_filerecord | straincg_filerecord | compaction_filerecord | compaction_elastic_filerecord | compaction_inelastic_filerecord | compaction_interbed_filerecord | compaction_coarse_filerecord | zdisplacement_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord)*
+
 dimensions_fields: (ninterbeds | maxsig0)*
+
 griddata_fields: (cg_ske_cr | cg_theta | sgm | sgs)*
+
 period_fields: (stress_period_data)*
+
 // Individual field rules
 boundnames: "boundnames"i 
 print_input: "print_input"i 
@@ -61,14 +65,10 @@ sgs: "sgs"i array
 // Recarray rules for period data (stress_period_data, etc.)
 stress_period_data: record+
 
-// Stress period record: tokens followed by newline, but stop at structural keywords
-record: token+ NEWLINE
-token: number | _word
-_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
-
-// Import typed grammar rules
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
 %import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE

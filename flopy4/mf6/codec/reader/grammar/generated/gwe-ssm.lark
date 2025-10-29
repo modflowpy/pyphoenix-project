@@ -1,11 +1,7 @@
 
-
-
-
 // Auto-generated grammar for MF6 GWE-SSM
 %import common.WS
 %import common.SH_COMMENT
-%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
@@ -16,24 +12,24 @@ start: block*
 block: options_block | fileinput_block
 // Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
+
 fileinput_block: "begin"i "fileinput"i fileinput_fields "end"i "fileinput"i
+
 // Block field lists
 options_fields: (print_flows | save_flows)*
+
 fileinput_fields: (fileinput)*
+
 // Individual field rules
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
 fileinput: "fileinput"i recarray
 // Recarray rules for period data (stress_period_data, etc.)
 
-// Stress period record: tokens followed by newline, but stop at structural keywords
-record: token+ NEWLINE
-token: number | _word
-_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
-
-// Import typed grammar rules
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
 %import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE

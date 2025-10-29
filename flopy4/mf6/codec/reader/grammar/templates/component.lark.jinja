@@ -1,54 +1,8 @@
-{# Macros for field generation #}
-{% macro render_record_field(field_name, field) -%}
-{{ field_name }}: {% for child_name, child in field.children.items() -%}
-{%- set child_type = child|record_child_type -%}
-{%- if child.type == 'keyword' -%}
-"{{ child.name }}"i
-{%- elif child.type == 'union' -%}
-{{ child_name }}
-{%- else -%}
-{{ child_type }}
-{%- endif -%}
-{%- if not loop.last %} {% endif -%}
-{%- endfor %}
-{%- endmacro %}
-
-{% macro render_union_field(field_name, field) -%}
-{{ field_name }}: {% for child_name, child in field.children.items() -%}
-{{ field_name }}_{{ child_name }}
-{%- if not loop.last %} | {% endif -%}
-{%- endfor %}
-{% for child_name, child in field.children.items() %}
-{{ field_name }}_{{ child_name }}: {% if child.type == 'keyword' -%}
-"{{ child.name }}"i
-{%- else -%}
-"{{ child.name }}"i {{ child.type }}
-{%- endif %}
-{% endfor -%}
-{%- endmacro %}
-
-{% macro render_simple_field(field_name, field, field_type) -%}
-{{ field_name }}: "{{ field.name }}"i {{ field_type }}
-{%- endmacro %}
-
-{% macro render_nested_union(child_name, child) -%}
-{{ child_name }}: {% for opt_name, opt in child.children.items() -%}
-{{ child_name }}_{{ opt_name }}
-{%- if not loop.last %} | {% endif -%}
-{%- endfor %}
-{% for opt_name, opt in child.children.items() %}
-{{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' -%}
-"{{ opt.name }}"i
-{%- else -%}
-"{{ opt.name }}"i {{ opt.type }}
-{%- endif %}
-{% endfor -%}
-{%- endmacro %}
+{% import 'macros.jinja' as m %}
 
 // Auto-generated grammar for MF6 {{ name|upper }}
 %import common.WS
 %import common.SH_COMMENT
-%import common.NEWLINE
 
 %ignore WS
 %ignore SH_COMMENT
@@ -76,11 +30,7 @@ block: {% for block_name in blocks.keys() %}
 
 // Block definitions
 {% for block_name, meta in block_metadata.items() %}
-{% if meta.has_index %}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i block_index {{ block_name }}_fields "end"i "{{ block_name }}"i block_index
-{% else %}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i {{ block_name }}_fields "end"i "{{ block_name }}"i
-{% endif %}
+{{ m.block_def(block_name, meta.has_index) }}
 {% endfor %}
 {% if block_metadata.values()|selectattr('has_index')|list %}
 block_index: integer
@@ -88,24 +38,16 @@ block_index: integer
 // Block field lists
 {% for block_name, meta in block_metadata.items() %}
 {% if meta.period_groups %}
-{# This block has period data (e.g., stress_period_data), split fields accordingly #}
 {% set grouped_field_names = meta.period_groups.values()|first %}
-{% set non_grouped_fields = [] %}
+{% set field_names = [] %}
 {% for field_name in meta.fields.keys() %}
 {%- if field_name not in grouped_field_names %}
-{%- set _ = non_grouped_fields.append(field_name) %}
+{%- set _ = field_names.append(field_name) %}
 {%- endif %}
 {%- endfor %}
-{{ block_name }}_fields: (
-{%- for field_name in non_grouped_fields %}{{ field_name }} | {% endfor -%}
-{{ meta.recarray_name }})*
+{{ m.field_list(block_name, field_names, meta.recarray_name) }}
 {% else %}
-{# Regular block - just list all fields #}
-{{ block_name }}_fields: (
-{%- for field_name in meta.fields.keys() %}
-{{- field_name }}{% if not loop.last %} | {% endif %}
-{%- endfor -%}
-)*
+{{ m.field_list(block_name, meta.fields.keys()|list, none) }}
 {% endif %}
 {% endfor %}
 // Individual field rules
@@ -114,11 +56,11 @@ block_index: integer
 {% if field_name not in grouped_fields %}
 {% set field_type = field|field_type %}
 {% if field.type == 'record' and field.children is not none %}
-{{ render_record_field(field_name, field) }}
+{{ m.record_field(field_name, field) }}
 {% elif field.type == 'union' and field.children is not none %}
-{{ render_union_field(field_name, field) }}
+{{ m.union_field(field_name, field) }}
 {% else %}
-{{ render_simple_field(field_name, field, field_type) }}
+{{ m.simple_field(field_name, field, field_type) }}
 {% endif %}
 {% endif %}
 {% endfor %}
@@ -128,7 +70,7 @@ block_index: integer
 {% if field.type == 'record' and field.children is not none %}
 {% for child_name, child in field.children.items() %}
 {% if child.type == 'union' and child_name not in unions_generated %}
-{{ render_nested_union(child_name, child) }}
+{{ m.nested_union(child_name, child) }}
 {% set _ = unions_generated.append(child_name) %}
 {% endif %}
 {% endfor %}
@@ -141,14 +83,10 @@ block_index: integer
 {% endif %}
 {% endfor %}
 
-// Stress period record: tokens followed by newline, but stop at structural keywords
-record: token+ NEWLINE
-token: number | _word
-_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
-
-// Import typed grammar rules
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
 %import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
