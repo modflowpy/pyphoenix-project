@@ -3,13 +3,13 @@ from typing import Optional
 
 import numpy as np
 from attrs import Converter, define
-from flopy.discretization.modeltime import ModelTime
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from xattree import ROOT, xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
+from flopy4.mf6.utils.time import Time
 
 
 @xattree
@@ -42,9 +42,9 @@ class Tdis(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
 
-    def to_time(self) -> ModelTime:
-        """Convert to a `ModelTime` object."""
-        return ModelTime(
+    def to_time(self) -> Time:
+        """Convert to a `Time` object."""
+        return Time(
             nper=self.nper,
             time_units=self.time_units,
             start_date_time=self.start_date_time,
@@ -54,8 +54,8 @@ class Tdis(Package):
         )
 
     @classmethod
-    def from_time(cls, time: ModelTime) -> "Tdis":
-        """Create a time discretization from a `ModelTime`."""
+    def from_time(cls, time: Time) -> "Tdis":
+        """Create a time discretization from a `Time` object."""
         return cls(
             nper=time.nper,
             time_units=None if time.time_units in [None, "unknown"] else time.time_units,
@@ -64,3 +64,33 @@ class Tdis(Package):
             nstp=time.nstp,
             tsmult=time.tsmult,
         )
+
+    @classmethod
+    def from_timestamps(
+        cls,
+        timestamps: ArrayLike,
+        nstp: Optional[ArrayLike] = None,
+        tsmult: Optional[ArrayLike] = None,
+    ) -> "Tdis":
+        """
+        Create a time discretization from timestamps.
+
+        Parameters
+        ----------
+        timestamps : sequence of datetime-likes
+            Stress period start times
+        nstp : int or sequence of int, optional
+            Number of timesteps per stress period. If scalar, applied to all periods.
+            If None, defaults to 1 for all periods.
+        tsmult : float or sequence of float, optional
+            Timestep multiplier per stress period. If scalar, applied to all periods.
+            If None, defaults to 1.0 for all periods.
+
+        Returns
+        -------
+        Tdis
+            Time discretization object
+        """
+
+        time = Time.from_timestamps(timestamps, nstp=nstp, tsmult=tsmult)
+        return cls.from_time(time)

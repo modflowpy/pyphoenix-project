@@ -8,7 +8,7 @@ import pandas as pd
 import xarray as xr
 from flopy.discretization import StructuredGrid
 
-from .grid_utils import get_coords
+from .grid import get_coords
 
 
 def open_hds(
