@@ -1,5 +1,14 @@
 // Auto-generated grammar for MF6 GWF-EVTA
-%import "typed.lark"
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.string -> string
+%import typed.list -> list
+%import typed.array -> array
+%import common.WS
+%import common.SH_COMMENT
+
+%ignore WS
+%ignore SH_COMMENT
 
 start: block*
 block: options_block | period_block

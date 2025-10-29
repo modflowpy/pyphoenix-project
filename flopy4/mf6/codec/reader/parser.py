@@ -17,4 +17,9 @@ def get_typed_parser(name: str) -> Lark:
     if not grammar_path.exists():
         raise FileNotFoundError(f"Grammar file not found: {grammar_path}")
     with open(grammar_path, "r") as f:
-        return Lark(f.read(), parser=_LALR, debug=True)
+        return Lark(
+            f.read(),
+            parser=_LALR,
+            debug=True,
+            import_paths=[str(_GRAMMAR_MODULE)],
+        )

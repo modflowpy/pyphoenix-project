@@ -159,6 +159,49 @@ class TypedTransformer(Transformer):
     def netcdf(self, items: list[Any]) -> dict[str, bool]:
         return {"netcdf": True}
 
+    # Handle typed__ prefixed rules from imports
+    def typed__single_array(self, items: list[Any]) -> dict:
+        return self.single_array(items)
+
+    def typed__layered_array(self, items: list[Any]) -> list[dict]:
+        return self.layered_array(items)
+
+    def typed__readarray(self, items: list[Any]) -> dict[str, Any]:
+        return self.readarray(items)
+
+    def typed__control(self, items: list[Any]) -> dict[str, Any]:
+        return self.control(items)
+
+    def typed__constant(self, items: list[Any]) -> dict[str, Any]:
+        return self.constant(items)
+
+    def typed__internal(self, items: list[Any]) -> dict[str, Any]:
+        return self.internal(items)
+
+    def typed__external(self, items: list[Any]) -> dict[str, Any]:
+        return self.external(items)
+
+    def typed__factor(self, items: list[Any]) -> dict[str, float]:
+        return self.factor(items)
+
+    def typed__iprn(self, items: list[Any]) -> dict[str, int]:
+        return self.iprn(items)
+
+    def typed__binary(self, items: list[Any]) -> dict[str, bool]:
+        return self.binary(items)
+
+    def typed__filename(self, items: list[Any]) -> Path:
+        return self.filename(items)
+
+    def typed__data(self, items: list[Any]) -> np.ndarray:
+        return self.data(items)
+
+    def typed__netcdf(self, items: list[Any]) -> dict[str, bool]:
+        return self.netcdf(items)
+
+    def typed__layered(self, items: list[Any]) -> dict[str, bool]:
+        return {"layered": True}
+
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
         control = array_info["control"]
@@ -176,13 +219,12 @@ class TypedTransformer(Transformer):
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
             return {block_name: children[0]}
-        elif data.endswith("_vars"):
+        elif data.endswith("_fields"):
             return {item[0].lower(): item[1] for item in children}
         elif (field := self.fields.get(data, None)) is not None:
             if field.type == "keyword":
                 return data, True
-            elif field.type in SCALAR_TYPES and field.shape is not None:
-                return data, TypedTransformer.try_create_dataarray(children[0])
             else:
-                return data, children[0]
+                # For all other fields (including arrays), return the transformed children
+                return data, children[0] if len(children) == 1 else children
         return super().__default__(data, children, meta)

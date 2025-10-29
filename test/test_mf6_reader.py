@@ -4,11 +4,14 @@ import os
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 from lark import Lark
 from modflow_devtools.dfn import Dfn
+from modflow_devtools.models import get_models
 from packaging.version import Version
 
+from flopy4.mf6.codec.reader.parser import get_typed_parser
 from flopy4.mf6.codec.reader.transformer import TypedTransformer
 
 PROJ_ROOT_PATH = Path(__file__).parents[1]
@@ -202,3 +205,105 @@ END ARRAYS
     assert result["arrays"]["z"]["control"]["factor"] == 1.0
     assert result["arrays"]["z"]["control"]["binary"] is True
     assert result["arrays"]["z"]["data"] == Path("data/z.dat")
+
+
+# Real model tests using modflow-devtools models API
+
+
+@pytest.fixture(scope="module")
+def example_models():
+    """Get MF6 example models from devtools."""
+    models = get_models()
+    # Filter to mf6 examples only
+    return {name: info for name, info in models.items() if name.startswith("mf6/example/")}
+
+
+@pytest.fixture
+def model_workspace(tmp_path, request):
+    """Copy a model to a temporary workspace."""
+    from modflow_devtools.models import copy_to
+
+    model_name = request.param
+    workspace = copy_to(tmp_path, model_name, verbose=False)
+    return workspace
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
+def test_parse_gwf_ic_file(model_workspace):
+    """Test parsing a GWF IC (initial conditions) file from a real model."""
+    # Find the IC file in the model workspace
+    ic_files = list(model_workspace.rglob("*.ic"))
+    assert len(ic_files) > 0, "No IC files found in model workspace"
+
+    ic_file = ic_files[0]
+    parser = get_typed_parser("gwf-ic")
+
+    # Read and parse the file
+    with open(ic_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    assert tree is not None
+
+    # Basic structure checks
+    assert tree.data == "start"
+    assert len(tree.children) > 0  # Should have at least one block
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
+def test_parse_gwf_wel_file(model_workspace):
+    """Test parsing a GWF WEL (well) file with period data from a real model."""
+    # Find the WEL file in the model workspace
+    wel_files = list(model_workspace.rglob("*.wel"))
+
+    # Skip if no WEL files (not all models have wells)
+    if len(wel_files) == 0:
+        pytest.skip("No WEL files found in this model")
+
+    wel_file = wel_files[0]
+    parser = get_typed_parser("gwf-wel")
+
+    # Read and parse the file
+    with open(wel_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    assert tree is not None
+
+    # Basic structure checks
+    assert tree.data == "start"
+    assert len(tree.children) > 0
+
+    # Should have period blocks
+    period_blocks = [child for child in tree.children if child.data == "period_block"]
+    assert len(period_blocks) > 0, "Should have at least one period block"
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
+def test_transform_gwf_ic_file(model_workspace):
+    """Test transforming a parsed GWF IC file into structured data."""
+    from modflow_devtools.dfn import load_dfns
+
+    # Load the DFN for IC
+    dfns = load_dfns("../modflow-devtools/autotest/temp/dfn/toml")
+    ic_dfn = dfns["gwf-ic"]
+
+    # Find the IC file
+    ic_files = list(model_workspace.rglob("*.ic"))
+    assert len(ic_files) > 0
+
+    ic_file = ic_files[0]
+    parser = get_typed_parser("gwf-ic")
+    transformer = TypedTransformer(dfn=ic_dfn)
+
+    # Read, parse, and transform
+    with open(ic_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    result = transformer.transform(tree)
+
+    # Check structure
+    assert isinstance(result, dict)
+    assert "griddata" in result  # IC has griddata block
+    assert "strt" in result["griddata"]  # Starting heads

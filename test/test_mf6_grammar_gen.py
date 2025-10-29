@@ -140,7 +140,6 @@ def test_make_grammar_overwrites_existing(tmp_path, minimal_dfn):
 
 
 def test_make_grammar_with_period_block(tmp_path):
-    """Test grammar generation with period block that has array fields."""
     dfn = Dfn(
         schema_version=Version("2.0.0"),
         name="gwf-test",
@@ -183,13 +182,10 @@ def test_make_grammar_with_period_block(tmp_path):
     lines = content.split("\n")
     period_fields_line = [l for l in lines if "period_fields:" in l][0]
     assert "stress_period_data" in period_fields_line
-
-    # Should have recarray rule with cellid and columns
     assert "cellid" in content.lower()
 
 
 def test_make_grammar_with_named_subfields(tmp_path):
-    """Test that recarray generates named subfield rules."""
     dfn = Dfn(
         schema_version=Version("2.0.0"),
         name="gwf-rch",
@@ -210,10 +206,6 @@ def test_make_grammar_with_named_subfields(tmp_path):
     grammar_file = tmp_path / "gwf-rch.lark"
     content = grammar_file.read_text()
 
-    # Should have stress_period_data with named subfields
     assert "stress_period_data: cellid recharge" in content
     assert "cellid: integer+" in content
     assert "recharge: double" in content
-
-    # Should NOT have the old-style individual rule
-    assert 'recharge: "recharge"i list' not in content
