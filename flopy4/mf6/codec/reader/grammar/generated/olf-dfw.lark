@@ -1,4 +1,3 @@
-
 // Auto-generated grammar for MF6 OLF-DFW
 %import common.WS
 %import common.SH_COMMENT
@@ -6,20 +5,12 @@
 %ignore WS
 %ignore SH_COMMENT
 
-// Top-level structure
 start: block*
 block: options_block | griddata_block
-// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
-
 griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
-
-// Block field lists
 options_fields: (central_in_space | length_conversion | time_conversion | save_flows | print_flows | save_velocity | obs_filerecord | export_array_ascii | dev_swr_conductance)*
-
 griddata_fields: (manningsn | idcxs)*
-
-// Individual field rules
 central_in_space: "central_in_space"i 
 length_conversion: "length_conversion"i double
 time_conversion: "time_conversion"i double
@@ -31,8 +22,6 @@ export_array_ascii: "export_array_ascii"i
 dev_swr_conductance: "dev_swr_conductance"i 
 manningsn: "manningsn"i array
 idcxs: "idcxs"i array
-// Recarray rules for period data (stress_period_data, etc.)
-
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number

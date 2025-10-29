@@ -1,4 +1,3 @@
-
 // Auto-generated grammar for MF6 GWF-VSC
 %import common.WS
 %import common.SH_COMMENT
@@ -6,24 +5,14 @@
 %ignore WS
 %ignore SH_COMMENT
 
-// Top-level structure
 start: block*
 block: options_block | dimensions_block | packagedata_block
-// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
-
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-
 packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
-
-// Block field lists
 options_fields: (viscref | temperature_species_name | thermal_formulation | thermal_a2 | thermal_a3 | thermal_a4 | viscosity_filerecord)*
-
 dimensions_fields: (nviscspecies)*
-
 packagedata_fields: (packagedata)*
-
-// Individual field rules
 viscref: "viscref"i double
 temperature_species_name: "temperature_species_name"i string
 thermal_formulation: "thermal_formulation"i string
@@ -33,8 +22,6 @@ thermal_a4: "thermal_a4"i double
 viscosity_filerecord: "viscosity"i "fileout"i string
 nviscspecies: "nviscspecies"i integer
 packagedata: "packagedata"i recarray
-// Recarray rules for period data (stress_period_data, etc.)
-
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number

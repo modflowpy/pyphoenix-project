@@ -1,4 +1,3 @@
-
 // Auto-generated grammar for MF6 UTL-NCF
 %import common.WS
 %import common.SH_COMMENT
@@ -6,24 +5,14 @@
 %ignore WS
 %ignore SH_COMMENT
 
-// Top-level structure
 start: block*
 block: options_block | dimensions_block | griddata_block
-// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
-
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-
 griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
-
-// Block field lists
 options_fields: (wkt | deflate | shuffle | chunk_time | chunk_face | chunk_z | chunk_y | chunk_x | modflow6_attr_off)*
-
 dimensions_fields: (ncpl)*
-
 griddata_fields: (latitude | longitude)*
-
-// Individual field rules
 wkt: "wkt"i array
 deflate: "deflate"i integer
 shuffle: "shuffle"i 
@@ -36,8 +25,6 @@ modflow6_attr_off: "modflow6_attr_off"i
 ncpl: "ncpl"i integer
 latitude: "latitude"i array
 longitude: "longitude"i array
-// Recarray rules for period data (stress_period_data, etc.)
-
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number

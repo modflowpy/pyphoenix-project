@@ -1,4 +1,3 @@
-
 // Auto-generated grammar for MF6 EXG-GWTGWT
 %import common.WS
 %import common.SH_COMMENT
@@ -6,24 +5,14 @@
 %ignore WS
 %ignore SH_COMMENT
 
-// Top-level structure
 start: block*
 block: options_block | dimensions_block | exchangedata_block
-// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
-
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-
 exchangedata_block: "begin"i "exchangedata"i exchangedata_fields "end"i "exchangedata"i
-
-// Block field lists
 options_fields: (gwfmodelname1 | gwfmodelname2 | auxiliary | boundnames | print_input | print_flows | save_flows | adv_scheme | dsp_xt3d_off | dsp_xt3d_rhs | mvt_filerecord | obs_filerecord | dev_interfacemodel_on)*
-
 dimensions_fields: (nexg)*
-
 exchangedata_fields: (exchangedata)*
-
-// Individual field rules
 gwfmodelname1: "gwfmodelname1"i string
 gwfmodelname2: "gwfmodelname2"i string
 auxiliary: "auxiliary"i array
@@ -39,8 +28,6 @@ obs_filerecord: "filein"i "obs6"i string
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
 exchangedata: "exchangedata"i recarray
-// Recarray rules for period data (stress_period_data, etc.)
-
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number

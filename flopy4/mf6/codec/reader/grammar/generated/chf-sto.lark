@@ -1,4 +1,3 @@
-
 // Auto-generated grammar for MF6 CHF-STO
 %import common.WS
 %import common.SH_COMMENT
@@ -6,27 +5,17 @@
 %ignore WS
 %ignore SH_COMMENT
 
-// Top-level structure
 start: block*
 block: options_block | period_block
-// Block definitions
 options_block: "begin"i "options"i options_fields "end"i "options"i
-
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
-
 block_index: integer
-// Block field lists
 options_fields: (save_flows | export_array_ascii)*
-
 period_fields: (steady-state | transient)*
-
-// Individual field rules
 save_flows: "save_flows"i 
 export_array_ascii: "export_array_ascii"i 
 steady-state: "steady-state"i 
 transient: "transient"i 
-// Recarray rules for period data (stress_period_data, etc.)
-
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
