@@ -9,37 +9,33 @@
 
 // Top-level structure
 start: block*
-block: {% for block_name in blocks.keys() %}
-{{- block_name }}_block
+block: {% for block in blocks %}
+{{- block.name }}_block
 {%- if not loop.last %} | {% endif %}
 {%- endfor %}
 
 // Block definitions
-{% for block_name, meta in block_metadata.items() %}
-{{ m.block_def(block_name, meta.has_index) }}
+{% for block in blocks %}
+{{ m.block_def(block.name, block.has_index) }}
 {% endfor %}
-{% if block_metadata.values()|selectattr('has_index')|list %}
+{% if blocks|selectattr('has_index')|list %}
 block_index: integer
 {% endif %}
 // Block field lists
-{% for block_name, meta in block_metadata.items() %}
-{% if meta.period_groups %}
-{% set grouped_field_names = meta.period_groups.values()|first %}
-{% set field_names = [] %}
-{% for field_name in meta.fields.keys() %}
-{%- if field_name not in grouped_field_names %}
-{%- set _ = field_names.append(field_name) %}
-{%- endif %}
-{%- endfor %}
-{{ m.field_list(block_name, field_names, meta.recarray_name) }}
+{% for block in blocks %}
+{% if block.recarrays %}
+{% set recarray_name = block.recarrays[0].name %}
+{{ m.field_list(block.name, block.standalone_fields, recarray_name) }}
 {% else %}
-{{ m.field_list(block_name, meta.fields.keys()|list, none) }}
+{{ m.field_list(block.name, block.standalone_fields, none) }}
 {% endif %}
 {% endfor %}
 // Individual field rules
-{% set grouped_fields = blocks|get_all_grouped_field_names %}
-{% for field_name, field in fields.items() %}
-{% if field_name not in grouped_fields %}
+{% set generated_rules = [] %}
+{% for block in blocks %}
+{% for field_name in block.standalone_fields %}
+{% if field_name not in generated_rules %}
+{% set field = fields[field_name] %}
 {% set field_type = field|field_type %}
 {% if field.type == 'record' and field.children is not none %}
 {{ m.record_field(field_name, field) }}
@@ -48,11 +44,14 @@ block_index: integer
 {% else %}
 {{ m.simple_field(field_name, field, field_type) }}
 {% endif %}
+{% set _ = generated_rules.append(field_name) %}
 {% endif %}
+{% endfor %}
 {% endfor %}
 {# Generate union rules for nested unions within records #}
 {% set unions_generated = [] %}
-{% for field_name, field in fields.items() %}
+{% for field_name in generated_rules %}
+{% set field = fields[field_name] %}
 {% if field.type == 'record' and field.children is not none %}
 {% for child_name, child in field.children.items() %}
 {% if child.type == 'union' and child_name not in unions_generated %}
@@ -63,10 +62,10 @@ block_index: integer
 {% endif %}
 {% endfor %}
 // Recarray rules for period data (stress_period_data, etc.)
-{% for block_name, meta in block_metadata.items() %}
-{% if meta.recarray_name %}
-{{ meta.recarray_name }}: record+
-{% endif %}
+{% for block in blocks %}
+{% for recarray in block.recarrays %}
+{{ recarray.name }}: record+
+{% endfor %}
 {% endfor %}
 
 %import typed.integer -> integer
