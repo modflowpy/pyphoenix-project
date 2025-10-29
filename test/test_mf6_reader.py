@@ -162,10 +162,10 @@ def test_transform_full_component():
     grammar = """
 start: block*
 block: options_block | arrays_block
-options_block: "begin"i "options"i options_vars "end"i "options"i
-arrays_block: "begin"i "arrays"i arrays_vars "end"i "arrays"i
-options_vars: (r2d2 | b | c | p)*
-arrays_vars: (x | y | z)*
+options_block: "begin"i "options"i options_fields "end"i "options"i
+arrays_block: "begin"i "arrays"i arrays_fields "end"i "arrays"i
+options_fields: (r2d2 | b | c | p)*
+arrays_fields: (x | y | z)*
 r2d2: "r2d2"i // keyword
 b: "b"i string
 c: "c"i integer
@@ -314,3 +314,35 @@ def test_transform_gwf_ic_file(model_workspace):
     assert isinstance(result, dict)
     assert "griddata" in result  # IC has griddata block
     assert "strt" in result["griddata"]  # Starting heads
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
+def test_transform_gwf_wel_file(model_workspace):
+    """Test transforming a parsed GWF WEL file into structured data."""
+
+    # Load the DFN for WEL
+    dfns = load_flat("../modflow-devtools/autotest/temp/dfn/toml")
+    wel_dfn = dfns["gwf-wel"]
+
+    # Find the WEL file
+    wel_files = list(model_workspace.rglob("*.wel"))
+
+    # Skip if no WEL files (not all models have wells)
+    if len(wel_files) == 0:
+        pytest.skip("No WEL files found in this model")
+
+    wel_file = wel_files[0]
+    parser = get_typed_parser("gwf-wel")
+    transformer = TypedTransformer(dfn=wel_dfn)
+
+    # Read, parse, and transform
+    with open(wel_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    result = transformer.transform(tree)
+
+    # Check structure
+    assert isinstance(result, dict)
+    assert "periods" in result  # WEL has periods
+    assert len(result["periods"]) > 0  # Should have at least one period

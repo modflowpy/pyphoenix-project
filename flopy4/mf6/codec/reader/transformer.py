@@ -76,6 +76,12 @@ class TypedTransformer(Transformer):
             if not isinstance(item, dict):
                 continue
             for block_name, block_data in item.items():
+                # Pluralize indexed blocks (e.g., period -> periods)
+                if isinstance(block_data, dict) and all(isinstance(k, int) for k in block_data.keys()):
+                    # This is an indexed block, use plural form
+                    if not block_name.endswith('s'):
+                        block_name = block_name + 's'
+
                 if block_name not in merged:
                     merged[block_name] = block_data
                 else:
@@ -163,11 +169,26 @@ class TypedTransformer(Transformer):
     def string(self, items: list[Any]) -> str:
         return items[0].strip("\"'")
 
+    def simple_string(self, items: list[Any]) -> str:
+        """Handle simple string (unquoted word or escaped string)."""
+        return str(items[0]).strip("\"'")
+
     def integer(self, items: list[Any]) -> int:
         return int(items[0])
 
     def double(self, items: list[Any]) -> float:
         return float(items[0])
+
+    def number(self, items: list[Any]) -> int | float:
+        """Handle generic number (could be int or float)."""
+        value = str(items[0])
+        try:
+            if "." in value or "e" in value.lower():
+                return float(value)
+            else:
+                return int(value)
+        except ValueError:
+            return float(value)
 
     def data(self, items: list[Any]) -> np.ndarray:
         return np.array(items)
@@ -222,6 +243,10 @@ class TypedTransformer(Transformer):
         """Extract block index (e.g., period number)."""
         return items[0]
 
+    def stress_period_data(self, items: list[Any]) -> list[Any]:
+        """Handle stress period data (list of values for a single record)."""
+        return items
+
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
         control = array_info["control"]
@@ -251,6 +276,12 @@ class TypedTransformer(Transformer):
                 # Unexpected structure, fall back to default
                 return super().__default__(data, children, meta)
         elif data.endswith("_fields"):
+            # Check if this is a period_fields which contains list data (stress_period_data)
+            # rather than named field tuples
+            if children and not isinstance(children[0], tuple):
+                # This is list data (e.g., stress_period_data records)
+                # Return as stress_period_data key
+                return {"stress_period_data": children}
             return {item[0].lower(): item[1] for item in children}
         elif (field := self.fields.get(data, None)) is not None:
             if field.type == "keyword":
