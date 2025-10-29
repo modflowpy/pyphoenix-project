@@ -137,14 +137,14 @@ block_index: integer
 // Recarray rules for period data (stress_period_data, etc.)
 {% for block_name, meta in block_metadata.items() %}
 {% if meta.recarray_name %}
-{{ meta.recarray_name }}: stress_record+
+{{ meta.recarray_name }}: record+
 {% endif %}
 {% endfor %}
 
 // Stress period record: tokens followed by newline, but stop at structural keywords
-stress_record: stress_token+ NEWLINE
-stress_token: number | _stress_word
-_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
+record: token+ NEWLINE
+token: number | _word
+_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
 
 // Import typed grammar rules
 %import typed.integer -> integer

@@ -199,7 +199,7 @@ class TypedTransformer(Transformer):
         """
         return items  # items are already processed stress records (lists of values)
 
-    def stress_record(self, items: list[Any]) -> list[Any]:
+    def record(self, items: list[Any]) -> list[Any]:
         """Handle a single stress period data record.
 
         The parser gives us stress_token trees plus a NEWLINE token.

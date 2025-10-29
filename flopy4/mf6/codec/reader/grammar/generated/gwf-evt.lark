@@ -37,19 +37,16 @@ surf_rate_specified: "surf_rate_specified"i
 maxbound: "maxbound"i integer
 nseg: "nseg"i integer
 // Recarray rules for period data (stress_period_data, etc.)
-stress_period_data: stress_record+
+stress_period_data: record+
 
 // Stress period record: tokens followed by newline, but stop at structural keywords
-stress_record: stress_token+ NEWLINE
-stress_token: number | _stress_word
-_stress_word: /(?!(?i:begin|end|period))[a-zA-Z0-9._'~,-\\(\\)]+/
+record: token+ NEWLINE
+token: number | _word
+_word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
 
 // Import typed grammar rules
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
-%import typed.simple_string -> simple_string
-%import typed.record -> record
-%import typed.list -> list
 %import typed.array -> array
