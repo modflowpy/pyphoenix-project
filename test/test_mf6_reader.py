@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import xarray as xr
 from lark import Lark
-from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfn import Dfn, load_flat
 from modflow_devtools.models import get_models
 from packaging.version import Version
 
@@ -274,18 +274,25 @@ def test_parse_gwf_wel_file(model_workspace):
     assert tree.data == "start"
     assert len(tree.children) > 0
 
-    # Should have period blocks
-    period_blocks = [child for child in tree.children if child.data == "period_block"]
+    # Should have blocks
+    blocks = [child for child in tree.children if child.data == "block"]
+    assert len(blocks) > 0
+
+    # Should have period blocks (nested inside block nodes)
+    period_blocks = [
+        block.children[0]
+        for block in blocks
+        if block.children and block.children[0].data == "period_block"
+    ]
     assert len(period_blocks) > 0, "Should have at least one period block"
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
 def test_transform_gwf_ic_file(model_workspace):
     """Test transforming a parsed GWF IC file into structured data."""
-    from modflow_devtools.dfn import load_dfns
 
     # Load the DFN for IC
-    dfns = load_dfns("../modflow-devtools/autotest/temp/dfn/toml")
+    dfns = load_flat("../modflow-devtools/autotest/temp/dfn/toml")
     ic_dfn = dfns["gwf-ic"]
 
     # Find the IC file

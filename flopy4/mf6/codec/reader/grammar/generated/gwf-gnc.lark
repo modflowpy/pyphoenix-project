@@ -21,9 +21,13 @@ numalphaj: "numalphaj"i integer
 gncdata: "gncdata"i recarray
 
 // Inline typed grammar rules
-integer: _integer
-double.2: _number
+// Named fields use specific types (integer/double) for validation
+// List/recarray data uses generic 'number' - structuring step handles type conversion
+integer: SIGNED_INT | INT
+double: SIGNED_NUMBER | NUMBER
+number: SIGNED_NUMBER | NUMBER
 string: ESCAPED_STRING | record
+simple_string: ESCAPED_STRING | _word
 record.1: _token+ _NL
 list: record*
 array: (single_array | layered_array)
@@ -43,15 +47,13 @@ filename: ESCAPED_STRING | _word
 data: double+
 
 _word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_number: SIGNED_NUMBER | NUMBER
-_integer: SIGNED_INT | INT
-_token: _word | _number
+_token: _word | number
 
 %import common.NEWLINE -> _NL
 %import common.CNAME
 %import common.WORD
+%import common.ESCAPED_STRING
 %import common.NUMBER
 %import common.INT
-%import common.ESCAPED_STRING
 %import common.SIGNED_NUMBER
 %import common.SIGNED_INT
