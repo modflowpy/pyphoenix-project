@@ -7,6 +7,17 @@ from lark import Token, Transformer
 from modflow_devtools.dfn import Dfn
 
 
+def _parse_number(value: str) -> int | float:
+    """Parse a string into int or float based on its content."""
+    try:
+        if "." in value or "e" in value.lower():
+            return float(value)
+        else:
+            return int(value)
+    except ValueError:
+        return float(value)
+
+
 class BasicTransformer(Transformer):
     """
     Basic transformer for MF6 input files. Works only with the basic
@@ -41,14 +52,7 @@ class BasicTransformer(Transformer):
         return str(items[0])
 
     def NUMBER(self, token: Token) -> int | float:
-        value = str(token)
-        try:
-            if "." in value or "e" in value.lower():
-                return float(value)
-            else:
-                return int(value)
-        except ValueError:
-            return float(value)
+        return _parse_number(str(token))
 
     def CNAME(self, token: Token) -> str:
         return str(token)
@@ -175,14 +179,7 @@ class TypedTransformer(Transformer):
 
     def number(self, items: list[Any]) -> int | float:
         """Handle generic number (could be int or float)."""
-        value = str(items[0])
-        try:
-            if "." in value or "e" in value.lower():
-                return float(value)
-            else:
-                return int(value)
-        except ValueError:
-            return float(value)
+        return _parse_number(str(items[0]))
 
     def data(self, items: list[Any]) -> np.ndarray:
         return np.array(items)
@@ -200,7 +197,12 @@ class TypedTransformer(Transformer):
         The parser gives us the values for one row plus a NEWLINE token.
         Filter out the NEWLINE token and return just the data values.
         """
-        return [item for item in items if not isinstance(item, Token) or item.type != "NEWLINE"]
+        return [item for item in items if not self._is_newline_token(item)]
+
+    @staticmethod
+    def _is_newline_token(item: Any) -> bool:
+        """Check if an item is a NEWLINE token."""
+        return isinstance(item, Token) and item.type == "NEWLINE"
 
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
