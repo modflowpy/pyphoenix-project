@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 UTL-HPC
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -14,10 +22,3 @@ partitions_fields: (partitions)*
 print_table: "print_table"i 
 dev_log_mpi: "dev_log_mpi"i 
 partitions: "partitions"i recarray
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE

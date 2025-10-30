@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 GWT-DSP
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -21,10 +29,3 @@ alv: "alv"i array
 ath1: "ath1"i array
 ath2: "ath2"i array
 atv: "atv"i array
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE

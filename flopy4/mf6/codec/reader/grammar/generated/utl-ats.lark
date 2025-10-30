@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 UTL-ATS
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -13,10 +21,3 @@ dimensions_fields: (maxats)*
 perioddata_fields: (perioddata)*
 maxats: "maxats"i integer
 perioddata: "perioddata"i recarray
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE

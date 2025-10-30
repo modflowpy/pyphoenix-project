@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 GWF-API
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -18,10 +26,3 @@ save_flows: "save_flows"i
 obs_filerecord: "obs6"i "filein"i string
 mover: "mover"i 
 maxbound: "maxbound"i integer
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE

@@ -30,11 +30,6 @@ def record_child_type(field: FieldV2) -> str:
             return field.type
 
 
-def keystring_children(field: FieldV2) -> dict:
-    """Get the children of a keystring field for union generation."""
-    return {} if field.type != "union" else field.children
-
-
 def is_period_list_field(field: FieldV2) -> bool:
     """Check if a field is part of a period block list/recarray."""
     if not field.shape or not field.block:
@@ -75,17 +70,3 @@ def get_recarray_name(block_name: str) -> str:
     if block_name == "period":
         return "stress_period_data"
     return f"{block_name}data"
-
-
-def get_all_grouped_field_names(blocks: Mapping[str, Mapping[str, FieldV2]]) -> set[str]:
-    """
-    Get all field names that are grouped into recarrays across all blocks.
-
-    Returns a set of field names that should not have individual rules generated.
-    """
-    grouped = set()
-    for block_fields in blocks.values():
-        period_groups = group_period_fields(block_fields)
-        for field_list in period_groups.values():
-            grouped.update(field_list)
-    return grouped

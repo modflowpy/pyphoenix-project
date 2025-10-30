@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 CHF-STO
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -16,10 +24,3 @@ save_flows: "save_flows"i
 export_array_ascii: "export_array_ascii"i 
 steady-state: "steady-state"i 
 transient: "transient"i 
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE

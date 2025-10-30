@@ -20,16 +20,14 @@ def _get_template_env():
     return env
 
 
-def _compute_block_metadata(blocks):
-    """Pre-compute block metadata for template rendering."""
-    blocks_list = []
-    all_fields = {}  # Collect all unique fields
+def _get_template_data(blocks) -> tuple[list[dict], dict[str, object]]:
+    all_blocks = []
+    all_fields = {}
 
     for block_name, block_fields in blocks.items():
         period_groups = filters.group_period_fields(block_fields)
         has_index = block_name == "period"
 
-        # Build recarrays list
         recarrays = []
         grouped_field_names = set()
         if period_groups:
@@ -38,14 +36,11 @@ def _compute_block_metadata(blocks):
                 recarrays.append({"name": recarray_name, "fields": field_names})
                 grouped_field_names.update(field_names)
 
-        # Get standalone fields (not in any recarray)
         all_field_names = list(block_fields.keys())
         standalone_fields = [f for f in all_field_names if f not in grouped_field_names]
 
-        # Collect field objects
         all_fields.update(block_fields)
-
-        blocks_list.append(
+        all_blocks.append(
             {
                 "name": block_name,
                 "has_index": has_index,
@@ -54,7 +49,7 @@ def _compute_block_metadata(blocks):
             }
         )
 
-    return blocks_list, all_fields
+    return all_blocks, all_fields
 
 
 def make_grammar(dfn: Dfn, outdir: PathLike):
@@ -63,13 +58,10 @@ def make_grammar(dfn: Dfn, outdir: PathLike):
     env = _get_template_env()
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{dfn.name}.lark"
-
-    # Pre-compute block metadata and collect all fields
-    blocks_list, fields = _compute_block_metadata(dfn.blocks)
-
+    blocks, fields = _get_template_data(dfn.blocks)
     with open(target_path, "w") as f:
         name = dfn.name
-        f.write(template.render(name=name, blocks=blocks_list, fields=fields))
+        f.write(template.render(name=name, blocks=blocks, fields=fields))
 
 
 def make_all_grammars(dfns: dict[str, Dfn], outdir: PathLike):

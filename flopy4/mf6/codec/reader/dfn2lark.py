@@ -19,7 +19,6 @@ def generate(dfndir: PathLike, outdir: PathLike):
     outdir.mkdir(exist_ok=True, parents=True)
     dfns_v1 = load_flat(dfndir)
     dfns_v2 = {name: map(dfn, schema_version=2) for name, dfn in dfns_v1.items()}
-    # TODO fix devtools v1 -> v2 map, it's not converting the field type
     make_all_grammars(dfns_v2, outdir)
 
 

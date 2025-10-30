@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 OLF-DFW
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -22,10 +30,3 @@ export_array_ascii: "export_array_ascii"i
 dev_swr_conductance: "dev_swr_conductance"i 
 manningsn: "manningsn"i array
 idcxs: "idcxs"i array
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE

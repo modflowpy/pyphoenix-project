@@ -1,4 +1,12 @@
 // Auto-generated grammar for MF6 GWF-EVT
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
 
@@ -27,10 +35,3 @@ surf_rate_specified: "surf_rate_specified"i
 maxbound: "maxbound"i integer
 nseg: "nseg"i integer
 stress_period_data: record+
-%import typed.integer -> integer
-%import typed.double -> double
-%import typed.number -> number
-%import typed.string -> string
-%import typed.array -> array
-%import typed.record -> record
-%import typed.NEWLINE -> NEWLINE
