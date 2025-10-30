@@ -4,12 +4,11 @@
 
 Showcase a limited set of core functionality, such as:
 
-- the v2 DFN specification schema and format
 - object model, data model, user-facing APIs
 - IO framework and ASCII file loading/writing
 - constructing, running, modifying simulations
 
-Design and implementation are provisional. Implementation may take shortcuts, e.g. components hand-written instead of generated from the DFN specification.
+Design and implementation are provisional. Implementation may take shortcuts, e.g. components hand-written instead of generated from the DFN specification. Demonstration is a guided tour with guardrails.
 
 Release to demo participants via `pip install` from github URL.
 
