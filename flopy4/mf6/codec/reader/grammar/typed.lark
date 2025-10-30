@@ -1,6 +1,3 @@
-// Typed grammar rules for MF6 input files
-// Named fields use specific types (integer/double) for validation
-// List/recarray data uses generic 'number' - structuring step handles type conversion
 integer: SIGNED_INT | INT
 double: SIGNED_NUMBER | NUMBER
 number: SIGNED_NUMBER | NUMBER
@@ -20,7 +17,6 @@ iprn: "iprn"i integer
 binary: "(binary)"i
 filename: ESCAPED_STRING | word
 data: double+
-
 record: token+ NEWLINE
 token: number | word
 word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
