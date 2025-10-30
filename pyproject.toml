@@ -53,21 +53,6 @@ dependencies = [
     "netcdf4>=1.7.3,<2",
     "pyshp>=3.0.2.post1,<4",
     "llvmlite>=0.45.1,<0.46",
-    "build",
-    "twine",
-    "coverage",
-    "gitpython",
-    "jupyter",
-    "jupytext",
-    "pooch",
-    "pytest",
-    "pytest-dotenv",
-    "pytest-xdist",
-    "pytest-benchmark",
-    "pytest-cov",
-    "ruff",
-    "pre-commit",
-    "mypy",
 ]
 dynamic = ["version"]
 
