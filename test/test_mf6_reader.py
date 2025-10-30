@@ -288,11 +288,11 @@ def test_parse_gwf_wel_file(model_workspace):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_ic_file(model_workspace):
+def test_transform_gwf_ic_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF IC file into structured data."""
 
     # Load the DFN for IC
-    dfns = load_flat("../modflow-devtools/autotest/temp/dfn/toml")
+    dfns = load_flat(dfn_path)
     ic_dfn = dfns["gwf-ic"]
 
     # Find the IC file
@@ -317,11 +317,11 @@ def test_transform_gwf_ic_file(model_workspace):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
-def test_transform_gwf_wel_file(model_workspace):
+def test_transform_gwf_wel_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF WEL file into structured data."""
 
     # Load the DFN for WEL
-    dfns = load_flat("../modflow-devtools/autotest/temp/dfn/toml")
+    dfns = load_flat(dfn_path)
     wel_dfn = dfns["gwf-wel"]
 
     # Find the WEL file
