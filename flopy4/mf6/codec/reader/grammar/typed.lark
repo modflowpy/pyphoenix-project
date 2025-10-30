@@ -1,8 +1,7 @@
-integer: _integer
-double: _number
-string: ESCAPED_STRING | record
-record: _token+ _NL
-list: record*
+integer: SIGNED_INT | INT
+double: SIGNED_NUMBER | NUMBER
+number: SIGNED_NUMBER | NUMBER
+string: ESCAPED_STRING | (_token+ NEWLINE)
 array: (single_array | layered_array)
 single_array: [netcdf] readarray
 layered_array: layered [netcdf] readarray+
@@ -16,15 +15,14 @@ external: "open/close"i filename [factor] [binary] [iprn]
 factor: "factor"i double
 iprn: "iprn"i integer
 binary: "(binary)"i
-filename: ESCAPED_STRING | _word
+filename: ESCAPED_STRING | word
 data: double+
+record: token+ NEWLINE
+token: number | word
+word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
+_token: word | number
 
-_word: /[a-zA-Z0-9._'~,-\\(\\)]+/
-_number: SIGNED_NUMBER | NUMBER
-_integer: SIGNED_INT | INT
-_token: _word | _number
-
-%import common.NEWLINE -> _NL
+%import common.NEWLINE
 %import common.WS
 %import common.WS_INLINE
 %import common.CNAME

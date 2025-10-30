@@ -1,5 +1,3 @@
-from collections import ChainMap
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +5,17 @@ import numpy as np
 import xarray as xr
 from lark import Token, Transformer
 from modflow_devtools.dfn import Dfn
-from modflow_devtools.dfn.schema.v2 import SCALAR_TYPES
+
+
+def _parse_number(value: str) -> int | float:
+    """Parse a string into int or float based on its content."""
+    try:
+        if "." in value or "e" in value.lower():
+            return float(value)
+        else:
+            return int(value)
+    except ValueError:
+        return float(value)
 
 
 class BasicTransformer(Transformer):
@@ -44,14 +52,7 @@ class BasicTransformer(Transformer):
         return str(items[0])
 
     def NUMBER(self, token: Token) -> int | float:
-        value = str(token)
-        try:
-            if "." in value or "e" in value.lower():
-                return float(value)
-            else:
-                return int(value)
-        except ValueError:
-            return float(value)
+        return _parse_number(str(token))
 
     def CNAME(self, token: Token) -> str:
         return str(token)
@@ -69,8 +70,27 @@ class TypedTransformer(Transformer):
         self.blocks = dfn.blocks if dfn else None
         self.fields = dfn.fields if dfn else None
 
-    def start(self, items: list[Any]) -> Mapping:
-        return ChainMap(*items)
+    def start(self, items: list[Any]) -> dict:
+        """Collect and merge blocks, handling indexed blocks specially."""
+        merged = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            for block_name, block_data in item.items():
+                # Check if this is an indexed block (dict with integer keys)
+                if isinstance(block_data, dict) and all(
+                    isinstance(k, int) for k in block_data.keys()
+                ):
+                    # Flatten indexed blocks into separate keys like "period 1", "period 2"
+                    for index, data in block_data.items():
+                        indexed_key = f"{block_name} {index}"
+                        merged[indexed_key] = data
+                elif block_name not in merged:
+                    merged[block_name] = block_data
+                else:
+                    # This shouldn't happen for well-formed input
+                    pass
+        return merged
 
     def block(self, items: list[Any]) -> dict:
         return items[0]
@@ -138,7 +158,7 @@ class TypedTransformer(Transformer):
     def iprn(self, items: list[Any]) -> dict[str, int]:
         return {"iprn": items[0]}
 
-    def binary(self, items: list[Any]) -> dict[str, bool]:
+    def binary(self, _) -> dict[str, bool]:
         return {"binary": True}
 
     def filename(self, items: list[Any]) -> Path:
@@ -147,17 +167,66 @@ class TypedTransformer(Transformer):
     def string(self, items: list[Any]) -> str:
         return items[0].strip("\"'")
 
+    def simple_string(self, items: list[Any]) -> str:
+        """Handle simple string (unquoted word or escaped string)."""
+        return str(items[0]).strip("\"'")
+
     def integer(self, items: list[Any]) -> int:
         return int(items[0])
 
     def double(self, items: list[Any]) -> float:
         return float(items[0])
 
+    def number(self, items: list[Any]) -> int | float:
+        """Handle generic number (could be int or float)."""
+        return _parse_number(str(items[0]))
+
     def data(self, items: list[Any]) -> np.ndarray:
         return np.array(items)
 
-    def netcdf(self, items: list[Any]) -> dict[str, bool]:
+    def netcdf(self, _) -> dict[str, bool]:
         return {"netcdf": True}
+
+    def block_index(self, items: list[Any]) -> int:
+        """Extract block index (e.g., period number)."""
+        return items[0]
+
+    def stress_period_data(self, items: list[Any]) -> list[Any]:
+        """Handle stress period data - now a list of stress_record trees.
+
+        Each item is a stress_record tree that has already been processed by stress_record method.
+        Return the list of processed records directly.
+        """
+        return items  # items are already processed stress records (lists of values)
+
+    def record(self, items: list[Any]) -> list[Any]:
+        """Handle a single stress period data record.
+
+        The parser gives us stress_token trees plus a NEWLINE token.
+        Extract values from stress_token trees and filter out the NEWLINE token.
+        """
+        values = []
+        for item in items:
+            if self._is_newline_token(item):
+                continue
+            # Item is a stress_token tree - extract its value
+            if hasattr(item, "children") and len(item.children) > 0:
+                # stress_token contains either a number tree or a _stress_word
+                token_child = item.children[0]
+                if hasattr(token_child, "children") and len(token_child.children) > 0:
+                    # This is a number tree, get the actual value
+                    values.append(token_child.children[0])
+                else:
+                    # This is a direct value (string)
+                    values.append(token_child)
+            else:
+                values.append(item)
+        return values
+
+    @staticmethod
+    def _is_newline_token(item: Any) -> bool:
+        """Check if an item is a NEWLINE token."""
+        return isinstance(item, Token) and item.type == "NEWLINE"
 
     @staticmethod
     def try_create_dataarray(array_info: dict) -> dict:
@@ -175,14 +244,36 @@ class TypedTransformer(Transformer):
         if self.blocks is None or self.fields is None:
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
-            return {block_name: children[0]}
-        elif data.endswith("_vars"):
+            # See if this is an indexed block (period blocks have 3 children: index, fields, index
+            if len(children) == 3 and isinstance(children[0], int) and isinstance(children[2], int):
+                # Indexed block: [index, fields, index]
+                block_index = children[0]
+                fields_data = children[1]
+                return {block_name: {block_index: fields_data}}
+            elif len(children) == 1:
+                # Non-indexed block: [fields]
+                return {block_name: children[0]}
+            else:
+                # Unexpected structure, fall back to default
+                return super().__default__(data, children, meta)
+        elif data.endswith("_fields"):
+            # Check if this is a period_fields which contains list data (stress_period_data)
+            # rather than named field tuples
+            if children and not isinstance(children[0], tuple):
+                # This is list data (e.g., stress_period_data records)
+                # With the new stress_record approach, we get a list containing
+                # the stress_period_data result. If there's exactly one child and
+                # it's a list, unwrap it
+                if len(children) == 1 and isinstance(children[0], list):
+                    return {"stress_period_data": children[0]}
+                else:
+                    # Fallback to original behavior
+                    return {"stress_period_data": children}
             return {item[0].lower(): item[1] for item in children}
         elif (field := self.fields.get(data, None)) is not None:
             if field.type == "keyword":
                 return data, True
-            elif field.type in SCALAR_TYPES and field.shape is not None:
-                return data, TypedTransformer.try_create_dataarray(children[0])
             else:
-                return data, children[0]
+                # For all other fields (including arrays), return the transformed children
+                return data, children[0] if len(children) == 1 else children
         return super().__default__(data, children, meta)

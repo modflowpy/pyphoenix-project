@@ -1,3 +1,5 @@
+"""Test the MF6 input file reading/writing capability."""
+
 from pprint import pprint
 
 import pytest

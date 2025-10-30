@@ -1,3 +1,5 @@
+"""Test basic MF6 component behaviors like initialization, modification, access."""
+
 from pathlib import Path
 
 import numpy as np

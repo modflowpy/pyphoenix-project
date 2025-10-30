@@ -1,0 +1,34 @@
+// Auto-generated grammar for MF6 OLF-EVP
+
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.array -> array
+%import typed.record -> record
+%import typed.NEWLINE -> NEWLINE
+%import common.WS
+%import common.SH_COMMENT
+
+%ignore WS
+%ignore SH_COMMENT
+
+start: block*
+block: options_block | dimensions_block | period_block
+options_block: "begin"i "options"i options_fields "end"i "options"i
+dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+block_index: integer
+options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | ts_filerecord | obs_filerecord)*
+dimensions_fields: (maxbound)*
+period_fields: (stress_period_data)*
+auxiliary: "auxiliary"i array
+auxmultname: "auxmultname"i string
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+ts_filerecord: "ts6"i "filein"i string
+obs_filerecord: "filein"i "obs6"i string
+maxbound: "maxbound"i integer
+stress_period_data: record+

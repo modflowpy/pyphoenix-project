@@ -1,3 +1,5 @@
+"""Explore networkx graph representations of DISU grids and conversion to xarray."""
+
 import networkx as nx
 import scipy as sp
 import xarray as xr

@@ -9,3 +9,4 @@ venv/
 *.egg-info
 temp/
 .coverage
+flopy4/mf6/codec/reader/grammar/generated/*.lark

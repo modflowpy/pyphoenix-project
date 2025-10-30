@@ -1,0 +1,71 @@
+{# Field rendering macros #}
+
+{% macro record_field(field_name, field) -%}
+{{ field_name }}: {% for child_name, child in field.children.items() -%}
+{%- set child_type = child|record_child_type -%}
+{%- if child.type == 'keyword' -%}
+"{{ child.name }}"i
+{%- elif child.type == 'union' -%}
+{{ child_name }}
+{%- else -%}
+{{ child_type }}
+{%- endif -%}
+{%- if not loop.last %} {% endif -%}
+{%- endfor %}
+{%- endmacro %}
+
+{% macro union_field(field_name, field) -%}
+{{ field_name }}: {% for child_name, child in field.children.items() -%}
+{{ field_name }}_{{ child_name }}
+{%- if not loop.last %} | {% endif -%}
+{%- endfor %}
+{% for child_name, child in field.children.items() -%}
+{{ field_name }}_{{ child_name }}: {% if child.type == 'keyword' -%}
+"{{ child.name }}"i
+{%- else -%}
+"{{ child.name }}"i {{ child.type }}
+{%- endif %}
+{% endfor -%}
+{%- endmacro %}
+
+{% macro simple_field(field_name, field, field_type) -%}
+{{ field_name }}: "{{ field.name }}"i {{ field_type }}
+{%- endmacro %}
+
+{% macro nested_union(child_name, child) -%}
+{{ child_name }}: {% for opt_name, opt in child.children.items() -%}
+{{ child_name }}_{{ opt_name }}
+{%- if not loop.last %} | {% endif -%}
+{%- endfor %}
+{% for opt_name, opt in child.children.items() -%}
+{{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' -%}
+"{{ opt.name }}"i
+{%- else -%}
+"{{ opt.name }}"i {{ opt.type }}
+{%- endif %}
+{% endfor -%}
+{%- endmacro %}
+
+{# Block definition macro #}
+{%- macro block_def(block_name, has_index) -%}
+{%- if has_index -%}
+{{ block_name }}_block: "begin"i "{{ block_name }}"i block_index {{ block_name }}_fields "end"i "{{ block_name }}"i block_index
+{%- else -%}
+{{ block_name }}_block: "begin"i "{{ block_name }}"i {{ block_name }}_fields "end"i "{{ block_name }}"i
+{%- endif -%}
+{%- endmacro %}
+
+{# Field list macro #}
+{%- macro field_list(block_name, fields, recarray_name) -%}
+{%- if recarray_name -%}
+{{ block_name }}_fields: (
+{%- for field_name in fields %}{{ field_name }} | {% endfor -%}
+{{ recarray_name }})*
+{%- else -%}
+{{ block_name }}_fields: (
+{%- for field_name in fields %}
+{{- field_name }}{% if not loop.last %} | {% endif %}
+{%- endfor -%}
+)*
+{%- endif -%}
+{%- endmacro %}
