@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -23,10 +24,10 @@ nonlinear_fields: (outer_hclose | outer_dvclose | outer_rclosebnd | outer_maximu
 linear_fields: (inner_maximum | inner_hclose | inner_dvclose | rcloserecord | linear_acceleration | relaxation_factor | preconditioner_levels | preconditioner_drop_tolerance | number_orthogonalizations | scaling_method | reordering_method)*
 print_option: "print_option"i string
 complexity: "complexity"i string
-csv_output_filerecord: "csv_output"i string "fileout"i
-csv_outer_output_filerecord: "csv_outer_output"i "fileout"i string
-csv_inner_output_filerecord: "fileout"i "csv_inner_output"i string
-no_ptcrecord: "no_ptc"i string
+csv_output_filerecord: "csv_output"i "fileout"i word
+csv_outer_output_filerecord: "csv_outer_output"i "fileout"i word
+csv_inner_output_filerecord: "csv_inner_output"i "fileout"i word
+no_ptcrecord: "no_ptc"i word
 ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double
 outer_hclose: "outer_hclose"i double
 outer_dvclose: "outer_dvclose"i double
@@ -44,7 +45,7 @@ backtracking_residual_limit: "backtracking_residual_limit"i double
 inner_maximum: "inner_maximum"i integer
 inner_hclose: "inner_hclose"i double
 inner_dvclose: "inner_dvclose"i double
-rcloserecord: double string
+rcloserecord: double word
 linear_acceleration: "linear_acceleration"i string
 relaxation_factor: "relaxation_factor"i double
 preconditioner_levels: "preconditioner_levels"i integer

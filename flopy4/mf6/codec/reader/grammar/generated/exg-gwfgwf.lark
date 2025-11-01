@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -30,9 +31,9 @@ cell_averaging: "cell_averaging"i string
 cvoptions: "variablecv"i "dewatered"i
 newton: "newton"i 
 xt3d: "xt3d"i 
-gnc_filerecord: "filein"i "gnc6"i string
-mvr_filerecord: "filein"i "mvr6"i string
-obs_filerecord: "filein"i "obs6"i string
+gnc_filerecord: "gnc6"i "filein"i word
+mvr_filerecord: "mvr6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
-exchangedata: "exchangedata"i recarray
+exchangedata: "exchangedata"i list

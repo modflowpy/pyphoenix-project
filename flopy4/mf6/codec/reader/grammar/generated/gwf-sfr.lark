@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -28,7 +29,7 @@ period_fields: ()*
 crosssections_fields: (crosssections)*
 connectiondata_fields: (connectiondata)*
 initialstages_fields: (initialstages)*
-obs_filerecord: "obs6"i string
+obs_filerecord: "obs6"i word
 mover: "mover"i 
 maximum_picard_iterations: "maximum_picard_iterations"i integer
 maximum_iterations: "maximum_iterations"i integer
@@ -38,6 +39,6 @@ length_conversion: "length_conversion"i double
 time_conversion: "time_conversion"i double
 dev_storage_weight: "dev_storage_weight"i double
 nreaches: "nreaches"i integer
-crosssections: "crosssections"i recarray
-connectiondata: "connectiondata"i recarray
-initialstages: "initialstages"i recarray
+crosssections: "crosssections"i list
+connectiondata: "connectiondata"i list
+initialstages: "initialstages"i list

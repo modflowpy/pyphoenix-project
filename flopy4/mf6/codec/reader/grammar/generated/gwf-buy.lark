@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -23,7 +24,7 @@ dimensions_fields: (nrhospecies)*
 packagedata_fields: (packagedata)*
 hhformulation_rhs: "hhformulation_rhs"i 
 denseref: "denseref"i double
-density_filerecord: "density"i "fileout"i string
+density_filerecord: "density"i "fileout"i word
 dev_efh_formulation: "dev_efh_formulation"i 
 nrhospecies: "nrhospecies"i integer
-packagedata: "packagedata"i recarray
+packagedata: "packagedata"i list

@@ -37,12 +37,14 @@
 {{ child_name }}_{{ opt_name }}
 {%- if not loop.last %} | {% endif -%}
 {%- endfor %}
+
 {% for opt_name, opt in child.children.items() -%}
 {{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' -%}
 "{{ opt.name }}"i
 {%- else -%}
-"{{ opt.name }}"i {{ opt.type }}
+"{{ opt.name }}"i {{ opt.type }}{% if opt.shape %}+{% endif %}
 {%- endif %}
+
 {% endfor -%}
 {%- endmacro %}
 

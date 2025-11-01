@@ -217,3 +217,48 @@ def test_make_grammar_with_named_subfields(tmp_path):
     stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
     # Should accept both numbers and simple strings
     assert "record" in stress_period_data_line
+
+
+def test_make_grammar_with_oc_style_records(tmp_path):
+    """Test grammar generation for OC-style records with union fields."""
+    dfn = Dfn(
+        schema_version=Version("2.0.0"),
+        name="gwf-oc",
+        blocks={
+            "period": {
+                "saverecord": FieldV2(
+                    name="saverecord",
+                    type="record",
+                    block="period",
+                    children={
+                        "save": FieldV2(name="save", type="keyword", block="period"),
+                        "rtype": FieldV2(name="rtype", type="string", block="period"),
+                        "ocsetting": FieldV2(
+                            name="ocsetting",
+                            type="union",
+                            block="period",
+                            children={
+                                "all": FieldV2(name="all", type="keyword", block="period"),
+                                "first": FieldV2(name="first", type="keyword", block="period"),
+                                "last": FieldV2(name="last", type="keyword", block="period"),
+                            },
+                        ),
+                    },
+                )
+            }
+        },
+    )
+
+    make_grammar(dfn, tmp_path)
+
+    grammar_file = tmp_path / "gwf-oc.lark"
+    content = grammar_file.read_text()
+
+    # Should generate a record rule with keyword, word (not string), and union
+    assert 'saverecord: "save"i word ocsetting' in content
+
+    # Should generate the union rule for ocsetting
+    assert "ocsetting:" in content
+    assert "ocsetting_all" in content
+    assert "ocsetting_first" in content
+    assert "ocsetting_last" in content

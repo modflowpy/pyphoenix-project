@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -32,7 +33,7 @@ save_specific_discharge: "save_specific_discharge"i
 save_saturation: "save_saturation"i 
 k22overk: "k22overk"i 
 k33overk: "k33overk"i 
-tvk_filerecord: "tvk6"i "filein"i string
+tvk_filerecord: "tvk6"i "filein"i word
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 dev_no_newton: "dev_no_newton"i 

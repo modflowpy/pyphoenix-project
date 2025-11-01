@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -20,10 +21,17 @@ period_block: "begin"i "period"i block_index period_fields "end"i "period"i bloc
 block_index: integer
 options_fields: (budget_filerecord | budgetcsv_filerecord | qoutflow_filerecord | stage_filerecord | qoutflowprintrecord)*
 period_fields: (saverecord | printrecord)*
-budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "fileout"i "budgetcsv"i string
-qoutflow_filerecord: "fileout"i "qoutflow"i string
-stage_filerecord: "fileout"i "stage"i string
+budget_filerecord: "budget"i "fileout"i word
+budgetcsv_filerecord: "budgetcsv"i "fileout"i word
+qoutflow_filerecord: "qoutflow"i "fileout"i word
+stage_filerecord: "stage"i "fileout"i word
 qoutflowprintrecord: "qoutflow"i "print_format"i
-saverecord: "save"i string keystring
-printrecord: "print"i string keystring
+saverecord: "save"i word ocsetting
+printrecord: "print"i word ocsetting
+ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
+ocsetting_all: "all"i
+ocsetting_first: "first"i
+ocsetting_last: "last"i
+ocsetting_frequency: "frequency"i integer
+ocsetting_steps: "steps"i integer+
+

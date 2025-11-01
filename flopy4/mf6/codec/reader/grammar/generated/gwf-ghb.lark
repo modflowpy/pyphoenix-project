@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -28,8 +29,8 @@ boundnames: "boundnames"i
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "filein"i "obs6"i string
+ts_filerecord: "ts6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 
 maxbound: "maxbound"i integer
 stress_period_data: record+

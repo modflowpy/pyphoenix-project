@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -31,8 +32,8 @@ save_flows: "save_flows"i
 adv_scheme: "adv_scheme"i string
 dsp_xt3d_off: "dsp_xt3d_off"i 
 dsp_xt3d_rhs: "dsp_xt3d_rhs"i 
-mvt_filerecord: "filein"i "mvt6"i string
-obs_filerecord: "filein"i "obs6"i string
+mvt_filerecord: "mvt6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
-exchangedata: "exchangedata"i recarray
+exchangedata: "exchangedata"i list

@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -22,5 +23,5 @@ options_fields: (readasarrays | print_input | tas_filerecord)*
 period_fields: (stress_period_data)*
 readasarrays: "readasarrays"i 
 print_input: "print_input"i 
-tas_filerecord: "tas6"i "filein"i string
+tas_filerecord: "tas6"i "filein"i word
 stress_period_data: record+

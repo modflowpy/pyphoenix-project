@@ -18,14 +18,21 @@ def field_type(field: FieldV2) -> str:
 
 
 def record_child_type(field: FieldV2) -> str:
-    """Get the grammar type for a field within a record context."""
+    """
+    Get the grammar type for a field within a record context.
+
+    In records, string fields should use 'word' instead of 'string'
+    to avoid consuming the rest of the line (since string matches token+ NEWLINE).
+    """
     match field.type:
-        case t if t in ["string", "double", "integer"]:
+        case "string":
+            return "word"  # Use word for strings in records to match single tokens
+        case t if t in ["double", "integer"]:
             return t
         case "keyword":
             return ""
         case "union":
-            return ""  # keystrings generate their own union rules
+            return ""  # unions generate their own union rules
         case _:
             return field.type
 

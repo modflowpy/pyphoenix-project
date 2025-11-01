@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -20,7 +21,7 @@ period_block: "begin"i "period"i block_index period_fields "end"i "period"i bloc
 block_index: integer
 options_fields: (budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord)*
 period_fields: ()*
-budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "fileout"i "budgetcsv"i string
-ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "filein"i "obs6"i string
+budget_filerecord: "budget"i "fileout"i word
+budgetcsv_filerecord: "budgetcsv"i "fileout"i word
+ts_filerecord: "ts6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word

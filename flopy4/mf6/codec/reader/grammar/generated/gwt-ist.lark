@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -20,7 +21,7 @@ griddata_block: "begin"i "griddata"i griddata_fields "end"i "griddata"i
 options_fields: (cimprintrecord | sorbate_filerecord | export_array_ascii | export_array_netcdf)*
 griddata_fields: (porosity | volfrac | zetaim | decay | decay_sorbed | bulk_density | distcoef | sp2)*
 cimprintrecord: "print_format"i
-sorbate_filerecord: "sorbate"i string
+sorbate_filerecord: "sorbate"i word
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 porosity: "porosity"i array

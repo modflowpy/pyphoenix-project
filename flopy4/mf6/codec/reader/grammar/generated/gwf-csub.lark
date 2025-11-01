@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -39,17 +40,17 @@ specified_initial_interbed_state: "specified_initial_interbed_state"i
 specified_initial_preconsolidation_stress: "specified_initial_preconsolidation_stress"i 
 specified_initial_delay_head: "specified_initial_delay_head"i 
 effective_stress_lag: "effective_stress_lag"i 
-strainib_filerecord: "strain_csv_interbed"i "fileout"i string
-straincg_filerecord: "fileout"i "strain_csv_coarse"i string
-compaction_filerecord: "fileout"i "compaction"i string
-compaction_elastic_filerecord: "fileout"i "compaction_elastic"i string
-compaction_inelastic_filerecord: "fileout"i "compaction_inelastic"i string
-compaction_interbed_filerecord: "fileout"i "compaction_interbed"i string
-compaction_coarse_filerecord: "fileout"i "compaction_coarse"i string
-zdisplacement_filerecord: "fileout"i "zdisplacement"i string
-package_convergence_filerecord: "fileout"i "package_convergence"i string
-ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "filein"i "obs6"i string
+strainib_filerecord: "strain_csv_interbed"i "fileout"i word
+straincg_filerecord: "strain_csv_coarse"i "fileout"i word
+compaction_filerecord: "compaction"i "fileout"i word
+compaction_elastic_filerecord: "compaction_elastic"i "fileout"i word
+compaction_inelastic_filerecord: "compaction_inelastic"i "fileout"i word
+compaction_interbed_filerecord: "compaction_interbed"i "fileout"i word
+compaction_coarse_filerecord: "compaction_coarse"i "fileout"i word
+zdisplacement_filerecord: "zdisplacement"i "fileout"i word
+package_convergence_filerecord: "package_convergence"i "fileout"i word
+ts_filerecord: "ts6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 ninterbeds: "ninterbeds"i integer
 maxsig0: "maxsig0"i integer
 cg_ske_cr: "cg_ske_cr"i array

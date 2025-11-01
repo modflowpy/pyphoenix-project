@@ -69,6 +69,22 @@ class TypedTransformer(Transformer):
         self.dfn = dfn
         self.blocks = dfn.blocks if dfn else None
         self.fields = dfn.fields if dfn else None
+        # Create a flattened fields dict that includes nested fields
+        self._flat_fields = self._flatten_fields(self.fields) if self.fields else None
+
+    def _flatten_fields(self, fields: dict) -> dict:
+        """Recursively flatten fields dict to include children of records and unions."""
+        flat = dict(fields)  # Start with top-level fields
+        for field in fields.values():
+            if hasattr(field, "children") and field.children:
+                # Add children fields
+                for child_name, child_field in field.children.items():
+                    flat[child_name] = child_field
+                    # Recursively flatten nested children
+                    if hasattr(child_field, "children") and child_field.children:
+                        nested_flat = self._flatten_fields(child_field.children)
+                        flat.update(nested_flat)
+        return flat
 
     def start(self, items: list[Any]) -> dict:
         """Collect and merge blocks, handling indexed blocks specially."""
@@ -171,6 +187,10 @@ class TypedTransformer(Transformer):
         """Handle simple string (unquoted word or escaped string)."""
         return str(items[0]).strip("\"'")
 
+    def word(self, items: list[Token]) -> str:
+        """Handle word token."""
+        return str(items[0])
+
     def integer(self, items: list[Any]) -> int:
         return int(items[0])
 
@@ -241,7 +261,7 @@ class TypedTransformer(Transformer):
         return array_info
 
     def __default__(self, data, children, meta):
-        if self.blocks is None or self.fields is None:
+        if self.blocks is None or self._flat_fields is None:
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
             # See if this is an indexed block (period blocks have 3 children: index, fields, index
@@ -269,11 +289,65 @@ class TypedTransformer(Transformer):
                 else:
                     # Fallback to original behavior
                     return {"stress_period_data": children}
-            return {item[0].lower(): item[1] for item in children}
-        elif (field := self.fields.get(data, None)) is not None:
+            # Group fields by name to handle repeated fields
+            fields_dict = {}
+            for item in children:
+                if isinstance(item, tuple):
+                    field_name = item[0].lower()
+                    field_value = item[1]
+                    if field_name in fields_dict:
+                        # Multiple occurrences - convert to list or append
+                        if not isinstance(fields_dict[field_name], list):
+                            fields_dict[field_name] = [fields_dict[field_name]]
+                        fields_dict[field_name].append(field_value)
+                    else:
+                        fields_dict[field_name] = field_value
+            return fields_dict
+        elif "_" in data and (parts := data.rsplit("_", 1)) and len(parts) == 2:
+            # Check if this is a union alternative (e.g., ocsetting_all)
+            field_name, alternative_name = parts
+            if (parent_field := self._flat_fields.get(field_name, None)) is not None:
+                if (
+                    parent_field.type == "union"
+                    and hasattr(parent_field, "children")
+                    and parent_field.children
+                    and alternative_name in parent_field.children
+                ):
+                    # This is a union alternative
+                    alt_field = parent_field.children[alternative_name]
+                    if alt_field.type == "keyword":
+                        # Keyword alternatives return just the alternative name
+                        return alternative_name
+                    else:
+                        # Non-keyword alternatives return the transformed children
+                        return children[0] if len(children) == 1 else children
+        if (field := self._flat_fields.get(data, None)) is not None:
             if field.type == "keyword":
                 return data, True
+            elif field.type == "record" and hasattr(field, "children") and field.children:
+                # Transform record fields into dicts with child field names as keys
+                # Keyword children are literals in the grammar and don't appear in children list
+                # Only non-keyword children appear in the children list
+                record_dict = {}
+                non_keyword_children = [
+                    (name, child)
+                    for name, child in field.children.items()
+                    if child.type != "keyword"
+                ]
+                for i, (child_name, child_field) in enumerate(non_keyword_children):
+                    if i < len(children):
+                        # Handle tuples from transformed fields
+                        if isinstance(children[i], tuple) and children[i][0] == child_name:
+                            record_dict[child_name] = children[i][1]
+                        else:
+                            record_dict[child_name] = children[i]
+                return data, record_dict
+            elif field.type == "union" and hasattr(field, "children") and field.children:
+                # For union fields, return the transformed child
+                # The parser will have selected one alternative
+                return data, children[0] if len(children) == 1 else children
             else:
-                # For all other fields (including arrays), return the transformed children
+                # For all fields, return the transformed children
+                # (arrays have already been transformed by the array method)
                 return data, children[0] if len(children) == 1 else children
         return super().__default__(data, children, meta)

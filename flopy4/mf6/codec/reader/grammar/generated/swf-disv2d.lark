@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -27,7 +28,7 @@ vertices_fields: (vertices)*
 cell2d_fields: (cell2d)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
-grb_filerecord: "grb6"i "fileout"i string
+grb_filerecord: "grb6"i "fileout"i word
 xorigin: "xorigin"i double
 yorigin: "yorigin"i double
 angrot: "angrot"i double
@@ -37,5 +38,5 @@ nodes: "nodes"i integer
 nvert: "nvert"i integer
 bottom: "bottom"i array
 idomain: "idomain"i array
-vertices: "vertices"i recarray
-cell2d: "cell2d"i recarray
+vertices: "vertices"i list
+cell2d: "cell2d"i list

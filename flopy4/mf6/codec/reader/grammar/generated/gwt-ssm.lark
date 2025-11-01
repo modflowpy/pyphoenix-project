@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -21,4 +22,4 @@ options_fields: (print_flows | save_flows)*
 fileinput_fields: (fileinput)*
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-fileinput: "fileinput"i recarray
+fileinput: "fileinput"i list

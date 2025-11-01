@@ -35,6 +35,30 @@ INTERNAL FACTOR 1.0 IPRN 3
 7.4 3.5 7.8 8.5 7.4 6.8 8.8
     """)
     print(tree.pretty())
+    assert len(tree.children) == 1
+    array = tree.children[0]
+    assert str(array.data) == "array"
+    readarray = array.children[0].children[-1]
+    assert str(readarray.data) == "readarray"
+    control = readarray.children[0]
+    assert str(control.data) == "control"
+    internal = control.children[0]
+    assert str(internal.data) == "internal"
+    assert len(internal.children) == 2
+    factor = internal.children[0]
+    assert str(factor.data) == "factor"
+    assert str(factor.children[0].data) == "double"
+    assert float(factor.children[0].children[0]) == 1.0
+    iprn = internal.children[1]
+    assert str(iprn.data) == "iprn"
+    assert str(iprn.children[0].data) == "integer"
+    assert int(iprn.children[0].children[0]) == 3
+    data = readarray.children[-1]
+    assert len(data.children) == 28
+    assert str(data.children[0].data) == "double"
+    assert str(data.children[-1].data) == "double"
+    assert float(data.children[0].children[0]) == 1.2
+    assert float(data.children[-1].children[0]) == 8.8
 
 
 def test_parse_layered_array():
@@ -43,12 +67,44 @@ def test_parse_layered_array():
 LAYERED
 CONSTANT 1.0
 INTERNAL FACTOR 1.0 IPRN 3
-1.2 3.7 9.3 4.2 2.2 9.9 1.0 
-3.3 4.9 7.3 7.5 8.2 8.7 6.6 
-4.5 5.7 2.2 1.1 1.7 6.7 6.9 
+1.2 3.7 9.3 4.2 2.2 9.9 1.0
+3.3 4.9 7.3 7.5 8.2 8.7 6.6
+4.5 5.7 2.2 1.1 1.7 6.7 6.9
 7.4 3.5 7.8 8.5 7.4 6.8 8.8
     """)
     print(tree.pretty())
+    assert len(tree.children) == 1
+    array = tree.children[0]
+    assert str(array.data) == "array"
+    layered_array = array.children[0]
+    assert str(layered_array.data) == "layered_array"
+    assert len(layered_array.children) == 4  # 2nd item is optional netcdf
+    layered = layered_array.children[0]
+    assert str(layered.data) == "layered"
+    layer1 = layered_array.children[-2]
+    assert str(layer1.data) == "readarray"
+    control1 = layer1.children[0]
+    assert str(control1.data) == "control"
+    constant = control1.children[0]
+    assert str(constant.data) == "constant"
+    assert str(constant.children[0].data) == "double"
+    assert float(constant.children[0].children[0]) == 1.0
+    layer2 = layered_array.children[-1]
+    assert str(layer2.data) == "readarray"
+    control2 = layer2.children[0]
+    assert str(control2.data) == "control"
+    internal = control2.children[0]
+    assert str(internal.data) == "internal"
+    factor = internal.children[0]
+    assert str(factor.data) == "factor"
+    assert float(factor.children[0].children[0]) == 1.0
+    iprn = internal.children[1]
+    assert str(iprn.data) == "iprn"
+    assert int(iprn.children[0].children[0]) == 3
+    data = layer2.children[1]
+    assert len(data.children) == 28
+    assert float(data.children[0].children[0]) == 1.2
+    assert float(data.children[-1].children[0]) == 8.8
 
 
 def test_parse_constant_array():
@@ -57,6 +113,19 @@ def test_parse_constant_array():
 CONSTANT 1.0
     """)
     print(tree.pretty())
+    assert len(tree.children) == 1
+    array = tree.children[0]
+    assert str(array.data) == "array"
+    single_array = array.children[0]
+    assert str(single_array.data) == "single_array"
+    readarray = single_array.children[-1]  # optional netcdf comes first
+    assert str(readarray.data) == "readarray"
+    control = readarray.children[0]
+    assert str(control.data) == "control"
+    constant = control.children[0]
+    assert str(constant.data) == "constant"
+    assert str(constant.children[0].data) == "double"
+    assert float(constant.children[0].children[0]) == 1.0
 
 
 def test_parse_external_array_no_quotation_marks():
@@ -65,6 +134,22 @@ def test_parse_external_array_no_quotation_marks():
 OPEN/CLOSE some.file
     """)
     print(tree.pretty())
+    assert len(tree.children) == 1
+    array = tree.children[0]
+    assert str(array.data) == "array"
+    single_array = array.children[0]
+    assert str(single_array.data) == "single_array"
+    readarray = single_array.children[-1]  # optional netcdf comes first
+    assert str(readarray.data) == "readarray"
+    control = readarray.children[0]
+    assert str(control.data) == "control"
+    external = control.children[0]
+    assert str(external.data) == "external"
+    filename = external.children[0]
+    assert str(filename.data) == "filename"
+    # there's an intermediate "word",
+    # TODO any way to get rid of it?
+    assert str(filename.children[0].children[0]) == "some.file"
 
 
 def test_parse_external_array_with_quotation_marks():
@@ -73,6 +158,20 @@ def test_parse_external_array_with_quotation_marks():
 OPEN/CLOSE "some.file"
     """)
     print(tree.pretty())
+    assert len(tree.children) == 1
+    array = tree.children[0]
+    assert str(array.data) == "array"
+    single_array = array.children[0]
+    assert str(single_array.data) == "single_array"
+    readarray = single_array.children[-1]
+    assert str(readarray.data) == "readarray"
+    control = readarray.children[0]
+    assert str(control.data) == "control"
+    external = control.children[0]
+    assert str(external.data) == "external"
+    filename = external.children[0]
+    assert str(filename.data) == "filename"
+    assert str(filename.children[0]) == '"some.file"'
 
 
 def test_transform_internal_array():
@@ -291,9 +390,12 @@ def test_parse_gwf_wel_file(model_workspace):
 def test_transform_gwf_ic_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF IC file into structured data."""
 
-    # Load the DFN for IC
-    dfns = load_flat(dfn_path)
-    ic_dfn = dfns["gwf-ic"]
+    # Load the DFN for IC and convert to V2
+    from modflow_devtools.dfn import MapV1To2
+
+    v1_dfns = load_flat(dfn_path)
+    mapper = MapV1To2()
+    ic_dfn = mapper.map(v1_dfns["gwf-ic"])
 
     # Find the IC file
     ic_files = list(model_workspace.rglob("*.ic"))
@@ -315,14 +417,21 @@ def test_transform_gwf_ic_file(model_workspace, dfn_path):
     assert "griddata" in result  # IC has griddata block
     assert "strt" in result["griddata"]  # Starting heads
 
+    # Check strt field exists (array transformation not fully implemented yet)
+    strt_data = result["griddata"]["strt"]
+    assert strt_data is not None
+
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
 def test_transform_gwf_wel_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF WEL file into structured data."""
 
-    # Load the DFN for WEL
-    dfns = load_flat(dfn_path)
-    wel_dfn = dfns["gwf-wel"]
+    # Load the DFN for WEL and convert to V2
+    from modflow_devtools.dfn import MapV1To2
+
+    v1_dfns = load_flat(dfn_path)
+    mapper = MapV1To2()
+    wel_dfn = mapper.map(v1_dfns["gwf-wel"])
 
     # Find the WEL file
     wel_files = list(model_workspace.rglob("*.wel"))
@@ -345,13 +454,117 @@ def test_transform_gwf_wel_file(model_workspace, dfn_path):
     # Check structure
     assert isinstance(result, dict)
 
+    # Check dimensions block
+    assert "dimensions" in result
+    assert result["dimensions"]["maxbound"] == 2
+
     # Should have a period 2 entry (indexed period blocks are flattened to "period N" keys)
     assert "period 2" in result
     assert "stress_period_data" in result["period 2"]
 
     # Should have 2 rows of data (MAXBOUND = 2)
-    assert len(result["period 2"]["stress_period_data"]) == 2
+    spd = result["period 2"]["stress_period_data"]
+    assert len(spd) == 2
 
     # Each row should have 4 values (cellid components + q value)
-    assert len(result["period 2"]["stress_period_data"][0]) == 4
-    assert len(result["period 2"]["stress_period_data"][1]) == 4
+    assert len(spd[0]) == 4
+    assert len(spd[1]) == 4
+
+    # Check specific values from the file
+    # First well: 2 3 4 -3.5e4
+    assert spd[0][0] == 2  # layer
+    assert spd[0][1] == 3  # row
+    assert spd[0][2] == 4  # col
+    assert spd[0][3] == -3.5e4  # q
+
+    # Second well: 2 8 4 -3.5e4
+    assert spd[1][0] == 2  # layer
+    assert spd[1][1] == 8  # row
+    assert spd[1][2] == 4  # col
+    assert spd[1][3] == -3.5e4  # q
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
+def test_parse_gwf_oc_file(model_workspace):
+    """Test parsing a GWF OC (output control) file from a real model."""
+    # Find the OC file in the model workspace
+    oc_files = list(model_workspace.rglob("*.oc"))
+    assert len(oc_files) > 0, "No OC files found in model workspace"
+
+    oc_file = oc_files[0]
+    parser = get_typed_parser("gwf-oc")
+
+    # Read and parse the file
+    with open(oc_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    assert tree is not None
+
+    # Basic structure checks
+    assert tree.data == "start"
+    assert len(tree.children) > 0  # Should have at least one block
+
+    # Should have blocks
+    blocks = [child for child in tree.children if child.data == "block"]
+    assert len(blocks) > 0
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
+def test_transform_gwf_oc_file(model_workspace, dfn_path):
+    """Test transforming a parsed GWF OC file into structured data."""
+
+    # Load the DFN for OC and convert to V2
+    from modflow_devtools.dfn import MapV1To2
+
+    v1_dfns = load_flat(dfn_path)
+    mapper = MapV1To2()
+    oc_dfn = mapper.map(v1_dfns["gwf-oc"])
+
+    # Find the OC file
+    oc_files = list(model_workspace.rglob("*.oc"))
+    assert len(oc_files) > 0
+
+    oc_file = oc_files[0]
+    parser = get_typed_parser("gwf-oc")
+    transformer = TypedTransformer(dfn=oc_dfn)
+
+    # Read, parse, and transform
+    with open(oc_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    result = transformer.transform(tree)
+
+    # Check structure
+    assert isinstance(result, dict)
+
+    # Check options block
+    assert "options" in result
+    options = result["options"]
+
+    # Should have budget and head fileout records
+    assert "budget_filerecord" in options
+    assert options["budget_filerecord"]["budgetfile"] == "ex-gwf-bcf2ss.cbc"
+
+    assert "head_filerecord" in options
+    assert options["head_filerecord"]["headfile"] == "ex-gwf-bcf2ss.hds"
+
+    # Check period 1 block
+    assert "period 1" in result
+    period_data = result["period 1"]
+
+    # Should have saverecord list with HEAD and BUDGET saves
+    assert "saverecord" in period_data
+    save_records = period_data["saverecord"]
+    assert len(save_records) == 2
+
+    # Check that HEAD and BUDGET are both saved with ALL frequency
+    rtypes = [rec["rtype"] for rec in save_records]
+    assert "HEAD" in rtypes
+    assert "BUDGET" in rtypes
+
+    # Check that all records use ALL frequency
+    for rec in save_records:
+        assert "ocsetting" in rec
+        assert rec["ocsetting"] == "all"
