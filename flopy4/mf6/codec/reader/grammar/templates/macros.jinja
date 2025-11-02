@@ -1,12 +1,12 @@
 {# Field rendering macros #}
 
 {% macro record_field(field_name, field) -%}
-{{ field_name }}: {% for child_name, child in field.children.items() -%}
+{{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
 {%- set child_type = child|record_child_type -%}
 {%- if child.type == 'keyword' -%}
 "{{ child.name }}"i
 {%- elif child.type == 'union' -%}
-{{ child_name }}
+{{ child_name|to_rule_name }}
 {%- else -%}
 {{ child_type }}
 {%- endif -%}
@@ -15,12 +15,12 @@
 {%- endmacro %}
 
 {% macro union_field(field_name, field) -%}
-{{ field_name }}: {% for child_name, child in field.children.items() -%}
-{{ field_name }}_{{ child_name }}
+{{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
+{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}
 {%- if not loop.last %} | {% endif -%}
 {%- endfor %}
 {% for child_name, child in field.children.items() -%}
-{{ field_name }}_{{ child_name }}: {% if child.type == 'keyword' -%}
+{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
 "{{ child.name }}"i
 {%- else -%}
 "{{ child.name }}"i {{ child.type }}
@@ -29,17 +29,17 @@
 {%- endmacro %}
 
 {% macro simple_field(field_name, field, field_type) -%}
-{{ field_name }}: "{{ field.name }}"i {{ field_type }}
+{{ field_name|to_rule_name }}: "{{ field.name }}"i {{ field_type }}
 {%- endmacro %}
 
 {% macro nested_union(child_name, child) -%}
-{{ child_name }}: {% for opt_name, opt in child.children.items() -%}
-{{ child_name }}_{{ opt_name }}
+{{ child_name|to_rule_name }}: {% for opt_name, opt in child.children.items() -%}
+{{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}
 {%- if not loop.last %} | {% endif -%}
 {%- endfor %}
 
 {% for opt_name, opt in child.children.items() -%}
-{{ child_name }}_{{ opt_name }}: {% if opt.type == 'keyword' -%}
+{{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}: {% if opt.type == 'keyword' -%}
 "{{ opt.name }}"i
 {%- else -%}
 "{{ opt.name }}"i {{ opt.type }}{% if opt.shape %}+{% endif %}
@@ -61,12 +61,12 @@
 {%- macro field_list(block_name, fields, recarray_name) -%}
 {%- if recarray_name -%}
 {{ block_name }}_fields: (
-{%- for field_name in fields %}{{ field_name }} | {% endfor -%}
+{%- for field_name in fields %}{{ field_name|to_rule_name }} | {% endfor -%}
 {{ recarray_name }})*
 {%- else -%}
 {{ block_name }}_fields: (
 {%- for field_name in fields %}
-{{- field_name }}{% if not loop.last %} | {% endif %}
+{{- field_name|to_rule_name }}{% if not loop.last %} | {% endif %}
 {%- endfor -%}
 )*
 {%- endif -%}

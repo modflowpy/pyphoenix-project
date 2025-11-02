@@ -22,7 +22,7 @@ period_block: "begin"i "period"i block_index period_fields "end"i "period"i bloc
 block_index: integer
 options_fields: (save_flows | storagecoefficient | ss_confined_only | tvs_filerecord | export_array_ascii | export_array_netcdf | dev_original_specific_storage | dev_oldstorageformulation)*
 griddata_fields: (iconvert | ss | sy)*
-period_fields: (steady-state | transient)*
+period_fields: (steady_state | transient)*
 save_flows: "save_flows"i 
 storagecoefficient: "storagecoefficient"i 
 ss_confined_only: "ss_confined_only"i 
@@ -34,5 +34,5 @@ dev_oldstorageformulation: "dev_oldstorageformulation"i
 iconvert: "iconvert"i array
 ss: "ss"i array
 sy: "sy"i array
-steady-state: "steady-state"i 
+steady_state: "steady-state"i 
 transient: "transient"i 

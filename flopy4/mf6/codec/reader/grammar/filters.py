@@ -77,3 +77,11 @@ def get_recarray_name(block_name: str) -> str:
     if block_name == "period":
         return "stress_period_data"
     return f"{block_name}data"
+
+
+def to_rule_name(name: str) -> str:
+    """Convert a field name to a valid Lark rule name.
+
+    Lark rule names must not contain hyphens, so we replace them with underscores.
+    """
+    return name.replace("-", "_")
