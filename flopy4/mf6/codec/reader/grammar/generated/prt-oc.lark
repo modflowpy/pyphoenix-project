@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -24,10 +25,10 @@ options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | t
 dimensions_fields: (ntracktimes)*
 period_fields: (saverecord | printrecord)*
 tracktimes_fields: (tracktimes)*
-budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "fileout"i "budgetcsv"i string
-track_filerecord: "fileout"i "track"i string
-trackcsv_filerecord: "fileout"i "trackcsv"i string
+budget_filerecord: "budget"i "fileout"i word
+budgetcsv_filerecord: "budgetcsv"i "fileout"i word
+track_filerecord: "track"i "fileout"i word
+trackcsv_filerecord: "trackcsv"i "fileout"i word
 track_release: "track_release"i 
 track_exit: "track_exit"i 
 track_subfeature_exit: "track_subfeature_exit"i 
@@ -37,9 +38,16 @@ track_weaksink: "track_weaksink"i
 track_usertime: "track_usertime"i 
 track_dropped: "track_dropped"i 
 track_timesrecord: "track_times"i double
-track_timesfilerecord: "track_timesfile"i string
+track_timesfilerecord: "track_timesfile"i word
 dev_dump_event_trace: "dev_dump_event_trace"i 
 ntracktimes: "ntracktimes"i integer
-saverecord: "save"i string keystring
-printrecord: "print"i string keystring
-tracktimes: "tracktimes"i recarray
+saverecord: "save"i word ocsetting
+printrecord: "print"i word ocsetting
+tracktimes: "tracktimes"i list
+ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
+ocsetting_all: "all"i
+ocsetting_first: "first"i
+ocsetting_last: "last"i
+ocsetting_frequency: "frequency"i integer
+ocsetting_steps: "steps"i integer+
+

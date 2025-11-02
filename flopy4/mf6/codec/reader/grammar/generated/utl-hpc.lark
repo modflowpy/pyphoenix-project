@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -21,4 +22,4 @@ options_fields: (print_table | dev_log_mpi)*
 partitions_fields: (partitions)*
 print_table: "print_table"i 
 dev_log_mpi: "dev_log_mpi"i 
-partitions: "partitions"i recarray
+partitions: "partitions"i list

@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -25,7 +26,7 @@ period_fields: (steady-state | transient)*
 save_flows: "save_flows"i 
 storagecoefficient: "storagecoefficient"i 
 ss_confined_only: "ss_confined_only"i 
-tvs_filerecord: "tvs6"i "filein"i string
+tvs_filerecord: "tvs6"i "filein"i word
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 dev_original_specific_storage: "dev_original_specific_storage"i 

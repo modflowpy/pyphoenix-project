@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -19,12 +20,12 @@ attributes_block: "begin"i "attributes"i attributes_fields "end"i "attributes"i
 timeseries_block: "begin"i "timeseries"i timeseries_fields "end"i "timeseries"i
 attributes_fields: (time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | method | interpolation_method_single | sfacrecord | sfacrecord_single | sfac)*
 timeseries_fields: (timeseries)*
-time_series_namerecord: "names"i string
-interpolation_methodrecord: "methods"i string
+time_series_namerecord: "names"i word
+interpolation_methodrecord: "methods"i word
 interpolation_methodrecord_single: 
 method: "method"i 
 interpolation_method_single: "interpolation_method_single"i string
 sfacrecord: "sfacs"i double
 sfacrecord_single: double
 sfac: "sfac"i 
-timeseries: "timeseries"i recarray
+timeseries: "timeseries"i list

@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -21,9 +22,9 @@ options_fields: (print_option | complexity | csv_output_filerecord | csv_outer_o
 nonlinear_fields: (outer_maximum)*
 print_option: "print_option"i string
 complexity: "complexity"i string
-csv_output_filerecord: "csv_output"i string "fileout"i
-csv_outer_output_filerecord: "csv_outer_output"i "fileout"i string
-csv_inner_output_filerecord: "fileout"i "csv_inner_output"i string
-no_ptcrecord: "no_ptc"i string
+csv_output_filerecord: "csv_output"i "fileout"i word
+csv_outer_output_filerecord: "csv_outer_output"i "fileout"i word
+csv_inner_output_filerecord: "csv_inner_output"i "fileout"i word
+no_ptcrecord: "no_ptc"i word
 ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double
 outer_maximum: "outer_maximum"i integer

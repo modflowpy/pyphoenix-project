@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -26,4 +27,4 @@ print_flows: "print_flows"i
 explicit: "explicit"i 
 numgnc: "numgnc"i integer
 numalphaj: "numalphaj"i integer
-gncdata: "gncdata"i recarray
+gncdata: "gncdata"i list

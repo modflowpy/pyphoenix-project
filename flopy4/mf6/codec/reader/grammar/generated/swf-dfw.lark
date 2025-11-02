@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -25,7 +26,7 @@ time_conversion: "time_conversion"i double
 save_flows: "save_flows"i 
 print_flows: "print_flows"i 
 save_velocity: "save_velocity"i 
-obs_filerecord: "obs6"i "filein"i string
+obs_filerecord: "obs6"i "filein"i word
 export_array_ascii: "export_array_ascii"i 
 dev_swr_conductance: "dev_swr_conductance"i 
 manningsn: "manningsn"i array

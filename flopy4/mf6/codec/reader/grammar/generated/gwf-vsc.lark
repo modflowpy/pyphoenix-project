@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -27,6 +28,6 @@ thermal_formulation: "thermal_formulation"i string
 thermal_a2: "thermal_a2"i double
 thermal_a3: "thermal_a3"i double
 thermal_a4: "thermal_a4"i double
-viscosity_filerecord: "viscosity"i "fileout"i string
+viscosity_filerecord: "viscosity"i "fileout"i word
 nviscspecies: "nviscspecies"i integer
-packagedata: "packagedata"i recarray
+packagedata: "packagedata"i list

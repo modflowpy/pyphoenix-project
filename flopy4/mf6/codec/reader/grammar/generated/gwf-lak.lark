@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -28,7 +29,7 @@ period_fields: ()*
 tables_fields: (tables)*
 connectiondata_fields: (connectiondata)*
 outlets_fields: (outlets)*
-obs_filerecord: "obs6"i string
+obs_filerecord: "obs6"i word
 mover: "mover"i 
 surfdep: "surfdep"i double
 maximum_iterations: "maximum_iterations"i integer
@@ -38,6 +39,6 @@ length_conversion: "length_conversion"i double
 nlakes: "nlakes"i integer
 noutlets: "noutlets"i integer
 ntables: "ntables"i integer
-tables: "tables"i recarray
-connectiondata: "connectiondata"i recarray
-outlets: "outlets"i recarray
+tables: "tables"i list
+connectiondata: "connectiondata"i list
+outlets: "outlets"i list

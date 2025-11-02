@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -20,4 +21,4 @@ perioddata_block: "begin"i "perioddata"i perioddata_fields "end"i "perioddata"i
 dimensions_fields: (maxats)*
 perioddata_fields: (perioddata)*
 maxats: "maxats"i integer
-perioddata: "perioddata"i recarray
+perioddata: "perioddata"i list

@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -23,14 +24,14 @@ dimensions_fields: (nlay | nrow | ncol)*
 griddata_fields: (delr | delc | top | botm | idomain)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
-grb_filerecord: "grb6"i "fileout"i string
+grb_filerecord: "grb6"i "fileout"i word
 xorigin: "xorigin"i double
 yorigin: "yorigin"i double
 angrot: "angrot"i double
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 crs: "crs"i array
-ncf_filerecord: "ncf6"i "filein"i string
+ncf_filerecord: "ncf6"i "filein"i word
 nlay: "nlay"i integer
 nrow: "nrow"i integer
 ncol: "ncol"i integer

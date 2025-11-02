@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -23,7 +24,7 @@ dimensions_fields: (nrow | ncol)*
 griddata_fields: (delr | delc | bottom | idomain)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
-grb_filerecord: "grb6"i "fileout"i string
+grb_filerecord: "grb6"i "fileout"i word
 xorigin: "xorigin"i double
 yorigin: "yorigin"i double
 angrot: "angrot"i double

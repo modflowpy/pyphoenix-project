@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -29,17 +30,17 @@ print_input: "print_input"i
 print_head: "print_head"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-head_filerecord: "head"i string "fileout"i
-budget_filerecord: "budget"i "fileout"i string
-budgetcsv_filerecord: "fileout"i "budgetcsv"i string
+head_filerecord: "head"i "fileout"i word
+budget_filerecord: "budget"i "fileout"i word
+budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 no_well_storage: "no_well_storage"i 
 flow_correction: "flow_correction"i 
 flowing_wells: "flowing_wells"i 
 shutdown_theta: "shutdown_theta"i double
 shutdown_kappa: "shutdown_kappa"i double
-mfrcsv_filerecord: "fileout"i "maw_flow_reduce_csv"i string
-ts_filerecord: "ts6"i "filein"i string
-obs_filerecord: "filein"i "obs6"i string
+mfrcsv_filerecord: "maw_flow_reduce_csv"i "fileout"i word
+ts_filerecord: "ts6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 
 nmawwells: "nmawwells"i integer
-connectiondata: "connectiondata"i recarray
+connectiondata: "connectiondata"i list

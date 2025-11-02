@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -26,5 +27,5 @@ crosssectiondata_fields: (crosssectiondata)*
 print_input: "print_input"i 
 nsections: "nsections"i integer
 npoints: "npoints"i integer
-packagedata: "packagedata"i recarray
-crosssectiondata: "crosssectiondata"i recarray
+packagedata: "packagedata"i list
+crosssectiondata: "crosssectiondata"i list

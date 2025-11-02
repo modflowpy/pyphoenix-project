@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -23,7 +24,7 @@ save_flows: "save_flows"i
 first_order_decay: "first_order_decay"i 
 zero_order_decay: "zero_order_decay"i 
 sorption: "sorption"i string
-sorbate_filerecord: "sorbate"i "fileout"i string
+sorbate_filerecord: "sorbate"i "fileout"i word
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
 porosity: "porosity"i array

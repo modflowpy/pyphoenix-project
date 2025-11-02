@@ -4,6 +4,7 @@
 %import typed.double -> double
 %import typed.number -> number
 %import typed.string -> string
+%import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
 %import typed.NEWLINE -> NEWLINE
@@ -21,4 +22,4 @@ options_fields: (digits | print_input)*
 continuous_fields: (continuous)*
 digits: "digits"i integer
 print_input: "print_input"i 
-continuous: "continuous"i recarray
+continuous: "continuous"i list
