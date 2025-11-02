@@ -24,6 +24,14 @@ class BasicTransformer(Transformer):
     grammar. Yields blocks simply as collections of lines of tokens.
     """
 
+    def __getattr__(self, name):
+        """Handle typed__ prefixed methods by delegating to the unprefixed version."""
+        if name.startswith("typed__"):
+            unprefixed = name[7:]  # Remove "typed__" prefix
+            if hasattr(self, unprefixed):
+                return getattr(self, unprefixed)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     def start(self, items: list[Any]) -> dict[str, Any]:
         blocks = {}
         for item in items:
@@ -71,6 +79,14 @@ class TypedTransformer(Transformer):
         self.fields = dfn.fields if dfn else None
         # Create a flattened fields dict that includes nested fields
         self._flat_fields = self._flatten_fields(self.fields) if self.fields else None
+
+    def __getattr__(self, name):
+        """Handle typed__ prefixed methods by delegating to the unprefixed version."""
+        if name.startswith("typed__"):
+            unprefixed = name[7:]  # Remove "typed__" prefix
+            if hasattr(self, unprefixed):
+                return getattr(self, unprefixed)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def _flatten_fields(self, fields: dict) -> dict:
         """Recursively flatten fields dict to include children of records and unions."""
@@ -181,7 +197,13 @@ class TypedTransformer(Transformer):
         return Path(items[0].strip("\"'"))
 
     def string(self, items: list[Any]) -> str:
-        return items[0].strip("\"'")
+        # String can be either a token or a tree (word)
+        value = items[0]
+        if hasattr(value, "strip"):
+            return value.strip("\"'")
+        else:
+            # It's a tree, extract the token value
+            return str(value.children[0]) if hasattr(value, "children") else str(value)
 
     def simple_string(self, items: list[Any]) -> str:
         """Handle simple string (unquoted word or escaped string)."""
@@ -321,7 +343,12 @@ class TypedTransformer(Transformer):
                     else:
                         # Non-keyword alternatives return the transformed children
                         return children[0] if len(children) == 1 else children
-        if (field := self._flat_fields.get(data, None)) is not None:
+        # Try to find the field, checking with underscore replacement for hyphens
+        field = self._flat_fields.get(data, None)
+        if field is None and "-" in data:
+            # Try with hyphens instead of underscores (reverse of to_rule_name)
+            field = self._flat_fields.get(data.replace("_", "-"), None)
+        if field is not None:
             if field.type == "keyword":
                 return data, True
             elif field.type == "record" and hasattr(field, "children") and field.children:

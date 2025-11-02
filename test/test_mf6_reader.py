@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import xarray as xr
 from lark import Lark
-from modflow_devtools.dfn import Dfn, load_flat
+from modflow_devtools.dfn import Dfn, MapV1To2, load_flat
 from modflow_devtools.models import get_models
 from packaging.version import Version
 
@@ -417,9 +417,15 @@ def test_transform_gwf_ic_file(model_workspace, dfn_path):
     assert "griddata" in result  # IC has griddata block
     assert "strt" in result["griddata"]  # Starting heads
 
-    # Check strt field exists (array transformation not fully implemented yet)
-    strt_data = result["griddata"]["strt"]
-    assert strt_data is not None
+    # Check strt array structure
+    strt = result["griddata"]["strt"]
+    assert "control" in strt
+    assert "data" in strt
+    assert strt["control"]["type"] in ["constant", "internal", "external"]
+
+    # If internal or constant, should have data
+    if strt["control"]["type"] in ["constant", "internal"]:
+        assert strt["data"] is not None
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
@@ -568,3 +574,142 @@ def test_transform_gwf_oc_file(model_workspace, dfn_path):
     for rec in save_records:
         assert "ocsetting" in rec
         assert rec["ocsetting"] == "all"
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
+def test_transform_gwf_dis_file(model_workspace, dfn_path):
+    """Test transforming a parsed GWF DIS file into structured data."""
+
+    # Load the DFN for DIS and convert to V2
+    v1_dfns = load_flat(dfn_path)
+    mapper = MapV1To2()
+    dis_dfn = mapper.map(v1_dfns["gwf-dis"])
+
+    # Find the DIS file
+    dis_files = list(model_workspace.rglob("*.dis"))
+    assert len(dis_files) > 0
+
+    dis_file = dis_files[0]
+    parser = get_typed_parser("gwf-dis")
+    transformer = TypedTransformer(dfn=dis_dfn)
+
+    # Read, parse, and transform
+    with open(dis_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    result = transformer.transform(tree)
+
+    # Check structure
+    assert isinstance(result, dict)
+
+    # Check dimensions block
+    assert "dimensions" in result
+    assert "nlay" in result["dimensions"]
+    assert "nrow" in result["dimensions"]
+    assert "ncol" in result["dimensions"]
+    assert result["dimensions"]["nlay"] > 0
+    assert result["dimensions"]["nrow"] > 0
+    assert result["dimensions"]["ncol"] > 0
+
+    # Check griddata block
+    assert "griddata" in result
+    griddata = result["griddata"]
+    assert "delr" in griddata
+    assert "delc" in griddata
+    assert "top" in griddata
+    assert "botm" in griddata
+
+    # Each array should have control and data
+    assert "control" in griddata["delr"]
+    assert "data" in griddata["delr"]
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
+def test_transform_gwf_npf_file(model_workspace, dfn_path):
+    """Test transforming a parsed GWF NPF file into structured data."""
+
+    # Load the DFN for NPF and convert to V2
+    v1_dfns = load_flat(dfn_path)
+    mapper = MapV1To2()
+    npf_dfn = mapper.map(v1_dfns["gwf-npf"])
+
+    # Find the NPF file
+    npf_files = list(model_workspace.rglob("*.npf"))
+    assert len(npf_files) > 0
+
+    npf_file = npf_files[0]
+    parser = get_typed_parser("gwf-npf")
+    transformer = TypedTransformer(dfn=npf_dfn)
+
+    # Read, parse, and transform
+    with open(npf_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    result = transformer.transform(tree)
+
+    # Check structure
+    assert isinstance(result, dict)
+
+    # Check options block
+    assert "options" in result
+    options = result["options"]
+
+    # Should have save_specific_discharge option
+    assert "save_specific_discharge" in options
+    assert options["save_specific_discharge"] is True
+
+    # Check griddata block
+    assert "griddata" in result
+    griddata = result["griddata"]
+
+    # NPF should have at least icelltype and k
+    assert "icelltype" in griddata
+    assert "k" in griddata
+
+    # Each array should have control and data
+    assert "control" in griddata["icelltype"]
+    assert "data" in griddata["icelltype"]
+    assert "control" in griddata["k"]
+    assert "data" in griddata["k"]
+
+
+@pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
+def test_transform_gwf_sto_file(model_workspace, dfn_path):
+    """Test transforming a parsed GWF STO file into structured data."""
+
+    # Load the DFN for STO and convert to V2
+    v1_dfns = load_flat(dfn_path)
+    mapper = MapV1To2()
+    sto_dfn = mapper.map(v1_dfns["gwf-sto"])
+
+    # Find the STO file
+    sto_files = list(model_workspace.rglob("*.sto"))
+
+    # Skip if no STO files (not all models have storage)
+    if len(sto_files) == 0:
+        pytest.skip("No STO files found in this model")
+
+    sto_file = sto_files[0]
+    parser = get_typed_parser("gwf-sto")
+    transformer = TypedTransformer(dfn=sto_dfn)
+
+    # Read, parse, and transform
+    with open(sto_file, "r") as f:
+        content = f.read()
+
+    tree = parser.parse(content)
+    result = transformer.transform(tree)
+
+    # Check structure
+    assert isinstance(result, dict)
+
+    # Check griddata block
+    assert "griddata" in result
+    griddata = result["griddata"]
+
+    # STO should have iconvert
+    assert "iconvert" in griddata
+    assert "control" in griddata["iconvert"]
+    assert "data" in griddata["iconvert"]

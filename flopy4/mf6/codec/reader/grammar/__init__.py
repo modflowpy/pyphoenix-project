@@ -17,6 +17,7 @@ def _get_template_env():
     )
     env.filters["field_type"] = filters.field_type
     env.filters["record_child_type"] = filters.record_child_type
+    env.filters["to_rule_name"] = filters.to_rule_name
     return env
 
 
