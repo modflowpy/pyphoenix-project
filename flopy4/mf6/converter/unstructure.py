@@ -91,13 +91,17 @@ def _hack_structured_grid_dims(
 
 
 def _hack_period_non_numeric(name: str, value: xr.DataArray) -> tuple[str, dict[int, str]]:
+    fname = ""
+    data = {}
     match value.dtype:
         case np.bool:
+            fname = name
             data = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
-            return name, data
         case np.dtypes.StringDType():
+            fname = name.replace("_", " ")
             data = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
-            return name.replace("_", " "), data
+
+    return fname, data
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
