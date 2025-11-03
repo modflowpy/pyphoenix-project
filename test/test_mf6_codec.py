@@ -57,6 +57,28 @@ def test_dumps_ic():
     pprint(loaded)
 
 
+def test_dumps_sto():
+    from flopy4.mf6.gwf import Dis, Gwf, Sto
+
+    dis = Dis()
+    gwf = Gwf(dis=dis)
+    sto = Sto(
+        dims={"nper": 3},
+        parent=gwf,
+        steady_state=[False, True, False],
+        transient=[True, False, True],
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(sto))
+    print("STO dump:")
+    print(dumped)
+    assert dumped
+
+    loaded = loads(dumped)
+    print("STO load:")
+    pprint(loaded)
+
+
 @pytest.mark.xfail(reason="nested type unstructuring not yet supported")
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc

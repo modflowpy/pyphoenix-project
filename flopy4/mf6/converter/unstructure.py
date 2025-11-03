@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import xarray as xr
 import xattree
 from modflow_devtools.dfn.schema.block import block_sort_key
@@ -89,6 +90,16 @@ def _hack_structured_grid_dims(
     )
 
 
+def _hack_period_non_numeric(name, value) -> dict:
+    match value.dtype:
+        case np.bool:
+            data = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
+            return name, data
+        case np.dtypes.StringDType():
+            data = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
+            return name.replace("_", " "), data
+
+
 def unstructure_component(value: Component) -> dict[str, Any]:
     blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
     blocks: dict[str, dict[str, Any]] = {}
@@ -157,10 +168,14 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                             structured_grid_dims=value.parent.data.dims,  # type: ignore
                         )
                     if block_name == "period":
-                        period_data[field_name] = {
-                            kper: field_value.isel(nper=kper)
-                            for kper in range(field_value.sizes["nper"])
-                        }
+                        if not np.issubdtype(field_value.dtype, np.number):
+                            n, v = _hack_period_non_numeric(field_name, field_value)
+                            period_data[n] = v
+                        else:
+                            period_data[field_name] = {
+                                kper: field_value.isel(nper=kper)
+                                for kper in range(field_value.sizes["nper"])
+                            }
                     else:
                         blocks[block_name][field_name] = field_value
 
@@ -174,11 +189,19 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                     period_blocks[kper] = {}
                 period_blocks[kper][arr_name] = arr
 
+        # sort kper order
+        period_blocks = dict(sorted(period_blocks.items()))
+
         # setup indexed period blocks, combine arrays into datasets
         for kper, block in period_blocks.items():
-            blocks[f"period {kper + 1}"] = {
-                "period": xr.Dataset(block, coords=block[arr_name].coords)
-            }
+            arr_name = list(block.keys())[0]
+            match block[arr_name]:
+                case str():
+                    blocks[f"period {kper + 1}"] = {arr_name: block[arr_name]}
+                case xr.DataArray():
+                    blocks[f"period {kper + 1}"] = {
+                        "period": xr.Dataset(block, coords=block[arr_name].coords)
+                    }
 
         # combine "perioddata" block arrays (tdis, ats) into datasets
         # so they render as lists. temp hack TODO do this generically
