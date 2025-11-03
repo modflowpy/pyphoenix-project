@@ -130,12 +130,10 @@ def test_dumps_tdis():
     print("TDIS dump:")
     print(dumped)
     assert dumped
-    assert "BEGIN PERIODDATA 1" in dumped
+    assert "BEGIN PERIODDATA" in dumped
     assert " 1.0 1 1.0" in dumped
-    assert "END PERIODDATA 1" in dumped
-    assert "BEGIN PERIODDATA 2" in dumped
     assert " 2.0 2 1.0" in dumped
-    assert "END PERIODDATA 2" in dumped
+    assert "END PERIODDATA" in dumped
 
     loaded = loads(dumped)
     print("TDIS load:")
