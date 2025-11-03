@@ -156,8 +156,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                             field_value,
                             structured_grid_dims=value.parent.data.dims,  # type: ignore
                         )
-                    if "period" in block_name:
-                        period_block_name = block_name
+                    if block_name == "period":
                         period_data[field_name] = {
                             kper: field_value.isel(nper=kper)
                             for kper in range(field_value.sizes["nper"])
@@ -177,10 +176,14 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         # setup indexed period blocks, combine arrays into datasets
         for kper, block in period_blocks.items():
-            assert isinstance(period_block_name, str)
-            blocks[f"{period_block_name} {kper + 1}"] = {
-                period_block_name: xr.Dataset(block, coords=block[arr_name].coords)
+            blocks[f"period {kper + 1}"] = {
+                "period": xr.Dataset(block, coords=block[arr_name].coords)
             }
+
+        # combine "perioddata" block arrays (tdis, ats) into datasets
+        # so they render as lists. temp hack TODO do this generically
+        if perioddata := blocks.get("perioddata", None):
+            blocks["perioddata"] = {"perioddata": xr.Dataset(perioddata)}
 
     # total temporary hack! manually set solutiongroup 1.
     # TODO still need to support multiple..
@@ -189,4 +192,4 @@ def unstructure_component(value: Component) -> dict[str, Any]:
         blocks["solutiongroup 1"] = sg
         del blocks["solutiongroup"]
 
-    return {name: block for name, block in blocks.items() if name != period_block_name}
+    return {name: block for name, block in blocks.items() if name != "period"}
