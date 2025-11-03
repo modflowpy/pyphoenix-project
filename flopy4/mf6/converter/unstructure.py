@@ -90,7 +90,7 @@ def _hack_structured_grid_dims(
     )
 
 
-def _hack_period_non_numeric(name, value) -> dict:
+def _hack_period_non_numeric(name: str, value: xr.DataArray) -> tuple[str, dict[int, str]]:
     match value.dtype:
         case np.bool:
             data = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
