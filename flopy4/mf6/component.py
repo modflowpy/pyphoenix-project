@@ -195,3 +195,6 @@ class Component(ABC, MutableMapping):
                 for field_name in spec.keys()
                 if spec[field_name].block or not strict
             }
+
+    def to_xarray(self):
+        return self.data.dataset  # type: ignore

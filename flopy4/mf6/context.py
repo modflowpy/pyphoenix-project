@@ -34,3 +34,6 @@ class Context(Component, ABC):
     def write(self, format=MF6):
         with cd(self.workspace):
             super().write(format=format)
+
+    def to_xarray(self):
+        return self.data  # type: ignore
