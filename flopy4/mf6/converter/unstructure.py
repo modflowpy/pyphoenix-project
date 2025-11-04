@@ -90,18 +90,31 @@ def _hack_structured_grid_dims(
     )
 
 
-def _hack_period_non_numeric(name: str, value: xr.DataArray) -> tuple[str, dict[int, str]]:
+def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
+    from flopy4.mf6.gwf import Oc
+
     fname = ""
     data = {}
     match value.dtype:
         case np.bool:
-            fname = name
-            data = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
+            fname = name  # type: ignore
+            dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
+            data[fname] = dat
         case np.dtypes.StringDType():
             fname = name.replace("_", " ")
-            data = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
+            dat = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
+            data[fname] = dat
+        case object():
+            if isinstance(value.values[0], Oc.PrintSaveSetting):
+                for rec in value.values[0].printrecord:
+                    if rec.steps.all:
+                        dat = {kper: "all" for kper in range(value.sizes["nper"])}
+                        key = f"PRINT {rec.rtype}"
+                        data[key] = dat
+                # for rec in value.values[0].saverecord:
+                #    print("SaveRecord")
 
-    return fname, data
+    return data
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
@@ -173,11 +186,12 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                         )
                     if block_name == "period":
                         if not np.issubdtype(field_value.dtype, np.number):
-                            n, v = _hack_period_non_numeric(field_name, field_value)
-                            period_data[n] = v
+                            dat = _hack_period_non_numeric(field_name, field_value)
+                            for n, v in dat.items():
+                                period_data[n] = v
                         else:
                             period_data[field_name] = {
-                                kper: field_value.isel(nper=kper)
+                                kper: field_value.isel(nper=kper)  # type: ignore
                                 for kper in range(field_value.sizes["nper"])
                             }
                     else:
@@ -195,17 +209,19 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         # sort kper order
         period_blocks = dict(sorted(period_blocks.items()))
+        print(period_blocks)
 
         # setup indexed period blocks, combine arrays into datasets
         for kper, block in period_blocks.items():
-            arr_name = list(block.keys())[0]
-            match block[arr_name]:
-                case str():
-                    blocks[f"period {kper + 1}"] = {arr_name: block[arr_name]}
-                case xr.DataArray():
-                    blocks[f"period {kper + 1}"] = {
-                        "period": xr.Dataset(block, coords=block[arr_name].coords)
-                    }
+            blocks[f"period {kper + 1}"] = {}
+            for arr_name, val in block.items():
+                match block[arr_name]:
+                    case str():
+                        blocks[f"period {kper + 1}"][arr_name] = val
+                    case xr.DataArray():
+                        blocks[f"period {kper + 1}"]["period"] = xr.Dataset(
+                            block, coords=block[arr_name].coords
+                        )
 
         # combine "perioddata" block arrays (tdis, ats) into datasets
         # so they render as lists. temp hack TODO do this generically

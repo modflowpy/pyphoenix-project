@@ -2,8 +2,6 @@
 
 from pprint import pprint
 
-import pytest
-
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
@@ -79,7 +77,6 @@ def test_dumps_sto():
     pprint(loaded)
 
 
-@pytest.mark.xfail(reason="nested type unstructuring not yet supported")
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc
 
@@ -102,10 +99,10 @@ def test_dumps_oc():
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
     print("OC dump:")
     print(dumped)
-    assert "save head all" in dumped
-    assert "save budget all" in dumped
-    assert "print head all" in dumped
-    assert "print budget all" in dumped
+    assert "SAVE HEAD all" in dumped
+    assert "SAVE BUDGET all" in dumped
+    assert "PRINT HEAD all" in dumped
+    assert "PRINT BUDGET all" in dumped
     assert dumped
 
     loaded = loads(dumped)
