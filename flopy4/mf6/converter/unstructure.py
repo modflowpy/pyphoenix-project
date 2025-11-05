@@ -93,26 +93,53 @@ def _hack_structured_grid_dims(
 def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
     from flopy4.mf6.gwf import Oc
 
-    fname = ""
+    def oc_setting_data(rec, action):
+        dat = {}
+        if rec.steps.first:
+            dat = {kper: "first" for kper in range(value.sizes["nper"])}
+            key = f"{action} {rec.rtype}"
+            data[key] = dat
+        elif rec.steps.last:
+            dat = {kper: "last" for kper in range(value.sizes["nper"])}
+            key = f"{action} {rec.rtype}"
+            data[key] = dat
+        elif rec.steps.steps:
+            steps = " ".join(str(x - 1) for x in rec.steps.steps)
+            dat = {kper: f"steps {steps}" for kper in range(value.sizes["nper"])}
+            key = f"{action} {rec.rtype}"
+            data[key] = dat
+        elif rec.steps.all:
+            # check last as this defaults to True
+            dat = {kper: "all" for kper in range(value.sizes["nper"])}
+            key = f"{action} {rec.rtype}"
+            data[key] = dat
+        return dat
+
     data = {}
     match value.dtype:
         case np.bool:
-            fname = name  # type: ignore
-            dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
-            data[fname] = dat
+            dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}  # type: ignore
+            data[name] = dat
         case np.dtypes.StringDType():
             fname = name.replace("_", " ")
             dat = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
             data[fname] = dat
         case object():
             if isinstance(value.values[0], Oc.PrintSaveSetting):
-                for rec in value.values[0].printrecord:
-                    if rec.steps.all:
-                        dat = {kper: "all" for kper in range(value.sizes["nper"])}
-                        key = f"PRINT {rec.rtype}"
-                        data[key] = dat
-                # for rec in value.values[0].saverecord:
-                #    print("SaveRecord")
+                if hasattr(value.values[0], "printrecord") and isinstance(
+                    value.values[0].printrecord, list
+                ):
+                    action = "PRINT"
+                    for rec in value.values[0].printrecord:
+                        key = f"{action} {rec.rtype}"
+                        data[key] = oc_setting_data(rec, action)
+                if hasattr(value.values[0], "saverecord") and isinstance(
+                    value.values[0].saverecord, list
+                ):
+                    action = "SAVE"
+                    for rec in value.values[0].saverecord:  # type: ignore
+                        key = f"{action} {rec.rtype}"
+                        data[key] = oc_setting_data(rec, action)
 
     return data
 
@@ -209,7 +236,6 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         # sort kper order
         period_blocks = dict(sorted(period_blocks.items()))
-        print(period_blocks)
 
         # setup indexed period blocks, combine arrays into datasets
         for kper, block in period_blocks.items():

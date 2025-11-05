@@ -70,6 +70,9 @@ def test_dumps_sto():
     dumped = dumps(COMPONENT_CONVERTER.unstructure(sto))
     print("STO dump:")
     print(dumped)
+    assert "BEGIN PERIOD 1\n TRANSIENT" in dumped
+    assert "BEGIN PERIOD 2\n STEADY_STATE" in dumped
+    assert "BEGIN PERIOD 3\n TRANSIENT" in dumped
     assert dumped
 
     loaded = loads(dumped)
@@ -103,6 +106,44 @@ def test_dumps_oc():
     assert "SAVE BUDGET all" in dumped
     assert "PRINT HEAD all" in dumped
     assert "PRINT BUDGET all" in dumped
+    assert dumped
+
+    loaded = loads(dumped)
+    print("OC load:")
+    pprint(loaded)
+
+
+def test_dumps_oc2():
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 1},
+        budget_file="test.bud",
+        head_file="test.hds",
+        # save_head={0: "all"},
+        # save_budget={0: "all"},
+        perioddata={
+            0: Oc.PrintSaveSetting(
+                printrecord=[
+                    Oc.PrintRecord("head", Oc.Steps(first=True)),
+                    # Oc.PrintRecord("budget", Oc.Steps(last=True)),
+                    Oc.PrintRecord("budget", Oc.Steps(steps=(2, 3, 5))),
+                ],
+                saverecord=[
+                    Oc.SaveRecord("head", Oc.Steps(last=True)),
+                    Oc.SaveRecord("budget", Oc.Steps(first=True)),
+                ],
+            )
+        },
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
+    print("OC dump:")
+    print(dumped)
+    assert "SAVE HEAD last" in dumped
+    assert "SAVE BUDGET first" in dumped
+    assert "PRINT HEAD first" in dumped
+    assert "PRINT BUDGET steps 1 2 4" in dumped
     assert dumped
 
     loaded = loads(dumped)
