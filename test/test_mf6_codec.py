@@ -124,7 +124,7 @@ def test_dumps_oc2():
             0: Oc.PrintSaveSetting(
                 printrecord=[
                     Oc.PrintRecord("head", Oc.Steps(first=True)),
-                    Oc.PrintRecord("budget", Oc.Steps(steps=(2, 3, 5))),
+                    Oc.PrintRecord("budget", Oc.Steps(steps=(0, 1, 3))),
                 ],
                 saverecord=[
                     Oc.SaveRecord("head", Oc.Steps(last=True)),
