@@ -95,24 +95,22 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
 
     def oc_setting_data(rec, action):
         dat = {}
+        key = f"{action} {rec.rtype}"
         if rec.steps.first:
             dat = {kper: "first" for kper in range(value.sizes["nper"])}
-            key = f"{action} {rec.rtype}"
             data[key] = dat
         elif rec.steps.last:
             dat = {kper: "last" for kper in range(value.sizes["nper"])}
-            key = f"{action} {rec.rtype}"
             data[key] = dat
         elif rec.steps.steps:
             steps = " ".join(str(x - 1) for x in rec.steps.steps)
             dat = {kper: f"steps {steps}" for kper in range(value.sizes["nper"])}
-            key = f"{action} {rec.rtype}"
             data[key] = dat
         elif rec.steps.all:
             # check last as this defaults to True
             dat = {kper: "all" for kper in range(value.sizes["nper"])}
-            key = f"{action} {rec.rtype}"
             data[key] = dat
+
         return dat
 
     data = {}

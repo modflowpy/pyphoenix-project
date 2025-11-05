@@ -120,13 +120,10 @@ def test_dumps_oc2():
         dims={"nper": 1},
         budget_file="test.bud",
         head_file="test.hds",
-        # save_head={0: "all"},
-        # save_budget={0: "all"},
         perioddata={
             0: Oc.PrintSaveSetting(
                 printrecord=[
                     Oc.PrintRecord("head", Oc.Steps(first=True)),
-                    # Oc.PrintRecord("budget", Oc.Steps(last=True)),
                     Oc.PrintRecord("budget", Oc.Steps(steps=(2, 3, 5))),
                 ],
                 saverecord=[
