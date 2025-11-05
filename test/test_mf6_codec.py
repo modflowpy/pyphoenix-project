@@ -2,8 +2,6 @@
 
 from pprint import pprint
 
-import pytest
-
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
@@ -57,7 +55,31 @@ def test_dumps_ic():
     pprint(loaded)
 
 
-@pytest.mark.xfail(reason="nested type unstructuring not yet supported")
+def test_dumps_sto():
+    from flopy4.mf6.gwf import Dis, Gwf, Sto
+
+    dis = Dis()
+    gwf = Gwf(dis=dis)
+    sto = Sto(
+        dims={"nper": 3},
+        parent=gwf,
+        steady_state=[False, True, False],
+        transient=[True, False, True],
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(sto))
+    print("STO dump:")
+    print(dumped)
+    assert "BEGIN PERIOD 1\n TRANSIENT" in dumped
+    assert "BEGIN PERIOD 2\n STEADY_STATE" in dumped
+    assert "BEGIN PERIOD 3\n TRANSIENT" in dumped
+    assert dumped
+
+    loaded = loads(dumped)
+    print("STO load:")
+    pprint(loaded)
+
+
 def test_dumps_oc():
     from flopy4.mf6.gwf import Oc
 
@@ -80,10 +102,45 @@ def test_dumps_oc():
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
     print("OC dump:")
     print(dumped)
-    assert "save head all" in dumped
-    assert "save budget all" in dumped
-    assert "print head all" in dumped
-    assert "print budget all" in dumped
+    assert "SAVE HEAD all" in dumped
+    assert "SAVE BUDGET all" in dumped
+    assert "PRINT HEAD all" in dumped
+    assert "PRINT BUDGET all" in dumped
+    assert dumped
+
+    loaded = loads(dumped)
+    print("OC load:")
+    pprint(loaded)
+
+
+def test_dumps_oc2():
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 1},
+        budget_file="test.bud",
+        head_file="test.hds",
+        perioddata={
+            0: Oc.PrintSaveSetting(
+                printrecord=[
+                    Oc.PrintRecord("head", Oc.Steps(first=True)),
+                    Oc.PrintRecord("budget", Oc.Steps(steps=(2, 3, 5))),
+                ],
+                saverecord=[
+                    Oc.SaveRecord("head", Oc.Steps(last=True)),
+                    Oc.SaveRecord("budget", Oc.Steps(first=True)),
+                ],
+            )
+        },
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
+    print("OC dump:")
+    print(dumped)
+    assert "SAVE HEAD last" in dumped
+    assert "SAVE BUDGET first" in dumped
+    assert "PRINT HEAD first" in dumped
+    assert "PRINT BUDGET steps 1 2 4" in dumped
     assert dumped
 
     loaded = loads(dumped)
