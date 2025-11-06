@@ -10,7 +10,7 @@ from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
-ArrayHow = Literal["constant", "internal", "external"]
+ArrayHow = Literal["constant", "internal", "external", "layered internal"]
 
 
 def array_how(value: xr.DataArray) -> ArrayHow:
@@ -26,7 +26,11 @@ def array_how(value: xr.DataArray) -> ArrayHow:
         return "external"
     if value.max() == value.min():
         return "constant"
-    return "internal"
+    if value.ndim <= 2:
+        return "internal"
+    if value.ndim == 3:
+        return "layered internal"
+    raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 
 
 def array2const(value: xr.DataArray) -> Scalar:
@@ -95,7 +99,7 @@ def array2string(value: NDArray) -> str:
     buffer = StringIO()
     value = np.asarray(value)
     if value.ndim > 2:
-        raise ValueError("Only 1D and 2D arrays are supported.")
+        raise ValueError(f"Only 1D and 2D arrays are supported, got ndim={value.ndim}")
     if value.ndim == 1:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
         value = value[None]

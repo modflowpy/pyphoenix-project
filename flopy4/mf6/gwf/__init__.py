@@ -13,6 +13,7 @@ from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
+from flopy4.mf6.gwf.rch import Rch
 from flopy4.mf6.gwf.sto import Sto
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.model import Model
@@ -20,7 +21,7 @@ from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 
-__all__ = ["Gwf", "Chd", "Dis", "Drn", "Ic", "Npf", "Oc", "Sto", "Wel"]
+__all__ = ["Gwf", "Chd", "Dis", "Drn", "Ic", "Npf", "Oc", "Sto", "Wel", "Rch"]
 
 
 def convert_grid(value):
@@ -80,6 +81,7 @@ class Gwf(Model):
     chd: list[Chd] = field(block="packages")
     wel: list[Wel] = field(block="packages")
     drn: list[Drn] = field(block="packages")
+    rch: list[Rch] = field(block="packages")
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )
