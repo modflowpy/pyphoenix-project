@@ -11,7 +11,7 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
-from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Chdg, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
@@ -393,6 +393,57 @@ def test_quickstart(function_tmpdir):
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
     chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+
+    sim.write()
+    sim.run()
+
+
+def test_quickstart_grid(function_tmpdir):
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+
+    # dimensions
+    nlay = 1
+    nrow = 10
+    ncol = 10
+    nstp = 1
+
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    # time = Time(perlen=[1.0, 1.0], nstp=[1, 1], tsmult=[1.0, 1.0])
+    ims = Ims(models=[gwf_name])
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        save_head=["all"],
+        save_budget=["all"],
+    )
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+
+    # chd grid based input, step 1 data head array
+    head = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head[0, 0, 0] = 1.0
+    head[0, 9, 9] = 0.0
+    # TODO: support dict style input keyed on SP with separate grid arrays
+    chd = Chdg(parent=gwf, head=np.expand_dims(head.ravel(), axis=0))
+    # headnone = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    # ts_head = np.stack((head.ravel(), headnone.ravel()), axis=0)
+    # chd = Chdg(parent=gwf, head=ts_head)
 
     sim.write()
     sim.run()

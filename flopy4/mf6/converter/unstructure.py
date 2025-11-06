@@ -7,6 +7,7 @@ import numpy as np
 import xarray as xr
 import xattree
 from modflow_devtools.dfn.schema.block import block_sort_key
+from xattree import XatSpec
 
 from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
@@ -144,7 +145,89 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
     return data
 
 
+def _unstructure_block_param(
+    block_name: str,
+    field_name: str,
+    xatspec: XatSpec,
+    value: Component,
+    data: dict[str, Any],
+    blocks: dict,
+    period_data: dict,
+) -> None:
+    # Skip child components that have been processed as bindings
+    if isinstance(value, Context) and field_name in xatspec.children:
+        child_spec = xatspec.children[field_name]
+        if hasattr(child_spec, "metadata") and "block" in child_spec.metadata:  # type: ignore
+            if child_spec.metadata["block"] == block_name:  # type: ignore
+                return
+
+    # filter out empty values and false keywords, and convert:
+    #   - paths to records
+    #   - datetimes to ISO format
+    #   - filter out false keywords
+    #   - 'auxiliary' fields to tuples
+    #   - xarray DataArrays with 'nper' dim to dict of kper-sliced datasets
+    #   - other values to their original form
+    # TODO: use cattrs converters for field unstructuring?
+    match field_value := data[field_name]:
+        case None:
+            return
+        case bool():
+            if field_value:
+                blocks[block_name][field_name] = field_value
+        case Path():
+            field_spec = xatspec.attrs[field_name]
+            field_meta = getattr(field_spec, "metadata", {})
+            t = _path_to_tuple(field_name, field_value, inout=field_meta.get("inout", "fileout"))
+            # name may have changed e.g dropping '_file' suffix
+            blocks[block_name][t[0]] = t
+        case datetime():
+            blocks[block_name][field_name] = field_value.isoformat()
+        case t if (
+            field_name == "auxiliary" and hasattr(field_value, "values") and field_value is not None
+        ):
+            blocks[block_name][field_name] = tuple(field_value.values.tolist())
+        case xr.DataArray() if "nper" in field_value.dims:
+            has_spatial_dims = any(
+                dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
+            )
+            if has_spatial_dims:
+                field_value = _hack_structured_grid_dims(
+                    field_value,
+                    structured_grid_dims=value.parent.data.dims,  # type: ignore
+                )
+            if block_name == "period":
+                if not np.issubdtype(field_value.dtype, np.number):
+                    dat = _hack_period_non_numeric(field_name, field_value)
+                    for n, v in dat.items():
+                        period_data[n] = v
+                else:
+                    period_data[field_name] = {
+                        kper: field_value.isel(nper=kper)  # type: ignore
+                        for kper in range(field_value.sizes["nper"])
+                    }
+            else:
+                blocks[block_name][field_name] = field_value
+
+        case _:
+            blocks[block_name][field_name] = field_value
+
+
 def unstructure_component(value: Component) -> dict[str, Any]:
+    xatspec = xattree.get_xatspec(type(value))
+    if "readarraygrid" in xatspec.attrs:
+        return _unstructure_grid_component(value)
+    elif "readasarrays" in xatspec.attrs:
+        return _unstructure_layer_component(value)
+    else:
+        return _unstructure_component(value)
+
+
+def _unstructure_layer_component(value: Component) -> dict[str, Any]:
+    return {}
+
+
+def _unstructure_grid_component(value: Component) -> dict[str, Any]:
     from flopy4.mf6.constants import FILL_DNODATA
 
     blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
@@ -167,67 +250,53 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             blocks[block_name] = {}
 
         for field_name in block.keys():
-            # Skip child components that have been processed as bindings
-            if isinstance(value, Context) and field_name in xatspec.children:
-                child_spec = xatspec.children[field_name]
-                if hasattr(child_spec, "metadata") and "block" in child_spec.metadata:  # type: ignore
-                    if child_spec.metadata["block"] == block_name:  # type: ignore
-                        continue
+            _unstructure_block_param(
+                block_name, field_name, xatspec, value, data, blocks, period_data
+            )
 
-            # filter out empty values and false keywords, and convert:
-            #   - paths to records
-            #   - datetimes to ISO format
-            #   - filter out false keywords
-            #   - 'auxiliary' fields to tuples
-            #   - xarray DataArrays with 'nper' dim to dict of kper-sliced datasets
-            #   - other values to their original form
-            # TODO: use cattrs converters for field unstructuring?
-            match field_value := data[field_name]:
-                case None:
-                    continue
-                case bool():
-                    if field_value:
-                        blocks[block_name][field_name] = field_value
-                case Path():
-                    field_spec = xatspec.attrs[field_name]
-                    field_meta = getattr(field_spec, "metadata", {})
-                    t = _path_to_tuple(
-                        field_name, field_value, inout=field_meta.get("inout", "fileout")
-                    )
-                    # name may have changed e.g dropping '_file' suffix
-                    blocks[block_name][t[0]] = t
-                case datetime():
-                    blocks[block_name][field_name] = field_value.isoformat()
-                case t if (
-                    field_name == "auxiliary"
-                    and hasattr(field_value, "values")
-                    and field_value is not None
-                ):
-                    blocks[block_name][field_name] = tuple(field_value.values.tolist())
-                case xr.DataArray() if "nper" in field_value.dims:
-                    has_spatial_dims = any(
-                        dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
-                    )
-                    if has_spatial_dims:
-                        field_value = _hack_structured_grid_dims(
-                            field_value,
-                            structured_grid_dims=value.parent.data.dims,  # type: ignore
-                        )
-                    if block_name == "period":
-                        if not np.issubdtype(field_value.dtype, np.number):
-                            dat = _hack_period_non_numeric(field_name, field_value)
-                            for n, v in dat.items():
-                                period_data[n] = v
-                        else:
-                            period_data[field_name] = {
-                                kper: field_value.isel(nper=kper)  # type: ignore
-                                for kper in range(field_value.sizes["nper"])
-                            }
-                    else:
-                        blocks[block_name][field_name] = field_value
+        # invert key order, (arr_name, kper) -> (kper, arr_name)
+        for arr_name, periods in period_data.items():
+            for kper, arr in periods.items():
+                if kper not in period_blocks:
+                    period_blocks[kper] = {}
+                period_blocks[kper][arr_name] = arr
 
-                case _:
-                    blocks[block_name][field_name] = field_value
+        # setup indexed period blocks, combine arrays into datasets
+        for kper, block in period_blocks.items():
+            key = f"period {kper + 1}"
+            for arr_name, val in block.items():
+                if not np.all(val == FILL_DNODATA):
+                    if key not in blocks:
+                        blocks[key] = {}
+                    blocks[f"period {kper + 1}"][arr_name] = val
+
+    return {name: block for name, block in blocks.items() if name != "period"}
+
+
+def _unstructure_component(value: Component) -> dict[str, Any]:
+    blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
+    blocks: dict[str, dict[str, Any]] = {}
+    xatspec = xattree.get_xatspec(type(value))
+    data = xattree.asdict(value)
+
+    # create child component binding blocks
+    blocks.update(_make_binding_blocks(value))
+
+    # process blocks in order, unstructuring fields as needed,
+    # then slice period data into separate kper-indexed blocks
+    # each of which contains a dataset indexed for that period.
+    for block_name, block in blockspec.items():
+        period_data = {}  # type: ignore
+        period_blocks = {}  # type: ignore
+        period_block_name = None
+
+        if block_name not in blocks:
+            blocks[block_name] = {}
+
+        for field_name in block.keys():
+            _unstructure_block_param(
+                block_name, field_name, xatspec, value, data, blocks, period_data
+            )
 
         # invert key order, (arr_name, kper) -> (kper, arr_name)
         for arr_name, periods in period_data.items():

@@ -8,6 +8,7 @@ from flopy.discretization.grid import Grid
 from xattree import xattree
 
 from flopy4.mf6.gwf.chd import Chd
+from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.dis import Dis
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.ic import Ic
@@ -21,7 +22,7 @@ from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 
-__all__ = ["Gwf", "Chd", "Dis", "Drn", "Ic", "Npf", "Oc", "Sto", "Wel", "Rch"]
+__all__ = ["Gwf", "Chd", "Chdg", "Dis", "Drn", "Ic", "Npf", "Oc", "Rch", "Sto", "Wel"]
 
 
 def convert_grid(value):
@@ -79,6 +80,7 @@ class Gwf(Model):
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
     chd: list[Chd] = field(block="packages")
+    chdg: list[Chdg] = field(block="packages")
     wel: list[Wel] = field(block="packages")
     drn: list[Drn] = field(block="packages")
     rch: list[Rch] = field(block="packages")
