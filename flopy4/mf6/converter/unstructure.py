@@ -100,7 +100,7 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
         elif rec.steps.last:
             dat = {kper: "last" for kper in range(value.sizes["nper"])}
         elif rec.steps.steps:
-            steps = " ".join(str(x - 1) for x in rec.steps.steps)
+            steps = " ".join(str(x + 1) for x in rec.steps.steps)
             dat = {kper: f"steps {steps}" for kper in range(value.sizes["nper"])}
         elif rec.steps.all:
             # check last as this defaults to True
@@ -111,13 +111,16 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
     data = {}
     match value.dtype:
         case np.bool:
+            # supports boolean dataarrays, e.g. STO steady_state and transient
             dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}  # type: ignore
             data[name] = dat
         case np.dtypes.StringDType():
+            # supports string dataarrays, e.g. OC save_budget, save_head
             fname = name.replace("_", " ")
             dat = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
             data[fname] = dat
         case object():
+            # supports object dataararys, e.g. OC PrintSaveSetting
             if isinstance(value.values[0], Oc.PrintSaveSetting):
                 if hasattr(value.values[0], "printrecord") and isinstance(
                     value.values[0].printrecord, list
@@ -226,6 +229,9 @@ def unstructure_component(value: Component) -> dict[str, Any]:
                 period_blocks[kper][arr_name] = arr
 
         # sort kper order
+        # needed because some package period parameters have their
+        # own kper dicts and these may be out of order for the package,
+        # e.g. STO transient and steady_state
         period_blocks = dict(sorted(period_blocks.items()))
 
         # setup indexed period blocks, combine arrays into datasets
@@ -234,6 +240,9 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             for arr_name, val in block.items():
                 match block[arr_name]:
                     case str():
+                        # non data period parameters have their period
+                        # write key set in the _hack_period_non_numeric
+                        # routine
                         blocks[f"period {kper + 1}"][arr_name] = val
                     case xr.DataArray():
                         blocks[f"period {kper + 1}"]["period"] = xr.Dataset(
