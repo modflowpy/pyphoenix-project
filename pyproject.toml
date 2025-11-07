@@ -119,7 +119,6 @@ dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
@@ -139,6 +138,9 @@ test311 = { features = ["py311", "test"], solve-group = "py311" }
 test312 = { features = ["py312", "test"], solve-group = "py312" }
 test313 = { features = ["py313", "test"], solve-group = "py313" }
 dev = { features = ["py311", "test", "lint", "build"], solve-group = "py311" }
+
+[tool.pixi.dependencies]
+proj = ">=9.7.0,<10"
 
 [tool.pixi.feature.build.tasks]
 build = { cmd = "python -m build" }
