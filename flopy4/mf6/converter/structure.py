@@ -10,6 +10,10 @@ from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
 
 
+def structure_keyword(value, field) -> str | None:
+    return field.name if value else None
+
+
 def structure_array(value, self_, field) -> NDArray:
     """
     Convert a sparse dictionary representation of an array to a

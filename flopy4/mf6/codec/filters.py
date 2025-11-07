@@ -20,12 +20,12 @@ def field_type(value: Any) -> FieldType:
         return "double"
     if isinstance(value, str):
         return "string"
-    if isinstance(value, tuple):
+    if isinstance(value, (dict, tuple)):
         return "record"
     if isinstance(value, xr.DataArray):
         if value.dtype == "object":
             return "list"
         return "array"
-    if isinstance(value, (list, dict, xr.Dataset)):
+    if isinstance(value, (list, xr.Dataset)):
         return "list"
     raise ValueError(f"Unsupported field type: {type(value)}")
