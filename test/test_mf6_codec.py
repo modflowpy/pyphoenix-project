@@ -2,6 +2,8 @@
 
 from pprint import pprint
 
+import pytest
+
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
