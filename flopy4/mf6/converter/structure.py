@@ -183,7 +183,12 @@ def _validate_duck_array(
             # Check for structured→flat conversion
             needs_reshape, target_shape = _detect_grid_reshape(value.shape, expected_dims, dim_dict)
             if needs_reshape:
-                return _reshape_grid(value, target_shape, list(value.dims), expected_dims)
+                assert (
+                    target_shape is not None
+                )  # target_shape is always set when needs_reshape is True
+                return _reshape_grid(
+                    value, target_shape, [str(d) for d in value.dims], expected_dims
+                )
             raise ValueError(f"Dimension mismatch: {value.dims} vs {expected_dims}")
         return value
 
@@ -193,11 +198,12 @@ def _validate_duck_array(
             # Try structured→flat reshape
             needs_reshape, target_shape = _detect_grid_reshape(value.shape, expected_dims, dim_dict)
             if needs_reshape:
+                assert (
+                    target_shape is not None
+                )  # target_shape is always set when needs_reshape is True
                 return _reshape_grid(value, target_shape)
             raise ValueError(f"Shape mismatch: {value.shape} vs {expected_shape}")
         return value
-
-    return value
 
 
 def _fill_forward_time(
@@ -237,8 +243,6 @@ def _fill_forward_time(
             data_broadcast = np.broadcast_to(data, (nper, *data.shape))
             return data_broadcast
         return data
-
-    return data
 
 
 def _parse_list_format(
@@ -343,7 +347,7 @@ def _parse_dict_format(
             return {0: value["data"]}
         return {0: value}
 
-    parsed = {}
+    parsed: dict[int, Any] = {}
 
     for key, val in value.items():
         # Handle special '*' key (means period/layer 0, don't fill forward)
@@ -440,7 +444,7 @@ def structure_array(
     # Handle different input types
     if isinstance(value, dict):
         # Parse dict format with fill-forward logic
-        parsed_dict = _parse_dict_format(value, dims, shape, dim_dict, field, self_)
+        parsed_dict = _parse_dict_format(value, dims, tuple(shape), dim_dict, field, self_)
 
         # Build array using sparse or dense approach
         if np.prod(shape) > threshold:
@@ -519,7 +523,7 @@ def structure_array(
                     )
                     kper_range = range(key, next_key)
                 else:
-                    kper_range = [key]
+                    kper_range = range(key, key + 1)
 
                 for kper in kper_range:
                     if isinstance(val, (int, float)):
@@ -568,7 +572,7 @@ def structure_array(
 
     elif isinstance(value, list):
         # List format
-        result = _parse_list_format(value, dims, shape, field)
+        result = _parse_list_format(value, dims, tuple(shape), field)
 
     elif isinstance(value, (xr.DataArray, np.ndarray)):
         # Duck array - validate and reshape if needed
@@ -589,11 +593,11 @@ def structure_array(
     # Wrap in xarray if requested
     if return_xarray and not isinstance(result, xr.DataArray):
         # Build coordinates
-        coords = {}
+        xr_coords: dict[str, Any] = {}
         for dim in dims:
             if dim in dim_dict:
-                coords[dim] = np.arange(dim_dict[dim])
+                xr_coords[dim] = np.arange(dim_dict[dim])
 
-        result = _to_xarray(result, dims, coords)
+        result = _to_xarray(result, dims, xr_coords)
 
     return result
