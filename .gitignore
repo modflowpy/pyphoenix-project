@@ -1,5 +1,6 @@
 build/
 docs/examples/*.ipynb
+docs/examples/twri/*
 venv/
 .DS_Store
 .ruff_cache

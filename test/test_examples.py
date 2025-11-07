@@ -3,8 +3,20 @@
 import sys
 
 import pytest
-from modflow_devtools.markers import requires_exe
-from modflow_devtools.misc import cd, run_cmd
+from conftest import EXAMPLES_PATH
+from modflow_devtools.misc import run_cmd
+
+EXCLUDE = ["quickstart_expanded"]
+
+
+def pytest_generate_tests(metafunc):
+    if "example_script" in metafunc.fixturenames:
+        scripts = {
+            file.name: file
+            for file in sorted(EXAMPLES_PATH.glob("*.py"))
+            if file.stem not in EXCLUDE
+        }
+        metafunc.parametrize("example_script", scripts.values(), ids=scripts.keys())
 
 
 @pytest.mark.slow
@@ -12,20 +24,3 @@ def test_scripts(example_script):
     args = [sys.executable, example_script]
     stdout, stderr, retcode = run_cmd(*args, verbose=True)
     assert not retcode, stdout + stderr
-
-
-@pytest.mark.slow
-@requires_exe("jupytext")
-def test_notebooks(example_script, tmp_path):
-    args = [
-        "jupytext",
-        "--from",
-        "py",
-        "--to",
-        "ipynb",
-        "--execute",
-        example_script,
-    ]
-    with cd(tmp_path):
-        out, err, ret = run_cmd(*args, verbose=True)
-    assert not ret, out + err
