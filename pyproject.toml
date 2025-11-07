@@ -120,6 +120,7 @@ dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
 flopy4 = { path = ".", editable = true }
