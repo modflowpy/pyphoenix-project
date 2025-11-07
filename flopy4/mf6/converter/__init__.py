@@ -8,7 +8,7 @@ from cattrs.gen import make_hetero_tuple_unstructure_fn
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.context import Context
-from flopy4.mf6.converter.structure import structure_array
+from flopy4.mf6.converter.structure import structure_array, structure_keyword
 from flopy4.mf6.converter.unstructure import (
     unstructure_component,
 )
@@ -19,6 +19,7 @@ __all__ = [
     "unstructure",
     "structure_array",
     "unstructure_array",
+    "structure_keyword",
     "COMPONENT_CONVERTER",
 ]
 

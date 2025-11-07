@@ -1,12 +1,13 @@
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
+import attrs
 import numpy as np
 from attrs import Converter, define
 from numpy.typing import NDArray
 from xattree import xattree
 
-from flopy4.mf6.converter import structure_array
+from flopy4.mf6.converter import structure_array, structure_keyword
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
@@ -16,8 +17,12 @@ from flopy4.utils import to_path
 class Npf(Package):
     @define(slots=False)
     class CvOptions:
-        variablecv: bool = field(default=False)
-        dewatered: bool = field(default=False)
+        variablecv: Literal["variablecv"] = attrs.field(init=False, default="variablecv")
+        dewatered: Literal["dewatered"] | None = attrs.field(
+            default=None,
+            # TODO: adopt this pattern for all record types in all components?
+            converter=Converter(structure_keyword, takes_field=True),  # type: ignore
+        )
 
     @define(slots=False)
     class RewetRecord:

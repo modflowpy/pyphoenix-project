@@ -343,6 +343,22 @@ def test_dumps_drn():
     pprint(loaded)
 
 
+def test_dumps_npf():
+    from flopy4.mf6.gwf import Dis, Gwf, Npf
+
+    dis = Dis(nlay=2, nrow=5, ncol=5)
+    gwf = Gwf(dis=dis)
+    drn = Npf(parent=gwf, cvoptions=Npf.CvOptions(dewatered=True), k=1.0)
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(drn))
+    print("NPF dump:")
+    print(dumped)
+
+    assert "variablecv dewatered" in dumped
+    assert "ICELLTYPE\n CONSTANT 0" in dumped
+    assert "K\n CONSTANT 1.0" in dumped
+
+
 def test_dumps_chd_2():
     from flopy4.mf6.gwf import Chd, Dis, Gwf
 
