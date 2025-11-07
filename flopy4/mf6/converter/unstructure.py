@@ -268,7 +268,7 @@ def _unstructure_grid_component(value: Component) -> dict[str, Any]:
                 if not np.all(val == FILL_DNODATA):
                     if key not in blocks:
                         blocks[key] = {}
-                    blocks[f"period {kper + 1}"][arr_name] = val
+                    blocks[key][arr_name] = val
 
     return {name: block for name, block in blocks.items() if name != "period"}
 

@@ -3,8 +3,10 @@
 from pprint import pprint
 
 import pytest
+import numpy as np
 
 from flopy4.mf6.codec import dumps, loads
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
 
@@ -254,6 +256,49 @@ def test_dumps_chd():
 
     loaded = loads(dumped)
     print("CHD load:")
+    pprint(loaded)
+
+
+def test_dumps_chdg():
+    from flopy4.mf6.gwf import Chdg, Dis, Gwf
+
+    nlay = 1
+    nrow = 10
+    ncol = 10
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    head = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head[0, 0, 0] = 1.0
+    head[0, 9, 9] = 0.0
+    chd = Chdg(
+        parent=gwf,
+        head=np.expand_dims(head.ravel(), axis=0),
+        save_flows=True,
+        print_input=True,
+        dims={"nper": 1},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+    print("CHD dump:")
+    print(dumped)
+
+    assert "BEGIN PERIOD 1" in dumped
+    assert "END PERIOD 1" in dumped
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
+
+    assert len(lines) == 12
+    assert "READARRAYGRID" in dumped
+    assert "MAXBOUND 2" in dumped
+    dump_data = [[float(x) for x in line.split()] for line in lines[2:12]]
+    dump_head = np.array(dump_data)
+    assert np.allclose(head, dump_head)
+
+    loaded = loads(dumped)
+    print("CHDG load:")
     pprint(loaded)
 
 
