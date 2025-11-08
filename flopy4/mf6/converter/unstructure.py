@@ -247,6 +247,8 @@ def unstructure_component(value: Component) -> dict[str, Any]:
             key = f"period {kper + 1}"
             for arr_name, val in block.items():
                 if np.any(val != FILL_DNODATA):
+                    # don't create the block (so it isn't written)
+                    # unless there is data to write
                     if key not in blocks:
                         blocks[key] = {}
                     match block[arr_name]:

@@ -26,7 +26,7 @@ sim = Simulation(name=name, workspace=workspace, tdis=time)
 gwf_name = "mymodel"
 ims = Ims(parent=sim, models=[gwf_name])  # temporary hack
 gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
-npf = Npf(parent=gwf, save_specific_discharge=True)
+npf = Npf(parent=gwf, print_flows=True, save_flows=True, save_specific_discharge=True)
 chd = Chd(
     parent=gwf,
     head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
@@ -66,5 +66,5 @@ ax.set_yticks(np.arange(1, 10, 2), minor=True)
 ax.grid(which="both", color="white")
 head.plot.imshow(ax=ax)
 head.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
-# budget.plot.quiver(x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white")
+budget.plot.quiver(x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white")
 fig.savefig(workspace / ".." / "image" / "quickstart.png")
