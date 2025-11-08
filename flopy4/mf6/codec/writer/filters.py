@@ -107,7 +107,7 @@ def array2string(value: NDArray) -> str:
     format = (
         "%d"
         if np.issubdtype(value.dtype, np.integer)
-        else "%f"
+        else "%.9f"
         if np.issubdtype(value.dtype, np.floating)
         else "%s"
     )

@@ -11,6 +11,7 @@ from flopy4.mf6.utils.time import Time
 
 name = "quickstart"
 workspace = Path(__file__).parent / name
+workspace.mkdir(exist_ok=True)
 time = Time(perlen=[1.0], nstp=[1])
 grid = StructuredGrid(
     nlay=1,
@@ -65,5 +66,5 @@ ax.set_yticks(np.arange(1, 10, 2), minor=True)
 ax.grid(which="both", color="white")
 head.plot.imshow(ax=ax)
 head.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
-budget.plot.quiver(x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white")
+# budget.plot.quiver(x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white")
 fig.savefig(workspace / ".." / "image" / "quickstart.png")

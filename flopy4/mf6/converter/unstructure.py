@@ -112,12 +112,18 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
     match value.dtype:
         case np.bool:
             # supports boolean dataarrays, e.g. STO steady_state and transient
-            dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}  # type: ignore
-            data[name] = dat
+            # e.g. steady_state to steady-state, why is't this the dfn name?
+            fname = name.replace("_", "-")  # type: ignore
+            dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
+            data[fname] = dat
         case np.dtypes.StringDType():
             # supports string dataarrays, e.g. OC save_budget, save_head
             fname = name.replace("_", " ")
-            dat = {kper: value.values[kper] for kper in range(value.sizes["nper"])}
+            dat = {
+                kper: value.values[kper]
+                for kper in range(value.sizes["nper"])
+                if value.values[kper].lower() in ["first", "last", "steps", "all"]
+            }
             data[fname] = dat
         case object():
             # supports object dataararys, e.g. OC PrintSaveSetting
@@ -139,6 +145,8 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
+    from flopy4.mf6.constants import FILL_DNODATA
+
     blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))
@@ -236,18 +244,21 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
         # setup indexed period blocks, combine arrays into datasets
         for kper, block in period_blocks.items():
-            blocks[f"period {kper + 1}"] = {}
+            key = f"period {kper + 1}"
             for arr_name, val in block.items():
-                match block[arr_name]:
-                    case str():
-                        # non data period parameters have their period
-                        # write key set in the _hack_period_non_numeric
-                        # routine
-                        blocks[f"period {kper + 1}"][arr_name] = val
-                    case xr.DataArray():
-                        blocks[f"period {kper + 1}"]["period"] = xr.Dataset(
-                            block, coords=block[arr_name].coords
-                        )
+                if np.any(val != FILL_DNODATA):
+                    if key not in blocks:
+                        blocks[key] = {}
+                    match block[arr_name]:
+                        case str():
+                            # non data period parameters have their period
+                            # write key set in the _hack_period_non_numeric
+                            # routine
+                            blocks[f"period {kper + 1}"][arr_name] = val
+                        case xr.DataArray():
+                            blocks[f"period {kper + 1}"]["period"] = xr.Dataset(
+                                block, coords=block[arr_name].coords
+                            )
 
         # combine "perioddata" block arrays (tdis, ats) into datasets
         # so they render as lists. temp hack TODO do this generically

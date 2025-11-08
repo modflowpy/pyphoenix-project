@@ -73,7 +73,7 @@ def test_dumps_sto():
     print("STO dump:")
     print(dumped)
     assert "BEGIN PERIOD 1\n TRANSIENT" in dumped
-    assert "BEGIN PERIOD 2\n STEADY_STATE" in dumped
+    assert "BEGIN PERIOD 2\n STEADY-STATE" in dumped
     assert "BEGIN PERIOD 3\n TRANSIENT" in dumped
     assert dumped
 
