@@ -216,13 +216,13 @@ def test_init_sim_explicit_dims():
 def test_init_big_sim():
     # if size over threshold, arrays should be sparse
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    grid = StructuredGrid(nlay=1, nrow=100, ncol=100)
+    grid = StructuredGrid(nlay=1, nrow=1000, ncol=1000)
     sim = Simulation(tdis=time)
     gwf = Gwf(parent=sim, dis=grid)
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 99, 99): 0.0}})
+    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 999, 999): 0.0}})
 
     assert sim.models["gwf"] is gwf
     assert isinstance(sim.data, DataTree)
@@ -231,11 +231,11 @@ def test_init_big_sim():
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(10000))
-    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(10000))
+    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(1000000))
+    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(1000000))
     assert chd.head[0, 0].item() == 1.0
-    assert chd.head[0, 9999].item() == 0.0
-    assert np.array_equal(chd.head[0, 1:9999].data.todense(), np.full((9998,), FILL_DNODATA))
+    assert chd.head[0, 999999].item() == 0.0
+    assert np.array_equal(chd.head[0, 1:999999].data.todense(), np.full((999998,), FILL_DNODATA))
     assert np.array_equal(chd.head.data.todense(), chd.data.head.data.todense())
     assert np.array_equal(
         chd.head.data.todense(),

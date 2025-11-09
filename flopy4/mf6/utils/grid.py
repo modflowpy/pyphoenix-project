@@ -2,16 +2,139 @@ import collections
 from typing import Any
 
 import numpy as np
+import xarray as xr
 from attrs import fields
-from flopy.discretization import StructuredGrid
+from flopy.discretization import StructuredGrid as LegacyStructuredGrid
+from xarray.core.indexes import PandasIndex
 
 from flopy4.mf6.constants import FILL_DNODATA
+
+
+class StructuredGrid(LegacyStructuredGrid):
+    """Extend flopy3's StructuredGrid"""
+
+    # TODO de-duplicate array/dataset setup. no need to do it in both __init__ and properties
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._dims_coords = {
+            "nlay": "k",
+            "nrow": "i",
+            "ncol": "j",
+            "nodes": "node",
+        }
+        self._coords = {
+            "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
+            "i": xr.DataArray(np.arange(self.nrow, dtype=int), dims=("nrow",)),
+            "j": xr.DataArray(np.arange(self.ncol, dtype=int), dims=("ncol",)),
+            "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
+        }
+        data_vars = {
+            "delr": self.delr,
+            "delc": self.delc,
+            "delz": self.delz,
+            "top": self.top,
+            "botm": self.botm,
+            "idomain": self.idomain,
+        }
+        self._dataset = (
+            xr.Dataset({k: v for k, v in data_vars.items() if v is not None}, coords=self._coords)
+            .set_xindex("k", PandasIndex)
+            .set_xindex("i", PandasIndex)
+            .set_xindex("j", PandasIndex)
+            .set_xindex("node", PandasIndex)
+        )
+
+    @property
+    def dataset(self) -> xr.Dataset:
+        return self._dataset
+
+    @property
+    def delc(self):
+        if self.__delc is None:
+            return None
+        dims = ("ncol",)
+        coord_name = self._dims_coords[dims[0]]
+        coords = coords = {coord_name: self._coords[coord_name]}
+        return xr.DataArray(super().delc, coords=coords, dims=dims).set_xindex(
+            coord_name, PandasIndex
+        )
+
+    @property
+    def delr(self):
+        if self.__delr is None:
+            return None
+        dims = ("nrow",)
+        coord_name = self._dims_coords[dims[0]]
+        coords = {coord_name: self._coords[coord_name]}
+        return xr.DataArray(super().delr, coords=coords, dims=dims).set_xindex(
+            coord_name, PandasIndex
+        )
+
+    @property
+    def delz(self):
+        dims = ("nlay", "nrow", "ncol")
+        coord_names = (
+            self._dims_coords[dims[0]],
+            self._dims_coords[dims[1]],
+            self._dims_coords[dims[2]],
+        )
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        return (
+            xr.DataArray(super().delz, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex(coord_names[2], PandasIndex)
+        )
+
+    @property
+    def top(self):
+        dims = ("nrow", "ncol")
+        coord_names = (self._dims_coords[dims[0]], self._dims_coords[dims[1]])
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        return (
+            xr.DataArray(super().top, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+        )
+
+    @property
+    def botm(self):
+        dims = ("nlay", "nrow", "ncol")
+        coord_names = (
+            self._dims_coords[dims[0]],
+            self._dims_coords[dims[1]],
+            self._dims_coords[dims[2]],
+        )
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        return (
+            xr.DataArray(super().botm, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex(coord_names[2], PandasIndex)
+        )
+
+    @property
+    def idomain(self):
+        dims = ("nlay", "nrow", "ncol")
+        coord_names = (
+            self._dims_coords[dims[0]],
+            self._dims_coords[dims[1]],
+            self._dims_coords[dims[2]],
+        )
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        return (
+            xr.DataArray(super().idomain, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex(coord_names[2], PandasIndex)
+        )
 
 
 def get_coords(grid: StructuredGrid) -> dict[str, Any]:
     # unpack tuples
     xmin, xmax, ymin, ymax = grid.extent
-    dx, dy = (grid.delr, -grid.delc)
+    dx, dy = (grid.delr, -grid.delc)  # type: ignore
     coords: collections.OrderedDict[str, Any] = collections.OrderedDict()
     # from cell size to x and y coordinates
     if isinstance(dx, (int, float, np.int_)):  # equidistant

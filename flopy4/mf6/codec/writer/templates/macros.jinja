@@ -37,8 +37,16 @@
 {% for layer in value -%}
 {{ inset }}CONSTANT {{ layer|array2const }}
 {%- endfor %}
+{% elif how == "layered internal" %}
+{% for layer in value %}
+
+{{ inset }}INTERNAL
+{% for chunk in layer|array2chunks -%}
+{{ (2 * inset) ~ chunk|array2string }}
+{%- endfor %}
+{%- endfor %}
 {% elif how == "internal" %}
-INTERNAL
+{{ inset }}INTERNAL
 {% for chunk in value|array2chunks -%}
 {{ (2 * inset) ~ chunk|array2string }}
 {%- endfor %}

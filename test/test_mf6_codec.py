@@ -2,6 +2,8 @@
 
 from pprint import pprint
 
+import pytest
+
 from flopy4.mf6.codec import dumps, loads
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
@@ -71,7 +73,7 @@ def test_dumps_sto():
     print("STO dump:")
     print(dumped)
     assert "BEGIN PERIOD 1\n TRANSIENT" in dumped
-    assert "BEGIN PERIOD 2\n STEADY_STATE" in dumped
+    assert "BEGIN PERIOD 2\n STEADY-STATE" in dumped
     assert "BEGIN PERIOD 3\n TRANSIENT" in dumped
     assert dumped
 
@@ -148,11 +150,12 @@ def test_dumps_oc2():
     pprint(loaded)
 
 
-def test_dumps_dis():
+@pytest.fixture
+def dis_with_constant_arrays():
     from flopy4.mf6.gwf import Dis
 
-    dis = Dis(
-        nlay=1,
+    return Dis(
+        nlay=2,
         nrow=10,
         ncol=10,
         delr=100.0,
@@ -161,6 +164,9 @@ def test_dumps_dis():
         length_units="feet",
     )
 
+
+def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
+    dis = dis_with_constant_arrays
     dumped = dumps(COMPONENT_CONVERTER.unstructure(dis))
     print("DIS dump:")
     print(dumped)
@@ -171,9 +177,24 @@ def test_dumps_dis():
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 1], ["NCOL", 10], ["NROW", 10]]
+    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NCOL", 10], ["NROW", 10]]
     assert ["DELR"] in loaded["GRIDDATA"]
     assert ["DELC"] in loaded["GRIDDATA"]
+
+
+def test_dumps_dis_with_layered_arrays(dis_with_constant_arrays):
+    dis = dis_with_constant_arrays
+    dis.delr[0] = 101.0
+    dis.botm[0, 0, 0] = -1.0  # 3d array will force layered output
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(dis))
+    print("DIS dump:")
+    print(dumped)
+    assert dumped
+    assert "BOTM LAYERED" in dumped
+
+    loaded = loads(dumped)
+    print("DIS load:")
+    pprint(loaded)
 
 
 def test_dumps_tdis():

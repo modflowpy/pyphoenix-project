@@ -11,6 +11,7 @@ from flopy4.mf6.utils.time import Time
 
 name = "quickstart"
 workspace = Path(__file__).parent / name
+workspace.mkdir(exist_ok=True)
 time = Time(perlen=[1.0], nstp=[1])
 grid = StructuredGrid(
     nlay=1,
@@ -25,7 +26,7 @@ sim = Simulation(name=name, workspace=workspace, tdis=time)
 gwf_name = "mymodel"
 ims = Ims(parent=sim, models=[gwf_name])  # temporary hack
 gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
-npf = Npf(parent=gwf, save_specific_discharge=True)
+npf = Npf(parent=gwf, print_flows=True, save_flows=True, save_specific_discharge=True)
 chd = Chd(
     parent=gwf,
     head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},

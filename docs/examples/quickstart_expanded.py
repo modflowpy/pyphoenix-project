@@ -31,16 +31,16 @@ from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
 ws = "./mymodel"
 name = "mymodel"
-sim = Simulation(name=name, workspace=ws, exe="mf6")
-tdis = Tdis(sim)
-gwf = Gwf(sim, name=name, save_flows=True)
-dis = Dis(gwf, nrow=10, ncol=10)
-ic = Ic(gwf)
-npf = Npf(gwf, save_specific_discharge=True)
+sim = Simulation(name=name, workspace=ws)
+tdis = Tdis(parent=sim)
+gwf = Gwf(parent=sim, name=name, save_flows=True)
+dis = Dis(parent=gwf, nrow=10, ncol=10)
+ic = Ic(parent=gwf)
+npf = Npf(parent=gwf, save_specific_discharge=True)
 
 # CHD. first, nothing but builtins.
 chd = Chd(
-    gwf,
+    parent=gwf,
     # 1) tuples (like flopy3)
     stress_period_data=[[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]],
     #
@@ -90,7 +90,7 @@ chd = Chd(
 budget_file = name + ".bud"
 head_file = name + ".hds"
 oc = Oc(
-    gwf,
+    parent=gwf,
     budget_filerecord=budget_file,
     head_filerecord=head_file,
     # 1) tuples (like flopy3)

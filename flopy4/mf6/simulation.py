@@ -34,11 +34,14 @@ class Simulation(Context):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         if self.filename != "mfsim.nam":
-            warn(
-                "Simulation filename must be 'mfsim.nam'.",
-                UserWarning,
-            )
+            if self.filename is not None:
+                warn(
+                    "Simulation filename must be 'mfsim.nam'.",
+                    UserWarning,
+                )
             self.filename = "mfsim.nam"
+        for model in self.models.values():
+            model.workspace = self.workspace
 
     @property
     def time(self) -> Time:

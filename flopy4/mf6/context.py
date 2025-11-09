@@ -7,11 +7,12 @@ from xattree import xattree
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field
+from flopy4.utils import to_path
 
 
 @xattree
 class Context(Component, ABC):
-    workspace: Path = field(default=None)
+    workspace: Path = field(default=None, converter=to_path)
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
