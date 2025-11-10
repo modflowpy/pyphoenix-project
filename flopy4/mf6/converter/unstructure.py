@@ -11,6 +11,7 @@ from xattree import XatSpec
 
 from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.spec import FileInOut
 
@@ -228,8 +229,6 @@ def _unstructure_layer_component(value: Component) -> dict[str, Any]:
 
 
 def _unstructure_grid_component(value: Component) -> dict[str, Any]:
-    from flopy4.mf6.constants import FILL_DNODATA
-
     blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))

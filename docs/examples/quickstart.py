@@ -45,7 +45,7 @@ sim.run(verbose=True)
 
 assert chd.data["head"][0, 0] == 1.0
 assert chd.data.head.sel(per=0)[99] == 0.0
-assert np.allclose(chd.data.head[:, 1:99], np.full(98, 1e30))
+assert np.allclose(chd.data.head[:, 1:99], np.full(98, 3e30))
 
 assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 
