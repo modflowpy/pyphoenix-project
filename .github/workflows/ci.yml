@@ -20,10 +20,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install HDF5
-        if: runner.os == 'macOS'
-        run: brew install hdf5
-
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0.8.1
         with:
@@ -83,6 +79,10 @@ jobs:
         uses: modflowpy/install-modflow-action@v1
         with:
           repo: modflow6-nightly-build
+
+      - name: Install HDF5
+        if: runner.os == 'macOS'
+        run: brew install hdf5
 
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0.8.1
