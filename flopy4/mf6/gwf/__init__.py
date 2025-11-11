@@ -16,14 +16,31 @@ from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.gwf.rch import Rch
+from flopy4.mf6.gwf.rcha import Rcha
 from flopy4.mf6.gwf.sto import Sto
 from flopy4.mf6.gwf.wel import Wel
+from flopy4.mf6.gwf.welg import Welg
 from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 
-__all__ = ["Gwf", "Chd", "Chdg", "Dis", "Drn", "Drng", "Ic", "Npf", "Oc", "Rch", "Sto", "Wel"]
+__all__ = [
+    "Gwf",
+    "Chd",
+    "Chdg",
+    "Dis",
+    "Drn",
+    "Drng",
+    "Ic",
+    "Npf",
+    "Oc",
+    "Rch",
+    "Rcha",
+    "Sto",
+    "Wel",
+    "Welg",
+]
 
 
 def convert_grid(value):
@@ -82,10 +99,13 @@ class Gwf(Model):
     sto: Sto | None = field(block="packages", default=None)
     chd: list[Chd] = field(block="packages")
     chdg: list[Chdg] = field(block="packages")
+    # chd: List[Union[Chd, Chdg]] = field(block="packages", factory=List)
     drn: list[Drn] = field(block="packages")
     drng: list[Drng] = field(block="packages")
     rch: list[Rch] = field(block="packages")
+    rcha: list[Rcha] = field(block="packages")
     wel: list[Wel] = field(block="packages")
+    welg: list[Welg] = field(block="packages")
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )

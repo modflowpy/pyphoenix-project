@@ -8,6 +8,21 @@ import numpy as np
 
 import flopy4
 
+
+def plot_contourf(head, workspace):
+    import matplotlib.pyplot as plt
+
+    # Plot head results
+    plt.figure(figsize=(10, 6))
+    head.isel(layer=0, time=0).plot.contourf()
+    plt.title("Filled Contour Plot TWRI Head")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.grid(True)
+    plt.savefig(workspace / "head.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
 # Timing
 time = flopy4.mf6.utils.time.Time.from_timestamps(
     ["2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04"]
@@ -28,7 +43,7 @@ bottom = np.stack([np.full((nrow, ncol), val) for val in [-200.0, -300.0, -450.0
 grid = flopy4.mf6.utils.grid.StructuredGrid(
     nlay=nlay, nrow=nrow, ncol=ncol, top=top, botm=bottom, delr=delr, delc=delc, idomain=idomain
 )
-dims = {"nper": nper, **dict(grid.dataset.sizes)}  # TODO: temporary
+dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}  # TODO: temporary
 
 # Grid discretization
 # TODO: xorigin, yorigin
@@ -84,9 +99,10 @@ sto = flopy4.mf6.gwf.Sto(
 )
 
 # Uniform recharge on the top layer
-rch_rate = np.stack(np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA))
+rch_rate = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
 rate = np.repeat(np.expand_dims(rch_rate, axis=0), repeats=nper, axis=0)
-rate[0, 0, :] = 3.0e-8
+# rate[0, 0, :, :] = 3.0e-8
+rate[0, 0, ...] = 3.0e-8
 rch = flopy4.mf6.gwf.Rch(recharge=rate.reshape(nper, -1), dims=dims)
 
 # Output control
@@ -103,24 +119,24 @@ oc = flopy4.mf6.gwf.Oc(
 # Wells scattered throughout the model
 wel_q = -5.0
 wel_nodes = [
-    [2, 4, 10, -5.0],
-    [1, 3, 5, -5.0],
-    [1, 5, 11, -5.0],
-    [0, 8, 7, -5.0],
-    [0, 8, 9, -5.0],
-    [0, 8, 11, -5.0],
-    [0, 8, 13, -5.0],
-    [0, 10, 7, -5.0],
-    [0, 10, 9, -5.0],
-    [0, 10, 11, -5.0],
-    [0, 10, 13, -5.0],
-    [0, 12, 7, -5.0],
-    [0, 12, 9, -5.0],
-    [0, 12, 11, -5.0],
-    [0, 12, 13, -5.0],
+    [2, 4, 10],
+    [1, 3, 5],
+    [1, 5, 11],
+    [0, 8, 7],
+    [0, 8, 9],
+    [0, 8, 11],
+    [0, 8, 13],
+    [0, 10, 7],
+    [0, 10, 9],
+    [0, 10, 11],
+    [0, 10, 13],
+    [0, 12, 7],
+    [0, 12, 9],
+    [0, 12, 11],
+    [0, 12, 13],
 ]
 wel = flopy4.mf6.gwf.Wel(
-    q={"*": {(layer, row, col): wel_q for layer, row, col, wel_q in wel_nodes}},
+    q={"*": {(layer, row, col): wel_q for layer, row, col in wel_nodes}},
     dims=dims,
 )
 
@@ -181,4 +197,82 @@ head = flopy4.mf6.utils.open_hds(
 )
 
 # Plot head results
-head.isel(layer=0, time=0).plot.contourf()
+plot_contourf(head, workspace)
+
+# update simulation with array based inputs
+LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
+GRID_NODATA = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
+
+head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+for i in range(nrow):
+    for k in range(nlay - 1):
+        head[0, k, i, 0] = 0.0
+chdg = flopy4.mf6.gwf.Chdg(
+    print_input=True,
+    print_flows=True,
+    save_flows=True,
+    head=head.reshape(nper, -1),
+    dims=dims,
+)
+
+# Drain in the center left of the model
+elev = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+cond = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+for j in range(9):
+    elev[0, 0, 7, j + 1] = elevation[j]
+    cond[0, 0, 7, j + 1] = conductance
+drng = flopy4.mf6.gwf.Drng(
+    print_input=True,
+    print_flows=True,
+    save_flows=True,
+    elev=elev.reshape(nper, -1),
+    cond=cond.reshape(nper, -1),
+    dims=dims,
+)
+
+# well
+q = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+for layer, row, col in wel_nodes:
+    q[0, layer, row, col] = wel_q
+welg = flopy4.mf6.gwf.Welg(
+    q=q.reshape(nper, -1),
+    dims=dims,
+)
+
+# recharge
+recharge = np.repeat(np.expand_dims(LAYER_NODATA, axis=0), repeats=nper, axis=0)
+recharge[0, ...] = 3.0e-8
+# recharge[0, 0, 0] = 3.0e-7
+# print(recharge)
+# rch = flopy4.mf6.gwf.Rcha(irch=1, recharge=recharge.reshape(nper, -1), dims=dims)
+rcha = flopy4.mf6.gwf.Rcha(recharge=recharge.reshape(nper, -1), dims=dims)
+
+# remove list based inputs
+del gwf.chd[0]
+del gwf.drn[0]
+del gwf.wel[0]
+del gwf.rch[0]
+
+# add array based inputs
+gwf.chdg = [chdg]
+gwf.drng = [drng]
+gwf.welg = [welg]
+gwf.rcha = [rcha]
+
+# create new workspace
+workspace = Path(__file__).parent / "twri2"
+workspace.mkdir(parents=True, exist_ok=True)
+sim.workspace = workspace
+sim.__attrs_post_init__()
+
+sim.write()
+sim.run()
+
+# Load head results
+head = flopy4.mf6.utils.open_hds(
+    workspace / f"{gwf.name}.hds",
+    workspace / f"{gwf.name}.dis.grb",
+)
+
+# Plot head results
+plot_contourf(head, workspace)

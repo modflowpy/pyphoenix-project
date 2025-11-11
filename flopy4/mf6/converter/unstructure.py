@@ -190,7 +190,7 @@ def _unstructure_block_param(
             blocks[block_name][field_name] = tuple(field_value.values.tolist())
         case xr.DataArray() if "nper" in field_value.dims:
             has_spatial_dims = any(
-                dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "nodes"]
+                dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "ncpl", "nodes"]
             )
             if has_spatial_dims:
                 field_value = _hack_structured_grid_dims(
@@ -216,19 +216,14 @@ def _unstructure_block_param(
 
 def unstructure_component(value: Component) -> dict[str, Any]:
     xatspec = xattree.get_xatspec(type(value))
-    if "readarraygrid" in xatspec.attrs:
-        return _unstructure_grid_component(value)
-    elif "readasarrays" in xatspec.attrs:
-        return _unstructure_layer_component(value)
+    if "readarraygrid" in xatspec.attrs or "readasarrays" in xatspec.attrs:
+        # return _unstructure_array_component(value)
+        return _unstructure_array_component(value)
     else:
         return _unstructure_component(value)
 
 
-def _unstructure_layer_component(value: Component) -> dict[str, Any]:
-    return {}
-
-
-def _unstructure_grid_component(value: Component) -> dict[str, Any]:
+def _unstructure_array_component(value: Component) -> dict[str, Any]:
     blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))
@@ -243,7 +238,6 @@ def _unstructure_grid_component(value: Component) -> dict[str, Any]:
     for block_name, block in blockspec.items():
         period_data = {}  # type: ignore
         period_blocks = {}  # type: ignore
-        period_block_name = None
 
         if block_name not in blocks:
             blocks[block_name] = {}
@@ -279,6 +273,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     data = xattree.asdict(value)
 
     # create child component binding blocks
+    # TODO: this can add certain block keys out of order
     blocks.update(_make_binding_blocks(value))
 
     # process blocks in order, unstructuring fields as needed,
@@ -287,7 +282,6 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     for block_name, block in blockspec.items():
         period_data = {}  # type: ignore
         period_blocks = {}  # type: ignore
-        period_block_name = None
 
         if block_name not in blocks:
             blocks[block_name] = {}
@@ -334,6 +328,10 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         # so they render as lists. temp hack TODO do this generically
         if perioddata := blocks.get("perioddata", None):
             blocks["perioddata"] = {"perioddata": xr.Dataset(perioddata)}
+
+    # TODO: this fixes out of order blocks (e.g. model namefile) from
+    # blocks.update() child binding call above
+    # blocks = dict(sorted(blocks.items(), key=block_sort_key))
 
     # total temporary hack! manually set solutiongroup 1.
     # TODO still need to support multiple..
