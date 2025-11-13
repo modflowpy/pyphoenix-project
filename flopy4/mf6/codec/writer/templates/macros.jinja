@@ -35,7 +35,7 @@
 {{ inset }}CONSTANT {{ value|array2const }}
 {% elif how == "layered constant" %}
 {% for layer in value -%}
-{{ inset }}CONSTANT {{ layer|array2const }}
+{{ "\n" ~ inset }}CONSTANT {{ layer|array2const }}
 {%- endfor %}
 {% elif how == "layered internal" %}
 {% for layer in value %}

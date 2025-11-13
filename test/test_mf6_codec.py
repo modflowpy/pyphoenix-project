@@ -2,9 +2,11 @@
 
 from pprint import pprint
 
+import numpy as np
 import pytest
 
 from flopy4.mf6.codec import dumps, loads
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
 
@@ -249,11 +251,54 @@ def test_dumps_chd():
     assert len(lines) == 2
     assert "1 1 1 10.0" in dumped  # First CHD cell - node 1
     assert "1 10 10 20.0" in dumped  # Second CHD cell - node 100
-    assert "1e+30" not in dumped
-    assert "1.0e+30" not in dumped
+    assert "3e+30" not in dumped
+    assert "3.0e+30" not in dumped
 
     loaded = loads(dumped)
     print("CHD load:")
+    pprint(loaded)
+
+
+def test_dumps_chdg():
+    from flopy4.mf6.gwf import Chdg, Dis, Gwf
+
+    nlay = 1
+    nrow = 10
+    ncol = 10
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    head = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head[0, 0, 0] = 1.0
+    head[0, 9, 9] = 0.0
+    chd = Chdg(
+        parent=gwf,
+        head=np.expand_dims(head.ravel(), axis=0),
+        save_flows=True,
+        print_input=True,
+        dims={"nper": 1},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+    print("CHD dump:")
+    print(dumped)
+
+    assert "BEGIN PERIOD 1" in dumped
+    assert "END PERIOD 1" in dumped
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
+
+    assert len(lines) == 12
+    assert "READARRAYGRID" in dumped
+    assert "MAXBOUND 2" in dumped
+    dump_data = [[float(x) for x in line.split()] for line in lines[2:12]]
+    dump_head = np.array(dump_data)
+    assert np.allclose(head, dump_head)
+
+    loaded = loads(dumped)
+    print("CHDG load:")
     pprint(loaded)
 
 
@@ -291,8 +336,8 @@ def test_dumps_wel():
     assert "1 3 4 -100.0" in dumped  # (0,2,3) -> node 24
     assert "2 6 8 -50.0" in dumped  # (1,5,7) -> node 158
     assert "3 9 2 25.0" in dumped  # (2,8,1) -> node 282
-    assert "1e+30" not in dumped
-    assert "1.0e+30" not in dumped
+    assert "3e+30" not in dumped
+    assert "3.0e+30" not in dumped
 
     loaded = loads(dumped)
     print("WEL load:")
@@ -356,8 +401,8 @@ def test_dumps_drn():
     assert "1 2 2 12.0 1.5" in dumped  # Period 2: (0,1,1)
     assert "1 3 4 9.0 0.8" in dumped  # Period 2: (0,2,3)
     assert "2 4 3 7.0 2.2" in dumped  # Period 2: (1,3,2)
-    assert "1e+30" not in dumped
-    assert "1.0e+30" not in dumped
+    assert "3e+30" not in dumped
+    assert "3.0e+30" not in dumped
 
     loaded = loads(dumped)
     print("DRN load:")
@@ -369,9 +414,9 @@ def test_dumps_npf():
 
     dis = Dis(nlay=2, nrow=5, ncol=5)
     gwf = Gwf(dis=dis)
-    drn = Npf(parent=gwf, cvoptions=Npf.CvOptions(dewatered=True), k=1.0)
+    npf = Npf(parent=gwf, cvoptions=Npf.CvOptions(dewatered=True), k=1.0)
 
-    dumped = dumps(COMPONENT_CONVERTER.unstructure(drn))
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(npf))
     print("NPF dump:")
     print(dumped)
 
@@ -407,8 +452,8 @@ def test_dumps_chd_2():
     assert "100.0" in dumped  # Left boundary
     assert "95.0" in dumped  # Right boundary
     assert "98.0" in dumped  # Bottom boundary
-    assert "1e+30" not in dumped
-    assert "1.0e+30" not in dumped
+    assert "3e+30" not in dumped
+    assert "3.0e+30" not in dumped
 
     loaded = loads(dumped)
     print("CHD load:")
@@ -450,8 +495,8 @@ def test_dumps_wel_with_aux():
     # node q aux_value
     assert "1 2 3 -75.0 1.0" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
     assert "2 4 5 -25.0 2.0" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
-    assert "1e+30" not in dumped
-    assert "1.0e+30" not in dumped
+    assert "3e+30" not in dumped
+    assert "3.0e+30" not in dumped
 
     loaded = loads(dumped)
     print("WEL+aux load:")

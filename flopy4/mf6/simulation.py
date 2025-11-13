@@ -4,7 +4,7 @@ from warnings import warn
 from modflow_devtools.misc import cd, run_cmd
 from xattree import xattree
 
-from flopy4.mf6.context import Context
+from flopy4.mf6.context import Context, update_child_attr
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
@@ -32,6 +32,8 @@ class Simulation(Context):
         return "mfsim.nam"
 
     def __attrs_post_init__(self):
+        from attrs import fields_dict
+
         super().__attrs_post_init__()
         if self.filename != "mfsim.nam":
             if self.filename is not None:
@@ -40,8 +42,9 @@ class Simulation(Context):
                     UserWarning,
                 )
             self.filename = "mfsim.nam"
-        for model in self.models.values():
-            model.workspace = self.workspace
+        fields = fields_dict(type(self))
+        field = fields["workspace"]
+        update_child_attr(self, field, self.workspace)
 
     @property
     def time(self) -> Time:

@@ -33,6 +33,8 @@ class Binding:
             elif isinstance(component, Solution):
                 return f"{component.slntype}6"
             else:
+                if len(cls_name) == 4 and (cls_name[3] == "g" or cls_name[3] == "a"):
+                    return f"{cls_name[0:3].upper()}6"
                 return f"{cls_name.upper()}6"
 
         def _get_binding_terms(component: Component) -> tuple[str, ...] | None:

@@ -8,20 +8,39 @@ from flopy.discretization.grid import Grid
 from xattree import xattree
 
 from flopy4.mf6.gwf.chd import Chd
+from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.dis import Dis
 from flopy4.mf6.gwf.drn import Drn
+from flopy4.mf6.gwf.drng import Drng
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.gwf.rch import Rch
+from flopy4.mf6.gwf.rcha import Rcha
 from flopy4.mf6.gwf.sto import Sto
 from flopy4.mf6.gwf.wel import Wel
+from flopy4.mf6.gwf.welg import Welg
 from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 
-__all__ = ["Gwf", "Chd", "Dis", "Drn", "Ic", "Npf", "Oc", "Sto", "Wel", "Rch"]
+__all__ = [
+    "Gwf",
+    "Chd",
+    "Chdg",
+    "Dis",
+    "Drn",
+    "Drng",
+    "Ic",
+    "Npf",
+    "Oc",
+    "Rch",
+    "Rcha",
+    "Sto",
+    "Wel",
+    "Welg",
+]
 
 
 def convert_grid(value):
@@ -78,10 +97,18 @@ class Gwf(Model):
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
+    # TODO: implement type check for all lists (and singletons?)
     chd: list[Chd] = field(block="packages")
-    wel: list[Wel] = field(block="packages")
+    chdg: list[Chdg] = field(block="packages")
+    # TODO: consolidate all package flavors to single list
+    #       based on hydrologic feature
+    # chd: List[Union[Chd, Chdg]] = field(block="packages")
     drn: list[Drn] = field(block="packages")
+    drng: list[Drng] = field(block="packages")
     rch: list[Rch] = field(block="packages")
+    rcha: list[Rcha] = field(block="packages")
+    wel: list[Wel] = field(block="packages")
+    welg: list[Welg] = field(block="packages")
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )

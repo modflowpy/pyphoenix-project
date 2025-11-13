@@ -75,9 +75,15 @@ class Dis(Package):
         scope="gwf",
         init=False,
     )
+    ncpl: int = dim(
+        coord="lnode",
+        scope="gwf",
+        init=False,
+    )
 
     def __attrs_post_init__(self):
         self.nodes = self.ncol * self.nrow * self.nlay
+        self.ncpl = self.ncol * self.nrow
         super().__attrs_post_init__()
 
     def to_grid(self) -> StructuredGrid:
