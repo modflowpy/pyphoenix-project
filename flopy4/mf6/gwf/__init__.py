@@ -97,9 +97,11 @@ class Gwf(Model):
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
+    # TODO: implement type check for all lists (and singletons?)
     chd: list[Chd] = field(block="packages")
     chdg: list[Chdg] = field(block="packages")
-    # chd: List[Union[Chd, Chdg]] = field(block="packages", factory=List)
+    # TODO: consolidate all package flavors to single list
+    #       based on hydrologic feature
     # chd: List[Union[Chd, Chdg]] = field(block="packages")
     drn: list[Drn] = field(block="packages")
     drng: list[Drng] = field(block="packages")

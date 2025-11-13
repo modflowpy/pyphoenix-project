@@ -243,19 +243,17 @@ welg = flopy4.mf6.gwf.Welg(
 # recharge
 recharge = np.repeat(np.expand_dims(LAYER_NODATA, axis=0), repeats=nper, axis=0)
 recharge[0, ...] = 3.0e-8
-# recharge[0, 0, 0] = 3.0e-7
-# rch = flopy4.mf6.gwf.Rcha(irch=1, recharge=recharge.reshape(nper, -1), dims=dims)
 rcha = flopy4.mf6.gwf.Rcha(recharge=recharge.reshape(nper, -1), dims=dims)
 
 # remove list based inputs
+# TODO: show variations on removing packages
 gwf.chd.remove(chd)
-# del gwf.chd[0]
 del gwf.drn[0]
 del gwf.wel[0]
 del gwf.rch[0]
 
 # add array based inputs
-# gwf.chdg = [chdg]
+# TODO: needs type checking and list consolidation support (see comments in gwf init)
 gwf.chd = [chdg]
 gwf.drng = [drng]
 gwf.welg = [welg]
