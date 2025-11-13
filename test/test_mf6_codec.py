@@ -313,10 +313,14 @@ def test_dumps_rcha():
     gwf = Gwf(dis=dis)
 
     recharge = np.full((nrow, ncol), FILL_DNODATA, dtype=float)
+    irch = np.full((nrow, ncol), 1, dtype=int)
+    irch[0, 0] = 2
+    irch[9, 9] = 2
     recharge[0, 0] = 1.0
     recharge[9, 9] = 0.0
     rch = Rcha(
         parent=gwf,
+        irch=np.expand_dims(irch.ravel(), axis=0),
         recharge=np.expand_dims(recharge.ravel(), axis=0),
         save_flows=True,
         print_input=True,
@@ -333,10 +337,13 @@ def test_dumps_rcha():
     period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
-    assert len(lines) == 3
+    assert len(lines) == 6
     assert "READASARRAYS" in dumped
-    dump_data = [float(x) for x in lines[2].split()]
-    dump_recharge = np.array(dump_data)
+    dump_irch = [int(x) for x in lines[2].split()]
+    dump_lidx = np.array(dump_irch)
+    assert np.allclose(irch, dump_lidx.reshape(nrow, ncol))
+    dump_rch = [float(x) for x in lines[5].split()]
+    dump_recharge = np.array(dump_rch)
     assert np.allclose(recharge, dump_recharge.reshape(nrow, ncol))
 
     loaded = loads(dumped)
