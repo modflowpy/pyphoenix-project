@@ -188,16 +188,16 @@ def _unstructure_block_param(
             field_name == "auxiliary" and hasattr(field_value, "values") and field_value is not None
         ):
             blocks[block_name][field_name] = tuple(field_value.values.tolist())
-        case xr.DataArray() if "nper" in field_value.dims:
+        case xr.DataArray():
             has_spatial_dims = any(
                 dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "ncpl", "nodes"]
             )
             if has_spatial_dims:
                 field_value = _hack_structured_grid_dims(
                     field_value,
-                    structured_grid_dims=value.parent.data.dims,  # type: ignore
+                    structured_grid_dims=value.data.dims,  # type: ignore
                 )
-            if block_name == "period":
+            if "nper" in field_value.dims and block_name == "period":
                 if not np.issubdtype(field_value.dtype, np.number):
                     dat = _hack_period_non_numeric(field_name, field_value)
                     for n, v in dat.items():
@@ -209,7 +209,6 @@ def _unstructure_block_param(
                     }
             else:
                 blocks[block_name][field_name] = field_value
-
         case _:
             blocks[block_name][field_name] = field_value
 
@@ -217,7 +216,6 @@ def _unstructure_block_param(
 def unstructure_component(value: Component) -> dict[str, Any]:
     xatspec = xattree.get_xatspec(type(value))
     if "readarraygrid" in xatspec.attrs or "readasarrays" in xatspec.attrs:
-        # return _unstructure_array_component(value)
         return _unstructure_array_component(value)
     else:
         return _unstructure_component(value)
@@ -273,7 +271,6 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     data = xattree.asdict(value)
 
     # create child component binding blocks
-    # TODO: this can add certain block keys out of order
     blocks.update(_make_binding_blocks(value))
 
     # process blocks in order, unstructuring fields as needed,
@@ -331,7 +328,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
 
     # TODO: this fixes out of order blocks (e.g. model namefile) from
     # blocks.update() child binding call above
-    # blocks = dict(sorted(blocks.items(), key=block_sort_key))
+    blocks = dict(sorted(blocks.items(), key=block_sort_key))
 
     # total temporary hack! manually set solutiongroup 1.
     # TODO still need to support multiple..

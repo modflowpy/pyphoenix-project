@@ -2,16 +2,11 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import numpy as np
-
-# from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
-# from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
-
-# from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.utils import to_path
 
 
@@ -31,7 +26,6 @@ class Rcha(Package):
     obs_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    # maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
     irch: Optional[NDArray[np.int64]] = array(
         block="period",
         dims=(
@@ -39,8 +33,6 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
-        # converter=Converter(structure_array, takes_self=True, takes_field=True),
-        # on_setattr=update_maxbound,
     )
     recharge: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -49,8 +41,6 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
-        # converter=Converter(structure_array, takes_self=True, takes_field=True),
-        # on_setattr=update_maxbound,
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -59,6 +49,4 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
-        # converter=Converter(structure_array, takes_self=True, takes_field=True),
-        # on_setattr=update_maxbound,
     )

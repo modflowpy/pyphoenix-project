@@ -100,6 +100,7 @@ class Gwf(Model):
     chd: list[Chd] = field(block="packages")
     chdg: list[Chdg] = field(block="packages")
     # chd: List[Union[Chd, Chdg]] = field(block="packages", factory=List)
+    # chd: List[Union[Chd, Chdg]] = field(block="packages")
     drn: list[Drn] = field(block="packages")
     drng: list[Drng] = field(block="packages")
     rch: list[Rch] = field(block="packages")

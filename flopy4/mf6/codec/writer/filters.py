@@ -10,7 +10,7 @@ from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
-ArrayHow = Literal["constant", "internal", "external", "layered internal"]
+ArrayHow = Literal["constant", "internal", "external", "layered constant", "layered internal"]
 
 
 def array_how(value: xr.DataArray) -> ArrayHow:
@@ -29,6 +29,14 @@ def array_how(value: xr.DataArray) -> ArrayHow:
     if value.ndim <= 2:
         return "internal"
     if value.ndim == 3:
+        layer_const = True
+        for layer in range(value.shape[0]):
+            val_layer = value.isel(nlay=layer)
+            if val_layer.max() != val_layer.min():
+                layer_const = False
+                break
+        if layer_const:
+            return "layered constant"
         return "layered internal"
     raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 

@@ -10,9 +10,29 @@ from flopy4.mf6.spec import field
 from flopy4.utils import to_path
 
 
+def update_child_attr(instance, attribute, new_value):
+    """
+    Generalized function to update child attribute (e.g. workspace).
+
+    Args:
+        instance: The model instance
+        attribute: The attribute being set (from attrs on_setattr)
+        new_value: The new value being set
+
+    Returns:
+        The new_value (unchanged)
+    """
+
+    for child in instance.children.values():  # type: ignore
+        if hasattr(child, attribute.name):
+            setattr(child, attribute.name, new_value)
+
+    return new_value
+
+
 @xattree
 class Context(Component, ABC):
-    workspace: Path = field(default=None, converter=to_path)
+    workspace: Path = field(default=None, converter=to_path, on_setattr=update_child_attr)
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()

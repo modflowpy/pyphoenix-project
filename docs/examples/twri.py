@@ -9,7 +9,7 @@ import numpy as np
 import flopy4
 
 
-def plot_contourf(head, workspace):
+def plot_head(head, workspace):
     import matplotlib.pyplot as plt
 
     # Plot head results
@@ -101,7 +101,6 @@ sto = flopy4.mf6.gwf.Sto(
 # Uniform recharge on the top layer
 rch_rate = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
 rate = np.repeat(np.expand_dims(rch_rate, axis=0), repeats=nper, axis=0)
-# rate[0, 0, :, :] = 3.0e-8
 rate[0, 0, ...] = 3.0e-8
 rch = flopy4.mf6.gwf.Rch(recharge=rate.reshape(nper, -1), dims=dims)
 
@@ -197,7 +196,9 @@ head = flopy4.mf6.utils.open_hds(
 )
 
 # Plot head results
-plot_contourf(head, workspace)
+plot_head(head, workspace)
+
+# UPDATE SIM for array based inputs
 
 # update simulation with array based inputs
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
@@ -243,18 +244,19 @@ welg = flopy4.mf6.gwf.Welg(
 recharge = np.repeat(np.expand_dims(LAYER_NODATA, axis=0), repeats=nper, axis=0)
 recharge[0, ...] = 3.0e-8
 # recharge[0, 0, 0] = 3.0e-7
-# print(recharge)
 # rch = flopy4.mf6.gwf.Rcha(irch=1, recharge=recharge.reshape(nper, -1), dims=dims)
 rcha = flopy4.mf6.gwf.Rcha(recharge=recharge.reshape(nper, -1), dims=dims)
 
 # remove list based inputs
-del gwf.chd[0]
+gwf.chd.remove(chd)
+# del gwf.chd[0]
 del gwf.drn[0]
 del gwf.wel[0]
 del gwf.rch[0]
 
 # add array based inputs
-gwf.chdg = [chdg]
+# gwf.chdg = [chdg]
+gwf.chd = [chdg]
 gwf.drng = [drng]
 gwf.welg = [welg]
 gwf.rcha = [rcha]
@@ -263,7 +265,6 @@ gwf.rcha = [rcha]
 workspace = Path(__file__).parent / "twri2"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
-sim.__attrs_post_init__()
 
 sim.write()
 sim.run()
@@ -275,4 +276,4 @@ head = flopy4.mf6.utils.open_hds(
 )
 
 # Plot head results
-plot_contourf(head, workspace)
+plot_head(head, workspace)
