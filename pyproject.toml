@@ -50,7 +50,7 @@ dependencies = [
     "sparse>=0.17.0,<0.18",
     "dask[array]>=2025.10.0,<2026",
     "pyproj>=3.7.2,<4",
-    "netcdf4>=1.7.3,<2",
+    # "netcdf4>=1.7.3,<2",
     "pyshp>=3.0.2.post1,<4",
     "llvmlite>=0.45.1,<0.46",
 ]
@@ -123,6 +123,7 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
 flopy4 = { path = ".", editable = true }
+netcdf4 = ">=1.7.3,<2"
 
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
