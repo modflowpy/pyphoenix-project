@@ -5318,7 +5318,7 @@ packages:
 - pypi: ./
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 8a4983a1767d038fc113df54b9d169c1e223fa3c44b1b7d6a1a9b6f37070ee91
+  sha256: 32b41595aa9f3fae738e08c28b3d43c8e4c0a1f1905e2a7cee76feff0872de71
   requires_dist:
   - modflow-devtools[dfn] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git@dfn
   - xattree @ git+https://github.com/wpbonelli/xattree.git
@@ -5336,6 +5336,7 @@ packages:
   - sparse>=0.17.0,<0.18
   - dask[array]>=2025.10.0,<2026
   - pyproj>=3.7.2,<4
+  - netcdf4>=1.7.3,<2
   - pyshp>=3.0.2.post1,<4
   - llvmlite>=0.45.1,<0.46
   - flopy4[build,lint,test] ; extra == 'dev'
