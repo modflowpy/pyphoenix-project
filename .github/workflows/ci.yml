@@ -80,6 +80,10 @@ jobs:
         with:
           repo: modflow6-nightly-build
 
+      - name: Install PROJ
+        if: runner.os == 'macOS'
+        run: brew install proj
+
       - name: Install HDF5
         if: runner.os == 'macOS'
         run: brew install hdf5
