@@ -6,7 +6,7 @@ import pytest
 from modflow_devtools.download import download_and_unzip
 from modflow_devtools.misc import is_in_ci
 
-pytest_plugins = ["modflow_devtools.fixtures"]
+pytest_plugins = ["modflow_devtools.fixtures", "modflow_devtools.snapshots"]
 
 PROJ_ROOT_PATH = Path(__file__).parents[1]
 DOCS_PATH = PROJ_ROOT_PATH / "docs"
