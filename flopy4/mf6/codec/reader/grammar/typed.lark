@@ -19,7 +19,7 @@ filename: ESCAPED_STRING | word
 data: double+
 record: token+ NEWLINE
 token: number | word
-word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,-\\(\\)]+/
+word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,+-\\(\\)]+/
 _token: word | number
 
 %import common.NEWLINE

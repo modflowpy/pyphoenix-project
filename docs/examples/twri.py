@@ -254,7 +254,7 @@ del gwf.rch[0]
 
 # add array based inputs
 # TODO: needs type checking and list consolidation support (see comments in gwf init)
-gwf.chd = [chdg]
+gwf.chdg = [chdg]
 gwf.drng = [drng]
 gwf.welg = [welg]
 gwf.rcha = [rcha]

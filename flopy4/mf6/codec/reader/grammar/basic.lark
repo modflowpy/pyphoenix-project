@@ -4,7 +4,7 @@ block_name: CNAME [INT]
 _list: line*
 line: [WS] item+ _NL+
 item: word | NUMBER
-word: /[a-zA-Z0-9._'~,-\\(\\)]+/
+word: /[a-zA-Z0-9._'~,+-\\(\\)]+/
 
 %import common.NEWLINE -> _NL
 %import common.WS
