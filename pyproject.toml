@@ -48,7 +48,6 @@ dependencies = [
     "xarray[parallel,io]>=2025.10.1,<2026",
     "scipy>=1.16.2,<2",
     "sparse>=0.17.0,<0.18",
-    "syrupy<5",
     "dask[array]>=2025.10.0,<2026",
     "pyproj>=3.7.2,<4",
     "netcdf4>=1.7.3,<2",

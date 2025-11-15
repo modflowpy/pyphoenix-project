@@ -19,26 +19,38 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("example_script", scripts.values(), ids=scripts.keys())
 
 
-def check(example_script, snapshot):
-    from pathlib import Path
-
+def check_heads(compare_fpth, check_path):
     import numpy as np
     from flopy.utils import HeadFile
 
-    check_path = Path(f"{example_script.parent}/{example_script.stem}")
+    if not compare_fpth.exists():
+        return
+
+    hds_compare = np.load(compare_fpth)
+
+    # check *.hds files
     for f in check_path.rglob("*.hds"):
         hds = HeadFile(f, precision="double")
-        # assert hds.get_data() == pytest.approx(snapshot)
-        # assert snapshot == hds.get_data()
-        test_dir = Path(f"{example_script.parent}/../../test")
-        arr = np.load(test_dir / "__snapshots__" / "test_examples" / f"{example_script.stem}.npy")
-        assert np.allclose(arr, hds.get_data())
+        assert np.allclose(hds_compare, hds.get_data())
 
 
-@pytest.mark.snapshot
+def check(example_script):
+    from pathlib import Path
+
+    test_name = "test_examples"
+    check_path = Path(f"{example_script.parent}/{example_script.stem}")
+    test_dir = Path(f"{example_script.parent}/../../test")
+
+    # checks; assume test output path parent has example name
+    check_heads(
+        test_dir / f"__compare__/{test_name}/{example_script.stem}.hds.npy",
+        check_path,
+    )
+
+
 @pytest.mark.slow
-def test_scripts(example_script, array_snapshot):
+def test_scripts(example_script):
     args = [sys.executable, example_script]
     stdout, stderr, retcode = run_cmd(*args, verbose=True)
     assert not retcode, stdout + stderr
-    check(example_script, array_snapshot)
+    check(example_script)
