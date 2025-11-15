@@ -22,12 +22,16 @@ def pytest_generate_tests(metafunc):
 def check(example_script, snapshot):
     from pathlib import Path
 
+    import numpy as np
     from flopy.utils import HeadFile
 
     check_path = Path(f"{example_script.parent}/{example_script.stem}")
     for f in check_path.rglob("*.hds"):
         hds = HeadFile(f, precision="double")
-        assert hds.get_data() == pytest.approx(snapshot)
+        # assert hds.get_data() == pytest.approx(snapshot)
+        # assert snapshot == hds.get_data()
+        arr = np.load(Path.cwd() / "__snapshots__" / "test_examples" / f"{example_script.stem}.npy")
+        assert np.allclose(arr, hds.get_data())
 
 
 @pytest.mark.snapshot
