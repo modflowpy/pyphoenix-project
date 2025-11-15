@@ -30,7 +30,8 @@ def check(example_script, snapshot):
         hds = HeadFile(f, precision="double")
         # assert hds.get_data() == pytest.approx(snapshot)
         # assert snapshot == hds.get_data()
-        arr = np.load(Path.cwd() / "__snapshots__" / "test_examples" / f"{example_script.stem}.npy")
+        test_dir = Path(f"{example_script.parent}/../../test")
+        arr = np.load(test_dir / "__snapshots__" / "test_examples" / f"{example_script.stem}.npy")
         assert np.allclose(arr, hds.get_data())
 
 
