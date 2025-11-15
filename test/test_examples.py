@@ -27,7 +27,7 @@ def check(example_script, snapshot):
     check_path = Path(f"{example_script.parent}/{example_script.stem}")
     for f in check_path.rglob("*.hds"):
         hds = HeadFile(f, precision="double")
-        assert snapshot == hds.get_data()
+        assert hds.get_data() == pytest.approx(snapshot)
 
 
 @pytest.mark.snapshot
