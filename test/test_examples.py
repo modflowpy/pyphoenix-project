@@ -20,7 +20,7 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("example_script", scripts.values(), ids=scripts.keys())
 
 
-def compare_heads(compare_fpth, check_path):
+def compare_hds(compare_fpth, check_path):
     from flopy.utils import HeadFile
 
     if compare_fpth.suffix == ".hds":
@@ -37,12 +37,12 @@ def compare_heads(compare_fpth, check_path):
 def compare_grb(compare_fpth, check_path):
     from flopy.mf6.utils import MfGrdFile
 
-    grb_compare = MfGrdFile(compare_fpth)._datadict
+    grb_compare = MfGrdFile(compare_fpth)
 
     # check *.grb files
     for f in check_path.rglob("*.grb"):
         grb = MfGrdFile(f)
-        np.testing.assert_equal(grb_compare, grb._datadict)
+        np.testing.assert_equal(grb_compare._datadict, grb._datadict)
 
 
 def compare_bud(compare_fpth, check_path):
@@ -72,16 +72,15 @@ def compare_bud(compare_fpth, check_path):
 def compare(example_script):
     from pathlib import Path
 
-    test_name = "test_examples"
     check_path = Path(f"{example_script.parent}/{example_script.stem}")
-    compare_path = Path(f"{example_script.parent.parent.parent}/test/__compare__/{test_name}")
+    compare_path = Path(f"{example_script.parent.parent.parent}/test/__compare__/test_examples")
 
     for f in compare_path.glob(f"{example_script.stem}.*"):
         if f.suffix == ".bud" or f.suffix == ".cbc":
             compare_bud(f, check_path)
         if f.suffix == ".hds" or f.match("*hds.npy"):
-            compare_heads(f, check_path)
-        elif f.suffix == ".grb":
+            compare_hds(f, check_path)
+        if f.suffix == ".grb":
             compare_grb(f, check_path)
 
 

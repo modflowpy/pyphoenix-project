@@ -173,7 +173,7 @@ ims = flopy4.mf6.Ims(
 tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "list_stress"
+workspace = Path(__file__).parent / "twri" / "list_stresspkg"
 workspace.mkdir(parents=True, exist_ok=True)
 
 # Create simulation
@@ -260,7 +260,7 @@ gwf.welg = [welg]
 gwf.rcha = [rcha]
 
 # create new workspace
-workspace = Path(__file__).parent / "twri" / "array_stress"
+workspace = Path(__file__).parent / "twri" / "array_stresspkg"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
