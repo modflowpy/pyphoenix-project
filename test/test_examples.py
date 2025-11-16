@@ -2,6 +2,7 @@
 
 import sys
 
+import numpy as np
 import pytest
 from conftest import EXAMPLES_PATH
 from modflow_devtools.misc import run_cmd
@@ -19,14 +20,13 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("example_script", scripts.values(), ids=scripts.keys())
 
 
-def check_heads(compare_fpth, check_path):
-    import numpy as np
+def compare_heads(compare_fpth, check_path):
     from flopy.utils import HeadFile
 
-    if not compare_fpth.exists():
-        return
-
-    hds_compare = np.load(compare_fpth)
+    if compare_fpth.suffix == ".hds":
+        hds_compare = HeadFile(compare_fpth, precision="double").get_data()
+    elif compare_fpth.suffix == ".npy":
+        hds_compare = np.load(compare_fpth)
 
     # check *.hds files
     for f in check_path.rglob("*.hds"):
@@ -34,18 +34,55 @@ def check_heads(compare_fpth, check_path):
         assert np.allclose(hds_compare, hds.get_data())
 
 
-def check(example_script):
+def compare_grb(compare_fpth, check_path):
+    from flopy.mf6.utils import MfGrdFile
+
+    grb_compare = MfGrdFile(compare_fpth)._datadict
+
+    # check *.grb files
+    for f in check_path.rglob("*.grb"):
+        grb = MfGrdFile(f)
+        np.testing.assert_equal(grb_compare, grb._datadict)
+
+
+def compare_bud(compare_fpth, check_path):
+    from flopy.utils.binaryfile import CellBudgetFile
+
+    bud_compare = CellBudgetFile(compare_fpth)
+
+    # check *.bud and *.cbc files
+    pattern = ["*.bud", "*.cbc"]
+    files = [f for p in pattern for f in check_path.rglob(p)]
+    for f in files:
+        bud = CellBudgetFile(f)
+        names = bud_compare.get_unique_record_names()
+        for n in names:
+            bud_cmp = bud_compare.get_data(text=n)
+            bud_chk = bud.get_data(text=n)
+            if isinstance(bud_cmp[0], np.rec.recarray):
+                assert len(bud_cmp) == len(bud_chk)
+                for ra_cmp, ra in zip(bud_cmp, bud_chk):
+                    assert len(ra_cmp) == len(ra)
+                    for i, rec in enumerate(ra_cmp):
+                        assert all(np.allclose(x, y) for x, y in zip(rec, ra[i]))
+            else:
+                assert np.allclose(bud_compare.get_data(text=n), bud.get_data(text=n))
+
+
+def compare(example_script):
     from pathlib import Path
 
     test_name = "test_examples"
     check_path = Path(f"{example_script.parent}/{example_script.stem}")
-    test_dir = Path(f"{example_script.parent}/../../test")
+    compare_path = Path(f"{example_script.parent.parent.parent}/test/__compare__/{test_name}")
 
-    # checks; assume test output path parent has example name
-    check_heads(
-        test_dir / f"__compare__/{test_name}/{example_script.stem}.hds.npy",
-        check_path,
-    )
+    for f in compare_path.glob(f"{example_script.stem}.*"):
+        if f.suffix == ".bud" or f.suffix == ".cbc":
+            compare_bud(f, check_path)
+        if f.suffix == ".hds" or f.match("*hds.npy"):
+            compare_heads(f, check_path)
+        elif f.suffix == ".grb":
+            compare_grb(f, check_path)
 
 
 @pytest.mark.slow
@@ -53,4 +90,4 @@ def test_scripts(example_script):
     args = [sys.executable, example_script]
     stdout, stderr, retcode = run_cmd(*args, verbose=True)
     assert not retcode, stdout + stderr
-    check(example_script)
+    compare(example_script)
