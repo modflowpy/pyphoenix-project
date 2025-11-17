@@ -88,6 +88,12 @@ include = ["flopy4", "flopy4.*"]
 [tool.setuptools.package-data]
 "flopy4.dfns" = ["dfns/*.dfn"]
 "flopy4.toml" = ["dfns/toml/*.toml"]
+"flopy4.extras" = [
+    "flopy4/mf6/codec/reader/grammar/*.lark",
+    "flopy4/mf6/codec/reader/grammar/generated/*.lark",
+    "flopy4/mf6/codec/reader/grammar/templates/*.jinja",
+    "flopy4/mf6/codec/writer/templates/*.jinja",
+]
 
 [tool.ruff]
 line-length = 100
