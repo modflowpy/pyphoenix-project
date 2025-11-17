@@ -89,10 +89,8 @@ include = ["flopy4", "flopy4.*"]
 "flopy4.dfns" = ["dfns/*.dfn"]
 "flopy4.toml" = ["dfns/toml/*.toml"]
 "flopy4" = [
-    "mf6/codec/reader/grammar/*.lark",
-    "mf6/codec/reader/grammar/generated/*.lark",
-    "mf6/codec/reader/grammar/templates/*.jinja",
-    "mf6/codec/writer/templates/*.jinja",
+    "mf6/codec/**/*.lark",
+    "mf6/codec/**/*.jinja",
 ]
 
 [tool.ruff]
