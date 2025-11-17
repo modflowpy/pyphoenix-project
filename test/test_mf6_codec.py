@@ -284,6 +284,8 @@ def test_dumps_chdg():
     print("CHD dump:")
     print(dumped)
 
+    assert "READARRAYGRID" in dumped
+    assert "MAXBOUND 2" in dumped
     assert "BEGIN PERIOD 1" in dumped
     assert "END PERIOD 1" in dumped
 
@@ -291,8 +293,6 @@ def test_dumps_chdg():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 12
-    assert "READARRAYGRID" in dumped
-    assert "MAXBOUND 2" in dumped
     dump_data = [[float(x) for x in line.split()] for line in lines[2:12]]
     dump_head = np.array(dump_data)
     assert np.allclose(head, dump_head)
@@ -331,6 +331,7 @@ def test_dumps_rcha():
     print("RCH dump:")
     print(dumped)
 
+    assert "READASARRAYS" in dumped
     assert "BEGIN PERIOD 1" in dumped
     assert "END PERIOD 1" in dumped
 
@@ -338,7 +339,6 @@ def test_dumps_rcha():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 6
-    assert "READASARRAYS" in dumped
     dump_irch = [int(x) for x in lines[2].split()]
     dump_lidx = np.array(dump_irch)
     assert np.allclose(irch, dump_lidx.reshape(nrow, ncol))

@@ -409,7 +409,6 @@ def test_quickstart_grid(function_tmpdir):
     nstp = 1
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    # time = Time(perlen=[1.0, 1.0], nstp=[1, 1], tsmult=[1.0, 1.0])
     ims = Ims(models=[gwf_name])
     dis = Dis(
         nlay=nlay,
