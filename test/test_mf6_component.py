@@ -409,7 +409,6 @@ def test_quickstart_grid(function_tmpdir):
     nstp = 1
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    # time = Time(perlen=[1.0, 1.0], nstp=[1, 1], tsmult=[1.0, 1.0])
     ims = Ims(models=[gwf_name])
     dis = Dis(
         nlay=nlay,
@@ -435,15 +434,15 @@ def test_quickstart_grid(function_tmpdir):
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
-    # chd grid based input, step 1 data head array
-    head = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
-    head[0, 0, 0] = 1.0
-    head[0, 9, 9] = 0.0
-    # TODO: support dict style input keyed on SP with separate grid arrays
-    chd = Chdg(parent=gwf, head=np.expand_dims(head.ravel(), axis=0))
-    # headnone = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
-    # ts_head = np.stack((head.ravel(), headnone.ravel()), axis=0)
-    # chd = Chdg(parent=gwf, head=ts_head)
+    # Chdg
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    chd = Chdg(
+        parent=gwf,
+        head=head.reshape(1, -1),
+    )
 
     sim.write()
     sim.run()

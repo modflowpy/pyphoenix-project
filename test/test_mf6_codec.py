@@ -284,6 +284,8 @@ def test_dumps_chdg():
     print("CHD dump:")
     print(dumped)
 
+    assert "READARRAYGRID" in dumped
+    assert "MAXBOUND 2" in dumped
     assert "BEGIN PERIOD 1" in dumped
     assert "END PERIOD 1" in dumped
 
@@ -291,14 +293,61 @@ def test_dumps_chdg():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 12
-    assert "READARRAYGRID" in dumped
-    assert "MAXBOUND 2" in dumped
     dump_data = [[float(x) for x in line.split()] for line in lines[2:12]]
     dump_head = np.array(dump_data)
     assert np.allclose(head, dump_head)
 
     loaded = loads(dumped)
     print("CHDG load:")
+    pprint(loaded)
+
+
+def test_dumps_rcha():
+    from flopy4.mf6.gwf import Dis, Gwf, Rcha
+
+    nlay = 3
+    nrow = 10
+    ncol = 10
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.full((nrow, ncol), FILL_DNODATA, dtype=float)
+    irch = np.full((nrow, ncol), 1, dtype=int)
+    irch[0, 0] = 2
+    irch[9, 9] = 2
+    recharge[0, 0] = 1.0
+    recharge[9, 9] = 0.0
+    rch = Rcha(
+        parent=gwf,
+        irch=np.expand_dims(irch.ravel(), axis=0),
+        recharge=np.expand_dims(recharge.ravel(), axis=0),
+        save_flows=True,
+        print_input=True,
+        dims={"nper": 1},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(rch))
+    print("RCH dump:")
+    print(dumped)
+
+    assert "READASARRAYS" in dumped
+    assert "BEGIN PERIOD 1" in dumped
+    assert "END PERIOD 1" in dumped
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
+
+    assert len(lines) == 6
+    dump_irch = [int(x) for x in lines[2].split()]
+    dump_lidx = np.array(dump_irch)
+    assert np.allclose(irch, dump_lidx.reshape(nrow, ncol))
+    dump_rch = [float(x) for x in lines[5].split()]
+    dump_recharge = np.array(dump_rch)
+    assert np.allclose(recharge, dump_recharge.reshape(nrow, ncol))
+
+    loaded = loads(dumped)
+    print("RCHA load:")
     pprint(loaded)
 
 
