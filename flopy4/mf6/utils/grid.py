@@ -100,39 +100,53 @@ class StructuredGrid(LegacyStructuredGrid):
         legacy_top = LegacyStructuredGrid.top.fget(self)
         legacy_botm = LegacyStructuredGrid.botm.fget(self)
 
-        # Compute x coordinates (cell centers)
-        delr = np.atleast_1d(legacy_delr)
-        if delr.size == 1:
-            delr = np.full(self.ncol, delr[0])
-        x = self._xoff + np.cumsum(delr) - 0.5 * delr
+        # If spatial data is not provided, use default coordinates (indices)
+        # This handles grids created with only dimensions (nlay, nrow, ncol)
+        if legacy_delr is None:
+            x = np.arange(self.ncol, dtype=float)
+        else:
+            # Compute x coordinates (cell centers)
+            delr = np.atleast_1d(legacy_delr)
+            if delr.size == 1:
+                delr = np.full(self.ncol, delr[0])
+            x = self._xoff + np.cumsum(delr) - 0.5 * delr
 
-        # Compute y coordinates (cell centers)
-        delc = np.atleast_1d(legacy_delc)
-        if delc.size == 1:
-            delc = np.full(self.nrow, delc[0])
-        # Calculate ymax from grid dimensions
-        ymax = self._yoff + np.sum(delc)
-        y = ymax - np.cumsum(delc) + 0.5 * delc
+        if legacy_delc is None:
+            y = np.arange(self.nrow, dtype=float)
+        else:
+            # Compute y coordinates (cell centers)
+            delc = np.atleast_1d(legacy_delc)
+            if delc.size == 1:
+                delc = np.full(self.nrow, delc[0])
+            # Calculate ymax from grid dimensions
+            ymax = self._yoff + np.sum(delc)
+            y = ymax - np.cumsum(delc) + 0.5 * delc
 
         # Compute z coordinates (cell centers in 3D)
-        # Ensure top and botm are proper arrays
-        top_2d = np.atleast_2d(legacy_top)
-        if top_2d.size == 1:
-            top_2d = np.full((self.nrow, self.ncol), top_2d[0, 0])
-        elif top_2d.shape != (self.nrow, self.ncol):
-            top_2d = top_2d.reshape(self.nrow, self.ncol)
+        if legacy_top is None or legacy_botm is None:
+            # Use default z coordinates (layer indices)
+            z = np.zeros((self.nlay, self.nrow, self.ncol))
+            for k in range(self.nlay):
+                z[k, :, :] = float(k)
+        else:
+            # Ensure top and botm are proper arrays
+            top_2d = np.atleast_2d(legacy_top)
+            if top_2d.size == 1:
+                top_2d = np.full((self.nrow, self.ncol), top_2d[0, 0])
+            elif top_2d.shape != (self.nrow, self.ncol):
+                top_2d = top_2d.reshape(self.nrow, self.ncol)
 
-        botm_3d = np.atleast_3d(legacy_botm).reshape(self.nlay, self.nrow, self.ncol)
+            botm_3d = np.atleast_3d(legacy_botm).reshape(self.nlay, self.nrow, self.ncol)
 
-        # Compute cell-centered z for each cell
-        z = np.zeros((self.nlay, self.nrow, self.ncol))
-        for k in range(self.nlay):
-            if k == 0:
-                layer_top = top_2d
-            else:
-                layer_top = botm_3d[k - 1]
-            layer_bot = botm_3d[k]
-            z[k] = (layer_top + layer_bot) / 2.0
+            # Compute cell-centered z for each cell
+            z = np.zeros((self.nlay, self.nrow, self.ncol))
+            for k in range(self.nlay):
+                if k == 0:
+                    layer_top = top_2d
+                else:
+                    layer_top = botm_3d[k - 1]
+                layer_bot = botm_3d[k]
+                z[k] = (layer_top + layer_bot) / 2.0
 
         return {
             "x": xr.DataArray(x, dims=("ncol",)),
@@ -172,7 +186,15 @@ class StructuredGrid(LegacyStructuredGrid):
 
     @property
     def delz(self):
+        legacy_delz = super().delz
+        if legacy_delz is None:
+            return None
+
         dims = ("nlay", "nrow", "ncol")
+        # Check if data shape matches expected grid dimensions
+        if legacy_delz.shape != (self.nlay, self.nrow, self.ncol):
+            return legacy_delz
+
         coord_names = (
             self._dims_coords[dims[0]],
             self._dims_coords[dims[1]],
@@ -181,7 +203,7 @@ class StructuredGrid(LegacyStructuredGrid):
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
         coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
         return (
-            xr.DataArray(super().delz, coords=coords, dims=dims)
+            xr.DataArray(legacy_delz, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
@@ -192,12 +214,21 @@ class StructuredGrid(LegacyStructuredGrid):
 
     @property
     def top(self):
+        legacy_top = super().top
+        if legacy_top is None:
+            return None
+
         dims = ("nrow", "ncol")
+        # Check if data shape matches expected grid dimensions
+        # If not, return the raw legacy data without coordinates
+        if legacy_top.shape != (self.nrow, self.ncol):
+            return legacy_top
+
         coord_names = (self._dims_coords[dims[0]], self._dims_coords[dims[1]])
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
         coords.update({"x": self._coords["x"], "y": self._coords["y"]})
         return (
-            xr.DataArray(super().top, coords=coords, dims=dims)
+            xr.DataArray(legacy_top, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex("x", PandasIndex)
@@ -206,7 +237,15 @@ class StructuredGrid(LegacyStructuredGrid):
 
     @property
     def botm(self):
+        legacy_botm = super().botm
+        if legacy_botm is None:
+            return None
+
         dims = ("nlay", "nrow", "ncol")
+        # Check if data shape matches expected grid dimensions
+        if legacy_botm.shape != (self.nlay, self.nrow, self.ncol):
+            return legacy_botm
+
         coord_names = (
             self._dims_coords[dims[0]],
             self._dims_coords[dims[1]],
@@ -215,7 +254,7 @@ class StructuredGrid(LegacyStructuredGrid):
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
         coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
         return (
-            xr.DataArray(super().botm, coords=coords, dims=dims)
+            xr.DataArray(legacy_botm, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
@@ -226,7 +265,15 @@ class StructuredGrid(LegacyStructuredGrid):
 
     @property
     def idomain(self):
+        legacy_idomain = super().idomain
+        if legacy_idomain is None:
+            return None
+
         dims = ("nlay", "nrow", "ncol")
+        # Check if data shape matches expected grid dimensions
+        if legacy_idomain.shape != (self.nlay, self.nrow, self.ncol):
+            return legacy_idomain
+
         coord_names = (
             self._dims_coords[dims[0]],
             self._dims_coords[dims[1]],
@@ -235,7 +282,7 @@ class StructuredGrid(LegacyStructuredGrid):
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
         coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
         return (
-            xr.DataArray(super().idomain, coords=coords, dims=dims)
+            xr.DataArray(legacy_idomain, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
