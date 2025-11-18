@@ -85,7 +85,7 @@ The product aims instead for typed components, where children can be read off th
 
 ### Design
 
-The product adopts the standard library `dataclasses` paradigm for class definitions. The `dataclasses` module is derived from a project called [`attrs`](https://www.attrs.org/en/stable/) with [more power](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/). `attrs` permits terse class definitions, e.g.
+Where `imod-python` components expose their fields via [a `Dataset`](https://github.com/Deltares/imod-python/blob/master/imod/common/interfaces/ipackagebase.py), the product will adopt the `dataclasses` paradigm for class definitions, and will expose `xarray` views. The `dataclasses` module is derived from a project called [`attrs`](https://www.attrs.org/en/stable/) with [more power](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/). `attrs` permits terse class definitions, e.g.
 
 ```python
 from flopy.mf6.gwf import Ic
@@ -101,15 +101,15 @@ class Ic(Package):
     export_array_netcdf: bool = field(...)
 ```
 
-Minimal class definitions are easier to read and to generate from definition files. The trick is in mapping the MODFLOW 6 input specification to the Python type system. With this transformation defined, the original specification can be derived in reverse from the class definition.
+`attrs` fields will serve as the single source of truth for component data. `xr.Dataset` and `xr.DataTree` objects can be constructed when needed, providing hierarchical data access. Components can declare dimension capabilities explicitly via protocols, with shared functionality provided through mixins implementing the protocols.
+
+This explicit avoids the complexity and performance issues of the current experimental approach ([`xattree`](https://github.com/wpbonelli/xattree)) which proxies `attrs` properties through `DataTree`. The proposed architecture will provide better type safety, clearer semantics, and improved IDE support while maintaining compatibility with `xarray` conventions.
+
+This approach will keep class definition minimal, easy to read, and easy to generate from definition files. The trick is in mapping the MODFLOW 6 input specification to the Python type system. With this transformation defined, the original specification can be derived in reverse from the class definition.
 
 The product bolts on dictionary-style behavior by implementing `MutableMapping` in a component base class.
 
-Where `imod-python` components expose their fields via [a `Dataset`](https://github.com/Deltares/imod-python/blob/master/imod/common/interfaces/ipackagebase.py), components in the product expose a `DataTree` node. The [`DataTree`](https://docs.xarray.dev/en/stable/generated/xarray.DataTree.html) is a recently developed `xarray` feature implementing [a hierarchical data store](https://docs.xarray.dev/en/stable/user-guide/hierarchical-data.html). Components in the product are an [experimental hybrid](https://github.com/wpbonelli/xattree) of `attrs` and `xarray` where `attrs` properties, as well as parent/child references, are proxied through the `DataTree`.
-
-Combining `attrs` and `xarray` in this way presents challenges involving duplication (`xarray` prefers copies to in-place updates) and synchronization. Some careful management of parent/child links is still required, even though `DataTree` does the majority of the work.
-
-The sparse, record-based list input format used by MODFLOW 6 is also in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
+The sparse, record-based list input format used by MODFLOW 6 is in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
 
 ### Conventions
 
