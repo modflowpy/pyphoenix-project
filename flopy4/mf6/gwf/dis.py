@@ -2,13 +2,13 @@ from typing import Optional
 
 import numpy as np
 from attrs import Converter
-from flopy.discretization.structuredgrid import StructuredGrid
 from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
+from flopy4.mf6.utils.grid import StructuredGrid
 
 
 @xattree

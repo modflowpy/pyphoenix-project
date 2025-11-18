@@ -807,14 +807,16 @@ def test_grid_coordinates_match_legacy():
 def test_grid_coordinate_indexing_in_dis():
     """Test that Dis package data also has coordinate indexing."""
     time = Time(perlen=[1.0], nstp=[1])
+    # Dis expects properly-shaped arrays, not scalars
+    nlay, nrow, ncol = 2, 5, 5
     dis = Dis(
-        nlay=2,
-        nrow=5,
-        ncol=5,
-        delr=10.0,
-        delc=10.0,
-        top=10.0,
-        botm=[0.0, -10.0],
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=np.full(ncol, 10.0),
+        delc=np.full(nrow, 10.0),
+        top=np.full((nrow, ncol), 10.0),
+        botm=np.array([np.full((nrow, ncol), 0.0), np.full((nrow, ncol), -10.0)]),
     )
 
     # Convert to grid to access coordinates
