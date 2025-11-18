@@ -627,3 +627,96 @@ def test_to_xarray_on_context(function_tmpdir):
     assert np.array_equal(dt.per, [0])
     assert dt.attrs["filename"] == "mfsim.nam"
     assert dt.attrs["workspace"] == Path(function_tmpdir)
+
+
+def test_grid_coordinate_indexing():
+    """Test that grid data can be indexed using x, y, z world coordinates."""
+    # Create a simple structured grid
+    grid = StructuredGrid(
+        nlay=3,
+        nrow=10,
+        ncol=10,
+        delr=100.0,  # 100 m cell width
+        delc=100.0,  # 100 m cell height
+        top=100.0,
+        botm=[0.0, -50.0, -100.0],
+    )
+
+    # Test that world coordinates are present
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+
+    # Test coordinate shapes
+    assert len(grid.dataset.coords["x"]) == 10  # ncol
+    assert len(grid.dataset.coords["y"]) == 10  # nrow
+    assert len(grid.dataset.coords["z"]) == 3   # nlay
+
+    # Test coordinate values
+    # X coordinates should be cell centers: 50, 150, 250, ..., 950
+    expected_x = np.array([50.0, 150.0, 250.0, 350.0, 450.0, 550.0, 650.0, 750.0, 850.0, 950.0])
+    np.testing.assert_allclose(grid.dataset.coords["x"].values, expected_x)
+
+    # Y coordinates should be cell centers from top: 950, 850, 750, ..., 50
+    expected_y = np.array([950.0, 850.0, 750.0, 650.0, 550.0, 450.0, 350.0, 250.0, 150.0, 50.0])
+    np.testing.assert_allclose(grid.dataset.coords["y"].values, expected_y)
+
+    # Z coordinates should be layer centers
+    # Layer 0: (100 + 0) / 2 = 50
+    # Layer 1: (0 + (-50)) / 2 = -25
+    # Layer 2: (-50 + (-100)) / 2 = -75
+    expected_z = np.array([50.0, -25.0, -75.0])
+    np.testing.assert_allclose(grid.dataset.coords["z"].values, expected_z)
+
+    # Test coordinate-based selection using nearest
+    # Select near x=250 (should get col=2, which has x=250)
+    botm_at_x250 = grid.botm.sel(x=250.0, method="nearest")
+    assert botm_at_x250.shape == (3, 10)  # (nlay, nrow)
+
+    # Select near y=650 (should get row=3, which has y=650)
+    botm_at_y650 = grid.botm.sel(y=650.0, method="nearest")
+    assert botm_at_y650.shape == (3, 10)  # (nlay, ncol)
+
+    # Select near z=50 (should get lay=0, which has z=50)
+    botm_at_z50 = grid.botm.sel(z=50.0, method="nearest")
+    assert botm_at_z50.shape == (10, 10)  # (nrow, ncol)
+
+    # Test combined selection
+    botm_at_point = grid.botm.sel(x=250.0, y=650.0, z=50.0, method="nearest")
+    assert botm_at_point.shape == ()  # scalar
+
+    # Verify the value makes sense
+    # This should be layer 0, row 3, col 2 -> botm[0]
+    expected_value = 0.0  # botm[0] = 0.0
+    assert float(botm_at_point) == expected_value
+
+
+def test_grid_coordinate_indexing_in_dis():
+    """Test that Dis package data also has coordinate indexing."""
+    time = Time(perlen=[1.0], nstp=[1])
+    dis = Dis(
+        nlay=2,
+        nrow=5,
+        ncol=5,
+        delr=10.0,
+        delc=10.0,
+        top=10.0,
+        botm=[0.0, -10.0],
+    )
+
+    # Convert to grid to access coordinates
+    grid = dis.to_grid()
+
+    # Test that coordinates are available
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+
+    # Test coordinate-based selection on botm
+    # X coordinates: 5, 15, 25, 35, 45
+    botm_near_x15 = grid.botm.sel(x=15.0, method="nearest")
+    assert botm_near_x15.shape == (2, 5)  # (nlay, nrow)
+
+    # Y coordinates: 45, 35, 25, 15, 5
+    botm_near_y25 = grid.botm.sel(y=25.0, method="nearest")
+    assert botm_near_y25.shape == (2, 5)  # (nlay, ncol)

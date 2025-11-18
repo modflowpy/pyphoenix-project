@@ -23,12 +23,21 @@ class StructuredGrid(LegacyStructuredGrid):
             "ncol": "j",
             "nodes": "node",
         }
+
+        # Compute world coordinates (x, y, z)
+        world_coords = self._compute_world_coordinates()
+
+        # Index coordinates
         self._coords = {
             "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
             "i": xr.DataArray(np.arange(self.nrow, dtype=int), dims=("nrow",)),
             "j": xr.DataArray(np.arange(self.ncol, dtype=int), dims=("ncol",)),
             "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
         }
+
+        # Add world coordinates
+        self._coords.update(world_coords)
+
         data_vars = {
             "delr": self.delr,
             "delc": self.delc,
@@ -43,7 +52,55 @@ class StructuredGrid(LegacyStructuredGrid):
             .set_xindex("i", PandasIndex)
             .set_xindex("j", PandasIndex)
             .set_xindex("node", PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            .set_xindex("z", PandasIndex)
         )
+
+    def _compute_world_coordinates(self) -> dict:
+        """
+        Compute x, y, z world coordinates from grid geometry.
+
+        Returns
+        -------
+        dict
+            Dictionary with 'x', 'y', 'z' coordinate DataArrays
+        """
+        # Get grid extent
+        xmin, xmax, ymin, ymax = self.extent
+
+        # Compute x coordinates (cell centers)
+        delr = np.atleast_1d(self.delr[0] if hasattr(self.delr, '__getitem__') and not isinstance(self.delr, np.ndarray) else self.delr)
+        if delr.size == 1:
+            delr = np.full(self.ncol, delr[0])
+        x = xmin + np.cumsum(delr) - 0.5 * delr
+
+        # Compute y coordinates (cell centers)
+        delc = np.atleast_1d(self.delc[0] if hasattr(self.delc, '__getitem__') and not isinstance(self.delc, np.ndarray) else self.delc)
+        if delc.size == 1:
+            delc = np.full(self.nrow, delc[0])
+        y = ymax - np.cumsum(delc) + 0.5 * delc
+
+        # Compute z coordinates (layer centers)
+        # Use top and botm to compute layer centers
+        top_2d = np.atleast_2d(self.top)
+        botm_3d = np.atleast_3d(self.botm).reshape(self.nlay, self.nrow, self.ncol)
+
+        # Layer center z coordinates: average of top and bottom per layer
+        z = np.zeros(self.nlay)
+        for k in range(self.nlay):
+            if k == 0:
+                layer_top = top_2d.mean()
+            else:
+                layer_top = botm_3d[k - 1].mean()
+            layer_bot = botm_3d[k].mean()
+            z[k] = (layer_top + layer_bot) / 2.0
+
+        return {
+            "x": xr.DataArray(x, dims=("ncol",)),
+            "y": xr.DataArray(y, dims=("nrow",)),
+            "z": xr.DataArray(z, dims=("nlay",)),
+        }
 
     @property
     def dataset(self) -> xr.Dataset:
@@ -55,10 +112,10 @@ class StructuredGrid(LegacyStructuredGrid):
             return None
         dims = ("ncol",)
         coord_name = self._dims_coords[dims[0]]
-        coords = coords = {coord_name: self._coords[coord_name]}
+        coords = {coord_name: self._coords[coord_name], "x": self._coords["x"]}
         return xr.DataArray(super().delc, coords=coords, dims=dims).set_xindex(
             coord_name, PandasIndex
-        )
+        ).set_xindex("x", PandasIndex)
 
     @property
     def delr(self):
@@ -66,10 +123,10 @@ class StructuredGrid(LegacyStructuredGrid):
             return None
         dims = ("nrow",)
         coord_name = self._dims_coords[dims[0]]
-        coords = {coord_name: self._coords[coord_name]}
+        coords = {coord_name: self._coords[coord_name], "y": self._coords["y"]}
         return xr.DataArray(super().delr, coords=coords, dims=dims).set_xindex(
             coord_name, PandasIndex
-        )
+        ).set_xindex("y", PandasIndex)
 
     @property
     def delz(self):
@@ -80,11 +137,15 @@ class StructuredGrid(LegacyStructuredGrid):
             self._dims_coords[dims[2]],
         )
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
         return (
             xr.DataArray(super().delz, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            .set_xindex("z", PandasIndex)
         )
 
     @property
@@ -92,10 +153,13 @@ class StructuredGrid(LegacyStructuredGrid):
         dims = ("nrow", "ncol")
         coord_names = (self._dims_coords[dims[0]], self._dims_coords[dims[1]])
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"]})
         return (
             xr.DataArray(super().top, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
         )
 
     @property
@@ -107,11 +171,15 @@ class StructuredGrid(LegacyStructuredGrid):
             self._dims_coords[dims[2]],
         )
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
         return (
             xr.DataArray(super().botm, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            .set_xindex("z", PandasIndex)
         )
 
     @property
@@ -123,11 +191,15 @@ class StructuredGrid(LegacyStructuredGrid):
             self._dims_coords[dims[2]],
         )
         coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
         return (
             xr.DataArray(super().idomain, coords=coords, dims=dims)
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            .set_xindex("z", PandasIndex)
         )
 
 
