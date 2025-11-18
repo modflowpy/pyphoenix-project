@@ -1,9 +1,12 @@
 """Write context for configuring MF6 input file writing."""
 
 import threading
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, ClassVar, Literal, Optional
 
 from attrs import define, field
+
+if TYPE_CHECKING:
+    from threading import local
 
 ArrayFormat = Literal["internal", "constant", "open/close"]
 
@@ -16,10 +19,9 @@ class WriteContext:
     This class controls how simulation data is written to input files,
     including numeric precision, binary vs ASCII format, and path handling.
 
-    Can be used in three ways:
-    1. Attached to a component: component.write_context = ctx
-    2. Passed to write method: component.write(context=ctx)
-    3. As a context manager for temporary configuration
+    Can be used in two ways:
+    1. Passed to write method: component.write(context=ctx)
+    2. As a context manager for temporary configuration
 
     Parameters
     ----------
@@ -30,7 +32,7 @@ class WriteContext:
         Arrays larger than this will be written as binary.
         If None, use_binary setting is used unconditionally.
     float_precision : int, optional
-        Number of decimal places for float output. Default is 6.
+        Number of decimal places for float output. Default is 8.
     use_relative_paths : bool, optional
         Use relative paths in input files. Default is True.
     array_format : ArrayFormat, optional
@@ -39,11 +41,6 @@ class WriteContext:
 
     Examples
     --------
-    >>> # Attach to component
-    >>> ctx = WriteContext(float_precision=8, use_binary=True)
-    >>> sim.write_context = ctx
-    >>> sim.write()
-
     >>> # Pass to write method
     >>> sim.write(context=WriteContext(float_precision=4))
 
@@ -54,24 +51,31 @@ class WriteContext:
 
     use_binary: bool = field(default=False)
     binary_threshold: Optional[int] = field(default=None)
-    float_precision: int = field(default=6)
+    float_precision: int = field(default=8)
     use_relative_paths: bool = field(default=True)
     array_format: Optional[ArrayFormat] = field(default=None)
 
     # Class-level thread-local storage for context stack
-    _context_stack: threading.local = field(init=False, factory=threading.local)
+    _global_context_stack: ClassVar["local"]
 
     def __enter__(self) -> "WriteContext":
         """Enter context manager, pushing this context onto the stack."""
-        if not hasattr(self._context_stack, "stack"):
-            self._context_stack.stack = []
-        self._context_stack.stack.append(self)
+        # Use class-level thread-local storage
+        if not hasattr(WriteContext, "_global_context_stack"):
+            WriteContext._global_context_stack = threading.local()
+        if not hasattr(WriteContext._global_context_stack, "stack"):
+            WriteContext._global_context_stack.stack = []
+        WriteContext._global_context_stack.stack.append(self)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit context manager, popping this context from the stack."""
-        if hasattr(self._context_stack, "stack") and self._context_stack.stack:
-            self._context_stack.stack.pop()
+        if (
+            hasattr(WriteContext, "_global_context_stack")
+            and hasattr(WriteContext._global_context_stack, "stack")
+            and WriteContext._global_context_stack.stack
+        ):
+            WriteContext._global_context_stack.stack.pop()
 
     @classmethod
     def current(cls) -> "WriteContext":
@@ -90,10 +94,7 @@ class WriteContext:
         if not hasattr(cls, "_global_context_stack"):
             cls._global_context_stack = threading.local()
 
-        if (
-            hasattr(cls._global_context_stack, "stack")
-            and cls._global_context_stack.stack
-        ):
+        if hasattr(cls._global_context_stack, "stack") and cls._global_context_stack.stack:
             return cls._global_context_stack.stack[-1]
         return cls.default()
 

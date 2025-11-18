@@ -40,9 +40,6 @@ class Component(ABC, MutableMapping):
     filename: str | None = field(default=None)
     """The name of the component's input file."""
 
-    write_context: Optional[WriteContext] = field(default=None, repr=False)
-    """Configuration context for writing input files."""
-
     @property
     def path(self) -> Path:
         """The path to the component's input file."""
@@ -155,8 +152,7 @@ class Component(ABC, MutableMapping):
         format : str, optional
             Output format. Default is MF6.
         context : WriteContext, optional
-            Configuration context for writing. If provided, overrides
-            the component's write_context. If neither is provided,
+            Configuration context for writing. If not provided,
             uses the current context from the context manager stack,
             or default settings.
         """
@@ -166,8 +162,8 @@ class Component(ABC, MutableMapping):
         # are attached to parents.
         self.filename = self.filename or self.default_filename()
 
-        # Determine active context: provided > attached > current > default
-        active_context = context or self.write_context or WriteContext.current()
+        # Determine active context: provided > current > default
+        active_context = context or WriteContext.current()
 
         self._write(format=format, context=active_context)
         for child in self.children.values():  # type: ignore

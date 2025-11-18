@@ -1,5 +1,5 @@
 import sys
-from typing import IO, Optional
+from typing import IO
 
 import numpy as np
 from jinja2 import Environment, PackageLoader

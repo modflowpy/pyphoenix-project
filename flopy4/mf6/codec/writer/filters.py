@@ -1,6 +1,6 @@
 from collections.abc import Hashable, Mapping
 from io import StringIO
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import attrs
 import numpy as np
@@ -10,10 +10,13 @@ from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
+if TYPE_CHECKING:
+    from flopy4.mf6.write_context import WriteContext
+
 ArrayHow = Literal["constant", "internal", "external", "layered constant", "layered internal"]
 
 # Module-level variable to store active write context
-_ACTIVE_CONTEXT = None
+_ACTIVE_CONTEXT: "WriteContext | None" = None
 
 
 def array_how(value: xr.DataArray) -> ArrayHow:
