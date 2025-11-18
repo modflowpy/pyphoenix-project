@@ -40,11 +40,16 @@ def _load_toml(path: Path) -> Component:
         return structure(load_toml(fp), path)
 
 
-def _write_mf6(component: Component) -> None:
+def _write_mf6(component: Component, context=None, **kwargs) -> None:
+    from flopy4.mf6.write_context import WriteContext
+
+    # Use provided context or default
+    ctx = context if context is not None else WriteContext.default()
+
     with open(component.path, "w") as fp:
         data = unstructure(component)
         try:
-            dump_mf6(data, fp)
+            dump_mf6(data, fp, context=ctx)
         except Exception as e:
             raise WriteError(
                 f"Failed to write MF6 format file for component '{component.name}' "  # type: ignore

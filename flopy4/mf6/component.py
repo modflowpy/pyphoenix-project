@@ -1,7 +1,7 @@
 from abc import ABC
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Optional
 
 from attrs import fields
 from modflow_devtools.dfn import Dfn, Field
@@ -12,6 +12,7 @@ from xattree import xattree
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict, to_field
 from flopy4.mf6.utils.grid import update_maxbound
+from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS = {}
@@ -38,6 +39,9 @@ class Component(ABC, MutableMapping):
 
     filename: str | None = field(default=None)
     """The name of the component's input file."""
+
+    write_context: Optional[WriteContext] = field(default=None, repr=False)
+    """Configuration context for writing input files."""
 
     @property
     def path(self) -> Path:
@@ -142,16 +146,32 @@ class Component(ABC, MutableMapping):
         for child in self.children.values():  # type: ignore
             child.load(format=format)
 
-    def write(self, format: str = MF6) -> None:
-        """Write the component and any children."""
+    def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
+        """
+        Write the component and any children.
+
+        Parameters
+        ----------
+        format : str, optional
+            Output format. Default is MF6.
+        context : WriteContext, optional
+            Configuration context for writing. If provided, overrides
+            the component's write_context. If neither is provided,
+            uses the current context from the context manager stack,
+            or default settings.
+        """
         # TODO: setting filename is a temp hack to get the parent's
         # name as this component's filename stem, if it has one. an
         # actual solution is to auto-set the filename when children
         # are attached to parents.
         self.filename = self.filename or self.default_filename()
-        self._write(format=format)
+
+        # Determine active context: provided > attached > current > default
+        active_context = context or self.write_context or WriteContext.current()
+
+        self._write(format=format, context=active_context)
         for child in self.children.values():  # type: ignore
-            child.write(format=format)
+            child.write(format=format, context=context)
 
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict[str, Any]:
         """

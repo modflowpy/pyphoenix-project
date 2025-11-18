@@ -12,6 +12,9 @@ from flopy4.mf6.constants import FILL_DNODATA
 
 ArrayHow = Literal["constant", "internal", "external", "layered constant", "layered internal"]
 
+# Module-level variable to store active write context
+_ACTIVE_CONTEXT = None
+
 
 def array_how(value: xr.DataArray) -> ArrayHow:
     """
@@ -45,7 +48,11 @@ def array2const(value: xr.DataArray) -> Scalar:
     if np.issubdtype(value.dtype, np.integer):
         return value.max().item()
     if np.issubdtype(value.dtype, np.floating):
-        return f"{value.max().item():.8f}"
+        # Use precision from active context if available
+        precision = 8  # default
+        if _ACTIVE_CONTEXT is not None:
+            precision = _ACTIVE_CONTEXT.float_precision
+        return f"{value.max().item():.{precision}f}"
     return value.ravel()[0]
 
 
@@ -112,13 +119,18 @@ def array2string(value: NDArray) -> str:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
         value = value[None]
     value = np.atleast_1d(value)
-    format = (
-        "%d"
-        if np.issubdtype(value.dtype, np.integer)
-        else "%.9e"
-        if np.issubdtype(value.dtype, np.floating)
-        else "%s"
-    )
+
+    # Use precision from active context if available
+    if np.issubdtype(value.dtype, np.floating):
+        precision = 9  # default
+        if _ACTIVE_CONTEXT is not None:
+            precision = _ACTIVE_CONTEXT.float_precision
+        format = f"%.{precision}e"
+    elif np.issubdtype(value.dtype, np.integer):
+        format = "%d"
+    else:
+        format = "%s"
+
     np.savetxt(buffer, value, fmt=format, delimiter=" ")
     return buffer.getvalue().strip()
 

@@ -1,5 +1,5 @@
 import sys
-from typing import IO
+from typing import IO, Optional
 
 import numpy as np
 from jinja2 import Environment, PackageLoader
@@ -19,21 +19,78 @@ _JINJA_ENV.filters["array2chunks"] = writer_filters.array2chunks
 _JINJA_ENV.filters["array2string"] = writer_filters.array2string
 _JINJA_ENV.filters["data2list"] = writer_filters.data2list
 _JINJA_TEMPLATE_NAME = "blocks.jinja"
-_PRINT_OPTIONS = {
-    "precision": 4,
-    "linewidth": sys.maxsize,
-    "threshold": sys.maxsize,
-}
 
 
-def dumps(data) -> str:
+def _get_print_options(context=None):
+    """Get numpy print options from WriteContext."""
+    if context is not None:
+        return context.to_numpy_printoptions()
+    # Default options
+    return {
+        "precision": 4,
+        "linewidth": sys.maxsize,
+        "threshold": sys.maxsize,
+    }
+
+
+def dumps(data, context=None) -> str:
+    """
+    Serialize data to MF6 format string.
+
+    Parameters
+    ----------
+    data : dict
+        Data to serialize
+    context : WriteContext, optional
+        Configuration context for writing
+
+    Returns
+    -------
+    str
+        Serialized MF6 format string
+    """
+    from flopy4.mf6.write_context import WriteContext
+
+    # Store context in filter module for filters to access
+    if context is None:
+        context = WriteContext.default()
+    writer_filters._ACTIVE_CONTEXT = context
+
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
-    with np.printoptions(**_PRINT_OPTIONS):  # type: ignore
-        return template.render(blocks=data)
+    print_opts = _get_print_options(context)
+    with np.printoptions(**print_opts):  # type: ignore
+        result = template.render(blocks=data)
+
+    # Clean up
+    writer_filters._ACTIVE_CONTEXT = None
+    return result
 
 
-def dump(data, fp: IO[str]) -> None:
+def dump(data, fp: IO[str], context=None) -> None:
+    """
+    Serialize data to MF6 format and write to file.
+
+    Parameters
+    ----------
+    data : dict
+        Data to serialize
+    fp : IO[str]
+        File pointer to write to
+    context : WriteContext, optional
+        Configuration context for writing
+    """
+    from flopy4.mf6.write_context import WriteContext
+
+    # Store context in filter module for filters to access
+    if context is None:
+        context = WriteContext.default()
+    writer_filters._ACTIVE_CONTEXT = context
+
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
     iterator = template.generate(blocks=data)
-    with np.printoptions(**_PRINT_OPTIONS):  # type: ignore
+    print_opts = _get_print_options(context)
+    with np.printoptions(**print_opts):  # type: ignore
         fp.writelines(iterator)
+
+    # Clean up
+    writer_filters._ACTIVE_CONTEXT = None
