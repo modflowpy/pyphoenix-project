@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from flopy.discretization import StructuredGrid
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
@@ -15,6 +14,7 @@ from flopy4.mf6.gwf import Chd, Chdg, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
+from flopy4.mf6.utils.grid import StructuredGrid
 from flopy4.mf6.utils.time import Time
 
 
@@ -631,7 +631,7 @@ def test_to_xarray_on_context(function_tmpdir):
 
 def test_grid_coordinate_indexing():
     """Test that grid data can be indexed using x, y, z world coordinates."""
-    # Create a simple structured grid
+    # Create a simple structured grid with uniform elevation
     grid = StructuredGrid(
         nlay=3,
         nrow=10,
@@ -648,9 +648,11 @@ def test_grid_coordinate_indexing():
     assert "z" in grid.dataset.coords
 
     # Test coordinate shapes
-    assert len(grid.dataset.coords["x"]) == 10  # ncol
-    assert len(grid.dataset.coords["y"]) == 10  # nrow
-    assert len(grid.dataset.coords["z"]) == 3   # nlay
+    # x and y are 1D (one value per column/row)
+    # z is 3D (one value per cell, since each cell can have different elevation)
+    assert grid.dataset.coords["x"].shape == (10,)  # 1D: ncol
+    assert grid.dataset.coords["y"].shape == (10,)  # 1D: nrow
+    assert grid.dataset.coords["z"].shape == (3, 10, 10)  # 3D: (nlay, nrow, ncol)
 
     # Test coordinate values
     # X coordinates should be cell centers: 50, 150, 250, ..., 950
@@ -661,12 +663,17 @@ def test_grid_coordinate_indexing():
     expected_y = np.array([950.0, 850.0, 750.0, 650.0, 550.0, 450.0, 350.0, 250.0, 150.0, 50.0])
     np.testing.assert_allclose(grid.dataset.coords["y"].values, expected_y)
 
-    # Z coordinates should be layer centers
+    # Z coordinates should be cell centers (3D array)
+    # With uniform top=100 and botm=[0, -50, -100], all cells in each layer have same z
     # Layer 0: (100 + 0) / 2 = 50
     # Layer 1: (0 + (-50)) / 2 = -25
     # Layer 2: (-50 + (-100)) / 2 = -75
-    expected_z = np.array([50.0, -25.0, -75.0])
-    np.testing.assert_allclose(grid.dataset.coords["z"].values, expected_z)
+    expected_z_layer0 = np.full((10, 10), 50.0)
+    expected_z_layer1 = np.full((10, 10), -25.0)
+    expected_z_layer2 = np.full((10, 10), -75.0)
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0], expected_z_layer0)
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1], expected_z_layer1)
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[2], expected_z_layer2)
 
     # Test coordinate-based selection using nearest
     # Select near x=250 (should get col=2, which has x=250)
@@ -677,18 +684,124 @@ def test_grid_coordinate_indexing():
     botm_at_y650 = grid.botm.sel(y=650.0, method="nearest")
     assert botm_at_y650.shape == (3, 10)  # (nlay, ncol)
 
-    # Select near z=50 (should get lay=0, which has z=50)
-    botm_at_z50 = grid.botm.sel(z=50.0, method="nearest")
-    assert botm_at_z50.shape == (10, 10)  # (nrow, ncol)
+    # Test combined x,y selection
+    botm_at_point = grid.botm.sel(x=250.0, y=650.0, method="nearest")
+    assert botm_at_point.shape == (3,)  # Just the layer dimension remains
 
-    # Test combined selection
-    botm_at_point = grid.botm.sel(x=250.0, y=650.0, z=50.0, method="nearest")
-    assert botm_at_point.shape == ()  # scalar
+    # Verify the value makes sense: col=2, row=3 -> botm[0,3,2] = 0.0
+    expected_botm = np.array([0.0, -50.0, -100.0])
+    np.testing.assert_allclose(botm_at_point.values, expected_botm)
 
-    # Verify the value makes sense
-    # This should be layer 0, row 3, col 2 -> botm[0]
-    expected_value = 0.0  # botm[0] = 0.0
-    assert float(botm_at_point) == expected_value
+
+def test_grid_coordinate_indexing_variable_topography():
+    """Test that z coordinates properly handle variable topography."""
+    # Create a grid with variable topography using arrays
+    nlay, nrow, ncol = 3, 10, 10
+
+    # Create a sloping top surface (higher in the west, lower in the east)
+    top = np.linspace(100.0, 50.0, ncol)  # Varies with column
+    top = np.tile(top, (nrow, 1))  # Same for all rows
+
+    # Create layer bottoms with uniform thickness
+    botm = np.zeros((nlay, nrow, ncol))
+    botm[0] = top - 50.0  # Layer 0: 50m thick
+    botm[1] = botm[0] - 50.0  # Layer 1: 50m thick
+    botm[2] = botm[1] - 50.0  # Layer 2: 50m thick
+
+    # Need to provide delr/delc as arrays when using 2D/3D top/botm
+    delr = np.full(ncol, 100.0)
+    delc = np.full(nrow, 100.0)
+
+    grid = StructuredGrid(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+
+    # Test that world coordinates are present and have correct shapes
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+    assert grid.dataset.coords["x"].shape == (10,)
+    assert grid.dataset.coords["y"].shape == (10,)
+    assert grid.dataset.coords["z"].shape == (3, 10, 10)
+
+    # Verify z coordinates vary with column (due to sloping top)
+    # Column 0: top=100, layer 0 center = (100 + 50) / 2 = 75
+    # Column 9: top=50, layer 0 center = (50 + 0) / 2 = 25
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0, 0, 0], 75.0, rtol=1e-5)
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0, 0, 9], 25.0, rtol=1e-5)
+
+    # Layer 1 centers
+    # Column 0: (50 + 0) / 2 = 25
+    # Column 9: (0 + (-50)) / 2 = -25
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1, 0, 0], 25.0, rtol=1e-5)
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1, 0, 9], -25.0, rtol=1e-5)
+
+    # Verify z is constant across rows (since top only varies with column)
+    for row in range(nrow):
+        np.testing.assert_allclose(
+            grid.dataset.coords["z"].values[:, row, :],
+            grid.dataset.coords["z"].values[:, 0, :],
+            rtol=1e-10,
+        )
+
+
+def test_grid_coordinates_match_legacy():
+    """Test that our x, y, z coordinates match the legacy grid's cell centers."""
+    # Create a grid with variable topography to thoroughly test z coordinates
+    nlay, nrow, ncol = 3, 10, 10
+
+    delr = np.full(ncol, 100.0)
+    delc = np.full(nrow, 100.0)
+    top = np.linspace(100.0, 50.0, ncol)
+    top = np.tile(top, (nrow, 1))
+    botm = np.zeros((nlay, nrow, ncol))
+    botm[0] = top - 50.0
+    botm[1] = botm[0] - 50.0
+    botm[2] = botm[1] - 50.0
+
+    grid = StructuredGrid(delr=delr, delc=delc, top=top, botm=botm)
+
+    # Get legacy cell centers
+    legacy_xyz = grid.xyzcellcenters
+    legacy_x = legacy_xyz[0]  # Shape: (nrow, ncol)
+    legacy_y = legacy_xyz[1]  # Shape: (nrow, ncol)
+    legacy_z = legacy_xyz[2]  # Shape: (nlay, nrow, ncol)
+
+    # Get our coordinates
+    our_x = grid.dataset.coords["x"].values  # Shape: (ncol,)
+    our_y = grid.dataset.coords["y"].values  # Shape: (nrow,)
+    our_z = grid.dataset.coords["z"].values  # Shape: (nlay, nrow, ncol)
+
+    # Compare x coordinates
+    # Legacy x is 2D (nrow, ncol) where each row should have identical x values
+    # Our x is 1D (ncol,) - the unique x values
+    for row in range(nrow):
+        np.testing.assert_allclose(
+            legacy_x[row, :], our_x, rtol=1e-10, err_msg=f"X coordinates don't match for row {row}"
+        )
+
+    # Compare y coordinates
+    # Legacy y is 2D (nrow, ncol) where each column should have identical y values
+    # Our y is 1D (nrow,) - the unique y values
+    for col in range(ncol):
+        np.testing.assert_allclose(
+            legacy_y[:, col],
+            our_y,
+            rtol=1e-10,
+            err_msg=f"Y coordinates don't match for column {col}",
+        )
+
+    # Compare z coordinates
+    # Both are 3D (nlay, nrow, ncol) - direct comparison
+    np.testing.assert_allclose(
+        legacy_z, our_z, rtol=1e-10, err_msg="Z coordinates don't match legacy zcellcenters"
+    )
 
 
 def test_grid_coordinate_indexing_in_dis():
