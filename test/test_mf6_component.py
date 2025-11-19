@@ -835,3 +835,193 @@ def test_grid_coordinate_indexing_in_dis():
     # Y coordinates: 45, 35, 25, 15, 5
     botm_near_y25 = grid.botm.sel(y=25.0, method="nearest")
     assert botm_near_y25.shape == (2, 5)  # (nlay, ncol)
+
+
+def test_grid_dimensions_only():
+    """Test grid creation with only dimensions (no spatial data)."""
+    grid = StructuredGrid(nlay=3, nrow=5, ncol=5)
+
+    # Should have index-based coordinates
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+    assert "k" in grid.dataset.coords
+    assert "i" in grid.dataset.coords
+    assert "j" in grid.dataset.coords
+
+    # Check shapes
+    assert grid.dataset.coords["x"].shape == (5,)
+    assert grid.dataset.coords["y"].shape == (5,)
+    assert grid.dataset.coords["z"].shape == (3, 5, 5)
+
+    # Check that x, y, z are index-based (0, 1, 2, ...)
+    # When no spatial data is provided, coordinates are simple indices
+    np.testing.assert_array_equal(grid.dataset.coords["x"].values, [0.0, 1.0, 2.0, 3.0, 4.0])
+    np.testing.assert_array_equal(grid.dataset.coords["y"].values, [0.0, 1.0, 2.0, 3.0, 4.0])
+    np.testing.assert_array_equal(grid.dataset.coords["z"].values[0, :, :], np.full((5, 5), 0.0))
+    np.testing.assert_array_equal(grid.dataset.coords["z"].values[1, :, :], np.full((5, 5), 1.0))
+    np.testing.assert_array_equal(grid.dataset.coords["z"].values[2, :, :], np.full((5, 5), 2.0))
+
+
+def test_grid_horizontal_spacing_only():
+    """Test grid with horizontal spacing but default vertical structure."""
+    grid = StructuredGrid(nlay=3, nrow=5, ncol=5, delr=100.0, delc=50.0)
+
+    # Should have real x, y coordinates based on delr/delc
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+
+    # X coordinates should be cell centers based on delr
+    expected_x = [50.0, 150.0, 250.0, 350.0, 450.0]
+    np.testing.assert_allclose(grid.dataset.coords["x"].values, expected_x)
+
+    # Y coordinates should be cell centers based on delc
+    expected_y = [225.0, 175.0, 125.0, 75.0, 25.0]
+    np.testing.assert_allclose(grid.dataset.coords["y"].values, expected_y)
+
+    # Z should still be index-based since no top/botm provided
+    assert grid.dataset.coords["z"].shape == (3, 5, 5)
+
+
+def test_grid_variable_spacing():
+    """Test grid with variable delr and delc arrays."""
+    nlay, nrow, ncol = 2, 4, 5
+
+    # Variable column widths (narrower in middle)
+    delr = np.array([100.0, 50.0, 50.0, 50.0, 100.0])
+    # Variable row widths (narrower in middle)
+    delc = np.array([80.0, 60.0, 60.0, 80.0])
+
+    grid = StructuredGrid(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=10.0,
+        botm=[0.0, -10.0],
+    )
+
+    # Check x coordinates (cell centers)
+    # Column 0: 0 to 100, center = 50
+    # Column 1: 100 to 150, center = 125
+    # Column 2: 150 to 200, center = 175
+    # Column 3: 200 to 250, center = 225
+    # Column 4: 250 to 350, center = 300
+    expected_x = [50.0, 125.0, 175.0, 225.0, 300.0]
+    np.testing.assert_allclose(grid.dataset.coords["x"].values, expected_x)
+
+    # Check y coordinates (cell centers, from top)
+    # Row 0: 0 to 80, center = 40 (but y is from top, so 280-40=240)
+    # Row 1: 80 to 140, center = 110 (from top: 280-110=170)
+    # Row 2: 140 to 200, center = 170 (from top: 280-170=110)
+    # Row 3: 200 to 280, center = 240 (from top: 280-240=40)
+    expected_y = [240.0, 170.0, 110.0, 40.0]
+    np.testing.assert_allclose(grid.dataset.coords["y"].values, expected_y)
+
+
+def test_grid_uniform_factory():
+    """Test the uniform() factory method."""
+    grid = StructuredGrid.uniform(
+        nlay=3, nrow=10, ncol=10, delr=100.0, delc=50.0, top=20.0, thickness=5.0
+    )
+
+    # Check dimensions
+    assert grid.nlay == 3
+    assert grid.nrow == 10
+    assert grid.ncol == 10
+
+    # Check that top is correct
+    assert grid.dataset["top"].shape == (10, 10)
+    np.testing.assert_allclose(grid.dataset["top"].values, np.full((10, 10), 20.0))
+
+    # Check that botm is correctly computed from thickness
+    # Layer 0: top - thickness = 20 - 5 = 15
+    # Layer 1: 15 - 5 = 10
+    # Layer 2: 10 - 5 = 5
+    assert grid.dataset["botm"].shape == (3, 10, 10)
+    np.testing.assert_allclose(grid.dataset["botm"].values[0], np.full((10, 10), 15.0))
+    np.testing.assert_allclose(grid.dataset["botm"].values[1], np.full((10, 10), 10.0))
+    np.testing.assert_allclose(grid.dataset["botm"].values[2], np.full((10, 10), 5.0))
+
+    # Check z coordinates (cell centers)
+    # Layer 0: (20 + 15) / 2 = 17.5
+    # Layer 1: (15 + 10) / 2 = 12.5
+    # Layer 2: (10 + 5) / 2 = 7.5
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((10, 10), 17.5))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((10, 10), 12.5))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[2], np.full((10, 10), 7.5))
+
+    # Check x, y coordinates
+    assert grid.dataset.coords["x"].shape == (10,)
+    assert grid.dataset.coords["y"].shape == (10,)
+    # X: 50, 150, 250, ..., 950
+    expected_x = np.arange(10) * 100.0 + 50.0
+    np.testing.assert_allclose(grid.dataset.coords["x"].values, expected_x)
+
+
+def test_grid_from_dis_factory():
+    """Test the from_dis() factory method."""
+    nlay, nrow, ncol = 2, 5, 5
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=np.full(ncol, 10.0),
+        delc=np.full(nrow, 10.0),
+        top=np.full((nrow, ncol), 10.0),
+        botm=np.array([np.full((nrow, ncol), 0.0), np.full((nrow, ncol), -10.0)]),
+    )
+
+    # Use the classmethod factory
+    grid = StructuredGrid.from_dis(dis)
+
+    # Check that dimensions match
+    assert grid.nlay == nlay
+    assert grid.nrow == nrow
+    assert grid.ncol == ncol
+
+    # Check that spatial data matches
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+
+    # Check z coordinates are cell centers
+    # Layer 0: (10 + 0) / 2 = 5
+    # Layer 1: (0 + (-10)) / 2 = -5
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((5, 5), 5.0))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((5, 5), -5.0))
+
+    # Check that coordinate-based selection works
+    botm_near_x15 = grid.botm.sel(x=15.0, method="nearest")
+    assert botm_near_x15.shape == (2, 5)
+
+
+def test_grid_with_idomain():
+    """Test grid with idomain array."""
+    nlay, nrow, ncol = 2, 5, 5
+
+    # Create idomain with some inactive cells
+    idomain = np.ones((nlay, nrow, ncol), dtype=int)
+    idomain[0, 0, 0] = 0  # Inactive
+    idomain[1, 2, 2] = -1  # Vertical pass-through
+
+    grid = StructuredGrid(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=10.0,
+        delc=10.0,
+        top=10.0,
+        botm=[0.0, -10.0],
+        idomain=idomain,
+    )
+
+    # Check that idomain is in the dataset
+    assert "idomain" in grid.dataset
+    assert grid.dataset["idomain"].shape == (nlay, nrow, ncol)
+
+    # Verify specific values
+    assert grid.dataset["idomain"].values[0, 0, 0] == 0
+    assert grid.dataset["idomain"].values[1, 2, 2] == -1
+    assert grid.dataset["idomain"].values[0, 1, 1] == 1

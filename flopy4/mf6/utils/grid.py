@@ -6,38 +6,145 @@ import xarray as xr
 from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 from xarray.core.indexes import PandasIndex
+from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
 
 class StructuredGrid(LegacyStructuredGrid):
-    """Extend flopy3's StructuredGrid"""
+    """
+    Extend flopy3's StructuredGrid with xarray coordinate support.
+
+    A structured grid can be created in several ways:
+
+    1. **Dimensions only** (abstract/index-based grid):
+       - Required: nlay, nrow, ncol
+       - Uses unit spacing and default elevations
+
+    2. **Uniform grid** (recommended via classmethod):
+       - Use `StructuredGrid.uniform(nlay, nrow, ncol, delr, delc, top, thickness)`
+
+    3. **From discretization package**:
+       - Use `dis.to_grid()` or `StructuredGrid.from_dis(dis)`
+
+    4. **Complete spatial definition**:
+       - Required: nlay, nrow, ncol, delr, delc, top, botm
+
+    Optional parameters for all cases: idomain, xoff, yoff, angrot, lenuni, proj4, epsg
+    """
 
     # TODO de-duplicate array/dataset setup. no need to do it in both __init__ and properties
+
+    @classmethod
+    def uniform(
+        cls,
+        nlay: int,
+        nrow: int,
+        ncol: int,
+        delr: float = 1.0,
+        delc: float = 1.0,
+        top: float = 1.0,
+        thickness: float = 1.0,
+        **kwargs,
+    ):
+        """
+        Create a uniform structured grid with constant spacing and layer thickness.
+
+        Parameters
+        ----------
+        nlay : int
+            Number of layers
+        nrow : int
+            Number of rows
+        ncol : int
+            Number of columns
+        delr : float, default 1.0
+            Cell width along rows (constant)
+        delc : float, default 1.0
+            Cell width along columns (constant)
+        top : float, default 1.0
+            Top elevation (constant across all cells)
+        thickness : float, default 1.0
+            Layer thickness (constant for all layers)
+        **kwargs
+            Additional parameters: idomain, xoff, yoff, angrot, lenuni, proj4, epsg
+
+        Returns
+        -------
+        StructuredGrid
+            A uniform structured grid
+
+        Examples
+        --------
+        >>> grid = StructuredGrid.uniform(3, 10, 10, delr=100.0, delc=100.0,
+        ...                                top=10.0, thickness=5.0)
+        """
+        return cls(
+            nlay=nlay,
+            nrow=nrow,
+            ncol=ncol,
+            delr=delr,
+            delc=delc,
+            top=top,
+            botm=[top - thickness * (i + 1) for i in range(nlay)],
+            **kwargs,
+        )
+
+    @classmethod
+    def from_dis(cls, dis):
+        """
+        Create a StructuredGrid from a Dis package.
+
+        Parameters
+        ----------
+        dis : Dis
+            A MODFLOW 6 discretization package
+
+        Returns
+        -------
+        StructuredGrid
+            A structured grid with the same geometry as the Dis package
+
+        Examples
+        --------
+        >>> from flopy4.mf6.gwf.dis import Dis
+        >>> dis = Dis(nlay=3, nrow=10, ncol=10, delr=100.0, delc=100.0,
+        ...           top=10.0, botm=[0.0, -10.0, -20.0])
+        >>> grid = StructuredGrid.from_dis(dis)
+        """
+        return cls(
+            nlay=dis.nlay,
+            nrow=dis.nrow,
+            ncol=dis.ncol,
+            delr=dis.delr,
+            delc=dis.delc,
+            top=dis.top,
+            botm=dis.botm,
+            idomain=getattr(dis, "idomain", None),
+        )
 
     def __init__(self, *args, **kwargs):
         # Convert scalar inputs to arrays to support the legacy grid
         # The legacy StructuredGrid doesn't handle scalar top/botm well
-        if "top" in kwargs and isinstance(kwargs["top"], (int, float)):
+        if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
             nrow = kwargs.get("nrow", 1)
             ncol = kwargs.get("ncol", 1)
-            kwargs["top"] = np.full((nrow, ncol), float(kwargs["top"]))
+            kwargs["top"] = np.full((nrow, ncol), float(top))
 
-        if "botm" in kwargs:
-            botm = kwargs["botm"]
-            if isinstance(botm, (list, tuple)) and all(isinstance(b, (int, float)) for b in botm):
+        if (botm := kwargs.get("botm", None)) is not None:
+            if isinstance(botm, (list, tuple)) and all(isinstance(b, Scalar) for b in botm):
                 nlay = kwargs.get("nlay", len(botm))
                 nrow = kwargs.get("nrow", 1)
                 ncol = kwargs.get("ncol", 1)
                 kwargs["botm"] = np.array([np.full((nrow, ncol), float(b)) for b in botm])
 
-        if "delr" in kwargs and isinstance(kwargs["delr"], (int, float)):
+        if (delr := kwargs.get("delr", None)) is not None and isinstance(delr, Scalar):
             ncol = kwargs.get("ncol", 1)
-            kwargs["delr"] = np.full(ncol, float(kwargs["delr"]))
+            kwargs["delr"] = np.full(ncol, float(delr))
 
-        if "delc" in kwargs and isinstance(kwargs["delc"], (int, float)):
+        if (delc := kwargs.get("delc", None)) is not None and isinstance(delc, Scalar):
             nrow = kwargs.get("nrow", 1)
-            kwargs["delc"] = np.full(nrow, float(kwargs["delc"]))
+            kwargs["delc"] = np.full(nrow, float(delc))
 
         super().__init__(*args, **kwargs)
         self._dims_coords = {
@@ -46,23 +153,14 @@ class StructuredGrid(LegacyStructuredGrid):
             "ncol": "j",
             "nodes": "node",
         }
-
-        # Index coordinates - initialize first to avoid circular dependency
         self._coords = {
             "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
             "i": xr.DataArray(np.arange(self.nrow, dtype=int), dims=("nrow",)),
             "j": xr.DataArray(np.arange(self.ncol, dtype=int), dims=("ncol",)),
             "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
         }
+        self._coords.update(self._get_world_coords())
 
-        # Compute world coordinates (x, y, z) - must come after _coords initialization
-        world_coords = self._compute_world_coordinates()
-
-        # Add world coordinates
-        self._coords.update(world_coords)
-
-        # Build data vars - access legacy properties to check if they exist
-        # Some properties may return None if the underlying data isn't set
         data_vars = {}
         for prop_name in ["delr", "delc", "delz", "top", "botm", "idomain"]:
             try:
@@ -75,16 +173,17 @@ class StructuredGrid(LegacyStructuredGrid):
 
         self._dataset = (
             xr.Dataset(data_vars, coords=self._coords)
+            # TODO: alias k/i/j to lay(er)/row/col(umn)?
             .set_xindex("k", PandasIndex)
             .set_xindex("i", PandasIndex)
             .set_xindex("j", PandasIndex)
             .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
-            # Note: z is a 3D non-dimension coordinate, so it doesn't get indexed
+            # z is a 3D non-dimension coordinate, so it doesn't get indexed
         )
 
-    def _compute_world_coordinates(self) -> dict:
+    def _get_world_coords(self) -> dict:
         """
         Compute x, y, z world coordinates from grid geometry.
 
