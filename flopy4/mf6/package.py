@@ -20,53 +20,75 @@ class Package(Component, ABC):
         """
         Get combined stress period data for all period data fields.
 
-        Returns a DataFrame with columns: 'per', 'node', and all period
-        data field values (e.g., 'head', 'elev', 'cond').
+        Returns a DataFrame with columns: 'kper' (stress period), spatial
+        coordinates, and all period data field values (e.g., 'head', 'elev', 'cond').
+
+        Spatial coordinates are automatically determined based on grid type:
+        - Structured grids: 'layer', 'row', 'col' columns
+        - Unstructured grids: 'node' column
 
         Returns
         -------
         pd.DataFrame
-            DataFrame with stress period data for all fields, using node indices
-            as spatial coordinates.
+            DataFrame with stress period data for all fields.
 
         Examples
         --------
-        >>> chd = Chd(dims=dims, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+        >>> # Structured grid - uses layer/row/col
+        >>> chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
         >>> df = chd.stress_period_data
         >>> print(df)
-           per  node  head
-        0    0     0   1.0
-        1    0    99   0.0
+           kper  layer  row  col  head
+        0     0      0    0    0   1.0
+        1     0      0    9    9   0.0
 
-        >>> drn = Drn(dims=dims, elev={0: {(0, 7, 5): 10.0}}, cond={0: {(0, 7, 5): 1.0}})
+        >>> # Multi-field package
+        >>> drn = Drn(parent=gwf, elev={0: {(0, 7, 5): 10.0}}, cond={0: {(0, 7, 5): 1.0}})
         >>> df = drn.stress_period_data
         >>> print(df)
-           per  node  elev  cond
-        0    0    75  10.0   1.0
+           kper  layer  row  col  elev  cond
+        0     0      0    7    5  10.0   1.0
 
         Notes
         -----
         This property is read-only. Setting stress period data via the
         initializer or attribute assignment will be supported after PR #266.
 
-        The DataFrame uses node indices as spatial coordinates. To convert node
-        indices to layer/row/col coordinates for structured grids, use::
-
-            layer = node // (nrow * ncol)
-            row = (node % (nrow * ncol)) // ncol
-            col = node % ncol
+        The coordinate format depends on grid information from the parent model:
+        - If structured grid dimensions (nlay, nrow, ncol) are available from the
+          parent, the DataFrame will use layer/row/col columns
+        - Otherwise, it will use node indices
         """
         from attrs import fields
 
         # Find all period block fields
         period_fields = []
         for f in fields(self.__class__):  # type: ignore
-            if f.metadata and f.metadata.get("block") == "period":
-                if f.metadata.get("xattree", {}).get("dims"):
-                    period_fields.append(f.name)
+            if f.metadata.get("block") == "period" and f.metadata.get("xattree", {}).get("dims"):
+                period_fields.append(f.name)
 
         if not period_fields:
-            raise ValueError("No period block fields found in package")
+            raise TypeError("No period block fields found in package")
+
+        # Determine spatial coordinate format based on available grid info
+        # If parent has structured grid dims, use layer/row/col
+        # Otherwise use node indices
+        # TODO generalize this, maybe a `grid_type` property somewhere
+        # like flopy3 has
+        has_structured_grid = False
+        nlay = nrow = ncol = None
+
+        if hasattr(self, "parent") and self.parent is not None:
+            # Try to get grid dimensions from parent model
+            if (
+                hasattr(self.parent, "nlay")
+                and hasattr(self.parent, "nrow")
+                and hasattr(self.parent, "ncol")
+            ):
+                nlay = self.parent.nlay
+                nrow = self.parent.nrow
+                ncol = self.parent.ncol
+                has_structured_grid = True
 
         # Build combined DataFrame
         all_records = []
@@ -78,8 +100,8 @@ class Package(Component, ABC):
                 continue
 
             # Convert field data to records
-            for per in range(data.shape[0]):
-                per_data = data[per]
+            for kper in range(data.shape[0]):
+                per_data = data[kper]
 
                 # Handle sparse arrays
                 try:
@@ -117,9 +139,26 @@ class Package(Component, ABC):
 
                     if len(indices) == 1:  # 1D array (nodes)
                         node = int(indices[0][i])
-                        record = {"per": per, "node": node, field_name: val}
-                        if coord_columns is None:
-                            coord_columns = ["per", "node"]
+
+                        # Convert to layer/row/col if structured grid info available
+                        if has_structured_grid and nlay and nrow and ncol:
+                            layer = node // (nrow * ncol)
+                            row = (node % (nrow * ncol)) // ncol
+                            col = node % ncol
+                            record = {
+                                "kper": kper,
+                                "layer": int(layer),
+                                "row": int(row),
+                                "col": int(col),
+                                field_name: val,
+                            }
+                            if coord_columns is None:
+                                coord_columns = ["kper", "layer", "row", "col"]
+                        else:
+                            # Use node index if no structured grid info
+                            record = {"kper": kper, "node": node, field_name: val}
+                            if coord_columns is None:
+                                coord_columns = ["kper", "node"]
                     elif len(indices) == 3:  # 3D array (layer, row, col)
                         layer, row, col = (
                             indices[0][i],
@@ -127,21 +166,21 @@ class Package(Component, ABC):
                             indices[2][i],
                         )
                         record = {
-                            "per": per,
+                            "kper": kper,
                             "layer": int(layer),
                             "row": int(row),
                             "col": int(col),
                             field_name: val,
                         }
                         if coord_columns is None:
-                            coord_columns = ["per", "layer", "row", "col"]
+                            coord_columns = ["kper", "layer", "row", "col"]
                     else:
                         continue
                     all_records.append(record)
 
         if not all_records:
             # Return empty DataFrame with appropriate columns
-            cols = coord_columns or ["per", "layer", "row", "col"]
+            cols = coord_columns or ["kper", "layer", "row", "col"]
             cols.extend(period_fields)
             return pd.DataFrame(columns=cols)
 

@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from flopy4.mf6.gwf import Chd, Drn, Wel
+from flopy4.mf6.gwf import Chd, Drn, Gwf, Wel
 
 
 def test_chd_stress_period_data():
@@ -14,17 +14,17 @@ def test_chd_stress_period_data():
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 2
-    assert "per" in df.columns
+    assert "kper" in df.columns
     assert "node" in df.columns
     assert "head" in df.columns
 
     # Check first record (node 0 = cell (0,0,0))
-    assert df.iloc[0]["per"] == 0
+    assert df.iloc[0]["kper"] == 0
     assert df.iloc[0]["node"] == 0
     assert df.iloc[0]["head"] == 1.0
 
     # Check second record (node 99 = cell (0,9,9))
-    assert df.iloc[1]["per"] == 0
+    assert df.iloc[1]["kper"] == 0
     assert df.iloc[1]["node"] == 99
     assert df.iloc[1]["head"] == 0.0
 
@@ -41,7 +41,7 @@ def test_wel_stress_period_data():
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 2
-    assert "per" in df.columns
+    assert "kper" in df.columns
     assert "q" in df.columns
 
     # Check records
@@ -88,9 +88,9 @@ def test_multi_period_stress_period_data():
     df = chd.stress_period_data
 
     assert len(df) == 3
-    assert df[df["per"] == 0].iloc[0]["head"] == 1.0
-    assert df[df["per"] == 1].iloc[0]["head"] == 0.9
-    assert df[df["per"] == 2].iloc[0]["head"] == 0.8
+    assert df[df["kper"] == 0].iloc[0]["head"] == 1.0
+    assert df[df["kper"] == 1].iloc[0]["head"] == 0.9
+    assert df[df["kper"] == 2].iloc[0]["head"] == 0.8
 
 
 def test_stress_period_data_multiple_cells():
@@ -111,12 +111,12 @@ def test_stress_period_data_multiple_cells():
     assert len(df) == 6
 
     # Verify period 0
-    per0 = df[df["per"] == 0]
+    per0 = df[df["kper"] == 0]
     assert len(per0) == 3
     assert set(per0["head"].values) == {1.0, 0.5, 0.0}
 
     # Verify period 1
-    per1 = df[df["per"] == 1]
+    per1 = df[df["kper"] == 1]
     assert len(per1) == 3
     assert set(per1["head"].values) == {0.9, 0.45, 0.0}
 
@@ -131,7 +131,7 @@ def test_empty_stress_period_data():
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 0
     # Should have coordinate and field columns even if empty
-    assert "per" in df.columns
+    assert "kper" in df.columns
     assert "head" in df.columns
 
 
@@ -181,22 +181,72 @@ def test_stress_period_data_with_aux_and_boundname():
     assert len(df) == 2
 
     # Check that all fields are present
-    assert "per" in df.columns
+    assert "kper" in df.columns
     assert "node" in df.columns
     assert "head" in df.columns
     assert "aux" in df.columns
     assert "boundname" in df.columns
 
     # Check first record
-    assert df.iloc[0]["per"] == 0
+    assert df.iloc[0]["kper"] == 0
     assert df.iloc[0]["node"] == 0
     assert df.iloc[0]["head"] == 1.0
     assert df.iloc[0]["aux"] == 100.0
     assert df.iloc[0]["boundname"] == "INLET"
 
     # Check second record
-    assert df.iloc[1]["per"] == 0
+    assert df.iloc[1]["kper"] == 0
     assert df.iloc[1]["node"] == 99
     assert df.iloc[1]["head"] == 0.0
     assert df.iloc[1]["aux"] == 200.0
     assert df.iloc[1]["boundname"] == "OUTLET"
+
+
+def test_stress_period_data_with_structured_grid_parent():
+    """Test stress_period_data uses layer/row/col when parent has grid info."""
+    from flopy4.mf6 import Simulation
+    from flopy4.mf6.gwf import Dis
+
+    # Create a real model with DIS (structured grid) package
+    sim = Simulation()
+
+    # Create DIS package with structured grid dimensions
+    dis = Dis(
+        nlay=1,
+        nrow=10,
+        ncol=10,
+    )
+
+    # Create Gwf model with the DIS package
+    gwf = Gwf(parent=sim, dis=dis)
+
+    chd = Chd(
+        parent=gwf,
+        head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+    )
+
+    df = chd.stress_period_data
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+
+    # Should have layer/row/col columns, not node
+    assert "kper" in df.columns
+    assert "layer" in df.columns
+    assert "row" in df.columns
+    assert "col" in df.columns
+    assert "node" not in df.columns
+
+    # Check first record (node 0 = layer 0, row 0, col 0)
+    assert df.iloc[0]["kper"] == 0
+    assert df.iloc[0]["layer"] == 0
+    assert df.iloc[0]["row"] == 0
+    assert df.iloc[0]["col"] == 0
+    assert df.iloc[0]["head"] == 1.0
+
+    # Check second record (node 99 = layer 0, row 9, col 9)
+    assert df.iloc[1]["kper"] == 0
+    assert df.iloc[1]["layer"] == 0
+    assert df.iloc[1]["row"] == 9
+    assert df.iloc[1]["col"] == 9
+    assert df.iloc[1]["head"] == 0.0

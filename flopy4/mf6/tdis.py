@@ -20,7 +20,7 @@ class Tdis(Package):
         nstp: int
         tsmult: float
 
-    nper: int = dim(block="dimensions", coord="per", default=1, scope=ROOT)
+    nper: int = dim(block="dimensions", coord="kper", default=1, scope=ROOT)
     time_units: Optional[str] = field(block="options", default=None)
     start_date_time: Optional[datetime] = field(block="options", default=None)
     perlen: NDArray[np.float64] = array(
