@@ -78,10 +78,9 @@ icelltype = np.stack([np.full((nrow, ncol), val) for val in [1, 0, 0]])
 k = np.stack([np.full((nrow, ncol), val) for val in [1.0e-3, 1.0e-4, 2.0e-4]])
 k33 = np.stack([np.full((nrow, ncol), val) for val in [2.0e-8, 2.0e-8, 2.0e-8]])
 npf = flopy4.mf6.gwf.Npf(
-    # TODO: no need for reshaping once array structuring converter is done
-    icelltype=icelltype.reshape((nodes,)),
-    k=k.reshape((nodes,)),
-    k33=k33.reshape((nodes,)),
+    icelltype=icelltype,
+    k=k,
+    k33=k33,
     cvoptions=flopy4.mf6.gwf.Npf.CvOptions(dewatered=True),
     perched=True,
     save_flows=True,

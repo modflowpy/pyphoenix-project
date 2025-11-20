@@ -523,8 +523,8 @@ def structure_array(
             coords_dict: dict[tuple[Any, ...], Any] = {}
 
             for key, val in parsed_dict.items():
-                if isinstance(val, (int, float)):
-                    # Scalar value - set for entire period/layer
+                if isinstance(val, (int, float, str)):
+                    # Scalar value (number or string) - set for entire period/layer
                     if "nper" in dim_dict:
                         coords_dict[(key,)] = val
                     else:
@@ -555,9 +555,14 @@ def structure_array(
                         else:
                             coords_dict[(nn,)] = v
                 else:
-                    # Array-like value - would need dense conversion
-                    # For now, store as-is
-                    pass
+                    # Other types (including custom objects) - store as scalar for this period/layer
+                    if "nper" in dim_dict or "nlay" in dim_dict:
+                        coords_dict[(key,)] = val
+                    else:
+                        if len(shape) == 1:
+                            coords_dict[(key,)] = val
+                        else:
+                            coords_dict[(key,)] = val
 
             # Convert to sparse COO
             if coords_dict:
@@ -597,8 +602,8 @@ def structure_array(
                     kper_range = range(key, key + 1)
 
                 for kper in kper_range:
-                    if isinstance(val, (int, float)):
-                        # Scalar value
+                    if isinstance(val, (int, float, str)):
+                        # Scalar value (number or string)
                         if len(shape) == 1:
                             result[kper] = val
                         else:
@@ -637,9 +642,17 @@ def structure_array(
                             result[kper] = val.values
                         else:
                             result = val.values
+                    else:
+                        # Other types (including custom objects) - store as-is
+                        if len(shape) == 1:
+                            result[kper] = val
+                        else:
+                            # For multi-dimensional arrays with object dtype, store the object
+                            result[kper] = val
 
-            # Apply fill value replacement
-            result[result == FILL_DNODATA] = field.default or FILL_DNODATA
+            # Apply fill value replacement (skip for object dtypes)
+            if field.dtype != np.object_:
+                result[result == FILL_DNODATA] = field.default or FILL_DNODATA
 
     elif isinstance(value, list):
         # List format
