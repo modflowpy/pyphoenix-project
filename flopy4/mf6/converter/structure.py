@@ -16,7 +16,9 @@ def structure_keyword(value, field) -> str | None:
     return field.name if value else None
 
 
-def _resolve_dimensions(self_, field) -> tuple[list[str], list[int], dict]:
+def _resolve_dimensions(
+    self_, field, *, dims: dict | None = None
+) -> tuple[list[str], list[int], dict]:
     """
     Get expected dimensions, shape, and resolved dimension values.
 
@@ -26,6 +28,9 @@ def _resolve_dimensions(self_, field) -> tuple[list[str], list[int], dict]:
         Parent object containing dimension context
     field : object
         Field specification with dims, dtype, default
+    dims : dict, optional
+        Explicit dimension sizes to use. If provided, takes precedence over
+        dims from parent or self_.__dict__.
 
     Returns
     -------
@@ -42,9 +47,14 @@ def _resolve_dimensions(self_, field) -> tuple[list[str], list[int], dict]:
         raise ValueError(f"Field {field} missing dims")
 
     # Resolve dims from model context
-    explicit_dims = self_.__dict__.get("dims", {})
+    # Priority: 1) explicit dims parameter, 2) self_.__dict__, 3) parent
     inherited_dims = dict(self_.parent.data.dims) if self_.parent else {}
+    explicit_dims = self_.__dict__.get("dims", {})
     dim_dict = inherited_dims | explicit_dims
+
+    # Override with explicitly provided dims (highest priority)
+    if dims is not None:
+        dim_dict.update(dims)
 
     # Check object attributes directly for dimension values
     # These override inherited dims (important during initialization when dims are passed as kwargs)
@@ -482,7 +492,13 @@ def _parse_dict_format(
 
 
 def structure_array(
-    value, self_, field, *, return_xarray: bool = False, sparse_threshold: int | None = None
+    value,
+    self_,
+    field,
+    *,
+    return_xarray: bool = False,
+    sparse_threshold: int | None = None,
+    dims: dict | None = None,
 ) -> xr.DataArray | NDArray | sparse.COO:
     """
     Convert various array representations to structured arrays.
@@ -507,6 +523,9 @@ def structure_array(
         If True, return xr.DataArray; otherwise return raw array (for backward compatibility)
     sparse_threshold : int | None
         Override default sparse threshold for COO vs dense
+    dims : dict | None
+        Explicit dimension sizes (e.g., {'nper': 10, 'nodes': 100}).
+        If provided, takes precedence over dims from parent or self_.
 
     Returns
     -------
@@ -514,7 +533,7 @@ def structure_array(
         Structured array with proper shape and metadata
     """
     # Resolve dimensions
-    dims, shape, dim_dict = _resolve_dimensions(self_, field)
+    dims_names, shape, dim_dict = _resolve_dimensions(self_, field, dims=dims)
     threshold = sparse_threshold if sparse_threshold is not None else SPARSE_THRESHOLD
 
     # Handle different input types
@@ -526,7 +545,7 @@ def structure_array(
 
     if isinstance(value, dict):
         # Parse dict format with fill-forward logic
-        parsed_dict = _parse_dict_format(value, dims, tuple(shape), dim_dict, field, self_)
+        parsed_dict = _parse_dict_format(value, dims_names, tuple(shape), dim_dict, field, self_)
 
         # Build array using sparse or dense approach
         if np.prod(shape) > threshold:
@@ -553,7 +572,7 @@ def structure_array(
                         )
                         value_data = row[-1]
                         nn = get_nn(cellid, **dim_dict)
-                        if "nper" in dims:
+                        if "nper" in dims_names:
                             coords_dict[(key, nn)] = value_data
                         else:
                             coords_dict[(nn,)] = value_data
@@ -561,7 +580,7 @@ def structure_array(
                     # Nested dict: {cellid: value}
                     for cellid, v in val.items():
                         nn = get_nn(cellid, **dim_dict)
-                        if "nper" in dims:
+                        if "nper" in dims_names:
                             coords_dict[(key, nn)] = v
                         else:
                             coords_dict[(nn,)] = v
@@ -602,7 +621,7 @@ def structure_array(
                 val = parsed_dict[key]
 
                 # Determine fill range (current key to next key or end)
-                if "nper" in dims:
+                if "nper" in dims_names:
                     next_key = (
                         sorted_keys[idx + 1]
                         if idx + 1 < len(sorted_keys)
@@ -629,7 +648,7 @@ def structure_array(
                             )
                             value_data = row[-1]
                             nn = get_nn(cellid, **dim_dict)
-                            if "nper" in dims:
+                            if "nper" in dims_names:
                                 result[kper, nn] = value_data
                             else:
                                 result[nn] = value_data
@@ -637,19 +656,19 @@ def structure_array(
                         # Nested dict: {cellid: value}
                         for cellid, v in val.items():
                             nn = get_nn(cellid, **dim_dict)
-                            if "nper" in dims:
+                            if "nper" in dims_names:
                                 result[kper, nn] = v
                             else:
                                 result[nn] = v
                     elif isinstance(val, np.ndarray):
                         # Array value
-                        if "nper" in dims:
+                        if "nper" in dims_names:
                             result[kper] = val
                         else:
                             result = val
                     elif isinstance(val, xr.DataArray):
                         # xarray value
-                        if "nper" in dims:
+                        if "nper" in dims_names:
                             result[kper] = val.values
                         else:
                             result = val.values
@@ -667,15 +686,15 @@ def structure_array(
 
     elif isinstance(value, list):
         # List format
-        result = _parse_list_format(value, dims, tuple(shape), field)
+        result = _parse_list_format(value, dims_names, tuple(shape), field)
 
     elif isinstance(value, (xr.DataArray, np.ndarray)):
         # Duck array - validate and reshape if needed
-        result = _validate_duck_array(value, dims, tuple(shape), dim_dict)
+        result = _validate_duck_array(value, dims_names, tuple(shape), dim_dict)
 
         # Handle time fill-forward
-        if "nper" in dims and "nper" in dim_dict:
-            result = _fill_forward_time(result, dims, dim_dict["nper"])
+        if "nper" in dims_names and "nper" in dim_dict:
+            result = _fill_forward_time(result, dims_names, dim_dict["nper"])
 
     elif isinstance(value, (int, float)):
         # Scalar - broadcast to full shape
@@ -689,10 +708,10 @@ def structure_array(
     if return_xarray and not isinstance(result, xr.DataArray):
         # Build coordinates
         xr_coords: dict[str, Any] = {}
-        for dim in dims:
+        for dim in dims:  # type: ignore
             if dim in dim_dict:
                 xr_coords[dim] = np.arange(dim_dict[dim])
 
-        result = _to_xarray(result, dims, xr_coords)
+        result = _to_xarray(result, dims, xr_coords)  # type: ignore
 
     return result

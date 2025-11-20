@@ -194,3 +194,104 @@ class Package(Component, ABC):
             df = df.groupby(coord_columns, as_index=False).first()
 
         return df
+
+    @stress_period_data.setter
+    def stress_period_data(self, value: pd.DataFrame) -> None:
+        """
+        Set stress period data from a DataFrame.
+
+        Parameters
+        ----------
+        value : pd.DataFrame
+            DataFrame with columns: 'kper' (stress period), spatial coordinates
+            (either 'layer'/'row'/'col' or 'node'), and field value columns.
+
+        Examples
+        --------
+        >>> # Modify existing package data
+        >>> chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0}})
+        >>> df = chd.stress_period_data
+        >>> df['head'] = df['head'] * 2  # Double all values
+        >>> chd.stress_period_data = df  # Apply changes
+
+        >>> # Create new data from scratch
+        >>> df = pd.DataFrame({
+        ...     'kper': [0, 0, 1],
+        ...     'layer': [0, 0, 0],
+        ...     'row': [0, 5, 0],
+        ...     'col': [0, 5, 5],
+        ...     'head': [10.0, 8.0, 9.0]
+        ... })
+        >>> chd.stress_period_data = df
+        """
+        import xarray as xr
+        from xattree import get_xatspec
+
+        from flopy4.mf6.converter.structure import structure_array
+
+        if not isinstance(value, pd.DataFrame):
+            raise TypeError(f"Expected DataFrame, got {type(value)}")
+
+        # Get xattree field specifications
+        spec = get_xatspec(type(self)).flat
+
+        # Find all period block fields
+        period_fields = []
+        field_objects = {}
+        for field_name, field_spec in spec.items():
+            if field_spec.metadata.get("block") == "period" and hasattr(field_spec, "dims"):  # type: ignore
+                period_fields.append(field_name)
+                field_objects[field_name] = field_spec
+
+        if not period_fields:
+            raise TypeError("No period block fields found in package")
+
+        # Check which fields are present in the DataFrame
+        available_fields = [f for f in period_fields if f in value.columns]
+        if not available_fields:
+            raise ValueError(
+                f"DataFrame must contain at least one period field column. "
+                f"Expected one of {period_fields}, got {value.columns.tolist()}"
+            )
+
+        # Build dimension context for the converter
+        # Priority: 1) parent model dims, 2) existing array data
+        dim_dict = {}
+
+        # 1. Get dims from parent if available (most common case)
+        if hasattr(self, "parent") and self.parent is not None and hasattr(self.parent, "data"):
+            dim_dict.update(dict(self.parent.data.dims))
+
+        # 2. Extract dimensions from existing field data
+        for field_name in period_fields:
+            field_data = getattr(self, field_name, None)
+            if field_data is not None and isinstance(field_data, xr.DataArray):
+                # xarray stores dimension sizes
+                dim_dict.update(dict(field_data.sizes))
+                break  # One field is enough to get dimensions
+
+        # 3. Check if DataFrame requires structured grid dims (nrow, ncol, nlay)
+        #    but they're not available - provide helpful error
+        has_structured_coords = all(col in value.columns for col in ["layer", "row", "col"])
+        if has_structured_coords:
+            missing_dims = [d for d in ["nrow", "ncol", "nlay"] if d not in dim_dict]
+            if missing_dims:
+                raise ValueError(
+                    f"DataFrame has structured coordinates (layer/row/col) but package "
+                    f"is missing required dimensions: {missing_dims}. "
+                    f"Attach the package to a parent model with these dimensions, or use "
+                    f"node-based coordinates in the DataFrame instead."
+                )
+
+        # Update each field present in the DataFrame
+        # Pass dims explicitly to converter - no __dict__ manipulation needed
+        for field_name in available_fields:
+            field_obj = field_objects[field_name]
+
+            # Call converter with explicit dims parameter
+            converted_value = structure_array(
+                value, self, field_obj, dims=dim_dict if dim_dict else None
+            )
+
+            # Set the attribute, which will trigger on_setattr hooks (e.g., update_maxbound)
+            setattr(self, field_name, converted_value)
