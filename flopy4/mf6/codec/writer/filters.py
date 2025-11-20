@@ -1,6 +1,6 @@
 from collections.abc import Hashable, Mapping
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 import attrs
 import numpy as np
@@ -10,13 +10,7 @@ from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
-if TYPE_CHECKING:
-    from flopy4.mf6.write_context import WriteContext
-
 ArrayHow = Literal["constant", "internal", "external", "layered constant", "layered internal"]
-
-# Module-level variable to store active write context
-_ACTIVE_CONTEXT: "WriteContext | None" = None
 
 
 def array_how(value: xr.DataArray) -> ArrayHow:
@@ -47,14 +41,20 @@ def array_how(value: xr.DataArray) -> ArrayHow:
     raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 
 
-def array2const(value: xr.DataArray) -> Scalar:
+def array2const(value: xr.DataArray, precision: int = 8) -> Scalar:
+    """
+    Convert array to constant scalar value.
+
+    Parameters
+    ----------
+    value : xr.DataArray
+        Array to convert
+    precision : int, optional
+        Number of decimal places for float output. Default is 8.
+    """
     if np.issubdtype(value.dtype, np.integer):
         return value.max().item()
     if np.issubdtype(value.dtype, np.floating):
-        # Use precision from active context if available
-        precision = 8  # default
-        if _ACTIVE_CONTEXT is not None:
-            precision = _ACTIVE_CONTEXT.float_precision
         return f"{value.max().item():.{precision}f}"
     return value.ravel()[0]
 
@@ -105,7 +105,7 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
         yield np.squeeze(value.values)
 
 
-def array2string(value: NDArray) -> str:
+def array2string(value: NDArray, precision: int = 9) -> str:
     """
     Convert an array to a string. The array can be 1D or 2D.
     If the array is 1D, it is converted to a 1-line string,
@@ -113,6 +113,13 @@ def array2string(value: NDArray) -> str:
     2D, each row becomes a line in the string.
 
     Used for writing array-based input to MF6 input files.
+
+    Parameters
+    ----------
+    value : NDArray
+        Array to convert
+    precision : int, optional
+        Number of decimal places for float output. Default is 9.
     """
     buffer = StringIO()
     value = np.asarray(value)
@@ -123,11 +130,7 @@ def array2string(value: NDArray) -> str:
         value = value[None]
     value = np.atleast_1d(value)
 
-    # Use precision from active context if available
     if np.issubdtype(value.dtype, np.floating):
-        precision = 9  # default
-        if _ACTIVE_CONTEXT is not None:
-            precision = _ACTIVE_CONTEXT.float_precision
         format = f"%.{precision}e"
     elif np.issubdtype(value.dtype, np.integer):
         format = "%d"

@@ -32,23 +32,23 @@
 {{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
-{{ inset }}CONSTANT {{ value|array2const }}
+{{ inset }}CONSTANT {{ value|array2const(context.float_precision) }}
 {% elif how == "layered constant" %}
 {% for layer in value -%}
-{{ "\n" ~ inset }}CONSTANT {{ layer|array2const }}
+{{ "\n" ~ inset }}CONSTANT {{ layer|array2const(context.float_precision) }}
 {%- endfor %}
 {% elif how == "layered internal" %}
 {% for layer in value %}
 
 {{ inset }}INTERNAL
 {% for chunk in layer|array2chunks -%}
-{{ (2 * inset) ~ chunk|array2string }}
+{{ (2 * inset) ~ chunk|array2string(context.float_precision) }}
 {%- endfor %}
 {%- endfor %}
 {% elif how == "internal" %}
 {{ inset }}INTERNAL
 {% for chunk in value|array2chunks -%}
-{{ (2 * inset) ~ chunk|array2string }}
+{{ (2 * inset) ~ chunk|array2string(context.float_precision) }}
 {%- endfor %}
 {% elif how == "external" %}
 OPEN/CLOSE {{ value }}

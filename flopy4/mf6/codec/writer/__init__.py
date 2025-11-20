@@ -51,18 +51,14 @@ def dumps(data, context=None) -> str:
     """
     from flopy4.mf6.write_context import WriteContext
 
-    # Store context in filter module for filters to access
     if context is None:
         context = WriteContext.default()
-    writer_filters._ACTIVE_CONTEXT = context
 
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
     print_opts = _get_print_options(context)
     with np.printoptions(**print_opts):  # type: ignore
-        result = template.render(blocks=data)
+        result = template.render(blocks=data, context=context)
 
-    # Clean up
-    writer_filters._ACTIVE_CONTEXT = None
     return result
 
 
@@ -81,16 +77,11 @@ def dump(data, fp: IO[str], context=None) -> None:
     """
     from flopy4.mf6.write_context import WriteContext
 
-    # Store context in filter module for filters to access
     if context is None:
         context = WriteContext.default()
-    writer_filters._ACTIVE_CONTEXT = context
 
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
-    iterator = template.generate(blocks=data)
+    iterator = template.generate(blocks=data, context=context)
     print_opts = _get_print_options(context)
     with np.printoptions(**print_opts):  # type: ignore
         fp.writelines(iterator)
-
-    # Clean up
-    writer_filters._ACTIVE_CONTEXT = None
