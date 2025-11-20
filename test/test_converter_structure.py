@@ -374,3 +374,86 @@ class TestEdgeCases:
         assert chd.head[0, 0] == 1.0
         assert chd.head[5, 0] == 2.0
         assert chd.head[5, 99] == 0.5
+
+
+class TestDataFrameIntegration:
+    """Test DataFrame input format (round-trip with stress_period_data property)."""
+
+    def test_dataframe_roundtrip_chd_structured(self):
+        """Test round-trip: Chd with dict -> DataFrame -> new Chd with DataFrame."""
+        # Create Chd with dict format
+        chd1 = Chd(
+            dims={"nlay": 2, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 200},
+            head={
+                0: {(0, 0, 0): 10.0, (1, 9, 9): 5.0},
+                1: {(0, 0, 0): 11.0, (1, 9, 9): 6.0},
+            },
+        )
+
+        # Get DataFrame representation
+        df = chd1.stress_period_data
+
+        # Create new Chd with DataFrame
+        chd2 = Chd(
+            dims={"nlay": 2, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 200},
+            head=df,
+        )
+
+        # Verify data matches
+        # Period 0: (0,0,0) -> 10.0, (1,9,9) -> 5.0
+        assert chd2.head[0, 0] == 10.0
+        assert chd2.head[0, 199] == 5.0
+
+        # Period 1: (0,0,0) -> 11.0, (1,9,9) -> 6.0
+        assert chd2.head[1, 0] == 11.0
+        assert chd2.head[1, 199] == 6.0
+
+    def test_dataframe_roundtrip_chd_unstructured(self):
+        """Test round-trip with unstructured grid (node-based)."""
+        # Create Chd with dict format (node-based)
+        # Note: cellids are tuples even for unstructured: (node,)
+        chd1 = Chd(
+            dims={"nper": 2, "nodes": 100},
+            head={
+                0: {(0,): 20.0, (99,): 15.0},
+                1: {(0,): 21.0, (50,): 16.0},
+            },
+        )
+
+        # Get DataFrame representation
+        df = chd1.stress_period_data
+
+        # Create new Chd with DataFrame
+        chd2 = Chd(
+            dims={"nper": 2, "nodes": 100},
+            head=df,
+        )
+
+        # Verify data matches
+        assert chd2.head[0, 0] == 20.0
+        assert chd2.head[0, 99] == 15.0
+        assert chd2.head[1, 0] == 21.0
+        assert chd2.head[1, 50] == 16.0
+
+    def test_dataframe_with_star_key(self):
+        """Test DataFrame from dict with '*' key (applies to period 0)."""
+        # Create Chd with '*' key
+        chd1 = Chd(
+            dims={"nlay": 1, "nrow": 5, "ncol": 5, "nper": 2, "nodes": 25},
+            head={
+                "*": {(0, 0, 0): 100.0, (0, 4, 4): 50.0},
+            },
+        )
+
+        # Get DataFrame
+        df = chd1.stress_period_data
+
+        # Create new Chd with DataFrame
+        chd2 = Chd(
+            dims={"nlay": 1, "nrow": 5, "ncol": 5, "nper": 2, "nodes": 25},
+            head=df,
+        )
+
+        # Verify data matches for period 0
+        assert chd2.head[0, 0] == 100.0
+        assert chd2.head[0, 24] == 50.0

@@ -91,6 +91,27 @@ sparse.COO(coords, data, shape=shape)
 {'filename': 'strt.txt', 'factor': 1.0, 'data': [...], 'binary': True}
 ```
 
+#### 8. DataFrame (from stress_period_data property)
+```python
+# Structured grid format (from package.stress_period_data)
+pd.DataFrame({
+    'kper': [0, 0, 1, 1],
+    'layer': [0, 1, 0, 1],
+    'row': [0, 9, 0, 9],
+    'col': [0, 9, 0, 9],
+    'head': [10.0, 5.0, 11.0, 6.0]
+})
+
+# Unstructured grid format
+pd.DataFrame({
+    'kper': [0, 0, 1],
+    'node': [0, 99, 0],
+    'head': [20.0, 15.0, 21.0]
+})
+
+# Enables round-trip: package → stress_period_data → new package
+```
+
 ### Key Features
 
 #### Fill-Forward Logic
@@ -271,7 +292,28 @@ def _fill_forward_time(
     """
 ```
 
-#### 6. Dict Format Parser
+#### 6. DataFrame Parser
+```python
+def _parse_dataframe(
+    df: pd.DataFrame,
+    field_name: str,
+    dim_dict: dict
+) -> dict[int, dict]:
+    """
+    Parse pandas DataFrame to dict format compatible with stress period data.
+
+    Handles both structured (layer/row/col) and unstructured (node) coordinates.
+    Enables round-trip: package → stress_period_data → new package
+
+    Returns
+    -------
+    parsed : dict[int, dict]
+        Dict with stress period keys mapping to cellid dicts
+        Example: {0: {(0, 0, 0): 10.0, (1, 9, 9): 5.0}, ...}
+    """
+```
+
+#### 7. Dict Format Parser
 ```python
 def _parse_dict_format(
     value: dict,
@@ -296,7 +338,7 @@ def _parse_dict_format(
     """
 ```
 
-#### 7. List Format Parser
+#### 8. List Format Parser
 ```python
 def _parse_list_format(
     value: list,
@@ -314,7 +356,7 @@ def _parse_list_format(
     """
 ```
 
-#### 8. xarray Wrapper
+#### 9. xarray Wrapper
 ```python
 def _to_xarray(
     data: np.ndarray | sparse.COO,
@@ -346,6 +388,9 @@ structure_array(value, self_, field)
     ├─→ _resolve_dimensions() → dims, shape, dim_dict
     │
     ├─→ Detect input type:
+    │   ├─→ DataFrame → _parse_dataframe() → dict
+    │   │                └─→ Continue processing as dict below
+    │   │
     │   ├─→ dict → _parse_dict_format()
     │   │         ├─→ For each value:
     │   │         │   ├─→ xarray/numpy → _validate_duck_array()
@@ -416,10 +461,16 @@ structure_array(value, self_, field)
    - Single values
    - Dimension resolution failures
 
+9. **DataFrame integration**:
+   - Round-trip structured grid: dict → stress_period_data → DataFrame → dict
+   - Round-trip unstructured grid: dict → stress_period_data → DataFrame → dict
+   - DataFrame with star key handling
+   - Verify data preservation across round-trip
+
 ## Backward Compatibility
 
-- `return_xarray=True` as default (new behavior)
-- `return_xarray=False` returns raw arrays (backward compatible)
+- `return_xarray=False` as default (backward compatible)
+- `return_xarray=True` returns xarray DataArrays (new behavior)
 - Existing dict format continues to work
 - Update existing tests to validate xarray output
 
@@ -430,4 +481,5 @@ structure_array(value, self_, field)
 3. **Grid agnostic**: Automatic structured↔unstructured conversion
 4. **Type safety**: Clear return types for static analysis
 5. **Interoperability**: xarray works with pandas, dask, netCDF, zarr
-6. **Future-proof**: Easy to extend with new formats
+6. **Round-trip support**: DataFrame integration enables package → stress_period_data → new package
+7. **Future-proof**: Easy to extend with new formats

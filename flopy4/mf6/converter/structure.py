@@ -1,6 +1,7 @@
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import sparse
 import xarray as xr
 from numpy.typing import NDArray
@@ -45,12 +46,13 @@ def _resolve_dimensions(self_, field) -> tuple[list[str], list[int], dict]:
     inherited_dims = dict(self_.parent.data.dims) if self_.parent else {}
     dim_dict = inherited_dims | explicit_dims
 
-    # Also check object attributes directly for dimension values
-    # (important during initialization when dims are passed as kwargs)
+    # Check object attributes directly for dimension values
+    # These override inherited dims (important during initialization when dims are passed as kwargs)
     for dim_name in field.dims:
-        if dim_name not in dim_dict and hasattr(self_, dim_name):
+        if hasattr(self_, dim_name):
             dim_value = getattr(self_, dim_name)
             if isinstance(dim_value, int):
+                # Override any inherited value with the object's attribute value
                 dim_dict[dim_name] = dim_value
 
     # Build shape by resolving dimension values
@@ -306,6 +308,69 @@ def _to_xarray(
     return xr.DataArray(data=data, dims=dims, coords=coords or {}, attrs=attrs or {})
 
 
+def _parse_dataframe(
+    df: pd.DataFrame,
+    field_name: str,
+    dim_dict: dict,
+) -> dict[int, dict]:
+    """
+    Parse pandas DataFrame to dict format compatible with stress period data.
+
+    Expected DataFrame format (from stress_period_data property):
+    - 'kper' column: stress period index
+    - Spatial columns: either ('layer', 'row', 'col') or ('node',)
+    - Field value column: named after the field (e.g., 'head', 'elev')
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with stress period data
+    field_name : str
+        Name of the field to extract values for
+    dim_dict : dict
+        Resolved dimension values (for coordinate conversion)
+
+    Returns
+    -------
+    dict[int, dict]
+        Dict mapping stress periods to cellid: value dicts
+        Format: {kper: {cellid: value, ...}, ...}
+    """
+    if field_name not in df.columns:
+        raise ValueError(
+            f"Field '{field_name}' not found in DataFrame columns: {df.columns.tolist()}"
+        )
+
+    result: dict[int, dict] = {}
+
+    # Determine coordinate format
+    has_structured = all(col in df.columns for col in ["layer", "row", "col"])
+    has_node = "node" in df.columns
+
+    if not has_structured and not has_node:
+        raise ValueError("DataFrame must have either (layer, row, col) or (node,) columns")
+
+    # Group by stress period
+    for kper in df["kper"].unique():
+        period_data = df[df["kper"] == kper]
+        cellid_dict = {}
+
+        for _, row in period_data.iterrows():
+            # Extract cellid based on coordinate format
+            if has_structured:
+                cellid = (int(row["layer"]), int(row["row"]), int(row["col"]))
+            else:
+                cellid = (int(row["node"]),)
+
+            # Extract field value
+            value = row[field_name]
+            cellid_dict[cellid] = value
+
+        result[int(kper)] = cellid_dict
+
+    return result
+
+
 def _parse_dict_format(
     value: dict, expected_dims: list[str], expected_shape: tuple, dim_dict: dict, field, self_
 ) -> dict[int, Any]:
@@ -442,6 +507,12 @@ def structure_array(
     threshold = sparse_threshold if sparse_threshold is not None else SPARSE_THRESHOLD
 
     # Handle different input types
+    if isinstance(value, pd.DataFrame):
+        # Parse DataFrame format (from stress_period_data property)
+        # Convert to dict format for processing
+        value = _parse_dataframe(value, field.name, dim_dict)
+        # Continue processing as dict below
+
     if isinstance(value, dict):
         # Parse dict format with fill-forward logic
         parsed_dict = _parse_dict_format(value, dims, tuple(shape), dim_dict, field, self_)
