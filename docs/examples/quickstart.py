@@ -44,13 +44,13 @@ sim.write()
 sim.run(verbose=True)
 
 assert chd.data["head"][0, 0] == 1.0
-assert chd.data.head.sel(per=0)[99] == 0.0
+assert chd.data.head.sel(kper=0)[99] == 0.0
 assert np.allclose(chd.data.head[:, 1:99], np.full(98, 3e30))
 
 assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 
 assert oc.data["save_head"][0] == "all"
-assert oc.data.save_head.sel(per=0) == "all"
+assert oc.data.save_head.sel(kper=0) == "all"
 
 # get head and budget results
 budget = gwf.output.budget.squeeze()
@@ -67,4 +67,4 @@ ax.grid(which="both", color="white")
 head.plot.imshow(ax=ax)
 head.plot.contour(ax=ax, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
 budget.plot.quiver(x="x", y="y", u="npf-qx", v="npf-qy", ax=ax, color="white")
-fig.savefig(workspace / ".." / "image" / "quickstart.png")
+fig.savefig(workspace / ".." / "quickstart.png")

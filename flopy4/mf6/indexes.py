@@ -54,4 +54,4 @@ def grid_index(dataset: xr.Dataset) -> MetaIndex:
 
 
 def time_index(dataset: xr.Dataset) -> PandasIndex:
-    return alias(dataset, "nper", "per")
+    return alias(dataset, "nper", "kper")

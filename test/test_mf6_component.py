@@ -612,8 +612,8 @@ def test_to_xarray_on_component():
     tdis = Tdis.from_timestamps(["2020-01-01", "2020-01-05", "2020-01-15"], nstp=5, tsmult=1.2)
     ds = tdis.to_xarray()
     assert isinstance(ds, xr.Dataset)
-    assert isinstance(ds.per, xr.DataArray)
-    assert np.array_equal(ds.per, [0, 1])
+    assert isinstance(ds.kper, xr.DataArray)
+    assert np.array_equal(ds.kper, [0, 1])
     assert ds.attrs["start_date_time"] == pd.Timestamp("2020-01-01")
 
 
@@ -623,8 +623,8 @@ def test_to_xarray_on_context(function_tmpdir):
     sim = Simulation(tdis=time, solutions={"ims": ims}, workspace=function_tmpdir)
     dt = sim.to_xarray()
     assert isinstance(dt, xr.DataTree)
-    assert isinstance(dt.per, xr.DataArray)
-    assert np.array_equal(dt.per, [0])
+    assert isinstance(dt.kper, xr.DataArray)
+    assert np.array_equal(dt.kper, [0])
     assert dt.attrs["filename"] == "mfsim.nam"
     assert dt.attrs["workspace"] == Path(function_tmpdir)
 
