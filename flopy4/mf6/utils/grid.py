@@ -261,26 +261,26 @@ class StructuredGrid(LegacyStructuredGrid):
     def delc(self):
         if self.__delc is None:
             return None
-        dims = ("ncol",)
+        dims = ("nrow",)
         coord_name = self._dims_coords[dims[0]]
-        coords = {coord_name: self._coords[coord_name], "x": self._coords["x"]}
+        coords = {coord_name: self._coords[coord_name], "y": self._coords["y"]}
         return (
             xr.DataArray(super().delc, coords=coords, dims=dims)
             .set_xindex(coord_name, PandasIndex)
-            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
         )
 
     @property
     def delr(self):
         if self.__delr is None:
             return None
-        dims = ("nrow",)
+        dims = ("ncol",)
         coord_name = self._dims_coords[dims[0]]
-        coords = {coord_name: self._coords[coord_name], "y": self._coords["y"]}
+        coords = {coord_name: self._coords[coord_name], "x": self._coords["x"]}
         return (
             xr.DataArray(super().delr, coords=coords, dims=dims)
             .set_xindex(coord_name, PandasIndex)
-            .set_xindex("y", PandasIndex)
+            .set_xindex("x", PandasIndex)
         )
 
     @property
