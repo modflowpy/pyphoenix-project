@@ -394,9 +394,7 @@ def test_stress_period_data_setter_structured_grid():
     from flopy4.mf6.gwf import Dis
 
     # Create parent model and DIS package to define grid
-    gwf = Gwf(strict=False)  # Allow DIS to define dimensions
     dis = Dis(
-        parent=gwf,
         nlay=2,
         nrow=10,
         ncol=10,
@@ -405,9 +403,10 @@ def test_stress_period_data_setter_structured_grid():
         top=1.0,
         botm=np.array([[0.5] * 100, [0.0] * 100]).reshape(2, 10, 10),
     )
+    gwf = Gwf(dis=dis)
 
     # Create CHD package attached to parent with initialized grid
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0}})
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0}}, dims={"nper": 2})
 
     # Create DataFrame with structured coordinates
     new_df = pd.DataFrame(
