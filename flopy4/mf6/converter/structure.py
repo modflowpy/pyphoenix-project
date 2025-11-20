@@ -86,34 +86,45 @@ def _detect_grid_reshape(
     target_shape : tuple | None
         Target shape for reshape, or None
     """
-    # Check if we expect flat 'nodes' dimension
-    if "nodes" not in expected_dims:
-        return False, None
-
     # Get expected shape
     expected_shape = tuple(dim_dict.get(d, d) for d in expected_dims)
 
     # Check if value has structured dimensions
-    has_structured = "nlay" in dim_dict and "nrow" in dim_dict and "ncol" in dim_dict
+    has_structured_3d = "nlay" in dim_dict and "nrow" in dim_dict and "ncol" in dim_dict
+    has_structured_2d = "nrow" in dim_dict and "ncol" in dim_dict
 
-    if not has_structured:
-        return False, None
+    # Handle 'nodes' dimension (full 3D grid)
+    if "nodes" in expected_dims and has_structured_3d:
+        nlay = dim_dict["nlay"]
+        nrow = dim_dict["nrow"]
+        ncol = dim_dict["ncol"]
+        nodes = dim_dict.get("nodes", nlay * nrow * ncol)
 
-    nlay = dim_dict["nlay"]
-    nrow = dim_dict["nrow"]
-    ncol = dim_dict["ncol"]
-    nodes = dim_dict.get("nodes", nlay * nrow * ncol)
+        # Case 1: (nlay, nrow, ncol) → (nodes,)
+        if value_shape == (nlay, nrow, ncol) and expected_shape == (nodes,):
+            return True, (nodes,)
 
-    # Check for structured→flat conversion
-    # Case 1: (nlay, nrow, ncol) → (nodes,)
-    if value_shape == (nlay, nrow, ncol) and expected_shape == (nodes,):
-        return True, (nodes,)
+        # Case 2: (nper, nlay, nrow, ncol) → (nper, nodes)
+        if "nper" in expected_dims:
+            nper = dim_dict["nper"]
+            if value_shape == (nper, nlay, nrow, ncol) and expected_shape == (nper, nodes):
+                return True, (nper, nodes)
 
-    # Case 2: (nper, nlay, nrow, ncol) → (nper, nodes)
-    if "nper" in expected_dims:
-        nper = dim_dict["nper"]
-        if value_shape == (nper, nlay, nrow, ncol) and expected_shape == (nper, nodes):
-            return True, (nper, nodes)
+    # Handle 'ncpl' dimension (cells per layer, 2D per-layer arrays)
+    if "ncpl" in expected_dims and has_structured_2d:
+        nrow = dim_dict["nrow"]
+        ncol = dim_dict["ncol"]
+        ncpl = dim_dict.get("ncpl", nrow * ncol)
+
+        # Case 3: (nrow, ncol) → (ncpl,)
+        if value_shape == (nrow, ncol) and expected_shape == (ncpl,):
+            return True, (ncpl,)
+
+        # Case 4: (nper, nrow, ncol) → (nper, ncpl)
+        if "nper" in expected_dims:
+            nper = dim_dict["nper"]
+            if value_shape == (nper, nrow, ncol) and expected_shape == (nper, ncpl):
+                return True, (nper, ncpl)
 
     return False, None
 
