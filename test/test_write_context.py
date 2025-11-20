@@ -149,3 +149,49 @@ def test_write_context_manager_with_component(function_tmpdir):
     # Check that files were written
     assert (function_tmpdir / "mfsim.nam").exists()
     assert (function_tmpdir / "gwf.dis").exists()
+
+
+def test_nested_write_context_precision(function_tmpdir):
+    """Test that nested WriteContext uses correct precision in actual writes."""
+
+    # Create component with a float value that will show precision differences
+    dis = Dis(
+        nlay=1,
+        nrow=1,
+        ncol=1,
+        delr=1.0,
+        delc=1.0,
+        top=1.123456789,  # Value with many decimals
+        botm=0.0,
+    )
+
+    # Outer context: precision=4
+    with WriteContext(float_precision=4):
+        outer_file = function_tmpdir / "outer.dis"
+        dis.filename = str(outer_file)
+        dis.write()
+        outer_content = outer_file.read_text()
+
+        # Inner nested context: precision=10
+        with WriteContext(float_precision=10):
+            inner_file = function_tmpdir / "inner.dis"
+            dis.filename = str(inner_file)
+            dis.write()
+            inner_content = inner_file.read_text()
+
+        # Back to outer context: precision=4
+        after_file = function_tmpdir / "after.dis"
+        dis.filename = str(after_file)
+        dis.write()
+        after_content = after_file.read_text()
+
+    # Verify precision is respected at each level
+    # Outer: 4 decimals
+    assert "1.1235" in outer_content  # Rounded to 4 decimals
+
+    # Inner: 10 decimals
+    assert "1.1234567890" in inner_content  # Full 10 decimals
+
+    # After: back to 4 decimals
+    assert "1.1235" in after_content
+    assert after_content == outer_content
