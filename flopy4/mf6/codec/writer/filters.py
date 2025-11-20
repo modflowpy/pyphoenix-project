@@ -41,11 +41,21 @@ def array_how(value: xr.DataArray) -> ArrayHow:
     raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 
 
-def array2const(value: xr.DataArray) -> Scalar:
+def array2const(value: xr.DataArray, precision: int = 8) -> Scalar:
+    """
+    Convert array to constant scalar value.
+
+    Parameters
+    ----------
+    value : xr.DataArray
+        Array to convert
+    precision : int, optional
+        Number of decimal places for float output. Default is 8.
+    """
     if np.issubdtype(value.dtype, np.integer):
         return value.max().item()
     if np.issubdtype(value.dtype, np.floating):
-        return f"{value.max().item():.8f}"
+        return f"{value.max().item():.{precision}f}"
     return value.ravel()[0]
 
 
@@ -95,7 +105,7 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
         yield np.squeeze(value.values)
 
 
-def array2string(value: NDArray) -> str:
+def array2string(value: NDArray, precision: int = 9) -> str:
     """
     Convert an array to a string. The array can be 1D or 2D.
     If the array is 1D, it is converted to a 1-line string,
@@ -103,6 +113,13 @@ def array2string(value: NDArray) -> str:
     2D, each row becomes a line in the string.
 
     Used for writing array-based input to MF6 input files.
+
+    Parameters
+    ----------
+    value : NDArray
+        Array to convert
+    precision : int, optional
+        Number of decimal places for float output. Default is 9.
     """
     buffer = StringIO()
     value = np.asarray(value)
@@ -112,13 +129,14 @@ def array2string(value: NDArray) -> str:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
         value = value[None]
     value = np.atleast_1d(value)
-    format = (
-        "%d"
-        if np.issubdtype(value.dtype, np.integer)
-        else "%.9e"
-        if np.issubdtype(value.dtype, np.floating)
-        else "%s"
-    )
+
+    if np.issubdtype(value.dtype, np.floating):
+        format = f"%.{precision}e"
+    elif np.issubdtype(value.dtype, np.integer):
+        format = "%d"
+    else:
+        format = "%s"
+
     np.savetxt(buffer, value, fmt=format, delimiter=" ")
     return buffer.getvalue().strip()
 

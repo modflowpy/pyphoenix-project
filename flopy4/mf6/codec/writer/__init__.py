@@ -19,21 +19,69 @@ _JINJA_ENV.filters["array2chunks"] = writer_filters.array2chunks
 _JINJA_ENV.filters["array2string"] = writer_filters.array2string
 _JINJA_ENV.filters["data2list"] = writer_filters.data2list
 _JINJA_TEMPLATE_NAME = "blocks.jinja"
-_PRINT_OPTIONS = {
-    "precision": 4,
-    "linewidth": sys.maxsize,
-    "threshold": sys.maxsize,
-}
 
 
-def dumps(data) -> str:
+def _get_print_options(context=None):
+    """Get numpy print options from WriteContext."""
+    if context is not None:
+        return context.to_numpy_printoptions()
+    # Default options
+    return {
+        "precision": 4,
+        "linewidth": sys.maxsize,
+        "threshold": sys.maxsize,
+    }
+
+
+def dumps(data, context=None) -> str:
+    """
+    Serialize data to MF6 format string.
+
+    Parameters
+    ----------
+    data : dict
+        Data to serialize
+    context : WriteContext, optional
+        Configuration context for writing
+
+    Returns
+    -------
+    str
+        Serialized MF6 format string
+    """
+    from flopy4.mf6.write_context import WriteContext
+
+    if context is None:
+        context = WriteContext.default()
+
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
-    with np.printoptions(**_PRINT_OPTIONS):  # type: ignore
-        return template.render(blocks=data)
+    print_opts = _get_print_options(context)
+    with np.printoptions(**print_opts):  # type: ignore
+        result = template.render(blocks=data, context=context)
+
+    return result
 
 
-def dump(data, fp: IO[str]) -> None:
+def dump(data, fp: IO[str], context=None) -> None:
+    """
+    Serialize data to MF6 format and write to file.
+
+    Parameters
+    ----------
+    data : dict
+        Data to serialize
+    fp : IO[str]
+        File pointer to write to
+    context : WriteContext, optional
+        Configuration context for writing
+    """
+    from flopy4.mf6.write_context import WriteContext
+
+    if context is None:
+        context = WriteContext.default()
+
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
-    iterator = template.generate(blocks=data)
-    with np.printoptions(**_PRINT_OPTIONS):  # type: ignore
+    iterator = template.generate(blocks=data, context=context)
+    print_opts = _get_print_options(context)
+    with np.printoptions(**print_opts):  # type: ignore
         fp.writelines(iterator)
