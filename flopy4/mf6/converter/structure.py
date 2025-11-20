@@ -360,7 +360,7 @@ def _parse_dataframe(
             if has_structured:
                 cellid = (int(row["layer"]), int(row["row"]), int(row["col"]))
             else:
-                cellid = (int(row["node"]),) # type: ignore
+                cellid = (int(row["node"]),)  # type: ignore
 
             # Extract field value
             value = row[field_name]
