@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
+import attrs
 import numpy as np
 from numpy.typing import NDArray
 from xattree import xattree
 
+from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
 from flopy4.mf6.utils.grid import update_maxbound
@@ -34,6 +36,7 @@ class Drng(Package):
             "nodes",
         ),
         default=None,
+        converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
     )
     cond: Optional[NDArray[np.float64]] = array(
@@ -43,6 +46,7 @@ class Drng(Package):
             "nodes",
         ),
         default=None,
+        converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
     )
     aux: Optional[NDArray[np.float64]] = array(

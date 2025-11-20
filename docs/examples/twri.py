@@ -101,7 +101,7 @@ sto = flopy4.mf6.gwf.Sto(
 rch_rate = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
 rate = np.repeat(np.expand_dims(rch_rate, axis=0), repeats=nper, axis=0)
 rate[0, 0, ...] = 3.0e-8
-rch = flopy4.mf6.gwf.Rch(recharge=rate.reshape(nper, -1), dims=dims)
+rch = flopy4.mf6.gwf.Rch(recharge=rate, dims=dims)
 
 # Output control
 # TODO: show both ways to set up the Oc package, strings
@@ -211,7 +211,7 @@ chdg = flopy4.mf6.gwf.Chdg(
     print_input=True,
     print_flows=True,
     save_flows=True,
-    head=head.reshape(nper, -1),
+    head=head,
     dims=dims,
 )
 
@@ -225,8 +225,8 @@ drng = flopy4.mf6.gwf.Drng(
     print_input=True,
     print_flows=True,
     save_flows=True,
-    elev=elev.reshape(nper, -1),
-    cond=cond.reshape(nper, -1),
+    elev=elev,
+    cond=cond,
     dims=dims,
 )
 
@@ -235,14 +235,14 @@ q = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 for layer, row, col in wel_nodes:
     q[0, layer, row, col] = wel_q
 welg = flopy4.mf6.gwf.Welg(
-    q=q.reshape(nper, -1),
+    q=q,
     dims=dims,
 )
 
 # recharge
 recharge = np.repeat(np.expand_dims(LAYER_NODATA, axis=0), repeats=nper, axis=0)
 recharge[0, ...] = 3.0e-8
-rcha = flopy4.mf6.gwf.Rcha(recharge=recharge.reshape(nper, -1), dims=dims)
+rcha = flopy4.mf6.gwf.Rcha(recharge=recharge, dims=dims)
 
 # remove list based inputs
 # TODO: show variations on removing packages

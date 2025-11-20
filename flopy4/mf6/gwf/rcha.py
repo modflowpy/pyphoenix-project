@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
+import attrs
 import numpy as np
 from numpy.typing import NDArray
 from xattree import xattree
 
+from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
@@ -41,6 +43,7 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
+        converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",

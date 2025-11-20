@@ -251,10 +251,15 @@ def _reshape_grid(
     """
     Perform structured↔flat grid conversion.
 
-    Handles:
+    Handles full 3D grids (nodes dimension):
     - (nlay, nrow, ncol) → (nodes,)
     - (nper, nlay, nrow, ncol) → (nper, nodes)
-    - Preserves xarray metadata if input is xarray
+
+    Handles per-layer 2D arrays (ncpl dimension):
+    - (nrow, ncol) → (ncpl,)
+    - (nper, nrow, ncol) → (nper, ncpl)
+
+    Preserves xarray metadata if input is xarray
     """
 ```
 
@@ -539,6 +544,35 @@ coords = {coord_name: self._coords[coord_name], "x": self._coords["x"]}
 
 **Location**: `flopy4/mf6/utils/grid.py` lines 261-284
 
+#### 4. Missing Converters on Grid-Based Packages
+**Issue**: Grid-based ("g") and array-based ("a") package variants (Chdg, Welg, Drng, Rcha) were missing `converter=Converter(structure_array, ...)` on their period block array fields. Without converters, xattree validates dimension counts before reshape logic runs, causing errors when passing structured arrays.
+
+**Solution**: Added converters to all grid-based and array-based package fields:
+- `Chdg.head`: Added converter for automatic reshaping
+- `Welg.q`: Added converter for automatic reshaping
+- `Drng.elev` and `Drng.cond`: Added converters for automatic reshaping
+- `Rcha.recharge`: Added converter for automatic reshaping
+
+**Location**: `flopy4/mf6/gwf/chdg.py`, `welg.py`, `drng.py`, `rcha.py`
+
+#### 5. Per-Layer Array Dimension (ncpl)
+**Issue**: Array-based packages use `ncpl` ("number of cells per layer") dimension for 2D per-layer data. The reshape detection only handled `nodes` (3D full grids) but not `ncpl` (2D per-layer), causing errors like:
+```
+ValueError: Shape mismatch: (3, 15, 15) vs (3, 225)
+```
+
+**Solution**: Extended `_detect_grid_reshape` to handle `ncpl` dimension:
+```python
+# Handle 'ncpl' dimension (cells per layer, 2D per-layer arrays)
+if "ncpl" in expected_dims and has_structured_2d:
+    # Case: (nrow, ncol) → (ncpl,)
+    # Case: (nper, nrow, ncol) → (nper, ncpl)
+```
+
+This allows automatic reshaping for array-based packages like Rcha.
+
+**Location**: `flopy4/mf6/converter/structure.py` lines 113-127
+
 ### Validation Benefits
 
 The stricter validation in the new converter caught the StructuredGrid bug that had existed undetected. While this temporarily broke tests, it exposed a real issue that would have caused problems downstream. This demonstrates the value of proper input validation.
@@ -546,12 +580,18 @@ The stricter validation in the new converter caught the StructuredGrid bug that 
 ### User-Facing Improvements
 
 Users can now:
-1. Pass structured arrays `(nlay, nrow, ncol)` directly - automatic reshaping to `(nodes,)`
+1. Pass structured arrays directly - automatic reshaping for all dimensions:
+   - 3D full grids: `(nlay, nrow, ncol)` → `(nodes,)`
+   - 2D per-layer: `(nrow, ncol)` → `(ncpl,)`
+   - Time-varying 3D: `(nper, nlay, nrow, ncol)` → `(nper, nodes)`
+   - Time-varying 2D: `(nper, nrow, ncol)` → `(nper, ncpl)`
 2. Use DataFrames from `package.stress_period_data` to initialize new packages
 3. Mix value types within dicts (scalars, arrays, xarrays, DataFrames)
 4. Rely on strict validation to catch dimension mismatches early
 
-Example - no manual reshaping needed:
+Examples - no manual reshaping needed:
+
+**Example 1: Standard packages (3D grid arrays)**
 ```python
 # Before (manual reshape required)
 icelltype = np.stack([np.full((nrow, ncol), val) for val in [1, 0, 0]])
@@ -560,4 +600,30 @@ npf = Npf(icelltype=icelltype.reshape((nodes,)), ...)
 # After (automatic reshape)
 icelltype = np.stack([np.full((nrow, ncol), val) for val in [1, 0, 0]])
 npf = Npf(icelltype=icelltype, ...)  # Automatically reshaped to (nodes,)
+```
+
+**Example 2: Grid-based packages (time-varying 3D arrays)**
+```python
+# Before (manual reshape required)
+head = np.full((nper, nlay, nrow, ncol), FILL_DNODATA)
+head[0, :2, :, 0] = 0.0
+chdg = Chdg(head=head.reshape(nper, -1), ...)
+
+# After (automatic reshape)
+head = np.full((nper, nlay, nrow, ncol), FILL_DNODATA)
+head[0, :2, :, 0] = 0.0
+chdg = Chdg(head=head, ...)  # Automatically reshaped to (nper, nodes)
+```
+
+**Example 3: Array-based packages (time-varying 2D per-layer arrays)**
+```python
+# Before (manual reshape required)
+recharge = np.full((nper, nrow, ncol), FILL_DNODATA)
+recharge[0, ...] = 3.0e-8
+rcha = Rcha(recharge=recharge.reshape(nper, -1), ...)
+
+# After (automatic reshape)
+recharge = np.full((nper, nrow, ncol), FILL_DNODATA)
+recharge[0, ...] = 3.0e-8
+rcha = Rcha(recharge=recharge, ...)  # Automatically reshaped to (nper, ncpl)
 ```
