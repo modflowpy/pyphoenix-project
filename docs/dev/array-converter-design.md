@@ -483,3 +483,81 @@ structure_array(value, self_, field)
 5. **Interoperability**: xarray works with pandas, dask, netCDF, zarr
 6. **Round-trip support**: DataFrame integration enables package → stress_period_data → new package
 7. **Future-proof**: Easy to extend with new formats
+
+## Implementation Notes
+
+### Key Issues Discovered and Fixed
+
+#### 1. String Value Handling
+**Issue**: Dictionary values containing strings (e.g., `save_head={0: "all"}`) were not being stored in arrays. The code only checked for `isinstance(val, (int, float))`, causing strings to fall through.
+
+**Solution**: Added `str` to type checks in both sparse and dense array building paths:
+```python
+if isinstance(val, (int, float, str)):  # Added str
+```
+
+**Location**: `structure.py` lines 526, 600
+
+#### 2. Custom Object Storage
+**Issue**: Custom objects (e.g., `Oc.PrintSaveSetting`) were not handled by any conditional branch and were not being stored in arrays, resulting in fill values (`3e+30`) instead of actual data.
+
+**Solution**: Added else clause to handle any remaining types (including custom objects):
+```python
+else:
+    # Other types (including custom objects) - store as scalar
+    if len(shape) == 1:
+        result[kper] = val
+    else:
+        result[kper] = val
+```
+
+Also skip fill value replacement for object dtypes:
+```python
+if field.dtype != np.object_:
+    result[result == FILL_DNODATA] = field.default or FILL_DNODATA
+```
+
+**Location**: `structure.py` lines 557-565, 645-655
+
+#### 3. StructuredGrid Dimension Bug
+**Issue**: The `flopy4.mf6.utils.grid.StructuredGrid` class had swapped dimension names for `delr` and `delc` properties:
+- `delr` (row spacing) incorrectly used `dims=("nrow",)` instead of `("ncol",)`
+- `delc` (column spacing) incorrectly used `dims=("ncol",)` instead of `("nrow",)`
+
+This bug was masked by the old converter which didn't validate dimensions. The new converter's strict validation exposed it.
+
+**Solution**: Corrected dimension names and coordinates in both properties:
+```python
+# delc: column spacing, varies with row
+dims = ("nrow",)
+coords = {coord_name: self._coords[coord_name], "y": self._coords["y"]}
+
+# delr: row spacing, varies with column
+dims = ("ncol",)
+coords = {coord_name: self._coords[coord_name], "x": self._coords["x"]}
+```
+
+**Location**: `flopy4/mf6/utils/grid.py` lines 261-284
+
+### Validation Benefits
+
+The stricter validation in the new converter caught the StructuredGrid bug that had existed undetected. While this temporarily broke tests, it exposed a real issue that would have caused problems downstream. This demonstrates the value of proper input validation.
+
+### User-Facing Improvements
+
+Users can now:
+1. Pass structured arrays `(nlay, nrow, ncol)` directly - automatic reshaping to `(nodes,)`
+2. Use DataFrames from `package.stress_period_data` to initialize new packages
+3. Mix value types within dicts (scalars, arrays, xarrays, DataFrames)
+4. Rely on strict validation to catch dimension mismatches early
+
+Example - no manual reshaping needed:
+```python
+# Before (manual reshape required)
+icelltype = np.stack([np.full((nrow, ncol), val) for val in [1, 0, 0]])
+npf = Npf(icelltype=icelltype.reshape((nodes,)), ...)
+
+# After (automatic reshape)
+icelltype = np.stack([np.full((nrow, ncol), val) for val in [1, 0, 0]])
+npf = Npf(icelltype=icelltype, ...)  # Automatically reshaped to (nodes,)
+```
