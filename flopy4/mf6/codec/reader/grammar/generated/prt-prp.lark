@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -24,9 +25,20 @@ releasetimes_block: "begin"i "releasetimes"i releasetimes_fields "end"i "release
 block_index: integer
 options_fields: (boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window)*
 dimensions_fields: (nreleasepts | nreleasetimes)*
-packagedata_fields: (packagedata)*
+packagedata_fields: packagedata_record*
 period_fields: (all | first | last | stress_period_data)*
-releasetimes_fields: (releasetimes)*
+releasetimes_fields: releasetimes_record*
+packagedata_record: irptno cellid xrpt yrpt zrpt boundname NEWLINE
+irptno: integer
+cellid: integer
+xrpt: double
+yrpt: double
+zrpt: double
+boundname: word
+
+releasetimes_record: time NEWLINE
+time: double
+
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 dev_exit_solve_method: "dev_exit_solve_method"i integer
@@ -50,9 +62,7 @@ coordinate_check_method: "coordinate_check_method"i string
 dev_cycle_detection_window: "dev_cycle_detection_window"i integer
 nreleasepts: "nreleasepts"i integer
 nreleasetimes: "nreleasetimes"i integer
-packagedata: "packagedata"i list
 all: "all"i 
 first: "first"i 
 last: "last"i 
-releasetimes: "releasetimes"i list
 stress_period_data: record+

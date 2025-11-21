@@ -34,7 +34,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git",
+    "modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git@develop",
     "xattree @ git+https://github.com/wpbonelli/xattree.git",
     "attrs>=25.4.0,<26",
     "cattrs>=25.3.0,<26",
@@ -148,6 +148,8 @@ docs = { features = ["py311", "docs"], solve-group = "py311" }
 
 [tool.pixi.dependencies]
 proj = ">=9.7.0,<10"
+tomli = ">=2.4.0,<3"
+tomli-w = ">=1.2.0,<2"
 
 [tool.pixi.feature.docs.pypi-dependencies]
 jupyter-book = ">=1.0,<2"
@@ -175,4 +177,7 @@ skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./
 ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt"]
 
 [tool.pytest_env]
+
 MPLBACKEND = "agg"
+skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*"
+ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt", "lke"]

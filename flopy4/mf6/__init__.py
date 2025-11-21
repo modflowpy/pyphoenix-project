@@ -15,6 +15,7 @@ from flopy4.mf6.ims import Ims
 from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
+from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import DEFAULT_REGISTRY
 
 __all__ = ["gwf", "simulation", "solution", "utils", "Ims", "NetCDFModel", "Tdis", "Simulation"]
@@ -29,31 +30,29 @@ class WriteError(Exception):
 def _load_mf6(cls, path: Path) -> Component:
     """Load MF6 format file into a component instance."""
     with open(path, "r") as fp:
-        return structure(load_mf6(fp), path)
+        # Parse and transform
+        data = load_mf6(fp, component_type=cls)
+        # Structure into component (bindings resolved during structuring)
+        return structure(data, path, cls)
 
 
 def _load_json(cls, path: Path) -> Component:
     """Load JSON format file into a component instance."""
     with open(path, "r") as fp:
-        return structure(load_json(fp), path)
+        return structure(load_json(fp), path, cls)
 
 
 def _load_toml(cls, path: Path) -> Component:
     """Load TOML format file into a component instance."""
     with open(path, "rb") as fp:
-        return structure(load_toml(fp), path)
+        return structure(load_toml(fp), path, cls)
 
 
-def _write_mf6(component: Component, context=None, **kwargs) -> None:
-    from flopy4.mf6.write_context import WriteContext
-
-    # Use provided context or default
-    ctx = context if context is not None else WriteContext.default()
-
+def _write_mf6(component: Component, context=None) -> None:
     with open(component.path, "w") as fp:
         data = unstructure(component)
         try:
-            dump_mf6(data, fp, context=ctx)
+            dump_mf6(data, fp, context=context if context is not None else WriteContext.default())
         except Exception as e:
             raise WriteError(
                 f"Failed to write MF6 format file for component '{component.name}' "  # type: ignore

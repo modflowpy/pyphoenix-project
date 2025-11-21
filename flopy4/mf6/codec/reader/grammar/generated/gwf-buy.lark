@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -21,10 +22,16 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 options_fields: (hhformulation_rhs | denseref | density_filerecord | dev_efh_formulation)*
 dimensions_fields: (nrhospecies)*
-packagedata_fields: (packagedata)*
+packagedata_fields: packagedata_record*
+packagedata_record: irhospec drhodc crhoref modelname auxspeciesname NEWLINE
+irhospec: integer
+drhodc: double
+crhoref: double
+modelname: word
+auxspeciesname: word
+
 hhformulation_rhs: "hhformulation_rhs"i 
 denseref: "denseref"i double
 density_filerecord: "density"i "fileout"i word
 dev_efh_formulation: "dev_efh_formulation"i 
 nrhospecies: "nrhospecies"i integer
-packagedata: "packagedata"i list

@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -21,10 +22,15 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 exchangedata_block: "begin"i "exchangedata"i exchangedata_fields "end"i "exchangedata"i
 options_fields: (print_input | print_flows | fixed_conductance | obs_filerecord)*
 dimensions_fields: (nexg)*
-exchangedata_fields: (exchangedata)*
+exchangedata_fields: exchangedata_record*
+exchangedata_record: cellidm1 cellidm2 bedleak cfact NEWLINE
+cellidm1: integer
+cellidm2: integer
+bedleak: double
+cfact: double
+
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 fixed_conductance: "fixed_conductance"i 
 obs_filerecord: "obs6"i "filein"i word
 nexg: "nexg"i integer
-exchangedata: "exchangedata"i list

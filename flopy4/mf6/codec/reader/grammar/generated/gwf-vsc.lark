@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -21,7 +22,14 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 options_fields: (viscref | temperature_species_name | thermal_formulation | thermal_a2 | thermal_a3 | thermal_a4 | viscosity_filerecord)*
 dimensions_fields: (nviscspecies)*
-packagedata_fields: (packagedata)*
+packagedata_fields: packagedata_record*
+packagedata_record: iviscspec dviscdc cviscref modelname auxspeciesname NEWLINE
+iviscspec: integer
+dviscdc: double
+cviscref: double
+modelname: word
+auxspeciesname: word
+
 viscref: "viscref"i double
 temperature_species_name: "temperature_species_name"i string
 thermal_formulation: "thermal_formulation"i string
@@ -30,4 +38,3 @@ thermal_a3: "thermal_a3"i double
 thermal_a4: "thermal_a4"i double
 viscosity_filerecord: "viscosity"i "fileout"i word
 nviscspecies: "nviscspecies"i integer
-packagedata: "packagedata"i list

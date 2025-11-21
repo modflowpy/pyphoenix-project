@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -20,12 +21,29 @@ options_block: "begin"i "options"i options_fields "end"i "options"i
 timing_block: "begin"i "timing"i timing_fields "end"i "timing"i
 models_block: "begin"i "models"i models_fields "end"i "models"i
 exchanges_block: "begin"i "exchanges"i exchanges_fields "end"i "exchanges"i
-solutiongroup_block: "begin"i "solutiongroup"i solutiongroup_fields "end"i "solutiongroup"i
+solutiongroup_block: "begin"i "solutiongroup"i block_index solutiongroup_fields "end"i "solutiongroup"i block_index
+block_index: integer
 options_fields: (continue | nocheck | memory_print_option | profile_option | maxerrors | print_input | hpc_filerecord)*
 timing_fields: (tdis6)*
-models_fields: (models)*
-exchanges_fields: (exchanges)*
-solutiongroup_fields: (mxiter | solutiongroup)*
+models_fields: models_record*
+exchanges_fields: exchanges_record*
+solutiongroup_fields: (mxiter)* solutiongroup_record*
+models_record: mtype mfname mname NEWLINE
+mtype: word
+mfname: word
+mname: word
+
+exchanges_record: exgtype exgfile exgmnamea exgmnameb NEWLINE
+exgtype: word
+exgfile: word
+exgmnamea: word
+exgmnameb: word
+
+solutiongroup_record: slntype slnfname slnmnames+ NEWLINE
+slntype: word
+slnfname: word
+slnmnames: word
+
 continue: "continue"i 
 nocheck: "nocheck"i 
 memory_print_option: "memory_print_option"i string
@@ -34,7 +52,4 @@ maxerrors: "maxerrors"i integer
 print_input: "print_input"i 
 hpc_filerecord: "hpc6"i "filein"i word
 tdis6: "tdis6"i string
-models: "models"i list
-exchanges: "exchanges"i list
 mxiter: "mxiter"i integer
-solutiongroup: "solutiongroup"i list

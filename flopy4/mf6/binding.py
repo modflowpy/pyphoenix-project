@@ -1,10 +1,55 @@
+from pathlib import Path
+
 from attrs import define
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import FTYPES, Component
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
+
+
+def _resolve_component_class(binding_type: str) -> type[Component]:
+    """
+    Map binding type string to component class using the FTYPES registry.
+
+    The binding type is parsed to extract the ftype (e.g., 'gwf6' -> 'gwf',
+    'gwf-gwf6' -> 'gwf-gwf') and looked up in the FTYPES registry, which
+    is populated automatically when Component subclasses are defined.
+
+    Parameters
+    ----------
+    binding_type : str
+        Binding type string (e.g., 'gwf6', 'ims6', 'gwf-gwf6')
+
+    Returns
+    -------
+    type[Component]
+        Component class
+
+    Raises
+    ------
+    ValueError
+        If the binding type is not found in the FTYPES registry
+    """
+    # Normalize to lowercase
+    binding_type = binding_type.lower()
+
+    # Strip the '6' suffix to get the ftype
+    if binding_type.endswith("6"):
+        ftype = binding_type[:-1]
+    else:
+        ftype = binding_type
+
+    # Look up in the FTYPES registry
+    if ftype in FTYPES:
+        return FTYPES[ftype]
+
+    raise ValueError(
+        f"Unknown binding type: {binding_type}. "
+        f"No component with ftype='{ftype}' is registered. "
+        f"Available ftypes: {sorted(FTYPES.keys())}"
+    )
 
 
 @define
@@ -51,3 +96,39 @@ class Binding:
             fname=component.filename or component.default_filename(),
             terms=_get_binding_terms(component),
         )
+
+    @classmethod
+    def to_component(cls, binding_tuple: tuple | list, workspace: Path) -> Component:
+        """
+        Resolve binding tuple to component instance (inverse of from_component).
+
+        Parameters
+        ----------
+        binding_tuple : tuple | list
+            Binding in form (type, fname) or (type, fname, *terms)
+        workspace : Path
+            Workspace directory for resolving file paths
+
+        Returns
+        -------
+        Component
+            Loaded component instance
+        """
+        # Extract binding parts
+        binding_type = binding_tuple[0]
+        fname = binding_tuple[1]
+        terms = binding_tuple[2:] if len(binding_tuple) > 2 else ()
+
+        # Resolve component class from type string
+        component_cls = _resolve_component_class(binding_type)
+
+        # Recursively load the component
+        component_path = workspace / fname
+        component = component_cls.load(component_path)
+
+        # Apply terms (e.g., set name from binding if provided)
+        # For models/packages, first term is the name
+        if terms and hasattr(component, "name"):
+            component.name = terms[0]  # type: ignore[attr-defined]
+
+        return component  # type: ignore[return-value]

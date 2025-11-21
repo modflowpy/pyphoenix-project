@@ -1,5 +1,9 @@
 # Array Converter Design Document
 
+> **Note**: The architectural overview has been consolidated into the main design document. See the **IO > Input > Conversion** section in [`sdd.md`](./sdd.md) for the current high-level design. This document remains as a detailed implementation specification.
+
+---
+
 ## Overview
 
 Design for refactoring `flopy4.mf6.converter.structure.structure_array()` to support multiple sparse/dense array formats from flopy 3.x while returning xarray DataArrays with proper metadata.

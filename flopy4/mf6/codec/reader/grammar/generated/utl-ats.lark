@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -19,6 +20,13 @@ block: dimensions_block | perioddata_block
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 perioddata_block: "begin"i "perioddata"i perioddata_fields "end"i "perioddata"i
 dimensions_fields: (maxats)*
-perioddata_fields: (perioddata)*
+perioddata_fields: perioddata_record*
+perioddata_record: iperats dt0 dtmin dtmax dtadj dtfailadj NEWLINE
+iperats: integer
+dt0: double
+dtmin: double
+dtmax: double
+dtadj: double
+dtfailadj: double
+
 maxats: "maxats"i integer
-perioddata: "perioddata"i list

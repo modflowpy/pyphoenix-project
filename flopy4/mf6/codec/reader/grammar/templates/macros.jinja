@@ -1,11 +1,17 @@
 {# Field rendering macros #}
+{# Helper to get attribute from object or dict #}
+{%- macro _get(obj, key) -%}
+{{ obj[key] if obj is mapping else obj[key] }}
+{%- endmacro -%}
 
 {% macro record_field(field_name, field) -%}
 {{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
 {%- set child_type = child|record_child_type -%}
-{%- if child.type == 'keyword' -%}
-"{{ child.name }}"i
-{%- elif child.type == 'union' -%}
+{%- set ctype = child['type'] if child is mapping else child.type -%}
+{%- set cname = child['name'] if child is mapping else child.name -%}
+{%- if ctype == 'keyword' -%}
+"{{ cname }}"i
+{%- elif ctype == 'union' -%}
 {{ child_name|to_rule_name }}
 {%- else -%}
 {{ child_type }}
@@ -20,10 +26,12 @@
 {%- if not loop.last %} | {% endif -%}
 {%- endfor %}
 {% for child_name, child in field.children.items() -%}
-{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
-"{{ child.name }}"i
+{%- set ctype = child['type'] if child is mapping else child.type -%}
+{%- set cname = child['name'] if child is mapping else child.name -%}
+{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if ctype == 'keyword' -%}
+"{{ cname }}"i
 {%- else -%}
-"{{ child.name }}"i {{ child.type }}
+"{{ cname }}"i {{ ctype }}
 {%- endif %}
 {% endfor -%}
 {%- endmacro %}
@@ -33,16 +41,20 @@
 {%- endmacro %}
 
 {% macro nested_union(child_name, child) -%}
-{{ child_name|to_rule_name }}: {% for opt_name, opt in child.children.items() -%}
+{%- set child_children = child['children'] if child is mapping else child.children -%}
+{{ child_name|to_rule_name }}: {% for opt_name, opt in child_children.items() -%}
 {{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}
 {%- if not loop.last %} | {% endif -%}
 {%- endfor %}
 
-{% for opt_name, opt in child.children.items() -%}
-{{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}: {% if opt.type == 'keyword' -%}
-"{{ opt.name }}"i
+{% for opt_name, opt in child_children.items() -%}
+{%- set otype = opt['type'] if opt is mapping else opt.type -%}
+{%- set oname = opt['name'] if opt is mapping else opt.name -%}
+{%- set oshape = opt.get('shape') if opt is mapping else opt.shape -%}
+{{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}: {% if otype == 'keyword' -%}
+"{{ oname }}"i
 {%- else -%}
-"{{ opt.name }}"i {{ opt.type }}{% if opt.shape %}+{% endif %}
+"{{ oname }}"i {{ otype }}{% if oshape %}+{% endif %}
 {%- endif %}
 
 {% endfor -%}
@@ -57,9 +69,38 @@
 {%- endif -%}
 {%- endmacro %}
 
+{# Structured list field macro - generates record rule with named columns #}
+{%- macro list_field(block_name, field_name, columns) -%}
+{{ block_name }}_record: {% for col in columns -%}
+{{ col.name|to_rule_name }}{% if col.shape == '(any1d)' %}+{% endif %}
+{%- if not loop.last %} {% endif -%}
+{%- endfor %} NEWLINE
+{% for col in columns -%}
+{{ col.name|to_rule_name }}: {{ col|list_child_type }}
+{% endfor -%}
+{%- endmacro %}
+
 {# Field list macro #}
-{%- macro field_list(block_name, fields, recarray_name) -%}
-{%- if recarray_name -%}
+{%- macro field_list(block_name, fields, recarray_name, list_field_info=none) -%}
+{%- if list_field_info and list_field_info.columns -%}
+{# Block has structured list field with known columns #}
+{%- if fields -%}
+{{ block_name }}_fields: (
+{%- for field_name in fields %}{{ field_name|to_rule_name }}{% if not loop.last %} | {% endif %}{% endfor -%}
+)* {{ block_name }}_record*
+{%- else -%}
+{{ block_name }}_fields: {{ block_name }}_record*
+{%- endif -%}
+{%- elif list_field_info -%}
+{# Block has list field but no column info - use generic list #}
+{%- if fields -%}
+{{ block_name }}_fields: (
+{%- for field_name in fields %}{{ field_name|to_rule_name }}{% if not loop.last %} | {% endif %}{% endfor -%}
+)* list
+{%- else -%}
+{{ block_name }}_fields: list
+{%- endif -%}
+{%- elif recarray_name -%}
 {{ block_name }}_fields: (
 {%- for field_name in fields %}{{ field_name|to_rule_name }} | {% endfor -%}
 {{ recarray_name }})*

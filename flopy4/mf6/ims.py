@@ -10,7 +10,8 @@ from flopy4.utils import to_path
 
 @xattree
 class Ims(Solution):
-    slntype: ClassVar[str] = "ims"
+    ftype: ClassVar[str] = "ims"
+    slntype: ClassVar[str] = "ims"  # Alias for ftype, kept for backward compatibility
 
     print_option: Optional[str] = field(block="options", default=None)
     complexity: str = field(block="options", default="simple")

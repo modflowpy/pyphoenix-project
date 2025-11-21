@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import ClassVar, Optional
 
 import numpy as np
 from attrs import Converter, define
@@ -14,6 +14,8 @@ from flopy4.mf6.utils.time import Time
 
 @xattree
 class Tdis(Package):
+    ftype: ClassVar[str] = "tdis"
+
     @define
     class PeriodData:
         perlen: float

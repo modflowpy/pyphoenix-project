@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -21,7 +22,17 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 exchangedata_block: "begin"i "exchangedata"i exchangedata_fields "end"i "exchangedata"i
 options_fields: (gwfmodelname1 | gwfmodelname2 | auxiliary | boundnames | print_input | print_flows | save_flows | adv_scheme | cnd_xt3d_off | cnd_xt3d_rhs | mve_filerecord | obs_filerecord | dev_interfacemodel_on)*
 dimensions_fields: (nexg)*
-exchangedata_fields: (exchangedata)*
+exchangedata_fields: exchangedata_record*
+exchangedata_record: cellidm1 cellidm2 ihc cl1 cl2 hwva aux boundname NEWLINE
+cellidm1: integer
+cellidm2: integer
+ihc: integer
+cl1: double
+cl2: double
+hwva: double
+aux: double
+boundname: word
+
 gwfmodelname1: "gwfmodelname1"i string
 gwfmodelname2: "gwfmodelname2"i string
 auxiliary: "auxiliary"i array
@@ -36,4 +47,3 @@ mve_filerecord: "mve6"i "filein"i word
 obs_filerecord: "obs6"i "filein"i word
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
-exchangedata: "exchangedata"i list

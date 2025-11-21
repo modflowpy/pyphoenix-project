@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -15,12 +16,9 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | period_block
+block: options_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
-block_index: integer
 options_fields: (disable_storage_change_integration | print_input | ts_filerecord)*
-period_fields: ()*
 disable_storage_change_integration: "disable_storage_change_integration"i 
 print_input: "print_input"i 
 ts_filerecord: "ts6"i "filein"i word

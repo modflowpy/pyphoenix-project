@@ -10,7 +10,9 @@ import sparse
 import xarray as xr
 
 from flopy4.mf6.converter.ingress.structure import (
+    _convert_dataset_to_dict,
     _detect_grid_reshape,
+    _extract_external_path,
     _fill_forward_time,
     _reshape_grid,
     _to_xarray,
@@ -142,6 +144,113 @@ class TestHelperFunctions:
         assert result.dims == ("nper", "nodes")
         assert "nper" in result.coords
         assert result.attrs["units"] == "m"
+
+    def test_convert_dataset_to_dict_structured(self):
+        """Test converting xr.Dataset to dict format (structured grid)."""
+        # Create Dataset as transformer would output it
+        ds = xr.Dataset(
+            data_vars={
+                "field_0": (["record"], [-1000.0, -2000.0, -3000.0]),
+            },
+            coords={
+                "kper": (["record"], [0, 0, 1]),
+                "layer": (["record"], [0, 0, 0]),
+                "row": (["record"], [1, 2, 3]),
+                "col": (["record"], [1, 2, 3]),
+            },
+        )
+        dim_dict = {"nlay": 2, "nrow": 10, "ncol": 10}
+
+        result = _convert_dataset_to_dict(ds, "field_0", dim_dict)
+
+        # Check structure: {kper: {cellid: value}}
+        assert isinstance(result, dict)
+        assert 0 in result
+        assert 1 in result
+        assert (0, 1, 1) in result[0]
+        assert (0, 2, 2) in result[0]
+        assert result[0][(0, 1, 1)] == -1000.0
+        assert result[0][(0, 2, 2)] == -2000.0
+        assert result[1][(0, 3, 3)] == -3000.0
+
+    def test_convert_dataset_to_dict_unstructured(self):
+        """Test converting xr.Dataset to dict format (unstructured grid)."""
+        ds = xr.Dataset(
+            data_vars={
+                "q": (["record"], [100.0, 200.0]),
+            },
+            coords={
+                "kper": (["record"], [0, 1]),
+                "node": (["record"], [5, 10]),
+            },
+        )
+        dim_dict = {"nodes": 100}
+
+        result = _convert_dataset_to_dict(ds, "q", dim_dict)
+
+        assert isinstance(result, dict)
+        assert 0 in result
+        assert 1 in result
+        assert (5,) in result[0]
+        assert (10,) in result[1]
+        assert result[0][(5,)] == 100.0
+        assert result[1][(10,)] == 200.0
+
+    def test_convert_dataset_to_dict_missing_field_uses_first_var(self):
+        """Test that if field name not found, uses first data variable."""
+        ds = xr.Dataset(
+            data_vars={
+                "field_0": (["record"], [1.0, 2.0]),
+            },
+            coords={
+                "kper": (["record"], [0, 0]),
+                "node": (["record"], [1, 2]),
+            },
+        )
+        dim_dict = {"nodes": 100}
+
+        # Request non-existent field, should use field_0
+        result = _convert_dataset_to_dict(ds, "non_existent", dim_dict)
+
+        assert isinstance(result, dict)
+        assert 0 in result
+        assert (1,) in result[0]
+        assert result[0][(1,)] == 1.0
+
+    def test_extract_external_path_with_path(self):
+        """Test extracting external file path from DataArray attrs."""
+        data = xr.DataArray(
+            data=np.nan,
+            attrs={
+                "control_type": "external",
+                "control_factor": 1.0,
+                "control_binary": True,
+                "external_path": "data/heads.dat",
+            },
+        )
+
+        path, updated_data = _extract_external_path(data)
+
+        assert path == "data/heads.dat"
+        assert isinstance(updated_data, xr.DataArray)
+        assert "external_path" not in updated_data.attrs
+        assert updated_data.attrs["control_type"] == "external"
+        assert updated_data.attrs["control_factor"] == 1.0
+
+    def test_extract_external_path_without_path(self):
+        """Test that non-external DataArray is returned unchanged."""
+        data = xr.DataArray(
+            data=np.ones((10, 10)),
+            attrs={
+                "control_type": "internal",
+                "control_factor": 1.0,
+            },
+        )
+
+        path, updated_data = _extract_external_path(data)
+
+        assert path is None
+        assert updated_data is data  # Should be unchanged
 
 
 class TestDisComponent:

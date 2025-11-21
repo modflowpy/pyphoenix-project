@@ -51,18 +51,16 @@ class Context(Component, ABC):
     @classmethod
     def load(cls, path, format=MF6):
         """
-        Load the context component and children.
+        Load the context component from the given path.
 
-        Children are loaded relative to the parent's workspace directory,
-        so their paths are resolved within that workspace.
+        Children are loaded via binding resolution during structuring,
+        with the workspace as the current working directory so that
+        relative paths in child files resolve correctly.
         """
-        # Load the instance first
+        # Load the instance (binding resolution in structure() handles children)
         instance = cls._load(path, format=format)
 
-        # Load children within the workspace context
-        with cd(instance.workspace):
-            for child in instance.children.values():  # type: ignore
-                child.__class__.load(child.path, format=format)
+        return instance
 
     def write(self, format=MF6, context=None):
         with cd(self.workspace):

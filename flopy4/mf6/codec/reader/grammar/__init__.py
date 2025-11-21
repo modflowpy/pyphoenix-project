@@ -2,7 +2,7 @@ from os import PathLike
 from pathlib import Path
 
 import jinja2
-from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfns import Dfn
 
 from flopy4.mf6.codec.reader.grammar import filters
 
@@ -18,16 +18,21 @@ def _get_template_env():
     env.filters["field_type"] = filters.field_type
     env.filters["record_child_type"] = filters.record_child_type
     env.filters["to_rule_name"] = filters.to_rule_name
+    env.filters["get_list_columns"] = filters.get_list_columns
+    env.filters["list_child_type"] = filters.list_child_type
     return env
 
 
 def _get_template_data(blocks) -> tuple[list[dict], dict[str, object]]:
-    all_blocks = []
-    all_fields = {}
+    all_blocks: list[dict] = []
+    all_fields: dict[str, object] = {}
+
+    if blocks is None:
+        return all_blocks, all_fields
 
     for block_name, block_fields in blocks.items():
         period_groups = filters.group_period_fields(block_fields)
-        has_index = block_name == "period"
+        has_index = block_name in ("period", "solutiongroup")
 
         recarrays = []
         grouped_field_names = set()

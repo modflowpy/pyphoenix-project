@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -21,10 +22,15 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 gncdata_block: "begin"i "gncdata"i gncdata_fields "end"i "gncdata"i
 options_fields: (print_input | print_flows | explicit)*
 dimensions_fields: (numgnc | numalphaj)*
-gncdata_fields: (gncdata)*
+gncdata_fields: gncdata_record*
+gncdata_record: cellidn cellidm cellidsj alphasj NEWLINE
+cellidn: integer
+cellidm: integer
+cellidsj: integer
+alphasj: double
+
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 explicit: "explicit"i 
 numgnc: "numgnc"i integer
 numalphaj: "numalphaj"i integer
-gncdata: "gncdata"i list

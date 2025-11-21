@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -19,13 +20,16 @@ block: attributes_block | timeseries_block
 attributes_block: "begin"i "attributes"i attributes_fields "end"i "attributes"i
 timeseries_block: "begin"i "timeseries"i timeseries_fields "end"i "timeseries"i
 attributes_fields: (time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | method | interpolation_method_single | sfacrecord | sfacrecord_single | sfac)*
-timeseries_fields: (timeseries)*
+timeseries_fields: timeseries_record*
+timeseries_record: ts_time ts_array NEWLINE
+ts_time: double
+ts_array: double
+
 time_series_namerecord: "names"i word
 interpolation_methodrecord: "methods"i word
-interpolation_methodrecord_single: 
+interpolation_methodrecord_single: "interpolation_methodrecord_single"i record
 method: "method"i 
 interpolation_method_single: "interpolation_method_single"i string
 sfacrecord: "sfacs"i double
 sfacrecord_single: double
 sfac: "sfac"i 
-timeseries: "timeseries"i list

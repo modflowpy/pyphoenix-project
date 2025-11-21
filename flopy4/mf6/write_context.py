@@ -1,14 +1,21 @@
-"""Write context for configuring MF6 input file writing."""
+"""
+Write context for configuring MF6 input file writing.
 
-import threading
-from typing import TYPE_CHECKING, ClassVar, Literal, Optional
+Uses contextvars for async-safe context management. The context stack
+is maintained per async context, allowing WriteContext to work correctly
+with asyncio and concurrent code.
+"""
+
+from contextvars import ContextVar
+from typing import Literal, Optional
 
 from attrs import define, field
 
-if TYPE_CHECKING:
-    from threading import local
-
 ArrayFormat = Literal["internal", "constant", "open/close"]
+
+_write_context_stack: ContextVar[list["WriteContext"]] = ContextVar(
+    "write_context_stack", default=[]
+)
 
 
 @define
@@ -58,27 +65,22 @@ class WriteContext:
     use_relative_paths: bool = field(default=True)
     array_format: Optional[ArrayFormat] = field(default=None)
 
-    # Class-level thread-local storage for context stack
-    _global_context_stack: ClassVar["local"]
-
     def __enter__(self) -> "WriteContext":
         """Enter context manager, pushing this context onto the stack."""
-        # Use class-level thread-local storage
-        if not hasattr(WriteContext, "_global_context_stack"):
-            WriteContext._global_context_stack = threading.local()
-        if not hasattr(WriteContext._global_context_stack, "stack"):
-            WriteContext._global_context_stack.stack = []
-        WriteContext._global_context_stack.stack.append(self)
+        # Get current stack and append this context
+        stack = _write_context_stack.get().copy()
+        stack.append(self)
+        _write_context_stack.set(stack)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit context manager, popping this context from the stack."""
-        if (
-            hasattr(WriteContext, "_global_context_stack")
-            and hasattr(WriteContext._global_context_stack, "stack")
-            and WriteContext._global_context_stack.stack
-        ):
-            WriteContext._global_context_stack.stack.pop()
+        stack = _write_context_stack.get().copy()
+        if stack:
+            stack.pop()
+            _write_context_stack.set(stack)
+        # Don't suppress exceptions
+        return None
 
     @classmethod
     def current(cls) -> "WriteContext":
@@ -93,12 +95,9 @@ class WriteContext:
         WriteContext
             The active context, or a default context.
         """
-        # Create a class-level thread-local if it doesn't exist
-        if not hasattr(cls, "_global_context_stack"):
-            cls._global_context_stack = threading.local()
-
-        if hasattr(cls._global_context_stack, "stack") and cls._global_context_stack.stack:
-            return cls._global_context_stack.stack[-1]
+        stack = _write_context_stack.get()
+        if stack:
+            return stack[-1]
         return cls.default()
 
     @classmethod

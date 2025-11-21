@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -19,7 +20,12 @@ block: options_block | packages_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 packages_block: "begin"i "packages"i packages_fields "end"i "packages"i
 options_fields: (list | print_input | print_flows | save_flows | newtonoptions | nc_mesh2d_filerecord | nc_structured_filerecord | nc_filerecord)*
-packages_fields: (packages)*
+packages_fields: packages_record*
+packages_record: ftype fname pname NEWLINE
+ftype: word
+fname: word
+pname: word
+
 list: "list"i string
 print_input: "print_input"i 
 print_flows: "print_flows"i 
@@ -28,4 +34,3 @@ newtonoptions: "newton"i "under_relaxation"i
 nc_mesh2d_filerecord: "netcdf_mesh2d"i "fileout"i word
 nc_structured_filerecord: "netcdf_structured"i "fileout"i word
 nc_filerecord: "netcdf"i "filein"i word
-packages: "packages"i list

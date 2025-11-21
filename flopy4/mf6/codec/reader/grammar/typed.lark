@@ -18,6 +18,7 @@ binary: "(binary)"i
 filename: ESCAPED_STRING | word
 data: double+
 record: token+ NEWLINE
+list: record*
 token: number | word
 word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,+-\\(\\)]+/
 _token: word | number

@@ -8,6 +8,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -28,20 +29,47 @@ block: {% for block in blocks %}
 block_index: integer
 {% endif -%}
 {% for block in blocks -%}
-{% if block.recarrays -%}
-{% set recarray_name = block.recarrays[0].name -%}
-{{ m.field_list(block.name, block.standalone_fields, recarray_name) }}
+{# Separate list-type fields from other fields, capture list field info #}
+{% set ns = namespace(non_list_fields=[], list_field_info=none) -%}
+{% for field_name in block.standalone_fields -%}
+{% set field = fields[field_name] -%}
+{% if field.type in ('list', 'recarray') -%}
+{% set columns = field|get_list_columns -%}
+{% set ns.list_field_info = {'name': field_name, 'columns': columns} -%}
 {% else -%}
-{{ m.field_list(block.name, block.standalone_fields, none) }}
+{% set _ = ns.non_list_fields.append(field_name) -%}
 {% endif -%}
 {% endfor -%}
+{% if block.recarrays -%}
+{% set recarray_name = block.recarrays[0].name -%}
+{{ m.field_list(block.name, ns.non_list_fields, recarray_name, none) }}
+{% else -%}
+{{ m.field_list(block.name, ns.non_list_fields, none, ns.list_field_info) }}
+{% endif -%}
+{% endfor -%}
+{# Generate structured list record rules #}
+{% for block in blocks -%}
+{% for field_name in block.standalone_fields -%}
+{% set field = fields[field_name] -%}
+{% if field.type in ('list', 'recarray') -%}
+{% set columns = field|get_list_columns -%}
+{% if columns -%}
+{{ m.list_field(block.name, field_name, columns) }}
+{% endif -%}
+{% endif -%}
+{% endfor -%}
+{% endfor -%}
+{# Generate scalar field rules #}
 {% set generated_rules = [] -%}
 {% for block in blocks -%}
 {% for field_name in block.standalone_fields -%}
 {% if field_name not in generated_rules -%}
 {% set field = fields[field_name] -%}
 {% set field_type = field|field_type -%}
-{% if field.type == 'record' and field.children is not none -%}
+{# Skip list-type fields - they have their own record rules generated above #}
+{% if field.type in ('list', 'recarray') -%}
+{# No additional rule needed for list fields #}
+{% elif field.type == 'record' and field.children is not none -%}
 {{ m.record_field(field_name, field) }}
 {% elif field.type == 'union' and field.children is not none -%}
 {{ m.union_field(field_name, field) }}

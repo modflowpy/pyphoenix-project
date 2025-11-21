@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -19,7 +20,10 @@ block: options_block | partitions_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 partitions_block: "begin"i "partitions"i partitions_fields "end"i "partitions"i
 options_fields: (print_table | dev_log_mpi)*
-partitions_fields: (partitions)*
+partitions_fields: partitions_record*
+partitions_record: mname mrank NEWLINE
+mname: word
+mrank: integer
+
 print_table: "print_table"i 
 dev_log_mpi: "dev_log_mpi"i 
-partitions: "partitions"i list

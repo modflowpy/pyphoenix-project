@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -15,20 +16,41 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | tables_block | connectiondata_block | outlets_block
+block: options_block | dimensions_block | tables_block | connectiondata_block | outlets_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 tables_block: "begin"i "tables"i tables_fields "end"i "tables"i
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
 outlets_block: "begin"i "outlets"i outlets_fields "end"i "outlets"i
-block_index: integer
 options_fields: (obs_filerecord | mover | surfdep | maximum_iterations | maximum_stage_change | time_conversion | length_conversion)*
 dimensions_fields: (nlakes | noutlets | ntables)*
-period_fields: ()*
-tables_fields: (tables)*
-connectiondata_fields: (connectiondata)*
-outlets_fields: (outlets)*
+tables_fields: tables_record*
+connectiondata_fields: connectiondata_record*
+outlets_fields: outlets_record*
+tables_record: tab6 tab6_filename NEWLINE
+tab6: 
+tab6_filename: word
+
+connectiondata_record: iconn cellid claktype bedleak belev telev connlen connwidth NEWLINE
+iconn: integer
+cellid: integer
+claktype: word
+bedleak: word
+belev: double
+telev: double
+connlen: double
+connwidth: double
+
+outlets_record: outletno lakein lakeout couttype invert width rough slope NEWLINE
+outletno: integer
+lakein: integer
+lakeout: integer
+couttype: word
+invert: word
+width: word
+rough: word
+slope: word
+
 obs_filerecord: "obs6"i word
 mover: "mover"i 
 surfdep: "surfdep"i double
@@ -39,6 +61,3 @@ length_conversion: "length_conversion"i double
 nlakes: "nlakes"i integer
 noutlets: "noutlets"i integer
 ntables: "ntables"i integer
-tables: "tables"i list
-connectiondata: "connectiondata"i list
-outlets: "outlets"i list

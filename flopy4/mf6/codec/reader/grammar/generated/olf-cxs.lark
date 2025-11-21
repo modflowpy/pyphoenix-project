@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -22,10 +23,17 @@ packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedat
 crosssectiondata_block: "begin"i "crosssectiondata"i crosssectiondata_fields "end"i "crosssectiondata"i
 options_fields: (print_input)*
 dimensions_fields: (nsections | npoints)*
-packagedata_fields: (packagedata)*
-crosssectiondata_fields: (crosssectiondata)*
+packagedata_fields: packagedata_record*
+crosssectiondata_fields: crosssectiondata_record*
+packagedata_record: idcxs nxspoints NEWLINE
+idcxs: integer
+nxspoints: integer
+
+crosssectiondata_record: xfraction height manfraction NEWLINE
+xfraction: double
+height: double
+manfraction: double
+
 print_input: "print_input"i 
 nsections: "nsections"i integer
 npoints: "npoints"i integer
-packagedata: "packagedata"i list
-crosssectiondata: "crosssectiondata"i list

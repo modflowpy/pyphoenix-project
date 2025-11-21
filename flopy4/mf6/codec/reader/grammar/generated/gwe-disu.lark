@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -26,8 +27,20 @@ options_fields: (length_units | nogrb | grb_filerecord | xorigin | yorigin | ang
 dimensions_fields: (nodes | nja | nvert)*
 griddata_fields: (top | bot | area | idomain)*
 connectiondata_fields: (iac | ja | ihc | cl12 | hwva | angldegx)*
-vertices_fields: (vertices)*
-cell2d_fields: (cell2d)*
+vertices_fields: vertices_record*
+cell2d_fields: cell2d_record*
+vertices_record: iv xv yv NEWLINE
+iv: integer
+xv: double
+yv: double
+
+cell2d_record: icell2d xc yc ncvert icvert NEWLINE
+icell2d: integer
+xc: double
+yc: double
+ncvert: integer
+icvert: integer
+
 length_units: "length_units"i string
 nogrb: "nogrb"i 
 grb_filerecord: "grb6"i "fileout"i word
@@ -50,5 +63,3 @@ ihc: "ihc"i array
 cl12: "cl12"i array
 hwva: "hwva"i array
 angldegx: "angldegx"i array
-vertices: "vertices"i list
-cell2d: "cell2d"i list

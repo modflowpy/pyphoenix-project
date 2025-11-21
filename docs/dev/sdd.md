@@ -7,6 +7,10 @@
 - [Conceptual model](#conceptual-model)
 - [Object model](#object-model)
   - [Design](#design)
+  - [Data model](#data-model)
+    - [Protocol architecture](#protocol-architecture)
+    - [Dimension resolution](#dimension-resolution)
+    - [Migration from xattree](#migration-from-xattree)
   - [Conventions](#conventions)
 - [IO](#io)
   - [Input](#input)
@@ -111,6 +115,52 @@ The product bolts on dictionary-style behavior by implementing `MutableMapping` 
 
 The sparse, record-based list input format used by MODFLOW 6 is in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
 
+### Data model
+
+Component classes must manage dimensions for array fields and provide `xarray` views of their data. The product uses a protocol-based architecture emphasizing explicitness over implicit behavior.
+
+#### Protocol architecture
+
+Rather than relying on decorator magic that "steals from `__dict__`," the product defines capabilities via runtime-checkable protocols:
+
+**Dimension management protocols**:
+- `DimensionProvider`: Components declare what dimensions they provide (e.g., DIS provides `nlay`, `nrow`, `ncol`, `nodes`)
+- `DimensionRegistry`: Components resolve dimensions from their hierarchy by walking the object graph
+
+**Xarray conversion protocols**:
+- `DatasetConvertible`: Leaf components provide `to_dataset()` for single-level views
+- `DataTreeConvertible`: Hierarchical components provide `to_datatree()` for nested views
+
+Protocols enable static type checking while keeping implementations flexible. Components opt-in to capabilities by implementing the relevant protocol.
+
+#### Dimension resolution
+
+Dimensions are resolved lazily at runtime rather than registered eagerly. When a component needs a dimension value:
+
+1. Check the local cache
+2. Walk child components to find `DimensionProvider`s
+3. If not found, delegate to parent
+4. Cache the result
+
+This approach is construction-order agnostic, working whether components are built top-down (loading from files) or bottom-up (interactive construction). Parent references enable walking up the hierarchy, while the cache prevents repeated tree traversals.
+
+Grid discretization packages (DIS, DISV, DISU) and temporal discretization (TDIS) implement `DimensionProvider`, computing both explicit dimensions (from DFN fields like `nlay`) and derived dimensions (like `nodes = nlay * nrow * ncol`).
+
+All components implement `DimensionRegistry` via a mixin, giving uniform resolution behavior throughout the hierarchy. Any component can resolve dimensions on demand.
+
+#### Migration from xattree
+
+The product is migrating away from the experimental [`xattree`](https://github.com/wpbonelli/xattree) decorator, which proxies `attrs` fields through `xarray.DataTree`. While conceptually sound, `xattree` has implementation issues: preventing slotted classes, slow dimension lookups, and poor type-checking support.
+
+The migration maintains backward compatibility through transitional `.data` properties while moving toward:
+
+- `attrs` fields as the single source of truth (no proxying)
+- On-demand `xarray` view construction via conversion protocols
+- Explicit dimension resolution through protocols and mixins
+- Better IDE support and static type checking
+
+This refactor proceeds incrementally, allowing gradual adoption without breaking existing code. See [issue #167](https://github.com/modflowpy/pyphoenix-project/issues/167) for the complete refactor plan.
+
 ### Conventions
 
 Being based on `xarray`, the product can support the [MODFLOW 6 NetCDF specification](https://github.com/MODFLOW-ORG/modflow6/wiki/MODFLOW-NetCDF-Format) via `xarray` extension points: custom indices and accessors.
@@ -152,12 +202,25 @@ The conversion layer uses `cattrs` to transform between the product's `xarray`/`
 
 The unstructuring phase aims to avoid a) unnecessary copies and b) materializing data in memory.
 
-**Structuring (load time)**: A `cattrs` converter with appropriate structuring hooks converts dictionaries of primitives into component instances, including:
+**Structuring (load time)**: A `cattrs` converter with appropriate structuring hooks converts dictionaries of primitives into component instances. This solves several challenges:
 
+*Dimension resolution during initialization*: Array converters need dimensions during `__init__()` before all fields are assigned—a bootstrapping problem. The solution uses a context manager (`DimContext`) with thread-safe `contextvars` to provide dimensions extracted from parsed data, child components, and parent context. Array converters check this context when resolving dimensions.
+
+*Universal array conversion*: The array structuring converter accepts multiple input formats to support both file loading and interactive construction:
+
+- Dictionaries with fill-forward semantics for stress periods or layers
+- Nested lists (any depth, validated by shape)
+- Duck arrays (`xarray.DataArray`, `numpy.ndarray`, sparse arrays)
+- Scalars (broadcast to full shape)
+- DataFrames (from round-trip via `stress_period_data` property)
+
+*Grid representation flexibility*: Users work with natural representations (structured `(nlay, nrow, ncol)` arrays) while components use grid-agnostic flat representations (`(nodes,)` dimension). The converter automatically reshapes between these representations, supporting both full 3D grids and 2D per-layer arrays.
+
+*Other structuring tasks*:
 - Instantiating child components from bindings
-- Converting sparse list input data representations to arrays
-- Reconstructing time-varying array variables from indexed blocks
-- Guaranteeing `xarray` objects have proper dimensions/coordinates
+- Reconstructing time-varying arrays from period-indexed blocks
+- Validating array shapes against expected dimensions
+- Setting proper dimension names and coordinates on `xarray` objects
 
 #### Serialization
 
@@ -185,35 +248,61 @@ The writer handles several MF6-specific concerns:
 
 ##### Reader
 
-The reader in `flopy4.mf6.codec.reader` uses [Lark](https://lark-parser.readthedocs.io/) to parse MF6 input files. Parsing is implemented in two stages: a parser generates a parse tree from input text, then a transformer converts the tree to Python data structures.
+The reader in `flopy4.mf6.codec.reader` uses [Lark](https://lark-parser.readthedocs.io/) to parse MF6 input files into component instances. Loading is implemented as a multi-stage pipeline.
 
-The reader currently provides two grammar/transformer pairs:
+**Parsing**: Lark generates parse trees using a two-level grammar system:
 
-**Basic grammar**: A minimal grammar recognizing only the block structure of MF6 input files. Blocks are delimited by `BEGIN <name>` and `END <name>` markers and contain lines of whitespace-separated tokens (words and numbers). The corresponding transformer simply yields blocks as lists of lines, each a list of tokens.
+- **Basic grammar**: Minimal grammar recognizing block structure (`BEGIN`/`END` delimiters) with generic tokens
+- **Typed grammars**: Component-specific grammars generated for each MF6 component with rules for array control records (`CONSTANT`, `INTERNAL`, `OPEN/CLOSE`), layered arrays, lists, and records
 
-**Typed grammar**: A type-aware grammar with rules for specific MF6 constructs:
-- Array control records: `CONSTANT`, `INTERNAL`, `OPEN/CLOSE` with modifiers (`FACTOR`, `IPRN`, `BINARY`)
-- Layered arrays: `LAYERED` keyword preceding multiple array control records
-- NetCDF arrays: `NETCDF` keyword
-- Numeric types: integers and doubles
-- Strings: quoted strings and bare words
-- Lists and records: whitespace-delimited values
+The parser attempts typed grammar first, falling back to basic grammar on failure.
 
-A grammar inheriting from and using the typed base grammar can then be generated for each component.
+**Transformation**: A tree transformer converts parse trees to Python dictionaries. The transformer bridges an impedance mismatch between DFN files and generated Python classes.
 
-A typed transformer can use the DFN specification to identify fields by keyword, and can handle data types properly, for instance creating `xarray.DataArray` objects for array fields and handling external file references.
+*The mismatch*: DFN files currently conflate two separate concerns:
+1. **Structure** (logical model): What variables exist, their types and dimensions
+2. **Format** (serialization): How they're serialized in MF6 input files (e.g., tabular layouts, generic record types with keyword discriminators, file record suffixes)
 
-This "push knowledge into the parser" approach
+Grammars are generated to faithfully represent DFN structure (including format artifacts), while Python classes are designed for clean structure using natural xarray idioms. The transformer systematically strips format artifacts while preserving semantic structure. See `docs/dev/parser-transformer-patterns.md` for detailed transformation patterns.
 
-- creates more structured parse trees
-- reduces post-parsing transformation complexity
-- speeds up validation
-- generates better error messages
+*Transformation tasks*: The transformer uses component class metadata (from `attrs`) as its specification, making class definitions the single source of truth:
 
-After parsing and transformation, a `cattrs` converter structures the resulting dicts into components.
+- Extracts field metadata to identify types (scalar, array, record, list, keyword)
+- Maps block names to attribute names
+- Strips format artifacts (e.g., `saverecord` + keyword → `save_head` field)
+- Unwraps grammar-only wrapper rules introduced to reflect DFN hierarchy
+- Creates `xarray.DataArray` objects with proper dimension names cached from field metadata
+- Converts structured list records to dicts with column names extracted from grammar rules
+- Handles external file references, storing metadata in DataArray attributes
+- Preserves binding tuples for recursive resolution
+
+Arrays initially receive generic dimension names (`dim_0`, `dim_1`), then are reconstructed with proper dimension names when field context becomes available. For layered arrays (e.g., `botm` arriving as `(nlay,)` but expanding to `(nlay, nrow, ncol)`), only dimensions matching the array's rank are assigned; full-shape broadcasting happens during structuring.
+
+This "push knowledge into the parser" approach creates more structured parse trees, reducing post-processing complexity and improving error messages.
+
+*Future work*: Separating structural from format content in the DFN specification would simplify or potentially eliminate many transformation patterns.
+
+**Structuring**: The `cattrs` converter (described in the Conversion section) transforms dictionaries into component instances. Before constructing each component, the structurer:
+
+- Maps blocks to attributes using field metadata
+- Recursively resolves bindings (loading referenced child components)
+- Extracts dimensions from parsed data, children, and parent context
+- Sets up `DimContext` with merged dimensions
+
+Child components load recursively, with `DimensionProvider`s (DIS, TDIS) updating the context so subsequent siblings can access their dimensions.
+
+**Binding resolution**: MF6 namefiles reference child components via binding records:
+```
+BEGIN MODELS
+  gwf6  model.nam  modelname
+END MODELS
+```
+
+The binding resolver maps type strings (`gwf6`) to component classes and recursively loads referenced components. Since loading is recursive, a single `Simulation.load()` call traverses and loads the entire component hierarchy in one pass.
 
 ### Output
 
 Binary output readers are provided for binary head and budget output files.
 
 These readers parse the binary formats specified in the MODFLOW 6 documentation and return data as `xarray` structures. The approach is largely borrowed from `imod-python`.
+

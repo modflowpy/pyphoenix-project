@@ -19,10 +19,10 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     """
     Determine how an array should be represented in MF6 input.
     Options are "constant", "internal", or "external". If the
-    array dask-backed, assumed it's big and return "external".
+    array is dask-backed, it's probably large, use "external".
     Otherwise there is no materialization cost to check if all
-    values are the same, so return "constant" or "internal" as
-    appropriate.
+    values are the same, so we can check and use "constant" or
+    "internal" as appropriate.
     """
     if netcdf:
         return "netcdf"

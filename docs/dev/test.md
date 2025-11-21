@@ -1,25 +1,14 @@
 # FloPy 4 testing plan
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+- [x] Reproduce the FloPy3 quickstart
+- [x] Hand-write a small number of programmatically defined models, patterned after simple FloPy3 and MF6 test cases. Only limited simulations at first (e.g. just GWF), until code generation is implemented.
 
-- [Phase 1: MVP testing](#phase-1-mvp-testing)
-- [Phase 2: MMP testing](#phase-2-mmp-testing)
+- [ ] Set up CI test harness to compare results of simulations written by FloPy3/4. Reuse patterns in MF6 tests: comparisons and/or snapshots. Catalog and resolve differences in simulation output as they are discovered.
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+- [x] Set up load tests with the models available via the devtools [models API](https://modflow-devtools.readthedocs.io/en/latest/md/models.html).
 
-## Phase 1: MVP testing
+- [ ] Set up round-trip load/write tests with the same set of models.
 
-Reproduce the FloPy3 quickstart.
+- [ ] Characterize non-functional differences between input files written by flopy 3/4.
 
-Hand-write a small number of programmatically defined models, patterned after simple FloPy3 and MF6 test cases. Support only limited simulations at first (e.g. just GWF), until code generation is implemented.
-
-Set up CI test harness to compare results of simulations written by FloPy3 and the product. Reuse patterns in MF6 tests: comparisons and/or snapshots. Catalog and resolve differences in simulation output as they are discovered. Begin with the set of [MODFLOW 6 test models](https://github.com/MODFLOW-ORG/modflow6-testmodels) since the input files are readily available.
-
-Alpha testers provide feedback.
-
-## Phase 2: MMP testing
-
-Adapt FloPy3 Python tests and MF6 examples to the product. Exhaustively characterize differences (API and behavior) between FloPy3 and the product, including cosmetic differences in input files written by the two systems.
-
-Beta testers provide feedback.
+- [ ] Adapt FloPy3 autotests and MF6 examples to flopy4

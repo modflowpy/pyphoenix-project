@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -20,7 +21,7 @@ options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
-options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | auto_flow_reduce | afrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
+options_fields: (auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | auto_flow_reduce | afrcsv_filerecord | flow_reduction_length | ts_filerecord | obs_filerecord | mover)*
 dimensions_fields: (maxbound)*
 period_fields: (stress_period_data)*
 auxiliary: "auxiliary"i array
@@ -31,6 +32,7 @@ print_flows: "print_flows"i
 save_flows: "save_flows"i 
 auto_flow_reduce: "auto_flow_reduce"i double
 afrcsv_filerecord: "auto_flow_reduce_csv"i "fileout"i word
+flow_reduction_length: "flow_reduction_length"i 
 ts_filerecord: "ts6"i "filein"i word
 obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 

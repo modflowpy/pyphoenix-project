@@ -2,7 +2,7 @@ from abc import ABC
 from collections.abc import MutableMapping
 from os import PathLike
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from attrs import fields
 from xattree import asdict as xattree_asdict
@@ -10,13 +10,16 @@ from xattree import xattree
 
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.dimensions import DimensionResolverMixin
-from flopy4.mf6.spec import field, fields_dict
+from flopy4.mf6.spec import field
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS = {}
-"""MF6 component registry."""
+"""MF6 component registry, keyed by lowercase class name."""
+
+FTYPES = {}
+"""MF6 component registry, keyed by ftype (file type identifier)."""
 
 
 # kw_only=True necessary so we can define optional fields here
@@ -35,6 +38,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
+
+    ftype: ClassVar[str | None] = None
+    """
+    The component's MF6 file type identifier (e.g., "gwf", "ims", "tdis").
+    Used in name file bindings as "{ftype}6" (e.g., "gwf6", "ims6").
+    If None, defaults to the lowercase class name.
+    """
 
     filename: str | None = field(default=None)
     """The name of the component's input file."""
@@ -96,6 +106,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     @classmethod
     def __attrs_init_subclass__(cls):
         COMPONENTS[cls.__name__.lower()] = cls
+        ftype_key = cls.ftype if cls.ftype else cls.__name__.lower()
+        FTYPES[ftype_key] = cls
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.
@@ -117,10 +129,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def load(cls, path: str | PathLike, format: str = MF6) -> None:
-        """Load the component and any children."""
-        self = cls._load(path, format=format)  # Get the instance
-        for child in self.children.values():  # type: ignore
-            child.__class__.load(child.path, format=format)
+        """Load the component from the given path."""
+        return cls._load(path, format=format)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         """
@@ -135,6 +145,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             uses the current context from the context manager stack,
             or default settings.
         """
+
         # TODO: setting filename is a temp hack to get the parent's
         # name as this component's filename stem, if it has one. an
         # actual solution is to auto-set the filename when children
@@ -158,7 +169,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             If True, return a nested dict keyed by block name
             with values as dicts of fields. Default is False.
         strict : bool, optional
-            If True, include only fields in the DFN specification.
+            If True, include only fields in the attrs specification.
 
         Returns
         -------
@@ -166,6 +177,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             Dictionary containing component data, either
             in terms of fields (flat) or blocks (nested).
         """
+        from flopy4.mf6.spec import fields_dict
+
         data = xattree_asdict(self)
         spec = fields_dict(self.__class__)
 

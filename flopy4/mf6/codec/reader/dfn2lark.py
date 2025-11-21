@@ -4,7 +4,7 @@ import argparse
 from os import PathLike
 from pathlib import Path
 
-from modflow_devtools.dfn import load_flat, map
+from modflow_devtools.dfns import load_flat, map
 
 from flopy4.mf6.codec.reader.grammar import make_all_grammars
 

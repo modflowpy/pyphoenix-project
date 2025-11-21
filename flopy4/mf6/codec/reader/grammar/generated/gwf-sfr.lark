@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -15,20 +16,23 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | crosssections_block | connectiondata_block | initialstages_block
+block: options_block | dimensions_block | crosssections_block | connectiondata_block | initialstages_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 crosssections_block: "begin"i "crosssections"i crosssections_fields "end"i "crosssections"i
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
 initialstages_block: "begin"i "initialstages"i initialstages_fields "end"i "initialstages"i
-block_index: integer
 options_fields: (obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight)*
 dimensions_fields: (nreaches)*
-period_fields: ()*
-crosssections_fields: (crosssections)*
-connectiondata_fields: (connectiondata)*
-initialstages_fields: (initialstages)*
+crosssections_fields: list
+connectiondata_fields: connectiondata_record*
+initialstages_fields: initialstages_record*
+connectiondata_record: ic NEWLINE
+ic: integer
+
+initialstages_record: initialstage NEWLINE
+initialstage: double
+
 obs_filerecord: "obs6"i word
 mover: "mover"i 
 maximum_picard_iterations: "maximum_picard_iterations"i integer
@@ -39,6 +43,3 @@ length_conversion: "length_conversion"i double
 time_conversion: "time_conversion"i double
 dev_storage_weight: "dev_storage_weight"i double
 nreaches: "nreaches"i integer
-crosssections: "crosssections"i list
-connectiondata: "connectiondata"i list
-initialstages: "initialstages"i list

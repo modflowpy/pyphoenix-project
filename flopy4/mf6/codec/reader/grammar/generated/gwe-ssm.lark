@@ -7,6 +7,7 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.list -> list
 %import typed.NEWLINE -> NEWLINE
 %import common.WS
 %import common.SH_COMMENT
@@ -19,7 +20,12 @@ block: options_block | fileinput_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 fileinput_block: "begin"i "fileinput"i fileinput_fields "end"i "fileinput"i
 options_fields: (print_flows | save_flows)*
-fileinput_fields: (fileinput)*
+fileinput_fields: fileinput_record*
+fileinput_record: spc6 filein spc6_filename mixed NEWLINE
+spc6: 
+filein: 
+spc6_filename: word
+mixed: 
+
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-fileinput: "fileinput"i list
