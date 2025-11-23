@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import attrs
 import xarray as xr
@@ -97,18 +97,10 @@ class Gwf(Model):
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
-    # TODO: implement type check for all lists (and singletons?)
-    chd: list[Chd] = field(block="packages")
-    chdg: list[Chdg] = field(block="packages")
-    # TODO: consolidate all package flavors to single list
-    #       based on hydrologic feature
-    # chd: List[Union[Chd, Chdg]] = field(block="packages")
-    drn: list[Drn] = field(block="packages")
-    drng: list[Drng] = field(block="packages")
-    rch: list[Rch] = field(block="packages")
-    rcha: list[Rcha] = field(block="packages")
-    wel: list[Wel] = field(block="packages")
-    welg: list[Welg] = field(block="packages")
+    chd: list[Union[Chd, Chdg]] = field(block="packages")
+    drn: list[Union[Drn, Drng]] = field(block="packages")
+    rch: list[Union[Rch, Rcha]] = field(block="packages")
+    wel: list[Union[Wel, Welg]] = field(block="packages")
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )
