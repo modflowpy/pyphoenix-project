@@ -252,11 +252,10 @@ del gwf.wel[0]
 del gwf.rch[0]
 
 # add array based inputs
-# TODO: needs type checking and list consolidation support (see comments in gwf init)
-gwf.chdg = [chdg]
-gwf.drng = [drng]
-gwf.welg = [welg]
-gwf.rcha = [rcha]
+gwf.chd = [chdg]
+gwf.drn = [drng]
+gwf.wel = [welg]
+gwf.rch = [rcha]
 
 # create new workspace
 workspace = Path(__file__).parent / "twri" / "array_stresspkg"
