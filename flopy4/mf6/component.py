@@ -1,5 +1,6 @@
 from abc import ABC
 from collections.abc import MutableMapping
+from os import PathLike
 from pathlib import Path
 from typing import Any, ClassVar, Optional
 
@@ -132,16 +133,12 @@ class Component(ABC, MutableMapping):
             blocks=blocks,
         )
 
-    def load(self, format: str = MF6) -> None:
+    @classmethod
+    def load(cls, path: str | PathLike, format: str = MF6) -> None:
         """Load the component and any children."""
-        # TODO: setting filename is a temp hack to get the parent's
-        # name as this component's filename stem, if it has one. an
-        # actual solution is to auto-set the filename when children
-        # are attached to parents.
-        self.filename = self.filename or self.default_filename()
-        self._load(format=format)
+        self = cls._load(path, format=format)  # Get the instance
         for child in self.children.values():  # type: ignore
-            child.load(format=format)
+            child.__class__.load(child.path, format=format)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         """

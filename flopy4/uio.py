@@ -55,9 +55,9 @@ class Registry:
             raise ValueError(f"Writer for format {format} already registered.")
         self._writers[cls, format] = function
 
-    def load(self, cls, instance, *args, format=None, **kwargs):
+    def load(self, cls, *args, format=None, **kwargs):
         _load = self.get_loader(cls, format)
-        return _load(instance, *args, **kwargs)
+        return _load(cls, *args, **kwargs)
 
     def write(self, cls, instance, *args, format=None, **kwargs):
         _write = self.get_writer(cls, format)
@@ -76,8 +76,8 @@ class IO(property):
     See the `astropy` source for more details/motivation.
     """
 
-    def __get__(self, instance, owner_cls):
-        return self.fget(instance, owner_cls)
+    def __get__(self, instance, cls):
+        return self.fget(instance, cls)
 
 
 class IODescriptor:
@@ -85,7 +85,7 @@ class IODescriptor:
 
     def __init__(self, instance, cls, op: Op, registry: Registry | None = None):
         self._registry = registry or DEFAULT_REGISTRY
-        self._instance = instance
+        self._instance = instance  # None for loaders
         self._cls = cls
         self._op: Op = op
 
@@ -111,7 +111,7 @@ class Loader(IODescriptor):
         super().__init__(instance, cls, "load", registry=DEFAULT_REGISTRY)
 
     def __call__(self, *args, **kwargs):
-        return self.registry.load(self._cls, self._instance, *args, **kwargs)
+        return self.registry.load(self._cls, *args, **kwargs)
 
 
 class Writer(IODescriptor):

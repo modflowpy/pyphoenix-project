@@ -25,17 +25,20 @@ class WriteError(Exception):
     pass
 
 
-def _load_mf6(path: Path) -> Component:
+def _load_mf6(cls, path: Path) -> Component:
+    """Load MF6 format file into a component instance."""
     with open(path, "r") as fp:
         return structure(load_mf6(fp), path)
 
 
-def _load_json(path: Path) -> Component:
+def _load_json(cls, path: Path) -> Component:
+    """Load JSON format file into a component instance."""
     with open(path, "r") as fp:
         return structure(load_json(fp), path)
 
 
-def _load_toml(path: Path) -> Component:
+def _load_toml(cls, path: Path) -> Component:
+    """Load TOML format file into a component instance."""
     with open(path, "rb") as fp:
         return structure(load_toml(fp), path)
 

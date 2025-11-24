@@ -48,9 +48,21 @@ class Context(Component, ABC):
         self.filename = self.filename or self.default_filename()
         return self.workspace / self.filename
 
-    def load(self, format=MF6):
-        with cd(self.workspace):
-            super().load(format=format)
+    @classmethod
+    def load(cls, path, format=MF6):
+        """
+        Load the context component and children.
+
+        Children are loaded relative to the parent's workspace directory,
+        so their paths are resolved within that workspace.
+        """
+        # Load the instance first
+        instance = cls._load(path, format=format)
+
+        # Load children within the workspace context
+        with cd(instance.workspace):
+            for child in instance.children.values():  # type: ignore
+                child.__class__.load(child.path, format=format)
 
     def write(self, format=MF6, context=None):
         with cd(self.workspace):
