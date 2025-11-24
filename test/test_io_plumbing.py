@@ -381,12 +381,12 @@ def test_component_load_with_children():
         assert len(all_loads) == 2, f"Expected 2 loads (parent + child), got {len(all_loads)}"
 
         # First call should be for parent
-        assert "/test/parent.txt" in all_loads[0]["path"]
+        assert "/test/parent.txt" in all_loads[0]["path"].replace("\\", "/")
         assert all_loads[0]["format"] == MF6
 
         # Second call should be for child (with its relative path)
         # Note: child path is relative to cwd, not parent's directory
-        assert "child1.txt" in all_loads[1]["path"]
+        assert "child1.txt" in all_loads[1]["path"].replace("\\", "/")
         assert all_loads[1]["format"] == MF6
 
     finally:
@@ -460,11 +460,11 @@ def test_context_load_with_workspace():
             assert len(all_loads) == 2, f"Expected 2 loads (parent + child), got {len(all_loads)}"
 
             # First call should be for parent
-            assert "/test/parent.txt" in all_loads[0]["path"]
+            assert "/test/parent.txt" in all_loads[0]["path"].replace("\\", "/")
             assert all_loads[0]["format"] == MF6
 
             # Second call should be for child
-            assert "child1.txt" in all_loads[1]["path"]
+            assert "child1.txt" in all_loads[1]["path"].replace("\\", "/")
             assert all_loads[1]["format"] == MF6
 
             # IMPORTANT: Child should be loaded with cwd = parent's workspace
