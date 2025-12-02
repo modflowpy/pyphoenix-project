@@ -1,479 +1,222 @@
-# Custom Spatial Index for Structured Grids
-
-**Status**: Future Enhancement
-**Created**: 2025-11-18
-**Related**: Issue #207 - Grid Coordinate Indexing
+# Spatial Index Design
 
 ## Background
 
-Currently, the `StructuredGrid` wrapper provides xarray coordinate-based indexing using:
-- **x, y coordinates**: 1D with `PandasIndex` - enables `sel(x=..., y=...)`
-- **z coordinate**: 3D non-dimension coordinate - attached to data but not indexed
+Currently, the `StructuredGrid` class wraps `flopy.discretization.StructuredGrid` and provides xarray coordinate-based indexing using:
 
-This works well for horizontal spatial queries but doesn't support vertical (elevation-based) or full 3D spatial queries.
+- `x` dimension coordinate: 1D array `(ncol,)`, unique x values, one per column
+- `y` dimension coordinate: 1D array `(nrow,)`, unique y values, one per row
+- `z` non-dimension coordinate: 3D array `(nlay, nrow, ncol)`, cell-specific z values (varies with topography)
 
-## Motivation
+The `x`/`y` coordinates use `PandasIndex` and enable e.g. `sel(x=..., y=...)`. The `z` coordinate has no index and acts as an auxiliary coordinate only.
 
-Enable advanced spatial queries that aren't currently supported:
+This works well for horizontal spatial queries but doesn't support more advanced queries like vertical (elevation-based) or full 3D spatial queries.
+
+## Proposal
+
+Extend (or compose) the `GeospatialIndex` class under development in [flopy3 PR 2654](https://github.com/modflowpy/flopy/pull/2654) to extend `xarray.core.indexes.Index`. This requires implementing a set of required methods: `sel()`, `isel()`, `equals()`, `union()`, `intersection()`, etc. (We may want to start with `.sel()` and work up from there.)
+
+Compose this with the `StructuredGrid` (and eventually `VertexGrid` and `UnstructuredGrid`?) classes. (This document only considers the structured case for now.)
+
+Ultimately this should allow advanced spatial queries that aren't currently supported:
 
 ```python
-# Vertical slicing by elevation
-cells = grid.botm.sel(z=slice(40, 60))  # All cells between elevations 40-60
-
-# 3D nearest-neighbor lookup
-value = grid.head.sel(x=250, y=650, z=50, method='nearest')  # Nearest cell to 3D point
+# Point queries with different semantics
+head = grid.head.sel(x=250, y=650, z=50, method='contains')  # head in cell containing point
+head = grid.head.sel(x=250, y=650, z=50, method='nearest_center')  # head in cell with center nearest to point
 
 # Spatial range queries
-cells = grid.idomain.sel(spatial_distance=(x0, y0, z0, radius))  # Within distance
+# TODO
+
+# Elevation-based slices
+cells = grid.botm.sel(z=slice(40, 60))  # find all cells between elevations 40-60
 ```
 
-## Current Implementation
+### Point Queries
 
-### Coordinate Structure
-- `x`: 1D array `(ncol,)` - unique x values, one per column
-- `y`: 1D array `(nrow,)` - unique y values, one per row
-- `z`: 3D array `(nlay, nrow, ncol)` - cell-specific z values (varies with topography)
+Probably the most natural way to expose point queries is xarray `.sel()` syntax.
 
-### Indexing
-- x, y use `PandasIndex` for fast 1D lookups
-- z has no index - acts as auxiliary coordinate only
+#### Questions
 
-### Limitations
-1. Cannot select by elevation: `sel(z=50)` not supported
-2. No 3D spatial nearest-neighbor queries
-3. No elevation-based slicing
-4. Complex spatial queries require manual iteration
+There are several potential sources of semantic ambiguity with point queries.
 
-## Proposed Solution: Custom Spatial Index
+1. Z-only queries
 
-### Architecture
+What does `sel(z=50)` mean when z varies in (x, y)? Multiple cells may have z ≈ 50 at different locations.
 
-Create a `StructuredGridSpatialIndex` class that:
-- Extends `xarray.core.indexes.Index`
-- Handles mixed regular (x, y) and irregular (z) coordinates
-- Provides efficient spatial lookups
+Possible solutions include:
 
-### Key Components
-
-```python
-class StructuredGridSpatialIndex(Index):
-    """
-    Custom index for structured grids with x, y, z coordinates.
-
-    Handles:
-    - Regular 2D grid (x, y) with known spacing
-    - Irregular 3D coordinate (z) varying by cell
-    """
-
-    def __init__(self, x, y, z, grid_shape):
-        """
-        Parameters
-        ----------
-        x : ndarray (ncol,)
-            X coordinates (column centers)
-        y : ndarray (nrow,)
-            Y coordinates (row centers)
-        z : ndarray (nlay, nrow, ncol)
-            Z coordinates (cell centers, varies spatially)
-        grid_shape : tuple
-            (nlay, nrow, ncol)
-        """
-        self.x = x
-        self.y = y
-        self.z = z
-        self.nlay, self.nrow, self.ncol = grid_shape
-
-        # Build spatial index for fast lookups
-        self._spatial_index = self._build_spatial_index()
-
-    def _build_spatial_index(self):
-        """
-        Build spatial index structure.
-
-        Options:
-        1. KD-tree for 3D point cloud (all cell centers)
-        2. Layered 2D R-trees (one per layer) + z-lookup
-        3. Hybrid: regular grid for x,y + interval tree for z
-        """
-        pass
-
-    def sel(self, labels, method=None, tolerance=None):
-        """
-        Select by spatial coordinates.
-
-        Supports:
-        - Individual coordinates: x=250, y=650, z=50
-        - Ranges: z=slice(40, 60)
-        - Method: 'nearest', 'pad', 'backfill'
-        """
-        pass
-```
-
-### Implementation Challenges
-
-#### 1. **Semantic Ambiguity**
-
-**Problem**: What does `sel(z=50)` mean when z varies in (x, y)?
-- Multiple cells may have z ≈ 50 at different locations
-- Need to define unambiguous behavior
-
-**Solutions**:
 - Require x, y when selecting by z: `sel(x=250, y=650, z=50)`
 - Return all cells matching z: `sel(z=50)` → all cells with z ≈ 50
 - Support explicit mode: `sel(z=50, mode='all' | 'first' | 'nearest_to_origin')`
 
-#### 2. **Mixed Dimensionality**
+2. Method parameter
 
-**Problem**: x, y are regular grid (1D), z is irregular (3D)
-- Standard spatial indexes assume uniform dimensionality
-- Need hybrid approach
+What does `method='nearest'` mean for point queries (if we want it to mean anything at all, or rather require different values for `method`)? Two possible meanings are "containment" and "nearest center".
 
-**Solution**:
-- Use regular grid index for x, y (simple array lookups)
-- Build spatial structure only for z within (x, y) cells
-- Layered approach: find (i, j) from (x, y), then find k from z[i, j]
+With **containment** semantics we ask which cell which contains the query point. This should probably be the default.
 
-#### 3. **Performance**
+The main use case here is probably locating features. For instance:
 
-**Problem**: Large grids (millions of cells) need efficient indexing
-- Full KD-tree over all cells: O(n log n) build, O(log n) query
-- May be slow for very large grids
+- Which cell should contain this pumping well at (x,y,z)?
+- Which cell does this constant head boundary go in?
+- Which cell contains this observation point?
 
-**Solution**:
-- Exploit regular grid structure for x, y (O(1) lookups)
-- Only index z values within columns: O(nlay) per (x, y) location
-- Consider approximate spatial hashing for very large grids
+There is no meaningful value for points outside grid bounds, and the result is ambiguous for points exactly on cell boundaries, necessitating a tie-breaking strategy (currently flopy 3.x returns the lowest-numbered cell).
 
-#### 4. **xarray Integration**
+With **nearest center** semantics we ask for the cell whose center point is closest to the query point.
 
-**Problem**: Custom indexes need to integrate with xarray's indexing machinery
-- Implement required Index methods: `sel()`, `isel()`, `equals()`, `union()`, `intersection()`
-- Handle coordinate alignment and broadcasting
-- Support both positional and label-based indexing
+Potential use cases for nearest center queries:
 
-**Solution**:
-- Start with minimal Index subclass
-- Implement only `sel()` initially
-- Extend as needed based on use cases
+- Out-of-bounds queries: extrapolate to nearest cell when point is outside domain, e.g. with noisy field data from GPS coordinates we might still want to associate a point with the "closest" cell.
+- Cross-grid comparisons: Associate a set of points with the "closest" cells from grid A and grid B
 
-### Query Semantics: Contains vs Nearest Center
-
-A critical design decision is defining what `method='nearest'` means for spatial queries. There are two fundamentally different approaches:
-
-#### Option A: Contains (Recommended Default)
-
-**Definition**: Find the cell whose boundaries contain the query point.
-
-**Implementation**:
-```python
-# For structured grids - efficient interval search
-j = find_cell_interval(x_edges, x_query)  # Which column?
-i = find_cell_interval(y_edges, y_query)  # Which row?
-k = find_cell_interval(z_edges[i,j,:], z_query)  # Which layer?
-```
-
-**Use Cases**:
-- **Well/source placement**: "Which cell should contain this pumping well at (x,y,z)?"
-- **Observation matching**: "Which cell contains this observation point?"
-- **Boundary condition setup**: "Where does this specified head boundary go?"
-- **Package data assignment**: "Which cell ID for this drain/river/CHD location?"
-
-**Characteristics**:
-- ✓ Semantically correct for "where is this point?"
-- ✓ Efficient for structured grids (O(log n) per dimension)
-- ✓ Matches user mental model of cell volumes
-- ✗ Fails for points outside grid bounds
-- ✗ Ambiguous for points exactly on cell boundaries
-- ✗ May return no result
-
-#### Option B: Nearest Center
-
-**Definition**: Find the cell whose center point has minimum Euclidean distance to the query point.
-
-**Implementation**:
-```python
-# Build KD-tree of all cell centers
-centers = compute_all_cell_centers()  # (n_cells, 3)
-tree = cKDTree(centers)
-distance, cell_idx = tree.query([x_query, y_query, z_query])
-```
-
-**Use Cases**:
-- **Out-of-bounds queries**: Extrapolate to nearest edge cell when point is outside domain
-- **Noisy field data**: GPS coordinates with location errors - want "closest model cell"
-- **Cross-grid comparison**: Extract values from grid A to compare with grid B (different discretizations)
-- **Continuous field sampling**: Treating model as discrete sampling for contouring/interpolation
-- **Time-series monitoring**: Track "nearest cell" to monitoring station over time
-- **Boundary proximity**: Deterministic result when query is very close to cell edge
-
-**Characteristics**:
-- ✓ Always returns a result (robust)
-- ✓ Handles imprecise/noisy locations gracefully
-- ✓ Consistent with xarray's `method='nearest'` convention
-- ✓ Good for cross-model/cross-grid workflows
-- ✗ May return cell that doesn't contain the point
-- ✗ Less efficient for structured grids (doesn't exploit regularity)
-- ✗ Can be counter-intuitive for volume-based thinking
-
-#### Visual Comparison
+A nearest center query can always return a result, even if the point is beyond the grid bounds. It's also a bit more intuitively consistent with xarray's `method='nearest'` convention, but it may return a cell that doesn't contain the point (why containment should probably be the default).
 
 ```
 ┌──────────────────┬──────────────────┐
 │                  │                  │
-│       ○          │      ○ ← nearest_center
-│    (center)      │    ╱             │
+│                  │      ○ ← nearest center
+│                  │    ╱             │
 │                  │   ╱              │
 │           ★ ─────┼──╱               │
-│        (query)   │  contains        │
+│        (query)   │                  │
 │                  │                  │
 ├──────────────────┼──────────────────┤
-│       ○          │                  │
-│                  │       ○          │
+│                  │                  │
+│                  │                  │
 └──────────────────┴──────────────────┘
 
 Query point (★):
-- contains → left cell (correct containment)
-- nearest_center → upper-right cell (closest center)
+- contains → left cell
+- nearest center → right cell
 ```
 
-#### Recommended API Design
+We could consider supporting the following:
 
 ```python
-# Default: containing cell (explicit name, matches common use case)
+# Default: containment semantics
+grid.head.sel(x=250, y=650, z=50) # equivalent below
 grid.head.sel(x=250, y=650, z=50, method='contains')
 
-# Alternative: nearest cell center (explicit about Euclidean distance)
+# Opt into nearest center query
 grid.head.sel(x=250, y=650, z=50, method='nearest_center')
-
-# For backward compatibility with xarray convention, consider:
-# method='nearest' → alias for 'contains' (TBD: or 'nearest_center'?)
 ```
 
-#### Decision Points
+Should we support `method="nearest"` for compatibility with the xarray convention? If so, which should it alias, "contains" or "nearest_center"? Maybe this is not worth the ambiguity and we should disallow it?
 
-1. **What should `method='nearest'` do?**
-   - Option 1: Alias for `contains` (matches user intuition for MODFLOW)
-   - Option 2: Alias for `nearest_center` (matches xarray convention)
-   - Option 3: Require explicit choice (avoid ambiguity)
+What happens when a point is outside the grid? With `method="contains"`, presumably raise `KeyError` or return `NaN`. With `method="nearest_center"`, we can return the cell with the nearest center by default, possibly providing some kind of option to toggle whether an error should be raised (though I don't think we can do this within the `.sel()` paradigm, I think its signature is fixed).
 
-2. **Should both methods be supported?**
-   - Yes: Provides flexibility for different use cases
-   - Implementation: `contains` uses interval search, `nearest_center` uses KD-tree
+### Spatial Range Queries
 
-3. **What happens when point is outside grid?**
-   - `contains`: Raise `KeyError` or return `NaN`
-   - `nearest_center`: Return nearest edge cell (extrapolation)
-   - Could add `bounds_error=True/False` parameter for explicit control
+Ball queries ("find all cells within radius R of point P") cannot be implemented via `sel()` since xarray's `sel()` only accepts coordinate names as arguments, not arbitrary parameters like `spatial_distance=(x, y, z, r)`.
 
-4. **How to handle points on boundaries?**
-   - `contains`: Tie-breaking rule (e.g., cell with lower index, or error)
-   - `nearest_center`: Deterministic by distance calculation
+Use cases might include: zone of influence around pumping well, observation network radius, local refinement region, etc.
 
-### Spatial Index Options
+#### 2D (x, y)
 
-#### Option 1: Full 3D KD-Tree
+We can support this out of the box with geopandas (already a dependency):
+
+```python
+from shapely.geometry import Point
+import geopandas as gpd
+
+# Create GeoDataFrame from cell centers
+points = [Point(x, y) for x, y in zip(grid.x.values, grid.y.values)]
+cells_gdf = gpd.GeoDataFrame(geometry=points)
+
+# Ball query
+query_point = Point(1500, 2300).buffer(100)  # 100m radius
+mask = cells_gdf.intersects(query_point)
+nearby_heads = grid.head.where(mask)
+```
+
+Alternative using geopandas spatial index:
+
+```python
+# More efficient for large grids
+nearby_indices = cells_gdf.sindex.query(query_point, predicate='intersects')
+```
+
+Perhaps consider exposing this via an accessor so the user doesn't have to explicitly create a `GeoDataFrame`.
+
+#### 3D (x, y, z)
+
+Given the geospatial index soon to be merged into flopy 3.x,  we can use the pre-built scipy.spatial.cKDTree it provides:
+
 ```python
 from scipy.spatial import cKDTree
 
-# Build point cloud of all cell centers
-points = []
-for k in range(nlay):
-    for i in range(nrow):
-        for j in range(ncol):
-            points.append([x[j], y[i], z[k, i, j]])
-tree = cKDTree(np.array(points))
+# Build KD-tree from 3D cell centers
+centers_3d = np.column_stack([
+    grid.x.values.ravel(),
+    grid.y.values.ravel(),
+    grid.z.values.ravel()
+])
+tree = cKDTree(centers_3d)
 
-# Query nearest
-distance, idx = tree.query([x_query, y_query, z_query])
+# Ball query
+query_point = (1500, 2300, 45)
+radius = 100
+indices = tree.query_ball_point(query_point, radius)
+
+# Create mask and apply
+mask = np.zeros(grid.shape, dtype=bool)
+mask.ravel()[indices] = True
+nearby_cells = grid.head.where(mask)
 ```
 
-**Pros**: Simple, general-purpose, handles all 3D queries
-**Cons**: Memory intensive, doesn't exploit regular grid structure
+Consider also exposing this via an xarray accessor, e.g.
 
-#### Option 2: Layered 2D + Z-Lookup (Recommended)
 ```python
-# Exploit regular x, y grid
-j = np.searchsorted(x, x_query)  # O(log ncol)
-i = np.searchsorted(y, y_query)  # O(log nrow)
-
-# Search z within this column
-z_column = z[:, i, j]  # (nlay,)
-k = np.argmin(np.abs(z_column - z_query))  # O(nlay)
+cells = grid.head.spatial.query_ball(point=(x, y, z), radius=100)
 ```
 
-**Pros**: Fast, memory-efficient, exploits structure
-**Cons**: Assumes x, y selection first, more complex code
+Probably also worth a method on the `Grid` classes:
 
-#### Option 3: Spatial Hash Grid
 ```python
-# Divide 3D space into voxels
-voxel_size = (dx, dy, dz)
-hash_table = defaultdict(list)
-
-for cell in cells:
-    voxel = compute_voxel(cell.center, voxel_size)
-    hash_table[voxel].append(cell)
-
-# Query by looking in nearby voxels
-```
-
-**Pros**: Good for range queries, tunable precision
-**Cons**: Complex, may need multiple voxel sizes
-
-### Recommended Implementation
-
-**Phase 1: Layered Index (Quick Win)**
-- Implement Option 2 (layered 2D + z-lookup)
-- Support `sel(x=..., y=..., z=..., method='nearest')`
-- Require x, y to be specified when using z
-- Fast and efficient for typical use cases
-
-**Phase 2: Enhanced Queries**
-- Support z-based slicing: `sel(z=slice(40, 60))`
-- Returns all cells in elevation range
-- Useful for vertical cross-sections
-
-**Phase 3: Full 3D Index (If Needed)**
-- Implement Option 1 (KD-tree) for complex queries
-- Support queries without x, y specification
-- Enable spatial range searches
-
-## Example Usage
-
-### Basic 3D Point Query
-```python
-# Current: must use layer index
-head_value = grid.head.isel(k=0, i=5, j=3)
-
-# With custom index: use physical coordinates
-head_value = grid.head.sel(x=250, y=650, z=50, method='nearest')
+# Add method to StructuredGrid class
+mask = grid.query_ball(point=(x, y, z), radius=100)
+cells = grid.head.where(mask)
 ```
 
 ### Elevation-Based Slicing
-```python
-# Select all cells in water table zone (elevation 40-60)
-wt_zone = grid.head.sel(z=slice(40, 60))
-# Returns: DataArray with only cells in that elevation range
-```
 
-### Vertical Cross-Section
 ```python
-# Extract vertical profile at x=250, y=650
-profile = grid.head.sel(x=250, y=650, method='nearest')
+# Extract vertical profile at x=250, y=650.
 # Currently works - returns all z values at that (x, y)
+profile = grid.head.sel(x=250, y=650, method='nearest')
 
 # With z-slicing: get only specific elevation range
 profile_shallow = grid.head.sel(x=250, y=650, z=slice(80, 100))
+
+# Select all cells in water table zone (elevation 40-60)
+wt_zone = grid.head.sel(z=slice(40, 60))
 ```
-
-### 3D Spatial Query
-```python
-# Find all cells within 100m of well location (in 3D)
-well_location = (x=1500, y=2300, z=45)
-nearby_cells = grid.idomain.sel(
-    spatial_distance=(well_location, 100),
-    method='all'
-)
-```
-
-## Implementation Steps
-
-1. **Create Index Class** (`flopy4/mf6/utils/spatial_index.py`)
-   - Subclass `xarray.core.indexes.Index`
-   - Implement basic structure
-
-2. **Implement Layered Lookup**
-   - Start with Option 2 (regular grid + z-lookup)
-   - Handle x, y, z coordinate queries
-
-3. **Integrate with StructuredGrid**
-   - Modify `_compute_world_coordinates()` to create spatial index
-   - Register index with xarray dataset
-
-4. **Add Tests**
-   - Test 3D nearest-neighbor queries
-   - Test elevation slicing
-   - Test edge cases (out of bounds, etc.)
-
-5. **Documentation**
-   - Update user guide with spatial query examples
-   - Document query semantics and limitations
-
-## Alternative Approaches
-
-### A. Lazy Evaluation
-Instead of pre-building index, compute on-demand:
-```python
-def find_cell_at(grid, x, y, z):
-    """Find cell nearest to (x, y, z) - computed on demand."""
-    # No pre-built index, just search
-```
-**Pros**: No upfront cost
-**Cons**: Slow for repeated queries
-
-### B. External Spatial Library
-Use existing spatial indexing libraries:
-- `rtree` - R-tree spatial index
-- `shapely` + `geopandas` - full GIS capabilities
-- `pyvista` - 3D visualization and queries
-
-**Pros**: Mature, well-tested
-**Cons**: Heavy dependencies, may not integrate cleanly
-
-## Success Criteria
-
-The custom index implementation should:
-1. ✓ Support `sel(x=..., y=..., z=..., method='nearest')`
-2. ✓ Provide O(log n) query performance
-3. ✓ Handle variable topography correctly
-4. ✓ Integrate seamlessly with existing xarray operations
-5. ✓ Have comprehensive test coverage
-6. ✓ Be documented with clear usage examples
-
-## Open Questions
-
-1. **Query Method Semantics** (see "Query Semantics: Contains vs Nearest Center" section)
-
-   **Primary decision**: What should `method='nearest'` default to?
-   - Option A: Alias for `contains` (recommended - matches MODFLOW use cases)
-   - Option B: Alias for `nearest_center` (matches xarray convention)
-   - Option C: Require explicit method name (no ambiguity)
-
-   **Related decisions**:
-   - Support both `contains` and `nearest_center` methods? (Recommended: yes)
-   - How to handle out-of-bounds points? (raise error vs extrapolate)
-   - Tie-breaking for boundary points?
-
-2. **Should z-only queries be supported?** (`sel(z=50)` without x, y)
-   - If yes, what should the semantics be?
-   - Return all cells at that elevation?
-
-3. **How to handle edge cases?**
-   - Query point outside grid bounds
-   - Multiple cells at exact same (x, y, z)
-   - Inactive cells (idomain=0)
-   - Query point on cell boundary (ambiguous containing cell)
-
-4. **Performance targets?**
-   - What grid sizes should we optimize for?
-   - Acceptable query time for interactive use?
-
-5. **Integration with visualization?**
-   - Should spatial index power plotting functions?
-   - Integration with vtk/pyvista for 3D viz?
 
 ## References
 
-- xarray Custom Index Guide: https://docs.xarray.dev/en/stable/internals/how-to-create-custom-index.html
-- scipy.spatial.cKDTree: https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.cKDTree.html
-- rtree Documentation: https://rtree.readthedocs.io/
-- Current Implementation: `flopy4/mf6/utils/grid.py:60-110`
+Several external libraries already have some support for advanced spatial queries:
 
-## Future Enhancements
+- **GeoPandas**: 2D spatial queries, already a dependency - use for ball queries, spatial joins
+- **scipy.spatial**: 3D KD-tree, likely already in dependency tree - use for 3D ball queries
+- **xvec**: xarray vector data extension, wraps GeoPandas - unnecessary if already using GeoPandas
+- **rioxarray**: Raster operations only, not applicable for cell center queries
+- **rtree/pyvista**: Heavier dependencies, not needed given GeoPandas/scipy coverage
 
-Beyond initial implementation:
-- **Time-varying coordinates**: Support transient z coordinates (subsidence)
-- **Unstructured grids**: Extend to DISV, DISU discretizations
-- **Multi-grid queries**: Queries across nested grids
-- **Spatial aggregation**: Average within spatial regions
-- **Coordinate transformations**: Support for different CRS/projections
+Some specific resources:
+
+- [xarray Custom Index Guide](https://docs.xarray.dev/en/stable/internals/how-to-create-custom-index.html)
+- [scipy.spatial.cKDTree](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.cKDTree.html) - 3D ball queries
+- [GeoPandas Spatial Index](https://geopandas.org/en/stable/docs/reference/api/geopandas.sindex.SpatialIndex.html) - 2D spatial queries
+- [GeoPandas sjoin_nearest](https://geopandas.org/en/stable/docs/reference/api/geopandas.sjoin_nearest.html) - Nearest neighbor with max distance
+- [xvec](https://xvec.readthedocs.io/) - Vector data cubes for xarray (wraps GeoPandas)
+
+## Future
+
+Some things to consider after an initial implementation:
+
+- Time-varying coordinates: support transient z coordinates (subsidence)
+- Multi-grid queries: queries across nested grids
+- Spatial aggregations: average within spatial regions
+- Coordinate transformations: support for different CRS/projections
