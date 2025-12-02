@@ -156,6 +156,119 @@ class StructuredGridSpatialIndex(Index):
 - Implement only `sel()` initially
 - Extend as needed based on use cases
 
+### Query Semantics: Contains vs Nearest Center
+
+A critical design decision is defining what `method='nearest'` means for spatial queries. There are two fundamentally different approaches:
+
+#### Option A: Contains (Recommended Default)
+
+**Definition**: Find the cell whose boundaries contain the query point.
+
+**Implementation**:
+```python
+# For structured grids - efficient interval search
+j = find_cell_interval(x_edges, x_query)  # Which column?
+i = find_cell_interval(y_edges, y_query)  # Which row?
+k = find_cell_interval(z_edges[i,j,:], z_query)  # Which layer?
+```
+
+**Use Cases**:
+- **Well/source placement**: "Which cell should contain this pumping well at (x,y,z)?"
+- **Observation matching**: "Which cell contains this observation point?"
+- **Boundary condition setup**: "Where does this specified head boundary go?"
+- **Package data assignment**: "Which cell ID for this drain/river/CHD location?"
+
+**Characteristics**:
+- ✓ Semantically correct for "where is this point?"
+- ✓ Efficient for structured grids (O(log n) per dimension)
+- ✓ Matches user mental model of cell volumes
+- ✗ Fails for points outside grid bounds
+- ✗ Ambiguous for points exactly on cell boundaries
+- ✗ May return no result
+
+#### Option B: Nearest Center
+
+**Definition**: Find the cell whose center point has minimum Euclidean distance to the query point.
+
+**Implementation**:
+```python
+# Build KD-tree of all cell centers
+centers = compute_all_cell_centers()  # (n_cells, 3)
+tree = cKDTree(centers)
+distance, cell_idx = tree.query([x_query, y_query, z_query])
+```
+
+**Use Cases**:
+- **Out-of-bounds queries**: Extrapolate to nearest edge cell when point is outside domain
+- **Noisy field data**: GPS coordinates with location errors - want "closest model cell"
+- **Cross-grid comparison**: Extract values from grid A to compare with grid B (different discretizations)
+- **Continuous field sampling**: Treating model as discrete sampling for contouring/interpolation
+- **Time-series monitoring**: Track "nearest cell" to monitoring station over time
+- **Boundary proximity**: Deterministic result when query is very close to cell edge
+
+**Characteristics**:
+- ✓ Always returns a result (robust)
+- ✓ Handles imprecise/noisy locations gracefully
+- ✓ Consistent with xarray's `method='nearest'` convention
+- ✓ Good for cross-model/cross-grid workflows
+- ✗ May return cell that doesn't contain the point
+- ✗ Less efficient for structured grids (doesn't exploit regularity)
+- ✗ Can be counter-intuitive for volume-based thinking
+
+#### Visual Comparison
+
+```
+┌──────────────────┬──────────────────┐
+│                  │                  │
+│       ○          │      ○ ← nearest_center
+│    (center)      │    ╱             │
+│                  │   ╱              │
+│           ★ ─────┼──╱               │
+│        (query)   │  contains        │
+│                  │                  │
+├──────────────────┼──────────────────┤
+│       ○          │                  │
+│                  │       ○          │
+└──────────────────┴──────────────────┘
+
+Query point (★):
+- contains → left cell (correct containment)
+- nearest_center → upper-right cell (closest center)
+```
+
+#### Recommended API Design
+
+```python
+# Default: containing cell (explicit name, matches common use case)
+grid.head.sel(x=250, y=650, z=50, method='contains')
+
+# Alternative: nearest cell center (explicit about Euclidean distance)
+grid.head.sel(x=250, y=650, z=50, method='nearest_center')
+
+# For backward compatibility with xarray convention, consider:
+# method='nearest' → alias for 'contains' (TBD: or 'nearest_center'?)
+```
+
+#### Decision Points
+
+1. **What should `method='nearest'` do?**
+   - Option 1: Alias for `contains` (matches user intuition for MODFLOW)
+   - Option 2: Alias for `nearest_center` (matches xarray convention)
+   - Option 3: Require explicit choice (avoid ambiguity)
+
+2. **Should both methods be supported?**
+   - Yes: Provides flexibility for different use cases
+   - Implementation: `contains` uses interval search, `nearest_center` uses KD-tree
+
+3. **What happens when point is outside grid?**
+   - `contains`: Raise `KeyError` or return `NaN`
+   - `nearest_center`: Return nearest edge cell (extrapolation)
+   - Could add `bounds_error=True/False` parameter for explicit control
+
+4. **How to handle points on boundaries?**
+   - `contains`: Tie-breaking rule (e.g., cell with lower index, or error)
+   - `nearest_center`: Deterministic by distance calculation
+
 ### Spatial Index Options
 
 #### Option 1: Full 3D KD-Tree
@@ -319,20 +432,33 @@ The custom index implementation should:
 
 ## Open Questions
 
-1. **Should z-only queries be supported?** (`sel(z=50)` without x, y)
+1. **Query Method Semantics** (see "Query Semantics: Contains vs Nearest Center" section)
+
+   **Primary decision**: What should `method='nearest'` default to?
+   - Option A: Alias for `contains` (recommended - matches MODFLOW use cases)
+   - Option B: Alias for `nearest_center` (matches xarray convention)
+   - Option C: Require explicit method name (no ambiguity)
+
+   **Related decisions**:
+   - Support both `contains` and `nearest_center` methods? (Recommended: yes)
+   - How to handle out-of-bounds points? (raise error vs extrapolate)
+   - Tie-breaking for boundary points?
+
+2. **Should z-only queries be supported?** (`sel(z=50)` without x, y)
    - If yes, what should the semantics be?
    - Return all cells at that elevation?
 
-2. **How to handle edge cases?**
+3. **How to handle edge cases?**
    - Query point outside grid bounds
    - Multiple cells at exact same (x, y, z)
    - Inactive cells (idomain=0)
+   - Query point on cell boundary (ambiguous containing cell)
 
-3. **Performance targets?**
+4. **Performance targets?**
    - What grid sizes should we optimize for?
    - Acceptable query time for interactive use?
 
-4. **Integration with visualization?**
+5. **Integration with visualization?**
    - Should spatial index power plotting functions?
    - Integration with vtk/pyvista for 3D viz?
 
