@@ -27,6 +27,8 @@ class WriteContext:
     ----------
     use_binary : bool, optional
         Prefer binary files for arrays. Default is False.
+    use_netcdf : bool, optional
+        Prefer netcdf files for arrays. Default is False.
     binary_threshold : int, optional
         Size threshold (in bytes) for using binary format.
         Arrays larger than this will be written as binary.
@@ -50,6 +52,7 @@ class WriteContext:
     """
 
     use_binary: bool = field(default=False)
+    use_netcdf: bool = field(default=False)
     binary_threshold: Optional[int] = field(default=None)
     float_precision: int = field(default=8)
     use_relative_paths: bool = field(default=True)

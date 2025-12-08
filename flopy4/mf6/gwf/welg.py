@@ -41,6 +41,7 @@ class Welg(Package):
             "nodes",
         ),
         default=None,
+        netcdf=True,
         converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
     )
@@ -51,5 +52,6 @@ class Welg(Package):
             "nodes",
         ),
         default=None,
+        netcdf=True,
         on_setattr=update_maxbound,
     )

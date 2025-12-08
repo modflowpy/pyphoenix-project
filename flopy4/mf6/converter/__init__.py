@@ -8,10 +8,10 @@ from cattrs.gen import make_hetero_tuple_unstructure_fn
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.context import Context
-from flopy4.mf6.converter.structure import structure_array, structure_keyword
-from flopy4.mf6.converter.unstructure import (
+from flopy4.mf6.converter.egress.unstructure import (
     unstructure_component,
 )
+from flopy4.mf6.converter.ingress.structure import structure_array, structure_keyword
 from flopy4.mf6.gwf.oc import Oc
 
 __all__ = [

@@ -1,5 +1,5 @@
 """
-Tests for flopy4.mf6.converter.structure module.
+Tests for flopy4.mf6.converter.ingress.structure module.
 
 Integration tests for the refactored structure_array function with various input formats
 using real flopy4 components.
@@ -9,7 +9,7 @@ import numpy as np
 import sparse
 import xarray as xr
 
-from flopy4.mf6.converter.structure import (
+from flopy4.mf6.converter.ingress.structure import (
     _detect_grid_reshape,
     _fill_forward_time,
     _reshape_grid,

@@ -227,7 +227,7 @@ class Package(Component, ABC):
         import xarray as xr
         from xattree import get_xatspec
 
-        from flopy4.mf6.converter.structure import structure_array
+        from flopy4.mf6.converter.ingress.structure import structure_array
 
         if not isinstance(value, pd.DataFrame):
             raise TypeError(f"Expected DataFrame, got {type(value)}")

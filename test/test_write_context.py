@@ -13,6 +13,7 @@ def test_write_context_default():
     """Test default WriteContext initialization."""
     ctx = WriteContext()
     assert ctx.use_binary is False
+    assert ctx.use_netcdf is False
     assert ctx.binary_threshold is None
     assert ctx.float_precision == 8
     assert ctx.use_relative_paths is True

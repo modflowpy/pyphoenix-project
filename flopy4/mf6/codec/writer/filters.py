@@ -10,10 +10,12 @@ from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA
 
-ArrayHow = Literal["constant", "internal", "external", "layered constant", "layered internal"]
+ArrayHow = Literal[
+    "constant", "internal", "external", "layered constant", "layered internal", "netcdf"
+]
 
 
-def array_how(value: xr.DataArray) -> ArrayHow:
+def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     """
     Determine how an array should be represented in MF6 input.
     Options are "constant", "internal", or "external". If the
@@ -22,6 +24,8 @@ def array_how(value: xr.DataArray) -> ArrayHow:
     values are the same, so return "constant" or "internal" as
     appropriate.
     """
+    if netcdf:
+        return "netcdf"
     if hasattr(value.data, "blocks"):
         return "external"
     if value.max() == value.min():

@@ -140,11 +140,15 @@ def array(
     metadata=None,
     on_setattr=None,
     block: str | None = None,
+    netcdf: bool | None = None,
 ):
     """Define an array field."""
-    if block:
+    if block or netcdf:
         metadata = metadata or {}
-        metadata["block"] = block
+        if block:
+            metadata["block"] = block
+        if netcdf:
+            metadata["netcdf"] = netcdf
     return flopy_array(
         dtype=dtype,
         dims=dims,
@@ -270,6 +274,7 @@ def to_field(attribute: Attribute) -> FieldV2:
         shape=xatmeta.get("dims", None),
         block=attribute.metadata.get("block", None),
         default=attribute.default,
+        netcdf=attribute.metadata.get("netcdf", None),
         children={k: to_field(v) for k, v in fields_dict(attribute.type)}  # type: ignore
         if attribute.metadata.get("kind", None) == "child"  # type: ignore
         else None,  # type: ignore
