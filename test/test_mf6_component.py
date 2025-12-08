@@ -449,7 +449,7 @@ def test_quickstart_grid(function_tmpdir):
     sim.run()
 
 
-def test_quickstart_grid_nc(function_tmpdir):
+def test_quickstart_netcdf(function_tmpdir):
     sim_name = "quickstart"
     gwf_name = "mymodel"
 
@@ -504,6 +504,9 @@ def test_quickstart_grid_nc(function_tmpdir):
     with WriteContext(use_netcdf=True):
         sim.write()
 
+    with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
+        lines = fh.readlines()
+        assert f" NETCDF FILEIN {function_tmpdir}/{gwf_name}.input.nc\n" in lines
     with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
         lines = fh.readlines()
         assert " DELR NETCDF\n" in lines
@@ -547,7 +550,7 @@ def test_quickstart_grid_nc(function_tmpdir):
     # sim.run()
 
 
-def test_quickstart_nc_mesh(function_tmpdir):
+def test_quickstart_netcdf_mesh(function_tmpdir):
     sim_name = "quickstart"
     gwf_name = "mymodel"
 
@@ -602,6 +605,9 @@ def test_quickstart_nc_mesh(function_tmpdir):
     with WriteContext(use_netcdf=True):
         sim.write()
 
+    with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
+        lines = fh.readlines()
+        assert f" NETCDF FILEIN {function_tmpdir}/{gwf_name}.input.nc\n" in lines
     with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
         lines = fh.readlines()
         assert " DELR NETCDF\n" in lines
