@@ -7,7 +7,7 @@ from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 
 
-# TODO: longname, auxiliary, encodings (fill)
+# TODO: longname, auxiliary
 def xarray_flat(dt: xr.DataTree, mesh_type: str | None = None):
     mesh_type = mesh_type.lower() if mesh_type is not None else None
     model = dt.attrs["host"]  # type: ignore
@@ -43,13 +43,13 @@ def xarray_flat(dt: xr.DataTree, mesh_type: str | None = None):
     def _encode(varname, shape, dataset):
         if dataset[varname].dtype == np.float64:
             if "time" in shape:
-                dataset[varname].encoding["_FillValue"] = FILL_DNODATA
+                dataset[varname].fillna(FILL_DNODATA)
             else:
-                dataset[varname].encoding["_FillValue"] = FILL_FLOAT64
+                dataset[varname].fillna(FILL_FLOAT64)
         elif dataset[varname].dtype == np.int64:
-            dataset[varname].encoding["_FillValue"] = FILL_INT64
+            dataset[varname].fillna(FILL_INT64)
         elif dataset[varname].dtype == np.int32:
-            dataset[varname].encoding["_FillValue"] = FILL_INT32
+            dataset[varname].fillna(FILL_INT32)
         return dataset
 
     def _add_gridvar(field_name, package, multi, data, dataset):
@@ -115,12 +115,12 @@ def xarray_flat(dt: xr.DataTree, mesh_type: str | None = None):
                         )
                     }
                 elif "nlay" in data[field_name].dims:
-                    var_d = {varname: (shape, data[field_name].values[layer, :, :].flatten())}
+                    var_d = {varname: (shape, data[field_name].values[layer, :, :].ravel())}
                 elif "nodes" in data[field_name].dims:
                     var_d = {
                         varname: (
                             shape,
-                            data[field_name].values.reshape(_dims(shape, True))[layer, :].flatten(),
+                            data[field_name].values.reshape(_dims(shape, True))[layer, :].ravel(),
                         )
                     }
                 dataset = dataset.assign(var_d)

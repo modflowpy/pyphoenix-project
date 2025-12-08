@@ -30,7 +30,7 @@
 
 {% macro array(name, value, how="internal") %}
 {% if how == "netcdf" %}{{ inset ~ name.upper() }} NETCDF
-{% else %}
+{%- else -%}
 {{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
