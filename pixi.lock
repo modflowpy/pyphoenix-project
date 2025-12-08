@@ -5318,12 +5318,11 @@ packages:
 - pypi: ./
   name: flopy4
   version: 0.0.1.dev0
-  sha256: b57b27bc2fc6533f10ae7924af426ce66b01cc739ef7a270a0a06c67503d3ed0
+  sha256: e2bd4bc603e77ab202708920decb6d1ba9ac82b48b6f8f9229fed27374e1ed3f
   requires_dist:
   - modflow-devtools[dfn] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git@dfn
   - xattree @ git+https://github.com/wpbonelli/xattree.git
   - attrs>=25.4.0,<26
-  - boltons
   - cattrs>=25.3.0,<26
   - flopy>=3.9.5,<4
   - jinja2>=3.1.6,<4
@@ -5331,8 +5330,6 @@ packages:
   - numpy>=2.3.4,<3
   - pandas>=2.3.3,<3
   - toml>=0.10.2,<0.11
-  - tomli
-  - tomli-w
   - networkx>=3.5,<4
   - xarray[io,parallel]>=2025.10.1,<2026
   - scipy>=1.16.2,<2
