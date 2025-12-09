@@ -16,6 +16,7 @@ from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.grid import StructuredGrid
 from flopy4.mf6.utils.time import Time
+from flopy4.mf6.write_context import WriteContext
 
 
 def test_registry():
@@ -446,6 +447,210 @@ def test_quickstart_grid(function_tmpdir):
 
     sim.write()
     sim.run()
+
+
+def test_quickstart_netcdf(function_tmpdir):
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+
+    # dimensions
+    nlay = 1
+    nrow = 10
+    ncol = 10
+    nstp = 1
+
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(models=[gwf_name])
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        save_head=["all"],
+        save_budget=["all"],
+    )
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+
+    # Chdg
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    chd = Chdg(
+        parent=gwf,
+        head=head.reshape(1, -1),
+    )
+
+    nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
+    gwf.netcdf_file = nc_fpth
+
+    ds = gwf.to_xarray(format="structured")
+    ds.to_netcdf(nc_fpth)
+
+    with WriteContext(use_netcdf=True):
+        sim.write()
+
+    with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
+        lines = fh.readlines()
+        nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
+        assert f" NETCDF FILEIN {nc_fpth}\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
+        lines = fh.readlines()
+        assert " DELR NETCDF\n" in lines
+        assert " DELC NETCDF\n" in lines
+        assert " TOP NETCDF\n" in lines
+        assert " BOTM NETCDF\n" in lines
+        assert " IDOMAIN NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.npf", "r") as fh:
+        lines = fh.readlines()
+        assert " ICELLTYPE NETCDF\n" in lines
+        assert " K NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
+        lines = fh.readlines()
+        assert " STRT NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
+        lines = fh.readlines()
+        assert " HEAD NETCDF\n" in lines
+
+    ds = xr.load_dataset(nc_fpth)
+    assert ("dis_delr") in ds
+    assert ("dis_delc") in ds
+    assert ("dis_top") in ds
+    assert ("dis_botm") in ds
+    assert ("dis_idomain") in ds
+    assert ("ic_strt") in ds
+    assert ("npf_icelltype") in ds
+    assert ("npf_k") in ds
+    assert ("chdg0_head") in ds
+
+    assert np.allclose(ds["dis_delr"].values, dis.delr)
+    assert np.allclose(ds["dis_delc"].values, dis.delc)
+    assert np.allclose(ds["dis_top"].values, dis.top)
+    assert np.allclose(ds["dis_botm"].values, dis.botm)
+    assert np.allclose(ds["dis_idomain"].values, dis.idomain)
+    assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
+    assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
+    assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
+    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.head)
+
+    # requires mf6 extended to run
+    # sim.run()
+
+
+def test_quickstart_netcdf_mesh(function_tmpdir):
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+
+    # dimensions
+    nlay = 1
+    nrow = 10
+    ncol = 10
+    nstp = 1
+
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(models=[gwf_name])
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        save_head=["all"],
+        save_budget=["all"],
+    )
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+
+    # Chdg
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    chd = Chdg(
+        parent=gwf,
+        head=head.reshape(1, -1),
+    )
+
+    nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
+    gwf.netcdf_file = nc_fpth
+
+    ds = gwf.to_xarray(format="layered")
+    ds.to_netcdf(nc_fpth)
+
+    with WriteContext(use_netcdf=True):
+        sim.write()
+
+    with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
+        lines = fh.readlines()
+        nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
+        assert f" NETCDF FILEIN {nc_fpth}\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
+        lines = fh.readlines()
+        assert " DELR NETCDF\n" in lines
+        assert " DELC NETCDF\n" in lines
+        assert " TOP NETCDF\n" in lines
+        assert " BOTM NETCDF\n" in lines
+        assert " IDOMAIN NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.npf", "r") as fh:
+        lines = fh.readlines()
+        assert " ICELLTYPE NETCDF\n" in lines
+        assert " K NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
+        lines = fh.readlines()
+        assert " STRT NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
+        lines = fh.readlines()
+        assert " HEAD NETCDF\n" in lines
+
+    ds = xr.load_dataset(nc_fpth)
+    assert ("dis_delr") in ds
+    assert ("dis_delc") in ds
+    assert ("dis_top") in ds
+    assert ("dis_botm_l1") in ds
+    assert ("dis_idomain_l1") in ds
+    assert ("ic_strt_l1") in ds
+    assert ("npf_icelltype_l1") in ds
+    assert ("npf_k_l1") in ds
+    assert ("chdg0_head_l1") in ds
+
+    assert np.allclose(ds["dis_delr"].values, dis.delr)
+    assert np.allclose(ds["dis_delc"].values, dis.delc)
+    assert np.allclose(ds["dis_top"].values, dis.top.values.ravel())
+    assert np.allclose(ds["dis_botm_l1"].values, dis.botm.values.ravel())
+    assert np.allclose(ds["dis_idomain_l1"].values, dis.idomain.values.ravel())
+    assert np.allclose(ds["ic_strt_l1"].values.ravel(), ic.strt.values.ravel())
+    assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), npf.icelltype.values.ravel())
+    assert np.allclose(ds["npf_k_l1"].values.ravel(), npf.k.values.ravel())
+    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.head.values.ravel())
+
+    # requires mf6 extended to run
+    # sim.run()
 
 
 def test_write_ascii(function_tmpdir):

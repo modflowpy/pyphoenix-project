@@ -43,30 +43,35 @@ class Dis(Package):
     delr: NDArray[np.float64] = array(
         block="griddata",
         default=1.0,
+        netcdf=True,
         dims=("ncol",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     delc: NDArray[np.float64] = array(
         block="griddata",
         default=1.0,
+        netcdf=True,
         dims=("nrow",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     top: NDArray[np.float64] = array(
         block="griddata",
         default=1.0,
+        netcdf=True,
         dims=("nrow", "ncol"),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     botm: NDArray[np.float64] = array(
         block="griddata",
         default=0.0,
+        netcdf=True,
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     idomain: Optional[NDArray[np.int64]] = array(
         block="griddata",
         default=1,
+        netcdf=True,
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )

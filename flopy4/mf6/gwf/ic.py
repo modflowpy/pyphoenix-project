@@ -16,5 +16,6 @@ class Ic(Package):
         block="griddata",
         dims=("nodes",),
         default=1.0,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )

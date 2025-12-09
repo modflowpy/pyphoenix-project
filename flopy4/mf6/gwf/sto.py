@@ -28,18 +28,21 @@ class Sto(Package):
         block="griddata",
         dims=("nodes",),
         default=0,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     ss: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
         default=1e-5,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     sy: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
         default=0.15,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     steady_state: Optional[NDArray[np.bool_]] = array(

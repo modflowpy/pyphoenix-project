@@ -59,47 +59,55 @@ class Npf(Package):
         block="griddata",
         dims=("nodes",),
         default=0,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     k: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
         default=1.0,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     k22: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nodes",),
         default=None,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     k33: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nodes",),
         default=None,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     angle1: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nodes",),
         default=None,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     angle2: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nodes",),
         default=None,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     angle3: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nodes",),
         default=None,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
     wetdry: Optional[NDArray[np.float64]] = array(
         block="griddata",
         dims=("nodes",),
         default=None,
+        netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )

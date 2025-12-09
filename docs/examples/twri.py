@@ -273,3 +273,41 @@ head = flopy4.mf6.utils.open_hds(
 
 # Plot head results
 plot_head(head, workspace)
+
+# UPDATE SIM for netcdf array based inputs
+
+# Structured dataset (no mesh)
+# Create workspace
+workspace = Path(__file__).parent / "twri" / "array_netcdf"
+workspace.mkdir(parents=True, exist_ok=True)
+sim.workspace = workspace
+
+nc_fpth = workspace / "twri.input.nc"
+gwf.netcdf_file = nc_fpth
+
+ds = gwf.to_xarray(format="structured")
+ds.to_netcdf(nc_fpth)
+
+with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+    sim.write()
+
+# extended mf6 required to run
+# sim.run()
+
+# Layered Mesh dataset
+# Create workspace
+workspace = Path(__file__).parent / "twri" / "array_netcdf_mesh"
+workspace.mkdir(parents=True, exist_ok=True)
+sim.workspace = workspace
+
+nc_fpth = workspace / "twri.input.nc"
+gwf.netcdf_file = nc_fpth
+
+ds = gwf.to_xarray(format="layered")
+ds.to_netcdf(nc_fpth)
+
+with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+    sim.write()
+
+# extended mf6 required to run
+# sim.run()

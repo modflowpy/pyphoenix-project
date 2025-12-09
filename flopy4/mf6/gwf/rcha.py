@@ -35,6 +35,7 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
+        netcdf=True,
     )
     recharge: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -43,6 +44,7 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
+        netcdf=True,
         converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
     )
     aux: Optional[NDArray[np.float64]] = array(
@@ -52,4 +54,5 @@ class Rcha(Package):
             "ncpl",
         ),
         default=None,
+        netcdf=True,
     )

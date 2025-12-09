@@ -7,7 +7,7 @@
 {% elif type == 'record' %}
 {{ record(value) }}
 {% elif type == 'array' %}
-{{ array(name, value, how=value|array_how) }}
+{{ array(name, value, how=value|array_how(context.use_netcdf)) }}
 {% elif type == 'list' %}
 {{ list(value) }}
 {% endif %}
@@ -29,6 +29,8 @@
 {% endmacro %}
 
 {% macro array(name, value, how="internal") %}
+{% if how == "netcdf" %}{{ inset ~ name.upper() }} NETCDF
+{%- else -%}
 {{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
 {% if how == "constant" %}
@@ -52,5 +54,6 @@
 {%- endfor %}
 {% elif how == "external" %}
 OPEN/CLOSE {{ value }}
+{% endif %}
 {% endif %}
 {% endmacro %}
