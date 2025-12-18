@@ -450,6 +450,8 @@ def test_quickstart_grid(function_tmpdir):
 
 
 def test_quickstart_netcdf(function_tmpdir):
+    from flopy4.mf6.netcdf import NetCDFModel
+
     sim_name = "quickstart"
     gwf_name = "mymodel"
 
@@ -498,7 +500,8 @@ def test_quickstart_netcdf(function_tmpdir):
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
     gwf.netcdf_file = nc_fpth
 
-    ds = gwf.to_xarray(format="structured")
+    nc_model = NetCDFModel.from_model(gwf)
+    ds = nc_model.to_xarray()
     ds.to_netcdf(nc_fpth)
 
     with WriteContext(use_netcdf=True):
@@ -526,7 +529,7 @@ def test_quickstart_netcdf(function_tmpdir):
         lines = fh.readlines()
         assert " HEAD NETCDF\n" in lines
 
-    ds = xr.load_dataset(nc_fpth)
+    ds = xr.load_dataset(nc_fpth, mask_and_scale=False)
     assert ("dis_delr") in ds
     assert ("dis_delc") in ds
     assert ("dis_top") in ds
@@ -552,6 +555,8 @@ def test_quickstart_netcdf(function_tmpdir):
 
 
 def test_quickstart_netcdf_mesh(function_tmpdir):
+    from flopy4.mf6.netcdf import NetCDFModel
+
     sim_name = "quickstart"
     gwf_name = "mymodel"
 
@@ -600,7 +605,8 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
     gwf.netcdf_file = nc_fpth
 
-    ds = gwf.to_xarray(format="layered")
+    nc_model = NetCDFModel.from_model(gwf, mesh="layered")
+    ds = nc_model.to_xarray()
     ds.to_netcdf(nc_fpth)
 
     with WriteContext(use_netcdf=True):
@@ -628,7 +634,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
         lines = fh.readlines()
         assert " HEAD NETCDF\n" in lines
 
-    ds = xr.load_dataset(nc_fpth)
+    ds = xr.load_dataset(nc_fpth, mask_and_scale=False)
     assert ("dis_delr") in ds
     assert ("dis_delc") in ds
     assert ("dis_top") in ds

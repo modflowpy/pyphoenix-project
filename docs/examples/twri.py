@@ -285,7 +285,8 @@ sim.workspace = workspace
 nc_fpth = workspace / "twri.input.nc"
 gwf.netcdf_file = nc_fpth
 
-ds = gwf.to_xarray(format="structured")
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf)
+ds = nc_model.to_xarray()
 ds.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
@@ -303,7 +304,8 @@ sim.workspace = workspace
 nc_fpth = workspace / "twri.input.nc"
 gwf.netcdf_file = nc_fpth
 
-ds = gwf.to_xarray(format="layered")
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered")
+ds = nc_model.to_xarray()
 ds.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
