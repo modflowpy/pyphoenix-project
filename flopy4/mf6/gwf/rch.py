@@ -17,20 +17,41 @@ from flopy4.utils import to_path
 @xattree
 class Rch(Package):
     multi_package: ClassVar[bool] = True
-    fixed_cell: bool = field(block="options", default=False)
-    auxiliary: Optional[list[str]] = array(block="options", default=None)
-    auxmultname: Optional[str] = field(block="options", default=None)
+    fixed_cell: bool = field(
+        block="options",
+        default=False,
+        longname="if cell is dry do not apply recharge to underlying cell",
+    )
+    auxiliary: Optional[list[str]] = array(
+        block="options", default=None, longname="keyword to specify aux variables"
+    )
+    auxmultname: Optional[str] = field(
+        block="options",
+        default=None,
+        longname="name of auxiliary variable for multiplier",
+    )
     boundnames: bool = field(block="options", default=False)
-    print_input: bool = field(block="options", default=False)
-    print_flows: bool = field(block="options", default=False)
-    save_flows: bool = field(block="options", default=False)
+    print_input: bool = field(
+        block="options", default=False, longname="print input to listing file"
+    )
+    print_flows: bool = field(
+        block="options", default=False, longname="print recharge rates to listing file"
+    )
+    save_flows: bool = field(
+        block="options", default=False, longname="save recharge to budget file"
+    )
     ts_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     obs_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    maxbound: Optional[int] = field(block="dimensions", default=None, init=False)
+    maxbound: Optional[int] = field(
+        block="dimensions",
+        default=None,
+        init=False,
+        longname="maximum number of recharge cells",
+    )
     recharge: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=(
@@ -40,6 +61,7 @@ class Rch(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
+        longname="recharge rate",
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -50,6 +72,7 @@ class Rch(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
+        longname="auxiliary variables",
     )
     boundname: Optional[NDArray[np.str_]] = array(
         dtype=f"<U{LENBOUNDNAME}",
@@ -61,4 +84,5 @@ class Rch(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
+        longname="recharge name",
     )

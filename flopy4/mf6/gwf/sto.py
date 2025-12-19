@@ -14,22 +14,47 @@ from flopy4.utils import to_path
 
 @xattree
 class Sto(Package):
-    save_flows: bool = field(block="options", default=False)
-    storagecoefficient: bool = field(block="options", default=False)
-    ss_confined_only: bool = field(block="options", default=False)
+    save_flows: bool = field(block="options", default=False, longname="keyword to save NPF flows")
+    storagecoefficient: bool = field(
+        block="options",
+        default=False,
+        longname="keyword to indicate SS is read as storage coefficient",
+    )
+    ss_confined_only: bool = field(
+        block="options",
+        default=False,
+        longname="keyword to indicate specific storage only applied under confined conditions",
+    )
     tvs_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
-    export_array_ascii: bool = field(block="options", default=False)
-    export_array_netcdf: bool = field(block="options", default=False)
-    dev_original_specific_storage: bool = field(block="options", default=False)
-    dev_oldstorageformulation: bool = field(block="options", default=False)
+    export_array_ascii: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to layered ascii files.",
+    )
+    export_array_netcdf: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to netcdf output files.",
+    )
+    dev_original_specific_storage: bool = field(
+        block="options",
+        default=False,
+        longname="development option for original specific storage",
+    )
+    dev_oldstorageformulation: bool = field(
+        block="options",
+        default=False,
+        longname="development option flag for old storage formulation",
+    )
     iconvert: NDArray[np.int64] = array(
         block="griddata",
         dims=("nodes",),
         default=0,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="convertible indicator",
     )
     ss: NDArray[np.float64] = array(
         block="griddata",
@@ -37,6 +62,7 @@ class Sto(Package):
         default=1e-5,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="specific storage",
     )
     sy: NDArray[np.float64] = array(
         block="griddata",
@@ -44,16 +70,19 @@ class Sto(Package):
         default=0.15,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="specific yield",
     )
     steady_state: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="steady state indicator",
     )
     transient: Optional[NDArray[np.bool_]] = array(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="transient indicator",
     )
