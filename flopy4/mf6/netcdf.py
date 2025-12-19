@@ -25,7 +25,7 @@ def metadata(attribute, key: str):
     return None
 
 
-def _package(package_name: str) -> Package:
+def _pkgclass(package_name: str) -> Package:
     import flopy4
 
     mtype, ptype = package_name.lower().split("-")
@@ -39,28 +39,28 @@ def _package(package_name: str) -> Package:
 
 
 def multi_package(package_name: str) -> bool:
-    package = _package(package_name)
+    package = _pkgclass(package_name)
     if hasattr(package, "multi_package"):
         return getattr(package, "multi_package")
     return False
 
 
 def get_spec(package_name: str) -> XatSpec:
-    return get_xatspec(_package(package_name))  # type: ignore
+    return get_xatspec(_pkgclass(package_name))  # type: ignore
 
 
 def dimmap(gridtype: str, dims: list[int]) -> dict:
-    map = {
+    _map = {
         "time": dims[0],
         "z": dims[1],
     }
     if gridtype == "structured":
-        map["y"] = dims[2]
-        map["nmesh_face"] = dims[2] * dims[3]
-        map["x"] = dims[3]
+        _map["y"] = dims[2]
+        _map["x"] = dims[3]
+        _map["nmesh_face"] = dims[2] * dims[3]
     elif gridtype == "vertex":
-        map["nmesh_face"] = dims[2]
-    return map
+        _map["nmesh_face"] = dims[2]
+    return _map
 
 
 def lower(d: dict) -> dict:
@@ -243,6 +243,9 @@ class NetCDFModelAttrs(BaseModel):
     @field_validator("mesh", mode="before")
     @classmethod
     def validate_mesh(cls, v: str | None, info: ValidationInfo) -> str | None:
+        """
+        validate model mesh attribute
+        """
         if v is not None:
             v = v.lower()
             if v != "layered":
@@ -253,6 +256,9 @@ class NetCDFModelAttrs(BaseModel):
     @field_validator("modflow_grid", mode="before")
     @classmethod
     def validate_modflow_grid(cls, v: str, info: ValidationInfo) -> str:
+        """
+        validate model modflow_grid attribute
+        """
         v = v.lower()
         dims = info.context.get("dims")  # type: ignore
         if v == "structured":
@@ -273,6 +279,9 @@ class NetCDFModelAttrs(BaseModel):
     @field_validator("modflow_model", mode="before")
     @classmethod
     def validate_modflow_model(cls, v: str, info: ValidationInfo) -> str:
+        """
+        validate model modflow_model attribute
+        """
         v = v.lower()
         tokens = v.split(":")
         if len(tokens) != 2:
@@ -328,9 +337,9 @@ class NetCDFPackage(BaseModel, NetCDFInput):
 
     @field_validator("package_name", mode="before")
     @classmethod
-    def validate_pname(cls, v: str, info: ValidationInfo) -> str:
+    def validate_package_name(cls, v: str, info: ValidationInfo) -> str:
         """
-        validate package parameter identifier
+        validate package_name string
         """
         v = v.lower()
         info.context["package_name"] = v  # type: ignore
@@ -338,9 +347,9 @@ class NetCDFPackage(BaseModel, NetCDFInput):
 
     @field_validator("package_type", mode="before")
     @classmethod
-    def validate_ptype(cls, v: str, info: ValidationInfo) -> str:
+    def validate_package_type(cls, v: str, info: ValidationInfo) -> str:
         """
-        validate package parameter identifier
+        validate package_type string [<component>-<subcomponent>]
         """
         v = v.lower()
         assert get_spec(v)
@@ -351,7 +360,7 @@ class NetCDFPackage(BaseModel, NetCDFInput):
     @classmethod
     def validate_auxiliary(cls, v: list[str]) -> list[str]:
         """
-        validate package auxiliary
+        validate package auxiliary list
         """
         v = [aux.lower() for aux in v]
         return v
@@ -421,7 +430,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
     shape: list[str] = Field(default_factory=list)
     attrs: "NetCDFParamAttrs"
     encodings: "NetCDFParamEncodings"
-    dtype: str = Field()
+    dtype: np.dtype = Field()
     data: np.ndarray | None = None
 
     # Allow Pydantic to handle non-native types (data)
@@ -457,16 +466,16 @@ class NetCDFParam(BaseModel, NetCDFInput):
             raise
 
     def to_xarray(self) -> xr.Dataset:
-        dtype: type[np.generic]
         meta = self.model_dump(by_alias=True)
-        ds = xr.Dataset()
-
         package_name = self._context["package_name"]
         package_type = self._context["package_type"]
         mesh = self._context.get("mesh", None)
         auxiliary = self._context.get("auxiliary", None)
         ptype = package_type.split("-")[1].strip()
         spec = get_spec(package_type)
+
+        ds = xr.Dataset()
+
         basename = (
             (
                 auxiliary[meta["attrs"]["modflow_iaux"] - 1]
@@ -482,10 +491,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
             else f"{basename}_l{meta['attrs']['layer']}"
         )
         varname = f"{package_name}_{param}" if multi_package(package_type) else f"{ptype}_{param}"
-        if meta["dtype"] == "float64":
-            dtype = np.float64
-        elif meta["dtype"] == "int64":
-            dtype = np.int64
+
         if "data" in meta and meta["data"] is not None:
             data = meta["data"]
         else:
@@ -493,10 +499,12 @@ class NetCDFParam(BaseModel, NetCDFInput):
             data = np.full(
                 dims,
                 meta["encodings"]["_FillValue"],
-                dtype=dtype,
+                dtype=meta["dtype"],
             )
+
         var_d = {varname: (meta["shape"], data)}
         ds = ds.assign(var_d)
+
         for a in meta["attrs"]:
             if meta["attrs"][a] is not None:
                 ds[varname].attrs[a] = meta["attrs"][a]
@@ -518,7 +526,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
     @classmethod
     def validate_name(cls, v: str, info: ValidationInfo) -> str:
         """
-        validate package parameter identifier
+        validate parameter name
         """
         v = v.lower()
         package = info.context.get("package_type")  # type: ignore
@@ -561,16 +569,22 @@ class NetCDFParam(BaseModel, NetCDFInput):
             raise AssertionError("expected modflow_iaux attribute for aux param")
         return v
 
+    @field_validator("encodings", mode="before")
+    @classmethod
+    def validate_encodings(cls, v: dict[str, int | float | str]) -> dict[str, int | float | str]:
+        """
+        validate parameter encodings dictionary
+        """
+        return v
+
     @field_validator("dtype", mode="before")
     @classmethod
-    def validate_dtype(cls, v: str) -> str:
+    def validate_dtype(cls, v: np.dtype) -> np.dtype:
         """
-        validate parameter shape
+        validate parameter dtype
         """
-        v = v.lower()
-        valid = ["float64", "int64", "int32"]
-        if v not in valid:
-            raise AssertionError(f"invalid param dtype={v}. Valid types={valid}.")
+        if not (np.issubdtype(v, np.floating) or np.issubdtype(v, np.integer)):
+            raise AssertionError(f"invalid param dtype={v}, expected numpy numeric dtype.")
         return v
 
     @field_validator("data", mode="before")
@@ -585,6 +599,17 @@ class NetCDFParam(BaseModel, NetCDFInput):
     def _backfill_meta(meta: dict, context: dict, verbose: bool = True) -> dict:
         _meta = dict(meta)
         param = _meta["name"]
+        modelname = context["modelname"]
+        mesh = context.get("mesh", None)
+        spec = get_spec(context["package_type"])
+
+        if param not in spec.arrays:
+            raise ValueError(f"param {param} not found in package {context['package_type']}")
+
+        if "attrs" not in _meta:
+            _meta["attrs"] = {}
+        if "encodings" not in _meta:
+            _meta["encodings"] = {}
 
         def _structured_shape(dfn_shape):
             shape = ["time"] if "nper" in dfn_shape else []
@@ -615,24 +640,13 @@ class NetCDFParam(BaseModel, NetCDFInput):
                 shape.append("x")
             return shape
 
-        mname = context["modelname"]
-        mesh = context.get("mesh", None)
-        spec = get_spec(context["package_type"])
-        if param not in spec.arrays:
-            raise ValueError(f"param {param} not found in package {context['package_type']}")
-        if "attrs" not in _meta:
-            _meta["attrs"] = {}
-        if "encodings" not in _meta:
-            _meta["encodings"] = {}
-
         # dtype
+        _meta["dtype"] = spec.arrays[param].dtype
         if np.issubdtype(spec.arrays[param].dtype, np.floating):
-            _meta["dtype"] = "float64"
             _meta["encodings"]["_FillValue"] = (
                 FILL_DNODATA if metadata(spec.arrays[param], "block") == "period" else FILL_FLOAT64
             )
         elif np.issubdtype(spec.arrays[param].dtype, np.integer):
-            _meta["dtype"] = "int64"
             _meta["encodings"]["_FillValue"] = (
                 # FILL_DNODATA  # TODO: FILL_INODATA
                 FILL_INT64
@@ -641,9 +655,9 @@ class NetCDFParam(BaseModel, NetCDFInput):
         # modflow_input internal attribute
         ptype = context["package_type"].split("-")[1].strip()
         _meta["attrs"]["modflow_input"] = (
-            f"{mname}/{context['package_name']}/{param}"
+            f"{modelname}/{context['package_name']}/{param}"
             if multi_package(context["package_type"])
-            else f"{mname}/{ptype}/{param}"
+            else f"{modelname}/{ptype}/{param}"
         )
 
         # data dims
@@ -664,15 +678,15 @@ class NetCDFParam(BaseModel, NetCDFInput):
                 if data.size == nval * context["dimmap"]["z"]:
                     # provided data is for full grid
                     s = dims
-                    if spec.arrays[param].dims == ("nper", "nodes"):
-                        s.insert(1, context["dimmap"]["z"])
-                        _meta["data"] = data.reshape(s)[:, layer, :]
+                    if "nodes" in spec.arrays[param].dims:  # type: ignore
+                        if _meta["shape"][0] == "time":
+                            s.insert(1, context["dimmap"]["z"])
+                            _meta["data"] = data.reshape(s)[:, layer, :]
+                        else:
+                            s.insert(0, context["dimmap"]["z"])
+                            _meta["data"] = data.reshape(s)[layer, :].ravel()
                     elif "nlay" in spec.arrays[param].dims:  # type: ignore
                         s.insert(0, context["dimmap"]["z"])
-                        _meta["data"] = data.reshape(s)[layer, :].ravel()
-                    elif "nodes" in spec.arrays[param].dims:  # type: ignore
-                        idx = 1 if _meta["shape"][0] == "time" else 0
-                        s.insert(idx, context["dimmap"]["z"])
                         _meta["data"] = data.reshape(s)[layer, :].ravel()
                 else:
                     # assume provided data is correctly formatted
@@ -694,22 +708,31 @@ class NetCDFParamAttrs(BaseModel):
     @field_validator("modflow_input", mode="before")
     @classmethod
     def validate_modflow_input(cls, v: str, info: ValidationInfo) -> str:
+        """
+        validate parameter modflow_input attribute
+        """
         v = v.lower()
         modelname = info.context.get("modelname")  # type: ignore
         if v.split("/")[0] != modelname:
             raise ValueError(
-                f'->modflow_input attribute "{v}" does not match dataset modelname "{modelname}")'
+                f'modflow_input attribute "{v}" does not match dataset modelname "{modelname}")'
             )
         return v
 
     @field_validator("modflow_iaux", mode="before")
     @classmethod
     def validate_modflow_iaux(cls, v: int, info: ValidationInfo) -> int:
+        """
+        validate parameter modflow_iaux attribute
+        """
         return v
 
     @field_validator("layer", mode="before")
     @classmethod
     def validate_layer(cls, v: int, info: ValidationInfo) -> int:
+        """
+        validate parameter layer attribute
+        """
         dims = info.context.get("dims")  # type: ignore
         if v is not None and v > dims[1]:
             raise ValueError(f"param layer attribute value {v} exceeds grid k")
@@ -722,4 +745,7 @@ class NetCDFParamEncodings(BaseModel):
     @field_validator("fill", mode="before")
     @classmethod
     def validate_fill(cls, v: float, info: ValidationInfo) -> float:
+        """
+        validate parameter fill (_FillValue) encoding attribute
+        """
         return v

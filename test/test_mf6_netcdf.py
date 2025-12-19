@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 
 from flopy4.mf6.netcdf import (
     FILL_DNODATA,
@@ -41,11 +42,12 @@ def test_model_nomesh():
 
     # classmethod to generate and validate model
     nc_model = NetCDFModel.from_dict(nc_cfg, context={"dims": [2, 4, 3, 2]})
-    print(nc_model.meta)
+    meta = nc_model.meta
+    assert isinstance(meta, dict)
 
     # dataset from model instance
     ds = nc_model.to_xarray()
-    print(ds)
+    assert isinstance(ds, xr.Dataset)
 
     assert ds.attrs["modflow_grid"] == "structured"
     assert ds.attrs["modflow_model"] == "gwf6: gwfmodel"
@@ -74,8 +76,10 @@ def test_model_nomesh():
             p,
             context=context,
         )
-        nc_pkg.to_xarray()
+        ds = nc_pkg.to_xarray()
+        assert isinstance(ds, xr.Dataset)
         meta = nc_pkg.meta
+        assert isinstance(meta, dict)
         nc_pkg = NetCDFPackage.model_validate(meta, context=context)
 
 
@@ -96,12 +100,10 @@ def test_package_nomesh():
 
     nc_pkg = NetCDFPackage.from_dict(packages[0], context=context)
     meta = nc_pkg.meta
-    # TODO, this way, need auxiliary in context- rectify differences?
-    #   from the meta dictionary it is added to                    1
+    assert isinstance(meta, dict)
     nc_pkg = NetCDFPackage.model_validate(meta, context=context)
     ds = nc_pkg.to_xarray()
-    print(meta)
-    print(ds)
+    assert isinstance(ds, xr.Dataset)
 
     # assert ds.attrs["modflow_grid"] == "structured"
     # assert ds.attrs["modflow_model"] == "gwf6: gwfmodel"
@@ -137,8 +139,10 @@ def test_param_nomesh():
 
     for p in params:
         nc_param = NetCDFParam.from_dict(p, context=context)
-        nc_param.to_xarray()
+        ds = nc_param.to_xarray()
+        assert isinstance(ds, xr.Dataset)
         meta = nc_param.meta
+        assert isinstance(meta, dict)
         nc_param = NetCDFParam.model_validate(meta, context=context)
 
 
@@ -280,7 +284,9 @@ def test_package_mesh():
     for p in packages:
         nc_pkg = NetCDFPackage.from_dict(p, context=context)
         ds = nc_pkg.to_xarray()
+        assert isinstance(ds, xr.Dataset)
         meta = nc_pkg.meta
+        assert isinstance(meta, dict)
         nc_pkg = NetCDFPackage.model_validate(meta, context=context)
 
         if p["package_type"] == "gwf-npf":
@@ -328,7 +334,6 @@ def test_package_mesh():
 
 
 def test_param_mesh():
-    # TODO: layer needed?
     params = [
         {"name": "aux", "attrs": {"layer": 1, "modflow_iaux": 1}},
         {"name": "aux", "attrs": {"layer": 2, "modflow_iaux": 1}},
@@ -346,6 +351,8 @@ def test_param_mesh():
 
     for p in params:
         nc_param = NetCDFParam.from_dict(p, context=context)
-        print(nc_param.to_xarray())
+        ds = nc_param.to_xarray()
+        assert isinstance(ds, xr.Dataset)
         meta = nc_param.meta
+        assert isinstance(meta, dict)
         nc_param = NetCDFParam.model_validate(meta, context=context)
