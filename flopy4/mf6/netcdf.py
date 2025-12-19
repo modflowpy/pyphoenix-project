@@ -396,13 +396,16 @@ class NetCDFPackage(BaseModel, NetCDFInput):
 
         _params = []
         for p in _meta["params"]:
-            shape = spec.arrays[p["name"]].dims
-            assert shape is not None
-            gridded = "nodes" in shape or ("nper," not in shape and len(shape) >= 3)
             if "attrs" not in p:
                 p["attrs"] = {}
+
             if p["name"].lower() == "aux" and (auxiliary is None or len(auxiliary) == 0):
                 raise AssertionError("AUX parameter requires auxiliary list input.")
+
+            shape = spec.arrays[p["name"]].dims
+            assert shape is not None
+            gridded = "nodes" in shape or "nlay" in shape
+
             if not gridded or mesh is None:
                 assert "layer" not in p["attrs"]
                 if p["name"].lower() == "aux":
@@ -558,11 +561,10 @@ class NetCDFParam(BaseModel, NetCDFInput):
         """
         v = lower(v)
         param = info.data.get("name")
+        mesh = info.context.get("mesh")  # type: ignore
         shape = info.data.get("shape")
         assert shape
-        # gridded = "nodes" in shape or len(shape) >= 3  # type: ignore
-        gridded = "nodes" in shape or ("nper," not in shape and len(shape) >= 3)
-        mesh = info.context.get("mesh")  # type: ignore
+        gridded = "nodes" in shape or "nlay" in shape
         if gridded and mesh is not None and ("layer" not in v or v["layer"] is None):
             raise AssertionError(f"expected layer attribute for mesh param '{param}'")
         if param is not None and param == "aux" and "modflow_iaux" not in v:
