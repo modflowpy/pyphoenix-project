@@ -12,11 +12,12 @@ from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
 from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.ims import Ims
+from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 from flopy4.uio import DEFAULT_REGISTRY
 
-__all__ = ["gwf", "simulation", "solution", "utils", "Ims", "Tdis", "Simulation"]
+__all__ = ["gwf", "simulation", "solution", "utils", "Ims", "NetCDFModel", "Tdis", "Simulation"]
 
 
 class WriteError(Exception):
