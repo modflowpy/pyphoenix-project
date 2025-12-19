@@ -10,12 +10,21 @@ from flopy4.mf6.spec import array, field
 
 @xattree(kw_only=True)
 class Ic(Package):
-    export_array_ascii: bool = field(block="options", default=False)
-    export_array_netcdf: bool = field(block="options", default=False)
+    export_array_ascii: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to layered ascii files.",
+    )
+    export_array_netcdf: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to netcdf output files.",
+    )
     strt: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
         default=1.0,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="starting head",
     )

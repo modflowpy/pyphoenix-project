@@ -16,29 +16,41 @@ class Dis(Package):
     length_units: str = field(
         block="options",
         default=None,
+        longname="model length units",
     )
-    nogrb: bool = field(block="options", default=False)
-    xorigin: float = field(block="options", default=None)
-    yorigin: float = field(block="options", default=None)
-    angrot: float = field(block="options", default=None)
-    export_array_netcdf: bool = field(block="options", default=False)
+    nogrb: bool = field(block="options", default=False, longname="do not write binary grid file")
+    xorigin: float = field(
+        block="options", default=None, longname="x-position of the model grid origin"
+    )
+    yorigin: float = field(
+        block="options", default=None, longname="y-position of the model grid origin"
+    )
+    angrot: float = field(block="options", default=None, longname="rotation angle")
+    export_array_netcdf: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to netcdf output files.",
+    )
     nlay: int = dim(
         block="dimensions",
         coord="lay",
         scope="gwf",
         default=1,
+        longname="number of layers",
     )
     ncol: int = dim(
         block="dimensions",
         coord="col",
         scope="gwf",
         default=2,
+        longname="number of columns",
     )
     nrow: int = dim(
         block="dimensions",
         coord="row",
         scope="gwf",
         default=2,
+        longname="number of rows",
     )
     delr: NDArray[np.float64] = array(
         block="griddata",
@@ -46,6 +58,7 @@ class Dis(Package):
         netcdf=True,
         dims=("ncol",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="spacing along a row",
     )
     delc: NDArray[np.float64] = array(
         block="griddata",
@@ -53,6 +66,7 @@ class Dis(Package):
         netcdf=True,
         dims=("nrow",),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="spacing along a column",
     )
     top: NDArray[np.float64] = array(
         block="griddata",
@@ -60,6 +74,7 @@ class Dis(Package):
         netcdf=True,
         dims=("nrow", "ncol"),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="cell top elevation",
     )
     botm: NDArray[np.float64] = array(
         block="griddata",
@@ -67,6 +82,7 @@ class Dis(Package):
         netcdf=True,
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="cell bottom elevation",
     )
     idomain: Optional[NDArray[np.int64]] = array(
         block="griddata",
@@ -74,6 +90,7 @@ class Dis(Package):
         netcdf=True,
         dims=("nlay", "nrow", "ncol"),
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="idomain existence array",
     )
     nodes: int = dim(
         coord="node",

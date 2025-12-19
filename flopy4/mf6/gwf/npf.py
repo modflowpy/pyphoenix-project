@@ -36,31 +36,64 @@ class Npf(Package):
         xt3d: bool = field()
         rhs: bool = field()
 
-    save_flows: bool = field(block="options", default=False)
-    print_flows: bool = field(block="options", default=False)
-    alternative_cell_averaging: Optional[str] = field(block="options", default=None)
-    thickstrt: bool = field(block="options", default=False)
-    cvoptions: Optional[CvOptions] = field(block="options", default=None)
-    perched: bool = field(block="options", default=False)
+    save_flows: bool = field(block="options", default=False, longname="keyword to save NPF flows")
+    print_flows: bool = field(
+        block="options", default=False, longname="keyword to print NPF flows to listing file"
+    )
+    alternative_cell_averaging: Optional[str] = field(
+        block="options", default=None, longname="conductance weighting option"
+    )
+    thickstrt: bool = field(
+        block="options", default=False, longname="keyword to activate THICKSTRT option"
+    )
+    cvoptions: Optional[CvOptions] = field(
+        block="options", default=None, longname="vertical conductance options"
+    )
+    perched: bool = field(
+        block="options", default=False, longname="keyword to activate PERCHED option"
+    )
     rewet_record: Optional[RewetRecord] = field(block="options", default=None)
-    xt3d_options: Optional[Xt3dOptions] = field(block="options", default=None)
-    save_specific_discharge: bool = field(block="options", default=None)
-    save_saturation: bool = field(block="options", default=None)
-    k22overk: bool = field(block="options", default=None)
-    k33overk: bool = field(block="options", default=None)
+    xt3d_options: Optional[Xt3dOptions] = field(
+        block="options", default=None, longname="keyword to activate XT3D"
+    )
+    save_specific_discharge: bool = field(
+        block="options", default=None, longname="keyword to save specific discharge"
+    )
+    save_saturation: bool = field(
+        block="options", default=None, longname="keyword to save saturation"
+    )
+    k22overk: bool = field(
+        block="options", default=None, longname="keyword to indicate that specified K22 is a ratio"
+    )
+    k33overk: bool = field(
+        block="options", default=None, longname="keyword to indicate that specified K33 is a ratio"
+    )
     tvk_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
-    export_array_ascii: bool = field(block="options", default=False)
-    export_array_netcdf: bool = field(block="options", default=False)
-    dev_no_newton: bool = field(block="options", default=False)
-    dev_omega: Optional[float] = field(block="options", default=None)
+    export_array_ascii: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to layered ascii files.",
+    )
+    export_array_netcdf: bool = field(
+        block="options",
+        default=False,
+        longname="export array variables to netcdf output files.",
+    )
+    dev_no_newton: bool = field(
+        block="options", default=False, longname="turn off Newton for unconfined cells"
+    )
+    dev_omega: Optional[float] = field(
+        block="options", default=None, longname="set saturation omega value"
+    )
     icelltype: NDArray[np.int64] = array(
         block="griddata",
         dims=("nodes",),
         default=0,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="confined or convertible indicator",
     )
     k: NDArray[np.float64] = array(
         block="griddata",
@@ -68,6 +101,7 @@ class Npf(Package):
         default=1.0,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="hydraulic conductivity (L/T)",
     )
     k22: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -75,6 +109,7 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="hydraulic conductivity of second ellipsoid axis",
     )
     k33: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -82,6 +117,7 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="hydraulic conductivity of third ellipsoid axis (L/T)",
     )
     angle1: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -89,6 +125,7 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="first anisotropy rotation angle (degrees)",
     )
     angle2: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -96,6 +133,7 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="second anisotropy rotation angle (degrees)",
     )
     angle3: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -103,6 +141,7 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="third anisotropy rotation angle (degrees)",
     )
     wetdry: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -110,4 +149,5 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="wetdry threshold and factor",
     )

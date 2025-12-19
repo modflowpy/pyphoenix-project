@@ -32,11 +32,15 @@ def field(
     metadata=None,
     on_setattr=None,
     block: str | None = None,
+    longname: str | None = None,
 ):
     """Define a field."""
-    if block:
+    if block or longname:
         metadata = metadata or {}
-        metadata["block"] = block
+        if block:
+            metadata["block"] = block
+        if longname:
+            metadata["longname"] = longname
     return flopy_field(
         default=default,
         validator=validator,
@@ -63,14 +67,17 @@ def path(
     on_setattr=None,
     block: str | None = None,
     inout: FileInOut | None = None,
+    longname: str | None = None,
 ):
     """Define a path field."""
-    if block:
+    if block or inout or longname:
         metadata = metadata or {}
-        metadata["block"] = block
-    if inout:
-        metadata = metadata or {}
-        metadata["inout"] = inout
+        if block:
+            metadata["block"] = block
+        if inout:
+            metadata["inout"] = inout
+        if longname:
+            metadata["longname"] = longname
     return flopy_field(
         default=default,
         validator=validator,
@@ -92,11 +99,15 @@ def dim(
     init=True,
     metadata=None,
     block: str | None = None,
+    longname: str | None = None,
 ):
     """Define a dimension field."""
-    if block:
+    if block or longname:
         metadata = metadata or {}
-        metadata["block"] = block
+        if block:
+            metadata["block"] = block
+        if longname:
+            metadata["longname"] = longname
     return flopy_dim(
         scope=scope,
         coord=coord,
@@ -115,11 +126,15 @@ def coord(
     eq=True,
     metadata=None,
     block: str | None = None,
+    longname: str | None = None,
 ):
     """Define a coordinate field."""
-    if block:
+    if block or longname:
         metadata = metadata or {}
-        metadata["block"] = block
+        if block:
+            metadata["block"] = block
+        if longname:
+            metadata["longname"] = longname
     return flopy_coord(
         scope=scope,
         default=default,
@@ -141,14 +156,17 @@ def array(
     on_setattr=None,
     block: str | None = None,
     netcdf: bool | None = None,
+    longname: str | None = None,
 ):
     """Define an array field."""
-    if block or netcdf:
+    if block or netcdf or longname:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
         if netcdf:
             metadata["netcdf"] = netcdf
+        if longname:
+            metadata["longname"] = longname
     return flopy_array(
         dtype=dtype,
         dims=dims,

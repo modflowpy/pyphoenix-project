@@ -15,13 +15,29 @@ from flopy4.utils import to_path
 @xattree
 class Rcha(Package):
     multi_package: ClassVar[bool] = True
-    fixed_cell: bool = field(block="options", default=False)
-    auxiliary: Optional[list[str]] = array(block="options", default=None)
-    auxmultname: Optional[str] = field(block="options", default=None)
-    print_input: bool = field(block="options", default=False)
-    print_flows: bool = field(block="options", default=False)
-    readasarrays: bool = field(block="options", default=True)
-    save_flows: bool = field(block="options", default=False)
+    fixed_cell: bool = field(
+        block="options",
+        default=False,
+        longname="if cell is dry do not apply recharge to underlying cell",
+    )
+    auxiliary: Optional[list[str]] = array(
+        block="options", default=None, longname="keyword to specify aux variables"
+    )
+    auxmultname: Optional[str] = field(
+        block="options",
+        default=None,
+        longname="name of auxiliary variable for multiplier",
+    )
+    print_input: bool = field(
+        block="options", default=False, longname="print input to listing file"
+    )
+    print_flows: bool = field(
+        block="options", default=False, longname="print recharge rates to listing file"
+    )
+    readasarrays: bool = field(block="options", default=True, longname="use array-based input")
+    save_flows: bool = field(
+        block="options", default=False, longname="save CHD flows to budget file"
+    )
     tas_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
@@ -36,6 +52,7 @@ class Rcha(Package):
         ),
         default=None,
         netcdf=True,
+        longname="layer number for recharge",
     )
     recharge: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -46,6 +63,7 @@ class Rcha(Package):
         default=None,
         netcdf=True,
         converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
+        longname="recharge rate",
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -55,4 +73,5 @@ class Rcha(Package):
         ),
         default=None,
         netcdf=True,
+        longname="recharge auxiliary variable iaux",
     )
