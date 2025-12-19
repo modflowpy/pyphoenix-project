@@ -10,11 +10,24 @@ from flopy4.mf6.netcdf import (
     NetCDFParam,
 )
 
-welg_0_q = np.linspace(0, 1, 48)
-rcha_0_recharge = np.linspace(1, 2, 12)
+
+def grid_nodata(dims):
+    grid = np.full((dims[1], dims[2], dims[3]), FILL_DNODATA, dtype=float)
+    return np.repeat(np.expand_dims(grid, axis=0), repeats=dims[0], axis=0)
+
+
+def layer_nodata(dims):
+    layer = np.full((dims[2], dims[3]), FILL_DNODATA, dtype=float)
+    return np.repeat(np.expand_dims(layer, axis=0), repeats=dims[0], axis=0)
 
 
 def test_model_nomesh():
+    dims = [2, 4, 3, 2]  # [nper, nlay, nrow, ncol]
+    welg_0_q = grid_nodata(dims)
+    welg_0_q[0, ...] = np.linspace(0, 1, 24).reshape([4, 3, 2])
+    rcha_0_recharge = layer_nodata(dims)
+    rcha_0_recharge[1, ...] = np.linspace(1, 2, 6).reshape([3, 2])
+
     packages = [
         {
             "package_name": "welg_0",
@@ -41,7 +54,7 @@ def test_model_nomesh():
     }
 
     # classmethod to generate and validate model
-    nc_model = NetCDFModel.from_dict(nc_cfg, context={"dims": [2, 4, 3, 2]})
+    nc_model = NetCDFModel.from_dict(nc_cfg, context={"dims": dims})
     meta = nc_model.meta
     assert isinstance(meta, dict)
 
@@ -54,11 +67,12 @@ def test_model_nomesh():
     assert "mesh" not in ds.attrs
     assert "welg_0_q" in ds
     assert "welg_0_concentration" in ds
-    assert np.allclose(ds["welg_0_q"].values.ravel(), welg_0_q)
+    assert np.allclose(ds["welg_0_q"].values, welg_0_q)
     assert np.allclose(ds["welg_0_concentration"].values, FILL_DNODATA)
-    assert np.allclose(ds["rcha_0_recharge"].values.ravel(), rcha_0_recharge)
+    assert np.allclose(ds["rcha_0_recharge"].values, rcha_0_recharge)
     assert ds["welg_0_q"].dims == ("time", "z", "y", "x")
     assert ds["welg_0_concentration"].dims == ("time", "z", "y", "x")
+    assert ds["rcha_0_recharge"].dims == ("time", "y", "x")
     assert ds.sizes["time"] == 2
     assert ds.sizes["z"] == 4
     assert ds.sizes["y"] == 3
@@ -147,9 +161,11 @@ def test_param_nomesh():
 
 
 def test_model_mesh():
+    dims = [2, 4, 3, 2]  # [nper, nlay, nrow, ncol]
     dis_botm = np.linspace(11, 21, 24)
     npf_k = np.linspace(0, 10, 24)
-    welg_0_q = np.linspace(0, 1, 48)
+    welg_0_q = grid_nodata(dims)
+    welg_0_q[0, ...] = np.linspace(0, 1, 24).reshape([4, 3, 2])
     rcha_0_recharge = np.linspace(1, 2, 12)
     packages = [
         {
@@ -197,7 +213,7 @@ def test_model_mesh():
     }
 
     # classmethod to generate and validate model
-    nc_model = NetCDFModel.from_dict(nc_cfg, context={"dims": [2, 4, 3, 2]})
+    nc_model = NetCDFModel.from_dict(nc_cfg, context={"dims": dims})
 
     # dataset from model instance
     ds = nc_model.to_xarray()

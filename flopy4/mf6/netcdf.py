@@ -15,6 +15,7 @@ from xattree import XatSpec, asdict, get_xatspec
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.version import __version__
 
 
 def metadata(attribute, key: str):
@@ -117,7 +118,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
         assert hasattr(model, "data")
 
         modeltype = model.__class__.__name__.lower()
-        attrs = {}
+        attrs = {"title": f"{model.name.upper()} model input"}
         packages = []
         distype = None
 
@@ -181,12 +182,21 @@ class NetCDFModel(BaseModel, NetCDFInput):
         )
 
     def to_xarray(self) -> xr.Dataset:
+        import datetime
+
         dss = []
         meta = self.model_dump(by_alias=True)
         for p in self.packages:
             dss.append(p.to_xarray())
 
         ds = xr.merge(dss)
+
+        dt = datetime.datetime.now()
+        timestamp = dt.strftime("%m/%d/%Y %H:%M:%S")
+        meta["attrs"]["source"] = f"pyphoenix {__version__}"
+        meta["attrs"]["history"] = f"first created {timestamp}"
+        # TODO: conventions, etc
+
         for a in meta["attrs"]:
             if meta["attrs"][a] is not None:
                 ds.attrs[a] = meta["attrs"][a]
@@ -239,6 +249,8 @@ class NetCDFModelAttrs(BaseModel):
     mesh: str | None = Field(default=None)
     modflow_grid: str = Field()
     modflow_model: str = Field()
+
+    model_config = ConfigDict(extra="allow")
 
     @field_validator("mesh", mode="before")
     @classmethod
@@ -436,7 +448,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
     dtype: np.dtype = Field()
     data: np.ndarray | None = None
 
-    # Allow Pydantic to handle non-native types (data)
+    # Allow Pydantic to handle non-native types (numpy)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def model_post_init(self, __context) -> None:
@@ -613,6 +625,9 @@ class NetCDFParam(BaseModel, NetCDFInput):
         if "encodings" not in _meta:
             _meta["encodings"] = {}
 
+        # add long_name to parameter attributes
+        _meta["attrs"]["long_name"] = metadata(spec.arrays[param], "longname")
+
         def _structured_shape(dfn_shape):
             shape = ["time"] if "nper" in dfn_shape else []
             if "nodes" in dfn_shape:
@@ -707,6 +722,8 @@ class NetCDFParamAttrs(BaseModel):
     modflow_iaux: int | None = Field(default=None)
     layer: int | None = Field(default=None)
 
+    model_config = ConfigDict(extra="allow")
+
     @field_validator("modflow_input", mode="before")
     @classmethod
     def validate_modflow_input(cls, v: str, info: ValidationInfo) -> str:
@@ -743,6 +760,8 @@ class NetCDFParamAttrs(BaseModel):
 
 class NetCDFParamEncodings(BaseModel):
     fill: float = Field(alias="_FillValue")
+
+    model_config = ConfigDict(extra="allow")
 
     @field_validator("fill", mode="before")
     @classmethod
