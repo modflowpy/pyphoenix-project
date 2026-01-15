@@ -203,12 +203,10 @@ class NetCDFModel(BaseModel, NetCDFInput):
         meta = self.model_dump(by_alias=True)
 
         if self._grid is not None and self._time is not None:  # type: ignore
-            if "mesh" in meta["attrs"]:  # type: ignore
-                dss.append(
-                    self._grid.to_xarray(mesh_type=meta["attrs"]["mesh"], modeltime=self._time)
-                )
-            else:
-                dss.append(self._grid.to_xarray(modeltime=self._time))
+            conventions = "CF-1.11"  # type: ignore
+            if meta["attrs"]["mesh"] is not None:
+                conventions = f"{conventions} UGRID-1.0"
+            dss.append(self._grid.to_xarray(mesh_type=meta["attrs"]["mesh"], modeltime=self._time))
 
         for p in self.packages:
             p._context["grid"] = self.grid
@@ -220,7 +218,6 @@ class NetCDFModel(BaseModel, NetCDFInput):
         timestamp = dt.strftime("%m/%d/%Y %H:%M:%S")
         meta["attrs"]["source"] = f"pyphoenix {__version__}"
         meta["attrs"]["history"] = f"first created {timestamp}"
-        # TODO: conventions, etc
 
         for a in meta["attrs"]:
             if meta["attrs"][a] is not None:

@@ -486,8 +486,7 @@ class StructuredGrid(LegacyStructuredGrid):
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
         FILLNA_INT32 = np.int32(-2147483647)
         FILLNA_DBL = 9.96920996838687e36
-        # lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
-        lenunits = {0: "m", 1: "ft", 2: "m", 3: "cm"}
+        lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
 
         # create dataset coordinate vars
         var_d = {

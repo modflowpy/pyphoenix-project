@@ -1,8 +1,5 @@
 # Frenchman Flat NV
 # https://www.sciencebase.gov/catalog/item/641a1b51d34eb496d1d2a1fd
-#
-# Import dependencies.
-
 from pathlib import Path
 
 import numpy as np
@@ -144,8 +141,8 @@ nodes = np.prod(shape)
 # TODO This is the factor in the downloaded model which changes sim results if removed.
 #   However, when it is applied the generated grid does not match the model domain on the website
 #   or downloaded jpeg.  Seems like it shouldn't be applied to delr/delc in the downloaded model?
-FACTOR = 3.280  # TODO
-# FACTOR = 1.0
+# FACTOR = 3.280  # TODO
+FACTOR = 1.0
 delr = [
     2500.0,
     2500.0,
@@ -360,7 +357,7 @@ grid = flopy4.mf6.utils.grid.StructuredGrid(
     idomain=idomain,
     crs="EPSG:26911",
 )
-dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}  # TODO: temporary
+dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}
 
 # discretization
 dis = flopy4.mf6.gwf.Dis.from_grid(grid=grid)
@@ -419,7 +416,7 @@ sto = flopy4.mf6.gwf.Sto(
     dims=dims,
 )
 
-# WEL crt
+# WEL constant rate
 wel_crt = flopy4.mf6.gwf.Wel(
     filename="ff.crt.wel",
     q={
@@ -448,7 +445,7 @@ wel_crt = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# WEL leak
+# WEL leakage
 wel_leak = flopy4.mf6.gwf.Wel(
     filename="ff.leak.wel",
     q={
@@ -504,7 +501,7 @@ wel_leak = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# WEL SampleQ
+# WEL sampling
 wel_sampleQ = flopy4.mf6.gwf.Wel(
     filename="ff.sampleQ.wel",
     q={
@@ -585,7 +582,7 @@ oc = flopy4.mf6.gwf.Oc(
 
 # Flow model
 gwf = flopy4.mf6.gwf.Gwf(
-    # netcdf_mesh2d_file=Path("ff.nc"),
+    # netcdf_mesh2d_file=Path("ff.nc"), # requires netcdf
     dis=grid,
     ic=ic,
     npf=npf,
@@ -625,16 +622,14 @@ gwf = flopy4.mf6.gwf.Gwf(
 ims = flopy4.mf6.Ims(
     print_option="summary",
     complexity="moderate",
-    # outer_hclose=0.01,
     outer_dvclose=0.01,
-    # outer_rclosebnd=0.1,
     outer_maximum=50,
     under_relaxation="DBD",
     under_relaxation_theta=0.9,
     under_relaxation_kappa=0.0001,
     under_relaxation_gamma=0.000000,
     under_relaxation_momentum=0.000000,
-    inner_hclose=0.00001,
+    inner_dvclose=0.00001,
     inner_rclose=0.1,
     inner_maximum=100,
     linear_acceleration="bicgstab",
@@ -703,36 +698,26 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 GRID_NODATA = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 
-# TODO
-gwf.dis.nogrb = True
-
 # well
 q = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 q[0, 1, 43, 43] = -30992.50
-q[1, 1, 43, 43] = -00001.1
+q[1, 1, 43, 43] = -00000.0
 q[2, 1, 43, 43] = -30992.50
 q[3, 1, 43, 43] = -00000.0
 q[4, 1, 43, 43] = -30992.50
 q[5, 1, 43, 43] = -00000.0
-# print(f"q => {q[1, 1, 43, 43]}")
-# print(f"q => {q[3, 1, 43, 43]}")
-# print(f"q => {q[5, 1, 43, 43]}")
-welg = flopy4.mf6.gwf.Welg(
+welg_crt = flopy4.mf6.gwf.Welg(
     q=q,
     dims=dims,
 )
-# print(f"welg.q => {welg.q.values.reshape(33, 10, 87, 87)[1, 1, 43, 43]}")
-# print(f"welg.q => {welg.q.values.reshape(33, 10, 87, 87)[3, 1, 43, 43]}")
-# print(f"welg.q => {welg.q.values.reshape(33, 10, 87, 87)[5, 1, 43, 43]}")
 
-# remove list based inputs
-# TODO: show variations on removing packages
+# remove list base WEL packages
 del gwf.wel[0]
 del gwf.wel[1]
 del gwf.wel[2]
 
-# add array based inputs
-gwf.wel = [welg]
+# add array based WEL package
+gwf.wel = [welg_crt]
 
 # Don't generate outputs so they aren't checked
 # in testing as the model has been modified
@@ -748,12 +733,8 @@ gwf.netcdf_file = nc_fpth
 
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
 ds = nc_model.to_xarray()
-# print(f"ds q => {ds['wel0_q_l2'].values.reshape(33, 87, 87)[1, 43, 43]}")
-# print(f"ds q => {ds['wel0_q_l2'].values.reshape(33, 87, 87)[3, 43, 43]}")
-# print(f"ds q => {ds['wel0_q_l2'].values.reshape(33, 87, 87)[5, 43, 43]}")
 ds.to_netcdf(nc_fpth)
 
-# sim.write()
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 # requires extended mf6
