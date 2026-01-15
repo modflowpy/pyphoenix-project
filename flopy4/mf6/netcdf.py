@@ -15,6 +15,8 @@ from xattree import XatSpec, asdict, get_xatspec
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.mf6.utils.grid import StructuredGrid
+from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
 
 
@@ -99,6 +101,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     def model_post_init(self, __context) -> None:
         self._context = __context
+        self._grid = None
+        self._time = None
 
     @classmethod
     def from_dict(cls, meta, context=None):
@@ -113,7 +117,13 @@ class NetCDFModel(BaseModel, NetCDFInput):
             raise
 
     @classmethod
-    def from_model(cls, model: Model, mesh: str | None = None):
+    def from_model(
+        cls,
+        model: Model,
+        mesh: str | None = None,
+        grid: StructuredGrid | None = None,
+        time: Time | None = None,
+    ):
         assert hasattr(model, "name")
         assert hasattr(model, "data")
 
@@ -170,7 +180,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
             dims.append(model.data.dims["ncpl"])
             gridtype = "vertex"
 
-        return NetCDFModel.from_dict(
+        nc_model = NetCDFModel.from_dict(
             meta={
                 "modeltype": modeltype,
                 "modelname": model.name,
@@ -181,12 +191,27 @@ class NetCDFModel(BaseModel, NetCDFInput):
             context={"dims": dims},
         )
 
+        if grid is not None and time is not None:
+            nc_model.grid = grid
+            nc_model.time = time
+        return nc_model
+
     def to_xarray(self) -> xr.Dataset:
         import datetime
 
         dss = []
         meta = self.model_dump(by_alias=True)
+
+        if self._grid is not None and self._time is not None:  # type: ignore
+            if "mesh" in meta["attrs"]:  # type: ignore
+                dss.append(
+                    self._grid.to_xarray(mesh_type=meta["attrs"]["mesh"], modeltime=self._time)
+                )
+            else:
+                dss.append(self._grid.to_xarray(modeltime=self._time))
+
         for p in self.packages:
+            p._context["grid"] = self.grid
             dss.append(p.to_xarray())
 
         ds = xr.merge(dss)
@@ -209,6 +234,30 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     def jsonschema(self) -> dict:
         return self.model_json_schema()
+
+    @property
+    def grid(self):
+        """grid property getter."""
+        return self._grid
+
+    @grid.setter
+    def grid(self, value):
+        from flopy.discretization import StructuredGrid
+
+        if not isinstance(value, StructuredGrid) or not value:
+            raise ValueError(f"invalid grid type: {type(value)}")
+        self._grid = value
+
+    @property
+    def time(self):
+        """time property getter."""
+        return self._time
+
+    @time.setter
+    def time(self, value):
+        if not isinstance(value, Time) or not value:
+            raise ValueError("invalid Time type")
+        self._time = value
 
     @field_validator("attrs", mode="before")
     @classmethod
@@ -335,6 +384,8 @@ class NetCDFPackage(BaseModel, NetCDFInput):
     def to_xarray(self) -> xr.Dataset:
         ds = []
         for p in self.params:
+            if "grid" in self._context:
+                p._context["grid"] = self._context["grid"]
             ds.append(p.to_xarray())
 
         return xr.merge(ds)
@@ -527,6 +578,14 @@ class NetCDFParam(BaseModel, NetCDFInput):
             if meta["encodings"][e] is not None:
                 ds[varname].encoding[e] = meta["encodings"][e]
 
+        if (
+            "grid" in self._context
+            and self._context["grid"] is not None
+            and self._context["grid"].crs is not None
+        ):
+            ds[varname].attrs["grid_mapping"] = "projection"
+            ds[varname].attrs["coordinates"] = "mesh_face_x mesh_face_y"
+
         return ds
 
     @property
@@ -627,6 +686,10 @@ class NetCDFParam(BaseModel, NetCDFInput):
 
         # add long_name to parameter attributes
         _meta["attrs"]["long_name"] = metadata(spec.arrays[param], "longname")
+        if "layer" in _meta["attrs"]:
+            _meta["attrs"]["long_name"] = (
+                f"{_meta['attrs']['long_name']} layer {_meta['attrs']['layer']}"
+            )
 
         def _structured_shape(dfn_shape):
             shape = ["time"] if "nper" in dfn_shape else []

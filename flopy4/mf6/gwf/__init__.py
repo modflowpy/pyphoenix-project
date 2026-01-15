@@ -97,10 +97,10 @@ class Gwf(Model):
     save_flows: bool = field(block="options", default=False)
     newton: bool = field(block="options", default=False)
     newtonoptions: Optional[NewtonOptions] = field(block="options", default=None)
-    nc_mesh2d_filerecord: Optional[Path] = path(
+    netcdf_mesh2d_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    nc_structured_filerecord: Optional[Path] = path(
+    netcdf_structured_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     netcdf_file: Optional[Path] = path(

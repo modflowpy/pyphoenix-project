@@ -59,7 +59,7 @@ class Sto(Package):
     ss: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=1e-5,
+        default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="specific storage",
@@ -67,7 +67,7 @@ class Sto(Package):
     sy: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=0.15,
+        default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="specific yield",

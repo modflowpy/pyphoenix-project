@@ -43,6 +43,11 @@ def compare_grb(compare_fpth, check_path):
     for f in check_path.rglob("*.grb"):
         grb = MfGrdFile(f)
         np.testing.assert_equal(grb_compare._datadict, grb._datadict)
+        # for k in grb_compare._datadict.keys():
+        #    if isinstance(grb_compare._datadict[k], np.ndarray):
+        #        assert np.allclose(grb_compare._datadict[k], grb._datadict[k])
+        #    else:
+        #        assert grb_compare._datadict[k] == grb._datadict[k]
 
 
 def compare_bud(compare_fpth, check_path):
