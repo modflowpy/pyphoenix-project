@@ -688,16 +688,16 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 # extended mf6 required to run
-sim.run()
+# sim.run()
 
 # Load head results
-head = flopy4.mf6.utils.open_hds(
-    workspace / "ff.hds",
-    workspace / "ff.dis.grb",
-)
+# head = flopy4.mf6.utils.open_hds(
+#    workspace / "ff.hds",
+#    workspace / "ff.dis.grb",
+# )
 
 # Plot head results
-plot_head(head, workspace)
+# plot_head(head, workspace)
 
 # update simulation with array based inputs
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
@@ -757,7 +757,7 @@ ds.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 # requires extended mf6
-sim.run()
+# sim.run()
 
 workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_structured"
 workspace.mkdir(parents=True, exist_ok=True)
@@ -773,4 +773,4 @@ ds.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 # requires extended mf6
-sim.run()
+# sim.run()
