@@ -585,7 +585,7 @@ oc = flopy4.mf6.gwf.Oc(
 
 # Flow model
 gwf = flopy4.mf6.gwf.Gwf(
-    netcdf_mesh2d_file=Path("ff.nc"),
+    # netcdf_mesh2d_file=Path("ff.nc"),
     dis=grid,
     ic=ic,
     npf=npf,
