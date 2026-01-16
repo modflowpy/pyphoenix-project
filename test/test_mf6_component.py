@@ -10,7 +10,7 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
-from flopy4.mf6.gwf import Chd, Chdg, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Chdg, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
@@ -260,6 +260,22 @@ def test_gwf_dfn():
     assert "save_flows" in set(dfn.blocks["options"].keys())
 
 
+def test_disv_dfn():
+    dims = {
+        "nlay": 1,
+        "nvert": 4,
+        "ncpl": 2,
+        "nodes": 2,
+    }
+    disv = Disv(dims=dims)
+    dfn = disv.dfn
+    assert dfn.name == "disv"
+    assert not dfn.advanced
+    assert not dfn.multi
+    assert dfn.ref is None
+    assert "nogrb" in set(dfn.blocks["options"].keys())
+
+
 def test_chd_dfn():
     chd = Chd(strict=False)
     dfn = chd.dfn
@@ -362,6 +378,94 @@ def test_gwf_chd01(function_tmpdir):
     assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
     assert Path(function_tmpdir, f"{gwf_name}.chd").is_file()
+    assert Path(function_tmpdir, "sln1.ims").is_file()
+
+
+def test_gwf_disv_chd01_disv(function_tmpdir):
+    sim_name = "chd01"
+    gwf_name = "gwf_chd01"
+    time = Time(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1.00000000e-06,
+        outer_maximum=100,
+        under_relaxation="none",
+        inner_maximum=300,
+        inner_dvclose=1.00000000e-06,
+        inner_rclose=1.00000000e-06,
+        linear_acceleration="cg",
+        relaxation_factor=1.0,
+        scaling_method="none",
+        reordering_method="none",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    disv = Disv(
+        nlay=1,
+        # ncpl=100,
+        ncpl=1,
+        nvert=4,
+        top=1.0,
+        botm=0.0,
+        idomain=1,
+        iv=[1, 2, 12, 13],
+        xv=[0.00000000, 1.00000000, 2.00000000, 3.00000000],
+        yv=[10.00000000, 10.00000000, 10.00000000, 10.00000000],
+        cell2ddata=[
+            Disv.Cell2dRecord(1, 0.50000000, 9.50000000, 4, (1, 2, 13, 12)),
+        ],
+    )
+
+    gwf = Gwf(parent=sim, save_flows=True, disv=disv, name=gwf_name)
+
+    ic = Ic(parent=gwf, strt=1.0)
+
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        head="PRINT_FORMAT COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL",
+        save_head=["last"],
+        # save_head={0: "last"},
+        save_budget=["last"],
+        print_head=["last"],
+        print_budget=["last"],
+    )
+
+    npf = Npf(
+        parent=gwf,
+        save_specific_discharge=True,
+        k=1.0,
+        k33=1.0,
+        icelltype=0,
+    )
+
+    # chd = Chd(
+    #    parent=gwf,
+    #    print_flows=True,
+    #    head={0: {(0, 0, 0): 1.0, (0, 0, 99): 0.0}},
+    #    name="chd-1",
+    # )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{sim_name}.tdis").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.nam").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.dis").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.ic").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
+    # assert Path(function_tmpdir, f"{gwf_name}.chd").is_file()
     assert Path(function_tmpdir, "sln1.ims").is_file()
 
 

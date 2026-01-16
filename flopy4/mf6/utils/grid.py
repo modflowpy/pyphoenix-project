@@ -5,6 +5,7 @@ import numpy as np
 import xarray as xr
 from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
+from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
@@ -468,3 +469,7 @@ def update_maxbound(instance, attribute, new_value):
         instance.maxbound = max(maxbound_values)
 
     return new_value
+
+
+class VertexGrid(LegacyVertexGrid):
+    pass

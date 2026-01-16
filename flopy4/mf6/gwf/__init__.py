@@ -5,11 +5,15 @@ import attrs
 import xarray as xr
 from attrs import define
 from flopy.discretization.grid import Grid
+from flopy.discretization.structuredgrid import StructuredGrid
+
+# from flopy.discretization.vertexgrid import VertexGrid
 from xattree import xattree
 
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.dis import Dis
+from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.drng import Drng
 from flopy4.mf6.gwf.ic import Ic
@@ -30,6 +34,7 @@ __all__ = [
     "Chd",
     "Chdg",
     "Dis",
+    "Disv",
     "Drn",
     "Drng",
     "Ic",
@@ -44,11 +49,15 @@ __all__ = [
 
 
 def convert_grid(value):
-    if isinstance(value, Grid):
+    if isinstance(value, StructuredGrid):
         return Dis.from_grid(value)
     if isinstance(value, Dis):
         return value
-    raise TypeError(f"Expected Grid or Dis, got {type(value)}")
+    if isinstance(value, Disv):
+        return value
+    if value is None:
+        return None
+    raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
 
 
 @xattree
@@ -92,7 +101,8 @@ class Gwf(Model):
     netcdf_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
-    dis: Dis = field(converter=convert_grid, block="packages")
+    dis: Dis | None = field(converter=convert_grid, block="packages", default=None)
+    disv: Disv | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)
@@ -107,4 +117,7 @@ class Gwf(Model):
 
     @property
     def grid(self) -> Grid:
-        return self.dis.to_grid()
+        if self.dis is not None:
+            return self.dis.to_grid()
+        elif self.disv is not None:
+            return self.disv.to_grid()
