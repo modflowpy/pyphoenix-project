@@ -164,6 +164,7 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     """
     Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
     """
+    from flopy4.mf6.gwf.disv import Disv
 
     if isinstance(value, (list, tuple)):
         for rec in value:
@@ -185,13 +186,20 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
             yield (value.item(),)
         return
 
-    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "nodes")]
+    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "ncpl", "nodes")]
     has_spatial_dims = len(spatial_dims) > 0
     mask = nonempty(value)
     indices = np.where(mask)
     values = value.values[mask]
     for i, val in enumerate(values):
-        if has_spatial_dims:
+        if isinstance(val, Disv.Cell2dRecord):
+            rec = (
+                val.icell2d,
+                val.xc,
+                val.yc,
+                val.ncvert,
+            ) + val.icvert
+        elif has_spatial_dims:
             cellid = tuple(idx[i] + 1 for idx in indices)
             rec = cellid + (val,)
         else:

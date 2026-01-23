@@ -6,31 +6,13 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
-from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, dim, field
+from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.spec import array, dim
 from flopy4.mf6.utils.grid import StructuredGrid
 
 
 @xattree
-class Dis(Package):
-    length_units: str = field(
-        block="options",
-        default=None,
-        longname="model length units",
-    )
-    nogrb: bool = field(block="options", default=False, longname="do not write binary grid file")
-    xorigin: float = field(
-        block="options", default=None, longname="x-position of the model grid origin"
-    )
-    yorigin: float = field(
-        block="options", default=None, longname="y-position of the model grid origin"
-    )
-    angrot: float = field(block="options", default=None, longname="rotation angle")
-    export_array_netcdf: bool = field(
-        block="options",
-        default=False,
-        longname="export array variables to netcdf output files.",
-    )
+class Dis(DisBase):
     nlay: int = dim(
         block="dimensions",
         coord="lay",
@@ -102,10 +84,16 @@ class Dis(Package):
         scope="gwf",
         init=False,
     )
+    nvert: int = dim(
+        coord="vert",
+        scope="gwf",
+        init=False,
+    )
 
     def __attrs_post_init__(self):
         self.nodes = self.ncol * self.nrow * self.nlay
         self.ncpl = self.ncol * self.nrow
+        self.nvert = (self.ncol + 1) * (self.nrow + 1)
         super().__attrs_post_init__()
 
     def to_grid(self) -> StructuredGrid:

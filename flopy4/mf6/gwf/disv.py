@@ -7,13 +7,13 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
-from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, dim, field
+from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.spec import array, dim
 from flopy4.mf6.utils.grid import VertexGrid
 
 
 @xattree
-class Disv(Package):
+class Disv(DisBase):
     @attrs.define(slots=False)
     class Cell2dRecord:
         icell2d: int = attrs.field()
@@ -22,51 +22,25 @@ class Disv(Package):
         ncvert: int = attrs.field()
         icvert: tuple[int, ...] = attrs.field()
 
-    length_units: str = field(
-        block="options",
-        default=None,
-        longname="model length units",
-    )
-    nogrb: bool = field(block="options", default=None, longname="do not write binary grid file")
-    xorigin: float = field(
-        block="options", default=None, longname="x-position of the model grid origin"
-    )
-    yorigin: float = field(
-        block="options", default=None, longname="y-position of the model grid origin"
-    )
-    angrot: float = field(block="options", default=None, longname="rotation angle")
-    export_array_netcdf: bool = field(
-        block="options",
-        default=None,
-        longname="export array variables to netcdf output files.",
-    )
-    crs: str = field(
-        block="options",
-        default=None,
-        longname="CRS user input string",
-    )
     nlay: int = dim(
         block="dimensions",
         coord="lay",
         scope="gwf",
-        # default=1,
-        default=None,
+        default=1,
         longname="number of layers",
     )
     ncpl: int = dim(
         block="dimensions",
         coord="cpl",
         scope="gwf",
-        # default=2,
-        default=None,
+        default=4,
         longname="number of cells per layer",
     )
     nvert: int = dim(
         block="dimensions",
         coord="vert",
         scope="gwf",
-        # default=6,
-        default=None,
+        default=9,
         longname="number of vertices",
     )
     nodes: int = dim(
@@ -99,21 +73,21 @@ class Disv(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="idomain existence array",
     )
-    iv: Optional[NDArray[np.int64]] = array(
+    iv: NDArray[np.int64] = array(
         block="vertices",
         dims=("nvert",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="vertex number",
     )
-    xv: Optional[NDArray[np.float64]] = array(
+    xv: NDArray[np.float64] = array(
         block="vertices",
         dims=("nvert",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="x-coordinate for vertex",
     )
-    yv: Optional[NDArray[np.float64]] = array(
+    yv: NDArray[np.float64] = array(
         block="vertices",
         dims=("nvert",),
         default=None,
@@ -130,7 +104,8 @@ class Disv(Package):
 
     def __attrs_post_init__(self):
         self.nodes = self.ncpl * self.nlay
-        # self.ncpl = self.ncol * self.nrow
+        self.ncol = -1
+        self.nrow = -1
         super().__attrs_post_init__()
 
     def to_grid(self) -> VertexGrid:
@@ -146,8 +121,8 @@ class Disv(Package):
             nlay=self.nlay,
             # nrow=self.nrow,
             # ncol=self.ncol,
-            delr=self.delr,
-            delc=self.delc,
+            # delr=self.delr,
+            # delc=self.delc,
             top=self.top,
             botm=self.botm,
             idomain=self.idomain,
@@ -172,8 +147,8 @@ class Disv(Package):
             nlay=grid.nlay,
             # nrow=grid.nrow,
             # ncol=grid.ncol,
-            delr=grid.delr,
-            delc=grid.delc,
+            # delr=grid.delr,
+            # delc=grid.delc,
             top=grid.top,
             botm=grid.botm,
             idomain=grid.idomain,

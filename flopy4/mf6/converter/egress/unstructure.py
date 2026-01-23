@@ -67,17 +67,33 @@ def _hack_structured_grid_dims(
     if "nodes" not in value.dims:
         return value
 
-    shape = [
-        structured_grid_dims["nlay"],
-        structured_grid_dims["nrow"],
-        structured_grid_dims["ncol"],
-    ]
-    dims = ["nlay", "nrow", "ncol"]
-    coords = {
-        "nlay": range(structured_grid_dims["nlay"]),
-        "nrow": range(structured_grid_dims["nrow"]),
-        "ncol": range(structured_grid_dims["ncol"]),
-    }
+    if (
+        "ncol" in structured_grid_dims
+        and "nrow" in structured_grid_dims
+        and structured_grid_dims["ncol"] > 0
+        and structured_grid_dims["nrow"] > 0
+    ):
+        shape = [
+            structured_grid_dims["nlay"],
+            structured_grid_dims["nrow"],
+            structured_grid_dims["ncol"],
+        ]
+        dims = ["nlay", "nrow", "ncol"]
+        coords = {
+            "nlay": range(structured_grid_dims["nlay"]),
+            "nrow": range(structured_grid_dims["nrow"]),
+            "ncol": range(structured_grid_dims["ncol"]),
+        }
+    elif "ncpl" in structured_grid_dims and structured_grid_dims["ncpl"] > 0:
+        shape = [
+            structured_grid_dims["nlay"],
+            structured_grid_dims["ncpl"],
+        ]
+        dims = ["nlay", "ncpl"]
+        coords = {
+            "nlay": range(structured_grid_dims["nlay"]),
+            "ncpl": range(structured_grid_dims["ncpl"]),
+        }
 
     if "nper" in value.dims:
         shape.insert(0, value.sizes["nper"])
@@ -325,6 +341,12 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         # so they render as lists. temp hack TODO do this generically
         if perioddata := blocks.get("perioddata", None):
             blocks["perioddata"] = {"perioddata": xr.Dataset(perioddata)}
+
+        if vertices := blocks.get("vertices", None):
+            # TODO comes twice once with "vertices" key and once with dataarrays
+            if "vertices" in vertices:
+                continue
+            blocks["vertices"] = {"vertices": xr.Dataset(vertices)}
 
     # TODO: this fixes out of order blocks (e.g. model namefile) from
     # blocks.update() child binding call above

@@ -13,9 +13,11 @@ from xattree import xattree
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.dis import Dis
+from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.drng import Drng
+from flopy4.mf6.gwf.ghb import Ghb
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
@@ -37,6 +39,7 @@ __all__ = [
     "Disv",
     "Drn",
     "Drng",
+    "Ghb",
     "Ic",
     "Npf",
     "Oc",
@@ -101,14 +104,14 @@ class Gwf(Model):
     netcdf_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
-    dis: Dis | None = field(converter=convert_grid, block="packages", default=None)
-    disv: Disv | None = field(converter=convert_grid, block="packages", default=None)
+    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
     chd: list[Union[Chd, Chdg]] = field(block="packages")
     drn: list[Union[Drn, Drng]] = field(block="packages")
+    ghb: list[Union[Ghb]] = field(block="packages")
     rch: list[Union[Rch, Rcha]] = field(block="packages")
     wel: list[Union[Wel, Welg]] = field(block="packages")
     output: Output = attrs.field(
@@ -119,5 +122,3 @@ class Gwf(Model):
     def grid(self) -> Grid:
         if self.dis is not None:
             return self.dis.to_grid()
-        elif self.disv is not None:
-            return self.disv.to_grid()
