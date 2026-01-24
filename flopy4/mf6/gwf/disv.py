@@ -8,7 +8,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.spec import array, dim
+from flopy4.mf6.spec import array, dim, field
 from flopy4.mf6.utils.grid import VertexGrid
 
 
@@ -22,6 +22,29 @@ class Disv(DisBase):
         ncvert: int = attrs.field()
         icvert: tuple[int, ...] = attrs.field()
 
+    length_units: str = field(
+        block="options",
+        default=None,
+        longname="model length units",
+    )
+    nogrb: bool = field(block="options", default=None, longname="do not write binary grid file")
+    xorigin: float = field(
+        block="options", default=None, longname="x-position of the model grid origin"
+    )
+    yorigin: float = field(
+        block="options", default=None, longname="y-position of the model grid origin"
+    )
+    angrot: float = field(block="options", default=None, longname="rotation angle")
+    export_array_netcdf: bool = field(
+        block="options",
+        default=None,
+        longname="export array variables to netcdf output files.",
+    )
+    crs: str = field(
+        block="options",
+        default=None,
+        longname="CRS user input string",
+    )
     nlay: int = dim(
         block="dimensions",
         coord="lay",

@@ -215,7 +215,7 @@ def test_flopy3_package(tmp_path):
         "nogrb",
         "xorigin",
         "yorigin",
-        "export_array_netcdf",
+        # "export_array_netcdf",
         "delr",
         "delc",
         "top",

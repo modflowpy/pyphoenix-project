@@ -3,34 +3,11 @@ from typing import Optional
 from xattree import xattree
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import dim, field
+from flopy4.mf6.spec import dim
 
 
 @xattree
 class DisBase(Package):
-    length_units: str = field(
-        block="options",
-        default=None,
-        longname="model length units",
-    )
-    nogrb: bool = field(block="options", default=None, longname="do not write binary grid file")
-    xorigin: float = field(
-        block="options", default=None, longname="x-position of the model grid origin"
-    )
-    yorigin: float = field(
-        block="options", default=None, longname="y-position of the model grid origin"
-    )
-    angrot: float = field(block="options", default=None, longname="rotation angle")
-    export_array_netcdf: bool = field(
-        block="options",
-        default=None,
-        longname="export array variables to netcdf output files.",
-    )
-    crs: str = field(
-        block="options",
-        default=None,
-        longname="CRS user input string",
-    )
     nlay: Optional[int] = dim(
         coord="lay",
         scope="gwf",
