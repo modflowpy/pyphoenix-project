@@ -1,5 +1,6 @@
 from typing import Optional
 
+from flopy.discretization.grid import Grid as LegacyGrid
 from xattree import xattree
 
 from flopy4.mf6.package import Package
@@ -47,3 +48,6 @@ class DisBase(Package):
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
+
+    def to_grid(self) -> LegacyGrid:
+        pass

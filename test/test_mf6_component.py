@@ -384,8 +384,8 @@ def test_gwf_chd01(function_tmpdir):
 
 def test_gwf_disv(function_tmpdir):
     # based on mf6 test_gwf_disv_uzf.py but no uzf (yet)
-    sim_name = "chd01"
-    gwf_name = "gwf_chd01"
+    sim_name = "disv"
+    gwf_name = "gwf_disv"
     time = Time(
         perlen=[10.0, 10.0, 10.0, 10.0, 10.0],
         nstp=[5, 5, 5, 5, 5],
