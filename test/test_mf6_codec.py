@@ -199,6 +199,57 @@ def test_dumps_dis_with_layered_arrays(dis_with_constant_arrays):
     pprint(loaded)
 
 
+@pytest.fixture
+def disv_with_constant_arrays():
+    from flopy4.mf6.gwf import Disv
+
+    return Disv(
+        nlay=3,
+        ncpl=1,
+        nvert=4,
+        top=30.0,
+        botm=np.stack([np.full((1), val) for val in [20.0, 10.0, 0.0]]),
+        iv=np.array([1, 2, 3, 4], dtype=int),
+        xv=np.array([0.0, 0.0, 1.0, 1.0], dtype=float),
+        yv=np.array([0.0, 1.0, 1.0, 0.0], dtype=float),
+        cell2ddata=[Disv.Cell2dRecord(1, 0.50000000, 0.50000000, 5, (1, 2, 3, 4, 1))],
+        length_units="feet",
+    )
+
+
+def test_dumps_disv_with_constant_arrays(disv_with_constant_arrays):
+    disv = disv_with_constant_arrays
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(disv))
+    print("DISV dump:")
+    print(dumped)
+    assert dumped
+
+    loaded = loads(dumped)
+    print("DISV load:")
+    pprint(loaded)
+
+    assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
+    assert loaded["DIMENSIONS"] == [["NLAY", 3], ["NCPL", 1], ["NVERT", 4]]
+    assert ["TOP"] in loaded["GRIDDATA"]
+    assert ["BOTM"] in loaded["GRIDDATA"]
+
+
+@pytest.mark.skip(reason="TODO FIX")
+def test_dumps_disv_with_layered_arrays(disv_with_constant_arrays):
+    disv = disv_with_constant_arrays
+    disv.top[0] = 30.0
+    disv.botm[0, 0] = 20.0  # TODO 3d array will force layered output
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(disv))
+    print("DISV dump:")
+    print(dumped)
+    assert dumped
+    assert "BOTM LAYERED" in dumped
+
+    loaded = loads(dumped)
+    print("DIS load:")
+    pprint(loaded)
+
+
 def test_dumps_tdis():
     from flopy4.mf6.tdis import Tdis
     from flopy4.mf6.utils.time import Time

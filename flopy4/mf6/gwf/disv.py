@@ -168,11 +168,13 @@ class Disv(DisBase):
         """
         return Disv(
             nlay=grid.nlay,
-            # nrow=grid.nrow,
-            # ncol=grid.ncol,
-            # delr=grid.delr,
-            # delc=grid.delc,
+            ncpl=grid.ncpl,
+            nvert=grid.nvert,
             top=grid.top,
             botm=grid.botm,
             idomain=grid.idomain,
+            iv=np.array([v[0] + 1 for v in grid._vertices], dtype=int),
+            xv=grid.verts[:, 0].ravel(),
+            yv=grid.verts[:, -1].ravel(),
+            # cell2d
         )

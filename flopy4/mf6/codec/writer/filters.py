@@ -32,7 +32,9 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
         return "constant"
     if value.ndim <= 2:
         return "internal"
-    if value.ndim == 3:
+    if ("ncol" in value.dims and value.sizes["ncol"] > 0 and value.ndim == 3) or (
+        "ncpl" in value.dims and value.sizes["ncpl"] > 0 and value.ndim == 2
+    ):
         layer_const = True
         for layer in range(value.shape[0]):
             val_layer = value.isel(nlay=layer)

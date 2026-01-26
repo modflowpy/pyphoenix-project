@@ -6,8 +6,7 @@ import xarray as xr
 from attrs import define
 from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
-
-# from flopy.discretization.vertexgrid import VertexGrid
+from flopy.discretization.vertexgrid import VertexGrid
 from xattree import xattree
 
 from flopy4.mf6.gwf.chd import Chd
@@ -54,6 +53,8 @@ __all__ = [
 def convert_grid(value):
     if isinstance(value, StructuredGrid):
         return Dis.from_grid(value)
+    elif isinstance(value, VertexGrid):
+        return Disv.from_grid(value)
     if isinstance(value, Dis):
         return value
     if isinstance(value, Disv):
@@ -94,6 +95,7 @@ class Gwf(Model):
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
+    newton: bool = field(block="options", default=False)
     newtonoptions: Optional[NewtonOptions] = field(block="options", default=None)
     nc_mesh2d_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"

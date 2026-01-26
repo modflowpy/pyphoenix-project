@@ -18,6 +18,7 @@ from flopy4.mf6.converter.ingress.structure import (
 )
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.dis import Dis
+from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.rch import Rch
@@ -176,6 +177,44 @@ class TestDisComponent:
 
         assert dis.delr.shape == (10,)
         assert np.allclose(dis.delr, delr_array)
+
+
+class TestDisvComponent:
+    """Test structure_array with Disv component (array dims)."""
+
+    def test_disv_with_scalar_top(self):
+        """Test Disv with scalar top (broadcast to ncpl)."""
+        disv = Disv(nlay=1, ncpl=100, top=1.0, botm=1.0)
+
+        assert hasattr(disv, "top")
+        # Can be numpy or xarray depending on component configuration
+        assert isinstance(disv.top, (np.ndarray, xr.DataArray))
+        if isinstance(disv.top, xr.DataArray):
+            assert disv.top.shape == (100,)
+            assert np.all(disv.top.values == 1.0)
+        else:
+            assert disv.top.shape == (100,)
+            assert np.all(disv.top == 1.0)
+
+    def test_disv_with_list_top(self):
+        """Test Disv with list delr."""
+        disv = Disv(nlay=1, ncpl=100, top=[1.0] * 100, botm=[[-1.0] * 100])
+
+        assert disv.top.shape == (100,)
+        assert np.all(disv.top == 1.0)
+        assert disv.botm.shape == (
+            1,
+            100,
+        )
+        assert np.all(disv.botm == -1.0)
+
+    def test_disv_with_numpy_array(self):
+        """Test Disv with numpy array input."""
+        top_array = np.linspace(1.0, 2.0, 100)
+        disv = Disv(nlay=1, ncpl=100, top=top_array, botm=1.0)
+
+        assert disv.top.shape == (100,)
+        assert np.allclose(disv.top, top_array)
 
 
 class TestIcComponent:
