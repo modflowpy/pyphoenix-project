@@ -28,7 +28,7 @@ class DisBase(Package):
         init=False,
     )
     ncpl: Optional[int] = dim(
-        coord="cpl",
+        coord="c",
         scope="gwf",
         default=None,
         init=False,

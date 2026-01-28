@@ -103,7 +103,7 @@ class Dis(DisBase):
         init=False,
     )
     ncpl: int = dim(
-        coord="lnode",
+        coord="c",
         scope="gwf",
         init=False,
     )

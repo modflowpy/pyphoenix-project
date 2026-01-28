@@ -232,10 +232,13 @@ def test_dumps_disv_with_constant_arrays(disv_with_constant_arrays):
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
     assert loaded["DIMENSIONS"] == [["NLAY", 3], ["NCPL", 1], ["NVERT", 4]]
     assert ["TOP"] in loaded["GRIDDATA"]
-    assert ["BOTM"] in loaded["GRIDDATA"]
+    assert ["BOTM", "LAYERED"] in loaded["GRIDDATA"]
+    assert ["CONSTANT", 30.0] in loaded["GRIDDATA"]
+    assert ["CONSTANT", 20.0] in loaded["GRIDDATA"]
+    assert ["CONSTANT", 10.0] in loaded["GRIDDATA"]
+    assert ["CONSTANT", 0.0] in loaded["GRIDDATA"]
 
 
-@pytest.mark.skip(reason="TODO FIX")
 def test_dumps_disv_with_layered_arrays(disv_with_constant_arrays):
     disv = disv_with_constant_arrays
     disv.top[0] = 30.0

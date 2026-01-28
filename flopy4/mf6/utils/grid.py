@@ -396,7 +396,7 @@ class VertexGrid(LegacyVertexGrid):
     """
     Extend flopy3's VertexGrid with xarray coordinate support.
 
-    A structured grid can be created in several ways:
+    A vertex grid can be created in several ways:
 
     1. **Dimensions only** (abstract/index-based grid):
        - Required: nlay, ncpl
@@ -436,7 +436,7 @@ class VertexGrid(LegacyVertexGrid):
         ...            cell2ddata=[Disv.Cell2dRecord(
         ...                 0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0)
         ...            )]
-        >>> grid = StructuredGrid.from_dis(dis)
+        >>> grid = VertexGrid.from_dis(dis)
         """
         return cls(
             nlay=dis.nlay,
@@ -498,12 +498,12 @@ class VertexGrid(LegacyVertexGrid):
         super().__init__(*args, **kwargs)
         self._dims_coords = {
             "nlay": "k",
-            "ncpl": "j",
+            "ncpl": "c",
             "nodes": "node",
         }
         self._coords = {
             "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
-            "j": xr.DataArray(np.arange(self.ncpl, dtype=int), dims=("ncpl",)),
+            "c": xr.DataArray(np.arange(self.ncpl, dtype=int), dims=("ncpl",)),
             "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
         }
         self._coords.update(self._get_world_coords())
@@ -522,7 +522,7 @@ class VertexGrid(LegacyVertexGrid):
             xr.Dataset(data_vars, coords=self._coords)
             # TODO: alias k/i/j to lay(er)/row/col(umn)?
             .set_xindex("k", PandasIndex)
-            .set_xindex("j", PandasIndex)
+            .set_xindex("c", PandasIndex)
             .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)

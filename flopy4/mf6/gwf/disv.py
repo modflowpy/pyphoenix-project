@@ -54,7 +54,7 @@ class Disv(DisBase):
     )
     ncpl: int = dim(
         block="dimensions",
-        coord="j",
+        coord="c",
         scope="gwf",
         default=4,
         longname="number of cells per layer",

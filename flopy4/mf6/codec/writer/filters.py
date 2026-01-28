@@ -30,11 +30,7 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
         return "external"
     if value.max() == value.min():
         return "constant"
-    if value.ndim <= 2:
-        return "internal"
-    if ("ncol" in value.dims and value.sizes["ncol"] > 0 and value.ndim == 3) or (
-        "ncpl" in value.dims and value.sizes["ncpl"] > 0 and value.ndim == 2
-    ):
+    if "nlay" in value.dims:
         layer_const = True
         for layer in range(value.shape[0]):
             val_layer = value.isel(nlay=layer)
@@ -44,6 +40,8 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
         if layer_const:
             return "layered constant"
         return "layered internal"
+    if value.ndim <= 2:
+        return "internal"
     raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 
 
