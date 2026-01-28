@@ -346,6 +346,8 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             # TODO comes twice once with "vertices" key and once with dataarrays
             if "vertices" in vertices:
                 continue
+            if "iv" in vertices:
+                vertices["iv"] = vertices["iv"] + 1
             blocks["vertices"] = {"vertices": xr.Dataset(vertices)}
 
     # TODO: this fixes out of order blocks (e.g. model namefile) from

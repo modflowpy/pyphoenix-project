@@ -54,7 +54,7 @@ class Disv(DisBase):
     )
     ncpl: int = dim(
         block="dimensions",
-        coord="cpl",
+        coord="j",
         scope="gwf",
         default=4,
         longname="number of cells per layer",
@@ -122,7 +122,7 @@ class Disv(DisBase):
         block="cell2d",
         default=None,
         dims=("ncpl",),
-        converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
+        # converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
     )
 
     def __attrs_post_init__(self):

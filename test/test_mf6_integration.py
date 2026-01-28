@@ -125,16 +125,16 @@ def test_gwf_disv(function_tmpdir):
     top = np.ones((ncpl), dtype=float) * 0.0
     botm = np.stack([np.full((ncpl), val) for val in [-10.0, -20.0, -30.0]])
 
-    cellcycle = [
+    cells = [
+        [0, 1, 5, 4],
         [1, 2, 6, 5],
         [2, 3, 7, 6],
-        [3, 4, 8, 7],
+        [4, 5, 9, 8],
         [5, 6, 10, 9],
         [6, 7, 11, 10],
-        [7, 8, 12, 11],
+        [8, 9, 13, 12],
         [9, 10, 14, 13],
         [10, 11, 15, 14],
-        [11, 12, 16, 15],
     ]
 
     cell2ddata = []
@@ -143,11 +143,11 @@ def test_gwf_disv(function_tmpdir):
     for n in range(ncpl):
         cell2ddata.append(
             Disv.Cell2dRecord(
-                n + 1,
+                n,
                 xc + float((n % 3) * 10.0),
                 yc - float(10.0 * int(n / 3)),
                 4,
-                tuple(cellcycle[n]),
+                tuple(cells[n]),
             )
         )
 
@@ -158,7 +158,7 @@ def test_gwf_disv(function_tmpdir):
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(1, nvert + 1, dtype=int),
+        iv=np.arange(0, nvert, dtype=int),
         xv=np.concatenate(
             [
                 np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
@@ -229,7 +229,8 @@ def test_gwf_disv_uzf(function_tmpdir):
         solutions={"ims": ims},
     )
 
-    cellcycle = [
+    cells = [
+        [0, 1, 12, 11],
         [1, 2, 13, 12],
         [2, 3, 14, 13],
         [3, 4, 15, 14],
@@ -239,7 +240,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [7, 8, 19, 18],
         [8, 9, 20, 19],
         [9, 10, 21, 20],
-        [10, 11, 22, 21],
+        [11, 12, 23, 22],
         [12, 13, 24, 23],
         [13, 14, 25, 24],
         [14, 15, 26, 25],
@@ -249,7 +250,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [18, 19, 30, 29],
         [19, 20, 31, 30],
         [20, 21, 32, 31],
-        [21, 22, 33, 32],
+        [22, 23, 34, 33],
         [23, 24, 35, 34],
         [24, 25, 36, 35],
         [25, 26, 37, 36],
@@ -259,7 +260,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [29, 30, 41, 40],
         [30, 31, 42, 41],
         [31, 32, 43, 42],
-        [32, 33, 44, 43],
+        [33, 34, 45, 44],
         [34, 35, 46, 45],
         [35, 36, 47, 46],
         [36, 37, 48, 47],
@@ -269,7 +270,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [40, 41, 52, 51],
         [41, 42, 53, 52],
         [42, 43, 54, 53],
-        [43, 44, 55, 54],
+        [44, 45, 56, 55],
         [45, 46, 57, 56],
         [46, 47, 58, 57],
         [47, 48, 59, 58],
@@ -279,7 +280,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [51, 52, 63, 62],
         [52, 53, 64, 63],
         [53, 54, 65, 64],
-        [54, 55, 66, 65],
+        [55, 56, 67, 66],
         [56, 57, 68, 67],
         [57, 58, 69, 68],
         [58, 59, 70, 69],
@@ -289,7 +290,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [62, 63, 74, 73],
         [63, 64, 75, 74],
         [64, 65, 76, 75],
-        [65, 66, 77, 76],
+        [66, 67, 78, 77],
         [67, 68, 79, 78],
         [68, 69, 80, 79],
         [69, 70, 81, 80],
@@ -299,7 +300,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [73, 74, 85, 84],
         [74, 75, 86, 85],
         [75, 76, 87, 86],
-        [76, 77, 88, 87],
+        [77, 78, 89, 88],
         [78, 79, 90, 89],
         [79, 80, 91, 90],
         [80, 81, 92, 91],
@@ -309,7 +310,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [84, 85, 96, 95],
         [85, 86, 97, 96],
         [86, 87, 98, 97],
-        [87, 88, 99, 98],
+        [88, 89, 100, 99],
         [89, 90, 101, 100],
         [90, 91, 102, 101],
         [91, 92, 103, 102],
@@ -319,7 +320,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         [95, 96, 107, 106],
         [96, 97, 108, 107],
         [97, 98, 109, 108],
-        [98, 99, 110, 109],
+        [99, 100, 111, 110],
         [100, 101, 112, 111],
         [101, 102, 113, 112],
         [102, 103, 114, 113],
@@ -329,7 +330,6 @@ def test_gwf_disv_uzf(function_tmpdir):
         [106, 107, 118, 117],
         [107, 108, 119, 118],
         [108, 109, 120, 119],
-        [109, 110, 121, 120],
     ]
 
     cell2ddata = []
@@ -338,11 +338,11 @@ def test_gwf_disv_uzf(function_tmpdir):
     for n in range(100):
         cell2ddata.append(
             Disv.Cell2dRecord(
-                n + 1,
+                n,
                 float(n % 10) + xc,
                 yc - float(int(n / 10)),
                 4,
-                tuple(cellcycle[n]),
+                tuple(cells[n]),
             )
         )
 
@@ -357,7 +357,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(1, 122, dtype=int),
+        iv=np.arange(0, 121, dtype=int),
         xv=np.tile(
             [
                 0.00000000,

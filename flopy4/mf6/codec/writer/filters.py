@@ -196,11 +196,11 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     for i, val in enumerate(values):
         if isinstance(val, Disv.Cell2dRecord):
             rec = (
-                val.icell2d,
+                val.icell2d + 1,
                 val.xc,
                 val.yc,
                 val.ncvert,
-            ) + val.icvert
+            ) + tuple(v + 1 for v in val.icvert)
         elif has_spatial_dims:
             cellid = tuple(idx[i] + 1 for idx in indices)
             rec = cellid + (val,)
