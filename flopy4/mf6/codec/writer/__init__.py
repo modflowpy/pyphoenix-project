@@ -1,5 +1,5 @@
 import sys
-from typing import IO
+from typing import IO, Iterator
 
 import numpy as np
 from jinja2 import Environment, PackageLoader
@@ -31,6 +31,25 @@ def _get_print_options(context=None):
         "linewidth": sys.maxsize,
         "threshold": sys.maxsize,
     }
+
+
+def _clean_last_chunk(iterator: Iterator[str]) -> Iterator[str]:
+    """Strip extra newline at the end of last chunk."""
+    try:
+        current_chunk = next(iterator)
+    except StopIteration:
+        return
+
+    # Look ahead to find last chunk
+    for next_chunk in iterator:
+        yield current_chunk
+        current_chunk = next_chunk
+
+    # When for-loop ends, if current_chunk is "\n\n", strip one newline
+    if current_chunk == "\n\n":
+        yield "\n"
+    else:
+        yield current_chunk
 
 
 def dumps(data, context=None) -> str:
@@ -84,4 +103,4 @@ def dump(data, fp: IO[str], context=None) -> None:
     iterator = template.generate(blocks=data, context=context)
     print_opts = _get_print_options(context)
     with np.printoptions(**print_opts):  # type: ignore
-        fp.writelines(iterator)
+        fp.writelines(_clean_last_chunk(iterator))

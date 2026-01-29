@@ -5,7 +5,7 @@ from pprint import pprint
 import numpy as np
 import pytest
 
-from flopy4.mf6.codec import dumps, loads
+from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
 
@@ -637,3 +637,8 @@ def test_dumps_simulation():
     loaded = loads(dumped)
     print("Simulation load:")
     pprint(loaded)
+
+
+def test_clean_last_chunk():
+    cleaned = writer._clean_last_chunk(iter(["chunk1", "chunk2", "\n\n"]))
+    assert list(cleaned) == ["chunk1", "chunk2", "\n"]
