@@ -5,6 +5,7 @@ import numpy as np
 import xarray as xr
 from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
+from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
@@ -385,6 +386,330 @@ class StructuredGrid(LegacyStructuredGrid):
             .set_xindex(coord_names[0], PandasIndex)
             .set_xindex(coord_names[1], PandasIndex)
             .set_xindex(coord_names[2], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            # z is 3D, not 1D, so don't set as index
+        )
+
+
+class VertexGrid(LegacyVertexGrid):
+    """
+    Extend flopy3's VertexGrid with xarray coordinate support.
+
+    A vertex grid can be created in several ways:
+
+    1. **Dimensions only** (abstract/index-based grid):
+       - Required: nlay, ncpl
+       - Uses unit spacing and default elevations
+
+    2. **From discretization package**:
+       - Use `dis.to_grid()` or `VertexGrid.from_dis(dis)`
+
+    3. **Complete spatial definition**:
+       - Required: nlay, ncpl, top, botm
+
+    Optional parameters for all cases: idomain, xoff, yoff, angrot, lenuni, proj4, epsg
+    """
+
+    # TODO de-duplicate array/dataset setup. no need to do it in both __init__ and properties
+
+    @classmethod
+    def from_dis(cls, dis, **kwargs):
+        """
+        Create a VertexGrid from a Disv package.
+
+        Parameters
+        ----------
+        dis : Disv
+            A MODFLOW 6 Disv package
+
+        Returns
+        -------
+        VertexGrid
+            A vertex grid with the same geometry as the Disv package
+
+        Examples
+        --------
+        >>> from flopy4.mf6.gwf.disv import Disv
+        >>> dis = Disv(nlay=3, ncpl=1, nvert=4, top=30.0, botm=[20.0, 10.0, 0.0]
+        ...            iv=[0, 1, 2, 3], xv=[0.0, 0.0, 1.0, 1.0], yv=[0.0, 1.0, 1.0, 0.0],
+        ...            cell2ddata=[Disv.Cell2dRecord(
+        ...                 0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0)
+        ...            )]
+        >>> grid = VertexGrid.from_dis(dis)
+        """
+        return cls(
+            nlay=dis.nlay,
+            ncpl=dis.ncpl,
+            top=dis.top,
+            botm=dis.botm,
+            idomain=getattr(dis, "idomain", None),
+            iv=dis.iv,
+            xv=dis.xv,
+            yv=dis.yv,
+            cell2ddata=dis.cell2ddata,
+            **kwargs,
+        )
+
+    def __init__(self, *args, **kwargs):
+        # Convert scalar inputs to arrays to support the legacy grid
+        self._legacy = False
+        if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
+            ncpl = kwargs.get("ncpl", None)
+            kwargs["top"] = np.full((ncpl), float(top))
+
+        if (botm := kwargs.get("botm", None)) is not None:
+            if isinstance(botm, (list, tuple)) and all(isinstance(b, Scalar) for b in botm):
+                nlay = kwargs.get("nlay", len(botm))
+                ncpl = kwargs.get("ncpl", None)
+                kwargs["botm"] = np.array([np.full((ncpl), float(b)) for b in botm])
+
+        if "iv" in kwargs and "xv" in kwargs and "yv" in kwargs:
+            kwargs["vertices"] = []
+            for i in range(len(kwargs["iv"].values)):
+                vert = []
+                vert.append(kwargs["iv"].values[i])
+                vert.append(kwargs["xv"].values[i])
+                vert.append(kwargs["yv"].values[i])
+                kwargs["vertices"].append(vert)
+            kwargs.pop("iv")
+            kwargs.pop("xv")
+            kwargs.pop("yv")
+
+        if "cell2ddata" in kwargs:
+            cell2d = []
+            iverts = []
+            xcenters = []
+            ycenters = []
+            for rec in kwargs["cell2ddata"].values:
+                iverts.append(list(rec.icvert))
+                xcenters.append(rec.xc)
+                ycenters.append(rec.yc)
+            for n in range(len(iverts)):
+                cell2d_n = [
+                    n,
+                    xcenters[n],
+                    ycenters[n],
+                ] + iverts[n]
+                cell2d.append(cell2d_n)
+            kwargs["cell2d"] = cell2d
+        kwargs.pop("cell2ddata", None)
+
+        super().__init__(*args, **kwargs)
+        self._dims_coords = {
+            "nlay": "k",
+            "ncpl": "c",
+            "nodes": "node",
+        }
+        self._coords = {
+            "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
+            "c": xr.DataArray(np.arange(self.ncpl, dtype=int), dims=("ncpl",)),
+            "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
+        }
+        self._coords.update(self._get_world_coords())
+
+        data_vars = {}
+        for prop_name in ["top", "botm", "idomain"]:
+            try:
+                prop_value = getattr(self, prop_name)
+                if prop_value is not None:
+                    data_vars[prop_name] = prop_value
+            except (AttributeError, ValueError):
+                # Property doesn't exist or can't be computed yet
+                pass
+
+        self._dataset = (
+            xr.Dataset(data_vars, coords=self._coords)
+            # TODO: alias k/i/j to lay(er)/row/col(umn)?
+            .set_xindex("k", PandasIndex)
+            .set_xindex("c", PandasIndex)
+            .set_xindex("node", PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            # z is a 3D non-dimension coordinate, so it doesn't get indexed
+        )
+
+    def _get_world_coords(self) -> dict:
+        """
+        Compute x, y, z world coordinates from grid geometry.
+
+        Returns
+        -------
+        dict
+            Dictionary with 'x', 'y', 'z' coordinate DataArrays
+        """
+        # Access the parent class's properties directly
+        self.legacy = True
+        xcellcenters = self.xcellcenters
+        ycellcenters = self.ycellcenters
+        legacy_top = self.top
+        legacy_botm = self.botm
+        self.legacy = False
+
+        # If spatial data is not provided, use default coordinates (indices)
+        if xcellcenters is None:
+            x = np.arange(self.ncpl, dtype=float)
+        else:
+            x = xcellcenters
+
+        if ycellcenters is None:
+            y = np.arange(self.ncpl, dtype=float)
+        else:
+            y = ycellcenters
+
+        # Compute z coordinates (cell centers in 3D)
+        if legacy_top is None or legacy_botm is None:
+            # Use default z coordinates (layer indices)
+            z = np.zeros((self.nlay, self.ncpl))
+            for k in range(self.nlay):
+                z[k, :] = float(k)
+        else:
+            # Ensure top and botm are proper arrays
+            top_1d = np.atleast_1d(legacy_top)
+            if top_1d.size == 1:
+                top_1d = np.full((self.ncpl), top_1d[0])
+            elif top_1d.shape != (self.ncpl):
+                top_1d = top_1d.reshape(self.ncpl)
+
+            botm_2d = np.atleast_2d(legacy_botm).reshape(self.nlay, self.ncpl)
+
+            # Compute cell-centered z for each cell
+            z = np.zeros((self.nlay, self.ncpl))
+            for k in range(self.nlay):
+                if k == 0:
+                    layer_top = top_1d
+                else:
+                    layer_top = botm_2d[k - 1]
+                layer_bot = botm_2d[k]
+                z[k] = (layer_top + layer_bot) / 2.0
+
+        return {
+            "x": xr.DataArray(x, dims=("ncpl",)),
+            "y": xr.DataArray(y, dims=("ncpl",)),
+            "z": xr.DataArray(z, dims=("nlay", "ncpl")),
+        }
+
+    @property
+    def legacy(self) -> bool:
+        return self._legacy
+
+    @legacy.setter
+    def legacy(self, value):
+        self._legacy = value
+
+    @property
+    def dataset(self) -> xr.Dataset:
+        return self._dataset
+
+    @property
+    def delz(self):
+        if self.legacy:
+            return super().delz
+
+        legacy_delz = super().delz
+        if legacy_delz is None:
+            return None
+
+        dims = ("nlay", "ncpl")
+        # Check if data shape matches expected grid dimensions
+        if legacy_delz.shape != (self.nlay, self.ncpl):
+            return legacy_delz
+
+        coord_names = (
+            self._dims_coords[dims[0]],
+            self._dims_coords[dims[1]],
+        )
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        return (
+            xr.DataArray(legacy_delz, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            # z is 3D, not 1D, so don't set as index
+        )
+
+    @property
+    def top(self):
+        if self.legacy:
+            return super().top
+
+        legacy_top = super().top
+        if legacy_top is None:
+            return None
+
+        dims = "ncpl"
+        # Check if data shape matches expected grid dimensions
+        # If not, return the raw legacy data without coordinates
+        if legacy_top.shape != (self.ncpl):
+            return legacy_top
+
+        coord_names = self._dims_coords[dims[0]]
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"]})
+        return (
+            xr.DataArray(legacy_top, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+        )
+
+    @property
+    def botm(self):
+        if self.legacy:
+            return super().botm
+
+        legacy_botm = super().botm
+        if legacy_botm is None:
+            return None
+
+        dims = ("nlay", "ncpl")
+        # Check if data shape matches expected grid dimensions
+        if legacy_botm.shape != (self.nlay, self.ncpl):
+            return legacy_botm
+
+        coord_names = (
+            self._dims_coords[dims[0]],
+            self._dims_coords[dims[1]],
+        )
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        return (
+            xr.DataArray(legacy_botm, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex("x", PandasIndex)
+            .set_xindex("y", PandasIndex)
+            # z is 3D, not 1D, so don't set as index
+        )
+
+    @property
+    def idomain(self):
+        if self.legacy:
+            return super().idomain
+
+        legacy_idomain = super().idomain
+        # return legacy_idomain
+        if legacy_idomain is None:
+            return None
+
+        dims = ("nlay", "ncpl")
+        # Check if data shape matches expected grid dimensions
+        if legacy_idomain.shape != (self.nlay, self.ncpl):
+            return legacy_idomain
+
+        coord_names = (
+            self._dims_coords[dims[0]],
+            self._dims_coords[dims[1]],
+        )
+        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        return (
+            xr.DataArray(legacy_idomain, coords=coords, dims=dims)
+            .set_xindex(coord_names[0], PandasIndex)
+            .set_xindex(coord_names[1], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index

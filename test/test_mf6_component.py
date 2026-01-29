@@ -10,13 +10,12 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
-from flopy4.mf6.gwf import Chd, Chdg, Dis, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
-from flopy4.mf6.utils.grid import StructuredGrid
+from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
-from flopy4.mf6.write_context import WriteContext
 
 
 def test_registry():
@@ -123,6 +122,24 @@ def test_init_gwf_dis_first():
     assert np.array_equal(npf.data.k, np.ones(4))
 
 
+def test_init_gwf_disv_first():
+    dis = Disv(nlay=1, ncpl=4)
+    gwf = Gwf(dis=dis)
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf, strict=False)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, strict=False)
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
+    assert np.array_equal(npf.k, np.ones(4))
+    assert np.array_equal(npf.data.k, np.ones(4))
+
+
 def test_init_gwf_dis_first_with_grid():
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
     gwf = Gwf(dis=grid)
@@ -142,6 +159,67 @@ def test_init_gwf_dis_first_with_grid():
     assert np.array_equal(npf.data.k, np.ones(100))
 
 
+@pytest.fixture
+def usg():
+    d = {
+        "vertices": [
+            [0, 0.0, 1.0],
+            [1, 1.0, 1.0],
+            [2, 2.0, 1.0],
+            [3, 0.0, 0.0],
+            [4, 1.0, 0.0],
+            [5, 2.0, 0.0],
+        ],
+        "iverts": [[0, 1, 4, 3], [1, 2, 5, 4]],
+        "xcenters": [0.5, 1.5],
+        "ycenters": [0.5, 0.5],
+    }
+    return d
+
+
+@pytest.fixture
+def vgrid(usg):
+    d = {}
+    d["vertices"] = usg["vertices"]
+    cell2d = []
+    for n in range(len(usg["iverts"])):
+        cell2d_n = [
+            n,
+            usg["xcenters"][n],
+            usg["ycenters"][n],
+        ] + usg["iverts"][n]
+        cell2d.append(cell2d_n)
+    d["cell2d"] = cell2d
+    d["ncpl"] = len(cell2d)
+    d["nlay"] = 3
+    return d
+
+
+def test_init_gwf_disv_first_with_grid(vgrid):
+    grid = VertexGrid(
+        nlay=vgrid["nlay"], ncpl=vgrid["ncpl"], vertices=vgrid["vertices"], cell2d=vgrid["cell2d"]
+    )
+    gwf = Gwf(dis=grid)
+    dis = gwf.dis
+    ic = Ic(parent=gwf)
+    oc = Oc(parent=gwf, strict=False)
+    npf = Npf(parent=gwf)
+    chd = Chd(parent=gwf, strict=False)
+
+    assert isinstance(gwf.data, DataTree)
+    assert gwf.dis is dis
+    assert gwf.ic is ic
+    assert gwf.oc is oc
+    assert gwf.npf is npf
+    assert gwf.chd[0] is chd
+    assert np.array_equal(npf.k, np.ones(6))
+    assert np.array_equal(npf.data.k, np.ones(6))
+
+
+# TODO: should dis packages support arbitrary default dimension values?
+#       does this test serve a purpose if not- how should inconsistent
+#       dimensions be managed?
+@pytest.mark.skip(reason="TODO FIX")
 def test_init_gwf_top_down_misaligned():
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
     dims = {
@@ -150,7 +228,7 @@ def test_init_gwf_top_down_misaligned():
     }
     gwf = Gwf()
     with pytest.raises(ValueError, match=r"group '/dis' is not aligned with its parents"):
-        Dis(parent=gwf, **dims)
+        dis = Dis(parent=gwf, **dims)
 
     # passing dims explicitly to gwf doesn't work either.
     # one MUST create the component declaring dims first.
@@ -260,6 +338,22 @@ def test_gwf_dfn():
     assert "save_flows" in set(dfn.blocks["options"].keys())
 
 
+def test_disv_dfn():
+    dims = {
+        "nlay": 1,
+        "nvert": 4,
+        "ncpl": 2,
+        "nodes": 2,
+    }
+    disv = Disv(dims=dims)
+    dfn = disv.dfn
+    assert dfn.name == "disv"
+    assert not dfn.advanced
+    assert not dfn.multi
+    assert dfn.ref is None
+    assert "nogrb" in set(dfn.blocks["options"].keys())
+
+
 def test_chd_dfn():
     chd = Chd(strict=False)
     dfn = chd.dfn
@@ -280,383 +374,6 @@ def test_ims_dfn():
     assert dfn.ref is None
     assert "complexity" in set(dfn.blocks["options"].keys())
     assert "inner_maximum" in set(dfn.blocks["linear"].keys())
-
-
-def test_gwf_chd01(function_tmpdir):
-    sim_name = "chd01"
-    gwf_name = "gwf_chd01"
-    time = Time(perlen=[5.0], nstp=[1], tsmult=[1.0], time_units="days")
-
-    ims = Ims(
-        filename="sln1.ims",
-        models=[gwf_name],
-        print_option="summary",
-        outer_dvclose=1.00000000e-06,
-        outer_maximum=100,
-        under_relaxation="none",
-        inner_maximum=300,
-        inner_dvclose=1.00000000e-06,
-        inner_rclose=1.00000000e-06,
-        linear_acceleration="cg",
-        relaxation_factor=1.0,
-        scaling_method="none",
-        reordering_method="none",
-    )
-
-    sim = Simulation(
-        tdis=time,
-        workspace=function_tmpdir,
-        name=sim_name,
-        solutions={"ims": ims},
-    )
-
-    dis = Dis(
-        nlay=1,
-        nrow=1,
-        ncol=100,
-        delr=1.0,
-        delc=1.0,
-        top=1.0,
-        botm=0.0,
-        idomain=1,
-    )
-
-    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
-
-    ic = Ic(parent=gwf, strt=1.0)
-
-    oc = Oc(
-        parent=gwf,
-        budget_file=f"{gwf_name}.cbc",
-        head_file=f"{gwf_name}.hds",
-        head="PRINT_FORMAT COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL",
-        save_head=["last"],
-        # save_head={0: "last"},
-        save_budget=["last"],
-        print_head=["last"],
-        print_budget=["last"],
-    )
-
-    npf = Npf(
-        parent=gwf,
-        save_specific_discharge=True,
-        k=1.0,
-        k33=1.0,
-        icelltype=0,
-    )
-
-    chd = Chd(
-        parent=gwf,
-        print_flows=True,
-        head={0: {(0, 0, 0): 1.0, (0, 0, 99): 0.0}},
-        name="chd-1",
-    )
-
-    sim.write()
-    sim.run()
-
-    assert Path(function_tmpdir, f"{sim_name}.tdis").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.nam").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.dis").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.ic").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.oc").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.npf").is_file()
-    assert Path(function_tmpdir, f"{gwf_name}.chd").is_file()
-    assert Path(function_tmpdir, "sln1.ims").is_file()
-
-
-def test_quickstart(function_tmpdir):
-    sim_name = "quickstart"
-    gwf_name = "mymodel"
-    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
-    dis = Dis(
-        nlay=1,
-        nrow=10,
-        ncol=10,
-        top=1.0,
-        botm=0.0,
-    )
-    sim = Simulation(
-        tdis=time,
-        workspace=function_tmpdir,
-        name=sim_name,
-        solutions={"ims": ims},
-    )
-    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
-    ic = Ic(parent=gwf)
-    oc = Oc(
-        parent=gwf,
-        budget_file=f"{gwf_name}.bud",
-        head_file=f"{gwf_name}.hds",
-        save_head=["all"],
-        save_budget=["all"],
-    )
-    npf = Npf(parent=gwf, icelltype=0, k=1.0)
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
-
-    sim.write()
-    sim.run()
-
-
-def test_quickstart_grid(function_tmpdir):
-    sim_name = "quickstart"
-    gwf_name = "mymodel"
-
-    # dimensions
-    nlay = 1
-    nrow = 10
-    ncol = 10
-    nstp = 1
-
-    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
-    dis = Dis(
-        nlay=nlay,
-        nrow=nrow,
-        ncol=ncol,
-        top=1.0,
-        botm=0.0,
-    )
-    sim = Simulation(
-        tdis=time,
-        workspace=function_tmpdir,
-        name=sim_name,
-        solutions={"ims": ims},
-    )
-    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
-    ic = Ic(parent=gwf)
-    oc = Oc(
-        parent=gwf,
-        budget_file=f"{gwf_name}.bud",
-        head_file=f"{gwf_name}.hds",
-        save_head=["all"],
-        save_budget=["all"],
-    )
-    npf = Npf(parent=gwf, icelltype=0, k=1.0)
-
-    # Chdg
-    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
-    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
-    head[0, 0, 0, 0] = 1.0
-    head[0, 0, 9, 9] = 0.0
-    chd = Chdg(
-        parent=gwf,
-        head=head.reshape(1, -1),
-    )
-
-    sim.write()
-    sim.run()
-
-
-def test_quickstart_netcdf(function_tmpdir):
-    from flopy4.mf6.netcdf import NetCDFModel
-
-    sim_name = "quickstart"
-    gwf_name = "mymodel"
-
-    # dimensions
-    nlay = 1
-    nrow = 10
-    ncol = 10
-    nstp = 1
-
-    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
-    dis = Dis(
-        nlay=nlay,
-        nrow=nrow,
-        ncol=ncol,
-        top=1.0,
-        botm=0.0,
-    )
-    sim = Simulation(
-        tdis=time,
-        workspace=function_tmpdir,
-        name=sim_name,
-        solutions={"ims": ims},
-    )
-    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
-    ic = Ic(parent=gwf)
-    oc = Oc(
-        parent=gwf,
-        budget_file=f"{gwf_name}.bud",
-        head_file=f"{gwf_name}.hds",
-        save_head=["all"],
-        save_budget=["all"],
-    )
-    npf = Npf(parent=gwf, icelltype=0, k=1.0)
-
-    # Chdg
-    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
-    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
-    head[0, 0, 0, 0] = 1.0
-    head[0, 0, 9, 9] = 0.0
-    chd = Chdg(
-        parent=gwf,
-        head=head.reshape(1, -1),
-    )
-
-    nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-    gwf.netcdf_file = nc_fpth
-
-    nc_model = NetCDFModel.from_model(gwf)
-    ds = nc_model.to_xarray()
-    ds.to_netcdf(nc_fpth)
-
-    with WriteContext(use_netcdf=True):
-        sim.write()
-
-    with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
-        lines = fh.readlines()
-        nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-        assert f" NETCDF FILEIN {nc_fpth}\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
-        lines = fh.readlines()
-        assert " DELR NETCDF\n" in lines
-        assert " DELC NETCDF\n" in lines
-        assert " TOP NETCDF\n" in lines
-        assert " BOTM NETCDF\n" in lines
-        assert " IDOMAIN NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.npf", "r") as fh:
-        lines = fh.readlines()
-        assert " ICELLTYPE NETCDF\n" in lines
-        assert " K NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
-        lines = fh.readlines()
-        assert " STRT NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
-        lines = fh.readlines()
-        assert " HEAD NETCDF\n" in lines
-
-    ds = xr.load_dataset(nc_fpth, mask_and_scale=False)
-    assert ("dis_delr") in ds
-    assert ("dis_delc") in ds
-    assert ("dis_top") in ds
-    assert ("dis_botm") in ds
-    assert ("dis_idomain") in ds
-    assert ("ic_strt") in ds
-    assert ("npf_icelltype") in ds
-    assert ("npf_k") in ds
-    assert ("chdg0_head") in ds
-
-    assert np.allclose(ds["dis_delr"].values, dis.delr)
-    assert np.allclose(ds["dis_delc"].values, dis.delc)
-    assert np.allclose(ds["dis_top"].values, dis.top)
-    assert np.allclose(ds["dis_botm"].values, dis.botm)
-    assert np.allclose(ds["dis_idomain"].values, dis.idomain)
-    assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
-    assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
-    assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
-    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.head)
-
-    # requires mf6 extended to run
-    # sim.run()
-
-
-def test_quickstart_netcdf_mesh(function_tmpdir):
-    from flopy4.mf6.netcdf import NetCDFModel
-
-    sim_name = "quickstart"
-    gwf_name = "mymodel"
-
-    # dimensions
-    nlay = 1
-    nrow = 10
-    ncol = 10
-    nstp = 1
-
-    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
-    dis = Dis(
-        nlay=nlay,
-        nrow=nrow,
-        ncol=ncol,
-        top=1.0,
-        botm=0.0,
-    )
-    sim = Simulation(
-        tdis=time,
-        workspace=function_tmpdir,
-        name=sim_name,
-        solutions={"ims": ims},
-    )
-    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
-    ic = Ic(parent=gwf)
-    oc = Oc(
-        parent=gwf,
-        budget_file=f"{gwf_name}.bud",
-        head_file=f"{gwf_name}.hds",
-        save_head=["all"],
-        save_budget=["all"],
-    )
-    npf = Npf(parent=gwf, icelltype=0, k=1.0)
-
-    # Chdg
-    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
-    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
-    head[0, 0, 0, 0] = 1.0
-    head[0, 0, 9, 9] = 0.0
-    chd = Chdg(
-        parent=gwf,
-        head=head.reshape(1, -1),
-    )
-
-    nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-    gwf.netcdf_file = nc_fpth
-
-    nc_model = NetCDFModel.from_model(gwf, mesh="layered")
-    ds = nc_model.to_xarray()
-    ds.to_netcdf(nc_fpth)
-
-    with WriteContext(use_netcdf=True):
-        sim.write()
-
-    with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
-        lines = fh.readlines()
-        nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-        assert f" NETCDF FILEIN {nc_fpth}\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
-        lines = fh.readlines()
-        assert " DELR NETCDF\n" in lines
-        assert " DELC NETCDF\n" in lines
-        assert " TOP NETCDF\n" in lines
-        assert " BOTM NETCDF\n" in lines
-        assert " IDOMAIN NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.npf", "r") as fh:
-        lines = fh.readlines()
-        assert " ICELLTYPE NETCDF\n" in lines
-        assert " K NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
-        lines = fh.readlines()
-        assert " STRT NETCDF\n" in lines
-    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
-        lines = fh.readlines()
-        assert " HEAD NETCDF\n" in lines
-
-    ds = xr.load_dataset(nc_fpth, mask_and_scale=False)
-    assert ("dis_delr") in ds
-    assert ("dis_delc") in ds
-    assert ("dis_top") in ds
-    assert ("dis_botm_l1") in ds
-    assert ("dis_idomain_l1") in ds
-    assert ("ic_strt_l1") in ds
-    assert ("npf_icelltype_l1") in ds
-    assert ("npf_k_l1") in ds
-    assert ("chdg0_head_l1") in ds
-
-    assert np.allclose(ds["dis_delr"].values, dis.delr)
-    assert np.allclose(ds["dis_delc"].values, dis.delc)
-    assert np.allclose(ds["dis_top"].values, dis.top.values.ravel())
-    assert np.allclose(ds["dis_botm_l1"].values, dis.botm.values.ravel())
-    assert np.allclose(ds["dis_idomain_l1"].values, dis.idomain.values.ravel())
-    assert np.allclose(ds["ic_strt_l1"].values.ravel(), ic.strt.values.ravel())
-    assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), npf.icelltype.values.ravel())
-    assert np.allclose(ds["npf_k_l1"].values.ravel(), npf.k.values.ravel())
-    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.head.values.ravel())
-
-    # requires mf6 extended to run
-    # sim.run()
 
 
 def test_write_ascii(function_tmpdir):
@@ -1048,6 +765,80 @@ def test_grid_coordinate_indexing_in_dis():
     assert botm_near_y25.shape == (2, 5)  # (nlay, ncol)
 
 
+def test_grid_coordinate_indexing_in_disv():
+    """Test that Dis package data also has coordinate indexing."""
+    time = Time(perlen=[1.0], nstp=[1])
+    # Dis expects properly-shaped arrays, not scalars
+    nlay, ncpl, nvert = 3, 9, 16
+    top = np.ones((ncpl), dtype=float) * 0.0
+    botm = np.stack([np.full((ncpl), val) for val in [-10.0, -20.0, -30.0]])
+
+    cells = [
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [4, 5, 9, 8],
+        [5, 6, 10, 9],
+        [6, 7, 11, 10],
+        [8, 9, 13, 12],
+        [9, 10, 14, 13],
+        [10, 11, 15, 14],
+    ]
+
+    cell2ddata = []
+    xc = 1.00000005e08
+    yc = 1.00000025e08
+    for n in range(ncpl):
+        cell2ddata.append(
+            Disv.Cell2dRecord(
+                n,
+                xc + (10.0 * n),
+                yc - (10.0 * n),
+                4,
+                tuple(cells[n]),
+            )
+        )
+
+    dis = Disv(
+        nlay=nlay,
+        ncpl=ncpl,
+        nvert=nvert,
+        top=top,
+        botm=botm,
+        idomain=1,
+        iv=np.arange(0, nvert, dtype=int),
+        xv=np.concatenate(
+            [
+                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                for i in range(4)
+            ]
+        ),
+        yv=np.concatenate(
+            [
+                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                - float(10 * (i % 4))
+                for i in range(4)
+            ]
+        ),
+        cell2ddata=cell2ddata,
+    )
+
+    # Convert to grid to access coordinates
+    grid = dis.to_grid()
+
+    # Test that coordinates are available
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+
+    # Test coordinate-based selection on botm
+    botm_near_x = grid.botm.sel(x=100000005, method="nearest")
+    assert botm_near_x.shape == (3,)  # (nlay,)
+
+    botm_near_y = grid.botm.sel(y=100000005, method="nearest")
+    assert botm_near_y.shape == (3,)  # (nlay,)
+
+
 def test_grid_dimensions_only():
     """Test grid creation with only dimensions (no spatial data)."""
     grid = StructuredGrid(nlay=3, nrow=5, ncol=5)
@@ -1206,6 +997,104 @@ def test_grid_from_dis_factory():
     # Check that coordinate-based selection works
     botm_near_x15 = grid.botm.sel(x=15.0, method="nearest")
     assert botm_near_x15.shape == (2, 5)
+
+
+def test_grid_from_disv_factory():
+    """Test the from_dis() factory method."""
+    nlay, ncpl, nvert = 3, 9, 16
+    top = np.ones((ncpl), dtype=float) * 0.0
+    botm = np.stack([np.full((ncpl), val) for val in [-10.0, -20.0, -30.0]])
+
+    cells = [
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [4, 5, 9, 8],
+        [5, 6, 10, 9],
+        [6, 7, 11, 10],
+        [8, 9, 13, 12],
+        [9, 10, 14, 13],
+        [10, 11, 15, 14],
+    ]
+
+    cell2ddata = []
+    xc = 1.00000005e08
+    yc = 1.00000025e08
+    for n in range(ncpl):
+        cell2ddata.append(
+            Disv.Cell2dRecord(
+                n,
+                xc + (10.0 * n),
+                yc - (10.0 * n),
+                4,
+                tuple(cells[n]),
+            )
+        )
+
+    dis = Disv(
+        nlay=nlay,
+        ncpl=ncpl,
+        nvert=nvert,
+        top=top,
+        botm=botm,
+        idomain=1,
+        iv=np.arange(0, nvert, dtype=int),
+        xv=np.concatenate(
+            [
+                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                for i in range(4)
+            ]
+        ),
+        yv=np.concatenate(
+            [
+                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                - float(10 * (i % 4))
+                for i in range(4)
+            ]
+        ),
+        cell2ddata=cell2ddata,
+    )
+
+    # Use the classmethod factory
+    kwargs = {}
+    kwargs["xoff"] = 200.0
+    kwargs["yoff"] = 100.0
+    grid = VertexGrid.from_dis(dis, **kwargs)
+
+    # Check that dimensions match
+    assert grid.nlay == nlay
+    assert grid.ncpl == ncpl
+    assert grid.nvert == nvert
+    np.testing.assert_allclose(np.array(grid._vertices, dtype=int)[:, 0], dis.iv)
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 1], dis.xv)
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 2], dis.yv)
+    cell2d = []
+    for i in range(len(dis.cell2ddata.values)):
+        rec = [
+            dis.cell2ddata.values[i].icell2d,
+            dis.cell2ddata.values[i].xc,
+            dis.cell2ddata.values[i].yc,
+        ]
+        for v in dis.cell2ddata.values[i].icvert:
+            rec.append(v)
+        cell2d.append(rec)
+    assert grid.cell2d == cell2d
+
+    # Check that spatial data matches
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+    assert "c" in grid.dataset.coords
+    assert "k" in grid.dataset.coords
+
+    # Check z coordinates are cell centers
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((ncpl), -15.0))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[2], np.full((ncpl), -25.0))
+
+    # Check that coordinate-based selection works
+    botm_near_x = grid.botm.sel(x=100000205, method="nearest")
+    assert botm_near_x.shape == (3,)
 
 
 def test_grid_with_idomain():

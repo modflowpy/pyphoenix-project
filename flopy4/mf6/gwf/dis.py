@@ -6,19 +6,19 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
-from flopy4.mf6.package import Package
+from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.spec import array, dim, field
 from flopy4.mf6.utils.grid import StructuredGrid
 
 
 @xattree
-class Dis(Package):
+class Dis(DisBase):
     length_units: str = field(
         block="options",
         default=None,
         longname="model length units",
     )
-    nogrb: bool = field(block="options", default=False, longname="do not write binary grid file")
+    nogrb: bool = field(block="options", default=None, longname="do not write binary grid file")
     xorigin: float = field(
         block="options", default=None, longname="x-position of the model grid origin"
     )
@@ -28,8 +28,13 @@ class Dis(Package):
     angrot: float = field(block="options", default=None, longname="rotation angle")
     export_array_netcdf: bool = field(
         block="options",
-        default=False,
+        default=None,
         longname="export array variables to netcdf output files.",
+    )
+    crs: str = field(
+        block="options",
+        default=None,
+        longname="CRS user input string",
     )
     nlay: int = dim(
         block="dimensions",
@@ -98,7 +103,12 @@ class Dis(Package):
         init=False,
     )
     ncpl: int = dim(
-        coord="lnode",
+        coord="c",
+        scope="gwf",
+        init=False,
+    )
+    nvert: int = dim(
+        coord="vert",
         scope="gwf",
         init=False,
     )
@@ -106,6 +116,7 @@ class Dis(Package):
     def __attrs_post_init__(self):
         self.nodes = self.ncol * self.nrow * self.nlay
         self.ncpl = self.ncol * self.nrow
+        self.nvert = (self.ncol + 1) * (self.nrow + 1)
         super().__attrs_post_init__()
 
     def to_grid(self) -> StructuredGrid:

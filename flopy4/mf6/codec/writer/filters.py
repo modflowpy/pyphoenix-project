@@ -30,9 +30,7 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
         return "external"
     if value.max() == value.min():
         return "constant"
-    if value.ndim <= 2:
-        return "internal"
-    if value.ndim == 3:
+    if "nlay" in value.dims:
         layer_const = True
         for layer in range(value.shape[0]):
             val_layer = value.isel(nlay=layer)
@@ -42,6 +40,8 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
         if layer_const:
             return "layered constant"
         return "layered internal"
+    if value.ndim <= 2:
+        return "internal"
     raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 
 
@@ -164,6 +164,7 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     """
     Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
     """
+    from flopy4.mf6.gwf.disv import Disv
 
     if isinstance(value, (list, tuple)):
         for rec in value:
@@ -185,13 +186,20 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
             yield (value.item(),)
         return
 
-    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "nodes")]
+    spatial_dims = [d for d in value.dims if d in ("nlay", "nrow", "ncol", "ncpl", "nodes")]
     has_spatial_dims = len(spatial_dims) > 0
     mask = nonempty(value)
     indices = np.where(mask)
     values = value.values[mask]
     for i, val in enumerate(values):
-        if has_spatial_dims:
+        if isinstance(val, Disv.Cell2dRecord):
+            rec = (
+                val.icell2d + 1,
+                val.xc,
+                val.yc,
+                val.ncvert,
+            ) + tuple(v + 1 for v in val.icvert)
+        elif has_spatial_dims:
             cellid = tuple(idx[i] + 1 for idx in indices)
             rec = cellid + (val,)
         else:
