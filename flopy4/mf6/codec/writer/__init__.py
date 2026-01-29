@@ -45,8 +45,11 @@ def _clean_last_chunk(iterator: Iterator[str]) -> Iterator[str]:
         yield current_chunk
         current_chunk = next_chunk
 
-    # When for-loop ends, current_chunk is the last chunk which is "\n\n"
-    yield "\n"
+    # When for-loop ends, if current_chunk is "\n\n", strip one newline
+    if current_chunk == "\n\n":
+        yield "\n"
+    else:
+        yield current_chunk
 
 
 def dumps(data, context=None) -> str:
