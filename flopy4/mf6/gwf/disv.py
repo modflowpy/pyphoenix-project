@@ -49,27 +49,27 @@ class Disv(DisBase):
         block="dimensions",
         coord="lay",
         scope="gwf",
-        default=1,
+        default=0,
         longname="number of layers",
     )
     ncpl: int = dim(
         block="dimensions",
         coord="c",
         scope="gwf",
-        default=4,
+        default=0,
         longname="number of cells per layer",
     )
     nvert: int = dim(
         block="dimensions",
         coord="vert",
         scope="gwf",
-        default=9,
+        default=0,
         longname="number of vertices",
     )
     nodes: int = dim(
         coord="node",
         scope="gwf",
-        default=None,
+        default=0,
         init=False,
     )
     top: NDArray[np.float64] = array(
@@ -122,7 +122,7 @@ class Disv(DisBase):
         block="cell2d",
         default=None,
         dims=("ncpl",),
-        # converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
+        converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
     )
 
     def __attrs_post_init__(self):
@@ -140,15 +140,20 @@ class Disv(DisBase):
         VertexGrid
             A `VertexGrid` with the same dimensions and data as the `Disv`.
         """
+        vertices = []
+        for i in range(len(self.iv.values)):  # type: ignore
+            vert = []
+            vert.append(self.iv.values[i])  # type: ignore
+            vert.append(self.xv.values[i])  # type: ignore
+            vert.append(self.yv.values[i])  # type: ignore
+            vertices.append(vert)
         return VertexGrid(
             nlay=self.nlay,
-            # nrow=self.nrow,
-            # ncol=self.ncol,
-            # delr=self.delr,
-            # delc=self.delc,
             top=self.top,
             botm=self.botm,
             idomain=self.idomain,
+            vertices=vertices,
+            cell2d=Disv.disv_to_grid_cell2d(self.cell2ddata),
         )
 
     @classmethod
@@ -173,8 +178,41 @@ class Disv(DisBase):
             top=grid.top,
             botm=grid.botm,
             idomain=grid.idomain,
-            iv=np.array([v[0] + 1 for v in grid._vertices], dtype=int),
+            iv=np.array([v[0] for v in grid._vertices], dtype=int),
             xv=grid.verts[:, 0].ravel(),
             yv=grid.verts[:, -1].ravel(),
-            # cell2d
+            cell2ddata=Disv.grid_to_disv_cell2d(grid.cell2d),
         )
+
+    @staticmethod
+    def disv_to_grid_cell2d(cell2ddata) -> list:
+        cell2d = []
+        iverts = []
+        xcenters = []
+        ycenters = []
+        for rec in cell2ddata.values:  # type: ignore
+            iverts.append(list(rec.icvert))
+            xcenters.append(rec.xc)
+            ycenters.append(rec.yc)
+        for n in range(len(iverts)):
+            cell2d_n = [
+                n,
+                xcenters[n],
+                ycenters[n],
+            ] + iverts[n]
+            cell2d.append(cell2d_n)
+        return cell2d
+
+    @staticmethod
+    def grid_to_disv_cell2d(cell2d):
+        cell2ddata = []
+        for cell in cell2d:
+            rec = Disv.Cell2dRecord(
+                cell[0],
+                cell[1],
+                cell[2],
+                len(cell) - 3,
+                tuple(cell[3:]),
+            )
+            cell2ddata.append(rec)
+        return cell2ddata

@@ -123,7 +123,7 @@ def test_init_gwf_dis_first():
 
 
 def test_init_gwf_disv_first():
-    dis = Disv()
+    dis = Disv(nlay=1, ncpl=4)
     gwf = Gwf(dis=dis)
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf, strict=False)
@@ -765,6 +765,80 @@ def test_grid_coordinate_indexing_in_dis():
     assert botm_near_y25.shape == (2, 5)  # (nlay, ncol)
 
 
+def test_grid_coordinate_indexing_in_disv():
+    """Test that Dis package data also has coordinate indexing."""
+    time = Time(perlen=[1.0], nstp=[1])
+    # Dis expects properly-shaped arrays, not scalars
+    nlay, ncpl, nvert = 3, 9, 16
+    top = np.ones((ncpl), dtype=float) * 0.0
+    botm = np.stack([np.full((ncpl), val) for val in [-10.0, -20.0, -30.0]])
+
+    cells = [
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [4, 5, 9, 8],
+        [5, 6, 10, 9],
+        [6, 7, 11, 10],
+        [8, 9, 13, 12],
+        [9, 10, 14, 13],
+        [10, 11, 15, 14],
+    ]
+
+    cell2ddata = []
+    xc = 1.00000005e08
+    yc = 1.00000025e08
+    for n in range(ncpl):
+        cell2ddata.append(
+            Disv.Cell2dRecord(
+                n,
+                xc + (10.0 * n),
+                yc - (10.0 * n),
+                4,
+                tuple(cells[n]),
+            )
+        )
+
+    dis = Disv(
+        nlay=nlay,
+        ncpl=ncpl,
+        nvert=nvert,
+        top=top,
+        botm=botm,
+        idomain=1,
+        iv=np.arange(0, nvert, dtype=int),
+        xv=np.concatenate(
+            [
+                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                for i in range(4)
+            ]
+        ),
+        yv=np.concatenate(
+            [
+                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                - float(10 * (i % 4))
+                for i in range(4)
+            ]
+        ),
+        cell2ddata=cell2ddata,
+    )
+
+    # Convert to grid to access coordinates
+    grid = dis.to_grid()
+
+    # Test that coordinates are available
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+
+    # Test coordinate-based selection on botm
+    botm_near_x = grid.botm.sel(x=100000005, method="nearest")
+    assert botm_near_x.shape == (3,)  # (nlay,)
+
+    botm_near_y = grid.botm.sel(y=100000005, method="nearest")
+    assert botm_near_y.shape == (3,)  # (nlay,)
+
+
 def test_grid_dimensions_only():
     """Test grid creation with only dimensions (no spatial data)."""
     grid = StructuredGrid(nlay=3, nrow=5, ncol=5)
@@ -1019,8 +1093,8 @@ def test_grid_from_disv_factory():
     np.testing.assert_allclose(grid.dataset.coords["z"].values[2], np.full((ncpl), -25.0))
 
     # Check that coordinate-based selection works
-    botm_near_x15 = grid.botm.sel(x=100000205, method="nearest")
-    assert botm_near_x15.shape == (3,)
+    botm_near_x = grid.botm.sel(x=100000205, method="nearest")
+    assert botm_near_x.shape == (3,)
 
 
 def test_grid_with_idomain():
