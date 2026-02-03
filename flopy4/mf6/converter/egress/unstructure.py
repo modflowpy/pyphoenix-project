@@ -84,7 +84,11 @@ def _hack_structured_grid_dims(
             "nrow": range(structured_grid_dims["nrow"]),
             "ncol": range(structured_grid_dims["ncol"]),
         }
-    elif "ncpl" in structured_grid_dims and structured_grid_dims["ncpl"] > 0:
+    elif (
+        "nlay" in structured_grid_dims
+        and "ncpl" in structured_grid_dims
+        and structured_grid_dims["ncpl"] > 0
+    ):
         shape = [
             structured_grid_dims["nlay"],
             structured_grid_dims["ncpl"],

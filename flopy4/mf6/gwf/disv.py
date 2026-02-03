@@ -177,7 +177,7 @@ class Disv(DisBase):
             nvert=grid.nvert,
             top=grid.top,
             botm=grid.botm,
-            idomain=grid.idomain,
+            idomain=grid.idomain.reshape(grid.nlay, grid.ncpl) if grid.idomain else None,
             iv=np.array([v[0] for v in grid._vertices], dtype=int),
             xv=grid.verts[:, 0].ravel(),
             yv=grid.verts[:, -1].ravel(),
@@ -207,12 +207,15 @@ class Disv(DisBase):
     def grid_to_disv_cell2d(cell2d):
         cell2ddata = []
         for cell in cell2d:
+            verts = cell[4:]
+            if verts[0] != verts[-1]:
+                verts.append(cell[4])
             rec = Disv.Cell2dRecord(
                 cell[0],
                 cell[1],
                 cell[2],
                 len(cell) - 3,
-                tuple(cell[3:]),
+                tuple(verts),
             )
             cell2ddata.append(rec)
         return cell2ddata

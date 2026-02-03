@@ -16,6 +16,7 @@ from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.drng import Drng
+from flopy4.mf6.gwf.evta import Evta
 from flopy4.mf6.gwf.ghb import Ghb
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.npf import Npf
@@ -38,6 +39,7 @@ __all__ = [
     "Disv",
     "Drn",
     "Drng",
+    "Evta",
     "Ghb",
     "Ic",
     "Npf",
@@ -113,6 +115,7 @@ class Gwf(Model):
     sto: Sto | None = field(block="packages", default=None)
     chd: list[Union[Chd, Chdg]] = field(block="packages")
     drn: list[Union[Drn, Drng]] = field(block="packages")
+    evt: list[Union[Evta]] = field(block="packages")
     ghb: list[Union[Ghb]] = field(block="packages")
     rch: list[Union[Rch, Rcha]] = field(block="packages")
     wel: list[Union[Wel, Welg]] = field(block="packages")

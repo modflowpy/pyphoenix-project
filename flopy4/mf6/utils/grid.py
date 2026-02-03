@@ -9,7 +9,7 @@ from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
-from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
 
 
 class StructuredGrid(LegacyStructuredGrid):
@@ -114,6 +114,7 @@ class StructuredGrid(LegacyStructuredGrid):
         >>> grid = StructuredGrid.from_dis(dis)
         """
         return cls(
+            length_units=dis.length_units,
             xoff=dis.xorigin,
             yoff=dis.yorigin,
             nlay=dis.nlay,
@@ -130,6 +131,8 @@ class StructuredGrid(LegacyStructuredGrid):
         # Convert scalar inputs to arrays to support the legacy grid
         # The legacy StructuredGrid doesn't handle scalar top/botm well
         self._legacy = False
+        if (units := kwargs.pop("length_units", None)) is not None:
+            kwargs["lenuni"] = units.lower()
         if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
             nrow = kwargs.get("nrow", 1)
             ncol = kwargs.get("ncol", 1)
@@ -484,8 +487,6 @@ class StructuredGrid(LegacyStructuredGrid):
         return ds
 
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
-        FILLNA_INT32 = np.int32(-2147483647)
-        FILLNA_DBL = 9.96920996838687e36
         lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
 
         # create dataset coordinate vars
@@ -500,10 +501,10 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["long_name"] = "time"
 
         # mesh container variable
-        ds = ds.assign({"mesh": ([], np.int32(1))})
+        ds = ds.assign({"mesh": ([], np.int64(1))})
         ds["mesh"].attrs["cf_role"] = "mesh_topology"
         ds["mesh"].attrs["long_name"] = "2D mesh topology"
-        ds["mesh"].attrs["topology_dimension"] = np.int32(2)
+        ds["mesh"].attrs["topology_dimension"] = np.int64(2)
         ds["mesh"].attrs["face_dimension"] = "nmesh_face"
         ds["mesh"].attrs["node_coordinates"] = "mesh_node_x mesh_node_y"
         ds["mesh"].attrs["face_coordinates"] = "mesh_face_x mesh_face_y"
@@ -571,7 +572,7 @@ class StructuredGrid(LegacyStructuredGrid):
         max_face_nodes = 4
         face_nodes = []
         for r in self.iverts:
-            nodes = [np.int32(x + 1) for x in r]
+            nodes = [np.int64(x + 1) for x in r]
             nodes.reverse()
             face_nodes.append(nodes)
 
@@ -581,8 +582,8 @@ class StructuredGrid(LegacyStructuredGrid):
         ds = ds.assign(var_d)
         ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
         ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
-        ds["mesh_face_nodes"].attrs["_FillValue"] = FILLNA_INT32
-        ds["mesh_face_nodes"].attrs["start_index"] = np.int32(1)
+        ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
+        ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
 
         wkt_configured = (
             configuration is not None
@@ -595,12 +596,14 @@ class StructuredGrid(LegacyStructuredGrid):
             ds["mesh_node_y"].attrs["grid_mapping"] = "projection"
             ds["mesh_face_x"].attrs["grid_mapping"] = "projection"
             ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
-            ds = ds.assign({"projection": ([], np.int32(1))})
+            ds = ds.assign({"projection": ([], np.int64(1))})
             if wkt_configured:
                 # wkt override to existing crs
                 ds["projection"].attrs["wkt"] = configuration["wkt"]
             else:
-                ds["projection"].attrs["wkt"] = self.crs.to_wkt()
+                from pyproj.enums import WktVersion
+
+                ds["projection"].attrs["wkt"] = self.crs.to_wkt(WktVersion.WKT1_GDAL)
 
         return ds
 
@@ -700,7 +703,7 @@ class StructuredGrid(LegacyStructuredGrid):
         ):
             ds["x"].attrs["grid_mapping"] = "projection"
             ds["y"].attrs["grid_mapping"] = "projection"
-            ds = ds.assign({"projection": ([], np.int32(1))})
+            ds = ds.assign({"projection": ([], np.int64(1))})
             ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
 
         return ds
@@ -753,6 +756,7 @@ class VertexGrid(LegacyVertexGrid):
         >>> grid = VertexGrid.from_dis(dis)
         """
         return cls(
+            length_units=dis.length_units,
             nlay=dis.nlay,
             ncpl=dis.ncpl,
             top=dis.top,
@@ -761,13 +765,15 @@ class VertexGrid(LegacyVertexGrid):
             iv=dis.iv,
             xv=dis.xv,
             yv=dis.yv,
-            cell2ddata=dis.cell2ddata,
+            cell2d=dis.disv_to_grid_cell2d(dis.cell2ddata),
             **kwargs,
         )
 
     def __init__(self, *args, **kwargs):
         # Convert scalar inputs to arrays to support the legacy grid
         self._legacy = False
+        if (units := kwargs.pop("length_units", None)) is not None:
+            kwargs["lenuni"] = units.lower()
         if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
             ncpl = kwargs.get("ncpl", None)
             kwargs["top"] = np.full((ncpl), float(top))
@@ -789,25 +795,6 @@ class VertexGrid(LegacyVertexGrid):
             kwargs.pop("iv")
             kwargs.pop("xv")
             kwargs.pop("yv")
-
-        if "cell2ddata" in kwargs:
-            cell2d = []
-            iverts = []
-            xcenters = []
-            ycenters = []
-            for rec in kwargs["cell2ddata"].values:
-                iverts.append(list(rec.icvert))
-                xcenters.append(rec.xc)
-                ycenters.append(rec.yc)
-            for n in range(len(iverts)):
-                cell2d_n = [
-                    n,
-                    xcenters[n],
-                    ycenters[n],
-                ] + iverts[n]
-                cell2d.append(cell2d_n)
-            kwargs["cell2d"] = cell2d
-        kwargs.pop("cell2ddata", None)
 
         super().__init__(*args, **kwargs)
         self._dims_coords = {
@@ -1028,6 +1015,144 @@ class VertexGrid(LegacyVertexGrid):
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
         )
+
+    def to_xarray(self, modeltime=None, mesh_type=None, configuration=None):
+        """
+        modeltime : FloPy ModelTime object
+        mesh_type : dataset mesh type
+               valid mesh types are "layered" or None (i.e. "structured")
+               VertexGrid objects only support layered mesh
+        configuration : configuration dictionary
+        """
+        self.legacy = True
+
+        lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
+
+        if mesh_type is None or mesh_type.upper() != "LAYERED":
+            raise ValueError("Vextex grid only supports layered mesh datasets")
+
+        if modeltime is None:
+            raise ValueError("modeltime required for dataset timeseries")
+
+        ds = xr.Dataset()
+        ds.attrs["modflow_grid"] = "VERTEX"
+
+        # create dataset coordinate vars
+        var_d = {
+            "time": (["time"], modeltime.totim),
+        }
+        ds = ds.assign(var_d)
+        ds["time"].attrs["calendar"] = "standard"
+        ds["time"].attrs["units"] = f"{modeltime.time_units} since {modeltime.start_datetime}"
+        ds["time"].attrs["axis"] = "T"
+        ds["time"].attrs["standard_name"] = "time"
+        ds["time"].attrs["long_name"] = "time"
+
+        # mesh container variable
+        ds = ds.assign({"mesh": ([], np.int64(1))})
+        ds["mesh"].attrs["cf_role"] = "mesh_topology"
+        ds["mesh"].attrs["long_name"] = "2D mesh topology"
+        ds["mesh"].attrs["topology_dimension"] = np.int64(2)
+        ds["mesh"].attrs["face_dimension"] = "nmesh_face"
+        ds["mesh"].attrs["node_coordinates"] = "mesh_node_x mesh_node_y"
+        ds["mesh"].attrs["face_coordinates"] = "mesh_face_x mesh_face_y"
+        ds["mesh"].attrs["face_node_connectivity"] = "mesh_face_nodes"
+
+        # mesh node x and y
+        var_d = {
+            "mesh_node_x": (["nmesh_node"], self.verts[:, 0]),
+            "mesh_node_y": (["nmesh_node"], self.verts[:, 1]),
+        }
+        ds = ds.assign(var_d)
+        ds["mesh_node_x"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
+        ds["mesh_node_x"].attrs["long_name"] = "Easting"
+        ds["mesh_node_y"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
+        ds["mesh_node_y"].attrs["long_name"] = "Northing"
+
+        # determine max number of cell vertices
+        # cell_nverts = [cell2d[3] for cell2d in self.cell2d]
+        cell_nverts = [len(cell2d) - 3 for cell2d in self.cell2d]
+        max_face_nodes = max(cell_nverts)
+
+        # mesh face x and y
+        x_bnds = []
+        for x in self.xvertices:
+            x = x[::-1]
+            if len(x) < max_face_nodes:
+                # TODO: set fill value?
+                x.extend([FILL_INT64] * (max_face_nodes - len(x)))
+            x_bnds.append(x)
+
+        y_bnds = []
+        for y in self.yvertices:
+            y = y[::-1]
+            if len(y) < max_face_nodes:
+                # TODO: set fill value?
+                y.extend([FILL_INT64] * (max_face_nodes - len(y)))
+            y_bnds.append(y)
+
+        var_d = {
+            "mesh_face_x": (["nmesh_face"], self.xcellcenters),
+            "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], x_bnds),
+            "mesh_face_y": (["nmesh_face"], self.ycellcenters),
+            "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], y_bnds),
+        }
+        ds = ds.assign(var_d)
+        ds["mesh_face_x"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
+        ds["mesh_face_x"].attrs["long_name"] = "Easting"
+        ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
+        ds["mesh_face_y"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
+        ds["mesh_face_y"].attrs["long_name"] = "Northing"
+        ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
+
+        # mesh face nodes
+        face_nodes = []
+        for idx, r in enumerate(self.cell2d):
+            nodes = self.cell2d[idx][3:]
+            nodes = [np.int64(x + 1) for x in nodes]
+            nodes.reverse()
+            if nodes[0] != nodes[-1]:
+                nodes.append(nodes[0])
+            if len(nodes) < max_face_nodes:
+                # TODO set fill value?
+                nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
+            face_nodes.append(nodes)
+
+        var_d = {
+            "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], face_nodes),
+        }
+        ds = ds.assign(var_d)
+        ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
+        ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
+        ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
+        ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
+
+        wkt_configured = (
+            configuration is not None
+            and "wkt" in configuration
+            and configuration["wkt"] is not None
+        )
+
+        if wkt_configured or self.crs is not None:
+            ds["mesh_node_x"].attrs["grid_mapping"] = "projection"
+            ds["mesh_node_y"].attrs["grid_mapping"] = "projection"
+            ds["mesh_face_x"].attrs["grid_mapping"] = "projection"
+            ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
+            ds = ds.assign({"projection": ([], np.int64(1))})
+            if wkt_configured:
+                # wkt override to existing crs
+                ds["projection"].attrs["wkt"] = configuration["wkt"]
+            else:
+                from pyproj.enums import WktVersion
+
+                ds["projection"].attrs["wkt"] = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+
+        self.legacy = False
+        return ds
 
 
 def get_coords(grid: StructuredGrid) -> dict[str, Any]:

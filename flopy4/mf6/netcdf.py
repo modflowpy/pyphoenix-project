@@ -15,7 +15,7 @@ from xattree import XatSpec, asdict, get_xatspec
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
-from flopy4.mf6.utils.grid import StructuredGrid
+from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
 
@@ -121,7 +121,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
         cls,
         model: Model,
         mesh: str | None = None,
-        grid: StructuredGrid | None = None,
+        grid: StructuredGrid | VertexGrid | None = None,
         time: Time | None = None,
     ):
         assert hasattr(model, "name")
@@ -207,6 +207,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
             if meta["attrs"]["mesh"] is not None:
                 conventions = f"{conventions} UGRID-1.0"
             dss.append(self._grid.to_xarray(mesh_type=meta["attrs"]["mesh"], modeltime=self._time))
+            meta["attrs"]["Conventions"] = conventions
 
         for p in self.packages:
             p._context["grid"] = self.grid
@@ -239,9 +240,11 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     @grid.setter
     def grid(self, value):
-        from flopy.discretization import StructuredGrid
+        from flopy.discretization import StructuredGrid, VertexGrid
 
-        if not isinstance(value, StructuredGrid) or not value:
+        if (
+            not isinstance(value, StructuredGrid) and not isinstance(value, VertexGrid)
+        ) or not value:
             raise ValueError(f"invalid grid type: {type(value)}")
         self._grid = value
 

@@ -59,7 +59,7 @@ def array2const(value: xr.DataArray, precision: int = 8) -> Scalar:
     if np.issubdtype(value.dtype, np.integer):
         return value.max().item()
     if np.issubdtype(value.dtype, np.floating):
-        return f"{value.max().item():.{precision}f}"
+        return f"{value.max().item():.{precision}e}"
     return value.ravel()[0]
 
 
