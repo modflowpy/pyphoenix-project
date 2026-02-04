@@ -655,7 +655,7 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 # extended mf6 required to run
-sim.run()
+# sim.run()
 
 # Load head results
 # head = flopy4.mf6.utils.open_hds(
