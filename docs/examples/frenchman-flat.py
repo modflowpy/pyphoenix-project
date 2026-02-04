@@ -345,6 +345,7 @@ bottom = np.stack(
 # xul 573309.700         # upper left x-coordinate
 # yul 4102552.000        # upper left y-coordinate
 grid = flopy4.mf6.utils.grid.StructuredGrid(
+    lenuni="meters",
     xoff=573309.700,  # xul == xll
     yoff=4102552.000 - sum(delr),  # yul => yll
     nlay=nlay,
@@ -575,14 +576,12 @@ oc = flopy4.mf6.gwf.Oc(
                 flopy4.mf6.gwf.Oc.SaveRecord("head", flopy4.mf6.gwf.Oc.Steps(all=True)),
             ],
         ),
-        # 2: None,
     },
     dims=dims,
 )
 
 # Flow model
 gwf = flopy4.mf6.gwf.Gwf(
-    # netcdf_mesh2d_file=Path("ff.nc"), # requires netcdf
     dis=grid,
     ic=ic,
     npf=npf,
@@ -591,32 +590,6 @@ gwf = flopy4.mf6.gwf.Gwf(
     wel=[wel_crt, wel_leak, wel_sampleQ],
     dims=dims,
 )
-
-# BEGIN Options
-#  PRINT_OPTION  SUMMARY
-#  COMPLEXITY  MODERATE
-# END Options
-
-# BEGIN Nonlinear
-#  OUTER_HCLOSE   0.01
-#  OUTER_RCLOSEBND   0.1
-#  OUTER_MAXIMUM  50
-#  UNDER_RELAXATION  DBD
-#  UNDER_RELAXATION_THETA    0.9
-#  UNDER_RELAXATION_KAPPA    0.0001
-#  UNDER_RELAXATION_GAMMA    0.000000
-#  UNDER_RELAXATION_MOMENTUM    0.000000
-# END Nonlinear
-
-# BEGIN LINEAR
-#  INNER_MAXIMUM  100
-#  INNER_HCLOSE   0.00001
-#  INNER_RCLOSE    0.1
-#  LINEAR_ACCELERATION  BICGSTAB
-#  RELAXATION_FACTOR    0.97
-#  NUMBER_ORTHOGONALIZATIONS  0
-#  REORDERING_METHOD  NONE
-# END LINEAR
 
 # Solver
 ims = flopy4.mf6.Ims(
@@ -672,18 +645,17 @@ workspace = Path(__file__).parent / "frenchman-flat" / "ff_netcdf"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
-nc_fpth = workspace / "ff.input.nc"
+nc_fpth = workspace / "frenchman-flat.input.nc"
 gwf.netcdf_file = nc_fpth
 
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
-ds = nc_model.to_xarray()
-ds.to_netcdf(nc_fpth)
+nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 # extended mf6 required to run
-# sim.run()
+sim.run()
 
 # Load head results
 # head = flopy4.mf6.utils.open_hds(
@@ -719,8 +691,8 @@ del gwf.wel[2]
 # add array based WEL package
 gwf.wel = [welg_crt]
 
-# Don't generate outputs so they aren't checked
-# in testing as the model has been modified
+# Don't generate outputs so they aren't checked in testing-
+# the model has been modified (single wel package)
 gwf.oc = None
 
 # create new workspace
@@ -728,12 +700,11 @@ workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_mesh"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
-nc_fpth = workspace / "ff.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
+gwf.netcdf_file = Path("frenchman-flat.input.nc")
 
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
-ds = nc_model.to_xarray()
-ds.to_netcdf(nc_fpth)
+nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
@@ -744,12 +715,11 @@ workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_structured"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
-nc_fpth = workspace / "ff.input.nc"
+nc_fpth = workspace / "frenchnam-flat.input.nc"
 gwf.netcdf_file = nc_fpth
 
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, grid=grid, time=time)
-ds = nc_model.to_xarray()
-ds.to_netcdf(nc_fpth)
+nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()

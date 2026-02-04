@@ -1,4 +1,5 @@
 import abc
+from os import PathLike
 
 import numpy as np
 import xarray as xr
@@ -81,6 +82,11 @@ class NetCDFInput(abc.ABC):
     @abc.abstractmethod
     def to_xarray(self) -> xr.Dataset:
         """create xarray dataset."""
+        pass
+
+    @abc.abstractmethod
+    def to_netcdf(self, path: str | PathLike) -> None:
+        """create netcdf file."""
         pass
 
     @property
@@ -224,6 +230,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
             if meta["attrs"][a] is not None:
                 ds.attrs[a] = meta["attrs"][a]
         return ds
+
+    def to_netcdf(self, path: str | PathLike) -> None:
+        self.to_xarray().to_netcdf(path)
 
     @property
     def meta(self):
@@ -389,6 +398,9 @@ class NetCDFPackage(BaseModel, NetCDFInput):
             ds.append(p.to_xarray())
 
         return xr.merge(ds)
+
+    def to_netcdf(self, path: str | PathLike) -> None:
+        self.to_xarray().to_netcdf(path)
 
     @property
     def meta(self):
@@ -583,10 +595,27 @@ class NetCDFParam(BaseModel, NetCDFInput):
             and self._context["grid"] is not None
             and self._context["grid"].crs is not None
         ):
+            coords = []
             ds[varname].attrs["grid_mapping"] = "projection"
-            ds[varname].attrs["coordinates"] = "mesh_face_x mesh_face_y"
+            if "nmesh_face" in ds[varname].dims:
+                coords.append("icpl")
+                coords.append("mesh_face_x")
+                coords.append("mesh_face_y")
+            if "z" in ds[varname].dims:
+                coords.append("k")
+            if "y" in ds[varname].dims:
+                coords.append("i")
+            if "x" in ds[varname].dims:
+                coords.append("j")
+            if "y" in ds[varname].dims and "x" in ds[varname].dims:
+                coords.append("lon")
+                coords.append("lat")
+            ds[varname].attrs["coordinates"] = " ".join(coords)
 
         return ds
+
+    def to_netcdf(self, path: str | PathLike) -> None:
+        self.to_xarray().to_netcdf(path)
 
     @property
     def meta(self):

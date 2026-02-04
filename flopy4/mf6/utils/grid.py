@@ -585,6 +585,17 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
         ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
 
+        # create grid index auxiliary coordinate variables
+        ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
+        ds = ds.assign_coords(i=("y", np.arange(self.nrow, dtype=int)))
+        ds = ds.assign_coords(j=("x", np.arange(self.ncol, dtype=int)))
+        ds = ds.set_xindex("k", PandasIndex)
+        ds = ds.set_xindex("i", PandasIndex)
+        ds = ds.set_xindex("j", PandasIndex)
+        ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
+        ds["i"].attrs["long_name"] = "row index auxiliary coordinate"
+        ds["j"].attrs["long_name"] = "column index auxiliary coordinate"
+
         wkt_configured = (
             configuration is not None
             and "wkt" in configuration
@@ -612,7 +623,7 @@ class StructuredGrid(LegacyStructuredGrid):
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
-        z = [float(x) for x in range(1, self.nlay + 1)]
+        # z = [float(x) for x in range(1, self.nlay + 1)]
 
         # set coordinate var bounds
         x_bnds = []
@@ -636,11 +647,21 @@ class StructuredGrid(LegacyStructuredGrid):
         # create dataset coordinate vars
         var_d = {
             "time": (["time"], np.cumsum(modeltime.perlen)),
-            "z": (["z"], z),
             "y": (["y"], yc),
             "x": (["x"], xc),
         }
-        ds = ds.assign(var_d)
+        ds = ds.assign_coords(var_d)
+
+        # create grid index auxiliary coordinate variables
+        ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
+        ds = ds.assign_coords(i=("y", np.arange(self.nrow, dtype=int)))
+        ds = ds.assign_coords(j=("x", np.arange(self.ncol, dtype=int)))
+        ds = ds.set_xindex("k", PandasIndex)
+        ds = ds.set_xindex("i", PandasIndex)
+        ds = ds.set_xindex("j", PandasIndex)
+        ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
+        ds["i"].attrs["long_name"] = "row index auxiliary coordinate"
+        ds["j"].attrs["long_name"] = "column index auxiliary coordinate"
 
         # create bound vars
         var_d = {"x_bnds": (["x", "bnd"], x_bnds), "y_bnds": (["y", "bnd"], y_bnds)}
@@ -799,12 +820,12 @@ class VertexGrid(LegacyVertexGrid):
         super().__init__(*args, **kwargs)
         self._dims_coords = {
             "nlay": "k",
-            "ncpl": "c",
+            "ncpl": "icpl",
             "nodes": "node",
         }
         self._coords = {
             "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
-            "c": xr.DataArray(np.arange(self.ncpl, dtype=int), dims=("ncpl",)),
+            "icpl": xr.DataArray(np.arange(self.ncpl, dtype=int), dims=("ncpl",)),
             "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
         }
         self._coords.update(self._get_world_coords())
@@ -823,7 +844,7 @@ class VertexGrid(LegacyVertexGrid):
             xr.Dataset(data_vars, coords=self._coords)
             # TODO: alias k/i/j to lay(er)/row/col(umn)?
             .set_xindex("k", PandasIndex)
-            .set_xindex("c", PandasIndex)
+            .set_xindex("icpl", PandasIndex)
             .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
@@ -1130,6 +1151,14 @@ class VertexGrid(LegacyVertexGrid):
         ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
         ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
         ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
+
+        # create grid index auxiliary coordinate variables
+        ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
+        ds = ds.assign_coords(icpl=("nmesh_face", np.arange(self.ncpl, dtype=int)))
+        ds = ds.set_xindex("k", PandasIndex)
+        ds = ds.set_xindex("icpl", PandasIndex)
+        ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
+        ds["icpl"].attrs["long_name"] = "cell index auxiliary coordinate"
 
         wkt_configured = (
             configuration is not None

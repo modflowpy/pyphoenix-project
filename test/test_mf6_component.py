@@ -1086,8 +1086,8 @@ def test_grid_from_disv_factory():
     assert "x" in grid.dataset.coords
     assert "y" in grid.dataset.coords
     assert "z" in grid.dataset.coords
-    assert "c" in grid.dataset.coords
     assert "k" in grid.dataset.coords
+    assert "icpl" in grid.dataset.coords
 
     # Check z coordinates are cell centers
     np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))

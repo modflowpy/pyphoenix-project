@@ -54,7 +54,7 @@ class Disv(DisBase):
     )
     ncpl: int = dim(
         block="dimensions",
-        coord="c",
+        coord="icpl",
         scope="gwf",
         default=0,
         longname="number of cells per layer",
@@ -127,8 +127,8 @@ class Disv(DisBase):
 
     def __attrs_post_init__(self):
         self.nodes = self.ncpl * self.nlay
-        self.ncol = -1
-        self.nrow = -1
+        self.ncol = 0
+        self.nrow = 0
         super().__attrs_post_init__()
 
     def to_grid(self) -> VertexGrid:
