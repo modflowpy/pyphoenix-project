@@ -670,30 +670,81 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 GRID_NODATA = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 
-# well
-q = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
-q[0, 1, 43, 43] = -30992.50
-q[1, 1, 43, 43] = -00000.0
-q[2, 1, 43, 43] = -30992.50
-q[3, 1, 43, 43] = -00000.0
-q[4, 1, 43, 43] = -30992.50
-q[5, 1, 43, 43] = -00000.0
+# well constant rate
+q_crt = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+q_crt[0, 1, 43, 43] = -30992.50
+q_crt[1, 1, 43, 43] = -00000.0
+q_crt[2, 1, 43, 43] = -30992.50
+q_crt[3, 1, 43, 43] = -00000.0
+q_crt[4, 1, 43, 43] = -30992.50
+q_crt[5, 1, 43, 43] = -00000.0
 welg_crt = flopy4.mf6.gwf.Welg(
-    q=q,
+    filename="ff.crt.welg",
+    q=q_crt,
+    print_input=True,
+    print_flows=True,
+    save_flows=True,
     dims=dims,
 )
+
+
+# well leakage
+q_leak = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+q_leak[0, 1, 43, 43] = 1.0000000e-05
+q_leak[7, 1, 43, 43] = 1.5000000e03
+q_leak[8, 1, 43, 43] = 2.6500000e03
+q_leak[9, 1, 43, 43] = 3.1500000e03
+q_leak[10, 1, 43, 43] = 4.1000000e03
+q_leak[11, 1, 43, 43] = 4.6500000e03
+q_leak[12, 1, 43, 43] = 4.9500000e03
+q_leak[13, 1, 43, 43] = 5.3000000e03
+q_leak[14, 1, 43, 43] = 5.8000000e03
+q_leak[16, 1, 43, 43] = 5.9000000e03
+q_leak[17, 1, 43, 43] = 5.8000000e03
+q_leak[19, 1, 43, 43] = 5.6000000e03
+q_leak[20, 1, 43, 43] = 4.7000000e03
+q_leak[22, 1, 43, 43] = 3.4000000e03
+q_leak[23, 1, 43, 43] = 1.0000000e-05
+welg_leak = flopy4.mf6.gwf.Welg(
+    filename="ff.leak.welg",
+    q=q_leak,
+    print_input=True,
+    print_flows=True,
+    save_flows=True,
+    dims=dims,
+)
+
+
+# well sampling
+q_sampleQ = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+q_sampleQ[0, 1, 43, 43] = -00000.0
+q_sampleQ[22, 1, 43, 43] = -04981.90
+q_sampleQ[23, 1, 43, 43] = -00000.0
+q_sampleQ[24, 1, 43, 43] = -04059.83
+q_sampleQ[25, 1, 43, 43] = -00000.0
+q_sampleQ[26, 1, 43, 43] = -05678.75
+q_sampleQ[27, 1, 43, 43] = -00000.0
+q_sampleQ[28, 1, 43, 43] = -05755.75
+q_sampleQ[29, 1, 43, 43] = -00000.0
+q_sampleQ[30, 1, 43, 43] = -04117.58
+q_sampleQ[31, 1, 43, 43] = -00000.0
+welg_sampleQ = flopy4.mf6.gwf.Welg(
+    filename="ff.sampleQ.welg",
+    q=q_sampleQ,
+    print_input=True,
+    print_flows=True,
+    save_flows=True,
+    dims=dims,
+)
+
 
 # remove list base WEL packages
 del gwf.wel[0]
 del gwf.wel[1]
 del gwf.wel[2]
 
-# add array based WEL package
-gwf.wel = [welg_crt]
-
-# Don't generate outputs so they aren't checked in testing-
-# the model has been modified (single wel package)
-gwf.oc = None
+# add array based WEL packages
+gwf.wel = [welg_crt, welg_leak, welg_sampleQ]
 
 # create new workspace
 workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_mesh"
