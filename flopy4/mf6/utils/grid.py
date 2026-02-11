@@ -1136,8 +1136,8 @@ class VertexGrid(LegacyVertexGrid):
             nodes = self.cell2d[idx][3:]
             nodes = [np.int64(x + 1) for x in nodes]
             nodes.reverse()
-            if nodes[0] != nodes[-1]:
-                nodes.append(nodes[0])
+            if nodes[0] == nodes[-1]:
+                nodes.pop()
             if len(nodes) < max_face_nodes:
                 # TODO set fill value?
                 nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
