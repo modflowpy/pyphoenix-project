@@ -1,5 +1,6 @@
 build/
 docs/examples/*.ipynb
+docs/examples/frenchman-flat/*
 docs/examples/quickstart/*
 docs/examples/twri/*
 venv/
@@ -13,4 +14,3 @@ temp/
 .coverage
 flopy4/mf6/codec/reader/grammar/generated/*.lark
 mf6examples.zip.lock
-

@@ -20,10 +20,10 @@ class Dis(DisBase):
     )
     nogrb: bool = field(block="options", default=None, longname="do not write binary grid file")
     xorigin: float = field(
-        block="options", default=None, longname="x-position of the model grid origin"
+        block="options", default=0.0, longname="x-position of the model grid origin"
     )
     yorigin: float = field(
-        block="options", default=None, longname="y-position of the model grid origin"
+        block="options", default=0.0, longname="y-position of the model grid origin"
     )
     angrot: float = field(block="options", default=None, longname="rotation angle")
     export_array_netcdf: bool = field(
@@ -132,11 +132,12 @@ class Dis(DisBase):
             nlay=self.nlay,
             nrow=self.nrow,
             ncol=self.ncol,
-            delr=self.delr,
-            delc=self.delc,
-            top=self.top,
-            botm=self.botm,
-            idomain=self.idomain,
+            delr=self.delr.values,  # type: ignore
+            delc=self.delc.values,  # type: ignore
+            top=self.top.values,  # type: ignore
+            botm=self.botm.values,  # type: ignore
+            idomain=self.idomain.values,  # type: ignore
+            crs=self.crs,
         )
 
     @classmethod
@@ -154,13 +155,18 @@ class Dis(DisBase):
         Dis
             A discretization with the same dimensions and data as the grid.
         """
-        return Dis(
-            nlay=grid.nlay,
-            nrow=grid.nrow,
-            ncol=grid.ncol,
-            delr=grid.delr,
-            delc=grid.delc,
-            top=grid.top,
-            botm=grid.botm,
-            idomain=grid.idomain,
-        )
+        kwargs = {
+            "xorigin": grid.xoffset,
+            "yorigin": grid.yoffset,
+            "nlay": grid.nlay,
+            "nrow": grid.nrow,
+            "ncol": grid.ncol,
+            "delr": grid.delr,
+            "delc": grid.delc,
+            "top": grid.top,
+            "botm": grid.botm,
+            "idomain": grid.idomain,
+        }
+        if grid.crs is not None:
+            kwargs["crs"] = f"EPSG:{grid.crs.to_epsg()}"
+        return Dis(**kwargs)

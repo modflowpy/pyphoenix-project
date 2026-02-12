@@ -84,7 +84,11 @@ def _hack_structured_grid_dims(
             "nrow": range(structured_grid_dims["nrow"]),
             "ncol": range(structured_grid_dims["ncol"]),
         }
-    elif "ncpl" in structured_grid_dims and structured_grid_dims["ncpl"] > 0:
+    elif (
+        "nlay" in structured_grid_dims
+        and "ncpl" in structured_grid_dims
+        and structured_grid_dims["ncpl"] > 0
+    ):
         shape = [
             structured_grid_dims["nlay"],
             structured_grid_dims["ncpl"],
@@ -111,20 +115,17 @@ def _hack_structured_grid_dims(
 def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
     from flopy4.mf6.gwf import Oc
 
-    def oc_setting_data(rec):
-        dat = {}
+    def oc_setting_data(rec, dat, iper):
         if rec.steps.first:
-            dat = {kper: "first" for kper in range(value.sizes["nper"])}
+            dat[iper] = "first"
         elif rec.steps.last:
-            dat = {kper: "last" for kper in range(value.sizes["nper"])}
+            dat[iper] = "last"
         elif rec.steps.steps:
             steps = " ".join(str(x + 1) for x in rec.steps.steps)
-            dat = {kper: f"steps {steps}" for kper in range(value.sizes["nper"])}
+            dat[iper] = f"steps {steps}"
         elif rec.steps.all:
             # check last as this defaults to True
-            dat = {kper: "all" for kper in range(value.sizes["nper"])}
-
-        return dat
+            dat[iper] = "all"
 
     data = {}
     match value.dtype:
@@ -145,19 +146,24 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
             data[fname] = dat
         case object():
             # supports object dataararys, e.g. OC PrintSaveSetting
-            if isinstance(value.values[0], Oc.PrintSaveSetting):
-                if hasattr(value.values[0], "printrecord") and isinstance(
-                    value.values[0].printrecord, list
-                ):
-                    for rec in value.values[0].printrecord:
-                        key = f"{rec.print} {rec.rtype}"
-                        data[key] = oc_setting_data(rec)
-                if hasattr(value.values[0], "saverecord") and isinstance(
-                    value.values[0].saverecord, list
-                ):
-                    for rec in value.values[0].saverecord:  # type: ignore
-                        key = f"{rec.save} {rec.rtype}"  # type: ignore
-                        data[key] = oc_setting_data(rec)
+            for i, setting in enumerate(value.values):
+                if isinstance(value.values[i], Oc.PrintSaveSetting):
+                    if hasattr(value.values[i], "printrecord") and isinstance(
+                        value.values[i].printrecord, list
+                    ):
+                        for rec in value.values[i].printrecord:
+                            key = f"{rec.print} {rec.rtype}"
+                            if key not in data:
+                                data[key] = {}
+                            oc_setting_data(rec, data[key], i)
+                    if hasattr(value.values[i], "saverecord") and isinstance(
+                        value.values[i].saverecord, list
+                    ):
+                        for rec in value.values[i].saverecord:  # type: ignore
+                            key = f"{rec.save} {rec.rtype}"  # type: ignore
+                            if key not in data:
+                                data[key] = {}
+                            oc_setting_data(rec, data[key], i)
 
     return data
 
