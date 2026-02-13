@@ -145,7 +145,7 @@ gwf = flopy4.mf6.gwf.Gwf(
     rch=[rch],
     oc=oc,
 )
-gwf.netcdf_mesh2d_file = Path("circle.nc")
+# gwf.netcdf_mesh2d_file = Path("circle.nc")
 
 ims = flopy4.mf6.Ims(
     print_option="summary",

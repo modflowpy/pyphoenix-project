@@ -1,6 +1,7 @@
 build/
+docs/examples/*.ipynb
+docs/examples/circle/*
 docs/examples/frenchman-flat/*
-docs/examples/hatari_regional/*
 docs/examples/quickstart/*
 docs/examples/twri/*
 venv/
