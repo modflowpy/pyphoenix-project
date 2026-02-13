@@ -1051,6 +1051,158 @@ def test_grid_from_disv_factory():
     assert botm_near_x.shape == (3,)
 
 
+def test_ugrid_from_dis_factory():
+    """Test the from_dis() factory method."""
+    nlay, nrow, ncol = 2, 5, 5
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=np.full(ncol, 10.0),
+        delc=np.full(nrow, 10.0),
+        top=np.full((nrow, ncol), 10.0),
+        botm=np.array([np.full((nrow, ncol), 0.0), np.full((nrow, ncol), -10.0)]),
+    )
+
+    # Use the classmethod factory
+    grid = StructuredGrid.from_dis(dis)
+
+    # Check that dimensions match
+    assert grid.nlay == nlay
+    assert grid.nrow == nrow
+    assert grid.ncol == ncol
+
+    # Check that spatial data matches
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+
+    # Check z coordinates are cell centers
+    # Layer 0: (10 + 0) / 2 = 5
+    # Layer 1: (0 + (-10)) / 2 = -5
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((5, 5), 5.0))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((5, 5), -5.0))
+
+    # Check that coordinate-based selection works
+    botm_near_x15 = grid.botm.sel(x=15.0, method="nearest")
+    assert botm_near_x15.shape == (2, 5)
+
+    ugrid = grid.ugrid
+
+
+def test_ugrid_from_disv_factory():
+    """Test the from_dis() factory method."""
+    import xugrid
+
+    nlay, ncpl, nvert = 3, 9, 16
+    top = np.ones((ncpl), dtype=float) * 0.0
+    botm = np.stack([np.full((ncpl), val) for val in [-10.0, -20.0, -30.0]])
+
+    cells = [
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [4, 5, 9, 8],
+        [5, 6, 10, 9],
+        [6, 7, 11, 10],
+        [8, 9, 13, 12],
+        [9, 10, 14, 13],
+        [10, 11, 15, 14],
+    ]
+
+    cell2ddata = []
+    xc = 1.00000005e08
+    yc = 1.00000025e08
+    for n in range(ncpl):
+        cell2ddata.append(
+            Disv.Cell2dRecord(
+                n,
+                xc + (10.0 * n),
+                yc - (10.0 * n),
+                4,
+                tuple(cells[n]),
+            )
+        )
+
+    dis = Disv(
+        nlay=nlay,
+        ncpl=ncpl,
+        nvert=nvert,
+        top=top,
+        botm=botm,
+        idomain=1,
+        iv=np.arange(0, nvert, dtype=int),
+        xv=np.concatenate(
+            [
+                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                for i in range(4)
+            ]
+        ),
+        yv=np.concatenate(
+            [
+                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                - float(10 * (i % 4))
+                for i in range(4)
+            ]
+        ),
+        cell2ddata=cell2ddata,
+    )
+
+    # Use the classmethod factory
+    kwargs = {}
+    kwargs["xoff"] = 200.0
+    kwargs["yoff"] = 100.0
+    grid = VertexGrid.from_dis(dis, **kwargs)
+
+    # Check that dimensions match
+    assert grid.nlay == nlay
+    assert grid.ncpl == ncpl
+    assert grid.nvert == nvert
+    np.testing.assert_allclose(np.array(grid._vertices, dtype=int)[:, 0], dis.iv)
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 1], dis.xv)
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 2], dis.yv)
+    cell2d = []
+    for i in range(len(dis.cell2ddata.values)):
+        rec = [
+            dis.cell2ddata.values[i].icell2d,
+            dis.cell2ddata.values[i].xc,
+            dis.cell2ddata.values[i].yc,
+        ]
+        for v in dis.cell2ddata.values[i].icvert:
+            rec.append(v)
+        cell2d.append(rec)
+    assert grid.cell2d == cell2d
+
+    # Check that spatial data matches
+    assert "x" in grid.dataset.coords
+    assert "y" in grid.dataset.coords
+    assert "z" in grid.dataset.coords
+    assert "k" in grid.dataset.coords
+    assert "icpl" in grid.dataset.coords
+
+    # Check z coordinates are cell centers
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[0], np.full((ncpl), -5.0))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((ncpl), -15.0))
+    np.testing.assert_allclose(grid.dataset.coords["z"].values[2], np.full((ncpl), -25.0))
+
+    # Check that coordinate-based selection works
+    botm_near_x = grid.botm.sel(x=100000205, method="nearest")
+    assert botm_near_x.shape == (3,)
+
+    ugrid = grid.ugrid
+
+    udata = xugrid.UgridDataArray(dis.top, grid=ugrid)
+
+    udataset = xugrid.UgridDataset(dis.data.dataset, grids=ugrid)
+
+    # udata.to_netcdf("./udata.nc")
+    # drop global attributes, or filter?
+    uds = udataset.drop_attrs()
+    # drop objects that need serialization
+    uds = uds.drop_vars(["cell2ddata"])
+    # uds.to_netcdf("./udataset.nc")
+
+
 def test_grid_with_idomain():
     """Test grid with idomain array."""
     nlay, nrow, ncol = 2, 5, 5

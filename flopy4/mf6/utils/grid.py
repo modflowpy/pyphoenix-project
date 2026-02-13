@@ -4,6 +4,7 @@ from typing import Any
 import numpy as np
 import sparse
 import xarray as xr
+import xugrid
 from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 from flopy.discretization import VertexGrid as LegacyVertexGrid
@@ -730,6 +731,46 @@ class StructuredGrid(LegacyStructuredGrid):
 
         return ds
 
+    @property
+    def ugrid(self) -> xugrid.Ugrid2d:
+        """
+        modeltime : FloPy ModelTime object
+        mesh_type : dataset mesh type
+               valid mesh types are "layered" or None (i.e. "structured")
+               VertexGrid objects only support layered mesh
+        configuration : configuration dictionary
+        """
+        self.legacy = True
+
+        delr = self.__delr
+        delc = self.__delc
+        self.__delr = self.__delr.values
+        self.__delc = self.__delc.values
+
+        # mesh face nodes
+        max_face_nodes = 4
+        face_nodes = []
+        for r in self.iverts:
+            nodes = [np.int64(x + 1) for x in r]
+            nodes.reverse()
+            face_nodes.append(nodes)
+
+        mesh2d = xugrid.Ugrid2d(
+            np.array(self.verts[:, 0]),
+            np.array(self.verts[:, 1]),
+            FILL_INT64,
+            np.array(face_nodes),
+            projected=True,
+            crs=self.crs,
+            start_index=1,
+        )
+
+        self.__delr = delr
+        self.__delc = delc
+
+        self.legacy = False
+        return mesh2d
+
 
 class VertexGrid(LegacyVertexGrid):
     """
@@ -1183,6 +1224,45 @@ class VertexGrid(LegacyVertexGrid):
 
         self.legacy = False
         return ds
+
+    @property
+    def ugrid(self) -> xugrid.Ugrid2d:
+        """
+        modeltime : FloPy ModelTime object
+        mesh_type : dataset mesh type
+               valid mesh types are "layered" or None (i.e. "structured")
+               VertexGrid objects only support layered mesh
+        configuration : configuration dictionary
+        """
+        self.legacy = True
+
+        cell_nverts = [len(cell2d) - 3 for cell2d in self.cell2d]
+        max_face_nodes = max(cell_nverts)
+
+        # mesh face nodes
+        face_nodes = []
+        for idx, r in enumerate(self.cell2d):
+            nodes = self.cell2d[idx][3:]
+            nodes = [np.int64(x + 1) for x in nodes]
+            nodes.reverse()
+            if nodes[0] == nodes[-1]:
+                nodes.pop()
+            if len(nodes) < max_face_nodes:
+                nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
+            face_nodes.append(nodes)
+
+        mesh2d = xugrid.Ugrid2d(
+            np.array(self.verts[:, 0]),
+            np.array(self.verts[:, 1]),
+            FILL_INT64,
+            np.array(face_nodes),
+            projected=True,
+            crs=self.crs,
+            start_index=1,
+        )
+
+        self.legacy = False
+        return mesh2d
 
 
 def get_coords(grid: StructuredGrid) -> dict[str, Any]:
