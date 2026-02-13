@@ -742,10 +742,10 @@ class StructuredGrid(LegacyStructuredGrid):
         """
         self.legacy = True
 
-        delr = self.__delr
-        delc = self.__delc
-        self.__delr = self.__delr.values
-        self.__delc = self.__delc.values
+        delr = self.__delr  # type: ignore
+        delc = self.__delc  # type: ignore
+        self.__delr = self.__delr.values  # type: ignore
+        self.__delc = self.__delc.values  # type: ignore
 
         # mesh face nodes
         max_face_nodes = 4
