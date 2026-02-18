@@ -80,17 +80,19 @@ class Gwf(Model):
         @property
         def head(self) -> xr.DataArray:
             # TODO support other extensions than .hds (e.g. .hed)
+            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
             return open_hds(
                 self.parent.parent.workspace / f"{self.parent.name}.hds",  # type: ignore
-                self.parent.parent.workspace / f"{self.parent.name}.dis.grb",  # type: ignore
+                self.parent.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
             )
 
         @property
         def budget(self):
             # TODO support other extensions than .bud (e.g. .cbc)
+            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
             return open_cbc(
                 self.parent.parent.workspace / f"{self.parent.name}.bud",
-                self.parent.parent.workspace / f"{self.parent.name}.dis.grb",
+                self.parent.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",
             )
 
     _list: Optional[str] = field(block="options", default=None)

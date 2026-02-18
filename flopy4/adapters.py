@@ -1,5 +1,9 @@
 import os
+from typing import Any
 
+import numpy as np
+import scipy.sparse
+import xugrid as xu
 from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.unstructuredgrid import UnstructuredGrid
@@ -157,3 +161,107 @@ def get_nn(cellid, **kwargs):
             return k * kwargs["nrow"] * kwargs["ncol"] + i * kwargs["ncol"] + j
         case _:
             raise ValueError(f"Invalid cellid: {cellid}")
+
+
+def _ugrid_iavert_javert(iavert: np.ndarray, javert: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Convert MODFLOW 6 iavert/javert (0-based) to UGRID conventions.
+    Removes the closing vertex from each cell's vertex list.
+
+    Parameters
+    ----------
+    iavert : 0-based indptr array (from MfGrdFile), shape (ncpl+1,)
+    javert : 0-based vertex indices (from MfGrdFile), shape (njavert,)
+
+    Returns
+    -------
+    ia : 0-based indptr for UGRID (no closing vertex)
+    ja : 0-based vertex indices for UGRID
+    """
+    # Each cell's vertex list has one extra closing vertex (first == last).
+    # Remove it for UGRID conventions.
+    n = np.diff(iavert) - 1  # number of unique vertices per cell
+    ia = np.concatenate(([0], np.cumsum(n)))
+    keep = np.ones_like(javert, dtype=bool)
+    # The closing vertex of each cell is at position iavert[i+1] - 1
+    closing_indices = iavert[1:] - 1
+    keep[closing_indices] = False
+    return ia, javert[keep]
+
+
+def read_binary_grid_file(file_path: str | os.PathLike, verbose: bool = False) -> dict[str, Any]:
+    """
+    Read a MODFLOW 6 binary grid (GRB) file and return grid info.
+
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the MODFLOW 6 binary grid file.
+    verbose : bool, optional
+        Print info to stdout. Default False.
+
+    Returns
+    -------
+    dict
+        Grid info dictionary.
+    """
+    from flopy.mf6.utils.binarygrid_util import MfGrdFile
+
+    grb = MfGrdFile(file_path, verbose=verbose)
+
+    if grb.grid_type == "DIS":
+        grid = StructuredGridWrapper.from_binary_grid_file(file_path, verbose=verbose)
+        return {"grid_type": "DIS", "grid": grid}
+
+    elif grb.grid_type == "DISV":
+        return _read_disv_grb(grb)
+
+    else:
+        raise ValueError(
+            f"Unsupported grid type '{grb.grid_type}' in {os.path.basename(str(file_path))}. "
+            "Only DIS and DISV are supported."
+        )
+
+
+def _read_disv_grb(grb) -> dict[str, Any]:
+    nlay = grb.nlay
+    ncpl = grb.ncpl
+    ncells = nlay * ncpl
+    ia = grb.ia + 1  # MfGrdFile returns 0-based, we need 1-based for CSR helpers
+    ja = grb.ja + 1
+
+    # Get vertex data (0-based from MfGrdFile)
+    iavert_0 = grb.iavert
+    javert_0 = grb.javert
+
+    # Convert iavert/javert to UGRID conventions (remove closing vertex)
+    ugrid_ia, ugrid_ja = _ugrid_iavert_javert(iavert_0, javert_0)
+
+    # Build Ugrid2d from vertex info
+    verts = grb.verts
+    xorigin = grb.xorigin
+    yorigin = grb.yorigin
+    node_x = verts[:, 0] + xorigin
+    node_y = verts[:, 1] + yorigin
+
+    face_nodes = scipy.sparse.csr_matrix((ugrid_ja, ugrid_ja, ugrid_ia))
+    grid = xu.Ugrid2d(node_x, node_y, -1, face_nodes)
+    facedim = grid.face_dimension
+
+    idomain = grb.idomain.reshape((nlay, ncpl))
+
+    coords = {"layer": np.arange(1, nlay + 1)}
+
+    return {
+        "grid_type": "DISV",
+        "grid": grid,
+        "nlayer": nlay,
+        "ncells_per_layer": ncpl,
+        "ncells": ncells,
+        "nja": grb._datadict.get("NJA", ia[-1] - 1),
+        "ia": ia,
+        "ja": ja,
+        "idomain": idomain,
+        "coords": coords,
+        "face_dimension": facedim,
+    }

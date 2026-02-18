@@ -100,14 +100,14 @@ sto = flopy4.mf6.gwf.Sto(
 )
 
 # Constant Head
-head = {}
+chd_head = {}
 chd_location = xu.zeros_like(idomain.sel(layer=2), dtype=bool).ugrid.binary_dilation(
     border_value=True
 )
 for i in np.where(chd_location)[0]:
-    head[(1, int(i))] = 1.0
+    chd_head[(1, int(i))] = 1.0
 chd = flopy4.mf6.gwf.Chd(
-    head={"*": head},
+    head={"*": chd_head},
     print_input=True,
     print_flows=True,
     # save_flows=True,
@@ -127,7 +127,7 @@ rch = flopy4.mf6.gwf.Rch(recharge={"*": {(0, j): 0.001 for j in range(ncpl)}}, d
 
 # Output control
 oc = flopy4.mf6.gwf.Oc(
-    budget_file="gwf.cbc",
+    budget_file="gwf.bud",
     head_file="gwf.hds",
     save_head={0: "all"},
     save_budget={0: "all"},
@@ -176,3 +176,42 @@ sim = flopy4.mf6.simulation.Simulation(
 # Write input files and run the simulation
 sim.write()
 sim.run()  # assumes the ``mf6`` executable is available on your PATH.
+
+
+#####################
+head = gwf.output.head
+cbc = gwf.output.budget
+# from flopy.utils import HeadFile
+# hds = HeadFile(workspace / "gwf.hds", precision="double")
+
+cbc_grid = cbc["flow-horizontal-face-x"].grid
+ds = xu.UgridDataset(grids=cbc_grid)
+ds["u"] = cbc["flow-horizontal-face-x"]
+ds["v"] = cbc["flow-horizontal-face-y"]
+
+# Visualize the results
+ds = ds.ugrid.assign_edge_coords()
+fig, ax = plt.subplots()
+head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
+ds.isel(time=0, layer=0).plot.quiver(
+    x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
+)
+ax.set_aspect(1)
+plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
+plt.close()
+
+# TODO
+# convert mf6 netcdf dependent layered var to head dataarray
+# import pandas as pd
+# mf6_heads_ds = xu.open_dataset(workspace / "circle.nc")
+# layer_vars = []
+# layer_labels = []
+# for l in range(nlay):
+#    layer_labels.append(f"HEAD layer {l + 1}")
+#    layer_vars.append(mf6_heads_ds[f"head_l{l+1}"])
+
+
+# new_dim_coords = pd.Index(layer_labels, name="layer")
+# dep_da = xu.concat(layer_vars, dim=new_dim_coords)
+# dep_da = dep_da.transpose('time', 'layer', 'nmesh_face').rename("head")
+# dep_da.attrs["long_name"] = "head"

@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 import sparse
 import xarray as xr
-import xugrid
+import xugrid as xu
 from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 from flopy.discretization import VertexGrid as LegacyVertexGrid
@@ -732,7 +732,7 @@ class StructuredGrid(LegacyStructuredGrid):
         return ds
 
     @property
-    def ugrid(self) -> xugrid.Ugrid2d:
+    def ugrid(self) -> xu.Ugrid2d:
         """
         modeltime : FloPy ModelTime object
         mesh_type : dataset mesh type
@@ -755,7 +755,7 @@ class StructuredGrid(LegacyStructuredGrid):
             nodes.reverse()
             face_nodes.append(nodes)
 
-        mesh2d = xugrid.Ugrid2d(
+        mesh2d = xu.Ugrid2d(
             np.array(self.verts[:, 0]),
             np.array(self.verts[:, 1]),
             FILL_INT64,
@@ -1226,7 +1226,7 @@ class VertexGrid(LegacyVertexGrid):
         return ds
 
     @property
-    def ugrid(self) -> xugrid.Ugrid2d:
+    def ugrid(self) -> xu.Ugrid2d:
         """
         modeltime : FloPy ModelTime object
         mesh_type : dataset mesh type
@@ -1251,7 +1251,7 @@ class VertexGrid(LegacyVertexGrid):
                 nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
             face_nodes.append(nodes)
 
-        mesh2d = xugrid.Ugrid2d(
+        mesh2d = xu.Ugrid2d(
             np.array(self.verts[:, 0]),
             np.array(self.verts[:, 1]),
             FILL_INT64,
