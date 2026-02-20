@@ -148,6 +148,10 @@ class Disv(DisBase):
             vert.append(self.yv.values[i])  # type: ignore
             vertices.append(vert)
         return VertexGrid(
+            length_units=self.length_units,
+            xoff=self.xorigin,
+            yoff=self.yorigin,
+            crs=self.crs,
             nlay=self.nlay,
             top=self.top,
             botm=self.botm,
@@ -172,6 +176,8 @@ class Disv(DisBase):
             A discretization with the same dimensions and data as the grid.
         """
         return Disv(
+            xorigin=grid.xoffset,
+            yorigin=grid.yoffset,
             nlay=grid.nlay,
             ncpl=grid.ncpl,
             nvert=grid.nvert,

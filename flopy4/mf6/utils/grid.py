@@ -119,6 +119,7 @@ class StructuredGrid(LegacyStructuredGrid):
             length_units=dis.length_units,
             xoff=dis.xorigin,
             yoff=dis.yorigin,
+            crs=dis.crs,
             nlay=dis.nlay,
             nrow=dis.nrow,
             ncol=dis.ncol,
@@ -135,6 +136,14 @@ class StructuredGrid(LegacyStructuredGrid):
         self._legacy = False
         if (units := kwargs.pop("length_units", None)) is not None:
             kwargs["lenuni"] = units.lower()
+        if (xoff := kwargs.pop("xoff", None)) is not None:
+            kwargs["xoff"] = xoff
+        else:
+            kwargs["xoff"] = 0.0
+        if (yoff := kwargs.pop("yoff", None)) is not None:
+            kwargs["yoff"] = yoff
+        else:
+            kwargs["yoff"] = 0.0
         if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
             nrow = kwargs.get("nrow", 1)
             ncol = kwargs.get("ncol", 1)
@@ -472,26 +481,30 @@ class StructuredGrid(LegacyStructuredGrid):
                valid mesh types are "layered" or None (i.e. "structured")
         configuration : configuration dictionary
         """
-        self.legacy = True
-
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")
 
-        ds = xr.Dataset()
-        ds.attrs["modflow_grid"] = "STRUCTURED"
+        self.legacy = True
+        try:
+            ds = xr.Dataset()
+            ds.attrs["modflow_grid"] = "STRUCTURED"
 
-        if mesh_type and mesh_type.upper() == "LAYERED":
-            ds = self._layered_mesh_dataset(ds, modeltime, configuration)
-        elif mesh_type is None:
-            ds = self._structured_dataset(ds, modeltime, configuration)
+            if mesh_type and mesh_type.upper() == "LAYERED":
+                ds = self._layered_mesh_dataset(ds, modeltime, configuration)
+            elif mesh_type is None:
+                ds = self._structured_dataset(ds, modeltime, configuration)
+            else:
+                raise ValueError(f"Unknown mesh_type {mesh_type!r}. Expected 'LAYERED' or None.")
 
-        self.legacy = False
-        return ds
+            return ds
+        finally:
+            self.legacy = False
 
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
-        lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
+        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
 
         # create dataset coordinate vars
+        # Use cumulative per-period time (one value per stress period)
         var_d = {
             "time": (["time"], np.cumsum(modeltime.perlen)),
         }
@@ -518,10 +531,10 @@ class StructuredGrid(LegacyStructuredGrid):
             "mesh_node_y": (["nmesh_node"], self.verts[:, 1]),
         }
         ds = ds.assign(var_d)
-        ds["mesh_node_x"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["mesh_node_x"].attrs["long_name"] = "Easting"
-        ds["mesh_node_y"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_node_y"].attrs["long_name"] = "Northing"
 
@@ -561,22 +574,17 @@ class StructuredGrid(LegacyStructuredGrid):
             "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], y_bnds),
         }
         ds = ds.assign(var_d)
-        ds["mesh_face_x"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["mesh_face_x"].attrs["long_name"] = "Easting"
         ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
-        ds["mesh_face_y"].attrs["units"] = lenunits[self.lenuni]
+        ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
 
         # mesh face nodes
-        max_face_nodes = 4
-        face_nodes = []
-        for r in self.iverts:
-            nodes = [np.int64(x + 1) for x in r]
-            nodes.reverse()
-            face_nodes.append(nodes)
+        face_nodes = self._build_face_nodes()
 
         var_d = {
             "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], face_nodes),
@@ -588,15 +596,16 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
 
         # create grid index auxiliary coordinate variables
+        # k is on a new "z" dim (orphaned from nmesh_face) for layer indexing,
+        # consistent with VertexGrid. i/j are omitted here because the mesh
+        # uses nmesh_face as its spatial dim — not y/x — so row/col indices
+        # would create disconnected dimensions. Use icell2d on nmesh_face instead.
         ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
-        ds = ds.assign_coords(i=("y", np.arange(self.nrow, dtype=int)))
-        ds = ds.assign_coords(j=("x", np.arange(self.ncol, dtype=int)))
+        ds = ds.assign_coords(icell2d=("nmesh_face", np.arange(self.nrow * self.ncol, dtype=int)))
         ds = ds.set_xindex("k", PandasIndex)
-        ds = ds.set_xindex("i", PandasIndex)
-        ds = ds.set_xindex("j", PandasIndex)
+        ds = ds.set_xindex("icell2d", PandasIndex)
         ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
-        ds["i"].attrs["long_name"] = "row index auxiliary coordinate"
-        ds["j"].attrs["long_name"] = "column index auxiliary coordinate"
+        ds["icell2d"].attrs["long_name"] = "cell index auxiliary coordinate"
 
         wkt_configured = (
             configuration is not None
@@ -621,7 +630,9 @@ class StructuredGrid(LegacyStructuredGrid):
         return ds
 
     def _structured_dataset(self, ds, modeltime=None, configuration=None):
-        lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
+        # Produces a conventional CF structured dataset (x/y dimension coords,
+        # no UGRID mesh variable).
+        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
@@ -647,6 +658,7 @@ class StructuredGrid(LegacyStructuredGrid):
                 y_bnds.append(bnd)
 
         # create dataset coordinate vars
+        # Use cumulative per-period time (one value per stress period)
         var_d = {
             "time": (["time"], np.cumsum(modeltime.perlen)),
             "y": (["y"], yc),
@@ -674,14 +686,14 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["axis"] = "T"
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
-        ds["z"].attrs["units"] = "layer"
-        ds["z"].attrs["long_name"] = "layer number"
-        ds["y"].attrs["units"] = lenunits[self.lenuni]
+        ds["k"].attrs["units"] = "layer"
+        ds["k"].attrs["long_name"] = "layer number"
+        ds["y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["y"].attrs["axis"] = "Y"
         ds["y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["y"].attrs["long_name"] = "Northing"
         ds["y"].attrs["bounds"] = "y_bnds"
-        ds["x"].attrs["units"] = lenunits[self.lenuni]
+        ds["x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["x"].attrs["axis"] = "X"
         ds["x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["x"].attrs["long_name"] = "Easting"
@@ -731,45 +743,50 @@ class StructuredGrid(LegacyStructuredGrid):
 
         return ds
 
-    @property
-    def ugrid(self) -> xu.Ugrid2d:
+    def _build_face_nodes(self) -> list:
         """
-        modeltime : FloPy ModelTime object
-        mesh_type : dataset mesh type
-               valid mesh types are "layered" or None (i.e. "structured")
-               VertexGrid objects only support layered mesh
-        configuration : configuration dictionary
+        Build 1-based counterclockwise face-node connectivity from ``self.iverts``.
+
+        Must be called while ``self.legacy`` is ``True`` so that ``iverts``
+        returns raw arrays rather than xarray-wrapped values.
         """
-        self.legacy = True
-
-        delr = self.__delr  # type: ignore
-        delc = self.__delc  # type: ignore
-        self.__delr = self.__delr.values  # type: ignore
-        self.__delc = self.__delc.values  # type: ignore
-
-        # mesh face nodes
-        max_face_nodes = 4
         face_nodes = []
         for r in self.iverts:
             nodes = [np.int64(x + 1) for x in r]
             nodes.reverse()
             face_nodes.append(nodes)
+        return face_nodes
 
-        mesh2d = xu.Ugrid2d(
-            np.array(self.verts[:, 0]),
-            np.array(self.verts[:, 1]),
-            FILL_INT64,
-            np.array(face_nodes),
-            projected=True,
-            crs=self.crs,
-            start_index=1,
-        )
+    @property
+    def ugrid(self) -> xu.Ugrid2d:
+        """
+        Build a :class:`xugrid.Ugrid2d` mesh from this structured grid.
 
-        self.__delr = delr
-        self.__delc = delc
-
-        self.legacy = False
-        return mesh2d
+        Returns
+        -------
+        xu.Ugrid2d
+            A 2-D unstructured grid object whose faces correspond to the
+            structured grid cells in row-major order.
+        """
+        delr = self.__delr  # type: ignore
+        delc = self.__delc  # type: ignore
+        self.legacy = True
+        try:
+            self.__delr = delr.values  # type: ignore
+            self.__delc = delc.values  # type: ignore
+            return xu.Ugrid2d(
+                np.array(self.verts[:, 0]),
+                np.array(self.verts[:, 1]),
+                FILL_INT64,
+                np.array(self._build_face_nodes()),
+                projected=True,
+                crs=self.crs,
+                start_index=1,
+            )
+        finally:
+            self.__delr = delr  # type: ignore
+            self.__delc = delc  # type: ignore
+            self.legacy = False
 
 
 class VertexGrid(LegacyVertexGrid):
@@ -820,6 +837,9 @@ class VertexGrid(LegacyVertexGrid):
         """
         return cls(
             length_units=dis.length_units,
+            xoff=dis.xorigin,
+            yoff=dis.yorigin,
+            crs=dis.crs,
             nlay=dis.nlay,
             ncpl=dis.ncpl,
             top=dis.top,
@@ -837,6 +857,14 @@ class VertexGrid(LegacyVertexGrid):
         self._legacy = False
         if (units := kwargs.pop("length_units", None)) is not None:
             kwargs["lenuni"] = units.lower()
+        if (xoff := kwargs.pop("xoff", None)) is not None:
+            kwargs["xoff"] = xoff
+        else:
+            kwargs["xoff"] = 0.0
+        if (yoff := kwargs.pop("yoff", None)) is not None:
+            kwargs["yoff"] = yoff
+        else:
+            kwargs["yoff"] = 0.0
         if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
             ncpl = kwargs.get("ncpl", None)
             kwargs["top"] = np.full((ncpl), float(top))
@@ -1087,182 +1115,190 @@ class VertexGrid(LegacyVertexGrid):
                VertexGrid objects only support layered mesh
         configuration : configuration dictionary
         """
-        self.legacy = True
-
-        lenunits = {0: "u", 1: "ft", 2: "m", 3: "cm"}
-
         if mesh_type is None or mesh_type.upper() != "LAYERED":
-            raise ValueError("Vextex grid only supports layered mesh datasets")
+            raise ValueError("Vertex grid only supports layered mesh datasets")
 
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")
 
-        ds = xr.Dataset()
-        ds.attrs["modflow_grid"] = "VERTEX"
+        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
 
-        # create dataset coordinate vars
-        var_d = {
-            "time": (["time"], modeltime.totim),
-        }
-        ds = ds.assign(var_d)
-        ds["time"].attrs["calendar"] = "standard"
-        ds["time"].attrs["units"] = f"{modeltime.time_units} since {modeltime.start_datetime}"
-        ds["time"].attrs["axis"] = "T"
-        ds["time"].attrs["standard_name"] = "time"
-        ds["time"].attrs["long_name"] = "time"
+        self.legacy = True
+        try:
+            ds = xr.Dataset()
+            ds.attrs["modflow_grid"] = "VERTEX"
 
-        # mesh container variable
-        ds = ds.assign({"mesh": ([], np.int64(1))})
-        ds["mesh"].attrs["cf_role"] = "mesh_topology"
-        ds["mesh"].attrs["long_name"] = "2D mesh topology"
-        ds["mesh"].attrs["topology_dimension"] = np.int64(2)
-        ds["mesh"].attrs["face_dimension"] = "nmesh_face"
-        ds["mesh"].attrs["node_coordinates"] = "mesh_node_x mesh_node_y"
-        ds["mesh"].attrs["face_coordinates"] = "mesh_face_x mesh_face_y"
-        ds["mesh"].attrs["face_node_connectivity"] = "mesh_face_nodes"
+            # create dataset coordinate vars
+            # Use cumulative per-period time (one value per stress period)
+            var_d = {
+                "time": (["time"], np.cumsum(modeltime.perlen)),
+            }
+            ds = ds.assign(var_d)
+            ds["time"].attrs["calendar"] = "standard"
+            ds["time"].attrs["units"] = f"{modeltime.time_units} since {modeltime.start_datetime}"
+            ds["time"].attrs["axis"] = "T"
+            ds["time"].attrs["standard_name"] = "time"
+            ds["time"].attrs["long_name"] = "time"
 
-        # mesh node x and y
-        var_d = {
-            "mesh_node_x": (["nmesh_node"], self.verts[:, 0]),
-            "mesh_node_y": (["nmesh_node"], self.verts[:, 1]),
-        }
-        ds = ds.assign(var_d)
-        ds["mesh_node_x"].attrs["units"] = lenunits[self.lenuni]
-        ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
-        ds["mesh_node_x"].attrs["long_name"] = "Easting"
-        ds["mesh_node_y"].attrs["units"] = lenunits[self.lenuni]
-        ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
-        ds["mesh_node_y"].attrs["long_name"] = "Northing"
+            # mesh container variable
+            ds = ds.assign({"mesh": ([], np.int64(1))})
+            ds["mesh"].attrs["cf_role"] = "mesh_topology"
+            ds["mesh"].attrs["long_name"] = "2D mesh topology"
+            ds["mesh"].attrs["topology_dimension"] = np.int64(2)
+            ds["mesh"].attrs["face_dimension"] = "nmesh_face"
+            ds["mesh"].attrs["node_coordinates"] = "mesh_node_x mesh_node_y"
+            ds["mesh"].attrs["face_coordinates"] = "mesh_face_x mesh_face_y"
+            ds["mesh"].attrs["face_node_connectivity"] = "mesh_face_nodes"
 
-        # determine max number of cell vertices
-        # cell_nverts = [cell2d[3] for cell2d in self.cell2d]
+            # mesh node x and y
+            var_d = {
+                "mesh_node_x": (["nmesh_node"], self.verts[:, 0]),
+                "mesh_node_y": (["nmesh_node"], self.verts[:, 1]),
+            }
+            ds = ds.assign(var_d)
+            ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
+            ds["mesh_node_x"].attrs["long_name"] = "Easting"
+            ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
+            ds["mesh_node_y"].attrs["long_name"] = "Northing"
+
+            # determine max number of cell vertices and build face node connectivity
+            face_nodes, max_face_nodes = self._build_face_nodes()
+
+            # mesh face x and y
+            x_bnds = []
+            for x in self.xvertices:
+                x = x[::-1]
+                if len(x) < max_face_nodes:
+                    if isinstance(x, np.ndarray):
+                        x = np.append(x, [FILL_INT64] * (max_face_nodes - len(x)))
+                    elif isinstance(x, list):
+                        x.extend([FILL_INT64] * (max_face_nodes - len(x)))
+                x_bnds.append(x)
+
+            y_bnds = []
+            for y in self.yvertices:
+                y = y[::-1]
+                if len(y) < max_face_nodes:
+                    if isinstance(y, np.ndarray):
+                        y = np.append(y, [FILL_INT64] * (max_face_nodes - len(y)))
+                    elif isinstance(y, list):
+                        y.extend([FILL_INT64] * (max_face_nodes - len(y)))
+                y_bnds.append(y)
+
+            var_d = {
+                "mesh_face_x": (["nmesh_face"], self.xcellcenters),
+                "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], x_bnds),
+                "mesh_face_y": (["nmesh_face"], self.ycellcenters),
+                "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], y_bnds),
+            }
+            ds = ds.assign(var_d)
+            ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
+            ds["mesh_face_x"].attrs["long_name"] = "Easting"
+            ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
+            ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
+            ds["mesh_face_y"].attrs["long_name"] = "Northing"
+            ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
+
+            # mesh face nodes (built above via _build_face_nodes)
+            var_d = {
+                "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], face_nodes),
+            }
+            ds = ds.assign(var_d)
+            ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
+            ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
+            ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
+            ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
+
+            # create grid index auxiliary coordinate variables
+            ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
+            ds = ds.assign_coords(icpl=("nmesh_face", np.arange(self.ncpl, dtype=int)))
+            ds = ds.set_xindex("k", PandasIndex)
+            ds = ds.set_xindex("icpl", PandasIndex)
+            ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
+            ds["icpl"].attrs["long_name"] = "cell index auxiliary coordinate"
+
+            wkt_configured = (
+                configuration is not None
+                and "wkt" in configuration
+                and configuration["wkt"] is not None
+            )
+
+            if wkt_configured or self.crs is not None:
+                ds["mesh_node_x"].attrs["grid_mapping"] = "projection"
+                ds["mesh_node_y"].attrs["grid_mapping"] = "projection"
+                ds["mesh_face_x"].attrs["grid_mapping"] = "projection"
+                ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
+                ds = ds.assign({"projection": ([], np.int64(1))})
+                if wkt_configured:
+                    # wkt override to existing crs
+                    ds["projection"].attrs["wkt"] = configuration["wkt"]
+                else:
+                    from pyproj.enums import WktVersion
+
+                    ds["projection"].attrs["wkt"] = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+
+            return ds
+        finally:
+            self.legacy = False
+
+    def _build_face_nodes(self) -> tuple[list, int]:
+        """
+        Build 1-based counterclockwise face-node connectivity from ``self.cell2d``.
+
+        Must be called while ``self.legacy`` is ``True`` so that ``cell2d``
+        returns raw arrays rather than xarray-wrapped values.
+
+        Returns
+        -------
+        tuple[list, int]
+            face_nodes : list of lists of 1-based node indices per face, padded
+                with ``FILL_INT64`` to a uniform length.
+            max_face_nodes : maximum number of vertices in any face.
+        """
+        if not self.cell2d:
+            raise ValueError("VertexGrid has no cell2d data; cannot build face nodes.")
         cell_nverts = [len(cell2d) - 3 for cell2d in self.cell2d]
         max_face_nodes = max(cell_nverts)
-
-        # mesh face x and y
-        x_bnds = []
-        for x in self.xvertices:
-            x = x[::-1]
-            if len(x) < max_face_nodes:
-                # TODO: set fill value?
-                x.extend([FILL_INT64] * (max_face_nodes - len(x)))
-            x_bnds.append(x)
-
-        y_bnds = []
-        for y in self.yvertices:
-            y = y[::-1]
-            if len(y) < max_face_nodes:
-                # TODO: set fill value?
-                y.extend([FILL_INT64] * (max_face_nodes - len(y)))
-            y_bnds.append(y)
-
-        var_d = {
-            "mesh_face_x": (["nmesh_face"], self.xcellcenters),
-            "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], x_bnds),
-            "mesh_face_y": (["nmesh_face"], self.ycellcenters),
-            "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], y_bnds),
-        }
-        ds = ds.assign(var_d)
-        ds["mesh_face_x"].attrs["units"] = lenunits[self.lenuni]
-        ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
-        ds["mesh_face_x"].attrs["long_name"] = "Easting"
-        ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
-        ds["mesh_face_y"].attrs["units"] = lenunits[self.lenuni]
-        ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
-        ds["mesh_face_y"].attrs["long_name"] = "Northing"
-        ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
-
-        # mesh face nodes
         face_nodes = []
-        for idx, r in enumerate(self.cell2d):
-            nodes = self.cell2d[idx][3:]
-            nodes = [np.int64(x + 1) for x in nodes]
+        for cell in self.cell2d:
+            nodes = [np.int64(x + 1) for x in cell[3:]]
             nodes.reverse()
             if nodes[0] == nodes[-1]:
                 nodes.pop()
             if len(nodes) < max_face_nodes:
-                # TODO set fill value?
                 nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
             face_nodes.append(nodes)
-
-        var_d = {
-            "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], face_nodes),
-        }
-        ds = ds.assign(var_d)
-        ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
-        ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
-        ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
-        ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
-
-        # create grid index auxiliary coordinate variables
-        ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
-        ds = ds.assign_coords(icpl=("nmesh_face", np.arange(self.ncpl, dtype=int)))
-        ds = ds.set_xindex("k", PandasIndex)
-        ds = ds.set_xindex("icpl", PandasIndex)
-        ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
-        ds["icpl"].attrs["long_name"] = "cell index auxiliary coordinate"
-
-        wkt_configured = (
-            configuration is not None
-            and "wkt" in configuration
-            and configuration["wkt"] is not None
-        )
-
-        if wkt_configured or self.crs is not None:
-            ds["mesh_node_x"].attrs["grid_mapping"] = "projection"
-            ds["mesh_node_y"].attrs["grid_mapping"] = "projection"
-            ds["mesh_face_x"].attrs["grid_mapping"] = "projection"
-            ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
-            ds = ds.assign({"projection": ([], np.int64(1))})
-            if wkt_configured:
-                # wkt override to existing crs
-                ds["projection"].attrs["wkt"] = configuration["wkt"]
-            else:
-                from pyproj.enums import WktVersion
-
-                ds["projection"].attrs["wkt"] = self.crs.to_wkt(WktVersion.WKT1_GDAL)
-
-        self.legacy = False
-        return ds
+        return face_nodes, max_face_nodes
 
     @property
     def ugrid(self) -> xu.Ugrid2d:
         """
-        modeltime : FloPy ModelTime object
-        mesh_type : dataset mesh type
-               valid mesh types are "layered" or None (i.e. "structured")
-               VertexGrid objects only support layered mesh
-        configuration : configuration dictionary
+        Build a :class:`xugrid.Ugrid2d` mesh from this vertex grid.
+
+        Returns
+        -------
+        xu.Ugrid2d
+            A 2-D unstructured grid object whose faces correspond to the
+            vertex grid cells.
         """
         self.legacy = True
-
-        cell_nverts = [len(cell2d) - 3 for cell2d in self.cell2d]
-        max_face_nodes = max(cell_nverts)
-
-        # mesh face nodes
-        face_nodes = []
-        for idx, r in enumerate(self.cell2d):
-            nodes = self.cell2d[idx][3:]
-            nodes = [np.int64(x + 1) for x in nodes]
-            nodes.reverse()
-            if nodes[0] == nodes[-1]:
-                nodes.pop()
-            if len(nodes) < max_face_nodes:
-                nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
-            face_nodes.append(nodes)
-
-        mesh2d = xu.Ugrid2d(
-            np.array(self.verts[:, 0]),
-            np.array(self.verts[:, 1]),
-            FILL_INT64,
-            np.array(face_nodes),
-            projected=True,
-            crs=self.crs,
-            start_index=1,
-        )
-
-        self.legacy = False
-        return mesh2d
+        try:
+            face_nodes, _ = self._build_face_nodes()
+            return xu.Ugrid2d(
+                np.array(self.verts[:, 0]),
+                np.array(self.verts[:, 1]),
+                FILL_INT64,
+                np.array(face_nodes),
+                projected=True,
+                crs=self.crs,
+                start_index=1,
+            )
+        finally:
+            self.legacy = False
 
 
 def get_coords(grid: StructuredGrid) -> dict[str, Any]:

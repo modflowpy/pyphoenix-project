@@ -48,6 +48,7 @@ def dis_model_output(function_tmpdir):
     sim.write()
     sim.run()
 
+    base_path = function_tmpdir
     hds_path = function_tmpdir / f"{gwf_name}.hds"
     cbc_path = function_tmpdir / f"{gwf_name}.cbc"
     grb_path = function_tmpdir / f"{gwf_name}.dis.grb"
@@ -57,6 +58,7 @@ def dis_model_output(function_tmpdir):
     assert grb_path.is_file(), f"GRB file not found: {grb_path}"
 
     return {
+        "base": base_path,
         "hds": hds_path,
         "cbc": cbc_path,
         "grb": grb_path,
@@ -139,6 +141,7 @@ def disv_model_output(function_tmpdir):
     sim.write()
     sim.run()
 
+    base_path = function_tmpdir
     hds_path = function_tmpdir / f"{gwf_name}.hds"
     cbc_path = function_tmpdir / f"{gwf_name}.cbc"
     grb_path = function_tmpdir / f"{gwf_name}.disv.grb"
@@ -147,12 +150,19 @@ def disv_model_output(function_tmpdir):
     assert cbc_path.is_file(), f"CBC file not found: {cbc_path}"
     assert grb_path.is_file(), f"GRB file not found: {grb_path}"
 
-    return {"hds": hds_path, "cbc": cbc_path, "grb": grb_path, "nlay": nlay, "ncpl": ncpl}
+    return {
+        "base": base_path,
+        "hds": hds_path,
+        "cbc": cbc_path,
+        "grb": grb_path,
+        "nlay": nlay,
+        "ncpl": ncpl,
+    }
 
 
 def test_open_hds_dis(dis_model_output):
     paths = dis_model_output
-    head = open_hds(paths["hds"], paths["grb"])
+    head = open_hds(paths["base"])
 
     assert isinstance(head, xr.DataArray)
     assert set(head.dims) == {"time", "layer", "y", "x"}
@@ -181,7 +191,7 @@ def test_open_cbc_dis_flowja(dis_model_output):
 
 def test_open_hds_disv(disv_model_output):
     paths = disv_model_output
-    head = open_hds(paths["hds"], paths["grb"])
+    head = open_hds(paths["base"])
 
     assert isinstance(head, xu.UgridDataArray)
     assert "time" in head.dims

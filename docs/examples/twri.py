@@ -232,10 +232,8 @@ sim.run(verbose=True)  # assumes the ``mf6`` executable is available on your PAT
 
 # ### Load head results
 
-head = flopy4.mf6.utils.open_hds(
-    workspace / f"{gwf.name}.hds",
-    workspace / f"{gwf.name}.dis.grb",
-)
+# Load head results
+head = flopy4.mf6.utils.open_hds(workspace)
 
 # ### Plot head results
 
@@ -318,10 +316,8 @@ sim.run(verbose=True)
 
 # ### Load head results
 
-head = flopy4.mf6.utils.open_hds(
-    workspace / f"{gwf.name}.hds",
-    workspace / f"{gwf.name}.dis.grb",
-)
+# Load head results
+head = flopy4.mf6.utils.open_hds(workspace)
 
 # ### Plot head results
 

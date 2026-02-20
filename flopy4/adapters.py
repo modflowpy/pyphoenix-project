@@ -97,6 +97,7 @@ class StructuredGridWrapper(StructuredGrid):
         xorigin = grb_obj.xorigin
         yorigin = grb_obj.yorigin
         angrot = grb_obj.angrot
+        crs = grb_obj._datadict["CRS"] if grb_obj._version == "2" else None
 
         nlay, nrow, ncol = (grb_obj.nlay, grb_obj.nrow, grb_obj.ncol)
         delr, delc = grb_obj.delr, grb_obj.delc
@@ -109,6 +110,7 @@ class StructuredGridWrapper(StructuredGrid):
             top,
             botm,
             idomain=idomain,
+            crs=crs,
             xoff=xorigin,
             yoff=yorigin,
             angrot=angrot,
@@ -251,6 +253,7 @@ def _read_disv_grb(grb) -> dict[str, Any]:
     idomain = grb.idomain.reshape((nlay, ncpl))
 
     coords = {"layer": np.arange(1, nlay + 1)}
+    crs = grb._datadict["CRS"] if grb._version == "2" else None
 
     return {
         "grid_type": "DISV",
@@ -264,4 +267,5 @@ def _read_disv_grb(grb) -> dict[str, Any]:
         "idomain": idomain,
         "coords": coords,
         "face_dimension": facedim,
+        "crs": crs,
     }

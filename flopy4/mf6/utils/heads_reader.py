@@ -15,8 +15,7 @@ from .grid import get_coords
 
 
 def open_hds(
-    hds_path: Path,
-    grb_path: Path,
+    path: Path,
     dry_nan: bool = False,
     simulation_start_time: np.datetime64 | None = None,
     time_unit: str | None = "d",
@@ -32,8 +31,7 @@ def open_hds(
 
     Parameters
     ----------
-    hds_path: pathlib.Path
-    grb_path: pathlib.Path
+    path: pathlib.Path, a model workspace directory
     dry_nan: bool, default value: False.
         Whether to convert dry values to NaN.
     simulation_start_time : Optional datetime
@@ -59,12 +57,28 @@ def open_hds(
     -------
     head: xr.DataArray or xu.UgridDataArray
     """
-    grb_info = read_binary_grid_file(grb_path)
+    grb_path = list(path.glob("*.grb"))
+    assert len(grb_path) == 1
+    grb_info = read_binary_grid_file(grb_path[0])
+
+    hds_ext = ["*.hds", "*.hed"]
+    hds_path: list[Path] = []
+    for ext in hds_ext:
+        hds_path.extend(path.glob(ext))
+
+    if len(hds_path) == 0:
+        hds_path = [h for h in path.glob("*.nc") if not str(h).endswith("input.nc")]
+
+    assert len(hds_path) == 1
+    hds_file = hds_path[0]
+
+    if hds_file.suffix == ".nc":
+        return _open_hds_netcdf(hds_file, grb_info, dry_nan)
 
     if grb_info["grid_type"] == "DIS":
-        return _open_hds_dis(hds_path, grb_info["grid"], dry_nan, simulation_start_time, time_unit)
+        return _open_hds_dis(hds_file, grb_info["grid"], dry_nan, simulation_start_time, time_unit)
     elif grb_info["grid_type"] == "DISV":
-        return _open_hds_disv(hds_path, grb_info, dry_nan, simulation_start_time, time_unit)
+        return _open_hds_disv(hds_file, grb_info, dry_nan, simulation_start_time, time_unit)
     else:
         raise ValueError(f"Unsupported grid type: {grb_info['grid_type']}")
 
@@ -137,6 +151,112 @@ def _open_hds_disv(
     return xu.UgridDataArray(da, grid)
 
 
+def _open_hds_netcdf(
+    path: Path,
+    grb_info: dict,
+    dry_nan: bool,
+) -> xr.DataArray | xu.UgridDataArray:
+    """
+    Open a MODFLOW 6 heads NetCDF file.
+
+    Two NetCDF formats are supported:
+
+    1. **CF-UGRID layered** (``mesh`` global attribute present): one variable
+       per layer (``head_l1``, ``head_l2``, …) on ``(time, nmesh_face)``.
+       Written by MODFLOW 6 for both DIS and DISV grids.
+
+    2. **Conventional CF structured** (no ``mesh`` global attribute): a single
+       ``head`` variable on ``(time, z, y, x)`` with x/y as dimension
+       coordinates.  Written by MODFLOW 6 for DIS grids only.
+
+    The GRB file grid is used as the authoritative grid topology for the
+    returned array, ensuring consistency with binary-format readers.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the NetCDF heads file.
+    grb_info : dict
+        Grid info dict returned by ``read_binary_grid_file``.
+    dry_nan : bool
+        Whether to convert dry cell values (-1e30) to NaN.
+
+    Returns
+    -------
+    xr.DataArray
+        For DIS grids: dims ``(time, layer, y, x)``.
+    xu.UgridDataArray
+        For DISV grids: dims ``(time, layer, <face_dim>)``.
+    """
+    # Open with chunks={"time": 1} so each timestep is a separate dask chunk,
+    # matching the per-timestep lazy loading of the binary reader.
+    ds = xr.open_dataset(path, chunks={"time": 1})
+    grid_type = ds.attrs.get("modflow_grid", "").upper()
+
+    # Time is already CF-encoded datetime64; load eagerly (small coordinate).
+    time_values = ds["time"].values
+
+    # --- Conventional CF structured: no "mesh" global attribute ---
+    # Single head(time, z, y, x) variable; x/y are dimension coordinates.
+    if "mesh" not in ds.attrs:
+        if grid_type != "STRUCTURED":
+            raise ValueError(
+                f"Conventional CF format (no 'mesh' attribute) is only supported "
+                f"for STRUCTURED grids, got {grid_type!r} in {path.name}."
+            )
+        grid = grb_info["grid"]
+        data = ds["head"].data  # (ntime, nlayer, nrow, ncol) dask array
+        data = _dask_to_nan(data, dry_nan)
+        coords = get_coords(grid)
+        coords["time"] = time_values
+        return xr.DataArray(data, coords, ("time", "layer", "y", "x"), name="head")
+
+    # --- CF-UGRID layered: head_l1, head_l2, ... on (time, nmesh_face) ---
+    head_vars = sorted(
+        [v for v in ds.data_vars if v.startswith("head_l")],  # type: ignore
+        key=lambda v: int(v[len("head_l") :]),  # type: ignore
+    )
+    if not head_vars:
+        raise ValueError(f"No head layer variables (head_l1, head_l2, ...) found in {path.name}")
+
+    nlayer = len(head_vars)
+
+    if grid_type == "VERTEX":
+        # DISV: stack per-layer dask arrays → (ntime, nlayer, ncpl)
+        # Use grb grid and face_dimension for consistency with binary reader.
+        grid = grb_info["grid"]
+        facedim = grb_info["face_dimension"]
+
+        arrays = [ds[v].data for v in head_vars]  # each (ntime, ncpl) dask array
+        data = dask.array.stack(arrays, axis=1)  # (ntime, nlayer, ncpl)
+        data = _dask_to_nan(data, dry_nan)
+
+        coords = {"time": time_values, "layer": np.arange(1, nlayer + 1)}
+        da = xr.DataArray(data, coords, ("time", "layer", facedim), name="head")
+        return xu.UgridDataArray(da, grid)
+
+    elif grid_type == "STRUCTURED":
+        # DIS: stack per-layer dask arrays and reshape nmesh_face → (nrow, ncol)
+        grid = grb_info["grid"]
+        nrow, ncol = grid.nrow, grid.ncol
+        ntime = ds.sizes["time"]
+
+        arrays = [ds[v].data for v in head_vars]  # each (ntime, nmesh_face) dask array
+        data = dask.array.stack(arrays, axis=1)  # (ntime, nlayer, nmesh_face)
+        data = data.reshape(ntime, nlayer, nrow, ncol)
+        data = _dask_to_nan(data, dry_nan)
+
+        coords = get_coords(grid)
+        coords["time"] = time_values
+        return xr.DataArray(data, coords, ("time", "layer", "y", "x"), name="head")
+
+    else:
+        raise ValueError(
+            f"Unsupported modflow_grid type {grid_type!r} in {path.name}. "
+            "Expected 'VERTEX' or 'STRUCTURED'."
+        )
+
+
 def read_times(path: Path, ntime: int, nlayer: int, ncells_per_layer: int) -> np.ndarray:
     """
     Reads all total simulation times.
@@ -192,6 +312,13 @@ def assign_datetime_coords(
 
     time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(da["time"], unit=time_unit)
     return da.assign_coords(time=time)
+
+
+def _dask_to_nan(a: dask.array.Array, dry_nan: bool) -> dask.array.Array:
+    a = dask.array.where(a == 1e30, np.nan, a)
+    if dry_nan:
+        a = dask.array.where(a == -1e30, np.nan, a)
+    return a
 
 
 def _to_nan(a: np.ndarray, dry_nan: bool) -> np.ndarray:

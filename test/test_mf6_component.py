@@ -986,6 +986,8 @@ def test_grid_from_disv_factory():
         )
 
     dis = Disv(
+        xorigin=200.0,
+        yorigin=100.0,
         nlay=nlay,
         ncpl=ncpl,
         nvert=nvert,
@@ -1011,8 +1013,6 @@ def test_grid_from_disv_factory():
 
     # Use the classmethod factory
     kwargs = {}
-    kwargs["xoff"] = 200.0
-    kwargs["yoff"] = 100.0
     grid = VertexGrid.from_dis(dis, **kwargs)
 
     # Check that dimensions match
@@ -1125,6 +1125,8 @@ def test_ugrid_from_disv_factory():
         )
 
     dis = Disv(
+        xorigin=200.0,
+        yorigin=100.0,
         nlay=nlay,
         ncpl=ncpl,
         nvert=nvert,
@@ -1150,8 +1152,6 @@ def test_ugrid_from_disv_factory():
 
     # Use the classmethod factory
     kwargs = {}
-    kwargs["xoff"] = 200.0
-    kwargs["yoff"] = 100.0
     grid = VertexGrid.from_dis(dis, **kwargs)
 
     # Check that dimensions match

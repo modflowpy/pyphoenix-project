@@ -2,6 +2,7 @@
 #
 # Import dependencies.
 
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -34,6 +35,9 @@ GRID_NODATA = np.full((nlay, ncpl), flopy4.mf6.constants.FILL_DNODATA, dtype=flo
 
 # TODO: xoff, yoff, angrot, crs, etc
 disv = flopy4.mf6.gwf.disv.Disv(
+    xorigin=573309.700,
+    yorigin=4102552.000,
+    crs="EPSG:26911",
     length_units="meters",
     nlay=nlay,
     ncpl=ncpl,
@@ -215,3 +219,93 @@ plt.close()
 # dep_da = xu.concat(layer_vars, dim=new_dim_coords)
 # dep_da = dep_da.transpose('time', 'layer', 'nmesh_face').rename("head")
 # dep_da.attrs["long_name"] = "head"
+
+# Original package configuration with NetCDF input
+workspace = Path(__file__).parent / "circle" / "netcdf"
+workspace.mkdir(parents=True, exist_ok=True)
+sim.workspace = workspace
+
+nc_fpth = workspace / "circle.input.nc"
+gwf.netcdf_file = nc_fpth
+
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
+    gwf, mesh="layered", grid=disv.to_grid(), time=time
+)
+nc_model.to_netcdf(nc_fpth)
+
+with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+    sim.write()
+
+# extended mf6 required to run
+# sim.run()
+
+# CHDG package with NetCDF input
+head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+for i in np.where(chd_location)[0]:
+    head[0, 1, i] = 1.0
+
+chdg = flopy4.mf6.gwf.Chdg(
+    print_input=True,
+    print_flows=True,
+    save_flows=True,
+    head=head.reshape(nper, nlay * ncpl),
+    dims=dims,
+)
+
+# update chd to chdg
+gwf.chd.remove(chd)
+gwf.chd = [chdg]
+
+# don't generate hds file
+# Output control
+oc2 = flopy4.mf6.gwf.Oc(
+    budget_file="gwf.bud",
+    save_budget={0: "all"},
+    dims=dims,
+)
+gwf.oc = None
+gwf.oc = oc2
+
+workspace = Path(__file__).parent / "circle" / "array"
+workspace.mkdir(parents=True, exist_ok=True)
+sim.workspace = workspace
+
+nc_fpth = workspace / "circle.input.nc"
+gwf.netcdf_file = nc_fpth
+
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
+    gwf, mesh="layered", grid=disv.to_grid(), time=time
+)
+nc_model.to_netcdf(nc_fpth)
+
+with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+    sim.write()
+
+# extended mf6 required to run
+# sim.run()
+
+# TODO
+sys.exit(0)
+
+# generate head object from netcdf ouput
+head = gwf.output.head
+
+cbc = gwf.output.budget
+# from flopy.utils import HeadFile
+# hds = HeadFile(workspace / "gwf.hds", precision="double")
+
+cbc_grid = cbc["flow-horizontal-face-x"].grid
+ds = xu.UgridDataset(grids=cbc_grid)
+ds["u"] = cbc["flow-horizontal-face-x"]
+ds["v"] = cbc["flow-horizontal-face-y"]
+
+# Visualize the results
+ds = ds.ugrid.assign_edge_coords()
+fig, ax = plt.subplots()
+head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
+ds.isel(time=0, layer=0).plot.quiver(
+    x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
+)
+ax.set_aspect(1)
+plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
+plt.close()
