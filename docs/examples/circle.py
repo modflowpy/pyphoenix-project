@@ -287,7 +287,7 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 # TODO
 sys.exit(0)
 
-# generate head object from netcdf ouput
+# generate head object from netcdf output
 head = gwf.output.head
 
 cbc = gwf.output.budget
