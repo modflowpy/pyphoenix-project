@@ -1,4 +1,4 @@
-name: Examples
+name: Extended
 on:
   push:
     branches:
@@ -17,8 +17,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test_examples:
-    name: Test Examples (${{ matrix.os }})
+  test_extended:
+    name: Test Extended (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -40,7 +40,7 @@ jobs:
           ref: develop
 
       - name: Setup pixi (modflow6)
-        uses: prefix-dev/setup-pixi@v0.8.1
+        uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.41.1
           manifest-path: modflow6/pixi.toml
@@ -53,7 +53,7 @@ jobs:
         run: echo "$GITHUB_WORKSPACE/modflow6/bin" >> $GITHUB_PATH
 
       - name: Setup pixi (pyphoenix)
-        uses: prefix-dev/setup-pixi@v0.8.1
+        uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: v0.41.1
           environments: test312
