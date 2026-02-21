@@ -3,14 +3,12 @@ on:
   push:
     branches:
       - develop
-      - ci_extended
     paths-ignore:
       - '**.md'
       - '.gitignore'
   pull_request:
     branches:
       - develop
-      - ci_extended
     paths-ignore:
       - '**.md'
       - '.gitignore'
@@ -18,12 +16,13 @@ on:
 
 jobs:
   test_extended:
-    name: Test Extended (${{ matrix.os }})
+    name: Test Extended (${{ matrix.os }}, ${{ matrix.env }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        env: [test311, test312, test313]
     env:
       REPOS_PATH: ${{ github.workspace }}
 
@@ -54,9 +53,9 @@ jobs:
 
       - name: Setup pixi (pyphoenix)
         shell: bash
-        run: pixi install --environment test312
+        run: pixi install --environment ${{ matrix.env }}
 
       - name: Run example tests
         env:
           MF6_EXTENDED: "true"
-        run: pixi run --environment test312 pytest test/test_examples.py -v -s
+        run: pixi run --environment ${{ matrix.env }} pytest test/test_examples.py -v
