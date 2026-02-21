@@ -2,6 +2,7 @@
 #
 # Import dependencies.
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -291,8 +292,8 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
-# extended mf6 required to run
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
 
 # Layered Mesh dataset
 # Create workspace
@@ -309,5 +310,5 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
-# extended mf6 required to run
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
