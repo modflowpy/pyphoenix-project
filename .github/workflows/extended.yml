@@ -53,13 +53,10 @@ jobs:
         run: echo "$GITHUB_WORKSPACE/modflow6/bin" >> $GITHUB_PATH
 
       - name: Setup pixi (pyphoenix)
-        uses: prefix-dev/setup-pixi@v0.9.4
-        with:
-          pixi-version: none
-          environments: test312
-          activate-environment: true
+        shell: bash
+        run: pixi install --environment test312
 
       - name: Run example tests
         env:
           MF6_EXTENDED: "true"
-        run: pytest test/test_examples.py -v -s
+        run: pixi run --environment test312 pytest test/test_examples.py -v -s
