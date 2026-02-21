@@ -656,6 +656,7 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 if os.getenv("MF6_EXTENDED"):
+    print("MF6_EXTENDED RUNS")
     sim.run()
 
     # Load head results
@@ -761,6 +762,7 @@ nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 if os.getenv("MF6_EXTENDED"):
+    print("MF6_EXTENDED RUNS")
     sim.run()
 
 workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_structured"
@@ -776,4 +778,5 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 if os.getenv("MF6_EXTENDED"):
+    print("MF6_EXTENDED RUNS")
     sim.run()
