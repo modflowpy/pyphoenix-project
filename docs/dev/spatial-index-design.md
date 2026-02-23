@@ -12,66 +12,186 @@ The `x`/`y` coordinates use `PandasIndex` and enable e.g. `sel(x=..., y=...)`. T
 
 This works well for horizontal spatial queries but doesn't support more advanced queries like vertical (elevation-based) or full 3D spatial queries.
 
+## Dimension and Coordinate Naming Strategy
+
+MF6 uses topology names (`nlay`, `nrow`, `ncol`, `ncpl`). CF conventions expect spatial names (`x`, `y`, `z`). Support both.
+
+Structured grids (DIS) have regular spatial dimensions. Unstructured grids (DISV/DISU) don't.
+
+### Structured Grids (DIS)
+
+Spatial coordinates as primary dimensions, MF6 names as auxiliary:
+
+```python
+<xarray.Dataset>
+Dimensions:  (x: 100, y: 100, z: 3, time: 10)
+Coordinates:
+  * x        (x) float64        # spatial coordinate (dimension coord)
+  * y        (y) float64        # spatial coordinate (dimension coord)
+  * z        (z) float64        # layer elevations (dimension coord)
+  * time     (time) float64     # simulation time
+    col      (x) int64          # MF6 column index (1-based)
+    row      (y) int64          # MF6 row index (1-based)
+    layer    (z) int64          # MF6 layer index (1-based)
+Data variables:
+    head     (time, z, y, x) float64
+    ...
+```
+
+Why:
+- Leverages native xarray `.sel(x=..., y=...)` without custom indexes
+- Follows CF conventions
+- MF6 indices still accessible as auxiliary coords
+
+Note: Make `z` a 1D dimension coordinate (layer top/midpoint elevations). Store full 3D elevations as auxiliary coords if needed.
+
+### Unstructured Grids (DISV/DISU)
+
+Topology dimensions as primary, spatial coords as auxiliary:
+
+```python
+<xarray.Dataset>
+Dimensions:  (nlay: 3, ncpl: 1000, time: 10)  # DISV example
+Coordinates:
+  * nlay     (nlay) int64       # layer index (dimension coord)
+  * ncpl     (ncpl) int64       # cells per layer (dimension coord)
+  * time     (time) float64     # simulation time
+    cell_x   (ncpl) float64     # cell center x coordinate (auxiliary)
+    cell_y   (ncpl) float64     # cell center y coordinate (auxiliary)
+    cell_z   (nlay, ncpl) float64  # cell center z coordinate (auxiliary)
+Data variables:
+    head     (time, nlay, ncpl) float64
+    ...
+```
+
+Why:
+- No regular spatial dimensions
+- Follows UGRID conventions (xugrid/uxarray pattern)
+- Spatial coords require custom indexing
+
+### Unified `.grid` Accessor
+
+Consistent API across both grid types:
+
+```python
+# Works for both structured and unstructured grids:
+ds.grid.sel(x=1000, y=2000)           # spatial selection
+ds.grid.sel(layer=1, row=5, col=10)   # MF6 topology selection (DIS)
+ds.grid.sel(layer=1, ncpl=42)         # MF6 topology selection (DISV)
+ds.grid.sel(x=1000, y=2000, z=50)     # 3D spatial query
+ds.grid.isel(...)                     # always 0-based indexing
+ds.grid.plot(...)                     # grid-aware plotting
+ds.grid.neighbors(layer=1, row=5, col=10)  # cell connectivity
+```
+
+Implementation:
+- **DIS**: Spatial selection → native `.sel()`, topology selection → map MF6 coords to spatial
+- **DISV/DISU**: Topology selection → native `.sel()`, spatial selection → custom `GeospatialIndex`
+- Detect grid type via dimension inspection, dispatch accordingly
+
+### Relationship to Standards
+
+**xugrid/uxarray**: Topology dimensions primary for unstructured grids, spatial coords auxiliary. Moving to custom xarray indexes ([xugrid #35](https://github.com/Deltares/xugrid/issues/35), [PR #373](https://github.com/Deltares/xugrid/pull/373)) instead of wrapper classes.
+
+**CF conventions**: Structured grids use matching dimension/coord names (`x`, `y`, `z`). Unstructured use auxiliary spatial coords. Our approach aligns with both.
+
+**Key insight**: Asymmetry is correct. Structured/unstructured grids have different natural dimension systems. `.grid` accessor unifies the interface.
+
+### Implementation Considerations
+
+#### Z-coordinate for structured grids
+
+Two options:
+
+**1. Layer-representative 1D** (recommended)
+- `z = [top1, top2, top3]` or layer midpoints
+- Enables native `.sel(z=...)`
+- Store full 3D elevations as auxiliary coords
+
+**2. 3D auxiliary** (current)
+- `z = (nlay, nrow, ncol)` array
+- No native `.sel(z=...)` support
+- Requires custom index
+
+#### Grid accessor dispatch
+
+Detect grid type via dimensions:
+
+```python
+if {'x', 'y'}.issubset(self.dims):
+    return StructuredGridAccessor(self)
+elif 'ncpl' in self.dims or 'nlay' in self.dims:
+    return UnstructuredGridAccessor(self)
+```
+
+Each accessor implements: `.sel()`, `.isel()`, `.plot()`, `.neighbors()`, `.query_ball()`, `.contains()`
+
+#### Coordinate transformation
+
+**Topology → spatial (structured)**:
+```python
+# ds.grid.sel(layer=2, row=10, col=5)
+# → find indices where layer==2, row==10, col==5
+# → ds.isel(z=..., y=..., x=...)
+```
+
+**Spatial → topology (unstructured)**:
+```python
+# ds.grid.sel(x=1000, y=2000)
+# → spatial_index.query_point(x=1000, y=2000)
+# → ds.isel(ncpl=...)
+```
+
 ## Proposal
 
-Extend (or compose) the `GeospatialIndex` class under development in [flopy3 PR 2654](https://github.com/modflowpy/flopy/pull/2654) to extend `xarray.core.indexes.Index`. This requires implementing a set of required methods: `sel()`, `isel()`, `equals()`, `union()`, `intersection()`, etc. (We may want to start with `.sel()` and work up from there.)
+Extend `GeospatialIndex` from [flopy3 PR 2654](https://github.com/modflowpy/flopy/pull/2654) to implement `xarray.core.indexes.Index`. Required methods: `sel()`, `isel()`, `equals()`, `union()`, `intersection()`. Start with `.sel()`.
 
-Compose this with the `StructuredGrid` (and eventually `VertexGrid` and `UnstructuredGrid`?) classes. (This document only considers the structured case for now.)
+**Primary need**: Unstructured grids (DISV/DISU) where spatial selection can't use native dimension coords. Structured grids (DIS) get basic spatial selection natively, but advanced queries benefit from custom index too.
 
-Ultimately this should allow advanced spatial queries that aren't currently supported:
+Integrate with: `StructuredGrid`, `VertexGrid`, `UnstructuredGrid`.
+
+Advanced spatial queries to support:
 
 ```python
 # Point queries with different semantics
-head = grid.head.sel(x=250, y=650, z=50, method='contains')  # head in cell containing point
-head = grid.head.sel(x=250, y=650, z=50, method='nearest_center')  # head in cell with center nearest to point
+head = ds.grid.sel(x=250, y=650, z=50, method='contains')  # head in cell containing point
+head = ds.grid.sel(x=250, y=650, z=50, method='nearest_center')  # head in cell with center nearest to point
 
 # Spatial range queries
-# TODO
+nearby = ds.grid.query_ball(point=(1500, 2300, 45), radius=100)  # 3D ball query
 
 # Elevation-based slices
-cells = grid.botm.sel(z=slice(40, 60))  # find all cells between elevations 40-60
+cells = ds.grid.sel(z=slice(40, 60))  # find all cells between elevations 40-60
 ```
 
 ### Point Queries
 
-Probably the most natural way to expose point queries is xarray `.sel()` syntax.
+Use xarray `.sel()` syntax.
 
-#### Questions
+#### Open Questions
 
-There are several potential sources of semantic ambiguity with point queries.
+**1. Z-only queries**
 
-1. Z-only queries
+What does `sel(z=50)` mean when z varies in (x, y)? Multiple cells may match.
 
-What does `sel(z=50)` mean when z varies in (x, y)? Multiple cells may have z ≈ 50 at different locations.
-
-Possible solutions include:
-
-- Require x, y when selecting by z: `sel(x=250, y=650, z=50)`
-- Return all cells matching z: `sel(z=50)` → all cells with z ≈ 50
+Options:
+- Require x, y when selecting by z
+- Return all cells matching z
 - Support explicit mode: `sel(z=50, mode='all' | 'first' | 'nearest_to_origin')`
 
-2. Method parameter
+**2. Method parameter**
 
-What does `method='nearest'` mean for point queries (if we want it to mean anything at all, or rather require different values for `method`)? Two possible meanings are "containment" and "nearest center".
+Two semantics: **containment** vs **nearest center**.
 
-With **containment** semantics we ask which cell which contains the query point. This should probably be the default.
+**Containment** (default): Cell that contains the point.
+- Use cases: locating wells, boundaries, observation points
+- Points outside grid: return `KeyError` or `NaN`
+- On boundaries: tie-break to lowest-numbered cell (current flopy 3.x behavior)
 
-The main use case here is probably locating features. For instance:
-
-- Which cell should contain this pumping well at (x,y,z)?
-- Which cell does this constant head boundary go in?
-- Which cell contains this observation point?
-
-There is no meaningful value for points outside grid bounds, and the result is ambiguous for points exactly on cell boundaries, necessitating a tie-breaking strategy (currently flopy 3.x returns the lowest-numbered cell).
-
-With **nearest center** semantics we ask for the cell whose center point is closest to the query point.
-
-Potential use cases for nearest center queries:
-
-- Out-of-bounds queries: extrapolate to nearest cell when point is outside domain, e.g. with noisy field data from GPS coordinates we might still want to associate a point with the "closest" cell.
-- Cross-grid comparisons: Associate a set of points with the "closest" cells from grid A and grid B
-
-A nearest center query can always return a result, even if the point is beyond the grid bounds. It's also a bit more intuitively consistent with xarray's `method='nearest'` convention, but it may return a cell that doesn't contain the point (why containment should probably be the default).
+**Nearest center**: Cell whose center is closest to point.
+- Use cases: out-of-bounds queries, cross-grid comparisons
+- Always returns a result, even outside grid bounds
+- May return cell that doesn't contain the point
 
 ```
 ┌──────────────────┬──────────────────┐
@@ -92,106 +212,66 @@ Query point (★):
 - nearest center → right cell
 ```
 
-We could consider supporting the following:
-
 ```python
-# Default: containment semantics
-grid.head.sel(x=250, y=650, z=50) # equivalent below
-grid.head.sel(x=250, y=650, z=50, method='contains')
+# Default: containment
+ds.grid.sel(x=250, y=650, z=50)
+ds.grid.sel(x=250, y=650, z=50, method='contains')
 
-# Opt into nearest center query
-grid.head.sel(x=250, y=650, z=50, method='nearest_center')
+# Nearest center
+ds.grid.sel(x=250, y=650, z=50, method='nearest_center')
 ```
 
-Should we support `method="nearest"` for compatibility with the xarray convention? If so, which should it alias, "contains" or "nearest_center"? Maybe this is not worth the ambiguity and we should disallow it?
-
-What happens when a point is outside the grid? With `method="contains"`, presumably raise `KeyError` or return `NaN`. With `method="nearest_center"`, we can return the cell with the nearest center by default, possibly providing some kind of option to toggle whether an error should be raised (though I don't think we can do this within the `.sel()` paradigm, I think its signature is fixed).
+Should `method="nearest"` alias one of these, or disallow it to avoid ambiguity?
 
 ### Spatial Range Queries
 
-Ball queries ("find all cells within radius R of point P") cannot be implemented via `sel()` since xarray's `sel()` only accepts coordinate names as arguments, not arbitrary parameters like `spatial_distance=(x, y, z, r)`.
+Ball queries can't use `sel()` (only accepts coord names, not arbitrary params).
 
-Use cases might include: zone of influence around pumping well, observation network radius, local refinement region, etc.
+Use cases: zone of influence, observation network radius, local refinement region.
 
 #### 2D (x, y)
 
-We can support this out of the box with geopandas (already a dependency):
+Use geopandas:
 
 ```python
-from shapely.geometry import Point
-import geopandas as gpd
-
-# Create GeoDataFrame from cell centers
-points = [Point(x, y) for x, y in zip(grid.x.values, grid.y.values)]
-cells_gdf = gpd.GeoDataFrame(geometry=points)
-
-# Ball query
-query_point = Point(1500, 2300).buffer(100)  # 100m radius
-mask = cells_gdf.intersects(query_point)
-nearby_heads = grid.head.where(mask)
+cells_gdf = gpd.GeoDataFrame(geometry=[Point(x, y) for x, y in zip(...)])
+mask = cells_gdf.sindex.query(Point(1500, 2300).buffer(100), predicate='intersects')
 ```
 
-Alternative using geopandas spatial index:
-
-```python
-# More efficient for large grids
-nearby_indices = cells_gdf.sindex.query(query_point, predicate='intersects')
-```
-
-Perhaps consider exposing this via an accessor so the user doesn't have to explicitly create a `GeoDataFrame`.
+Expose via accessor to avoid manual `GeoDataFrame` creation.
 
 #### 3D (x, y, z)
 
-Given the geospatial index soon to be merged into flopy 3.x,  we can use the pre-built scipy.spatial.cKDTree it provides:
+Use scipy.spatial.cKDTree (from flopy 3.x `GeospatialIndex`):
 
 ```python
-from scipy.spatial import cKDTree
-
-# Build KD-tree from 3D cell centers
-centers_3d = np.column_stack([
-    grid.x.values.ravel(),
-    grid.y.values.ravel(),
-    grid.z.values.ravel()
-])
-tree = cKDTree(centers_3d)
-
-# Ball query
-query_point = (1500, 2300, 45)
-radius = 100
-indices = tree.query_ball_point(query_point, radius)
-
-# Create mask and apply
+tree = cKDTree(np.column_stack([x, y, z]))
+indices = tree.query_ball_point((1500, 2300, 45), radius=100)
 mask = np.zeros(grid.shape, dtype=bool)
 mask.ravel()[indices] = True
-nearby_cells = grid.head.where(mask)
 ```
 
-Consider also exposing this via an xarray accessor, e.g.
+Expose via accessor:
 
 ```python
-cells = grid.head.spatial.query_ball(point=(x, y, z), radius=100)
-```
-
-Probably also worth a method on the `Grid` classes:
-
-```python
-# Add method to StructuredGrid class
-mask = grid.query_ball(point=(x, y, z), radius=100)
-cells = grid.head.where(mask)
+ds.grid.query_ball(point=(x, y, z), radius=100)
 ```
 
 ### Elevation-Based Slicing
 
 ```python
 # Extract vertical profile at x=250, y=650.
-# Currently works - returns all z values at that (x, y)
-profile = grid.head.sel(x=250, y=650, method='nearest')
+# For structured grids, this works natively
+profile = ds.sel(x=250, y=650, method='nearest')  # returns all z values at (x, y)
+
+# For unstructured grids, use .grid accessor
+profile = ds.grid.sel(x=250, y=650)  # spatial query returns vertical profile
 
 # With z-slicing: get only specific elevation range
-profile_shallow = grid.head.sel(x=250, y=650, z=slice(80, 100))
+profile_shallow = ds.grid.sel(x=250, y=650, z=slice(80, 100))
 
 # Select all cells in water table zone (elevation 40-60)
-wt_zone = grid.head.sel(z=slice(40, 60))
+wt_zone = ds.grid.sel(z=slice(40, 60))
 ```
 
 ## References
