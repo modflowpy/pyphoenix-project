@@ -58,4 +58,4 @@ jobs:
       - name: Run example tests
         env:
           MF6_EXTENDED: "true"
-        run: pixi run --environment ${{ matrix.env }} pytest test/test_examples.py -v
+        run: pixi run --environment ${{ matrix.env }} pytest test/test_examples.py -v -n auto
