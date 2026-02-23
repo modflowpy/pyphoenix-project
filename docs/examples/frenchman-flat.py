@@ -1,5 +1,6 @@
 # Frenchman Flat NV
 # https://www.sciencebase.gov/catalog/item/641a1b51d34eb496d1d2a1fd
+import os
 from pathlib import Path
 
 import numpy as np
@@ -654,17 +655,17 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
-# extended mf6 required to run
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
 
-# Load head results
-# head = flopy4.mf6.utils.open_hds(
-#    workspace / "ff.hds",
-#    workspace / "ff.dis.grb",
-# )
+    # Load head results
+    head = flopy4.mf6.utils.open_hds(
+        workspace / "ff.hds",
+        workspace / "ff.dis.grb",
+    )
 
-# Plot head results
-# plot_head(head, workspace)
+    # Plot head results
+    plot_head(head, workspace)
 
 # update simulation with array based inputs
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
@@ -759,8 +760,8 @@ nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
-# requires extended mf6
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
 
 workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_structured"
 workspace.mkdir(parents=True, exist_ok=True)
@@ -774,5 +775,5 @@ nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
-# requires extended mf6
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
