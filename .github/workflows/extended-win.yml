@@ -40,7 +40,9 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: pixi run --environment ${{ matrix.env }} python -c "from flopy.utils.get_modflow import cli_main; cli_main()" --repo modflow6-nightly-build --ostag win64ext "$RUNNER_TEMP/bin"
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          pixi run --environment ${{ matrix.env }} python -c "from flopy.utils.get_modflow import cli_main; cli_main()" --repo modflow6-nightly-build --ostag win64ext "$RUNNER_TEMP/bin"
 
       - name: Add modflow6 bin to PATH
         shell: bash
