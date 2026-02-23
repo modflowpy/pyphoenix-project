@@ -1,0 +1,52 @@
+name: Extended (Windows)
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+jobs:
+  test_extended_win:
+    name: Test Extended (windows-latest, ${{ matrix.env }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [test311, test312, test313]
+    env:
+      REPOS_PATH: ${{ github.workspace }}
+
+    steps:
+
+      - name: Checkout pyphoenix-project
+        uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.41.1
+          environments: ${{ matrix.env }}
+
+      - name: Get extended modflow6 executables
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pixi run --environment ${{ matrix.env }} get_modflow --repo modflow6-nightly-build --ostag win64ext "$RUNNER_TEMP/bin"
+
+      - name: Add modflow6 bin to PATH
+        shell: bash
+        run: echo "$RUNNER_TEMP/bin" >> $GITHUB_PATH
+
+      - name: Run example tests
+        env:
+          MF6_EXTENDED: "true"
+        run: pixi run --environment ${{ matrix.env }} pytest test/test_examples.py -v -s
