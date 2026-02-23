@@ -2,7 +2,7 @@
 #
 # Import dependencies.
 
-import sys
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -149,7 +149,8 @@ gwf = flopy4.mf6.gwf.Gwf(
     rch=[rch],
     oc=oc,
 )
-# gwf.netcdf_mesh2d_file = Path("circle.nc")
+if os.getenv("MF6_EXTENDED"):
+    gwf.netcdf_mesh2d_file = Path("circle.nc")
 
 ims = flopy4.mf6.Ims(
     print_option="summary",
@@ -204,22 +205,6 @@ ax.set_aspect(1)
 plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
 plt.close()
 
-# TODO
-# convert mf6 netcdf dependent layered var to head dataarray
-# import pandas as pd
-# mf6_heads_ds = xu.open_dataset(workspace / "circle.nc")
-# layer_vars = []
-# layer_labels = []
-# for l in range(nlay):
-#    layer_labels.append(f"HEAD layer {l + 1}")
-#    layer_vars.append(mf6_heads_ds[f"head_l{l+1}"])
-
-
-# new_dim_coords = pd.Index(layer_labels, name="layer")
-# dep_da = xu.concat(layer_vars, dim=new_dim_coords)
-# dep_da = dep_da.transpose('time', 'layer', 'nmesh_face').rename("head")
-# dep_da.attrs["long_name"] = "head"
-
 # Original package configuration with NetCDF input
 workspace = Path(__file__).parent / "circle" / "netcdf"
 workspace.mkdir(parents=True, exist_ok=True)
@@ -236,8 +221,8 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
-# extended mf6 required to run
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
 
 # CHDG package with NetCDF input
 head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
@@ -281,31 +266,27 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
-# extended mf6 required to run
-# sim.run()
+if os.getenv("MF6_EXTENDED"):
+    sim.run()
 
-# TODO
-sys.exit(0)
+    # head object from netcdf output
+    head = gwf.output.head
 
-# generate head object from netcdf output
-head = gwf.output.head
+    # budget object
+    cbc = gwf.output.budget
 
-cbc = gwf.output.budget
-# from flopy.utils import HeadFile
-# hds = HeadFile(workspace / "gwf.hds", precision="double")
+    cbc_grid = cbc["flow-horizontal-face-x"].grid
+    ds = xu.UgridDataset(grids=cbc_grid)
+    ds["u"] = cbc["flow-horizontal-face-x"]
+    ds["v"] = cbc["flow-horizontal-face-y"]
 
-cbc_grid = cbc["flow-horizontal-face-x"].grid
-ds = xu.UgridDataset(grids=cbc_grid)
-ds["u"] = cbc["flow-horizontal-face-x"]
-ds["v"] = cbc["flow-horizontal-face-y"]
-
-# Visualize the results
-ds = ds.ugrid.assign_edge_coords()
-fig, ax = plt.subplots()
-head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
-ds.isel(time=0, layer=0).plot.quiver(
-    x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
-)
-ax.set_aspect(1)
-plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
-plt.close()
+    # Visualize the results
+    ds = ds.ugrid.assign_edge_coords()
+    fig, ax = plt.subplots()
+    head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
+    ds.isel(time=0, layer=0).plot.quiver(
+        x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
+    )
+    ax.set_aspect(1)
+    plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
+    plt.close()
