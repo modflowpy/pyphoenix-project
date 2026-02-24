@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import attrs
 import xarray as xr
+import xugrid as xu
 from attrs import define
 from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
@@ -78,16 +79,39 @@ class Gwf(Model):
         parent: "Gwf" = attrs.field(repr=False)
 
         @property
-        def head(self) -> xr.DataArray:
-            return open_hds(self.parent.workspace)
+        def head(self) -> xr.DataArray | xu.UgridDataArray:
+            path = self.parent.workspace
+            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+
+            hds_ext = ["*.hds", "*.hed"]
+            hds_path: list[Path] = []
+            for ext in hds_ext:
+                hds_path.extend(path.glob(ext))
+
+            if len(hds_path) == 0:
+                hds_path = [h for h in path.glob("*.nc") if not str(h).endswith("input.nc")]
+
+            assert len(hds_path) == 1
+            return open_hds(
+                hds_path[0],
+                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
+            )
 
         @property
-        def budget(self):
-            # TODO support other extensions than .bud (e.g. .cbc)
+        def budget(self) -> xr.Dataset | xu.UgridDataset:
+            path = self.parent.workspace
+            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+
+            cbc_ext = ["*.bud", "*.cbc"]
+            cbc_path: list[Path] = []
+            for ext in cbc_ext:
+                cbc_path.extend(path.glob(ext))
+
+            assert len(cbc_path) == 1
             dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
             return open_cbc(
-                self.parent.workspace / f"{self.parent.name}.bud",
-                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",
+                cbc_path[0],
+                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
             )
 
     _list: Optional[str] = field(block="options", default=None)

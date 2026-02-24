@@ -162,7 +162,7 @@ def disv_model_output(function_tmpdir):
 
 def test_open_hds_dis(dis_model_output):
     paths = dis_model_output
-    head = open_hds(paths["base"])
+    head = open_hds(paths["hds"], paths["grb"])
 
     assert isinstance(head, xr.DataArray)
     assert set(head.dims) == {"time", "layer", "y", "x"}
@@ -191,7 +191,7 @@ def test_open_cbc_dis_flowja(dis_model_output):
 
 def test_open_hds_disv(disv_model_output):
     paths = disv_model_output
-    head = open_hds(paths["base"])
+    head = open_hds(paths["hds"], paths["grb"])
 
     assert isinstance(head, xu.UgridDataArray)
     assert "time" in head.dims

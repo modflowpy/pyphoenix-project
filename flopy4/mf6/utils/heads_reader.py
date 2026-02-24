@@ -15,7 +15,8 @@ from .grid import get_coords
 
 
 def open_hds(
-    path: Path,
+    hds_path: Path,
+    grb_path: Path,
     dry_nan: bool = False,
     simulation_start_time: np.datetime64 | None = None,
     time_unit: str | None = "d",
@@ -31,7 +32,8 @@ def open_hds(
 
     Parameters
     ----------
-    path: pathlib.Path, a model workspace directory
+    hds_path: pathlib.Path, binary head or netcdf file path
+    grb_path: pathlib.Path, binary grid file
     dry_nan: bool, default value: False.
         Whether to convert dry values to NaN.
     simulation_start_time : Optional datetime
@@ -57,28 +59,15 @@ def open_hds(
     -------
     head: xr.DataArray or xu.UgridDataArray
     """
-    grb_path = list(path.glob("*.grb"))
-    assert len(grb_path) == 1
-    grb_info = read_binary_grid_file(grb_path[0])
+    grb_info = read_binary_grid_file(grb_path)
 
-    hds_ext = ["*.hds", "*.hed"]
-    hds_path: list[Path] = []
-    for ext in hds_ext:
-        hds_path.extend(path.glob(ext))
-
-    if len(hds_path) == 0:
-        hds_path = [h for h in path.glob("*.nc") if not str(h).endswith("input.nc")]
-
-    assert len(hds_path) == 1
-    hds_file = hds_path[0]
-
-    if hds_file.suffix == ".nc":
-        return _open_hds_netcdf(hds_file, grb_info, dry_nan)
+    if hds_path.suffix == ".nc":
+        return _open_hds_netcdf(hds_path, grb_info, dry_nan)
 
     if grb_info["grid_type"] == "DIS":
-        return _open_hds_dis(hds_file, grb_info["grid"], dry_nan, simulation_start_time, time_unit)
+        return _open_hds_dis(hds_path, grb_info["grid"], dry_nan, simulation_start_time, time_unit)
     elif grb_info["grid_type"] == "DISV":
-        return _open_hds_disv(hds_file, grb_info, dry_nan, simulation_start_time, time_unit)
+        return _open_hds_disv(hds_path, grb_info, dry_nan, simulation_start_time, time_unit)
     else:
         raise ValueError(f"Unsupported grid type: {grb_info['grid_type']}")
 

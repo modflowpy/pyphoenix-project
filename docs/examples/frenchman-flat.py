@@ -685,7 +685,10 @@ sim.run(verbose=True)
 # ### Load head results
 
 # Load head results
-head = flopy4.mf6.utils.open_hds(workspace)
+head = flopy4.mf6.utils.open_hds(
+    workspace / "ff.hds",
+    workspace / "ff.dis.grb",
+)
 
 # ### Plot head results
 
@@ -715,7 +718,10 @@ if os.getenv("MF6_EXTENDED"):
     sim.run(verbose=True)
 
     # Load head results
-    head = flopy4.mf6.utils.open_hds(workspace)
+    head = flopy4.mf6.utils.open_hds(
+        workspace / "ff.hds",
+        workspace / "ff.dis.grb",
+    )
 
     # Plot head results
     plot_head(head, workspace)
