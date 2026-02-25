@@ -119,6 +119,25 @@ class Dis(DisBase):
         self.nvert = (self.ncol + 1) * (self.nrow + 1)
         super().__attrs_post_init__()
 
+    def get_dimensions(self) -> dict[str, int]:
+        """Return all dimensions this component provides.
+
+        Returns both explicit dimensions (nlay, nrow, ncol) and computed
+        dimensions (nodes, ncpl).
+
+        Returns
+        -------
+        dict[str, int]
+            Mapping of dimension names to their integer values.
+        """
+        return {
+            "nlay": self.nlay,
+            "nrow": self.nrow,
+            "ncol": self.ncol,
+            "nodes": self.nlay * self.nrow * self.ncol,
+            "ncpl": self.nrow * self.ncol,
+        }
+
     def to_grid(self) -> StructuredGrid:
         """
         Convert the discretization to a `StructuredGrid`.

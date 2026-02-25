@@ -42,6 +42,16 @@ class Tdis(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
 
+    def get_dimensions(self) -> dict[str, int]:
+        """Return all dimensions this component provides.
+
+        Returns
+        -------
+        dict[str, int]
+            Mapping of dimension names to their integer values.
+        """
+        return {"nper": self.nper}
+
     def to_time(self) -> Time:
         """Convert to a `Time` object."""
         return Time(
