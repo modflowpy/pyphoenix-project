@@ -42,7 +42,7 @@ class DimensionRegistryMixin:
         parent class __attrs_post_init__ and then sets parent references on children.
         """
         if hasattr(super(), "__attrs_post_init__"):
-            super().__attrs_post_init__()
+            super().__attrs_post_init__()  # type: ignore[misc]
         self._set_child_parents()
 
     def _set_child_parents(self) -> None:
