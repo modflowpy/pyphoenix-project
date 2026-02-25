@@ -5,12 +5,13 @@ infrastructure for MF6 components.
 """
 
 import attrs
-from attrs import define, field
+from attrs import field
+from xattree import xattree
 
 from flopy4.mf6.protocols import DimensionProvider
 
 
-@define
+@xattree
 class DimensionRegistryMixin:
     """Mixin for containers that resolve dimensions from children via lazy tree walking.
 
@@ -18,8 +19,9 @@ class DimensionRegistryMixin:
     lazy, cached dimension resolution by walking the object graph to find dimension
     providers.
 
-    The mixin must be an attrs class (@define) so it can define its own fields (_dimension_cache).
-    Attrs properly handles multiple @define classes in inheritance chains.
+    The mixin uses @xattree (same as Component) for compatibility. Using attrs.field
+    for _dimension_cache signals to xattree to treat it as a regular field without
+    special xattree handling.
 
     Attributes
     ----------

@@ -5,11 +5,16 @@ from pathlib import Path
 from typing import Any, Optional
 
 from attrs import fields
+from attrs import field as attrs_field
+from modflow_devtools.dfn import Dfn, Field
+from packaging.version import Version
 from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict
+from flopy4.mf6.mixins import DimensionRegistryMixin
+from flopy4.mf6.spec import field, fields_dict, to_field
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
@@ -21,13 +26,15 @@ COMPONENTS = {}
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
 @xattree(kw_only=True)
-class Component(ABC, MutableMapping):
+class Component(DimensionRegistryMixin, ABC, MutableMapping):
     """
     Base class for MF6 components.
 
     Notes
     -----
     All subclasses of `Component` must be decorated with `xattree`.
+    Component inherits from DimensionRegistryMixin to provide dimension
+    resolution capabilities to all MF6 components.
     """
 
     _load = IO(Loader)  # type: ignore
@@ -60,8 +67,12 @@ class Component(ABC, MutableMapping):
         Post-initialization hook for all components.
 
         Automatically handles common post-init tasks like computing maxbound
-        for components with period block arrays.
+        for components with period block arrays. Chains to parent class
+        post-init hooks (including DimensionRegistryMixin).
         """
+        # Chain to parent classes (including DimensionRegistryMixin)
+        if hasattr(super(), "__attrs_post_init__"):
+            super().__attrs_post_init__()  # type: ignore[misc]
         self._update_maxbound_if_needed()
 
     def _update_maxbound_if_needed(self):
