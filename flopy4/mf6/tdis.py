@@ -43,12 +43,12 @@ class Tdis(Package):
     )
 
     def get_dimensions(self) -> dict[str, int]:
-        """Return all dimensions this component provides.
+        """Get all dimensions.
 
         Returns
         -------
         dict[str, int]
-            Mapping of dimension names to their integer values.
+            Mapping of dimension names to their integer sizes.
         """
         return {"nper": self.nper}
 

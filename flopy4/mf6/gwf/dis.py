@@ -120,7 +120,7 @@ class Dis(DisBase):
         super().__attrs_post_init__()
 
     def get_dimensions(self) -> dict[str, int]:
-        """Return all dimensions this component provides.
+        """Get all dimensions.
 
         Returns both explicit dimensions (nlay, nrow, ncol) and computed
         dimensions (nodes, ncpl).
@@ -128,7 +128,7 @@ class Dis(DisBase):
         Returns
         -------
         dict[str, int]
-            Mapping of dimension names to their integer values.
+            Mapping of dimension names to their integer sizes.
         """
         return {
             "nlay": self.nlay,

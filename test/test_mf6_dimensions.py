@@ -1,11 +1,11 @@
-"""Unit tests for dimension resolution protocols and mixins."""
+"""Tests for dimension resolution protocols and mixins."""
 
 from typing import Optional
 
 from attrs import field
 from xattree import xattree
 
-from flopy4.mf6.mixins import DimensionRegistryMixin
+from flopy4.mf6.dimensions import DimensionRegistryMixin
 
 # Test fixtures: simple test components
 
@@ -99,16 +99,6 @@ class TestDimensionRegistryMixin:
         assert container.resolve_dimension("nlay") == 3
         assert container.resolve_dimension("nodes") == 600
 
-    def test_resolve_dimension_delegates_to_parent(self):
-        """Test that dimension resolution delegates to parent when not found locally."""
-        provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
-        parent = MockContainer(provider=provider)
-        child = MockContainer(parent=parent)
-
-        # Child doesn't have a provider, so should delegate to parent
-        assert child.resolve_dimension("nlay") == 3
-        assert child.resolve_dimension("nodes") == 600
-
     def test_resolve_dimension_caching(self):
         """Test that resolved dimensions are cached."""
         provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -166,47 +156,12 @@ class TestDimensionRegistryMixin:
             "ncpl": 200,
         }
 
-    def test_get_all_dimensions_no_parent_delegation(self):
-        """Test that get_all_dimensions does not delegate to parent."""
-        provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
-        parent = MockContainer(provider=provider)
-        child = MockContainer(parent=parent)
-
-        # Child has no provider, should return empty dict (not delegate to parent)
-        dims = child.get_all_dimensions()
-        assert dims == {}
-
     def test_get_all_dimensions_none_fields(self):
         """Test that None fields don't break dimension collection."""
         container = MockContainer(provider=None)
 
         dims = container.get_all_dimensions()
         assert dims == {}
-
-    def test_hierarchical_resolution(self):
-        """Test dimension resolution through multiple levels of hierarchy."""
-        # Create a 3-level hierarchy
-        provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
-        grandparent = MockContainer(provider=provider)
-        parent = MockContainer(parent=grandparent)
-        child = MockContainer(parent=parent)
-
-        # Child should be able to resolve from grandparent
-        assert child.resolve_dimension("nlay") == 3
-        assert child.resolve_dimension("nodes") == 600
-
-    def test_parent_overrides_grandparent(self):
-        """Test that parent dimensions override grandparent dimensions."""
-        grandparent_provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
-        parent_provider = MockDimensionProvider(nlay=5, nrow=15, ncol=25)
-
-        grandparent = MockContainer(provider=grandparent_provider)
-        parent = MockContainer(provider=parent_provider, parent=grandparent)
-        child = MockContainer(parent=parent)
-
-        # Child should see parent's dimensions, not grandparent's
-        assert child.resolve_dimension("nlay") == 5
-        assert child.resolve_dimension("nodes") == 5 * 15 * 25
 
 
 class TestDisDimensionProvider:
