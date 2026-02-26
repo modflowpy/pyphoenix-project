@@ -1253,7 +1253,8 @@ def update_maxbound(instance, attribute, new_value):
             if isinstance(array_val.data, sparse.SparseArray):
                 array_data = array_val.data.todense()
             else:
-                array_data = array_val.data
+                # Convert to numpy array to handle memoryview and other array-like objects
+                array_data = np.asarray(array_val.data)
 
             if array_data.dtype.kind in ["U", "S"]:  # String arrays
                 non_default_count = len(np.where(array_data != "")[0])
