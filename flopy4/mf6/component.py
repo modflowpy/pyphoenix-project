@@ -82,9 +82,13 @@ class Component(DimensionRegistryMixin, ABC, MutableMapping):
         and calls update_maxbound if needed. This generalizes the pattern that
         was previously repeated in multiple component classes.
         """
-        # Check if component has a maxbound field and period block arrays
+        # Check if component has a maxbound field/property and period block arrays
         component_fields = fields(self.__class__)
-        has_maxbound = any(f.name == "maxbound" for f in component_fields)
+        has_maxbound = (
+            any(f.name == "maxbound" for f in component_fields)
+            or any(f.name == "_maxbound" for f in component_fields)
+            or hasattr(self.__class__, "maxbound")
+        )
         has_period_arrays = any(
             f.metadata
             and f.metadata.get("block") == "period"
