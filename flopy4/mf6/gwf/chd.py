@@ -34,7 +34,7 @@ class Chd(Package):
         from flopy4.mf6.constants import FILL_DNODATA
 
         period_arrays = []
-        for f in fields(self.__class__):
+        for f in fields(Chd):  # type: ignore[arg-type]
             if (
                 f.metadata
                 and f.metadata.get("block") == "period"

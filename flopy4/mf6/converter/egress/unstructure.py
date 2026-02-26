@@ -296,7 +296,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     if hasattr(value.__class__, "maxbound") and isinstance(
         getattr(value.__class__, "maxbound"), property
     ):
-        maxbound_value = value.maxbound
+        maxbound_value = getattr(value, "maxbound", None)
         if maxbound_value is not None:
             data["maxbound"] = maxbound_value
 
