@@ -330,54 +330,6 @@ def test_init_big_sim():
     assert "npf" not in gwf
 
 
-def test_gwf_dfn():
-    gwf = Gwf()
-    dfn = gwf.dfn
-    assert dfn.name == "gwf"
-    assert not dfn.advanced
-    assert not dfn.multi
-    assert dfn.ref is None
-    assert "save_flows" in set(dfn.blocks["options"].keys())
-
-
-def test_disv_dfn():
-    dims = {
-        "nlay": 1,
-        "nvert": 4,
-        "ncpl": 2,
-        "nodes": 2,
-    }
-    disv = Disv(dims=dims)
-    dfn = disv.dfn
-    assert dfn.name == "disv"
-    assert not dfn.advanced
-    assert not dfn.multi
-    assert dfn.ref is None
-    assert "nogrb" in set(dfn.blocks["options"].keys())
-
-
-def test_chd_dfn():
-    chd = Chd(strict=False)
-    dfn = chd.dfn
-    assert dfn.name == "chd"
-    assert not dfn.advanced
-    assert dfn.multi
-    assert dfn.ref is None
-    assert "print_input" in set(dfn.blocks["options"].keys())
-    assert "head" in set(dfn.blocks["period"].keys())
-
-
-def test_ims_dfn():
-    ims = Ims(strict=False)
-    dfn = ims.dfn
-    assert dfn.name == "ims"
-    assert not dfn.advanced
-    assert not dfn.multi
-    assert dfn.ref is None
-    assert "complexity" in set(dfn.blocks["options"].keys())
-    assert "inner_maximum" in set(dfn.blocks["linear"].keys())
-
-
 def test_write_ascii(function_tmpdir):
     sim_name = "sim"
     gwf_name = "gwf"

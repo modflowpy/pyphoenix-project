@@ -16,6 +16,7 @@ from xattree import XatSpec, asdict, get_xatspec
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import blocks_dict
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
@@ -155,7 +156,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
             multi = package.multi_package if hasattr(package, "multi_package") else False
             data = asdict(package)
 
-            for block_name, block in package.dfn.blocks.items():
+            for block_name, block in blocks_dict(type(package)).items():
                 if block_name != "griddata" and block_name != "period":
                     continue
                 for field_name in block.keys():
