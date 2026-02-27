@@ -10,7 +10,8 @@
 # 1. **Binary text arrays**: traditional MODFLOW `.txt` array files (always run)
 # 2. **Layered-mesh NetCDF** (`mesh="layered"`): 2-D face-based UGRID NetCDF
 # 3. **Structured NetCDF** (no `mesh` arg): CF-convention DIS NetCDF
-#    (modes 2 and 3 require `MF6_EXTENDED=1` to actually run MODFLOW)
+#    (modes 2 and 3 require extended `mf6` and environment variable
+#    `MF6_EXTENDED=1` to actually run the MODFLOW simulation)
 #
 # It also shows how to wrap DIS head and budget output in `xu.UgridDataArray`
 # for unstructured-style vector plotting with xugrid.

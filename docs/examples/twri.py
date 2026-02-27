@@ -9,7 +9,8 @@
 # 2. **Array-based** (`Chdg`, `Drng`, `Welg`): full `(nper, nlay, nrow, ncol)` arrays
 #    with `FILL_DNODATA` marking inactive cells
 # 3. **NetCDF input**: array data written to a `.nc` file and referenced by the
-#    simulation (requires `MF6_EXTENDED=1` to actually run MODFLOW)
+#    simulation (requires extended `mf6` and environment variable `MF6_EXTENDED=1`
+#    to actually run the MODFLOW simulation)
 #
 # Import dependencies.
 
