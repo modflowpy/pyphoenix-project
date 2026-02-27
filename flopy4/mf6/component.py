@@ -5,15 +5,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 from attrs import fields
-from modflow_devtools.dfn import Dfn, Field
-from packaging.version import Version
 from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.dimensions import DimensionRegistryMixin
-from flopy4.mf6.spec import field, fields_dict, to_field
+from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
