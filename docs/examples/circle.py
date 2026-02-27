@@ -1,4 +1,15 @@
-# Circle
+# # Circle — DISV vertex grid with xugrid
+#
+# This example models steady-state groundwater flow in a circular domain
+# using DISV (vertex-based) discretization.  DISV allows arbitrary polygon
+# cells, which is useful for curvilinear or unstructured domains where a
+# regular structured grid would introduce excessive staircase error.
+#
+# Circle example:
+# * build a `Disv` package from an existing GRB file
+# * construct an xugrid `Ugrid2d` mesh from the discretization
+# * convert MODFLOW head and budget output to `UgridDataArray` for plotting
+# * overlay quiver vectors on an unstructured mesh using `assign_edge_coords()`
 #
 # Import dependencies.
 
@@ -13,10 +24,18 @@ from flopy.mf6.utils.binarygrid_util import MfGrdFile
 
 import flopy4
 
-# Timing
+# # Timing
+#
+# One steady-state stress period of length 1.0 day with a single time step.
 time = flopy4.mf6.utils.time.Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
 nper = time.nper
 
+# # Grid
+#
+# Load an existing GRB (binary grid) file to get the DISV geometry.
+# A GRB records vertex coordinates, cell connectivity, and grid metadata
+# written by MODFLOW 6 after it has processed the DISV package.  Using it
+# as the source avoids duplicating the geometry in Python.
 grb_fpth = Path(__file__).parent / "data" / "circle" / "disv.disv.grb"
 grb_obj = MfGrdFile(grb_fpth, verbose=True)
 idomain = grb_obj.idomain
@@ -33,7 +52,9 @@ vertices, cell2d = grb_obj.cell2d
 LAYER_NODATA = np.full((ncpl), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 GRID_NODATA = np.full((nlay, ncpl), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 
-# TODO: xoff, yoff, angrot, crs, etc
+# `Disv` holds the vertex-based discretization.  The grid origin and rotation
+# can be set via `xorigin`/`yorigin`/`angrot`.  A CRS string (e.g. "EPSG:26911")
+# can be attached for georeferencing.  All are passed to `Disv` at construction time.
 disv = flopy4.mf6.gwf.disv.Disv(
     xorigin=573309.700,
     yorigin=4102552.000,
@@ -51,13 +72,15 @@ disv = flopy4.mf6.gwf.disv.Disv(
     cell2ddata=flopy4.mf6.gwf.disv.Disv.grid_to_disv_cell2d(cell2d),
 )
 
-# generate xugrid mesh2d grid
+# Build the xugrid Ugrid2d mesh from the Disv package.
+# `disv.to_grid()` returns a `VertexGrid`; `.ugrid` converts it to an
+# `xu.Ugrid2d` object suitable for xugrid operations.
 grid = disv.to_grid().ugrid
 
-# set dims
+# `dims` captures array shapes needed by packages that pre-allocate xarray storage.
 dims = {"nper": nper, "nlay": nlay, "ncpl": ncpl, "nvert": len(vertices), "nodes": nlay * ncpl}
 
-# convert idomain to UgridDataArray
+# Wrap idomain as a UgridDataArray so xugrid knows the cell topology.
 idomain = xu.UgridDataArray(
     xr.DataArray(
         idomain.reshape(nlay, ncpl),
@@ -66,6 +89,8 @@ idomain = xu.UgridDataArray(
     ),
     grid=grid,
 )
+
+# # Packages
 
 # Create workspace
 workspace = Path(__file__).parent / "circle" / "list"
@@ -78,10 +103,11 @@ ax.set_aspect(1)
 plt.savefig(workspace / "grid.png", dpi=1200, bbox_inches="tight")
 plt.close()
 
-# Initial conditions
+# Initial conditions: uniform starting head of 0.0 m.
 ic = flopy4.mf6.gwf.Ic(strt=0.0, dims=dims)
 
-# Node properties
+# Node-property flow: isotropic, uniform conductivity; saves specific-discharge
+# for vector plotting.
 icelltype = xu.full_like(idomain, 0)
 k = xu.full_like(idomain, 1.0, dtype=float)
 k33 = k.copy()
@@ -94,7 +120,7 @@ npf = flopy4.mf6.gwf.Npf(
     dims=dims,
 )
 
-# Storage
+# Storage: steady-state for this single period.
 sto = flopy4.mf6.gwf.Sto(
     ss=1.0e-5,
     sy=0.15,
@@ -103,7 +129,8 @@ sto = flopy4.mf6.gwf.Sto(
     dims=dims,
 )
 
-# Constant Head
+# Constant head boundary on the outer ring of cells: `binary_dilation` with
+# `border_value=True` identifies all cells that touch the domain boundary.
 chd_head = {}
 chd_location = xu.zeros_like(idomain.sel(layer=2), dtype=bool).ugrid.binary_dilation(
     border_value=True
@@ -126,10 +153,10 @@ ax.set_aspect(1)
 plt.savefig(workspace / "chd.png", dpi=1200, bbox_inches="tight")
 plt.close()
 
-# Recharge
+# Recharge: uniform rate applied to every cell in the top layer.
 rch = flopy4.mf6.gwf.Rch(recharge={"*": {(0, j): 0.001 for j in range(ncpl)}}, dims=dims)
 
-# Output control
+# Output control: write heads and budget to binary files.
 oc = flopy4.mf6.gwf.Oc(
     budget_file="gwf.bud",
     head_file="gwf.hds",
@@ -138,7 +165,7 @@ oc = flopy4.mf6.gwf.Oc(
     dims=dims,
 )
 
-# Flow model
+# Flow model: assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
     save_flows=True,
     dis=disv,
@@ -149,9 +176,11 @@ gwf = flopy4.mf6.gwf.Gwf(
     rch=[rch],
     oc=oc,
 )
+# When MF6_EXTENDED is set, also write a mesh2d NetCDF output file.
 if os.getenv("MF6_EXTENDED"):
     gwf.netcdf_mesh2d_file = Path("circle.nc")
 
+# Solver: conjugate-gradient suitable for the symmetric SPD system.
 ims = flopy4.mf6.Ims(
     print_option="summary",
     outer_dvclose=1.0e-4,
@@ -169,6 +198,8 @@ ims = flopy4.mf6.Ims(
 # TDIS
 tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 
+# # Write and run — list-based inputs
+
 # Create simulation
 sim = flopy4.mf6.simulation.Simulation(
     name="circle",
@@ -183,7 +214,17 @@ sim.write()
 sim.run()  # assumes the ``mf6`` executable is available on your PATH.
 
 
-#####################
+# # Read results and plot
+#
+# `gwf.output.head` returns a `UgridDataArray` for DISV models.
+# `gwf.output.budget` returns a `UgridDataset` keyed by face-flow term.
+#
+# To overlay quiver vectors on an unstructured mesh:
+# 1. Assemble `u` and `v` (face-normal flow) into a `UgridDataset`.
+# 2. Call `.ugrid.assign_edge_coords()` to attach edge-centre coordinates
+#    (`mesh2d_edge_x`, `mesh2d_edge_y`) as xarray coordinates.
+# 3. Call `.plot.quiver()` using those coordinates as positional arguments.
+
 head = gwf.output.head
 cbc = gwf.output.budget
 # from flopy.utils import HeadFile
@@ -205,7 +246,10 @@ ax.set_aspect(1)
 plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
 plt.close()
 
-# Original package configuration with NetCDF input
+# # NetCDF input — layered mesh (list-based CHD)
+#
+# Re-run with the DISV packages written to a layered-mesh NetCDF file.
+# `MF6_EXTENDED=1` is required to run MODFLOW with NetCDF input.
 workspace = Path(__file__).parent / "circle" / "netcdf"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
@@ -224,7 +268,10 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 if os.getenv("MF6_EXTENDED"):
     sim.run()
 
-# CHDG package with NetCDF input
+# # NetCDF input — array-based CHD (Chdg)
+#
+# Switch from the list-based `Chd` to the array-based `Chdg` and re-run
+# with NetCDF input.  Head output is not requested here (no head_file in OC).
 head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 for i in np.where(chd_location)[0]:
     head[0, 1, i] = 1.0
@@ -269,10 +316,10 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 if os.getenv("MF6_EXTENDED"):
     sim.run()
 
-    # head object from netcdf output
+    # head object from netcdf output — `UgridDataArray` backed by the mesh2d output file.
     head = gwf.output.head
 
-    # budget object
+    # budget object — `UgridDataset` with one variable per face-flow term.
     cbc = gwf.output.budget
 
     cbc_grid = cbc["flow-horizontal-face-x"].grid

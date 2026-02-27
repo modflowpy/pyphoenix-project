@@ -246,7 +246,12 @@ def _read_disv_grb(grb) -> dict[str, Any]:
     node_x = verts[:, 0] + xorigin
     node_y = verts[:, 1] + yorigin
 
-    face_nodes = scipy.sparse.csr_matrix((ugrid_ja, ugrid_ja, ugrid_ia))
+    n_nodes = len(verts)
+    ncpl_faces = len(ugrid_ia) - 1
+    face_nodes = scipy.sparse.csr_matrix(
+        (np.ones(len(ugrid_ja), dtype=np.intp), ugrid_ja, ugrid_ia),
+        shape=(ncpl_faces, n_nodes),
+    )
     grid = xu.Ugrid2d(node_x, node_y, -1, face_nodes)
     facedim = grid.face_dimension
 

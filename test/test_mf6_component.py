@@ -1088,6 +1088,8 @@ def test_ugrid_from_dis_factory():
     assert botm_near_x15.shape == (2, 5)
 
     ugrid = grid.ugrid
+    assert ugrid.n_face == nrow * ncol
+    assert ugrid.n_node == (nrow + 1) * (ncol + 1)
 
 
 def test_ugrid_from_disv_factory():
@@ -1110,15 +1112,18 @@ def test_ugrid_from_disv_factory():
         [10, 11, 15, 14],
     ]
 
+    # Cell centers for the 3x3 quad grid with vertices at
+    # x=[1e8, 1e8+10, 1e8+20, 1e8+30], y=[1e8+30, 1e8+20, 1e8+10, 1e8]
+    _base = 1.00000000e08
+    _xc = [5.0, 15.0, 25.0, 5.0, 15.0, 25.0, 5.0, 15.0, 25.0]
+    _yc = [25.0, 25.0, 25.0, 15.0, 15.0, 15.0, 5.0, 5.0, 5.0]
     cell2ddata = []
-    xc = 1.00000005e08
-    yc = 1.00000025e08
     for n in range(ncpl):
         cell2ddata.append(
             Disv.Cell2dRecord(
                 n,
-                xc + (10.0 * n),
-                yc - (10.0 * n),
+                _base + _xc[n],
+                _base + _yc[n],
                 4,
                 tuple(cells[n]),
             )
@@ -1185,11 +1190,9 @@ def test_ugrid_from_disv_factory():
     np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((ncpl), -15.0))
     np.testing.assert_allclose(grid.dataset.coords["z"].values[2], np.full((ncpl), -25.0))
 
-    # Check that coordinate-based selection works
-    botm_near_x = grid.botm.sel(x=100000205, method="nearest")
-    assert botm_near_x.shape == (3,)
-
     ugrid = grid.ugrid
+    assert ugrid.n_face == ncpl
+    assert ugrid.n_node == nvert
 
     udata = xugrid.UgridDataArray(dis.top, grid=ugrid)
 

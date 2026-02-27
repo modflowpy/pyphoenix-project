@@ -182,6 +182,15 @@ def _open_hds_netcdf(
     ds = xr.open_dataset(path, chunks={"time": 1})
     grid_type = ds.attrs.get("modflow_grid", "").upper()
 
+    # Validate that the NetCDF grid type is consistent with the GRB file.
+    _NC_TO_GRB = {"STRUCTURED": "DIS", "VERTEX": "DISV"}
+    grb_grid_type = grb_info["grid_type"]
+    if grid_type and _NC_TO_GRB.get(grid_type) != grb_grid_type:
+        raise ValueError(
+            f"Grid type mismatch: GRB reports {grb_grid_type!r} but NetCDF "
+            f"'modflow_grid' attribute is {grid_type!r}"
+        )
+
     # Time is already CF-encoded datetime64; load eagerly (small coordinate).
     time_values = ds["time"].values
 

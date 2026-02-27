@@ -83,17 +83,26 @@ class Gwf(Model):
             path = self.parent.workspace
             dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
 
-            hds_ext = ["*.hds", "*.hed"]
-            hds_path: list[Path] = []
-            for ext in hds_ext:
-                hds_path.extend(path.glob(ext))
+            hds_fpth = None
+            head_file = self.parent.oc.head_file if self.parent.oc is not None else None
+            if head_file is not None:
+                fpth = path / head_file.name
+                if fpth.exists():
+                    hds_fpth = fpth
 
-            if len(hds_path) == 0:
-                hds_path = [h for h in path.glob("*.nc") if not str(h).endswith("input.nc")]
+            if hds_fpth is None:
+                # Check for output NC file configured on the model
+                nc_fname = self.parent.netcdf_mesh2d_file or self.parent.netcdf_structured_file
+                if nc_fname is not None:
+                    fpth = path / nc_fname.name
+                    if fpth.exists():
+                        hds_fpth = fpth
 
-            assert len(hds_path) == 1
+            if hds_fpth is None:
+                raise FileNotFoundError(f"No head file (*.hds, *.hed, *.nc) found in {path}")
+
             return open_hds(
-                hds_path[0],
+                hds_fpth,
                 self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
             )
 
@@ -102,15 +111,18 @@ class Gwf(Model):
             path = self.parent.workspace
             dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
 
-            cbc_ext = ["*.bud", "*.cbc"]
-            cbc_path: list[Path] = []
-            for ext in cbc_ext:
-                cbc_path.extend(path.glob(ext))
+            cbc_fpth = None
+            cbc_file = self.parent.oc.budget_file if self.parent.oc is not None else None
+            if cbc_file is not None:
+                fpth = path / cbc_file.name
+                if fpth.exists():
+                    cbc_fpth = fpth
 
-            assert len(cbc_path) == 1
-            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+            if cbc_fpth is None:
+                raise FileNotFoundError(f"No budget file (*.bud, *.cbc) found in {path}")
+
             return open_cbc(
-                cbc_path[0],
+                cbc_fpth,
                 self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
             )
 

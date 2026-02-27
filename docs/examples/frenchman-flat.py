@@ -53,8 +53,58 @@ def plot_head(head, workspace):
     plt.close()
 
 
-# ### Timing
+def plot_head_ugrid(head, cbc, grid, workspace):
+    """Plot head and flow vectors using xugrid on a DIS (structured) grid.
 
+    Even though the model uses DIS discretization, we can wrap the 2-D
+    (y, x) head slice in a ``xu.UgridDataArray`` by flattening it to a
+    face dimension whose topology is defined by ``grid.ugrid``.  This lets
+    us use xugrid's plotting API without converting the model to DISV.
+
+    Flow vectors come from the CBC budget terms:
+    * ``u = flow-right-face``  (positive = eastward / +x direction)
+    * ``v = -flow-front-face`` (negated because MODFLOW's "front" face is
+      the south face; positive "front" flow is southward, so we negate to
+      get the northward (+y) component for a conventional quiver plot)
+    """
+    import matplotlib.pyplot as plt
+    import xarray as xr
+    import xugrid as xu
+
+    ugrid = grid.ugrid
+    facedim = ugrid.face_dimension
+
+    # Select first timestep and first layer; flatten (y, x) → face dimension
+    h = head.isel(time=0, layer=0).compute()
+    head_uda = xu.UgridDataArray(
+        xr.DataArray(h.values.ravel(), dims=[facedim], name="head"),
+        grid=ugrid,
+    )
+
+    # Flow vectors: u = flow-right-face (+x/east), v = -flow-front-face (+y/north)
+    u = cbc["flow-right-face"].isel(time=0, layer=0).compute()
+    v = -cbc["flow-front-face"].isel(time=0, layer=0).compute()
+    ds = xu.UgridDataset(grids=ugrid)
+    ds["u"] = xu.UgridDataArray(
+        xr.DataArray(u.values.ravel(), dims=[facedim], name="u"), grid=ugrid
+    )
+    ds["v"] = xu.UgridDataArray(
+        xr.DataArray(v.values.ravel(), dims=[facedim], name="v"), grid=ugrid
+    )
+    ds = ds.ugrid.assign_face_coords()
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    head_uda.ugrid.plot(ax=ax)
+    xu.plot.line(ugrid, ax=ax, color="white", linewidth=0.1)
+    ds.plot.quiver(x="mesh2d_face_x", y="mesh2d_face_y", u="u", v="v", color="black")
+    ax.set_aspect(1)
+    ax.set_title("Head with flow vectors (layer 1, time 0)")
+    plt.savefig(workspace / "head_ugrid.png", dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+# # Timing
+#
 # 33 transient stress periods matching the original pumping schedule,
 # with 15 time steps per period and a 1.1× geometric time-step multiplier.
 time = flopy4.mf6.utils.time.Time(
@@ -690,9 +740,15 @@ head = flopy4.mf6.utils.open_hds(
     workspace / "ff.dis.grb",
 )
 
-# ### Plot head results
+# Load budget results
+cbc = flopy4.mf6.utils.open_cbc(
+    workspace / "ff.cbc",
+    workspace / "ff.dis.grb",
+)
 
+# Plot head results
 plot_head(head, workspace)
+plot_head_ugrid(head, cbc, grid, workspace)
 
 # ### NetCDF (mesh) base package input
 
@@ -723,8 +779,15 @@ if os.getenv("MF6_EXTENDED"):
         workspace / "ff.dis.grb",
     )
 
+    # Load budget results
+    cbc = flopy4.mf6.utils.open_cbc(
+        workspace / "ff.cbc",
+        workspace / "ff.dis.grb",
+    )
+
     # Plot head results
     plot_head(head, workspace)
+    plot_head_ugrid(head, cbc, grid, workspace)
 
 # ### Array-based NetCDF WEL packages + layered mesh NetCDF output
 
@@ -835,14 +898,17 @@ if os.getenv("MF6_EXTENDED"):
         workspace / "ff.dis.grb",
     )
 
+    # Load budget results
+    cbc = flopy4.mf6.utils.open_cbc(
+        workspace / "ff.cbc",
+        workspace / "ff.dis.grb",
+    )
+
     # Plot head results
     plot_head(head, workspace)
+    plot_head_ugrid(head, cbc, grid, workspace)
 
-# The mesh2d NetCDF written to `netcdf_mesh/frenchman-flat.input.nc` can be
-# loaded into QGIS as a mesh layer via **Layer -> Add Layer -> Add Mesh Layer**.
-# The screenshot below shows the field NPF K layer 7 overlaid on the variable-
-# resolution Frenchman Flat grid.  The mesh is properly geolocated because a
-# CRS user input string was provided on grid construction.
+# # NetCDF input — structured (no mesh)
 #
 # ![QGIS: Frenchman Flat K layer 7 input — layered mesh](images/ff.qgis.npf-k-layer7.png)
 

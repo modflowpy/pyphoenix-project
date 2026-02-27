@@ -156,13 +156,19 @@ class StructuredGrid(LegacyStructuredGrid):
                 ncol = kwargs.get("ncol", 1)
                 kwargs["botm"] = np.array([np.full((nrow, ncol), float(b)) for b in botm])
 
-        if (delr := kwargs.get("delr", None)) is not None and isinstance(delr, Scalar):
-            ncol = kwargs.get("ncol", 1)
-            kwargs["delr"] = np.full(ncol, float(delr))
+        if (delr := kwargs.get("delr", None)) is not None:
+            if isinstance(delr, Scalar):
+                ncol = kwargs.get("ncol", 1)
+                kwargs["delr"] = np.full(ncol, float(delr))
+            else:
+                kwargs["delr"] = np.asarray(delr)
 
-        if (delc := kwargs.get("delc", None)) is not None and isinstance(delc, Scalar):
-            nrow = kwargs.get("nrow", 1)
-            kwargs["delc"] = np.full(nrow, float(delc))
+        if (delc := kwargs.get("delc", None)) is not None:
+            if isinstance(delc, Scalar):
+                nrow = kwargs.get("nrow", 1)
+                kwargs["delc"] = np.full(nrow, float(delc))
+            else:
+                kwargs["delc"] = np.asarray(delc)
 
         super().__init__(*args, **kwargs)
         self._dims_coords = {
@@ -768,12 +774,8 @@ class StructuredGrid(LegacyStructuredGrid):
             A 2-D unstructured grid object whose faces correspond to the
             structured grid cells in row-major order.
         """
-        delr = self.__delr  # type: ignore
-        delc = self.__delc  # type: ignore
         self.legacy = True
         try:
-            self.__delr = delr.values  # type: ignore
-            self.__delc = delc.values  # type: ignore
             return xu.Ugrid2d(
                 np.array(self.verts[:, 0]),
                 np.array(self.verts[:, 1]),
@@ -784,8 +786,6 @@ class StructuredGrid(LegacyStructuredGrid):
                 start_index=1,
             )
         finally:
-            self.__delr = delr  # type: ignore
-            self.__delc = delc  # type: ignore
             self.legacy = False
 
 
@@ -876,16 +876,10 @@ class VertexGrid(LegacyVertexGrid):
                 kwargs["botm"] = np.array([np.full((ncpl), float(b)) for b in botm])
 
         if "iv" in kwargs and "xv" in kwargs and "yv" in kwargs:
-            kwargs["vertices"] = []
-            for i in range(len(kwargs["iv"].values)):
-                vert = []
-                vert.append(kwargs["iv"].values[i])
-                vert.append(kwargs["xv"].values[i])
-                vert.append(kwargs["yv"].values[i])
-                kwargs["vertices"].append(vert)
-            kwargs.pop("iv")
-            kwargs.pop("xv")
-            kwargs.pop("yv")
+            iv = np.asarray(kwargs.pop("iv"))
+            xv = np.asarray(kwargs.pop("xv"))
+            yv = np.asarray(kwargs.pop("yv"))
+            kwargs["vertices"] = [[iv[i], xv[i], yv[i]] for i in range(len(iv))]
 
         super().__init__(*args, **kwargs)
         self._dims_coords = {
@@ -959,8 +953,8 @@ class VertexGrid(LegacyVertexGrid):
             # Ensure top and botm are proper arrays
             top_1d = np.atleast_1d(legacy_top)
             if top_1d.size == 1:
-                top_1d = np.full((self.ncpl), top_1d[0])
-            elif top_1d.shape != (self.ncpl):
+                top_1d = np.full((self.ncpl,), top_1d[0])
+            elif top_1d.shape != (self.ncpl,):
                 top_1d = top_1d.reshape(self.ncpl)
 
             botm_2d = np.atleast_2d(legacy_botm).reshape(self.nlay, self.ncpl)
@@ -1031,19 +1025,18 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_top is None:
             return None
 
-        dims = "ncpl"
+        dims = ("ncpl",)
         # Check if data shape matches expected grid dimensions
         # If not, return the raw legacy data without coordinates
-        if legacy_top.shape != (self.ncpl):
+        if legacy_top.shape != (self.ncpl,):
             return legacy_top
 
-        coord_names = self._dims_coords[dims[0]]
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
+        coord_name = self._dims_coords["ncpl"]  # "icpl"
+        coords = {coord_name: self._coords[coord_name]}
         coords.update({"x": self._coords["x"], "y": self._coords["y"]})
         return (
             xr.DataArray(legacy_top, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
+            .set_xindex(coord_name, PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
         )
@@ -1301,7 +1294,7 @@ class VertexGrid(LegacyVertexGrid):
             self.legacy = False
 
 
-def get_coords(grid: StructuredGrid) -> dict[str, Any]:
+def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     # unpack tuples
     xmin, xmax, ymin, ymax = grid.extent
     dx, dy = (grid.delr, -grid.delc)  # type: ignore
