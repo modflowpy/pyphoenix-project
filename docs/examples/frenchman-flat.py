@@ -764,6 +764,8 @@ sim.workspace = workspace
 nc_fpth = workspace / "frenchman-flat.input.nc"
 gwf.netcdf_file = nc_fpth
 
+# Here, grid and time info is passed to the `NetCDFModel' constructor
+# so that coordinate and mesh data is written to the NetCDF file.
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
 nc_model.to_netcdf(nc_fpth)
 
@@ -884,6 +886,7 @@ sim.workspace = workspace
 gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
 gwf.netcdf_file = Path("frenchman-flat.input.nc")
 
+# Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
 nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 
@@ -924,6 +927,7 @@ sim.workspace = workspace
 nc_fpth = workspace / "frenchnam-flat.input.nc"
 gwf.netcdf_file = nc_fpth
 
+# Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, grid=grid, time=time)
 nc_model.to_netcdf(nc_fpth)
 
@@ -938,5 +942,12 @@ if os.getenv("MF6_EXTENDED"):
         workspace / "ff.dis.grb",
     )
 
+    # Load budget results
+    cbc = flopy4.mf6.utils.open_cbc(
+        workspace / "ff.cbc",
+        workspace / "ff.dis.grb",
+    )
+
     # Plot head results
     plot_head(head, workspace)
+    plot_head_ugrid(head, cbc, grid, workspace)

@@ -24,6 +24,37 @@ from flopy.mf6.utils.binarygrid_util import MfGrdFile
 
 import flopy4
 
+
+def plot_head_ugrid(head, cbc, workspace):
+    """Plot head and flow vectors using xugrid on a DIS (structured) grid.
+
+    `gwf.output.head` returns a `UgridDataArray` for DISV models.
+    `gwf.output.budget` returns a `UgridDataset` keyed by face-flow term.
+
+    To overlay quiver vectors on an unstructured mesh:
+    1. Assemble `u` and `v` (face-normal flow) into a `UgridDataset`.
+    2. Call `.ugrid.assign_edge_coords()` to attach edge-centre coordinates
+        (`mesh2d_edge_x`, `mesh2d_edge_y`) as xarray coordinates.
+    3. Call `.plot.quiver()` using those coordinates as positional arguments.
+    """
+
+    cbc_grid = cbc["flow-horizontal-face-x"].grid
+    ds = xu.UgridDataset(grids=cbc_grid)
+    ds["u"] = cbc["flow-horizontal-face-x"]
+    ds["v"] = cbc["flow-horizontal-face-y"]
+
+    # Visualize the results
+    ds = ds.ugrid.assign_edge_coords()
+    fig, ax = plt.subplots()
+    head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
+    ds.isel(time=0, layer=0).plot.quiver(
+        x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
+    )
+    ax.set_aspect(1)
+    plt.savefig(workspace / "head_ugrid.png", dpi=1200, bbox_inches="tight")
+    plt.close()
+
+
 # # Timing
 #
 # One steady-state stress period of length 1.0 day with a single time step.
@@ -216,35 +247,14 @@ sim.run()  # assumes the ``mf6`` executable is available on your PATH.
 
 # # Read results and plot
 #
-# `gwf.output.head` returns a `UgridDataArray` for DISV models.
-# `gwf.output.budget` returns a `UgridDataset` keyed by face-flow term.
-#
-# To overlay quiver vectors on an unstructured mesh:
-# 1. Assemble `u` and `v` (face-normal flow) into a `UgridDataset`.
-# 2. Call `.ugrid.assign_edge_coords()` to attach edge-centre coordinates
-#    (`mesh2d_edge_x`, `mesh2d_edge_y`) as xarray coordinates.
-# 3. Call `.plot.quiver()` using those coordinates as positional arguments.
-
+# head object from netcdf output — `UgridDataArray` backed by the mesh2d output file.
 head = gwf.output.head
+
+# budget object — `UgridDataset` with one variable per face-flow term.
 cbc = gwf.output.budget
-# from flopy.utils import HeadFile
-# hds = HeadFile(workspace / "gwf.hds", precision="double")
 
-cbc_grid = cbc["flow-horizontal-face-x"].grid
-ds = xu.UgridDataset(grids=cbc_grid)
-ds["u"] = cbc["flow-horizontal-face-x"]
-ds["v"] = cbc["flow-horizontal-face-y"]
-
-# Visualize the results
-ds = ds.ugrid.assign_edge_coords()
-fig, ax = plt.subplots()
-head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
-ds.isel(time=0, layer=0).plot.quiver(
-    x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
-)
-ax.set_aspect(1)
-plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
-plt.close()
+# plot results
+plot_head_ugrid(head, cbc, workspace)
 
 # # NetCDF input — layered mesh (list-based CHD)
 #
@@ -257,6 +267,8 @@ sim.workspace = workspace
 nc_fpth = workspace / "circle.input.nc"
 gwf.netcdf_file = nc_fpth
 
+# Here, grid and time info is passed to the `NetCDFModel' constructor
+# so that coordinate and mesh data is written to the NetCDF file.
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
     gwf, mesh="layered", grid=disv.to_grid(), time=time
 )
@@ -267,6 +279,15 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 
 if os.getenv("MF6_EXTENDED"):
     sim.run()
+
+    # head object from netcdf output — `UgridDataArray` backed by the mesh2d output file.
+    head = gwf.output.head
+
+    # budget object — `UgridDataset` with one variable per face-flow term.
+    cbc = gwf.output.budget
+
+    # plot results
+    plot_head_ugrid(head, cbc, workspace)
 
 # # NetCDF input — array-based CHD (Chdg)
 #
@@ -305,6 +326,7 @@ sim.workspace = workspace
 nc_fpth = workspace / "circle.input.nc"
 gwf.netcdf_file = nc_fpth
 
+# Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
     gwf, mesh="layered", grid=disv.to_grid(), time=time
 )
@@ -322,18 +344,5 @@ if os.getenv("MF6_EXTENDED"):
     # budget object — `UgridDataset` with one variable per face-flow term.
     cbc = gwf.output.budget
 
-    cbc_grid = cbc["flow-horizontal-face-x"].grid
-    ds = xu.UgridDataset(grids=cbc_grid)
-    ds["u"] = cbc["flow-horizontal-face-x"]
-    ds["v"] = cbc["flow-horizontal-face-y"]
-
-    # Visualize the results
-    ds = ds.ugrid.assign_edge_coords()
-    fig, ax = plt.subplots()
-    head.isel(time=0, layer=0).compute().ugrid.plot(ax=ax)
-    ds.isel(time=0, layer=0).plot.quiver(
-        x="mesh2d_edge_x", y="mesh2d_edge_y", u="u", v="v", color="white"
-    )
-    ax.set_aspect(1)
-    plt.savefig(workspace / "head.png", dpi=1200, bbox_inches="tight")
-    plt.close()
+    # plot results
+    plot_head_ugrid(head, cbc, workspace)
