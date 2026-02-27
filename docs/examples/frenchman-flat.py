@@ -1,5 +1,19 @@
-# Frenchman Flat NV
-# https://www.sciencebase.gov/catalog/item/641a1b51d34eb496d1d2a1fd
+# # Frenchman Flat, Nevada — real-world DIS model
+# # https://www.sciencebase.gov/catalog/item/641a1b51d34eb496d1d2a1fd
+#
+# This example reproduces the Frenchman Flat, NV regional groundwater model:
+# a 10-layer, 87×87 structured-grid (DIS) simulation with heterogeneous
+# hydraulic conductivity, storage, and three well packages representing
+# constant-rate pumping, subsurface leakage, and water-sampling extraction.
+#
+# The script demonstrates all three input modes supported by flopy4:
+# 1. **Binary text arrays**: traditional MODFLOW `.txt` array files (always run)
+# 2. **Layered-mesh NetCDF** (`mesh="layered"`): 2-D face-based UGRID NetCDF
+# 3. **Structured NetCDF** (no `mesh` arg): CF-convention DIS NetCDF
+#    (modes 2 and 3 require `MF6_EXTENDED=1` to actually run MODFLOW)
+#
+# It also shows how to wrap DIS head and budget output in `xu.UgridDataArray`
+# for unstructured-style vector plotting with xugrid.
 import os
 from pathlib import Path
 
@@ -22,7 +36,10 @@ def plot_head(head, workspace):
     plt.close()
 
 
-# Timing
+# # Timing
+#
+# 33 transient stress periods matching the original pumping schedule,
+# with 15 time steps per period and a 1.1× geometric time-step multiplier.
 time = flopy4.mf6.utils.time.Time(
     perlen=[
         001.17707,
@@ -133,16 +150,22 @@ time = flopy4.mf6.utils.time.Time(
 
 nper = time.nper
 
-# Grid
+# # Grid
+#
+# 87×87 structured grid with variable column widths (`delr`/`delc`) that
+# refine toward the centre of the domain where wells are located.
+# The upper-left corner (xul, yul) from the source data is converted to the
+# lower-left origin expected by `StructuredGrid`.
 nlay = 10
 nrow = 87
 ncol = 87
 shape = (nlay, nrow, ncol)
 nodes = np.prod(shape)
-# TODO This is the factor in the downloaded model which changes sim results if removed.
-#   However, when it is applied the generated grid does not match the model domain on the website
-#   or downloaded jpeg.  Seems like it shouldn't be applied to delr/delc in the downloaded model?
-# FACTOR = 3.280  # TODO
+# The original downloaded model applies a unit-conversion factor of 3.280
+# (feet → metres) to delr/delc.  It is set to 1.0 here because the arrays
+# were already provided in SI units; the constant is preserved to document
+# the relationship to the source data.
+# FACTOR = 3.280
 FACTOR = 1.0
 delr = [
     2500.0,
@@ -359,15 +382,20 @@ grid = flopy4.mf6.utils.grid.StructuredGrid(
     idomain=idomain,
     crs="EPSG:26911",
 )
+# `dims` captures array shapes needed by packages that pre-allocate xarray storage.
 dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}
 
-# discretization
+# Discretization package: builds MODFLOW DIS input from the grid object.
 dis = flopy4.mf6.gwf.Dis.from_grid(grid=grid)
 
-# Initial conditions
+# Initial conditions: zero starting head everywhere.
 ic = flopy4.mf6.gwf.Ic(strt=0.0, dims=dims)
 
-# NPF
+# # NPF
+#
+# Node-property flow: layer-specific horizontal and vertical conductivity
+# loaded from per-layer text arrays.  `FACTOR = 0.1` gives k33 = 0.1 * k
+# (10 : 1 horizontal-to-vertical anisotropy).
 icelltype = np.stack([np.full((nrow, ncol), val) for val in [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 k = np.zeros((nlay, nrow, ncol), dtype=float)
 k33 = np.zeros((nlay, nrow, ncol), dtype=float)
@@ -400,7 +428,10 @@ npf = flopy4.mf6.gwf.Npf(
     dims=dims,
 )
 
-# Storage
+# # Storage
+#
+# Specific storage loaded from per-layer text arrays; confined storage only
+# (`iconvert=0` keeps all layers confined throughout the simulation).
 ss = np.zeros((nlay, nrow, ncol), dtype=float)
 for l in range(nlay):
     pad = "000" if l < 9 else "00"
@@ -418,7 +449,15 @@ sto = flopy4.mf6.gwf.Sto(
     dims=dims,
 )
 
-# WEL constant rate
+# # Wells
+#
+# Three separate WEL packages track distinct physical processes at the
+# same injection/extraction location (layer 2, row 44, col 44):
+# * `wel_crt`: cyclic constant-rate pumping (on/off by stress period)
+# * `wel_leak`: subsurface leakage from a radioactive waste site
+# * `wel_sampleQ`: water-sampling extraction schedule
+
+# Constant-rate pumping well: alternates between extraction and shut-in.
 wel_crt = flopy4.mf6.gwf.Wel(
     filename="ff.crt.wel",
     q={
@@ -447,7 +486,7 @@ wel_crt = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# WEL leakage
+# Leakage well: injects contaminated water at rates that vary by period.
 wel_leak = flopy4.mf6.gwf.Wel(
     filename="ff.leak.wel",
     q={
@@ -503,7 +542,7 @@ wel_leak = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# WEL sampling
+# Sampling well: extracts water for monitoring at scheduled intervals.
 wel_sampleQ = flopy4.mf6.gwf.Wel(
     filename="ff.sampleQ.wel",
     q={
@@ -547,7 +586,10 @@ wel_sampleQ = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# Output control
+# # Output control
+#
+# Save heads at every time step; save budget only at selected steps to keep
+# output file size manageable for this large model.
 oc = flopy4.mf6.gwf.Oc(
     budget_file=Path("ff.cbc"),
     head_file=Path("ff.hds"),
@@ -581,7 +623,9 @@ oc = flopy4.mf6.gwf.Oc(
     dims=dims,
 )
 
-# Flow model
+# # Simulation assembly
+
+# Flow model: assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
     dis=grid,
     ic=ic,
@@ -592,7 +636,8 @@ gwf = flopy4.mf6.gwf.Gwf(
     dims=dims,
 )
 
-# Solver
+# Solver: BiCGSTAB with dynamic under-relaxation (DBD) handles the
+# non-symmetric system that arises from the unconfined/transient conditions.
 ims = flopy4.mf6.Ims(
     print_option="summary",
     complexity="moderate",
@@ -615,11 +660,13 @@ ims = flopy4.mf6.Ims(
 # TDIS
 tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 
+# # Write and run — binary text array inputs
+
 # Create workspace
-workspace = Path(__file__).parent / "frenchman-flat" / "ff"
+workspace = Path(__file__).parent / "frenchman-flat" / "list"
 workspace.mkdir(parents=True, exist_ok=True)
 
-# Create simulation
+# Simulation: link the model and solver, then write and run.
 sim = flopy4.mf6.simulation.Simulation(
     name="ff",
     tdis=tdis,
@@ -640,9 +687,14 @@ head = flopy4.mf6.utils.open_hds(
 # Plot head results
 plot_head(head, workspace)
 
-# netcdf input (no netcdf stress package input)
+# # NetCDF input — layered mesh (list-based WEL packages)
+#
+# `NetCDFModel.from_model(gwf, mesh="layered")` writes a layered UGRID mesh
+# NetCDF containing the NPF, STO, and IC arrays.  WEL packages remain list-
+# based in the text input files.  Requires `MF6_EXTENDED=1` to run MODFLOW.
+
 # create new workspace
-workspace = Path(__file__).parent / "frenchman-flat" / "ff_netcdf"
+workspace = Path(__file__).parent / "frenchman-flat" / "netcdf_base"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -667,11 +719,18 @@ if os.getenv("MF6_EXTENDED"):
     # Plot head results
     plot_head(head, workspace)
 
+# # Array-based WEL packages + layered mesh NetCDF output
+#
+# Switch the three WEL packages from list-based to array-based (`Welg`),
+# combine with a layered-mesh NetCDF input file, and also request mesh2d
+# NetCDF output (`gwf.netcdf_mesh2d_file`).  `FILL_DNODATA` marks inactive
+# cells so MODFLOW ignores them for those stress periods.
+
 # update simulation with array based inputs
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 GRID_NODATA = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 
-# well constant rate
+# Constant-rate pumping — array form of wel_crt.
 q_crt = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 q_crt[0, 1, 43, 43] = -30992.50
 q_crt[1, 1, 43, 43] = -00000.0
@@ -689,7 +748,7 @@ welg_crt = flopy4.mf6.gwf.Welg(
 )
 
 
-# well leakage
+# Leakage — array form of wel_leak.
 q_leak = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 q_leak[0, 1, 43, 43] = 1.0000000e-05
 q_leak[7, 1, 43, 43] = 1.5000000e03
@@ -716,7 +775,7 @@ welg_leak = flopy4.mf6.gwf.Welg(
 )
 
 
-# well sampling
+# Sampling — array form of wel_sampleQ.
 q_sampleQ = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 q_sampleQ[0, 1, 43, 43] = -00000.0
 q_sampleQ[22, 1, 43, 43] = -04981.90
@@ -739,16 +798,16 @@ welg_sampleQ = flopy4.mf6.gwf.Welg(
 )
 
 
-# remove list base WEL packages
+# Swap list-based WEL packages for their array-based equivalents.
 del gwf.wel[0]
 del gwf.wel[1]
 del gwf.wel[2]
 
-# add array based WEL packages
+# Attach the array-based WEL packages.
 gwf.wel = [welg_crt, welg_leak, welg_sampleQ]
 
 # create new workspace
-workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_mesh"
+workspace = Path(__file__).parent / "frenchman-flat" / "netcdf_mesh"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -763,7 +822,12 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 if os.getenv("MF6_EXTENDED"):
     sim.run()
 
-workspace = Path(__file__).parent / "frenchman-flat" / "ff_array_structured"
+# # NetCDF input — structured (no mesh)
+#
+# `NetCDFModel.from_model(gwf, grid=grid, time=time)` (no `mesh` argument)
+# writes a CF-convention structured NetCDF.  This is a simpler format than
+# the layered-mesh variant and does not require a UGRID-capable MODFLOW build.
+workspace = Path(__file__).parent / "frenchman-flat" / "netcdf_structured"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 

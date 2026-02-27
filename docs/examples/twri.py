@@ -1,4 +1,15 @@
-# # TWRI
+# # TWRI — Transient Well, Recharge, and Injection
+#
+# The TWRI problem is a classical MODFLOW benchmark: a three-layer aquifer
+# system with heterogeneous hydraulic conductivity, storage, a constant-head
+# left boundary, a drain, recharge, and scattered pumping wells.
+#
+# This script demonstrates three equivalent ways to specify stress packages:
+# 1. **List-based** (`Chd`, `Drn`, `Wel`): cell-by-cell `{(layer, row, col): value}` dicts
+# 2. **Array-based** (`Chdg`, `Drng`, `Welg`): full `(nper, nlay, nrow, ncol)` arrays
+#    with `FILL_DNODATA` marking inactive cells
+# 3. **NetCDF input**: array data written to a `.nc` file and referenced by the
+#    simulation (requires `MF6_EXTENDED=1` to actually run MODFLOW)
 #
 # Import dependencies.
 
@@ -24,13 +35,17 @@ def plot_head(head, workspace):
     plt.close()
 
 
-# Timing
+# # Timing
+#
+# Four daily stress periods; the first is steady-state, the rest transient.
 time = flopy4.mf6.utils.time.Time.from_timestamps(
     ["2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04"]
 )
 nper = time.nper
 
-# Grid
+# # Grid
+#
+# Three-layer, 15×15 structured grid; 5,000 m cells capture a regional aquifer.
 nlay = 3
 nrow = 15
 ncol = 15
@@ -46,11 +61,13 @@ grid = flopy4.mf6.utils.grid.StructuredGrid(
 )
 dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}  # TODO: temporary
 
-# Grid discretization
-# TODO: xorigin, yorigin
+# Discretization package: builds MODFLOW DIS input from the grid object.
+# The grid origin can be set with `xoff`/`yoff` to place the model in a
+# real-world coordinate system; it is omitted here for simplicity.
 dis = flopy4.mf6.gwf.Dis.from_grid(grid=grid)
 
-# Constant head boundary on the left
+# Constant head boundary on the left: pins head to 0 m on the left column,
+# creating the hydraulic gradient that drives flow through the domain.
 chd = flopy4.mf6.gwf.Chd(
     head={"*": {(k, i, 0): 0.0 for k in range(nlay - 1) for i in range(nrow)}},
     print_input=True,
@@ -59,7 +76,8 @@ chd = flopy4.mf6.gwf.Chd(
     dims=dims,
 )
 
-# Drain in the center left of the model
+# Drain in the center left of the model: removes water when head exceeds
+# the drain elevation, simulating a stream or tile drain.
 elevation = [0.0, 0.0, 10.0, 20.0, 30.0, 50.0, 70.0, 90.0, 100.0]
 conductance = 1.0
 drn = flopy4.mf6.gwf.Drn(
@@ -74,7 +92,8 @@ drn = flopy4.mf6.gwf.Drn(
 # Initial conditions
 ic = flopy4.mf6.gwf.Ic(strt=0.0, dims=dims)
 
-# Node properties
+# Node-property flow: heterogeneous horizontal (k) and vertical (k33)
+# conductivity; layer 1 is convertible (unconfined), layers 2–3 confined.
 icelltype = np.stack([np.full((nrow, ncol), val) for val in [1, 0, 0]])
 k = np.stack([np.full((nrow, ncol), val) for val in [1.0e-3, 1.0e-4, 2.0e-4]])
 k33 = np.stack([np.full((nrow, ncol), val) for val in [2.0e-8, 2.0e-8, 2.0e-8]])
@@ -88,7 +107,7 @@ npf = flopy4.mf6.gwf.Npf(
     dims=dims,
 )
 
-# Storage
+# Storage: specific storage (ss) and specific yield (sy); period 1 is steady-state.
 sto = flopy4.mf6.gwf.Sto(
     storagecoefficient=False,
     ss=1.0e-5,
@@ -98,15 +117,14 @@ sto = flopy4.mf6.gwf.Sto(
     dims=dims,
 )
 
-# Uniform recharge on the top layer
+# Uniform recharge on the top layer.  `FILL_DNODATA` is the sentinel
+# value that marks cells with no stress data for a given period.
 rch_rate = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
 rate = np.repeat(np.expand_dims(rch_rate, axis=0), repeats=nper, axis=0)
 rate[0, 0, ...] = 3.0e-8
 rch = flopy4.mf6.gwf.Rch(recharge=rate, dims=dims)
 
-# Output control
-# TODO: show both ways to set up the Oc package, strings
-# and proper record types? and/or with perioddata param?
+# Output control: save heads and budget at the start of the simulation.
 oc = flopy4.mf6.gwf.Oc(
     budget_file="gwf.bud",
     head_file="gwf.hds",
@@ -115,7 +133,7 @@ oc = flopy4.mf6.gwf.Oc(
     dims=dims,
 )
 
-# Wells scattered throughout the model
+# Wells scattered throughout the model: extraction is negative by MODFLOW convention.
 wel_q = -5.0
 wel_nodes = [
     [2, 4, 10],
@@ -139,7 +157,7 @@ wel = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# Flow model
+# Flow model: assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
     dis=grid,
     ic=ic,
@@ -153,7 +171,7 @@ gwf = flopy4.mf6.gwf.Gwf(
     dims=dims,
 )
 
-# Solver
+# Solver: conjugate-gradient with relaxation; suitable for symmetric SPD systems.
 ims = flopy4.mf6.Ims(
     print_option="summary",
     outer_dvclose=1.0e-4,
@@ -172,11 +190,13 @@ ims = flopy4.mf6.Ims(
 # TDIS
 tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 
+# # Write and run — list-based stress packages
+
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "list_stresspkg"
+workspace = Path(__file__).parent / "twri" / "list"
 workspace.mkdir(parents=True, exist_ok=True)
 
-# Create simulation
+# Simulation: link the model and solver, then write and run.
 sim = flopy4.mf6.simulation.Simulation(
     name="twri",
     tdis=tdis,
@@ -198,25 +218,29 @@ head = flopy4.mf6.utils.open_hds(
 # Plot head results
 plot_head(head, workspace)
 
-# UPDATE SIM for array based inputs
+# # Array-based stress packages
+#
+# The `Chdg`, `Drng`, and `Welg` ("G" = grid-array) variants accept a full
+# `(nper, nlay, nrow, ncol)` NumPy array.  Cells inactive for a given stress
+# period are set to `FILL_DNODATA`; MODFLOW skips those cells automatically.
 
 # update simulation with array based inputs
 LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 GRID_NODATA = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 
-head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
+chd_head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 for i in range(nrow):
     for k in range(nlay - 1):
-        head[0, k, i, 0] = 0.0
+        chd_head[0, k, i, 0] = 0.0
 chdg = flopy4.mf6.gwf.Chdg(
     print_input=True,
     print_flows=True,
     save_flows=True,
-    head=head,
+    head=chd_head,
     dims=dims,
 )
 
-# Drain in the center left of the model
+# Array-based drain: same geometry as the list-based version above.
 elev = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 cond = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=nper, axis=0)
 for j in range(9):
@@ -245,21 +269,24 @@ recharge = np.repeat(np.expand_dims(LAYER_NODATA, axis=0), repeats=nper, axis=0)
 recharge[0, ...] = 3.0e-8
 rcha = flopy4.mf6.gwf.Rcha(recharge=recharge, dims=dims)
 
-# remove list based inputs
-# TODO: show variations on removing packages
+# Swap list-based packages for array-based equivalents.
+# `gwf.chd.remove(chd)` removes by object identity; `del gwf.drn[0]`
+# removes by index.  Both leave the rest of the package list intact.
 gwf.chd.remove(chd)
 del gwf.drn[0]
 del gwf.wel[0]
 del gwf.rch[0]
 
-# add array based inputs
+# Attach the array-based packages.
 gwf.chd = [chdg]
 gwf.drn = [drng]
 gwf.wel = [welg]
 gwf.rch = [rcha]
 
+# # Write and run — array-based stress packages
+
 # create new workspace
-workspace = Path(__file__).parent / "twri" / "array_stresspkg"
+workspace = Path(__file__).parent / "twri" / "array"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -275,11 +302,14 @@ head = flopy4.mf6.utils.open_hds(
 # Plot head results
 plot_head(head, workspace)
 
-# UPDATE SIM for netcdf array based inputs
+# # NetCDF input — structured (no mesh)
+#
+# `NetCDFModel.from_model(gwf)` serializes all array-based packages to a
+# CF-compliant NetCDF file that MODFLOW 6 reads directly.  Running the
+# simulation requires a NetCDF-capable build; guard with `MF6_EXTENDED`.
 
-# Structured dataset (no mesh)
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "array_netcdf"
+workspace = Path(__file__).parent / "twri" / "netcdf_structured"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -295,9 +325,13 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 if os.getenv("MF6_EXTENDED"):
     sim.run()
 
-# Layered Mesh dataset
+# # NetCDF input — layered mesh
+#
+# `mesh="layered"` writes a layered UGRID mesh NetCDF, which MODFLOW 6
+# reads with its NetCDF-mesh2d input mode.
+
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "array_netcdf_mesh"
+workspace = Path(__file__).parent / "twri" / "netcdf_mesh"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
