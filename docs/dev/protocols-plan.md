@@ -95,24 +95,41 @@ For development/testing, provide an optional validation function:
 
 ## Progress
 
-We have added the protocols. I'm going to merge the PR soon. Next up:
+### Phase 1-2: Complete
 
-  Add Mixins
-  - Add flopy4/mf6/mixins.py with:
-    - DimensionRegistryMixin (@define class with _dimension_cache field)
-    - ParentSettingDict (for Phase 3, implemented but not used yet)
-  - Unit tests for mixin in isolation (create test component classes)
-  - Zero changes to existing Component or packages
-  - Tests: New unit tests only, all existing tests unchanged
+  **Add Protocols and Mixins** - DONE
+  - Created flopy4/mf6/dimensions.py with:
+    - DimensionProvider protocol
+    - DimensionRegistry protocol
+    - DimensionRegistryMixin (@xattree class with _dimension_cache field)
+    - _set_child_parents() stubbed for Phase 3
+  - Unit tests in test/test_mf6_dimensions.py
+  - Zero changes to existing code outside of new functionality
 
-  Apply Mixin to Component
+  **Apply Mixin to Component** - DONE
   - Component inherits from DimensionRegistryMixin while keeping @xattree
   - Component gains _dimension_cache field and resolution methods
   - All components now have resolve_dimension() and get_all_dimensions()
-  - Integration tests showing dimension resolution works via parent hierarchy
-  - Tests: New integration tests, all existing tests pass
+  - Integration tests show dimension resolution works via parent hierarchy
+  - All existing tests pass
 
-  Integrate with _resolve_dimensions
+  **Implement Dimension Providers** - DONE
+  - Dis.get_dimensions() returns nlay, nrow, ncol, nodes, ncpl
+  - Tdis.get_dimensions() returns nper
+  - Both compute derived dimensions correctly
+
+  **Comprehensive Testing** - DONE
+  - Unit tests for DimensionRegistryMixin in isolation (mock components)
+  - Unit tests for Dis and Tdis get_dimensions()
+  - Integration tests for Gwf → Dis dimension resolution
+  - Integration tests for Simulation → Tdis dimension resolution
+  - Integration tests for Model accessing both grid and time dimensions
+  - Caching tests
+  - All tests passing
+
+### Phase 3: Not Started
+
+  **Integrate with _resolve_dimensions** - NOT DONE
   - Update _resolve_dimensions() in structure.py:
     - Try parent.get_all_dimensions() FIRST (new path)
     - Fall back to xattree's parent.data.dims (compatibility)
@@ -120,11 +137,19 @@ We have added the protocols. I'm going to merge the PR soon. Next up:
   - All tests pass using both new and fallback paths
   - Tests: All existing tests pass (proving coexistence works)
 
-  Validation
+  NOTE: structure.py has been created but still uses old xattree path (parent.data.dims)
+
+  **Validation** - NOT DONE
   - Add conflict detection in get_all_dimensions()
   - Add optional validate_dimension_resolution() tool
 
-  Parent Management Migration
+  **ParentSettingDict** - NOT DONE
+  - Not yet implemented
+  - Planned for Phase 3 (parent management migration)
+
+### Phase 4: Future Work
+
+  **Parent Management Migration**
   - Remove @xattree decorator from Component
   - Add explicit _parent field and @property to Component
   - Enable _set_child_parents() implementation in mixin
@@ -133,7 +158,7 @@ We have added the protocols. I'm going to merge the PR soon. Next up:
   - Remove computed dimension fallback
   - All tests must pass without xattree
 
-  Optional Future Work:
+  **Optional Future Work:**
   - Add logging/debugging for resolution paths
   - Document interactive construction pattern in user guide
 
