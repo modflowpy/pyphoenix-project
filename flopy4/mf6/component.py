@@ -2,16 +2,14 @@ from abc import ABC
 from collections.abc import MutableMapping
 from os import PathLike
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, Optional
 
 from attrs import fields
-from modflow_devtools.dfn import Dfn, Field
-from packaging.version import Version
 from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import field, fields_dict, to_field
+from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
@@ -34,9 +32,6 @@ class Component(ABC, MutableMapping):
 
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
-
-    dfn: ClassVar[Dfn]
-    """The component's definition (i.e. specification)."""
 
     filename: str | None = field(default=None)
     """The name of the component's input file."""
@@ -93,7 +88,6 @@ class Component(ABC, MutableMapping):
     @classmethod
     def __attrs_init_subclass__(cls):
         COMPONENTS[cls.__name__.lower()] = cls
-        cls.dfn = cls.get_dfn()
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.
@@ -112,26 +106,6 @@ class Component(ABC, MutableMapping):
 
     def __len__(self):
         return len(self.children)  # type: ignore
-
-    @classmethod
-    def get_dfn(cls) -> Dfn:
-        """Get the component's definition (i.e. specification)."""
-        fields = {field_name: to_field(field) for field_name, field in fields_dict(cls).items()}
-        blocks: dict[str, dict[str, Field]] = {}
-        for field_name, field_ in fields.items():
-            if (block := field_.block) is not None:
-                blocks.setdefault(block, {})[field_name] = field_
-            else:
-                blocks[field_name] = field_
-
-        return Dfn(
-            schema_version=Version("2"),
-            name=cls.__name__.lower(),
-            advanced=getattr(cls, "advanced_package", False),
-            multi=getattr(cls, "multi_package", False),
-            ref=getattr(cls, "sub_package", None),
-            blocks=blocks,
-        )
 
     @classmethod
     def load(cls, path: str | PathLike, format: str = MF6) -> None:
@@ -185,7 +159,7 @@ class Component(ABC, MutableMapping):
             in terms of fields (flat) or blocks (nested).
         """
         data = xattree_asdict(self)
-        spec = self.dfn.fields
+        spec = fields_dict(self.__class__)
 
         if strict:
             data.pop("filename")
@@ -193,9 +167,9 @@ class Component(ABC, MutableMapping):
 
         if blocks:
             blocks_ = {}  # type: ignore
-            for field_name in spec.keys():
+            for field_name, field_attr in spec.items():
                 field_value = data[field_name]
-                block_name = spec[field_name].block
+                block_name = field_attr.metadata.get("block")
                 if strict and block_name is None:
                     continue
                 if block_name not in blocks_:
@@ -205,8 +179,8 @@ class Component(ABC, MutableMapping):
         else:
             return {
                 field_name: data[field_name]
-                for field_name in spec.keys()
-                if spec[field_name].block or not strict
+                for field_name, field_attr in spec.items()
+                if field_attr.metadata.get("block") or not strict
             }
 
     def to_xarray(self):

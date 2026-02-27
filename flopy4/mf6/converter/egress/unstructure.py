@@ -13,7 +13,7 @@ from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
-from flopy4.mf6.spec import FileInOut
+from flopy4.mf6.spec import FileInOut, blocks_dict
 
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
@@ -244,7 +244,7 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
 
 def _unstructure_array_component(value: Component) -> dict[str, Any]:
-    blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
+    blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))
     data = xattree.asdict(value)
@@ -287,7 +287,7 @@ def _unstructure_array_component(value: Component) -> dict[str, Any]:
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
-    blockspec = dict(sorted(value.dfn.blocks.items(), key=block_sort_key))  # type: ignore
+    blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))
     data = xattree.asdict(value)
