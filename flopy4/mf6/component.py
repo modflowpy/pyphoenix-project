@@ -65,8 +65,8 @@ class Component(DimensionRegistryMixin, ABC, MutableMapping):
         """
         Post-initialization hook for all components.
 
-        Automatically handles common post-init tasks like computing maxbound
-        for components with period block arrays. Chains to parent class
+        Automatically handles common post-init tasks like updating maxbound
+        for packages with period block arrays. Chains to parent class
         post-init hooks (including DimensionRegistryMixin).
         """
         # Chain to parent classes (including DimensionRegistryMixin)
@@ -79,16 +79,13 @@ class Component(DimensionRegistryMixin, ABC, MutableMapping):
         Update maxbound if this component has period block arrays.
 
         This method checks if the component has any period block arrays defined
-        and calls update_maxbound if needed. This generalizes the pattern that
-        was previously repeated in multiple component classes.
+        and calls update_maxbound if needed. Packages that use computed_field
+        for maxbound (like CHD, DRN, etc.) will have it automatically computed
+        at initialization and updated when period arrays change.
         """
-        # Check if component has a maxbound field/property and period block arrays
+        # Check if component has a maxbound field (computed_field) and period block arrays
         component_fields = fields(self.__class__)
-        has_maxbound = (
-            any(f.name == "maxbound" for f in component_fields)
-            or any(f.name == "_maxbound" for f in component_fields)
-            or hasattr(self.__class__, "maxbound")
-        )
+        has_maxbound = any(f.name == "maxbound" for f in component_fields)
         has_period_arrays = any(
             f.metadata
             and f.metadata.get("block") == "period"

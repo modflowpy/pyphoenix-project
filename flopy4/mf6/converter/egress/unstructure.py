@@ -292,14 +292,6 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     xatspec = xattree.get_xatspec(type(value))
     data = xattree.asdict(value)
 
-    # Handle maxbound as a computed property (not an attrs field)
-    if hasattr(value.__class__, "maxbound") and isinstance(
-        getattr(value.__class__, "maxbound"), property
-    ):
-        maxbound_value = getattr(value, "maxbound", None)
-        if maxbound_value is not None:
-            data["maxbound"] = maxbound_value
-
     # create child component binding blocks
     blocks.update(_make_binding_blocks(value))
 
