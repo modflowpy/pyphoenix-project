@@ -9,7 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, Union, get_args, get_origin
 
-import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema.block import block_sort_key
@@ -50,66 +49,6 @@ def field(
         eq=eq,
         init=init,
         on_setattr=on_setattr,
-        metadata=metadata,
-    )
-
-
-def computed_field(
-    default=NOTHING,
-    validator=None,
-    repr=True,
-    eq=True,
-    init=True,
-    metadata=None,
-    block: str | None = None,
-    longname: str | None = None,
-):
-    """
-    Define a computed field using attrs.field directly (not xattree).
-
-    This is useful for fields that are computed/derived and should not be
-    managed by xattree's data store. The field will still appear in the DFN
-    for serialization purposes.
-
-    Parameters
-    ----------
-    default : Any
-        Default value for the field
-    validator : callable, optional
-        Validator function
-    repr : bool
-        Include in repr
-    eq : bool
-        Include in equality comparisons
-    init : bool
-        Include in __init__ (typically False for computed fields)
-    metadata : dict, optional
-        Additional metadata
-    block : str, optional
-        MF6 block name (e.g., "options", "dimensions")
-    longname : str, optional
-        Long description for documentation
-
-    Returns
-    -------
-    attrs.Attribute
-        An attrs field that is not managed by xattree
-    """
-    metadata = metadata or {}
-    if block:
-        metadata["block"] = block
-    if longname:
-        metadata["longname"] = longname
-
-    # Add minimal xattree metadata so DFN generation works
-    metadata["xattree"] = {"kind": "attr", "converter": None, "validator": None}
-
-    return attrs.field(
-        default=default,
-        validator=validator,
-        repr=repr,
-        eq=eq,
-        init=init,
         metadata=metadata,
     )
 

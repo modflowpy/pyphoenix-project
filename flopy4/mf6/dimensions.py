@@ -3,8 +3,6 @@
 from typing import Protocol, runtime_checkable
 
 import attrs
-from attrs import field
-from xattree import xattree
 
 
 @runtime_checkable
@@ -102,31 +100,15 @@ class DimensionRegistry(Protocol):
         ...
 
 
-@xattree
 class DimensionRegistryMixin:
     """
     Mixin for components which consume dimensions from providers.
 
-    This mixin adds dimension resolution capabilities to attrs classes. It provides
-    lazy, cached dimension resolution, walking the tree to find dimension providers.
-
-    The mixin uses @xattree (same as Component) for compatibility. Using attrs.field
-    for _dimension_cache signals to xattree to treat it as a regular field without
-    special xattree handling.
-
     Attributes
     ----------
     _dimension_cache : dict[str, int]
-        Cache of resolved dimensions
-
-    Notes
-    -----
-    During xattree coexistence, the _set_child_parents() method is a no-op
-    since xattree already manages parent references. This will be enabled
-    when parent management is migrated.
+        Cache of resolved dimensions (stored as instance variable, not attrs field)
     """
-
-    _dimension_cache: dict[str, int] = field(init=False, factory=dict, repr=False)
 
     def __attrs_post_init__(self) -> None:
         """Set parent references on all children after construction.
@@ -136,6 +118,10 @@ class DimensionRegistryMixin:
         """
         if hasattr(super(), "__attrs_post_init__"):
             super().__attrs_post_init__()  # type: ignore[misc]
+        # Initialize dimension cache as instance variable (not attrs field)
+        # to keep the mixin backend-agnostic
+        if not hasattr(self, "_dimension_cache"):
+            object.__setattr__(self, "_dimension_cache", {})
         self._set_child_parents()
 
     def _set_child_parents(self) -> None:
