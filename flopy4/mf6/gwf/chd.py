@@ -9,7 +9,7 @@ from xattree import xattree
 from flopy4.mf6.constants import LENBOUNDNAME
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field, path
+from flopy4.mf6.spec import array, computed_field, field, path
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.utils import to_path
 
@@ -17,6 +17,27 @@ from flopy4.utils import to_path
 @xattree
 class Chd(Package):
     multi_package: ClassVar[bool] = True
+
+    # Computed field for maxbound - uses attrs.field directly (not xattree)
+    # so it appears in DFN but is not managed by xattree's data store.
+    # Updated by update_maxbound() in post-init and when period arrays change.
+    # xattree may reset this to None when tree structure changes, so we
+    # recompute it in write() before serialization.
+    maxbound: Optional[int] = computed_field(
+        default=None,
+        init=False,
+        block="dimensions",
+        longname="maximum number of constant heads",
+    )
+
+    def write(self, format=None, context=None):
+        """Write the component, ensuring maxbound is current before serialization."""
+        # Recompute maxbound in case xattree reset it when tree structure changed.
+        # TODO: This workaround won't be needed after migrating to Pydantic, which
+        # has native support for computed fields via @computed_field decorator.
+        update_maxbound(self, None, None)
+        super().write(format=format, context=context)
+
     auxiliary: Optional[list[str]] = array(
         block="options", default=None, longname="keyword to specify aux variables"
     )
@@ -43,12 +64,6 @@ class Chd(Package):
     )
     dev_no_newton: bool = field(
         default=False, block="options", longname="turn off Newton for unconfined cells"
-    )
-    maxbound: Optional[int] = field(
-        block="dimensions",
-        default=None,
-        init=False,
-        longname="maximum number of constant heads",
     )
     head: Optional[NDArray[np.float64]] = array(
         block="period",

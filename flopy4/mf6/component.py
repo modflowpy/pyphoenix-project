@@ -9,6 +9,7 @@ from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import MF6
+from flopy4.mf6.dimensions import DimensionRegistryMixin
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
@@ -21,13 +22,15 @@ COMPONENTS = {}
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
 @xattree(kw_only=True)
-class Component(ABC, MutableMapping):
+class Component(DimensionRegistryMixin, ABC, MutableMapping):
     """
     Base class for MF6 components.
 
     Notes
     -----
     All subclasses of `Component` must be decorated with `xattree`.
+    Component inherits from DimensionRegistryMixin to provide dimension
+    resolution capabilities to all MF6 components.
     """
 
     _load = IO(Loader)  # type: ignore
@@ -59,9 +62,13 @@ class Component(ABC, MutableMapping):
         """
         Post-initialization hook for all components.
 
-        Automatically handles common post-init tasks like computing maxbound
-        for components with period block arrays.
+        Automatically handles common post-init tasks like updating maxbound
+        for packages with period block arrays. Chains to parent class
+        post-init hooks (including DimensionRegistryMixin).
         """
+        # Chain to parent classes (including DimensionRegistryMixin)
+        if hasattr(super(), "__attrs_post_init__"):
+            super().__attrs_post_init__()  # type: ignore[misc]
         self._update_maxbound_if_needed()
 
     def _update_maxbound_if_needed(self):
@@ -69,10 +76,11 @@ class Component(ABC, MutableMapping):
         Update maxbound if this component has period block arrays.
 
         This method checks if the component has any period block arrays defined
-        and calls update_maxbound if needed. This generalizes the pattern that
-        was previously repeated in multiple component classes.
+        and calls update_maxbound if needed. Packages that use computed_field
+        for maxbound (like CHD, DRN, etc.) will have it automatically computed
+        at initialization and updated when period arrays change.
         """
-        # Check if component has a maxbound field and period block arrays
+        # Check if component has a maxbound field (computed_field) and period block arrays
         component_fields = fields(self.__class__)
         has_maxbound = any(f.name == "maxbound" for f in component_fields)
         has_period_arrays = any(
