@@ -21,9 +21,22 @@ class Chd(Package):
     # Computed field for maxbound - uses attrs.field directly (not xattree)
     # so it appears in DFN but is not managed by xattree's data store.
     # Updated by update_maxbound() in post-init and when period arrays change.
+    # xattree may reset this to None when tree structure changes, so we
+    # recompute it in write() before serialization.
     maxbound: Optional[int] = computed_field(
-        default=None, init=False, block="dimensions", longname="maximum number of constant heads"
+        default=None,
+        init=False,
+        block="dimensions",
+        longname="maximum number of constant heads",
     )
+
+    def write(self, format=None, context=None):
+        """Write the component, ensuring maxbound is current before serialization."""
+        # Recompute maxbound in case xattree reset it when tree structure changed.
+        # TODO: This workaround won't be needed after migrating to Pydantic, which
+        # has native support for computed fields via @computed_field decorator.
+        update_maxbound(self, None, None)
+        super().write(format=format, context=context)
 
     auxiliary: Optional[list[str]] = array(
         block="options", default=None, longname="keyword to specify aux variables"
