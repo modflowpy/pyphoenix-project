@@ -110,6 +110,8 @@ class DimensionRegistryMixin:
         Cache of resolved dimensions (stored as instance variable, not attrs field)
     """
 
+    _dimension_cache: dict[str, int]
+
     def __attrs_post_init__(self) -> None:
         """Set parent references on all children after construction.
 
