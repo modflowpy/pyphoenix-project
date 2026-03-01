@@ -34,7 +34,7 @@ class MockContainer(DimensionRegistryMixin):
     """Mock container that uses the dimension registry mixin."""
 
     provider: Optional[MockDimensionProvider] = None
-    parent: Optional["MockContainer"] = None
+    # parent is managed by xattree automatically
 
 
 @xattree
@@ -42,7 +42,7 @@ class MockContainerWithDict(DimensionRegistryMixin):
     """Mock container with dict of providers."""
 
     providers: dict[str, MockDimensionProvider] = field(factory=dict)
-    parent: Optional["MockContainerWithDict"] = None
+    # parent is managed by xattree automatically
 
 
 @xattree
@@ -50,7 +50,7 @@ class MockContainerWithList(DimensionRegistryMixin):
     """Mock container with list of providers."""
 
     providers: list[MockDimensionProvider] = field(factory=list)
-    parent: Optional["MockContainerWithList"] = None
+    # parent is managed by xattree automatically
 
 
 # Tests for DimensionRegistryMixin

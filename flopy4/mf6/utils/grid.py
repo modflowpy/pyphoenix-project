@@ -2,6 +2,7 @@ import collections
 from typing import Any
 
 import numpy as np
+import sparse
 import xarray as xr
 from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
@@ -1247,13 +1248,11 @@ def update_maxbound(instance, attribute, new_value):
             array_val = getattr(instance, array_name, None)
 
         if array_val is not None:
-            # Check if the underlying data is sparse and densify if needed
-            import sparse
-
             if isinstance(array_val.data, sparse.SparseArray):
+                # densify if the array is sparse
                 array_data = array_val.data.todense()
             else:
-                # Convert to numpy array to handle memoryview and other array-like objects
+                # handle memoryview and other array-likes
                 array_data = np.asarray(array_val.data)
 
             if array_data.dtype.kind in ["U", "S"]:  # String arrays
