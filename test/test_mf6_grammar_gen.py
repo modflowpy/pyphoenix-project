@@ -1,6 +1,6 @@
 import pytest
-from modflow_devtools.dfn import Dfn
-from modflow_devtools.dfn.schema.v2 import FieldV2
+from modflow_devtools.dfns import Dfn
+from modflow_devtools.dfns.schema.v2 import FieldV2
 from packaging.version import Version
 
 from flopy4.mf6.codec.reader.grammar import make_all_grammars, make_grammar

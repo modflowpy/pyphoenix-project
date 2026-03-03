@@ -34,7 +34,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "modflow-devtools[dfn] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git@dfn",
+    "modflow-devtools",
     "xattree @ git+https://github.com/wpbonelli/xattree.git",
     "attrs>=25.4.0,<26",
     "cattrs>=25.3.0,<26",
@@ -53,7 +53,10 @@ dependencies = [
     "netcdf4>=1.7.3,<2",
     "pyshp>=3.0.2.post1,<4",
     "llvmlite>=0.45.1,<0.46",
+    "boltons",
     "pydantic",
+    "tomli",
+    "tomli_w",
 ]
 dynamic = ["version"]
 

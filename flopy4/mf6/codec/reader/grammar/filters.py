@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from modflow_devtools.dfn.schema.v2 import FieldV2
+from modflow_devtools.dfns.schema.v2 import FieldV2
 
 
 def field_type(field: FieldV2) -> str:

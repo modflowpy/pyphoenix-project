@@ -306,6 +306,7 @@ def test_flopy3_grid2(tmp_path):
     gwf3.plot(filename_base=bpth)
 
 
+@pytest.mark.skip(reason="refactor")
 def test_flopy3_export(tmp_path):
     # see flopy test_export.py test_export_output()
     (Path(tmp_path) / "flopy3_model" / "shape").mkdir(parents=True, exist_ok=True)

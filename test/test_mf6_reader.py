@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import xarray as xr
 from lark import Lark
-from modflow_devtools.dfn import Dfn, MapV1To2, load_flat
+from modflow_devtools.dfns import Dfn, MapV1To2, load_flat
 from modflow_devtools.models import get_models
 from packaging.version import Version
 
@@ -29,9 +29,9 @@ def test_parse_internal_array():
     parser = typed_parser("start: array")
     tree = parser.parse("""
 INTERNAL FACTOR 1.0 IPRN 3
-1.2 3.7 9.3 4.2 2.2 9.9 1.0 
-3.3 4.9 7.3 7.5 8.2 8.7 6.6 
-4.5 5.7 2.2 1.1 1.7 6.7 6.9 
+1.2 3.7 9.3 4.2 2.2 9.9 1.0
+3.3 4.9 7.3 7.5 8.2 8.7 6.6
+4.5 5.7 2.2 1.1 1.7 6.7 6.9
 7.4 3.5 7.8 8.5 7.4 6.8 8.8
     """)
     print(tree.pretty())
@@ -180,9 +180,9 @@ def test_transform_internal_array():
     result = transformer.transform(
         parser.parse("""
 INTERNAL FACTOR 1.5 IPRN 3
-1.2 3.7 9.3 4.2 
-2.2 9.9 1.0 3.3 
-4.9 7.3 7.5 8.2 
+1.2 3.7 9.3 4.2
+2.2 9.9 1.0 3.3
+4.9 7.3 7.5 8.2
 8.7 6.6 4.5 5.7
     """)
     )
@@ -391,7 +391,7 @@ def test_transform_gwf_ic_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF IC file into structured data."""
 
     # Load the DFN for IC and convert to V2
-    from modflow_devtools.dfn import MapV1To2
+    from modflow_devtools.dfns import MapV1To2
 
     v1_dfns = load_flat(dfn_path)
     mapper = MapV1To2()
@@ -433,7 +433,7 @@ def test_transform_gwf_wel_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF WEL file into structured data."""
 
     # Load the DFN for WEL and convert to V2
-    from modflow_devtools.dfn import MapV1To2
+    from modflow_devtools.dfns import MapV1To2
 
     v1_dfns = load_flat(dfn_path)
     mapper = MapV1To2()
@@ -521,7 +521,7 @@ def test_transform_gwf_oc_file(model_workspace, dfn_path):
     """Test transforming a parsed GWF OC file into structured data."""
 
     # Load the DFN for OC and convert to V2
-    from modflow_devtools.dfn import MapV1To2
+    from modflow_devtools.dfns import MapV1To2
 
     v1_dfns = load_flat(dfn_path)
     mapper = MapV1To2()
