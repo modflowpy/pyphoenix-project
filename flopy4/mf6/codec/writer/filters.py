@@ -231,16 +231,16 @@ def dataset2list(value: xr.Dataset):
     if (first := next(iter(value.data_vars.values()))).ndim == 0:
         if is_oc:
             for name in value.data_vars.keys():
-                if not (name.startswith("save_") or name.startswith("print_")):
+                if not (name.startswith("save_") or name.startswith("print_")):  # type: ignore
                     # TODO: not working yet
                     if name == "perioddata":
                         val = value[name]
                         val = val.item() if val.shape == () else val
-                        yield attrs.astuple(val, recurse=True)
+                        yield attrs.astuple(val, recurse=True)  # type: ignore
                     continue
                 val = value[name]
                 val = val.item() if val.shape == () else val
-                yield (*name.split("_"), val)
+                yield (*name.split("_"), val)  # type: ignore
 
         else:
             vals = []
@@ -266,7 +266,7 @@ def dataset2list(value: xr.Dataset):
             for name in value.data_vars.keys():
                 val = value[name][tuple(idx[i] for idx in indices)]
                 val = val.item() if val.shape == () else val
-                yield (*name.split("_"), val)
+                yield (*name.split("_"), val)  # type: ignore
         else:
             vals = []
             for name in value.data_vars.keys():
