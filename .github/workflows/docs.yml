@@ -2,7 +2,7 @@ name: Docs
 
 on:
   push:
-    branches: [main, develop, example_nb]
+    branches: [main, develop]
     paths-ignore: ['**.md', '.gitignore']
   workflow_dispatch:
 
