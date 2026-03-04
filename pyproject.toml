@@ -142,15 +142,22 @@ test311 = { features = ["py311", "test"], solve-group = "py311" }
 test312 = { features = ["py312", "test"], solve-group = "py312" }
 test313 = { features = ["py313", "test"], solve-group = "py313" }
 dev = { features = ["py311", "test", "lint", "build"], solve-group = "py311" }
+docs = { features = ["py311", "docs"], solve-group = "py311" }
 
 [tool.pixi.dependencies]
 proj = ">=9.7.0,<10"
+
+[tool.pixi.feature.docs.pypi-dependencies]
+jupyter-book = ">=1.0,<2"
+
+[tool.pixi.feature.docs.tasks]
+build-docs = { cmd = "jupyter-book build docs/" }
 
 [tool.pixi.feature.build.tasks]
 build = { cmd = "python -m build" }
 
 [tool.pixi.feature.test.tasks]
-test = { cmd = "pytest -v -n auto" }
+test = { cmd = "pytest -v -n auto", env = { MPLBACKEND = "Agg" } }
 
 [tool.pixi.feature.lint.tasks]
 lint = { cmd = "ruff check ." }
@@ -162,5 +169,5 @@ ignore_missing_imports = true
 warn_unreachable = true
 
 [tool.codespell]
-skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*"
+skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*"
 ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt"]
