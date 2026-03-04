@@ -1,26 +1,41 @@
-# # Frenchman Flat, Nevada — real-world DIS model
-# # https://www.sciencebase.gov/catalog/item/641a1b51d34eb496d1d2a1fd
+# # Frenchman Flat, NV
+#
+# real-world DIS model
+# https://www.sciencebase.gov/catalog/item/641a1b51d34eb496d1d2a1fd
 #
 # This example reproduces the Frenchman Flat, NV regional groundwater model:
 # a 10-layer, 87×87 structured-grid (DIS) simulation with heterogeneous
 # hydraulic conductivity, storage, and three well packages representing
 # constant-rate pumping, subsurface leakage, and water-sampling extraction.
 #
-# The script demonstrates all three input modes supported by flopy4:
-# 1. **Binary text arrays**: traditional MODFLOW `.txt` array files (always run)
-# 2. **Layered-mesh NetCDF** (`mesh="layered"`): 2-D face-based UGRID NetCDF
-# 3. **Structured NetCDF** (no `mesh` arg): CF-convention DIS NetCDF
-#    (modes 2 and 3 require extended `mf6` and environment variable
+# The script demonstrates different input modes supported by flopy4:
+# 1. **Ascii list based input**: traditional MODFLOW package files (always run)
+# 2. **Ascii list based with base NetCDF input**: IC, NPF configurational input from NetCDF
+# 3. **Layered-mesh NetCDF array based** (`mesh="layered"`): 2-D face-based UGRID NetCDF
+# 4. **Structured NetCDF array based** (no `mesh` arg): CF-convention DIS NetCDF
+#    (modes 2, 3 and 4 require extended `mf6` and environment variable
 #    `MF6_EXTENDED=1` to actually run the MODFLOW simulation)
 #
 # It also shows how to wrap DIS head and budget output in `xu.UgridDataArray`
 # for unstructured-style vector plotting with xugrid.
+
+# ### Import dependencies
+
 import os
 from pathlib import Path
 
 import numpy as np
 
 import flopy4
+
+# ### Setup
+
+try:
+    FF_ROOT = Path(__file__).parent
+except NameError:
+    FF_ROOT = Path.cwd()
+
+# ### Define plot function
 
 
 def plot_head(head, workspace):
@@ -34,11 +49,12 @@ def plot_head(head, workspace):
     plt.ylabel("y")
     plt.grid(True)
     plt.savefig(workspace / "head.png", dpi=300, bbox_inches="tight")
+    plt.show()
     plt.close()
 
 
-# # Timing
-#
+# ### Timing
+
 # 33 transient stress periods matching the original pumping schedule,
 # with 15 time steps per period and a 1.1× geometric time-step multiplier.
 time = flopy4.mf6.utils.time.Time(
@@ -151,8 +167,8 @@ time = flopy4.mf6.utils.time.Time(
 
 nper = time.nper
 
-# # Grid
-#
+# ### Grid
+
 # 87×87 structured grid with variable column widths (`delr`/`delc`) that
 # refine toward the centre of the domain where wells are located.
 # The upper-left corner (xul, yul) from the source data is converted to the
@@ -163,7 +179,7 @@ ncol = 87
 shape = (nlay, nrow, ncol)
 nodes = np.prod(shape)
 # The original downloaded model applies a unit-conversion factor of 3.280
-# (feet → metres) to delr/delc.  It is set to 1.0 here because the arrays
+# (feet->meters) to delr/delc.  It is set to 1.0 here because the arrays
 # were already provided in SI units; the constant is preserved to document
 # the relationship to the source data.
 # FACTOR = 3.280
@@ -386,14 +402,14 @@ grid = flopy4.mf6.utils.grid.StructuredGrid(
 # `dims` captures array shapes needed by packages that pre-allocate xarray storage.
 dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}
 
+# ### Packages
+
 # Discretization package: builds MODFLOW DIS input from the grid object.
 dis = flopy4.mf6.gwf.Dis.from_grid(grid=grid)
 
 # Initial conditions: zero starting head everywhere.
 ic = flopy4.mf6.gwf.Ic(strt=0.0, dims=dims)
 
-# # NPF
-#
 # Node-property flow: layer-specific horizontal and vertical conductivity
 # loaded from per-layer text arrays.  `FACTOR = 0.1` gives k33 = 0.1 * k
 # (10 : 1 horizontal-to-vertical anisotropy).
@@ -404,19 +420,11 @@ FACTOR = 0.1
 for l in range(nlay):
     pad = "000" if l < 9 else "00"
     k[l, ...] = np.loadtxt(
-        Path(__file__).parent
-        / "data"
-        / "frenchman-flat"
-        / "arrays"
-        / f"Array.MF-HydK_{pad}{l + 1}.txt"
+        FF_ROOT / "data" / "frenchman-flat" / "arrays" / f"Array.MF-HydK_{pad}{l + 1}.txt"
     )
     k33[l, ...] = (
         np.loadtxt(
-            Path(__file__).parent
-            / "data"
-            / "frenchman-flat"
-            / "arrays"
-            / f"Array.MF-HydK_{pad}{l + 1}.txt"
+            FF_ROOT / "data" / "frenchman-flat" / "arrays" / f"Array.MF-HydK_{pad}{l + 1}.txt"
         )
         * FACTOR
     )
@@ -429,19 +437,13 @@ npf = flopy4.mf6.gwf.Npf(
     dims=dims,
 )
 
-# # Storage
-#
 # Specific storage loaded from per-layer text arrays; confined storage only
 # (`iconvert=0` keeps all layers confined throughout the simulation).
 ss = np.zeros((nlay, nrow, ncol), dtype=float)
 for l in range(nlay):
     pad = "000" if l < 9 else "00"
     ss[l, ...] = np.loadtxt(
-        Path(__file__).parent
-        / "data"
-        / "frenchman-flat"
-        / "arrays"
-        / f"Array.MF-HydS_{pad}{l + 1}.txt"
+        FF_ROOT / "data" / "frenchman-flat" / "arrays" / f"Array.MF-HydS_{pad}{l + 1}.txt"
     )
 
 sto = flopy4.mf6.gwf.Sto(
@@ -450,8 +452,6 @@ sto = flopy4.mf6.gwf.Sto(
     dims=dims,
 )
 
-# # Wells
-#
 # Three separate WEL packages track distinct physical processes at the
 # same injection/extraction location (layer 2, row 44, col 44):
 # * `wel_crt`: cyclic constant-rate pumping (on/off by stress period)
@@ -587,8 +587,6 @@ wel_sampleQ = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# # Output control
-#
 # Save heads at every time step; save budget only at selected steps to keep
 # output file size manageable for this large model.
 oc = flopy4.mf6.gwf.Oc(
@@ -624,9 +622,9 @@ oc = flopy4.mf6.gwf.Oc(
     dims=dims,
 )
 
-# # Simulation assembly
+# ### FLow Model
 
-# Flow model: assemble GWF model from all packages defined above.
+# assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
     dis=grid,
     ic=ic,
@@ -637,7 +635,9 @@ gwf = flopy4.mf6.gwf.Gwf(
     dims=dims,
 )
 
-# Solver: BiCGSTAB with dynamic under-relaxation (DBD) handles the
+# ### Solver
+
+# BiCGSTAB with dynamic under-relaxation (DBD) handles the
 # non-symmetric system that arises from the unconfined/transient conditions.
 ims = flopy4.mf6.Ims(
     print_option="summary",
@@ -658,16 +658,19 @@ ims = flopy4.mf6.Ims(
     models=["ff"],
 )
 
-# TDIS
+# ### TDIS
+
 tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 
-# # Write and run — binary text array inputs
+# ### Write and run — ascii list based inputs
 
 # Create workspace
-workspace = Path(__file__).parent / "frenchman-flat" / "list"
+workspace = FF_ROOT / "frenchman-flat" / "list"
 workspace.mkdir(parents=True, exist_ok=True)
 
-# Simulation: link the model and solver, then write and run.
+# ### Simulation
+
+# link the model and solver, then write and run.
 sim = flopy4.mf6.simulation.Simulation(
     name="ff",
     tdis=tdis,
@@ -677,25 +680,27 @@ sim = flopy4.mf6.simulation.Simulation(
 )
 
 sim.write()
-sim.run()
+sim.run(verbose=True)
 
-# Load head results
+# ### Load head results
+
 head = flopy4.mf6.utils.open_hds(
     workspace / "ff.hds",
     workspace / "ff.dis.grb",
 )
 
-# Plot head results
+# ### Plot head results
+
 plot_head(head, workspace)
 
-# # NetCDF input — layered mesh (list-based WEL packages)
-#
+# ### NetCDF (mesh) base package input
+
 # `NetCDFModel.from_model(gwf, mesh="layered")` writes a layered UGRID mesh
 # NetCDF containing the NPF, STO, and IC arrays.  WEL packages remain list-
 # based in the text input files.  Requires `MF6_EXTENDED=1` to run MODFLOW.
 
 # create new workspace
-workspace = Path(__file__).parent / "frenchman-flat" / "netcdf_base"
+workspace = FF_ROOT / "frenchman-flat" / "netcdf_base"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -709,7 +714,7 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 if os.getenv("MF6_EXTENDED"):
-    sim.run()
+    sim.run(verbose=True)
 
     # Load head results
     head = flopy4.mf6.utils.open_hds(
@@ -720,8 +725,8 @@ if os.getenv("MF6_EXTENDED"):
     # Plot head results
     plot_head(head, workspace)
 
-# # Array-based WEL packages + layered mesh NetCDF output
-#
+# ### Array-based NetCDF WEL packages + layered mesh NetCDF output
+
 # Switch the three WEL packages from list-based to array-based (`Welg`),
 # combine with a layered-mesh NetCDF input file, and also request mesh2d
 # NetCDF output (`gwf.netcdf_mesh2d_file`).  `FILL_DNODATA` marks inactive
@@ -808,7 +813,7 @@ del gwf.wel[2]
 gwf.wel = [welg_crt, welg_leak, welg_sampleQ]
 
 # create new workspace
-workspace = Path(__file__).parent / "frenchman-flat" / "netcdf_mesh"
+workspace = FF_ROOT / "frenchman-flat" / "netcdf_mesh"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -821,14 +826,31 @@ nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 if os.getenv("MF6_EXTENDED"):
-    sim.run()
+    sim.run(verbose=True)
 
-# # NetCDF input — structured (no mesh)
+    # Load head results
+    head = flopy4.mf6.utils.open_hds(
+        workspace / "ff.hds",
+        workspace / "ff.dis.grb",
+    )
+
+    # Plot head results
+    plot_head(head, workspace)
+
+# The mesh2d NetCDF written to `netcdf_mesh/frenchman-flat.input.nc` can be
+# loaded into QGIS as a mesh layer via **Layer -> Add Layer -> Add Mesh Layer**.
+# The screenshot below shows the field NPF K layer 7 overlaid on the variable-
+# resolution Frenchman Flat grid.  The mesh is properly geolocated because a
+# CRS user input string was provided on grid construction.
 #
+# ![QGIS: Frenchman Flat K layer 7 input — layered mesh](images/ff.qgis.npf-k-layer7.png)
+
+# ### NetCDF input — structured (no mesh)
+
 # `NetCDFModel.from_model(gwf, grid=grid, time=time)` (no `mesh` argument)
 # writes a CF-convention structured NetCDF.  This is a simpler format than
 # the layered-mesh variant and does not require a UGRID-capable MODFLOW build.
-workspace = Path(__file__).parent / "frenchman-flat" / "netcdf_structured"
+workspace = FF_ROOT / "frenchman-flat" / "netcdf_structured"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -841,4 +863,13 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 if os.getenv("MF6_EXTENDED"):
-    sim.run()
+    sim.run(verbose=True)
+
+    # Load head results
+    head = flopy4.mf6.utils.open_hds(
+        workspace / "ff.hds",
+        workspace / "ff.dis.grb",
+    )
+
+    # Plot head results
+    plot_head(head, workspace)

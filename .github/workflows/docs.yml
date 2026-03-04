@@ -1,0 +1,38 @@
+name: Docs
+
+on:
+  push:
+    branches: [main, develop, example_nb]
+    paths-ignore: ['**.md', '.gitignore']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.41.1
+          environments: docs
+          activate-environment: true
+      - run: pixi run build-docs
+      - run: touch docs/_build/html/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

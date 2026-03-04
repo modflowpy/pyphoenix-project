@@ -11,7 +11,7 @@
 # * read binary head and budget output via `gwf.output`
 # * produce a filled-contour + quiver plot with matplotlib
 
-# # Imports
+# ### Imports
 
 from pathlib import Path
 
@@ -24,17 +24,24 @@ from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.time import Time
 
-# # Timing
-#
+# ### Setup
+
+try:
+    QS_ROOT = Path(__file__).parent
+except NameError:
+    QS_ROOT = Path.cwd()
+
+# ### Timing
+
 # One steady-state stress period of length 1.0 with a single time step.
 
 name = "quickstart"
-workspace = Path(__file__).parent / name
+workspace = QS_ROOT / name
 workspace.mkdir(exist_ok=True)
 time = Time(perlen=[1.0], nstp=[1])
 
-# # Grid
-#
+# ### Grid
+
 # A 1-layer, 10-row, 10-column DIS grid with uniform 1 m × 1 m cells.
 
 grid = StructuredGrid(
@@ -47,8 +54,8 @@ grid = StructuredGrid(
     botm=0.0 * np.ones((1, 10, 10)),
 )
 
-# # Packages
-#
+# ### Packages
+
 # Packages are attached to their parent at construction time via `parent=`.
 # This differs from the constructor-kwargs style used in other examples.
 #
@@ -81,13 +88,13 @@ oc = Oc(
     save_budget={0: "all"},
 )
 
-# # Write and run
+# ### Write and run
 
 sim.write()
 sim.run(verbose=True)
 
-# # Verify package data
-#
+# ### Verify package data
+
 # Each package exposes its input through `.data`, an xarray Dataset.
 # Stress-period integer keys are coordinates; `.sel(kper=0)` selects
 # period 0.  Inactive cell slots contain `3e30` (MODFLOW's no-data value).
@@ -101,7 +108,7 @@ assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
 assert oc.data["save_head"][0] == "all"
 assert oc.data.save_head.sel(kper=0) == "all"
 
-# # Read results
+# ### Read results
 #
 # `gwf.output.head` returns an `xr.DataArray` with named dimensions
 # (layer, y, x, time).  `.squeeze()` drops length-1 dimensions so we
@@ -113,8 +120,8 @@ assert oc.data.save_head.sel(kper=0) == "all"
 budget = gwf.output.budget.squeeze()
 head = gwf.output.head.squeeze()
 
-# # Plot
-#
+# ### Plot
+
 # Overlay filled head contours with specific-discharge quiver vectors.
 # The quiver `u`/`v` components come from the NPF budget terms saved above.
 
