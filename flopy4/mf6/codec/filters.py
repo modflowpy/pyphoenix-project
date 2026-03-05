@@ -3,8 +3,8 @@
 from typing import Any
 
 import xarray as xr
-from modflow_devtools.dfn.schema.field import Field
-from modflow_devtools.dfn.schema.v2 import FieldType
+from modflow_devtools.dfns.schema.field import Field
+from modflow_devtools.dfns.schema.v2 import FieldType
 
 
 def field_type(value: Any) -> FieldType:

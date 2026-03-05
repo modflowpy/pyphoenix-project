@@ -11,9 +11,9 @@ from typing import Literal, Union, get_args, get_origin
 
 import numpy as np
 from attrs import NOTHING, Attribute
-from modflow_devtools.dfn.schema.block import block_sort_key
-from modflow_devtools.dfn.schema.v2 import Field as FieldV2
-from modflow_devtools.dfn.schema.v2 import FieldType
+from modflow_devtools.dfns.schema.block import block_sort_key
+from modflow_devtools.dfns.schema.v2 import Field as FieldV2
+from modflow_devtools.dfns.schema.v2 import FieldType
 
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
