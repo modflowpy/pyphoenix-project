@@ -34,7 +34,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "modflow-devtools @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git",
+    "modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git",
     "xattree @ git+https://github.com/wpbonelli/xattree.git",
     "attrs>=25.4.0,<26",
     "cattrs>=25.3.0,<26",
