@@ -2,13 +2,12 @@ name: Docs
 
 on:
   push:
-    branches:
-      - main
-      - develop
     paths-ignore:
       - '**.md'
       - '.gitignore'
   pull_request:
+    branches:
+      - develop
     paths-ignore:
       - '**.md'
       - '.gitignore'
@@ -37,6 +36,7 @@ jobs:
 
   deploy:
     needs: build
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
