@@ -1,10 +1,12 @@
-# # TWRI — Transient Well, Recharge, and Injection
+# # TWRI
+#
+# Transient Well, Recharge, and Injection
 #
 # The TWRI problem is a classical MODFLOW benchmark: a three-layer aquifer
 # system with heterogeneous hydraulic conductivity, storage, a constant-head
 # left boundary, a drain, recharge, and scattered pumping wells.
 #
-# This script demonstrates three equivalent ways to specify stress packages:
+# This script demonstrates distinct ways to specify stress packages:
 # 1. **List-based** (`Chd`, `Drn`, `Wel`): cell-by-cell `{(layer, row, col): value}` dicts
 # 2. **Array-based** (`Chdg`, `Drng`, `Welg`): full `(nper, nlay, nrow, ncol)` arrays
 #    with `FILL_DNODATA` marking inactive cells
@@ -12,7 +14,8 @@
 #    simulation (requires extended `mf6` and environment variable `MF6_EXTENDED=1`
 #    to actually run the MODFLOW simulation)
 #
-# Import dependencies.
+
+# ### Import dependencies
 
 import os
 from pathlib import Path
@@ -20,6 +23,15 @@ from pathlib import Path
 import numpy as np
 
 import flopy4
+
+# ### Setup
+
+try:
+    TWRI_ROOT = Path(__file__).parent
+except NameError:
+    TWRI_ROOT = Path.cwd()
+
+# ### Define plot function
 
 
 def plot_head(head, workspace):
@@ -33,19 +45,20 @@ def plot_head(head, workspace):
     plt.ylabel("y")
     plt.grid(True)
     plt.savefig(workspace / "head.png", dpi=300, bbox_inches="tight")
+    # plt.show()
     plt.close()
 
 
-# # Timing
-#
+# ### Timing
+
 # Four daily stress periods; the first is steady-state, the rest transient.
 time = flopy4.mf6.utils.time.Time.from_timestamps(
     ["2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04"]
 )
 nper = time.nper
 
-# # Grid
-#
+# ### Grid
+
 # Three-layer, 15×15 structured grid; 5,000 m cells capture a regional aquifer.
 nlay = 3
 nrow = 15
@@ -61,6 +74,8 @@ grid = flopy4.mf6.utils.grid.StructuredGrid(
     nlay=nlay, nrow=nrow, ncol=ncol, top=top, botm=bottom, delr=delr, delc=delc, idomain=idomain
 )
 dims = {"nper": nper, "ncpl": nrow * ncol, **dict(grid.dataset.sizes)}  # TODO: temporary
+
+# ### Packages
 
 # Discretization package: builds MODFLOW DIS input from the grid object.
 # The grid origin can be set with `xoff`/`yoff` to place the model in a
@@ -158,7 +173,9 @@ wel = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# Flow model: assemble GWF model from all packages defined above.
+# ### Flow Model
+
+# assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
     dis=grid,
     ic=ic,
@@ -172,7 +189,9 @@ gwf = flopy4.mf6.gwf.Gwf(
     dims=dims,
 )
 
-# Solver: conjugate-gradient with relaxation; suitable for symmetric SPD systems.
+# ### Solver
+
+# conjugate-gradient with relaxation; suitable for symmetric SPD systems.
 ims = flopy4.mf6.Ims(
     print_option="summary",
     outer_dvclose=1.0e-4,
@@ -188,13 +207,14 @@ ims = flopy4.mf6.Ims(
     models=["gwf"],
 )
 
-# TDIS
+# ### TDIS
+
 tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 
-# # Write and run — list-based stress packages
+# ### Write and run — list-based stress packages
 
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "list"
+workspace = TWRI_ROOT / "twri" / "list"
 workspace.mkdir(parents=True, exist_ok=True)
 
 # Simulation: link the model and solver, then write and run.
@@ -208,19 +228,21 @@ sim = flopy4.mf6.simulation.Simulation(
 
 # Write input files and run the simulation
 sim.write()
-sim.run()  # assumes the ``mf6`` executable is available on your PATH.
+sim.run(verbose=True)  # assumes the ``mf6`` executable is available on your PATH.
 
-# Load head results
+# ### Load head results
+
 head = flopy4.mf6.utils.open_hds(
     workspace / f"{gwf.name}.hds",
     workspace / f"{gwf.name}.dis.grb",
 )
 
-# Plot head results
+# ### Plot head results
+
 plot_head(head, workspace)
 
-# # Array-based stress packages
-#
+# ### Array-based stress packages
+
 # The `Chdg`, `Drng`, and `Welg` ("G" = grid-array) variants accept a full
 # `(nper, nlay, nrow, ncol)` NumPy array.  Cells inactive for a given stress
 # period are set to `FILL_DNODATA`; MODFLOW skips those cells automatically.
@@ -284,33 +306,35 @@ gwf.drn = [drng]
 gwf.wel = [welg]
 gwf.rch = [rcha]
 
-# # Write and run — array-based stress packages
+# ### Write and run — array-based stress packages
 
 # create new workspace
-workspace = Path(__file__).parent / "twri" / "array"
+workspace = TWRI_ROOT / "twri" / "array"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 sim.write()
-sim.run()
+sim.run(verbose=True)
 
-# Load head results
+# ### Load head results
+
 head = flopy4.mf6.utils.open_hds(
     workspace / f"{gwf.name}.hds",
     workspace / f"{gwf.name}.dis.grb",
 )
 
-# Plot head results
+# ### Plot head results
+
 plot_head(head, workspace)
 
-# # NetCDF input — structured (no mesh)
-#
+# ### NetCDF input — structured (no mesh)
+
 # `NetCDFModel.from_model(gwf)` serializes all array-based packages to a
 # CF-compliant NetCDF file that MODFLOW 6 reads directly.  Running the
 # simulation requires a NetCDF-capable build; guard with `MF6_EXTENDED`.
 
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "netcdf_structured"
+workspace = TWRI_ROOT / "twri" / "netcdf_structured"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -324,15 +348,24 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 if os.getenv("MF6_EXTENDED"):
-    sim.run()
+    sim.run(verbose=True)
 
-# # NetCDF input — layered mesh
-#
+    # Load head results
+    head = flopy4.mf6.utils.open_hds(
+        workspace / f"{gwf.name}.hds",
+        workspace / f"{gwf.name}.dis.grb",
+    )
+
+    # Plot head results
+    plot_head(head, workspace)
+
+# ### NetCDF input — layered mesh
+
 # `mesh="layered"` writes a layered UGRID mesh NetCDF, which MODFLOW 6
 # reads with its NetCDF-mesh2d input mode.
 
 # Create workspace
-workspace = Path(__file__).parent / "twri" / "netcdf_mesh"
+workspace = TWRI_ROOT / "twri" / "netcdf_mesh"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
@@ -346,4 +379,13 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 if os.getenv("MF6_EXTENDED"):
-    sim.run()
+    sim.run(verbose=True)
+
+    # Load head results
+    head = flopy4.mf6.utils.open_hds(
+        workspace / f"{gwf.name}.hds",
+        workspace / f"{gwf.name}.dis.grb",
+    )
+
+    # Plot head results
+    plot_head(head, workspace)

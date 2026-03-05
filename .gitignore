@@ -1,5 +1,4 @@
 build/
-docs/examples/*.ipynb
 docs/examples/frenchman-flat/*
 docs/examples/quickstart/*
 docs/examples/twri/*
