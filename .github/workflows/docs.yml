@@ -10,7 +10,6 @@ on:
       - closed
     branches:
       - develop
-      - docs_deploy
     paths-ignore:
       - '**.md'
       - '.gitignore'
