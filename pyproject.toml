@@ -74,7 +74,7 @@ test = [
     "pytest-xdist",
     "pytest-benchmark",
     "pytest-cov",
-    "pytest-env",
+    # "pytest-env",
     "filelock",
 ]
 build = ["build", "twine"]

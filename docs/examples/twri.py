@@ -45,7 +45,7 @@ def plot_head(head, workspace):
     plt.ylabel("y")
     plt.grid(True)
     plt.savefig(workspace / "head.png", dpi=300, bbox_inches="tight")
-    plt.show()
+    # plt.show()
     plt.close()
 
 
