@@ -6,8 +6,8 @@ on:
       - '**.md'
       - '.gitignore'
   pull_request:
-    #types:
-    #  - closed
+    types:
+      - closed
     branches:
       - develop
       - docs_deploy
@@ -39,8 +39,7 @@ jobs:
 
   deploy:
     needs: build
-    #if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' }}
-    if: ${{ github.event.pull_request.merged == false && github.event.pull_request.base.ref == 'develop' }}
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
