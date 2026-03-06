@@ -131,6 +131,24 @@ class Disv(DisBase):
         self.nrow = 0
         super().__attrs_post_init__()
 
+    def get_dims(self) -> dict[str, int]:
+        """Get all dimensions.
+
+        Returns both explicit dimensions (nlay, ncpl, nvert) and computed
+        dimensions (nodes).
+
+        Returns
+        -------
+        dict[str, int]
+            Mapping of dimension names to their integer sizes.
+        """
+        return {
+            "nlay": self.nlay,
+            "ncpl": self.ncpl,
+            "nvert": self.nvert,
+            "nodes": self.nlay * self.ncpl,
+        }
+
     def to_grid(self) -> VertexGrid:
         """
         Convert the discretization to a `VertexGrid`.

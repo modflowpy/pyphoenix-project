@@ -42,7 +42,7 @@ class Tdis(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
 
-    def get_dimensions(self) -> dict[str, int]:
+    def get_dims(self) -> dict[str, int]:
         """Get all dimensions.
 
         Returns

@@ -127,25 +127,39 @@ For development/testing, provide an optional validation function:
   - Caching tests
   - All tests passing
 
-### Phase 3: Not Started
+### Phase 3: Complete ✅
 
-  **Integrate with _resolve_dimensions** - NOT DONE
-  - Update _resolve_dimensions() in structure.py:
-    - Try parent.get_all_dimensions() FIRST (new path)
-    - Fall back to xattree's parent.data.dims (compatibility)
-    - Keep computed dimension fallback (temporary)
-  - All tests pass using both new and fallback paths
-  - Tests: All existing tests pass (proving coexistence works)
+  **Integrate with _resolve_dimensions** - DONE ✅
+  - Updated _resolve_dimensions() in structure.py:
+    - Uses parent.resolve_dims() (new path)
+    - Removed xattree fallback - cleaner, simpler code
+  - Updated resolve_dims() to include parent dimensions (walks up hierarchy)
+  - Tests: All 207 non-integration tests pass
 
-  NOTE: structure.py has been created but still uses old xattree path (parent.data.dims)
+  **Validation** - DONE ✅
+  - Added conflict detection in resolve_dims()
+    - Detects conflicts among children at same level
+    - Allows children to override parent dimensions
+  - Added validate_dimension_resolution() validation tool in dimensions.py
 
-  **Validation** - NOT DONE
-  - Add conflict detection in get_all_dimensions()
-  - Add optional validate_dimension_resolution() tool
+  **Implement Disv DimensionProvider** - DONE ✅
+  - Added get_dims() to Disv class
+  - Returns nlay, ncpl, nvert, and computed nodes dimension
+  - All Disv-related tests now pass
+
+  **API Refinements** - DONE ✅
+  - Renamed: DimensionRegistry → DimensionResolver
+  - Renamed: DimensionRegistryMixin → DimensionResolverMixin
+  - Renamed: get_dimensions() → get_dims()
+  - Unified API: resolve_dimension() + get_all_dimensions() → resolve_dims()
+  - resolve_dims() always returns dict for consistency:
+    - `resolve_dims()` → all available dimensions
+    - `resolve_dims('nlay')` → `{'nlay': 3}`
+    - `resolve_dims('nlay', 'nrow')` → `{'nlay': 3, 'nrow': 10}`
 
   **ParentSettingDict** - NOT DONE
   - Not yet implemented
-  - Planned for Phase 3 (parent management migration)
+  - Deferred to Phase 4 (parent management migration)
 
 ### Phase 4: Future Work
 

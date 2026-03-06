@@ -17,7 +17,7 @@ class DimensionProvider(Protocol):
     Its consumers resolve dimensions by walking the object graph.
     """
 
-    def get_dimensions(self) -> dict[str, int]:
+    def get_dims(self) -> dict[str, int]:
         """
         Return dimension sizes.
 
@@ -32,13 +32,14 @@ class DimensionProvider(Protocol):
         Examples
         --------
         >>> dis = Dis(nlay=3, nrow=10, ncol=20)
-        >>> dis.get_dimensions()
+        >>> dis.get_dims()
         {'nlay': 3, 'nrow': 10, 'ncol': 20, 'nodes': 600, 'ncpl': 200}
         """
         ...
 
 
-class DimensionRegistry(Protocol):
+@runtime_checkable
+class DimensionResolver(Protocol):
     """
     Implement this protocol to participate in dimension resolution
     as a consumer.
@@ -46,9 +47,9 @@ class DimensionRegistry(Protocol):
     For components that consume dimensions from provider components.
     """
 
-    def resolve_dimension(self, dim_name: str) -> int | None:
+    def resolve_dims(self, *dims: str) -> dict[str, int]:
         """
-        Resolve dimension by lazily walking the object graph.
+        Resolve one or more dimensions by walking the object graph.
 
         Walk the current component's children looking for dimension
         providers. Dimensions not found are sought in the parent.
@@ -56,13 +57,15 @@ class DimensionRegistry(Protocol):
 
         Parameters
         ----------
-        dim_name : str
-            Name of the dimension to resolve.
+        *dims : str
+            Dimension names to resolve. If not provided, resolves all
+            available dimensions.
 
         Returns
         -------
-        int | None
-            The dimension value if found, None otherwise.
+        dict[str, int]
+            Dictionary mapping dimension names to their values. Only includes
+            dimensions that were found (requested dims that don't exist are omitted).
 
         Notes
         -----
@@ -75,32 +78,19 @@ class DimensionRegistry(Protocol):
         Examples
         --------
         >>> gwf = Gwf(dis=Dis(nlay=3, nrow=10, ncol=20))
-        >>> gwf.resolve_dimension('nlay')
-        3
-        >>> gwf.resolve_dimension('nonexistent')
-        None
-        """
-        ...
-
-    def get_all_dimensions(self) -> dict[str, int]:
-        """
-        Get all dimensions.
-
-        Returns
-        -------
-        dict[str, int]
-            Mapping of all dimensions
-
-        Examples
-        --------
-        >>> gwf = Gwf(dis=Dis(nlay=3, nrow=10, ncol=20))
-        >>> gwf.get_all_dimensions()
+        >>> gwf.resolve_dims()
         {'nlay': 3, 'nrow': 10, 'ncol': 20, 'nodes': 600, 'ncpl': 200}
+        >>> gwf.resolve_dims('nlay')
+        {'nlay': 3}
+        >>> gwf.resolve_dims('nlay', 'nrow')
+        {'nlay': 3, 'nrow': 10}
+        >>> gwf.resolve_dims('nonexistent')
+        {}
         """
         ...
 
 
-class DimensionRegistryMixin:
+class DimensionResolverMixin:
     """
     Mixin for components which consume dimensions from providers.
 
@@ -157,9 +147,9 @@ class DimensionRegistryMixin:
         #             if hasattr(child, 'parent'):
         #                 child.parent = self
 
-    def resolve_dimension(self, dim_name: str) -> int | None:
+    def resolve_dims(self, *dims: str) -> dict[str, int]:
         """
-        Resolve dimension by walking current object graph.
+        Resolve one or more dimensions by walking the object graph.
 
         This method implements lazy dimension resolution with caching. It first
         checks the cache, then walks children looking for dimension providers,
@@ -167,46 +157,64 @@ class DimensionRegistryMixin:
 
         Parameters
         ----------
-        dim_name : str
-            Name of the dimension to resolve.
+        *dims : str
+            Dimension names to resolve. If not provided, resolves all
+            available dimensions.
 
         Returns
         -------
-        int | None
-            The dimension value if found, None otherwise.
+        dict[str, int]
+            Dictionary mapping dimension names to their values. Only includes
+            dimensions that were found (requested dims that don't exist are omitted).
 
         Notes
         -----
         Resolution order:
         1. Check cache
         2. Walk fields looking for DimensionProviders
-        3. Check each provider's get_dimensions()
+        3. Check each provider's dims()
         4. If not found, delegate to parent
         5. Cache result
 
         Examples
         --------
-        >>> mixin = DimensionRegistryMixin()
-        >>> mixin.resolve_dimension('nlay')  # doctest: +SKIP
-        3
+        >>> mixin = DimensionResolverMixin()
+        >>> mixin.resolve_dims()  # doctest: +SKIP
+        {'nlay': 3, 'nrow': 10, 'ncol': 20}
+        >>> mixin.resolve_dims('nlay')  # doctest: +SKIP
+        {'nlay': 3}
+        >>> mixin.resolve_dims('nlay', 'nrow')  # doctest: +SKIP
+        {'nlay': 3, 'nrow': 10}
         """
-        result = self._dimension_cache.get(dim_name)
-        if result is not None:
-            return result
+        # No args: return all dimensions
+        if not dims:
+            return self._get_all_dimensions()
 
-        result = self._find_dimension_in_children(dim_name)
-        if result is not None:
-            self._dimension_cache[dim_name] = result
-            return result
+        # One or more args: return dict of found dimensions
+        result_dict = {}
+        for dim_name in dims:
+            # Check cache
+            if dim_name in self._dimension_cache:
+                result_dict[dim_name] = self._dimension_cache[dim_name]
+                continue
 
-        if hasattr(self, "parent") and self.parent is not None:
-            if hasattr(self.parent, "resolve_dimension"):
-                result = self.parent.resolve_dimension(dim_name)
-                if result is not None:
-                    self._dimension_cache[dim_name] = result
-                return result
+            # Find in children
+            value = self._find_dimension_in_children(dim_name)
+            if value is not None:
+                self._dimension_cache[dim_name] = value
+                result_dict[dim_name] = value
+                continue
 
-        return None
+            # Check parent
+            if hasattr(self, "parent") and self.parent is not None:
+                if hasattr(self.parent, "resolve_dims"):
+                    parent_result = self.parent.resolve_dims(dim_name)
+                    if dim_name in parent_result:
+                        value = parent_result[dim_name]
+                        self._dimension_cache[dim_name] = value
+                        result_dict[dim_name] = value
+
+        return result_dict
 
     def _find_dimension_in_children(self, dim_name: str) -> int | None:
         """Walk fields and check dimension providers for the requested dimension.
@@ -225,53 +233,207 @@ class DimensionRegistryMixin:
             if (value := getattr(self, field_obj.name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
-                dims = value.get_dimensions()
-                if dim_name in dims:
-                    return dims[dim_name]
+                provider_dims = value.get_dims()
+                if dim_name in provider_dims:
+                    return provider_dims[dim_name]
             elif isinstance(value, dict):
                 for child in value.values():
                     if isinstance(child, DimensionProvider):
-                        dims = child.get_dimensions()
-                        if dim_name in dims:
-                            return dims[dim_name]
+                        provider_dims = child.get_dims()
+                        if dim_name in provider_dims:
+                            return provider_dims[dim_name]
             elif isinstance(value, list):
                 for child in value:
                     if isinstance(child, DimensionProvider):
-                        dims = child.get_dimensions()
-                        if dim_name in dims:
-                            return dims[dim_name]
+                        provider_dims = child.get_dims()
+                        if dim_name in provider_dims:
+                            return provider_dims[dim_name]
 
         return None
 
-    def get_all_dimensions(self) -> dict[str, int]:
+    def _get_all_dimensions(self) -> dict[str, int]:
         """
-        Get all dimensions.
+        Get all dimensions available to this component.
+
+        This includes dimensions from both children (dimension providers) and
+        the parent chain. Dimensions from children take precedence over parent
+        dimensions.
+
+        Raises
+        ------
+        ValueError
+            If multiple providers declare the same dimensions (conflict detected)
 
         Returns
         -------
         dict[str, int]
             Mapping of all dimensions
-
-        Examples
-        --------
-        >>> mixin = DimensionRegistryMixin()
-        >>> mixin.get_all_dimensions()  # doctest: +SKIP
-        {'nlay': 3, 'nrow': 10, 'ncol': 20}
         """
-        dims = {}
+        resolved_dims = {}
+        # Track which field provides which dimensions for conflict detection
+        dim_sources: dict[str, str] = {}
+
+        # First get dimensions from parent (lower priority)
+        if hasattr(self, "parent") and self.parent is not None:
+            if hasattr(self.parent, "resolve_dims"):
+                parent_dims = self.parent.resolve_dims()
+                resolved_dims.update(parent_dims)
+                for dim_name in parent_dims:
+                    dim_sources[dim_name] = "parent"
+
+        # Track dimensions from children separately to detect conflicts
+        child_dims: dict[str, int] = {}
 
         for field_obj in attrs.fields(type(self)):  # type: ignore[arg-type]
             if (value := getattr(self, field_obj.name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
-                dims.update(value.get_dimensions())
+                provider_dims = value.get_dims()
+                # Check for conflicts with other children
+                # (not with parent - that's an override)
+                conflicts = set(provider_dims.keys()) & set(child_dims.keys())
+                if conflicts:
+                    conflict_sources = {
+                        dim: dim_sources[dim] for dim in conflicts if dim_sources[dim] != "parent"
+                    }
+                    raise ValueError(
+                        f"{type(self).__name__} has multiple providers "
+                        f"for dimensions: {conflicts}.\n"
+                        f"Field '{field_obj.name}' provides {set(provider_dims.keys())}, "
+                        f"already provided by {conflict_sources}"
+                    )
+                child_dims.update(provider_dims)
+                resolved_dims.update(provider_dims)  # Override parent dims if present
+                for dim_name in provider_dims:
+                    dim_sources[dim_name] = field_obj.name
             elif isinstance(value, dict):
-                for child in value.values():
+                for child_key, child in value.items():
                     if isinstance(child, DimensionProvider):
-                        dims.update(child.get_dimensions())
+                        provider_dims = child.get_dims()
+                        # Check for conflicts with other children
+                        # (not with parent - that's an override)
+                        conflicts = set(provider_dims.keys()) & set(child_dims.keys())
+                        if conflicts:
+                            conflict_sources = {
+                                dim: dim_sources[dim]
+                                for dim in conflicts
+                                if dim_sources[dim] != "parent"
+                            }
+                            raise ValueError(
+                                f"{type(self).__name__} has multiple providers "
+                                f"for dimensions: {conflicts}.\n"
+                                f"Dict field '{field_obj.name}[{child_key}]' provides "
+                                f"{set(provider_dims.keys())}, "
+                                f"already provided by {conflict_sources}"
+                            )
+                        child_dims.update(provider_dims)
+                        resolved_dims.update(provider_dims)  # Override parent dims if present
+                        for dim_name in provider_dims:
+                            dim_sources[dim_name] = f"{field_obj.name}[{child_key}]"
             elif isinstance(value, list):
-                for child in value:
+                for idx, child in enumerate(value):
                     if isinstance(child, DimensionProvider):
-                        dims.update(child.get_dimensions())
+                        provider_dims = child.get_dims()
+                        # Check for conflicts with other children
+                        # (not with parent - that's an override)
+                        conflicts = set(provider_dims.keys()) & set(child_dims.keys())
+                        if conflicts:
+                            conflict_sources = {
+                                dim: dim_sources[dim]
+                                for dim in conflicts
+                                if dim_sources[dim] != "parent"
+                            }
+                            raise ValueError(
+                                f"{type(self).__name__} has multiple providers "
+                                f"for dimensions: {conflicts}.\n"
+                                f"List field '{field_obj.name}[{idx}]' provides "
+                                f"{set(provider_dims.keys())}, "
+                                f"already provided by {conflict_sources}"
+                            )
+                        child_dims.update(provider_dims)
+                        resolved_dims.update(provider_dims)  # Override parent dims if present
+                        for dim_name in provider_dims:
+                            dim_sources[dim_name] = f"{field_obj.name}[{idx}]"
 
-        return dims
+        return resolved_dims
+
+
+def validate_dimension_resolution(component) -> list[str]:
+    """
+    Validate that all array fields can resolve their required dimensions.
+
+    This function walks the component hierarchy and checks that every array field
+    with dimension requirements can resolve those dimensions from the parent chain.
+    Use this in tests or CI to catch missing dimension providers.
+
+    Parameters
+    ----------
+    component : Component
+        The component to validate (must have DimensionResolver interface)
+
+    Returns
+    -------
+    list[str]
+        List of error messages for dimensions that cannot be resolved.
+        Empty list means all dimensions can be resolved successfully.
+
+    Examples
+    --------
+    >>> errors = validate_dimension_resolution(simulation)
+    >>> if errors:
+    ...     for error in errors:
+    ...         print(error)
+    >>> # Use in tests:
+    >>> assert not validate_dimension_resolution(sim), "Dimension resolution failed"
+    """
+    errors = []
+
+    # Check all array fields on this component
+    for field in attrs.fields(type(component)):
+        # Check if field has dimension metadata
+        if hasattr(field, "metadata") and field.metadata and "dims" in field.metadata:
+            dims_needed = field.metadata["dims"]
+            # Check if this component has a parent and can resolve dimensions
+            if hasattr(component, "parent") and component.parent:
+                if hasattr(component.parent, "resolve_dims"):
+                    for dim in dims_needed:
+                        result = component.parent.resolve_dims(dim)
+                        if dim not in result:
+                            errors.append(
+                                f"{type(component).__name__}.{field.name} needs dimension '{dim}' "
+                                f"but it's not available in parent hierarchy"
+                            )
+
+    # Recursively validate children
+    for field in attrs.fields(type(component)):
+        value = getattr(component, field.name, None)
+        if value is None:
+            continue
+
+        # Check if child is a component with attrs fields
+        if hasattr(value, "__class__") and hasattr(attrs, "fields"):
+            try:
+                attrs.fields(type(value))
+                # It's an attrs class, validate it
+                errors.extend(validate_dimension_resolution(value))
+            except Exception:
+                # Not an attrs class, skip
+                pass
+        elif isinstance(value, dict):
+            for child in value.values():
+                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
+                    try:
+                        attrs.fields(type(child))
+                        errors.extend(validate_dimension_resolution(child))
+                    except Exception:
+                        pass
+        elif isinstance(value, list):
+            for child in value:
+                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
+                    try:
+                        attrs.fields(type(child))
+                        errors.extend(validate_dimension_resolution(child))
+                    except Exception:
+                        pass
+
+    return errors
