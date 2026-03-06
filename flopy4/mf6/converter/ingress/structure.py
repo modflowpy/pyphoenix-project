@@ -10,6 +10,7 @@ from xattree import get_xatspec
 from flopy4.adapters import get_nn
 from flopy4.mf6.config import SPARSE_THRESHOLD
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.dimensions import DimensionResolver
 
 
 def structure_keyword(value, field) -> str | None:
@@ -48,7 +49,10 @@ def _resolve_dimensions(
 
     # Resolve dims from model context
     # Priority: 1) explicit dims parameter, 2) self_.__dict__, 3) parent
-    inherited_dims = dict(self_.parent.data.dims) if self_.parent else {}
+    inherited_dims = {}
+    if self_.parent and isinstance(self_.parent, DimensionResolver):
+        inherited_dims = self_.parent.resolve_dims()
+
     explicit_dims = self_.__dict__.get("dims", {})
     dim_dict = inherited_dims | explicit_dims
 

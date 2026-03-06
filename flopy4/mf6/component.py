@@ -9,7 +9,7 @@ from xattree import asdict as xattree_asdict
 from xattree import xattree
 
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.dimensions import DimensionRegistryMixin
+from flopy4.mf6.dimensions import DimensionResolverMixin
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
@@ -22,7 +22,7 @@ COMPONENTS = {}
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
 @xattree(kw_only=True)
-class Component(DimensionRegistryMixin, ABC, MutableMapping):
+class Component(DimensionResolverMixin, ABC, MutableMapping):
     """
     Base class for MF6 components.
 

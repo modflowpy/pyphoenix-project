@@ -119,7 +119,7 @@ class Dis(DisBase):
         self.nvert = (self.ncol + 1) * (self.nrow + 1)
         super().__attrs_post_init__()
 
-    def get_dimensions(self) -> dict[str, int]:
+    def get_dims(self) -> dict[str, int]:
         """Get all dimensions.
 
         Returns both explicit dimensions (nlay, nrow, ncol) and computed
