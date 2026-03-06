@@ -509,6 +509,9 @@ class StructuredGrid(LegacyStructuredGrid):
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
         lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
 
+        # All topology arrays computed once; self.legacy is already True here.
+        topo = self._topology()
+
         # create dataset coordinate vars
         # Use cumulative per-period time (one value per stress period)
         var_d = {
@@ -533,8 +536,8 @@ class StructuredGrid(LegacyStructuredGrid):
 
         # mesh node x and y
         var_d = {
-            "mesh_node_x": (["nmesh_node"], self.verts[:, 0]),
-            "mesh_node_y": (["nmesh_node"], self.verts[:, 1]),
+            "mesh_node_x": (["nmesh_node"], topo["node_x"]),
+            "mesh_node_y": (["nmesh_node"], topo["node_y"]),
         }
         ds = ds.assign(var_d)
         ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
@@ -544,40 +547,12 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_node_y"].attrs["long_name"] = "Northing"
 
-        # mesh face x and y
-        x_bnds = []
-        x_verts = self.verts[:, 0].reshape(self.nrow + 1, self.ncol + 1)
-        for i in range(self.nrow):
-            if i + 1 > self.nrow:
-                break
-            for j in range(self.ncol):
-                if j + 1 <= self.ncol:
-                    bnd = []
-                    bnd.append(x_verts[i + 1][j])
-                    bnd.append(x_verts[i + 1][j + 1])
-                    bnd.append(x_verts[i][j + 1])
-                    bnd.append(x_verts[i][j])
-                    x_bnds.append(bnd)
-
-        y_bnds = []
-        y_verts = self.verts[:, 1].reshape(self.nrow + 1, self.ncol + 1)
-        for i in range(self.nrow):
-            if i + 1 > self.nrow:
-                break
-            for j in range(self.ncol):
-                if j + 1 <= self.ncol:
-                    bnd = []
-                    bnd.append(y_verts[i + 1][j])
-                    bnd.append(y_verts[i + 1][j + 1])
-                    bnd.append(y_verts[i][j + 1])
-                    bnd.append(y_verts[i][j])
-                    y_bnds.append(bnd)
-
+        # mesh face x, y and bounds
         var_d = {
-            "mesh_face_x": (["nmesh_face"], self.xcellcenters.flatten()),
-            "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], x_bnds),
-            "mesh_face_y": (["nmesh_face"], self.ycellcenters.flatten()),
-            "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], y_bnds),
+            "mesh_face_x": (["nmesh_face"], topo["face_x"]),
+            "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["x_bnds"]),
+            "mesh_face_y": (["nmesh_face"], topo["face_y"]),
+            "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
         }
         ds = ds.assign(var_d)
         ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
@@ -590,10 +565,8 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
 
         # mesh face nodes
-        face_nodes = self._build_face_nodes()
-
         var_d = {
-            "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], face_nodes),
+            "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], topo["face_nodes"]),
         }
         ds = ds.assign(var_d)
         ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
@@ -749,19 +722,40 @@ class StructuredGrid(LegacyStructuredGrid):
 
         return ds
 
-    def _build_face_nodes(self) -> list:
+    def _topology(self) -> dict:
         """
-        Build 1-based counterclockwise face-node connectivity from ``self.iverts``.
+        Compute UGRID mesh topology arrays.
 
-        Must be called while ``self.legacy`` is ``True`` so that ``iverts``
-        returns raw arrays rather than xarray-wrapped values.
+        Returns node coordinates, face centroids, 1-based CCW face-node
+        connectivity, and face-vertex bound arrays.  Must be called while
+        ``self.legacy`` is ``True`` so that ``iverts`` and ``verts`` return
+        raw arrays rather than xarray-wrapped values.
         """
-        face_nodes = []
+        node_x = self.verts[:, 0]
+        node_y = self.verts[:, 1]
+
+        # 1-based CCW face-node connectivity (structured cells always have 4 nodes)
+        face_nodes_list = []
         for r in self.iverts:
             nodes = [np.int64(x + 1) for x in r]
             nodes.reverse()
-            face_nodes.append(nodes)
-        return face_nodes
+            face_nodes_list.append(nodes)
+        face_nodes = np.array(face_nodes_list, dtype=np.int64)  # (nfaces, 4)
+
+        # Face-vertex bounds: x/y coordinates of each face's nodes in CCW order.
+        # Vectorized indexing replaces the nested vertex loops.
+        x_bnds = node_x[face_nodes - 1]  # (nfaces, 4)
+        y_bnds = node_y[face_nodes - 1]  # (nfaces, 4)
+
+        return {
+            "node_x": node_x,
+            "node_y": node_y,
+            "face_x": self.xcellcenters.flatten(),
+            "face_y": self.ycellcenters.flatten(),
+            "face_nodes": face_nodes,
+            "x_bnds": x_bnds,
+            "y_bnds": y_bnds,
+        }
 
     @property
     def ugrid(self) -> xu.Ugrid2d:
@@ -776,11 +770,12 @@ class StructuredGrid(LegacyStructuredGrid):
         """
         self.legacy = True
         try:
+            topo = self._topology()
             return xu.Ugrid2d(
-                np.array(self.verts[:, 0]),
-                np.array(self.verts[:, 1]),
+                topo["node_x"],
+                topo["node_y"],
                 FILL_INT64,
-                np.array(self._build_face_nodes()),
+                topo["face_nodes"],
                 projected=True,
                 crs=self.crs,
                 start_index=1,
@@ -1120,6 +1115,9 @@ class VertexGrid(LegacyVertexGrid):
 
         self.legacy = True
         try:
+            # All topology arrays computed once from cell2d/verts.
+            topo = self._topology()
+
             ds = xr.Dataset()
             ds.attrs["modflow_grid"] = "VERTEX"
 
@@ -1147,8 +1145,8 @@ class VertexGrid(LegacyVertexGrid):
 
             # mesh node x and y
             var_d = {
-                "mesh_node_x": (["nmesh_node"], self.verts[:, 0]),
-                "mesh_node_y": (["nmesh_node"], self.verts[:, 1]),
+                "mesh_node_x": (["nmesh_node"], topo["node_x"]),
+                "mesh_node_y": (["nmesh_node"], topo["node_y"]),
             }
             ds = ds.assign(var_d)
             ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
@@ -1158,35 +1156,12 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
             ds["mesh_node_y"].attrs["long_name"] = "Northing"
 
-            # determine max number of cell vertices and build face node connectivity
-            face_nodes, max_face_nodes = self._build_face_nodes()
-
-            # mesh face x and y
-            x_bnds = []
-            for x in self.xvertices:
-                x = x[::-1]
-                if len(x) < max_face_nodes:
-                    if isinstance(x, np.ndarray):
-                        x = np.append(x, [FILL_INT64] * (max_face_nodes - len(x)))
-                    elif isinstance(x, list):
-                        x.extend([FILL_INT64] * (max_face_nodes - len(x)))
-                x_bnds.append(x)
-
-            y_bnds = []
-            for y in self.yvertices:
-                y = y[::-1]
-                if len(y) < max_face_nodes:
-                    if isinstance(y, np.ndarray):
-                        y = np.append(y, [FILL_INT64] * (max_face_nodes - len(y)))
-                    elif isinstance(y, list):
-                        y.extend([FILL_INT64] * (max_face_nodes - len(y)))
-                y_bnds.append(y)
-
+            # mesh face x, y and bounds
             var_d = {
-                "mesh_face_x": (["nmesh_face"], self.xcellcenters),
-                "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], x_bnds),
-                "mesh_face_y": (["nmesh_face"], self.ycellcenters),
-                "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], y_bnds),
+                "mesh_face_x": (["nmesh_face"], topo["face_x"]),
+                "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["x_bnds"]),
+                "mesh_face_y": (["nmesh_face"], topo["face_y"]),
+                "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
             }
             ds = ds.assign(var_d)
             ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
@@ -1198,9 +1173,9 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
 
-            # mesh face nodes (built above via _build_face_nodes)
+            # mesh face nodes
             var_d = {
-                "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], face_nodes),
+                "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], topo["face_nodes"]),
             }
             ds = ds.assign(var_d)
             ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
@@ -1240,25 +1215,26 @@ class VertexGrid(LegacyVertexGrid):
         finally:
             self.legacy = False
 
-    def _build_face_nodes(self) -> tuple[list, int]:
+    def _topology(self) -> dict:
         """
-        Build 1-based counterclockwise face-node connectivity from ``self.cell2d``.
+        Compute UGRID mesh topology arrays.
 
-        Must be called while ``self.legacy`` is ``True`` so that ``cell2d``
-        returns raw arrays rather than xarray-wrapped values.
-
-        Returns
-        -------
-        tuple[list, int]
-            face_nodes : list of lists of 1-based node indices per face, padded
-                with ``FILL_INT64`` to a uniform length.
-            max_face_nodes : maximum number of vertices in any face.
+        Returns node coordinates, face centroids, 1-based CCW face-node
+        connectivity (padded with ``FILL_INT64``), and face-vertex bound
+        arrays.  Must be called while ``self.legacy`` is ``True`` so that
+        ``cell2d`` and ``verts`` return raw arrays rather than xarray-wrapped
+        values.
         """
         if not self.cell2d:
-            raise ValueError("VertexGrid has no cell2d data; cannot build face nodes.")
-        cell_nverts = [len(cell2d) - 3 for cell2d in self.cell2d]
+            raise ValueError("VertexGrid has no cell2d data; cannot build mesh topology.")
+
+        node_x = self.verts[:, 0]
+        node_y = self.verts[:, 1]
+
+        # 1-based CCW face-node connectivity, padded to max_face_nodes
+        cell_nverts = [len(cell) - 3 for cell in self.cell2d]
         max_face_nodes = max(cell_nverts)
-        face_nodes = []
+        face_nodes_list = []
         for cell in self.cell2d:
             nodes = [np.int64(x + 1) for x in cell[3:]]
             nodes.reverse()
@@ -1266,8 +1242,27 @@ class VertexGrid(LegacyVertexGrid):
                 nodes.pop()
             if len(nodes) < max_face_nodes:
                 nodes.extend([FILL_INT64] * (max_face_nodes - len(nodes)))
-            face_nodes.append(nodes)
-        return face_nodes, max_face_nodes
+            face_nodes_list.append(nodes)
+        face_nodes = np.array(face_nodes_list, dtype=np.int64)  # (ncpl, max_face_nodes)
+
+        # Face-vertex bounds: x/y coordinates of each face's nodes in CCW order.
+        # Padding slots (FILL_INT64) must not be used as array indices, so mask them.
+        mask = face_nodes == FILL_INT64
+        idx = np.where(mask, 0, face_nodes - 1)
+        x_bnds = node_x[idx].copy()
+        y_bnds = node_y[idx].copy()
+        x_bnds[mask] = FILL_INT64
+        y_bnds[mask] = FILL_INT64
+
+        return {
+            "node_x": node_x,
+            "node_y": node_y,
+            "face_x": self.xcellcenters,
+            "face_y": self.ycellcenters,
+            "face_nodes": face_nodes,
+            "x_bnds": x_bnds,
+            "y_bnds": y_bnds,
+        }
 
     @property
     def ugrid(self) -> xu.Ugrid2d:
@@ -1282,12 +1277,12 @@ class VertexGrid(LegacyVertexGrid):
         """
         self.legacy = True
         try:
-            face_nodes, _ = self._build_face_nodes()
+            topo = self._topology()
             return xu.Ugrid2d(
-                np.array(self.verts[:, 0]),
-                np.array(self.verts[:, 1]),
+                topo["node_x"],
+                topo["node_y"],
                 FILL_INT64,
-                np.array(face_nodes),
+                topo["face_nodes"],
                 projected=True,
                 crs=self.crs,
                 start_index=1,
