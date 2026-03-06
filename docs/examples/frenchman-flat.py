@@ -74,7 +74,7 @@ def plot_head_ugrid(head, cbc, grid, workspace):
     ugrid = grid.ugrid
     facedim = ugrid.face_dimension
 
-    # Select first timestep and first layer; flatten (y, x) → face dimension
+    # Select first timestep and first layer; flatten (y, x) -> face dimension
     h = head.isel(time=0, layer=0).compute()
     head_uda = xu.UgridDataArray(
         xr.DataArray(h.values.ravel(), dims=[facedim], name="head"),

@@ -26,7 +26,7 @@ import flopy4
 
 
 def plot_head_ugrid(head, cbc, workspace):
-    """Plot head and flow vectors using xugrid on a DIS (structured) grid.
+    """Plot head and flow vectors using xugrid on a DISV (vertex) grid.
 
     `gwf.output.head` returns a `UgridDataArray` for DISV models.
     `gwf.output.budget` returns a `UgridDataset` keyed by face-flow term.
@@ -143,11 +143,11 @@ icelltype = xu.full_like(idomain, 0)
 k = xu.full_like(idomain, 1.0, dtype=float)
 k33 = k.copy()
 npf = flopy4.mf6.gwf.Npf(
-    save_specific_discharge=True,
+    # save_specific_discharge=True,
     icelltype=icelltype.values.ravel(),
     k=k.values.ravel(),
     k33=k33.values.ravel(),
-    # save_flows=True,
+    save_flows=True,
     dims=dims,
 )
 
@@ -172,7 +172,7 @@ chd = flopy4.mf6.gwf.Chd(
     head={"*": chd_head},
     print_input=True,
     print_flows=True,
-    # save_flows=True,
+    save_flows=True,
     dims=dims,
 )
 
@@ -198,7 +198,7 @@ oc = flopy4.mf6.gwf.Oc(
 
 # Flow model: assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
-    save_flows=True,
+    # save_flows=True,
     dis=disv,
     ic=ic,
     npf=npf,

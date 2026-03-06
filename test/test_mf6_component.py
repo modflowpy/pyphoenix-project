@@ -1206,6 +1206,18 @@ def test_ugrid_from_disv_factory():
     # uds.to_netcdf("./udataset.nc")
 
 
+def test_ugrid_from_dis_uniform():
+    """StructuredGrid.uniform().ugrid should have the correct face/node counts."""
+    import xugrid
+
+    nrow, ncol = 4, 6
+    grid = StructuredGrid.uniform(nlay=2, nrow=nrow, ncol=ncol, delr=50.0, delc=50.0)
+    ugrid = grid.ugrid
+    assert isinstance(ugrid, xugrid.Ugrid2d)
+    assert ugrid.n_face == nrow * ncol
+    assert ugrid.n_node == (nrow + 1) * (ncol + 1)
+
+
 def test_grid_with_idomain():
     """Test grid with idomain array."""
     nlay, nrow, ncol = 2, 5, 5

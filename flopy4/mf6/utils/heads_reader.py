@@ -4,7 +4,6 @@ from pathlib import Path
 
 import dask
 import numpy as np
-import pandas as pd
 import xarray as xr
 import xugrid as xu
 from flopy.discretization import StructuredGrid
@@ -12,6 +11,7 @@ from flopy.discretization import StructuredGrid
 from flopy4.adapters import read_binary_grid_file
 
 from .grid import get_coords
+from .time import assign_datetime_coords
 
 
 def open_hds(
@@ -220,7 +220,7 @@ def _open_hds_netcdf(
     nlayer = len(head_vars)
 
     if grid_type == "VERTEX":
-        # DISV: stack per-layer dask arrays → (ntime, nlayer, ncpl)
+        # DISV: stack per-layer dask arrays -> (ntime, nlayer, ncpl)
         # Use grb grid and face_dimension for consistency with binary reader.
         grid = grb_info["grid"]
         facedim = grb_info["face_dimension"]
@@ -234,7 +234,7 @@ def _open_hds_netcdf(
         return xu.UgridDataArray(da, grid)
 
     elif grid_type == "STRUCTURED":
-        # DIS: stack per-layer dask arrays and reshape nmesh_face → (nrow, ncol)
+        # DIS: stack per-layer dask arrays and reshape nmesh_face -> (nrow, ncol)
         grid = grb_info["grid"]
         nrow, ncol = grid.nrow, grid.ncol
         ntime = ds.sizes["time"]
@@ -300,18 +300,6 @@ def read_hds_timestep(
     return _to_nan(a2d, dry_nan)
 
 
-def assign_datetime_coords(
-    da: xr.DataArray,
-    simulation_start_time: np.datetime64,
-    time_unit: str | None = "d",
-) -> xr.DataArray:
-    if "time" not in da.coords:
-        raise ValueError("cannot convert time column, because a time column could not be found")
-
-    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(da["time"], unit=time_unit)
-    return da.assign_coords(time=time)
-
-
 def _dask_to_nan(a: dask.array.Array, dry_nan: bool) -> dask.array.Array:
     a = dask.array.where(a == 1e30, np.nan, a)
     if dry_nan:
@@ -320,7 +308,11 @@ def _dask_to_nan(a: dask.array.Array, dry_nan: bool) -> dask.array.Array:
 
 
 def _to_nan(a: np.ndarray, dry_nan: bool) -> np.ndarray:
-    # TODO: this could really use a docstring?
+    """
+    Replace MODFLOW 6 no-data sentinels (1e30) with NaN, in-place.
+
+    If *dry_nan* is True, also replace dry-cell values (-1e30) with NaN.
+    """
     a[a == 1e30] = np.nan
     if dry_nan:
         a[a == -1e30] = np.nan

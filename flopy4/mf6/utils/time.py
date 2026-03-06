@@ -1,7 +1,42 @@
 import numpy as np
 import pandas as pd
+import xarray as xr
 from flopy.discretization.modeltime import ModelTime
 from numpy.typing import ArrayLike
+
+
+def assign_datetime_coords(
+    da: xr.DataArray,
+    simulation_start_time: np.datetime64,
+    time_unit: str | None = "d",
+) -> xr.DataArray:
+    """
+    Replace the numeric ``time`` coordinate on *da* with calendar datetimes.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Array with a numeric ``time`` coordinate (simulation time in
+        *time_unit* since the start of the simulation).
+    simulation_start_time : np.datetime64
+        Calendar date/time corresponding to the start of the simulation
+        (i.e. model time = 0).
+    time_unit : str, optional
+        Unit of the numeric time values.  Passed directly to
+        :func:`pandas.to_timedelta`.  Common values: ``"d"`` (days,
+        default), ``"h"`` (hours), ``"s"`` (seconds).  Month and year
+        are not supported because they are ambiguous.
+
+    Returns
+    -------
+    xr.DataArray
+        A copy of *da* with the ``time`` coordinate replaced by
+        :class:`pandas.Timestamp` values.
+    """
+    if "time" not in da.coords:
+        raise ValueError("cannot convert time: no 'time' coordinate found")
+    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(da["time"], unit=time_unit)
+    return da.assign_coords(time=time)
 
 
 class Time(ModelTime):

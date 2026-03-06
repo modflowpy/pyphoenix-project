@@ -7,7 +7,6 @@ from typing import Any, BinaryIO, cast
 import dask
 import dask.array
 import numpy as np
-import pandas as pd
 import xarray as xr
 import xugrid as xu
 from attrs import define
@@ -15,6 +14,7 @@ from flopy.discretization import StructuredGrid
 
 from flopy4.adapters import read_binary_grid_file
 from flopy4.mf6.utils.grid import get_coords
+from flopy4.mf6.utils.time import assign_datetime_coords
 
 
 @define
@@ -136,7 +136,7 @@ def open_cbc(
 
     Get the drainage budget, compute a time mean for the first layer:
 
-    >>> drn_budget = cbc_content["drn]
+    >>> drn_budget = cbc_content["drn"]
     >>> mean = drn_budget.sel(layer=1).mean("time")
 
     """
@@ -194,7 +194,8 @@ def _open_cbc_dis(
         # TODO: validate homogeneity of header_list, ndat consistent,
         # nlist consistent etc.
         if key == "flow-ja-face" and isinstance(header_list[0], Imeth1Header):
-            assert all(isinstance(x, Imeth1Header) for x in header_list)
+            if not all(isinstance(x, Imeth1Header) for x in header_list):
+                raise TypeError(f"Mixed header types for key {key!r}")
             if flowja:
                 flowjaface, nm = open_face_budgets_as_flowja(
                     cbc_path, cast(list[Imeth1Header], header_list), grid
@@ -212,12 +213,14 @@ def _open_cbc_dis(
                 cbc_content["flow-lower-face"] = lower
         else:
             if isinstance(header_list[0], Imeth1Header):
-                assert all(isinstance(x, Imeth1Header) for x in header_list)
+                if not all(isinstance(x, Imeth1Header) for x in header_list):
+                    raise TypeError(f"Mixed header types for key {key!r}")
                 cbc_content[key] = open_imeth1_budgets(
                     cbc_path, grid, cast(list[Imeth1Header], header_list)
                 )
             elif isinstance(header_list[0], Imeth6Header):
-                assert all(isinstance(x, Imeth6Header) for x in header_list)
+                if not all(isinstance(x, Imeth6Header) for x in header_list):
+                    raise TypeError(f"Mixed header types for key {key!r}")
 
                 # for non cell flow budget terms,
                 # use auxiliary variables as return value
@@ -273,7 +276,8 @@ def _open_cbc_disv(
     cbc_content: dict[str, xu.UgridDataArray | xr.DataArray] = {}
     for key, header_list in headers.items():
         if key == "flow-ja-face" and isinstance(header_list[0], Imeth1Header):
-            assert all(isinstance(x, Imeth1Header) for x in header_list)
+            if not all(isinstance(x, Imeth1Header) for x in header_list):
+                raise TypeError(f"Mixed header types for key {key!r}")
             if flowja:
                 flowjaface, nm = open_face_budgets_as_flowja(
                     cbc_path, cast(list[Imeth1Header], header_list), grb_info
@@ -291,12 +295,14 @@ def _open_cbc_disv(
                 cbc_content["flow-horizontal-face-y"] = flow_y
                 cbc_content["flow-lower-face"] = lower
         elif isinstance(header_list[0], Imeth1Header):
-            assert all(isinstance(x, Imeth1Header) for x in header_list)
+            if not all(isinstance(x, Imeth1Header) for x in header_list):
+                raise TypeError(f"Mixed header types for key {key!r}")
             cbc_content[key] = disv_open_imeth1_budgets(
                 cbc_path, grb_info, cast(list[Imeth1Header], header_list)
             )
         elif isinstance(header_list[0], Imeth6Header):
-            assert all(isinstance(x, Imeth6Header) for x in header_list)
+            if not all(isinstance(x, Imeth6Header) for x in header_list):
+                raise TypeError(f"Mixed header types for key {key!r}")
             if header_list[0].text.startswith("data-"):
                 for return_variable in header_list[0].auxtxt:
                     key_aux = f"{header_list[0].txt2id1}-{return_variable}"
@@ -431,18 +437,6 @@ def read_imeth6_header(f: BinaryIO) -> dict[str, Any]:
     content["auxtxt"] = [f.read(16).decode("utf-8").strip().lower() for _ in range(ndat - 1)]
     content["nlist"] = struct.unpack("i", f.read(4))[0]
     return content
-
-
-def assign_datetime_coords(
-    da: xr.DataArray,
-    simulation_start_time: np.datetime64,
-    time_unit: str | None = "d",
-) -> xr.DataArray:
-    if "time" not in da.coords:
-        raise ValueError("cannot convert time column, because a time column could not be found")
-
-    time = pd.Timestamp(simulation_start_time) + pd.to_timedelta(da["time"], unit=time_unit)
-    return da.assign_coords(time=time)
 
 
 # imeth=6 budget reading (grid-independent core)
@@ -663,6 +657,12 @@ def dis_indices(
     Infer type of connection via cell number comparison. Returns arrays
     that can be used for extracting right, front, and lower face flow from the
     flow-ja-face array.
+
+    ``grid.ia`` and ``grid.ja`` must be 0-based CSR arrays (as returned by
+    :class:`~flopy4.adapters.StructuredGridWrapper`, which reads them from the
+    GRB file via ``MfGrdFile`` — which converts Fortran 1-based indices to
+    0-based on read).  ``nzi`` is a direct index into ``ja``; no offset
+    adjustment is needed.
     """
     shape = (grid.nlay, grid.nrow, grid.ncol)
     ncells_per_layer = grid.nrow * grid.ncol
@@ -672,10 +672,11 @@ def dis_indices(
 
     for i in range(grid.nnodes):
         for nzi in range(grid.ia[i], grid.ia[i + 1]):
-            nzi -= 1  # python is 0-based, modflow6 is 1-based
-            j = grid.ja[nzi] - 1  # python is 0-based, modflow6 is 1-based
+            # ia/ja are 0-based: nzi is both the position in ja AND the
+            # position in the flat flow-ja-face budget array.
+            j = grid.ja[nzi]  # 0-based connected-cell index
             d = j - i
-            if d <= 0:  # left, back, upper
+            if d <= 0:  # self, left, back, or upper
                 continue
             elif d == 1 and grid.ncol > 1:  # right neighbor
                 right[i] = nzi
@@ -683,7 +684,7 @@ def dis_indices(
                 front[i] = nzi
             elif d == ncells_per_layer:  # lower neighbor
                 lower[i] = nzi
-            else:  # skips one: must be pass through
+            else:  # skips one or more layers: pass-through
                 npassed = int(d / ncells_per_layer)
                 for ipass in range(0, npassed):
                     lower[i + ipass * ncells_per_layer] = nzi
@@ -709,8 +710,9 @@ def open_face_budgets_as_flowja(
         ia = grid_or_info.ia
         ja = grid_or_info.ja
 
+    # ia and ja are 0-based in both DIS and DISV (MfGrdFile converts on read).
     n = expand_indptr(ia)
-    m = ja - 1
+    m = ja  # 0-based connected-cell indices
     nm = xr.DataArray(
         np.column_stack([n, m]),
         coords={"cell": ["n", "m"]},
@@ -825,11 +827,15 @@ def compute_flow_orientation(
 
 def mf6_csr_to_coo(ia: np.ndarray, ja: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
-    Convert MODFLOW 6 CSR 1-based arrays into 0-based COO arrays.
+    Convert 0-based CSR arrays (ia, ja) into COO row/col arrays.
+
+    Both ``ia`` and ``ja`` are 0-based (as returned by
+    :class:`~flopy.mf6.utils.binarygrid_util.MfGrdFile`).
+    The returned ``i`` and ``j`` are also 0-based cell indices.
     """
     n = np.diff(ia)
     i = np.repeat(np.arange(ia.size - 1), n)
-    j = ja - 1
+    j = ja  # already 0-based
     return i, j
 
 

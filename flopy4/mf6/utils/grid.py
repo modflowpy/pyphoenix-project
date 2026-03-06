@@ -828,11 +828,11 @@ class VertexGrid(LegacyVertexGrid):
         Examples
         --------
         >>> from flopy4.mf6.gwf.disv import Disv
-        >>> dis = Disv(nlay=3, ncpl=1, nvert=4, top=30.0, botm=[20.0, 10.0, 0.0]
+        >>> dis = Disv(nlay=3, ncpl=1, nvert=4, top=30.0, botm=[20.0, 10.0, 0.0],
         ...            iv=[0, 1, 2, 3], xv=[0.0, 0.0, 1.0, 1.0], yv=[0.0, 1.0, 1.0, 0.0],
         ...            cell2ddata=[Disv.Cell2dRecord(
         ...                 0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0)
-        ...            )]
+        ...            )])
         >>> grid = VertexGrid.from_dis(dis)
         """
         return cls(
@@ -867,13 +867,13 @@ class VertexGrid(LegacyVertexGrid):
             kwargs["yoff"] = 0.0
         if (top := kwargs.get("top", None)) is not None and isinstance(top, Scalar):
             ncpl = kwargs.get("ncpl", None)
-            kwargs["top"] = np.full((ncpl), float(top))
+            kwargs["top"] = np.full((ncpl,), float(top))
 
         if (botm := kwargs.get("botm", None)) is not None:
             if isinstance(botm, (list, tuple)) and all(isinstance(b, Scalar) for b in botm):
                 nlay = kwargs.get("nlay", len(botm))
                 ncpl = kwargs.get("ncpl", None)
-                kwargs["botm"] = np.array([np.full((ncpl), float(b)) for b in botm])
+                kwargs["botm"] = np.array([np.full((ncpl,), float(b)) for b in botm])
 
         if "iv" in kwargs and "xv" in kwargs and "yv" in kwargs:
             iv = np.asarray(kwargs.pop("iv"))
@@ -924,13 +924,16 @@ class VertexGrid(LegacyVertexGrid):
         dict
             Dictionary with 'x', 'y', 'z' coordinate DataArrays
         """
-        # Access the parent class's properties directly
+        # Access the parent class's properties directly, guarding with
+        # try/finally so _legacy is always reset even if an exception occurs.
         self.legacy = True
-        xcellcenters = self.xcellcenters
-        ycellcenters = self.ycellcenters
-        legacy_top = self.top
-        legacy_botm = self.botm
-        self.legacy = False
+        try:
+            xcellcenters = self.xcellcenters
+            ycellcenters = self.ycellcenters
+            legacy_top = self.top
+            legacy_botm = self.botm
+        finally:
+            self.legacy = False
 
         # If spatial data is not provided, use default coordinates (indices)
         if xcellcenters is None:
@@ -1076,7 +1079,6 @@ class VertexGrid(LegacyVertexGrid):
             return super().idomain
 
         legacy_idomain = super().idomain
-        # return legacy_idomain
         if legacy_idomain is None:
             return None
 
