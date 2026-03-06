@@ -35,7 +35,7 @@ try:
 except NameError:
     FF_ROOT = Path.cwd()
 
-# ### Define plot function
+# ### Define plot functions
 
 
 def plot_head(head, workspace):
@@ -49,7 +49,8 @@ def plot_head(head, workspace):
     plt.ylabel("y")
     plt.grid(True)
     plt.savefig(workspace / "head.png", dpi=300, bbox_inches="tight")
-    # plt.show()
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        plt.show()
     plt.close()
 
 
@@ -98,8 +99,11 @@ def plot_head_ugrid(head, cbc, grid, workspace):
     xu.plot.line(ugrid, ax=ax, color="white", linewidth=0.1)
     ds.plot.quiver(x="mesh2d_face_x", y="mesh2d_face_y", u="u", v="v", color="black")
     ax.set_aspect(1)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
     ax.set_title("Head with flow vectors (layer 1, time 0)")
     plt.savefig(workspace / "head_ugrid.png", dpi=300, bbox_inches="tight")
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        plt.show()
     plt.close()
 
 
@@ -729,6 +733,7 @@ sim = flopy4.mf6.simulation.Simulation(
     workspace=workspace,
 )
 
+# run verbose only this time
 sim.write()
 sim.run(verbose=True)
 
@@ -773,7 +778,7 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 
 if os.getenv("MF6_EXTENDED"):
-    sim.run(verbose=True)
+    sim.run()
 
     # Load head results
     head = flopy4.mf6.utils.open_hds(
@@ -799,7 +804,6 @@ if os.getenv("MF6_EXTENDED"):
 # cells so MODFLOW ignores them for those stress periods.
 
 # update simulation with array based inputs
-LAYER_NODATA = np.full((nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 GRID_NODATA = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA, dtype=float)
 
 # Constant-rate pumping — array form of wel_crt.
@@ -893,11 +897,16 @@ nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 if os.getenv("MF6_EXTENDED"):
-    sim.run(verbose=True)
+    sim.run()
 
     # Load head results
+    # head = flopy4.mf6.utils.open_hds(
+    #    workspace / "ff.hds",
+    #    workspace / "ff.dis.grb",
+    # )
+    # Load head results — `UgridDataArray` backed by the NetCDF mesh2d output file.
     head = flopy4.mf6.utils.open_hds(
-        workspace / "ff.hds",
+        workspace / gwf.netcdf_mesh2d_file,
         workspace / "ff.dis.grb",
     )
 
@@ -934,7 +943,7 @@ nc_model.to_netcdf(nc_fpth)
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
     sim.write()
 if os.getenv("MF6_EXTENDED"):
-    sim.run(verbose=True)
+    sim.run()
 
     # Load head results
     head = flopy4.mf6.utils.open_hds(
