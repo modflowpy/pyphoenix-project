@@ -7,7 +7,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    ValidationError,
     ValidationInfo,
     field_validator,
 )
@@ -113,15 +112,12 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     @classmethod
     def from_dict(cls, meta, context=None):
-        try:
-            if context:
-                context = lower(context)
-            _meta = NetCDFModel._backfill_meta(meta, context)
-            inst = cls.model_validate(_meta, context=context)
-            inst._context |= context if context is not None else inst._context
-            return inst
-        except ValidationError:
-            raise
+        if context:
+            context = lower(context)
+        _meta = NetCDFModel._backfill_meta(meta, context)
+        inst = cls.model_validate(_meta, context=context)
+        inst._context |= context if context is not None else inst._context
+        return inst
 
     @classmethod
     def from_model(
@@ -131,8 +127,10 @@ class NetCDFModel(BaseModel, NetCDFInput):
         grid: StructuredGrid | VertexGrid | None = None,
         time: Time | None = None,
     ):
-        assert hasattr(model, "name")
-        assert hasattr(model, "data")
+        if not hasattr(model, "name"):
+            raise ValueError("model must have a 'name' attribute")
+        if not hasattr(model, "data"):
+            raise ValueError("model must have a 'data' attribute")
 
         modeltype = model.__class__.__name__.lower()
         attrs = {"title": f"{model.name.upper()} model input"}
@@ -175,17 +173,22 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 packages.append(p)
 
         dims = [
-            model.data.dims["nper"],
-            model.data.dims["nlay"],
+            model.data.dims["nper"],  # type: ignore
+            model.data.dims["nlay"],  # type: ignore
         ]
 
         if distype == "dis":
-            dims.append(model.data.dims["nrow"])
-            dims.append(model.data.dims["ncol"])
+            dims.append(model.data.dims["nrow"])  # type: ignore
+            dims.append(model.data.dims["ncol"])  # type: ignore
             gridtype = "structured"
         elif distype == "disv":
-            dims.append(model.data.dims["ncpl"])
+            dims.append(model.data.dims["ncpl"])  # type: ignore
             gridtype = "vertex"
+        else:
+            raise ValueError(
+                f"model has no supported discretization package (dis/disv); "
+                f"found distype={distype!r}"
+            )
 
         nc_model = NetCDFModel.from_dict(
             meta={
@@ -252,9 +255,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
     def grid(self, value):
         from flopy.discretization import StructuredGrid, VertexGrid
 
-        if (
-            not isinstance(value, StructuredGrid) and not isinstance(value, VertexGrid)
-        ) or not value:
+        if not isinstance(value, StructuredGrid) and not isinstance(value, VertexGrid):
             raise ValueError(f"invalid grid type: {type(value)}")
         self._grid = value
 
@@ -265,7 +266,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
     @time.setter
     def time(self, value):
-        if not isinstance(value, Time) or not value:
+        if not isinstance(value, Time):
             raise ValueError("invalid Time type")
         self._time = value
 
@@ -318,9 +319,9 @@ class NetCDFModelAttrs(BaseModel):
         validate model mesh attribute
         """
         if v is not None:
-            v = v.lower()
-            if v != "layered":
+            if v.lower() != "layered":
                 raise ValueError("only LAYERED mesh supported")
+            v = "LAYERED"  # normalize to uppercase to match MODFLOW 6 NC output convention
             info.context["mesh"] = v  # type: ignore
         return v
 
@@ -334,15 +335,15 @@ class NetCDFModelAttrs(BaseModel):
         dims = info.context.get("dims")  # type: ignore
         if v == "structured":
             if len(dims) != 4:
-                raise AssertionError(
+                raise ValueError(
                     "expected 4 input dimensions [time, nlay, nrow, ncol]"
-                    " for structured discretization: {dims}"
+                    f" for structured discretization: {dims}"
                 )
         elif v == "vertex":
             if len(dims) != 3:
-                raise AssertionError(
+                raise ValueError(
                     "expected 3 input dimensions [time, nlay, ncpl]"
-                    " for vertex discretization: {dims}"
+                    f" for vertex discretization: {dims}"
                 )
         info.context["gridtype"] = v  # type: ignore
         return v
@@ -381,24 +382,21 @@ class NetCDFPackage(BaseModel, NetCDFInput):
 
     @classmethod
     def from_dict(cls, meta, context):
-        try:
-            if context:
-                context = lower(context)
-            _meta = NetCDFPackage._backfill_meta(meta, context)
-            inst = cls.model_validate(_meta, context=context)
-            inst._context |= context if context is not None else inst._context
-            return inst
-        except ValidationError:
-            raise
+        if context:
+            context = lower(context)
+        _meta = NetCDFPackage._backfill_meta(meta, context)
+        inst = cls.model_validate(_meta, context=context)
+        inst._context |= context if context is not None else inst._context
+        return inst
 
     def to_xarray(self) -> xr.Dataset:
-        ds = []
+        dss = []
         for p in self.params:
             if "grid" in self._context:
                 p._context["grid"] = self._context["grid"]
-            ds.append(p.to_xarray())
+            dss.append(p.to_xarray())
 
-        return xr.merge(ds)
+        return xr.merge(dss)
 
     def to_netcdf(self, path: str | PathLike) -> None:
         self.to_xarray().to_netcdf(path)
@@ -446,9 +444,7 @@ class NetCDFPackage(BaseModel, NetCDFInput):
         _meta = dict(meta)
 
         if "package_name" not in _meta or "package_type" not in _meta:
-            raise AssertionError(
-                "package missing required package_name or package_type attribute(s)."
-            )
+            raise ValueError("package missing required package_name or package_type attribute(s).")
 
         auxiliary = _meta.get("auxiliary", None)
 
@@ -476,7 +472,7 @@ class NetCDFPackage(BaseModel, NetCDFInput):
                 p["attrs"] = {}
 
             if p["name"].lower() == "aux" and (auxiliary is None or len(auxiliary) == 0):
-                raise AssertionError("AUX parameter requires auxiliary list input.")
+                raise ValueError("AUX parameter requires auxiliary list input.")
 
             shape = spec.arrays[p["name"]].dims
             assert shape is not None
@@ -521,28 +517,24 @@ class NetCDFParam(BaseModel, NetCDFInput):
 
     @classmethod
     def from_dict(cls, meta, context):
-        try:
-            if context:
-                context = lower(context)
-                # TODO: verify required context
-                if (
-                    "modelname" not in context
-                    or "package_name" not in context
-                    or "package_type" not in context
-                    or "gridtype" not in context
-                    or "dims" not in context
-                ):
-                    raise AssertionError(
-                        "NetCDFParam incomplete context: modelanme, package_name, "
-                        "package_type, gridtype and dims are required."
-                    )
-                context["dimmap"] = dimmap(context["gridtype"], context["dims"])
-            _meta = NetCDFParam._backfill_meta(meta, context)
-            inst = cls.model_validate(_meta, context=context)
-            inst._context |= context if context is not None else inst._context
-            return inst
-        except ValidationError:
-            raise
+        if context:
+            context = lower(context)
+            if (
+                "modelname" not in context
+                or "package_name" not in context
+                or "package_type" not in context
+                or "gridtype" not in context
+                or "dims" not in context
+            ):
+                raise ValueError(
+                    "NetCDFParam incomplete context: modelname, package_name, "
+                    "package_type, gridtype and dims are required."
+                )
+            context["dimmap"] = dimmap(context["gridtype"], context["dims"])
+        _meta = NetCDFParam._backfill_meta(meta, context)
+        inst = cls.model_validate(_meta, context=context)
+        inst._context |= context if context is not None else inst._context
+        return inst
 
     def to_xarray(self) -> xr.Dataset:
         meta = self.model_dump(by_alias=True)
@@ -651,7 +643,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
         v = [dim.lower() if isinstance(dim, str) else dim for dim in v]
         valid = ["time", "nmesh_face", "z", "y", "x"]
         if not all(dim in valid for dim in v):
-            raise AssertionError(f"invalid param shape={v}. Valid dims={valid}.")
+            raise ValueError(f"invalid param shape={v}. Valid dims={valid}.")
         return v
 
     @field_validator("attrs", mode="before")
@@ -787,7 +779,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
                 layer = _meta["attrs"]["layer"] - 1
                 if data.size == nval * context["dimmap"]["z"]:
                     # provided data is for full grid
-                    s = dims
+                    s = list(dims)  # copy to avoid mutating dims in-place
                     if "nodes" in spec.arrays[param].dims:  # type: ignore
                         if _meta["shape"][0] == "time":
                             s.insert(1, context["dimmap"]["z"])

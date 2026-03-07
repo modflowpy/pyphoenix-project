@@ -57,6 +57,7 @@ dependencies = [
     "pydantic",
     "tomli",
     "tomli_w",
+    "xugrid",
 ]
 dynamic = ["version"]
 

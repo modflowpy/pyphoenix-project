@@ -1,4 +1,5 @@
 build/
+docs/examples/circle/*
 docs/examples/frenchman-flat/*
 docs/examples/quickstart/*
 docs/examples/twri/*

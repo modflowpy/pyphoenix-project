@@ -8,7 +8,7 @@ import pytest
 import xarray as xr
 from lark import Lark
 from modflow_devtools.dfns import Dfn, MapV1To2, load_flat
-from modflow_devtools.models import get_models
+from modflow_devtools.download import download_and_unzip
 from packaging.version import Version
 
 from flopy4.mf6.codec.reader.parser import get_typed_parser
@@ -309,21 +309,33 @@ END ARRAYS
 # Real model tests using modflow-devtools models API
 
 
-@pytest.fixture(scope="module")
-def example_models():
-    """Get MF6 example models from devtools."""
-    models = get_models()
-    # Filter to mf6 examples only
-    return {name: info for name, info in models.items() if name.startswith("mf6/example/")}
+MF6_EXAMPLES_URL = (
+    "https://github.com/MODFLOW-ORG/modflow6-examples/releases/download/current/mf6examples.zip"
+)
+
+
+@pytest.fixture(scope="session")
+def mf6_examples_path(tmp_path_factory):
+    """Download and cache MF6 example models for the test session."""
+    tmp_dir = tmp_path_factory.mktemp("mf6_examples")
+    download_and_unzip(MF6_EXAMPLES_URL, tmp_dir, verbose=False)
+    return tmp_dir
 
 
 @pytest.fixture
-def model_workspace(tmp_path, request):
-    """Copy a model to a temporary workspace."""
-    from modflow_devtools.models import copy_to
+def model_workspace(mf6_examples_path, request):
+    """Get a model directory from downloaded examples.
 
+    The request.param should be in the form 'mf6/example/ex-gwf-csub-p01',
+    and the model directory name is the last component.
+    """
     model_name = request.param
-    workspace = copy_to(tmp_path, model_name, verbose=False)
+    # Extract dir name from model path
+    # e.g. "mf6/example/ex-gwf-csub-p01" -> "ex-gwf-csub-p01"
+    dir_name = model_name.split("/")[-1]
+    workspace = mf6_examples_path / dir_name
+    if not workspace.exists():
+        pytest.skip(f"Model directory '{dir_name}' not found in downloaded examples")
     return workspace
 
 

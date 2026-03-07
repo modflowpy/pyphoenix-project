@@ -166,6 +166,10 @@ class Disv(DisBase):
             vert.append(self.yv.values[i])  # type: ignore
             vertices.append(vert)
         return VertexGrid(
+            length_units=self.length_units,
+            xoff=self.xorigin,
+            yoff=self.yorigin,
+            crs=self.crs,
             nlay=self.nlay,
             top=self.top,
             botm=self.botm,
@@ -190,15 +194,19 @@ class Disv(DisBase):
             A discretization with the same dimensions and data as the grid.
         """
         return Disv(
+            xorigin=grid.xoffset,
+            yorigin=grid.yoffset,
             nlay=grid.nlay,
             ncpl=grid.ncpl,
             nvert=grid.nvert,
             top=grid.top,
             botm=grid.botm,
-            idomain=grid.idomain.reshape(grid.nlay, grid.ncpl) if grid.idomain else None,
+            idomain=np.asarray(grid.idomain).reshape(grid.nlay, grid.ncpl)
+            if grid.idomain is not None
+            else None,
             iv=np.array([v[0] for v in grid._vertices], dtype=int),
             xv=grid.verts[:, 0].ravel(),
-            yv=grid.verts[:, -1].ravel(),
+            yv=grid.verts[:, 1].ravel(),
             cell2ddata=Disv.grid_to_disv_cell2d(grid.cell2d),
         )
 
@@ -232,7 +240,7 @@ class Disv(DisBase):
                 cell[0],
                 cell[1],
                 cell[2],
-                len(cell) - 3,
+                len(verts),  # ncvert includes the closing (repeated) vertex
                 tuple(verts),
             )
             cell2ddata.append(rec)

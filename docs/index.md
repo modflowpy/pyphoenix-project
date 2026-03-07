@@ -20,6 +20,7 @@ The library exposes MODFLOW 6 input and output through:
 - {doc}`examples/quickstart` — 10×10 steady-state DIS model with contour + quiver plot
 - {doc}`examples/twri` — 3-layer transient benchmark; list, array, and NetCDF inputs
 - {doc}`examples/frenchman-flat` — real-world 87×87 DIS model from ScienceBase
+- {doc}`examples/circle` — DISV vertex grid with xugrid
 
 ## Source
 

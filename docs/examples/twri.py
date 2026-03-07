@@ -45,7 +45,8 @@ def plot_head(head, workspace):
     plt.ylabel("y")
     plt.grid(True)
     plt.savefig(workspace / "head.png", dpi=300, bbox_inches="tight")
-    # plt.show()
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        plt.show()
     plt.close()
 
 
@@ -232,6 +233,7 @@ sim.run(verbose=True)  # assumes the ``mf6`` executable is available on your PAT
 
 # ### Load head results
 
+# Load head results
 head = flopy4.mf6.utils.open_hds(
     workspace / f"{gwf.name}.hds",
     workspace / f"{gwf.name}.dis.grb",
@@ -318,6 +320,7 @@ sim.run(verbose=True)
 
 # ### Load head results
 
+# Load head results
 head = flopy4.mf6.utils.open_hds(
     workspace / f"{gwf.name}.hds",
     workspace / f"{gwf.name}.dis.grb",
@@ -341,6 +344,10 @@ sim.workspace = workspace
 nc_fpth = workspace / "twri.input.nc"
 gwf.netcdf_file = nc_fpth
 
+# Here the `NetCDFModel` object is created without passing optional grid
+# and time arguments.  This generates a data only file (no coordinate or
+# mesh variables), which is sufficient as an `mf6` input but not for
+# visualization in QGIS.
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf)
 nc_model.to_netcdf(nc_fpth)
 
@@ -359,8 +366,8 @@ if os.getenv("MF6_EXTENDED"):
     # Plot head results
     plot_head(head, workspace)
 
-# ### NetCDF input — layered mesh
-
+# # NetCDF input — layered mesh
+#
 # `mesh="layered"` writes a layered UGRID mesh NetCDF, which MODFLOW 6
 # reads with its NetCDF-mesh2d input mode.
 
@@ -372,6 +379,7 @@ sim.workspace = workspace
 nc_fpth = workspace / "twri.input.nc"
 gwf.netcdf_file = nc_fpth
 
+# Again, no grid or time arguments defined
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered")
 nc_model.to_netcdf(nc_fpth)
 

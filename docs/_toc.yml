@@ -10,6 +10,8 @@ parts:
         title: TWRI
       - file: examples/frenchman-flat
         title: Frenchman Flat
+      - file: examples/circle
+        title: Circle
 
   - caption: Developer Notes
     chapters:

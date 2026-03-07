@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import attrs
 import xarray as xr
+import xugrid as xu
 from attrs import define
 from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
@@ -78,19 +79,51 @@ class Gwf(Model):
         parent: "Gwf" = attrs.field(repr=False)
 
         @property
-        def head(self) -> xr.DataArray:
-            # TODO support other extensions than .hds (e.g. .hed)
+        def head(self) -> xr.DataArray | xu.UgridDataArray:
+            path = self.parent.workspace
+            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+
+            hds_fpth = None
+            head_file = self.parent.oc.head_file if self.parent.oc is not None else None
+            if head_file is not None:
+                fpth = path / head_file.name
+                if fpth.exists():
+                    hds_fpth = fpth
+
+            if hds_fpth is None:
+                # Check for output NC file configured on the model
+                nc_fname = self.parent.netcdf_mesh2d_file or self.parent.netcdf_structured_file
+                if nc_fname is not None:
+                    fpth = path / nc_fname.name
+                    if fpth.exists():
+                        hds_fpth = fpth
+
+            if hds_fpth is None:
+                raise FileNotFoundError(f"No head file (*.hds, *.hed, *.nc) found in {path}")
+
             return open_hds(
-                self.parent.parent.workspace / f"{self.parent.name}.hds",  # type: ignore
-                self.parent.parent.workspace / f"{self.parent.name}.dis.grb",  # type: ignore
+                hds_fpth,
+                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
             )
 
         @property
-        def budget(self):
-            # TODO support other extensions than .bud (e.g. .cbc)
+        def budget(self) -> xr.Dataset | xu.UgridDataset:
+            path = self.parent.workspace
+            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+
+            cbc_fpth = None
+            cbc_file = self.parent.oc.budget_file if self.parent.oc is not None else None
+            if cbc_file is not None:
+                fpth = path / cbc_file.name
+                if fpth.exists():
+                    cbc_fpth = fpth
+
+            if cbc_fpth is None:
+                raise FileNotFoundError(f"No budget file (*.bud, *.cbc) found in {path}")
+
             return open_cbc(
-                self.parent.parent.workspace / f"{self.parent.name}.bud",
-                self.parent.parent.workspace / f"{self.parent.name}.dis.grb",
+                cbc_fpth,
+                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
             )
 
     _list: Optional[str] = field(block="options", default=None)

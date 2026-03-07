@@ -148,6 +148,9 @@ class Dis(DisBase):
             A `StructuredGrid` with the same dimensions and data as the `Dis`.
         """
         return StructuredGrid(
+            length_units=self.length_units,
+            xoff=self.xorigin,
+            yoff=self.yorigin,
             nlay=self.nlay,
             nrow=self.nrow,
             ncol=self.ncol,
