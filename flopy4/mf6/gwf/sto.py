@@ -6,9 +6,11 @@ from attrs import Converter
 from numpy.typing import NDArray
 from xattree import xattree
 
+from flopy4.mf6.constants import LENBOUNDNAME
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, field, path
+from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.utils import to_path
 
 
@@ -72,17 +74,12 @@ class Sto(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="specific yield",
     )
-    steady_state: Optional[NDArray[np.bool_]] = array(
+    storage: Optional[NDArray[np.str_]] = array(
+        dtype=f"<U{LENBOUNDNAME}",
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="steady state indicator",
-    )
-    transient: Optional[NDArray[np.bool_]] = array(
-        block="period",
-        dims=("nper",),
-        default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="transient indicator",
+        on_setattr=update_maxbound,
+        longname="storage type",
     )

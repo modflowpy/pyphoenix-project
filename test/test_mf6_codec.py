@@ -67,8 +67,7 @@ def test_dumps_sto():
     sto = Sto(
         dims={"nper": 3},
         parent=gwf,
-        steady_state=[False, True, False],
-        transient=[True, False, True],
+        storage=["transient", "steady-state", "transient"],
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(sto))

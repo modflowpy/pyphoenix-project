@@ -2,7 +2,6 @@ import collections
 from typing import Any
 
 import numpy as np
-import sparse
 import xarray as xr
 import xugrid as xu
 from attrs import fields
@@ -11,7 +10,7 @@ from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
-from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
+from flopy4.mf6.constants import FILL_INT64
 
 
 class StructuredGrid(LegacyStructuredGrid):
@@ -1319,55 +1318,41 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     return coords
 
 
+def get_default_fill_value(dtype):
+    if np.issubdtype(dtype, np.integer):
+        return 0
+    elif np.issubdtype(dtype, np.floating):
+        return np.nan
+    elif dtype.kind in ["U", "S"]:
+        return ""
+    else:
+        return None
+
+
 def update_maxbound(instance, attribute, new_value):
     """
-    Generalized function to update maxbound when period block arrays change.
-
-    This function automatically finds all period block arrays in the instance
-    and calculates maxbound based on the maximum number of non-default values
-    across all arrays.
-
-    Args:
-        instance: The package instance
-        attribute: The attribute being set (from attrs on_setattr)
-        new_value: The new value being set
-
-    Returns:
-        The new_value (unchanged)
+    Recompute maxbound after period block data has changed.
+    Called by attrs on_setattr hook.
     """
 
-    period_arrays = []
-    instance_fields = fields(instance.__class__)
-    for f in instance_fields:
-        if (
+    bounds = []
+    for f in fields(instance.__class__):
+        if not (
             f.metadata
             and f.metadata.get("block") == "period"
             and f.metadata.get("xattree", {}).get("dims")
         ):
-            period_arrays.append(f.name)
-
-    maxbound_values = []
-    for array_name in period_arrays:
-        if attribute and attribute.name == array_name:
-            array_val = new_value
+            continue  # select period block arrays
+        if attribute and attribute.name == f.name:
+            d = new_value
         else:
-            array_val = getattr(instance, array_name, None)
-
-        if array_val is not None:
-            if isinstance(array_val.data, sparse.SparseArray):
-                # densify if the array is sparse
-                array_data = array_val.data.todense()
-            else:
-                # handle memoryview and other array-likes
-                array_data = np.asarray(array_val.data)
-
-            if array_data.dtype.kind in ["U", "S"]:  # String arrays
-                non_default_count = len(np.where(array_data != "")[0])
-            else:  # Numeric arrays
-                non_default_count = len(np.where(array_data != FILL_DNODATA)[0])
-
-            maxbound_values.append(non_default_count)
-    if maxbound_values:
-        instance.maxbound = max(maxbound_values)
+            d = getattr(instance, f.name, None)
+        if d is None:
+            continue
+        d = np.asarray(d.data)  # handle memoryview etc
+        fill = f.metadata.get("fill", get_default_fill_value(d.dtype))
+        bounds.append((d != fill).sum())
+    if bounds:
+        instance.maxbound = max(bounds)
 
     return new_value

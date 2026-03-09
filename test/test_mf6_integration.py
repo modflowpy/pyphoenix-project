@@ -427,7 +427,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         storagecoefficient=False,
         ss=1.00000000e-05,
         sy=0.2,
-        transient=[True, False, False, False, False],
+        storage=["transient", "steady-state", "steady-state", "steady-state", "steady-state"],
         iconvert=1,
     )
 

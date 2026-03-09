@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import numpy as np
 import xarray as xr
 from modflow_devtools.dfns.schema.field import Field
 from modflow_devtools.dfns.schema.v2 import FieldType
@@ -12,13 +13,13 @@ def field_type(value: Any) -> FieldType:
 
     if isinstance(value, Field):
         return value.type
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool)):
         return "keyword"
-    if isinstance(value, int):
+    if isinstance(value, (int, np.integer)):
         return "integer"
-    if isinstance(value, float):
+    if isinstance(value, (float, np.floating)):
         return "double"
-    if isinstance(value, str):
+    if isinstance(value, (str, np.str_)):
         return "string"
     if isinstance(value, (dict, tuple)):
         return "record"
