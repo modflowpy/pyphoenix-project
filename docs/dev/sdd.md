@@ -23,7 +23,7 @@ This is the Software Design Description (SDD) document for FloPy 4, also called 
 
 This document describes a tentative design, focusing on functional requirements. Some attention may be given to architecture, but non-functional requirements are largely out of scope.
 
-## Conceptual model
+## Concepts
 
 This document follows MODFLOW 6 terminology where applicable, with modifications/translations where appropriate.
 
@@ -62,7 +62,7 @@ classDiagram
 
 Components are specified by **definition files**. A definition file specifies a single component and its fields. A definition file consists of top-level metadata and **blocks** (named collections) of variables. A component may contain zero or more blocks. Each block must contain at least one variable. Most components will have a block named "options" &mdash; see the [MODFLOW 6 DFN file specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) for more info.
 
-## Object model
+## Design
 
 The product's main use cases include creating, manipulating, running, and inspecting MODFLOW 6 simulations. It is natural to provide an object-oriented interface in which every MF6 component module will generally have a corresponding class.
 
@@ -81,37 +81,50 @@ A third motivation is consistency with [`imod-python`](https://github.com/Deltar
 
 Components in `imod-python` encode parent/child relations in a dictionary, which is filtered as needed for subcomponents of a particular type. The structure of a simulation (or of any component with respect to its children) is thus flexible. "Structural" checks (i.e., what may be attached to what?) run in a separate validation step.
 
-The product aims instead for typed components, where children can be read off the class definition. This pulls structural validation from runtime to type-checking time, so invalid arrangements are visible in e.g. IDEs with Intellisense.
 
-### Design
 
-Where `imod-python` components expose their fields via [a `Dataset`](https://github.com/Deltares/imod-python/blob/master/imod/common/interfaces/ipackagebase.py), the product will adopt the `dataclasses` paradigm for class definitions, and will expose `xarray` views. The `dataclasses` module is derived from a project called [`attrs`](https://www.attrs.org/en/stable/) with [more power](https://threeofwands.com/why-i-use-attrs-instead-of-pydantic/). `attrs` permits terse class definitions, e.g.
+Where `imod-python` components store fields in [an `xarray.Dataset`](https://github.com/Deltares/imod-python/blob/master/imod/common/interfaces/ipackagebase.py), and provide flexible dictionary-style access and modification, the product adopts a typed paradigm for class definitions based on `dataclasses`, and exposes `Dataset`/`DataTree` views on demand. Individual array fields are still backed by `xarray.DataArray`. For instance:
 
 ```python
-from flopy.mf6.gwf import Ic
-from attrs import define, field
-from numpy.typing import NDArray
-import numpy as np
-
-@define
+@dataclass
 class Ic(Package):
     """Initial conditions package"""
     strt: NDArray[np.float64] = field(...)
     export_array_ascii: bool = field(...)
     export_array_netcdf: bool = field(...)
+...
+ic = Ic(...)
+ds = ic.to_xarray()
 ```
 
-`attrs` fields will serve as the single source of truth for component data. `xr.Dataset` and `xr.DataTree` objects can be constructed when needed, providing hierarchical data access. Components can declare dimension capabilities explicitly via protocols, with shared functionality provided through mixins implementing the protocols.
+This allows some static structural validation, so invalid arrangements are visible in e.g. IDEs with Intellisense, where `imod-python` defers all validation to runtime.
 
-This explicit avoids the complexity and performance issues of the current experimental approach ([`xattree`](https://github.com/wpbonelli/xattree)) which proxies `attrs` properties through `DataTree`. The proposed architecture will provide better type safety, clearer semantics, and improved IDE support while maintaining compatibility with `xarray` conventions.
+Dictionary behavior can be bolted on by implementing `MutableMapping`.
 
-This approach will keep class definition minimal, easy to read, and easy to generate from definition files. The trick is in mapping the MODFLOW 6 input specification to the Python type system. With this transformation defined, the original specification can be derived in reverse from the class definition.
+The initial prototype of the product uses a [temporary approach](https://github.com/wpbonelli/xattree) which proxies an `xarray.DataTree` through `attrs` attributes, and mixes several other concerns, including parent/child relationships and array dimension registration/inheritance. These concerns will ultimately be separated.
 
-The product bolts on dictionary-style behavior by implementing `MutableMapping` in a component base class.
+### Xarray conversion
 
-The sparse, record-based list input format used by MODFLOW 6 is in some tension with `xarray`, where it is natural to disaggregate tables into an array for each constituent column &mdash; this requires a nontrivial mapping between data as read from input files and the values eventually accessible through `xarray` APIs.
+The produce defines protocols for converting component instances to `xarray.Dataset` or `DataTree`.
 
-### Conventions
+### Dimension management
+
+Components may declare dimensions to or consume dimensions from other components via a protocol-based registration system.
+
+Dimensions are resolved lazily at runtime. When a consuming component needs a dimension size, i.e. defines an array field referencing a dimension, it will:
+
+- Check the local cache
+- Walk child components to find providers
+- If not found, consider parent providers
+- If found, cache the result
+
+This approach is construction-order agnostic, working whether components are built top-down (e.g., loading from files) or bottom-up (interactive construction). Parent references enable walking up the hierarchy, while the cache prevents repeated tree traversals.
+
+E.g., grid discretization (DIS, DISV, DISU) and time discretization (TDIS) packages provide dimensions, both explicit ones (DFN fields like nlay) and derived (like nodes = nlay * nrow * ncol).
+
+All components act as dimension consumers via a mixin implementing the consumer protocol, giving uniform resolution behavior throughout the hierarchy, so any component can resolve dimensions on demand.
+
+## NetCDF
 
 Being based on `xarray`, the product can support the [MODFLOW 6 NetCDF specification](https://github.com/MODFLOW-ORG/modflow6/wiki/MODFLOW-NetCDF-Format) via `xarray` extension points: custom indices and accessors.
 
@@ -140,6 +153,8 @@ The `flopy4.uio` module provides a pluggable IO framework adapted from [`astropy
 Loaders and writers can be registered for any component class and format. The registry supports inheritance: a loader/writer registered for a base class is available to all subclasses. The user may then select a format at call time.
 
 #### Conversion
+
+The sparse input format used by MODFLOW 6 is in tension with an object model where tables are disaggregated into a separate array variable for each column &mdash; this requires a nontrivial conversion at load and write time.
 
 The conversion layer uses `cattrs` to transform between the product's `xarray`/`attrs`-based object model and plain Python data structures suitable for serialization. This layer is format-agnostic and handles structural transformations common across formats.
 

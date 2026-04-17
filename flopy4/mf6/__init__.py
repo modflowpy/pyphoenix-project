@@ -6,7 +6,7 @@ from tomli import load as load_toml
 from tomli_w import dump as dump_toml
 
 # Import submodules to make them accessible via flopy4.mf6.*
-from flopy4.mf6 import gwf, simulation, solution, utils
+from flopy4.mf6 import dfns, gwf, models, simulation, solution, utils
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
@@ -17,8 +17,27 @@ from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 from flopy4.uio import DEFAULT_REGISTRY
 
-__all__ = ["gwf", "simulation", "solution", "utils", "Ims", "NetCDFModel", "Tdis", "Simulation"]
+from flopy4.mf6._contract import MF6_CONTRACT_VERSION, MF6_DFN_SCHEMA_VERSION
+from flopy4.mf6.sync import SyncError, SyncResult, status, sync
 
+__all__ = [
+    "dfns",
+    "gwf",
+    "models",
+    "simulation",
+    "solution",
+    "utils",
+    "Ims",
+    "MF6_CONTRACT_VERSION",
+    "MF6_DFN_SCHEMA_VERSION",
+    "NetCDFModel",
+    "SyncError",
+    "SyncResult",
+    "Tdis",
+    "Simulation",
+    "status",
+    "sync",
+]
 
 class WriteError(Exception):
     """An error occurred while writing a component."""

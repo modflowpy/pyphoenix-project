@@ -4,7 +4,12 @@ import argparse
 from os import PathLike
 from pathlib import Path
 
-from modflow_devtools.dfn import load_flat, map
+import warnings
+
+warnings.filterwarnings(
+    "ignore", message=".*modflow_devtools.dfns.*experimental.*"
+)
+from modflow_devtools.dfns import load_flat, map  # noqa: E402
 
 from flopy4.mf6.codec.reader.grammar import make_all_grammars
 

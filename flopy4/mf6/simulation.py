@@ -34,6 +34,9 @@ class Simulation(Context):
     def __attrs_post_init__(self):
         from attrs import fields_dict
 
+        from flopy4.mf6._compat import _check_mf6_compatibility
+
+        _check_mf6_compatibility()
         super().__attrs_post_init__()
         if self.filename != "mfsim.nam":
             if self.filename is not None:

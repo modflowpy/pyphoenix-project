@@ -1,3 +1,3 @@
-from flopy4 import mf6
+from flopy4 import mf6, programs
 
-__all__ = ["mf6"]
+__all__ = ["mf6", "programs"]
