@@ -218,48 +218,114 @@ This approach requires no changes to individual DFN files, no new fields on
 `DfnRegistryMeta`, and no new CI infrastructure beyond Meson's built-in
 `vcs_tag()` support.
 
-### Mid-term: self-describing MF6
+### Mid-term: self-describing MF6 (`mf6 --spec`)
 
-The cleanest long-term solution is making the MF6 binary emit its own input
-specification directly:
+> **Status:** The `mf6 --spec` flag is implemented and working as of MF6
+> develop (branch `emit-spec`). See `../modflow6/utils/dfnembed/plan.md` for
+> the full MF6-side plan and `../modflow-devtools/dfnspec-plan.md` for the
+> devtools serialization work.
+
+The cleanest long-term solution is having the MF6 binary emit its own input
+specification directly, making the spec and the binary a single artifact:
+
+```bash
+mf6 --spec                  # emit full spec to stdout
+mf6 --spec > spec.txt       # capture to file
+mf6 --spec | flopy4 sync    # pipe directly to sync
+```
+
+Version alignment becomes structurally guaranteed — no registry fetch, no
+cross-referencing commit hashes, no `develop` pointer ambiguity. Works offline
+(valuable in HPC/air-gapped environments).
+
+**Current output format: DFN text with sentinels**
+
+The initial implementation embeds the raw DFN text verbatim and emits it as a
+single stream, with `# --- <name> ---` comment lines separating each component
+file (these are legal DFN comments, ignored by all existing parsers):
 
 ```
-mf6 --dump-spec [--format toml|json]
+# --- gwf-chd.dfn ---
+# --------------------- gwf chd options ---------------------
+...
+
+# --- gwf-dis.dfn ---
+...
 ```
 
-`flopy4 sync` would then become:
+`modflow_devtools` can already parse this format. To feed it into the current
+`sync()` pipeline (which expects a directory of DFN files), split on sentinels
+and write to a temp directory:
 
 ```python
-exes = install_program("mf6", version=version, bindir=bindir)
-spec = subprocess.check_output([str(exes[0]), "--dump-spec", "--format", "toml"])
-_generate_classes_from_spec(spec, outdir=_MF6_PACKAGE_DIR)
+def spec_to_dir(mf6_exe="mf6") -> pathlib.Path:
+    text = subprocess.check_output([mf6_exe, "--spec"], text=True)
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    current_name, current_lines = None, []
+    for line in text.splitlines():
+        if line.startswith("# --- ") and line.endswith(" ---"):
+            if current_name:
+                (tmp / current_name).write_text("\n".join(current_lines))
+            current_name = line[6:-4]
+            current_lines = []
+        else:
+            current_lines.append(line)
+    if current_name:
+        (tmp / current_name).write_text("\n".join(current_lines))
+    return tmp
 ```
 
-Version alignment becomes structurally guaranteed — the spec and the binary
-are the same artifact. No registry fetch, no cross-referencing commit hashes,
-no `develop` pointer ambiguity. Works offline (valuable in HPC/air-gapped
-environments).
+**Future output format: single TOML document**
 
-**Implementation in Fortran/Meson (build-time embedding)**
+Once `DfnSpec.dump()` is added to `modflow_devtools`, `mf6 --spec` will switch
+to emitting a single TOML document — no sentinels, no splitting, parseable
+directly with `tomllib`:
 
-A Meson `custom_target` converts the DFN files to a single TOML blob and
-generates a Fortran source file containing it as a string constant:
-
-```meson
-dfn_embed = custom_target('embed_dfns',
-  input:   dfn_files,
-  output:  'dfn_embed.f90',
-  command: [python, 'scripts/embed_dfns.py', '@INPUT@', '@OUTPUT@'],
-  build_by_default: true,
-)
+```bash
+mf6 --spec | python -c "import sys, tomllib; spec = tomllib.load(sys.stdin.buffer)"
 ```
 
-`mf6 --dump-spec` writes that constant to stdout. Binary size increases
-modestly (the full DFN set is on the order of a few hundred KB uncompressed).
-No changes to MF6's core logic are required — it is a build system change plus
-a new CLI flag.
+The schema falls directly out of `DfnSpec._flat`: each component's `asdict()`
+dict nested under its name with a top-level `schema_version`:
 
-This approach also generalises: any simulator that can emit its own spec gets
+```toml
+schema_version = "2"
+
+["gwf-chd"]
+name = "gwf-chd"
+advanced = false
+multi = true
+
+["gwf-chd".options.auxiliary]
+block = "options"
+name = "auxiliary"
+type = "string"
+...
+```
+
+**How `sync()` evolves**
+
+Once `mf6 --spec` emits TOML, `sync()` can drop the registry fetch entirely
+and derive everything from the installed binary:
+
+```python
+def sync(version: str | None = None, bindir: Path | None = None) -> SyncResult:
+    exes = install_program("mf6", version=version, bindir=bindir)
+    contract_version = _query_mf6_version(exes[0])
+
+    # replaces: registry = RemoteDfnRegistry(ref=version); registry.sync()
+    spec_toml = subprocess.check_output([str(exes[0]), "--spec"])
+
+    _generate_classes_from_spec(spec_toml, outdir=_MF6_PACKAGE_DIR)
+    _write_contract(_MF6_PACKAGE_DIR, version=contract_version, dfn_schema="2")
+    return SyncResult(version=contract_version, exes=exes)
+```
+
+`_generate_classes_from_spec()` loads the TOML blob via `DfnSpec` and passes
+it to the existing class-generation machinery. No GitHub API call, no cache,
+no `develop` pointer ambiguity.
+
+This approach generalises: any simulator that can emit its own spec gains
 flopy4 support without a separate DFN pipeline.
 
 ## Phases
