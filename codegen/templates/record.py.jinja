@@ -1,0 +1,17 @@
+{% import 'macros.py.jinja' as macros %}
+@define(kw_only=True)
+class {{ attr.name|class_name}}:
+    """
+    {{ attr.longname }}
+    {{ attr.description }}
+
+    Parameters
+    ----------
+    {# ASSUMPTION: Records are expected only on 1 level, so indentation is set to 8 for the docstrings #}
+    {% for _, field in attr.children.items() %}
+    {{ macros.docstrings(field, indent=8)|indent(4) }}
+    {% endfor %}
+    """
+    {% for _, field in attr.children.items() %}
+    {{ field.name }}: {{ field | type_str }} = field({{ macros.metadata(field) }}{{ macros.default_in_field(field) }})
+    {% endfor %}
