@@ -5,8 +5,48 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from flopy4.mf6 import Ems, GwfGwe, GwfGwt
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.gwf import Chd, Chdg, Dis, Disv, Ghb, Gwf, Ic, Npf, Oc, Sto
+from flopy4.mf6.gwe import Adv as GweAdv
+from flopy4.mf6.gwe import Cnd as GweCnd
+from flopy4.mf6.gwe import Ctp as GweCtp
+from flopy4.mf6.gwe import Dis as GweDis
+from flopy4.mf6.gwe import Esl as GweEsl
+from flopy4.mf6.gwe import Est as GweEst
+from flopy4.mf6.gwe import Gwe
+from flopy4.mf6.gwe import Ic as GweIc
+from flopy4.mf6.gwe import Ssm as GweSsm
+from flopy4.mf6.gwf import (
+    Buy,
+    Chd,
+    Chdg,
+    Dis,
+    Disv,
+    Drn,
+    Evt,
+    Evta,
+    Ghb,
+    Gwf,
+    Ic,
+    Mvr,
+    Npf,
+    Oc,
+    Rch,
+    Rcha,
+    Riv,
+    Sto,
+    Vsc,
+    Wel,
+)
+from flopy4.mf6.gwt import Adv as GwtAdv
+from flopy4.mf6.gwt import Cnc as GwtCnc
+from flopy4.mf6.gwt import Dis as GwtDis
+from flopy4.mf6.gwt import Dsp as GwtDsp
+from flopy4.mf6.gwt import Gwt
+from flopy4.mf6.gwt import Ic as GwtIc
+from flopy4.mf6.gwt import Mst as GwtMst
+from flopy4.mf6.gwt import Src as GwtSrc
+from flopy4.mf6.gwt import Ssm as GwtSsm
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.time import Time
@@ -774,3 +814,892 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
 
     # requires mf6 extended to run
     # sim.run()
+
+
+def test_gwf_wel(function_tmpdir):
+    """1-layer, 1-row, 10-col model with a single pumping well in the middle."""
+    sim_name = "gwf_wel"
+    gwf_name = "gwf_wel"
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=5.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 5.0, (0, 0, 9): 5.0}}, name="chd-1")
+    wel = Wel(parent=gwf, q={0: {(0, 0, 4): -1.0}}, name="wel-1")
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.wel").is_file()
+
+
+def test_gwf_drn(function_tmpdir):
+    """1-layer, 1-row, 10-col model with drain cells at one end."""
+    sim_name = "gwf_drn"
+    gwf_name = "gwf_drn"
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=5.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 5.0}}, name="chd-1")
+    drn = Drn(
+        parent=gwf,
+        elev={0: {(0, 0, 9): 4.0}},
+        cond={0: {(0, 0, 9): 100.0}},
+        name="drn-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.drn").is_file()
+
+
+def test_gwf_riv(function_tmpdir):
+    """1-layer, 1-row, 10-col model with river cells along one end."""
+    sim_name = "gwf_riv"
+    gwf_name = "gwf_riv"
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=3.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 3.0}}, name="chd-1")
+    riv = Riv(
+        parent=gwf,
+        stage={0: {(0, 0, 9): 5.0}},
+        cond={0: {(0, 0, 9): 100.0}},
+        rbot={0: {(0, 0, 9): 2.0}},
+        name="riv-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.riv").is_file()
+
+
+def test_gwf_rch(function_tmpdir):
+    """1-layer, 1-row, 10-col model with uniform recharge (stress-package form)."""
+    sim_name = "gwf_rch"
+    gwf_name = "gwf_rch"
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=1.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(
+        parent=gwf,
+        head={0: {(0, 0, 0): 1.0, (0, 0, 9): 1.0}},
+        name="chd-1",
+    )
+    rch = Rch(
+        parent=gwf,
+        recharge={0: {(0, 0, i): 1e-3 for i in range(10)}},
+        name="rch-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.rch").is_file()
+
+
+def test_gwf_rcha(function_tmpdir):
+    """1-layer, 1-row, 10-col model with uniform recharge (array-based form)."""
+    sim_name = "gwf_rcha"
+    gwf_name = "gwf_rcha"
+    nrow, ncol = 1, 10
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=nrow, ncol=ncol, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=1.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(
+        parent=gwf,
+        head={0: {(0, 0, 0): 1.0, (0, 0, 9): 1.0}},
+        name="chd-1",
+    )
+    rcha = Rcha(
+        parent=gwf,
+        recharge=np.full((1, nrow * ncol), 1e-3),
+        name="rcha-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.rcha").is_file()
+
+
+def test_gwf_evt(function_tmpdir):
+    """1-layer, 1-row, 10-col model with ET (stress-package form)."""
+    sim_name = "gwf_evt"
+    gwf_name = "gwf_evt"
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=8.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(
+        parent=gwf,
+        head={0: {(0, 0, 0): 8.0, (0, 0, 9): 8.0}},
+        name="chd-1",
+    )
+    evt = Evt(
+        parent=gwf,
+        surface={0: {(0, 0, i): 10.0 for i in range(10)}},
+        rate={0: {(0, 0, i): 1e-3 for i in range(10)}},
+        depth={0: {(0, 0, i): 4.0 for i in range(10)}},
+        name="evt-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.evt").is_file()
+
+
+def test_gwf_evta(function_tmpdir):
+    """1-layer, 1-row, 10-col model with ET (array-based form)."""
+    sim_name = "gwf_evta"
+    gwf_name = "gwf_evta"
+    nrow, ncol = 1, 10
+    ncpl = nrow * ncol
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=nrow, ncol=ncol, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=8.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    chd = Chd(
+        parent=gwf,
+        head={0: {(0, 0, 0): 8.0, (0, 0, 9): 8.0}},
+        name="chd-1",
+    )
+    evta = Evta(
+        parent=gwf,
+        surface=np.full((1, ncpl), 10.0),
+        rate=np.full((1, ncpl), 1e-3),
+        depth=np.full((1, ncpl), 4.0),
+        name="evta-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.evta").is_file()
+
+
+def test_gwf_mvr(function_tmpdir):
+    """Verify MVR file writing: PACKAGES block (string arrays) and PERIOD block (tabular records).
+
+    Write-only: MF6 is not run because a valid MVR simulation requires at least one
+    advanced package (SFR, LAK, MAW, or UZF) as a receiver. Standard boundary packages
+    (WEL, DRN, CHD, etc.) call pakmvrobj%ar with nreceivers=0 and cannot receive water
+    from MVR. None of those advanced packages are implemented yet in this branch.
+
+    The assertions verify the MVR file format, including the string array fields
+    (pname1, pname2, mvrtype) that require special handling in the period block
+    unstructurer.
+    """
+    sim_name = "gwf_mvr"
+    gwf_name = "gwf_mvr"
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=5.0)
+    npf = Npf(parent=gwf, icelltype=0, k=1.0)
+    oc = Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    # xattree appends the 0-based index for list-typed children, so Chd/Wel/Drn
+    # get auto-names chd0/wel0/drn0. Explicit name= would be mangled (e.g. "wel-1" -> "wel-10").
+    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 5.0, (0, 0, 9): 5.0}})
+    # mover=True writes MOVER keyword to OPTIONS block so MF6 allocates IMOVER
+    wel = Wel(parent=gwf, mover=True, q={0: {(0, 0, 4): -1.0}})
+    drn = Drn(
+        parent=gwf,
+        mover=True,
+        elev={0: {(0, 0, 4): 4.0}},
+        cond={0: {(0, 0, 4): 100.0}},
+    )
+
+    # MVR PACKAGES block lists participating packages by auto-assigned xattree name.
+    # PERIOD block uses object-dtype string arrays (pname1, pname2, mvrtype) which
+    # require the is_tabular check in _unstructure_block_param to be written correctly.
+    mvr = Mvr(
+        parent=gwf,
+        maxpackages=2,
+        maxmvr=1,
+        pname=np.array(["wel0", "drn0"]),
+        pname1=np.array(["wel0"]),
+        id1=np.array([1], dtype=np.int64),
+        pname2=np.array(["drn0"]),
+        id2=np.array([1], dtype=np.int64),
+        mvrtype=np.array(["FACTOR"]),
+        value=np.array([0.5]),
+        name="mvr",
+    )
+
+    sim.write()
+
+    mvr_path = Path(function_tmpdir, f"{gwf_name}.mvr")
+    assert mvr_path.is_file()
+    content = mvr_path.read_text()
+
+    # PACKAGES block: both packages listed (from pname array)
+    assert "wel0" in content
+    assert "drn0" in content
+
+    # PERIOD block: full mover record with string fields from object-dtype arrays
+    assert "FACTOR" in content
+    assert "0.5" in content
+
+
+def test_gwt_basic(function_tmpdir):
+    """1D GWF+GWT coupled test: advection-dispersion transport in a uniform flow field.
+
+    Exercises ic, adv, mst, dsp, cnc packages and the GwfGwt exchange.
+    """
+    sim_name = "gwt_basic"
+    gwf_name = "gwf"
+    gwt_name = "gwt"
+    nlay, nrow, ncol = 1, 1, 10
+
+    time = Time(perlen=[10.0], nstp=[10], tsmult=[1.0], time_units="days")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+    ims_gwt = Ims(
+        filename="gwt.ims",
+        models=[gwt_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+    )
+
+    # GWF model: uniform left-to-right flow
+    gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}}, name="chd-1")
+
+    # GWF-GWT exchange
+    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+
+    # GWT model: tracer introduced at left boundary
+    gwt_dis = GwtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwt = Gwt(parent=sim, dis=gwt_dis, name=gwt_name)
+    GwtIc(parent=gwt, strt=0.0)
+    GwtSsm(parent=gwt)
+    GwtAdv(parent=gwt, scheme="upstream")
+    GwtMst(parent=gwt, porosity=0.3)
+    GwtDsp(parent=gwt, xt3d_off=True, diffc=0.0, alh=0.1, alv=0.1, ath1=0.0)
+    GwtCnc(parent=gwt, conc={0: {(0, 0, 0): 1.0}}, name="cnc-1")
+    GwtSrc(parent=gwt, smassrate={0: {(0, 0, 5): 1e-4}}, name="src-1")
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwt_name}.ic").is_file()
+    assert Path(function_tmpdir, f"{gwt_name}.cnc").is_file()
+    assert Path(function_tmpdir, f"{gwt_name}.src").is_file()
+
+    # exgfile=None triggers default_filename() → "{exchange_name}.exg"
+    mfsim = Path(function_tmpdir, "mfsim.nam").read_text()
+    assert "gwfgwt.exg" in mfsim
+
+
+def test_gwe_basic(function_tmpdir):
+    """1D GWF+GWE coupled test: heat transport in a uniform flow field.
+
+    Exercises ic, adv, est, cnd, ctp packages and the GwfGwe exchange.
+    """
+    sim_name = "gwe_basic"
+    gwf_name = "gwf"
+    gwe_name = "gwe"
+    nlay, nrow, ncol = 1, 1, 10
+
+    time = Time(perlen=[10.0], nstp=[10], tsmult=[1.0], time_units="days")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+    ims_gwe = Ims(
+        filename="gwe.ims",
+        models=[gwe_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
+    )
+
+    # GWF model: uniform left-to-right flow
+    gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}}, name="chd-1")
+
+    # GWF-GWE exchange
+    GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
+
+    # GWE model: heat tracer introduced at left boundary
+    gwe_dis = GweDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwe = Gwe(parent=sim, dis=gwe_dis, name=gwe_name)
+    GweIc(parent=gwe, strt=0.0)
+    GweSsm(parent=gwe)
+    GweAdv(parent=gwe, scheme="upstream")
+    GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
+    GweCnd(parent=gwe, ktw=0.58, kts=3.0)
+    GweCtp(parent=gwe, temp={0: {(0, 0, 0): 1.0}}, name="ctp-1")
+    GweEsl(parent=gwe, senerrate={0: {(0, 0, 5): 1e-4}}, name="esl-1")
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwe_name}.ic").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.ctp").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.esl").is_file()
+
+    # exgfile=None triggers default_filename() → "{exchange_name}.exg"
+    mfsim = Path(function_tmpdir, "mfsim.nam").read_text()
+    assert "gwfgwe.exg" in mfsim
+
+
+def test_gwf_buy(function_tmpdir):
+    """GWF+GWT with variable-density (BUY) package.
+
+    Exercises the packagedata block tier: BUY links GWF density to GWT
+    concentration via an auxiliary variable on the CHD boundary package.
+    """
+    sim_name = "gwf_buy"
+    gwf_name = "gwf"
+    gwt_name = "gwt"
+    nlay, nrow, ncol = 1, 1, 10
+
+    time = Time(perlen=[10.0], nstp=[10], tsmult=[1.0], time_units="days")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+    ims_gwt = Ims(
+        filename="gwt.ims",
+        models=[gwt_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+    )
+
+    gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    # CHD with auxiliary "conc" so BUY can read concentration per stress record
+    Chd(
+        parent=gwf,
+        auxiliary=["conc"],
+        head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
+        aux={0: {(0, 0, 0): 0.0, (0, 0, ncol - 1): 0.0}},
+        name="chd-1",
+    )
+    Buy(
+        parent=gwf,
+        nrhospecies=1,
+        packagedata=[(1, 0.7143, 0.0, gwt_name, "conc")],
+    )
+
+    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+
+    gwt_dis = GwtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwt = Gwt(parent=sim, dis=gwt_dis, name=gwt_name)
+    GwtIc(parent=gwt, strt=0.0)
+    GwtSsm(parent=gwt)
+    GwtAdv(parent=gwt, scheme="upstream")
+    GwtMst(parent=gwt, porosity=0.3)
+    GwtCnc(parent=gwt, conc={0: {(0, 0, 0): 1.0}}, name="cnc-1")
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.buy").is_file()
+    assert Path(function_tmpdir, f"{gwt_name}.cnc").is_file()
+
+
+def test_gwf_vsc(function_tmpdir):
+    """GWF+GWE with variable-viscosity (VSC) package.
+
+    Exercises the packagedata block tier: VSC links GWF viscosity to GWE
+    temperature via an auxiliary variable on the CHD boundary package.
+    """
+    sim_name = "gwf_vsc"
+    gwf_name = "gwf"
+    gwe_name = "gwe"
+    nlay, nrow, ncol = 1, 1, 10
+
+    time = Time(perlen=[10.0], nstp=[10], tsmult=[1.0], time_units="days")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+    ims_gwe = Ims(
+        filename="gwe.ims",
+        models=[gwe_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        inner_rclose=1e-6,
+        linear_acceleration="bicgstab",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
+    )
+
+    gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    # CHD with auxiliary "temperature" so VSC can read temp per stress record
+    Chd(
+        parent=gwf,
+        auxiliary=["temperature"],
+        head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
+        aux={0: {(0, 0, 0): 20.0, (0, 0, ncol - 1): 20.0}},
+        name="chd-1",
+    )
+    Vsc(
+        parent=gwf,
+        viscref=8.904e-4,
+        thermal_formulation="nonlinear",
+        temperature_species_name="temperature",
+        nviscspecies=1,
+        packagedata=[(1, 0.0, 20.0, gwe_name, "temperature")],
+    )
+
+    GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
+
+    gwe_dis = GweDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwe = Gwe(parent=sim, dis=gwe_dis, name=gwe_name)
+    GweIc(parent=gwe, strt=20.0)
+    GweSsm(parent=gwe)
+    GweAdv(parent=gwe, scheme="upstream")
+    GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
+    GweCnd(parent=gwe, ktw=0.58, kts=3.0)
+    GweCtp(parent=gwe, temp={0: {(0, 0, 0): 40.0}}, name="ctp-1")
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.vsc").is_file()
+    assert Path(function_tmpdir, f"{gwe_name}.ctp").is_file()
+
+
+def test_prt_basic(function_tmpdir):
+    """1-layer, 1-row, 5-col GWF+PRT: verify PRT file writing and run.
+
+    PRT's FMI reads head/budget from a prior GWF run, so two separate simulations
+    are used: GWF runs first to produce .hds/.cbc, then PRT reads them via FMI.
+    NPF requires save_specific_discharge and save_saturation for particle tracking.
+
+    PRP is not included: cellid is a 2D field (nreleasepts, ncelldim) not yet
+    supported by the codegen-generated Prp class. PRT runs successfully with no
+    release points (no particles tracked, empty track output).
+    """
+    from flopy4.mf6.prt import Dis as PrtDis
+    from flopy4.mf6.prt import Fmi, Mip, Prt
+    from flopy4.mf6.prt import Oc as PrtOc
+
+    gwf_name = "gwf_prt"
+    prt_name = "prt_prt"
+    nlay, nrow, ncol = 1, 1, 5
+
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
+
+    # --- GWF simulation ---
+    gwf_sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name="gwf_sim",
+        solutions={
+            "ims": Ims(
+                filename="gwf.ims",
+                models=[gwf_name],
+                outer_dvclose=1e-6,
+                outer_maximum=50,
+                inner_maximum=100,
+                inner_dvclose=1e-6,
+                inner_rclose=1e-3,
+                linear_acceleration="cg",
+            )
+        },
+    )
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=10.0, botm=0.0)
+    gwf = Gwf(parent=gwf_sim, save_flows=True, dis=dis, name=gwf_name)
+    Ic(parent=gwf, strt=5.0)
+    # save_specific_discharge and save_saturation required by PRT for particle tracking
+    Npf(
+        parent=gwf,
+        icelltype=0,
+        k=1.0,
+        save_flows=True,
+        save_specific_discharge=True,
+        save_saturation=True,
+    )
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    Chd(parent=gwf, head={0: {(0, 0, 0): 5.0, (0, 0, 4): 3.0}})
+    gwf_sim.write()
+    gwf_sim.run()
+
+    # --- PRT simulation (reads GWF output via FMI) ---
+    prt_sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name="prt_sim",
+        solutions={"ems": Ems(filename="prt.ems", models=[prt_name])},
+    )
+    prt_dis = PrtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=10.0, botm=0.0)
+    prt = Prt(parent=prt_sim, dis=prt_dis, name=prt_name)
+    Mip(parent=prt, porosity=0.3)
+    Fmi(
+        parent=prt,
+        gwfhead=Path(f"{gwf_name}.hds"),
+        gwfbudget=Path(f"{gwf_name}.cbc"),
+    )
+    PrtOc(parent=prt, track_filerecord=f"{prt_name}.trk", trackcsv_filerecord=f"{prt_name}.trk.csv")
+    prt_sim.write()
+    prt_sim.run()
+
+    # Verify PRT files written and FMI format correct
+    fmi_path = Path(function_tmpdir, f"{prt_name}.fmi")
+    oc_path = Path(function_tmpdir, f"{prt_name}.oc")
+    assert fmi_path.is_file()
+    assert oc_path.is_file()
+
+    fmi_content = fmi_path.read_text()
+    assert "GWFHEAD" in fmi_content
+    assert "GWFBUDGET" in fmi_content
+    assert "FILEIN" in fmi_content
+
+    oc_content = oc_path.read_text()
+    assert "TRACK FILEOUT" in oc_content

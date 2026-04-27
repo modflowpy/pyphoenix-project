@@ -19,12 +19,16 @@ from flopy4.mf6.utils.time import Time
 
 
 def test_registry():
+    from flopy4.mf6.gwt.ic import Ic as GwtIc
+
     assert COMPONENTS["simulation"] is Simulation
     assert COMPONENTS["tdis"] is Tdis
     assert COMPONENTS["gwf"] is Gwf
-    assert COMPONENTS["npf"] is Npf
-    assert COMPONENTS["ic"] is Ic
-    assert COMPONENTS["oc"] is Oc
+    # Qualified keys are deterministic regardless of import order.
+    assert COMPONENTS["gwf-npf"] is Npf
+    assert COMPONENTS["gwf-ic"] is Ic
+    assert COMPONENTS["gwt-ic"] is GwtIc
+    assert COMPONENTS["gwf-oc"] is Oc
 
 
 def test_init_empty_sim():

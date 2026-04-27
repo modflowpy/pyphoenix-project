@@ -1,0 +1,24 @@
+from pathlib import Path
+from typing import Optional
+
+from xattree import xattree
+
+from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field, path
+from flopy4.utils import to_path
+
+
+@xattree(kw_only=True)
+class Fmi(Package):
+    save_flows: bool = field(
+        block="options", default=False, longname="save cell-by-cell flows to budget file"
+    )
+    gwfhead: Optional[Path] = path(
+        block="packagedata", default=None, converter=to_path, inout="filein"
+    )
+    gwfbudget: Optional[Path] = path(
+        block="packagedata", default=None, converter=to_path, inout="filein"
+    )
+    gwfspdis: Optional[Path] = path(
+        block="packagedata", default=None, converter=to_path, inout="filein"
+    )

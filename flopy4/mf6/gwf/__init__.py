@@ -10,6 +10,7 @@ from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
 from xattree import xattree
 
+from flopy4.mf6.gwf.buy import Buy
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.dis import Dis
@@ -17,14 +18,20 @@ from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.drng import Drng
+from flopy4.mf6.gwf.evt import Evt
 from flopy4.mf6.gwf.evta import Evta
 from flopy4.mf6.gwf.ghb import Ghb
+from flopy4.mf6.gwf.ghbg import Ghbg
 from flopy4.mf6.gwf.ic import Ic
+from flopy4.mf6.gwf.mvr import Mvr
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
 from flopy4.mf6.gwf.rch import Rch
 from flopy4.mf6.gwf.rcha import Rcha
+from flopy4.mf6.gwf.riv import Riv
+from flopy4.mf6.gwf.rivg import Rivg
 from flopy4.mf6.gwf.sto import Sto
+from flopy4.mf6.gwf.vsc import Vsc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.gwf.welg import Welg
 from flopy4.mf6.model import Model
@@ -34,20 +41,28 @@ from flopy4.utils import to_path
 
 __all__ = [
     "Gwf",
+    "Buy",
     "Chd",
     "Chdg",
     "Dis",
     "Disv",
     "Drn",
     "Drng",
+    "Evt",
     "Evta",
     "Ghb",
+    "Ghbg",
     "Ic",
     "Npf",
     "Oc",
     "Rch",
     "Rcha",
+    "Api",
+    "Mvr",
+    "Riv",
+    "Rivg",
     "Sto",
+    "Vsc",
     "Wel",
     "Welg",
 ]
@@ -146,11 +161,15 @@ class Gwf(Model):
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
+    buy: Buy | None = field(block="packages", default=None)
     chd: list[Union[Chd, Chdg]] = field(block="packages")
     drn: list[Union[Drn, Drng]] = field(block="packages")
-    evt: list[Union[Evta]] = field(block="packages")
-    ghb: list[Union[Ghb]] = field(block="packages")
+    evt: list[Union[Evt, Evta]] = field(block="packages")
+    ghb: list[Union[Ghb, Ghbg]] = field(block="packages")
     rch: list[Union[Rch, Rcha]] = field(block="packages")
+    riv: list[Union[Riv, Rivg]] = field(block="packages")
+    mvr: Mvr | None = field(block="packages", default=None)
+    vsc: Vsc | None = field(block="packages", default=None)
     wel: list[Union[Wel, Welg]] = field(block="packages")
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)

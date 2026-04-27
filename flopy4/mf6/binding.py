@@ -29,7 +29,7 @@ class Binding:
         def _get_binding_type(component: Component) -> str:
             cls_name = component.__class__.__name__
             if isinstance(component, Exchange):
-                return f"{'-'.join([cls_name[:2], cls_name[3:]]).upper()}6"
+                return f"{cls_name[:3].upper()}6-{cls_name[3:].upper()}6"
             elif isinstance(component, Solution):
                 return f"{component.slntype}6"
             else:

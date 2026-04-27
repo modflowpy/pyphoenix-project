@@ -18,7 +18,9 @@ from flopy4.mf6.spec import FileInOut, blocks_dict
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
     t = [name.upper()]
-    if name.endswith("_file"):
+    if name.endswith("_filerecord"):
+        t[0] = name.replace("_filerecord", "").upper()
+    elif name.endswith("_file"):
         t[0] = name.replace("_file", "").upper()
     if inout:
         t.append(inout.upper())
@@ -209,7 +211,8 @@ def _unstructure_block_param(
         case t if (
             field_name == "auxiliary" and hasattr(field_value, "values") and field_value is not None
         ):
-            blocks[block_name][field_name] = tuple(field_value.values.tolist())
+            # MF6 OPTIONS format requires the keyword "AUXILIARY" before the variable names.
+            blocks[block_name][field_name] = ("AUXILIARY",) + tuple(field_value.values.tolist())
         case xr.DataArray():
             has_spatial_dims = any(
                 dim in field_value.dims for dim in ["nlay", "nrow", "ncol", "ncpl", "nodes"]
@@ -220,15 +223,24 @@ def _unstructure_block_param(
                     structured_grid_dims=value.data.dims,  # type: ignore
                 )
             if "nper" in field_value.dims and block_name == "period":
-                if not np.issubdtype(field_value.dtype, np.number):
-                    dat = _hack_period_non_numeric(field_name, field_value)
-                    for n, v in dat.items():
-                        period_data[n] = v
-                else:
+                is_tabular = (
+                    np.issubdtype(field_value.dtype, np.number)
+                    or np.issubdtype(field_value.dtype, np.str_)
+                    or (
+                        field_value.dtype == object
+                        and field_value.size > 0
+                        and isinstance(field_value.values.flat[0], str)
+                    )
+                )
+                if is_tabular:
                     period_data[field_name] = {
                         kper: field_value.isel(nper=kper)  # type: ignore
                         for kper in range(field_value.sizes["nper"])
                     }
+                else:
+                    dat = _hack_period_non_numeric(field_name, field_value)
+                    for n, v in dat.items():
+                        period_data[n] = v
             else:
                 blocks[block_name][field_name] = field_value
         case _:
@@ -284,6 +296,11 @@ def _unstructure_array_component(value: Component) -> dict[str, Any]:
                     blocks[key][arr_name] = val
 
     return {name: block for name, block in blocks.items() if name != "period"}
+
+
+# Block names that MF6 rejects if present but empty.
+# These blocks should only be written when they contain data.
+_SKIP_IF_EMPTY = frozenset({"dimensions", "tracktimes"})
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
@@ -356,8 +373,6 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                 vertices["iv"] = vertices["iv"] + 1
             blocks["vertices"] = {"vertices": xr.Dataset(vertices)}
 
-    # TODO: this fixes out of order blocks (e.g. model namefile) from
-    # blocks.update() child binding call above
     blocks = dict(sorted(blocks.items(), key=block_sort_key))
 
     # total temporary hack! manually set solutiongroup 1.
@@ -367,4 +382,8 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         blocks["solutiongroup 1"] = sg
         del blocks["solutiongroup"]
 
-    return {name: block for name, block in blocks.items() if name != "period"}
+    return {
+        name: block
+        for name, block in blocks.items()
+        if name != "period" and (block or name not in _SKIP_IF_EMPTY)
+    }

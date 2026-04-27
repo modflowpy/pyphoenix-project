@@ -95,7 +95,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def __attrs_init_subclass__(cls):
-        COMPONENTS[cls.__name__.lower()] = cls
+        key = cls.__name__.lower()
+        COMPONENTS[key] = cls
+        # Also register a model-qualified key (e.g. "gwf-ic") for classes in a
+        # model subpackage (flopy4.mf6.<model>.<pkg>), giving deterministic
+        # per-model lookup when multiple models share a class name like "ic".
+        parts = cls.__module__.split(".")
+        if len(parts) >= 4 and parts[0] == "flopy4" and parts[1] == "mf6":
+            COMPONENTS[f"{parts[2]}-{key}"] = cls
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.

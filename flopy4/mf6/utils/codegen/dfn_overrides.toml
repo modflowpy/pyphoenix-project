@@ -1,0 +1,120 @@
+# Local DFN field overrides pending upstream modflow6 repository PRs.
+#
+# Format: ["<dfn-name>".<field-name>]
+#           <FieldV2-attribute> = <value>
+#
+# Remove each entry once the corresponding upstream PR merges.
+
+["gwf-ic".strt]
+# strt should default to 1.0 per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 1.0 to gwf-ic.dfn
+default = 1.0
+
+["gwf-npf".icelltype]
+# icelltype should default to 0 (confined) per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 0 to gwf-npf.dfn
+default = 0
+
+["gwf-npf".k]
+# k should default to 1.0 per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 1.0 to gwf-npf.dfn
+default = 1.0
+
+["gwf-sto".iconvert]
+# iconvert should default to 0 (confined) per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 0 to gwf-sto.dfn
+default = 0
+
+["gwf-rcha".readasarrays]
+# readasarrays must default to True for array-based recharge input.
+# TODO: open modflow6 PR to add default_value = true to gwf-rcha.dfn
+default = true
+
+["gwf-evta".readasarrays]
+# readasarrays must default to True for array-based ET input.
+# TODO: open modflow6 PR to add default_value = true to gwf-evta.dfn
+default = true
+
+["gwf-chdg".readarraygrid]
+# readarraygrid is semantically non-developmode (like readasarrays) but marked
+# developmode=True in upstream DFN; override to expose it and default to True.
+developmode = false
+default = true
+
+["gwf-drng".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+["gwf-welg".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+["gwf-ghbg".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+["gwf-rivg".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+# Longname copy-paste and spelling errors — pending upstream modflow6 PRs
+
+["gwf-evta".rate]
+# rate longname is a copy-paste of the surface field above it in the DFN.
+longname = "evapotranspiration rate"
+
+["gwf-evta".save_flows]
+# save_flows longname copied from gwf-chd; should reference evta.
+longname = "save evta flows to budget file"
+
+["gwf-rivg".cond]
+# "conductnace" is a spelling error in the upstream DFN.
+longname = "river conductance"
+
+["gwf-riv".boundname]
+# boundname longname copied from gwf-drn; should reference riv.
+longname = "river name"
+
+["gwf-riv".save_flows]
+# save_flows longname copied from gwf-chd; should reference riv.
+longname = "save riv flows to budget file"
+
+["gwf-drn".save_flows]
+# save_flows longname copied from gwf-chd; should reference drn.
+longname = "save drn flows to budget file"
+
+["gwf-ghb".save_flows]
+# save_flows longname copied from gwf-chd; should reference ghb.
+longname = "save ghb flows to budget file"
+
+["gwf-rcha".save_flows]
+# save_flows longname copied from gwf-chd; should reference rcha.
+longname = "save rcha flows to budget file"
+
+["gwt-src".save_flows]
+# save_flows longname copied from gwf-wel; should reference src.
+longname = "save src flows to budget file"
+
+["gwt-src".boundname]
+# boundname longname copied from gwf-wel; should reference src.
+longname = "source name"
+
+["gwt-mvt".save_flows]
+# save_flows longname copied from gwf-lak; should reference mvt.
+longname = "save mvt flows to budget file"
+
+["gwe-esl".save_flows]
+# save_flows longname copied from gwf-wel; should reference esl.
+longname = "save esl flows to budget file"
+
+["gwe-esl".boundname]
+# boundname longname copied from gwf-wel; should reference esl.
+longname = "energy source loading name"
+
+["gwe-mve".save_flows]
+# save_flows longname copied from gwf-lak; should reference mve.
+longname = "save mve flows to budget file"
