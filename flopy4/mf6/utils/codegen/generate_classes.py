@@ -111,8 +111,8 @@ def generate_classes(
     if dfnpath is None and ref is None:
         raise ValueError("Provide either 'ref' (remote) or 'dfnpath' (local).")
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
         v1dir = tmpdir / "v1"
         v2dir = tmpdir / "v2"
         v1dir.mkdir()
