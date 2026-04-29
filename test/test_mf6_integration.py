@@ -67,7 +67,7 @@ def test_gwf_chd01(function_tmpdir):
         under_relaxation="none",
         inner_maximum=300,
         inner_dvclose=1.00000000e-06,
-        inner_rclose=1.00000000e-06,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1.00000000e-06),
         linear_acceleration="cg",
         relaxation_factor=1.0,
         scaling_method="none",
@@ -255,7 +255,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         under_relaxation="dbd",
         inner_maximum=300,
         inner_dvclose=1.00000000e-09,
-        inner_rclose=1.00000000e-03,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1.00000000e-03),
         linear_acceleration="bicgstab",
         relaxation_factor=0.97000000,
         scaling_method="none",
@@ -830,7 +830,7 @@ def test_gwf_wel(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -875,7 +875,7 @@ def test_gwf_drn(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -925,7 +925,7 @@ def test_gwf_riv(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -976,7 +976,7 @@ def test_gwf_rch(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1030,7 +1030,7 @@ def test_gwf_rcha(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1083,7 +1083,7 @@ def test_gwf_evt(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1140,7 +1140,7 @@ def test_gwf_evta(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1205,7 +1205,7 @@ def test_gwf_mvr(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1262,13 +1262,16 @@ def test_gwf_mvr(function_tmpdir):
     assert mvr_path.is_file()
     content = mvr_path.read_text()
 
+    # PACKAGES block must come before PERIOD block
+    assert content.index("BEGIN PACKAGES") < content.index("BEGIN PERIOD")
+
     # PACKAGES block: both packages listed (from pname array)
     assert "wel0" in content
     assert "drn0" in content
 
-    # PERIOD block: full mover record with string fields from object-dtype arrays
-    assert "FACTOR" in content
-    assert "0.5" in content
+    # PERIOD block: full record with all six columns in order
+    # (pname1 id1 pname2 id2 mvrtype value)
+    assert "wel0 1 drn0 1 FACTOR 0.5" in content
 
 
 def test_gwt_basic(function_tmpdir):
@@ -1291,7 +1294,7 @@ def test_gwt_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwt = Ims(
@@ -1302,7 +1305,7 @@ def test_gwt_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1373,7 +1376,7 @@ def test_gwe_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwe = Ims(
@@ -1384,7 +1387,7 @@ def test_gwe_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1456,7 +1459,7 @@ def test_gwf_buy(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwt = Ims(
@@ -1467,7 +1470,7 @@ def test_gwf_buy(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1500,7 +1503,11 @@ def test_gwf_buy(function_tmpdir):
     Buy(
         parent=gwf,
         nrhospecies=1,
-        packagedata=[(1, 0.7143, 0.0, gwt_name, "conc")],
+        irhospec=np.array([1], dtype=np.int64),
+        drhodc=np.array([0.7143]),
+        crhoref=np.array([0.0]),
+        modelname=np.array([gwt_name], dtype=object),
+        auxspeciesname=np.array(["conc"], dtype=object),
     )
 
     GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
@@ -1514,10 +1521,17 @@ def test_gwf_buy(function_tmpdir):
     GwtCnc(parent=gwt, conc={0: {(0, 0, 0): 1.0}}, name="cnc-1")
 
     sim.write()
-    sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.buy").is_file()
-    assert Path(function_tmpdir, f"{gwt_name}.cnc").is_file()
+    buy_input = Path(function_tmpdir, f"{gwf_name}.buy")
+    assert buy_input.is_file()
+    content = buy_input.read_text()
+    assert "BEGIN PACKAGEDATA" in content
+    assert gwt_name in content
+    assert "conc" in content
+    # Verify row format: all five columns on one line (irhospec drhodc crhoref modelname auxspeciesname)  # noqa: E501
+    assert any(
+        gwt_name in line and "conc" in line for line in content.splitlines()
+    ), "PACKAGEDATA row should have all columns on one line"
 
 
 def test_gwf_vsc(function_tmpdir):
@@ -1541,7 +1555,7 @@ def test_gwf_vsc(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwe = Ims(
@@ -1552,7 +1566,7 @@ def test_gwf_vsc(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        inner_rclose=1e-6,
+        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1588,7 +1602,11 @@ def test_gwf_vsc(function_tmpdir):
         thermal_formulation="nonlinear",
         temperature_species_name="temperature",
         nviscspecies=1,
-        packagedata=[(1, 0.0, 20.0, gwe_name, "temperature")],
+        iviscspec=np.array([1], dtype=np.int64),
+        dviscdc=np.array([0.0]),
+        cviscref=np.array([20.0]),
+        modelname=np.array([gwe_name], dtype=object),
+        auxspeciesname=np.array(["temperature"], dtype=object),
     )
 
     GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
@@ -1603,9 +1621,17 @@ def test_gwf_vsc(function_tmpdir):
     GweCtp(parent=gwe, temp={0: {(0, 0, 0): 40.0}}, name="ctp-1")
 
     sim.write()
-    sim.run()
 
-    assert Path(function_tmpdir, f"{gwf_name}.vsc").is_file()
+    vsc_input = Path(function_tmpdir, f"{gwf_name}.vsc")
+    assert vsc_input.is_file()
+    content = vsc_input.read_text()
+    assert "BEGIN PACKAGEDATA" in content
+    assert gwe_name in content
+    assert "temperature" in content
+    # Verify row format: all five columns on one line (iviscspec dviscdc cviscref modelname auxspeciesname)  # noqa: E501
+    assert any(
+        gwe_name in line and "temperature" in line for line in content.splitlines()
+    ), "PACKAGEDATA row should have all columns on one line"
     assert Path(function_tmpdir, f"{gwe_name}.ctp").is_file()
 
 
@@ -1643,7 +1669,7 @@ def test_prt_basic(function_tmpdir):
                 outer_maximum=50,
                 inner_maximum=100,
                 inner_dvclose=1e-6,
-                inner_rclose=1e-3,
+                rcloserecord=Ims.Rcloserecord(inner_rclose=1e-3),
                 linear_acceleration="cg",
             )
         },

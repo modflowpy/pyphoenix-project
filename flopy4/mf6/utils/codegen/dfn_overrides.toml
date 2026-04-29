@@ -20,6 +20,21 @@ default = 0
 # TODO: open modflow6 PR to add default_value = 1.0 to gwf-npf.dfn
 default = 1.0
 
+["gwf-npf".wetfct]
+# wetfct is tagged in MF6 input (WETFCT <value>) per MF6 IO doc p.50 and user examples.
+# The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
+["gwf-npf".iwetit]
+# iwetit is tagged in MF6 input (IWETIT <value>) per MF6 IO doc p.50.
+# The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
+["gwf-npf".ihdwet]
+# ihdwet is tagged in MF6 input (IHDWET <value>) per MF6 IO doc p.50.
+# The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
 ["gwf-sto".iconvert]
 # iconvert should default to 0 (confined) per MODFLOW 6 user documentation.
 # TODO: open modflow6 PR to add default_value = 0 to gwf-sto.dfn
@@ -118,3 +133,20 @@ longname = "energy source loading name"
 ["gwe-mve".save_flows]
 # save_flows longname copied from gwf-lak; should reference mve.
 longname = "save mve flows to budget file"
+
+["gwf-csub".boundname]
+# boundname longname copied from gwf-wel; should reference csub interbeds.
+longname = "interbed name"
+
+["gwf-csub".sig0]
+# sig0 longname copied from gwf-wel; should reference csub geostatic stress offset.
+longname = "geostatic stress offset"
+
+["sln-ims".complexity]
+# complexity longname is a copy-paste of print_option's longname in the upstream DFN.
+longname = "solver complexity"
+
+["sln-ims".number_orthogonalizations]
+# number_orthogonalizations longname is a copy-paste of preconditioner_drop_tolerance's
+# longname in the upstream DFN.
+longname = "number of orthogonalizations"

@@ -17,6 +17,7 @@ from modflow_devtools.dfns import Dfn, load_flat
 from modflow_devtools.dfns.schema.field import Field as DfnField
 
 from . import filters
+from .overrides import apply_to_child
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,25 @@ class FieldSpec:
 
 
 @dataclass
+class InnerClassFieldSpec:
+    """Pre-computed context for one field of an inner attrs class."""
+
+    py_name: str
+    type_annotation: str
+    tagged: bool
+    optional: bool
+
+
+@dataclass
+class InnerClassSpec:
+    """Pre-computed context for a generated inner attrs class."""
+
+    class_name: str
+    keyword: str
+    fields: list[InnerClassFieldSpec]
+
+
+@dataclass
 class ComponentSpec:
     """Pre-computed context for a generated component class."""
 
@@ -46,8 +66,10 @@ class ComponentSpec:
     class_name: str
     base_class: str
     multi: bool
+    slntype: str | None
     imports: dict[str, list[str]]
     fields: list[FieldSpec]
+    inner_classes: list[InnerClassSpec]
     outpath: Path
     template: str = "package.py.jinja"
 
@@ -65,6 +87,77 @@ def _build_field_spec(f: DfnField, *, has_maxbound: bool = False) -> FieldSpec:
         generatable=generatable,
         skip_reason=filters.skip_reason(f),
     )
+
+
+_FIELD_KNOWN_KEYS = frozenset(
+    {
+        "name",
+        "type",
+        "block",
+        "default",
+        "longname",
+        "description",
+        "children",
+        "optional",
+        "developmode",
+        "shape",
+        "valid",
+        "netcdf",
+        "tagged",
+    }
+)
+
+
+def _child_to_field(child_dict: dict) -> DfnField:
+    """Convert a record child dict to a Field object."""
+    return DfnField(**{k: v for k, v in child_dict.items() if k in _FIELD_KNOWN_KEYS})
+
+
+def _expand_record_field(
+    f: DfnField, *, has_maxbound: bool = False
+) -> tuple[list[FieldSpec], list[DfnField]]:
+    """Expand a compound record into FieldSpecs for its generatable children.
+
+    Returns (field_specs, generatable_child_fields).  field_specs contains one
+    entry per expandable child plus an optional partial-TODO for any optional
+    children that can't be generated standalone.  generatable_child_fields is
+    the corresponding list of Field objects used for import computation.
+    """
+    children = f.children or {}
+    expandable: list[DfnField] = []
+    unexpandable_optional: list[str] = []
+
+    for child_dict in children.values():
+        if filters._is_expandable_child(child_dict):
+            expandable.append(_child_to_field(child_dict))
+        elif child_dict.get("optional", False):
+            unexpandable_optional.append(child_dict["name"])
+        # required unexpandable children were already blocked by can_expand_record
+
+    specs: list[FieldSpec] = []
+    gen_fields: list[DfnField] = []
+    for child_field in expandable:
+        spec = _build_field_spec(child_field, has_maxbound=has_maxbound)
+        specs.append(spec)
+        if spec.generatable:
+            gen_fields.append(child_field)
+
+    if unexpandable_optional:
+        specs.append(
+            FieldSpec(
+                dfn_name=f.name,
+                py_name=filters.safe_name(f.name),
+                type_annotation="Any",
+                spec_call="",
+                generatable=False,
+                skip_reason=(
+                    f"positional sub-fields not yet supported: "
+                    f"{', '.join(unexpandable_optional)}"
+                ),
+            )
+        )
+
+    return specs, gen_fields
 
 
 def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
@@ -90,9 +183,10 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
 
     specs = []
     for col in cols:
+        col = apply_to_child(dfn.name, col)
         col_name = col["name"]
         col_type = col.get("type", "string")
-        col_longname = col.get("longname", "")[:80]
+        col_longname = col.get("longname", "")
         dtype = filters.ARRAY_NUMPY_DTYPES.get(col_type, "np.object_")
         base = f"NDArray[{dtype}]"
         annotation = f"Optional[{base}]"  # expanded columns always default to None
@@ -116,12 +210,71 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
     return specs
 
 
-def _base_class(dfn: Dfn) -> str:
-    """Determine the Python base class for a component.
+_SCALAR_PY_TYPES_INNER: dict[str, str] = {
+    "keyword": "bool",
+    "integer": "int",
+    "double precision": "float",
+    "double": "float",
+    "string": "str",
+}
 
-    Extended in later tiers to handle models, simulations, solutions.
+
+def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
+    """Build an InnerClassSpec for a mixed-type compound record field.
+
+    When the first child is a keyword type it becomes the trigger token
+    (``_keyword``) and is not emitted as a data field.  When the first child
+    is a tagged scalar there is no leading keyword token (``_keyword = ""``)
+    and all children become data fields.
     """
+    children = list((f.children or {}).values())
+    first = children[0]
+    if first.get("type") == "keyword":
+        keyword = first["name"]
+        data_children = children[1:]
+    else:
+        keyword = ""
+        data_children = children
+
+    inner_fields: list[InnerClassFieldSpec] = []
+    for child_dict in data_children:
+        child_dict = apply_to_child(dfn_name, child_dict)
+        child_type = child_dict.get("type", "string")
+        child_name = child_dict["name"]
+        is_optional = child_dict.get("optional", False)
+        tagged = child_dict.get("tagged", False)
+
+        base_type = _SCALAR_PY_TYPES_INNER.get(child_type, "Any")
+        type_annotation = f"Optional[{base_type}]" if is_optional else base_type
+
+        inner_fields.append(
+            InnerClassFieldSpec(
+                py_name=filters.safe_name(child_name),
+                type_annotation=type_annotation,
+                tagged=tagged,
+                optional=is_optional,
+            )
+        )
+
+    class_name = "".join(word.capitalize() for word in f.name.split("_"))
+    return InnerClassSpec(class_name=class_name, keyword=keyword, fields=inner_fields)
+
+
+_SLN_PREFIX = "sln"
+
+
+def _base_class(dfn: Dfn) -> str:
+    """Determine the Python base class for a component."""
+    if dfn.name.split("-")[0] == _SLN_PREFIX:
+        return "Solution"
     return "Package"
+
+
+def _slntype(dfn: Dfn) -> str | None:
+    """Return the slntype string for solution DFNs, or None."""
+    if dfn.name.split("-")[0] == _SLN_PREFIX:
+        return dfn.name.split("-")[1]
+    return None
 
 
 def build_component_spec(
@@ -136,25 +289,50 @@ def build_component_spec(
     has_maxbound = filters.has_dimensions_block(dfn)
 
     field_specs: list[FieldSpec] = []
+    inner_class_specs: list[InnerClassSpec] = []
+    generatable_field_objects: list[DfnField] = []
     has_list_cols = False
     for f in all_fields:
         if filters.is_list_field(f):
             expanded = _expand_list_field(f, dfn)
             field_specs.extend(expanded)
             has_list_cols = has_list_cols or any(fs.generatable for fs in expanded)
+        elif filters.can_generate_record_class(f):
+            record_spec = _build_inner_class_spec(f, dfn.name)
+            inner_class_specs.append(record_spec)
+            field_specs.append(
+                FieldSpec(
+                    dfn_name=f.name,
+                    py_name=filters.safe_name(f.name),
+                    type_annotation=f"Optional[{record_spec.class_name}]",
+                    spec_call=f'field(block="{f.block}", default=None)',
+                    generatable=True,
+                )
+            )
+            generatable_field_objects.append(f)
+        elif filters.can_expand_record(f):
+            specs, gen_fields = _expand_record_field(f, has_maxbound=has_maxbound)
+            field_specs.extend(specs)
+            generatable_field_objects.extend(gen_fields)
         else:
-            field_specs.append(_build_field_spec(f, has_maxbound=has_maxbound))
+            spec = _build_field_spec(f, has_maxbound=has_maxbound)
+            field_specs.append(spec)
+            if spec.generatable:
+                generatable_field_objects.append(f)
 
     base = _base_class(dfn)
     multi = bool(dfn.multi)
+    slntype = _slntype(dfn)
+    has_inner_classes = bool(inner_class_specs)
 
-    generatable_fields = [f for f in all_fields if filters.is_generatable(f)]
     imports = filters.needed_imports(
-        generatable_fields,
+        generatable_field_objects,
         base_class=base,
         multi=multi,
+        slntype=slntype is not None,
         has_maxbound=has_maxbound,
         has_list_cols=has_list_cols,
+        has_inner_classes=has_inner_classes,
     )
 
     template = "package.py.jinja"
@@ -164,8 +342,10 @@ def build_component_spec(
         class_name=filters.class_name(dfn.name),
         base_class=base,
         multi=multi,
+        slntype=slntype,
         imports=imports,
         fields=field_specs,
+        inner_classes=inner_class_specs,
         outpath=filters.output_path(dfn.name, root),
         template=template,
     )

@@ -124,9 +124,27 @@ _DROP_DIMS: frozenset[str] = frozenset({"naux", "nseg-1"})
 
 
 def _has_file_child(f: Field) -> bool:
-    if not f.children:
-        return False
-    return "filein" in f.children or "fileout" in f.children
+    if f.children:
+        return "filein" in f.children or "fileout" in f.children
+    # v1 DFN fields encode subfields in the type string, e.g.
+    # "record ts6 filein ts6_filename" — check there instead.
+    return " filein " in f.type or " fileout " in f.type
+
+
+def _has_file_child_of(f: Field, kind: str) -> bool:
+    """True if the record has a child of the given kind ('filein' or 'fileout')."""
+    if f.children:
+        return kind in f.children
+    return f" {kind} " in f.type
+
+
+def _file_record_subfield_names(f: Field) -> frozenset[str]:
+    """Return the subfield names encoded in a v1 DFN record type string."""
+    if f.children:
+        return frozenset(f.children)
+    # type string format: "record name1 name2 ..."
+    parts = f.type.split()
+    return frozenset(parts[1:]) if len(parts) > 1 else frozenset()
 
 
 def _resolve_alt_grid(shape: str) -> str:
@@ -169,7 +187,7 @@ def is_keyword_array(f: Field) -> bool:
 
 def is_file_record(f: Field) -> bool:
     """True for record fields whose children include filein or fileout."""
-    return f.type == "record" and _has_file_child(f)
+    return f.type.startswith("record") and _has_file_child(f)
 
 
 def is_aux_list_field(f: Field) -> bool:
@@ -261,12 +279,64 @@ def is_generatable(f: Field) -> bool:
     )
 
 
+def _is_expandable_child(child: dict) -> bool:
+    """True if a record child dict can be generated as a standalone field.
+
+    Keywords are safe regardless of tagged — they're self-naming tokens.
+    Scalar data fields require tagged=True so they carry their own keyword prefix.
+    """
+    return child["type"] == "keyword" or (
+        child["type"] in _SCALAR_TYPES and child.get("tagged", False)
+    )
+
+
+_RECORD_CLASS_SCALAR_TYPES = frozenset({"integer", "double precision", "double", "string"})
+
+
+def can_generate_record_class(f: Field) -> bool:
+    """True when a compound record should be rendered as an inner attrs class.
+
+    Targets records with at least one scalar (non-keyword) child where every
+    child has a supported scalar or keyword type.  The first child may be a
+    trigger keyword (e.g. REWET) or a tagged scalar (e.g. INNER_RCLOSE) —
+    records without a leading keyword token use ``_keyword = ""``.  Records
+    with union/recarray/complex children fall back to TODO comments.
+    All-keyword compound records (e.g. variablecv/dewatered, xt3d/rhs)
+    continue to use flat-field expansion via :func:`can_expand_record`.
+    """
+    if is_file_record(f) or not f.children:
+        return False
+    children = list(f.children.values())
+    _supported = _RECORD_CLASS_SCALAR_TYPES | {"keyword"}
+    has_scalar = any(c.get("type") in _RECORD_CLASS_SCALAR_TYPES for c in children)
+    all_supported = all(c.get("type") in _supported for c in children)
+    return has_scalar and all_supported
+
+
+def can_expand_record(f: Field) -> bool:
+    """True if a non-file compound record can be at least partially expanded.
+
+    A record can be expanded when all its required (non-optional) children are
+    individually generatable as standalone fields.  Optional children that
+    can't be generated standalone are noted in a TODO comment but don't
+    block expansion.
+    """
+    if is_file_record(f) or not f.children:
+        return False
+    for child in f.children.values():
+        if not child.get("optional", False) and not _is_expandable_child(child):
+            return False
+    return True
+
+
 def skip_reason(f: Field) -> str | None:
     """Return a human-readable reason why a field is skipped, or None."""
     if is_generatable(f):
         return None
     if is_list_field(f):
         return None  # handled by _expand_list_field in make.py
+    if can_expand_record(f):
+        return None  # handled by _expand_record_field in make.py
     if _has_complex_shape(f):
         return f"complex shape '{f.shape}' not yet supported"
     if f.type in ("record", "recarray", "keystring"):
@@ -287,11 +357,20 @@ def flat_fields(dfn: Dfn, *, developmode: bool = False) -> list[Field]:
     developmode :
         If False (default), fields marked developmode are excluded.
     """
+    # Collect subfield names from file records so they can be suppressed.
+    subfield_names: set[str] = set()
+    for block in (dfn.blocks or {}).values():
+        for f in block.values():
+            if is_file_record(f):
+                subfield_names.update(_file_record_subfield_names(f))
+
     result = []
     for block in (dfn.blocks or {}).values():
         for f in block.values():
             f = apply_override(dfn.name, f)
             if f.developmode and not developmode:
+                continue
+            if f.name in subfield_names:
                 continue
             result.append(f)
     return result
@@ -382,6 +461,12 @@ def _dims_tuple(shape: str) -> str:
     return f"({quoted}{suffix})"
 
 
+def _longname_repr(longname: str | None) -> str | None:
+    if not longname:
+        return None
+    return repr(longname)
+
+
 def _default_repr(f: Field) -> str:
     """Return the Python repr of a field's default value."""
     if f.default is None:
@@ -416,8 +501,8 @@ def _array_args(f: Field, *, has_maxbound: bool = False) -> list[str]:
         args.append("on_setattr=update_maxbound")
     if is_boundname_field(f):
         args.insert(0, 'dtype=f"<U{LENBOUNDNAME}"')
-    if f.longname:
-        args.append(f"longname={repr(f.longname)}")
+    if ln := _longname_repr(f.longname):
+        args.append(f"longname={ln}")
     return args
 
 
@@ -437,12 +522,12 @@ def spec_call(f: Field, *, has_maxbound: bool = False) -> str:
     """
     if is_aux_list_field(f):
         args = [f'block="{f.block}"', f"default={_default_repr(f)}"]
-        if f.longname:
-            args.append(f"longname={repr(f.longname)}")
+        if ln := _longname_repr(f.longname):
+            args.append(f"longname={ln}")
         return f"array({', '.join(args)})"
 
     if is_file_record(f):
-        inout = "filein" if (f.children and "filein" in f.children) else "fileout"
+        inout = "filein" if _has_file_child_of(f, "filein") else "fileout"
         args = [
             f'block="{f.block}"',
             f"default={_default_repr(f)}",
@@ -473,8 +558,8 @@ def spec_call(f: Field, *, has_maxbound: bool = False) -> str:
                 args.append(f"longname={repr(f.longname)}")
             return f"dim({', '.join(args)})"
     args = [f'block="{f.block}"', f"default={_default_repr(f)}"]
-    if f.longname:
-        args.append(f"longname={repr(f.longname)}")
+    if ln := _longname_repr(f.longname):
+        args.append(f"longname={ln}")
     return f"field({', '.join(args)})"
 
 
@@ -486,8 +571,10 @@ def needed_imports(
     *,
     base_class: str = "Package",
     multi: bool = False,
+    slntype: bool = False,
     has_maxbound: bool = False,
     has_list_cols: bool = False,
+    has_inner_classes: bool = False,
 ) -> dict[str, list[str]]:
     """Compute the import lines needed for a generated module.
 
@@ -502,10 +589,10 @@ def needed_imports(
     has_dimensions = any(is_dimensions_scalar(f) for f in generatable_fields)
     has_stress_arrays = any(is_period_array(f) for f in generatable_fields)
     has_boundname = any(is_boundname_field(f) for f in generatable_fields)
-    has_classvar = multi
+    has_classvar = multi or slntype or has_inner_classes
 
-    # dimensions, aux list, and list-expansion columns are always Optional
-    if has_dimensions or has_aux_list or has_list_cols:
+    # dimensions, aux list, list-expansion columns, and inner class parents are always Optional
+    if has_dimensions or has_aux_list or has_list_cols or has_inner_classes:
         has_optional = True
 
     stdlib: list[str] = []
@@ -520,6 +607,8 @@ def needed_imports(
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
     third_party: list[str] = []
+    if has_inner_classes:
+        third_party.append("import attrs")
     if has_array:
         third_party.append("import numpy as np")
         third_party.append("from attrs import Converter")

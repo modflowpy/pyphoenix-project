@@ -518,13 +518,14 @@ def test_dumps_npf():
 
     dis = Dis(nlay=2, nrow=5, ncol=5)
     gwf = Gwf(dis=dis)
-    npf = Npf(parent=gwf, cvoptions=Npf.CvOptions(dewatered=True), k=1.0)
+    npf = Npf(parent=gwf, variablecv=True, dewatered=True, k=1.0)
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(npf))
     print("NPF dump:")
     print(dumped)
 
-    assert "variablecv dewatered" in dumped
+    assert "VARIABLECV" in dumped
+    assert "DEWATERED" in dumped
     assert "ICELLTYPE\n CONSTANT 0" in dumped
     assert "K\n CONSTANT 1.0" in dumped
 
@@ -697,3 +698,47 @@ def test_dumps_simulation():
 def test_clean_last_chunk():
     cleaned = writer._clean_last_chunk(iter(["chunk1", "chunk2", "\n\n"]))
     assert list(cleaned) == ["chunk1", "chunk2", "\n"]
+
+
+def test_dumps_tas_inner_classes():
+    """utl-tas: multi=True package with 3 inner record classes unstructures correctly.
+
+    TimeSeriesNamerecord, InterpolationMethodrecord, and Sfacrecord each have a
+    _keyword token that must appear before the scalar value in the ATTRIBUTES block.
+    """
+    from flopy4.mf6.utl.tas import Tas
+
+    tas = Tas(
+        time_series_namerecord=Tas.TimeSeriesNamerecord(time_series_name="my_ts"),
+        interpolation_methodrecord=Tas.InterpolationMethodrecord(interpolation_method="linear"),
+        sfacrecord=Tas.Sfacrecord(sfacval=1.5),
+    )
+
+    unstructured = COMPONENT_CONVERTER.unstructure(tas)
+    assert "attributes" in unstructured
+    assert unstructured["attributes"]["time_series_namerecord"] == ("NAME", "my_ts")
+    assert unstructured["attributes"]["interpolation_methodrecord"] == ("METHOD", "linear")
+    assert unstructured["attributes"]["sfacrecord"] == ("SFAC", 1.5)
+
+    dumped = dumps(unstructured)
+    assert "BEGIN ATTRIBUTES" in dumped
+    assert "NAME my_ts" in dumped
+    assert "METHOD linear" in dumped
+    assert "SFAC 1.5" in dumped
+
+
+def test_dumps_zero_field_exg():
+    """Zero-field exchange classes (gwfprt, gwfgwe, gwfgwt) instantiate and unstructure
+    to empty dicts, producing no output — the pass-only class body must not interfere
+    with xattree or the converter.
+    """
+    from flopy4.mf6.exg.gwfgwe import Gwfgwe
+    from flopy4.mf6.exg.gwfgwt import Gwfgwt
+    from flopy4.mf6.exg.gwfprt import Gwfprt
+
+    for cls in (Gwfprt, Gwfgwe, Gwfgwt):
+        obj = cls()
+        unstructured = COMPONENT_CONVERTER.unstructure(obj)
+        assert unstructured == {}, f"{cls.__name__} should unstructure to empty dict"
+        dumped = dumps(unstructured)
+        assert dumped == "", f"{cls.__name__} should produce no output"

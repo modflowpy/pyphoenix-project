@@ -57,3 +57,29 @@ def apply(dfn_name: str, f: Field) -> Field:
     if not patches:
         return f
     return dataclasses.replace(f, **patches)
+
+
+def apply_to_child(dfn_name: str, child: dict) -> dict:
+    """Return ``child`` dict with any registered overrides applied.
+
+    Used for record child dicts, which are plain dicts rather than Field
+    objects.  Looks up by the child's ``name`` key using the same override
+    table as :func:`apply`.
+
+    Parameters
+    ----------
+    dfn_name :
+        DFN identifier, e.g. ``"gwf-npf"``.
+    child :
+        A record child dict from the v2 TOML schema.
+
+    Returns
+    -------
+    dict
+        The original dict if no overrides exist, otherwise a shallow-merged
+        copy with the patched keys.
+    """
+    patches = _OVERRIDES.get(dfn_name, {}).get(child.get("name", ""), {})
+    if not patches:
+        return child
+    return {**child, **patches}

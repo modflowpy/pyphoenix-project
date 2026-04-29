@@ -24,6 +24,7 @@ from modflow_devtools.dfns.schema.v2 import FieldV2
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.utils.codegen.filters import (
+    can_expand_record,
     class_name,
     is_generatable,
     model_abbr,
@@ -78,6 +79,41 @@ SIMPLE_TIER = {
     "gwf-buy": ("Buy", "Package"),
     "gwf-vsc": ("Vsc", "Package"),
     "gwf-mvr": ("Mvr", "Package"),
+    # Tier 6: compressible storage and horizontal flow barrier
+    # (gwf-sfr, gwf-maw excluded: keystring period settings silently absent)
+    # (gwf-uzf excluded: duplicated ifno attribute and not currently functional)
+    "gwf-csub": ("Csub", "Package"),
+    "gwf-hfb": ("Hfb", "Package"),
+}
+
+# Transport model packages: gwt-ist (immobile storage transport, multi=True).
+TRANSPORT_TIER = {
+    "gwt-ist": ("Ist", "Package", "gwt"),
+}
+
+# Utility packages (utl/), including utl-tas with 3 inner record classes.
+UTL_TIER = {
+    "utl-ats": ("Ats", "Package"),
+    "utl-laktab": ("Laktab", "Package"),
+    "utl-ncf": ("Ncf", "Package"),
+    "utl-sfrtab": ("Sfrtab", "Package"),
+    "utl-spca": ("Spca", "Package"),
+    "utl-tas": ("Tas", "Package"),
+}
+
+# Exchange packages (exg/) — only zero-field (pass-only) classes.
+# Packages with cellidm1/cellidm2 fields (gwfgwf, gwegwe, gwtgwt, olfgwf, chfgwf)
+# are excluded: ncelldim resolution is not yet implemented in the ingress/egress layers.
+EXG_TIER = {
+    "exg-gwfgwe": ("Gwfgwe", "Package"),
+    "exg-gwfgwt": ("Gwfgwt", "Package"),
+    "exg-gwfprt": ("Gwfprt", "Package"),
+}
+
+SOLUTION_TIER = {
+    "sln-ims": ("Ims", "Solution", "ims"),
+    "sln-ems": ("Ems", "Solution", "ems"),
+    "sln-pts": ("Pts", "Solution", "pts"),
 }
 
 # Future tiers (not yet implemented):
@@ -282,6 +318,55 @@ class TestSimpleTierComponentSpec:
         assert spec.outpath == root / "gwf" / f"{expected_class.lower()}.py"
 
 
+# Layer 2: Solution-tier ComponentSpec tests
+@pytest.mark.parametrize(
+    "dfn_name,expected_class,expected_base,expected_slntype",
+    [(k, v[0], v[1], v[2]) for k, v in SOLUTION_TIER.items()],
+)
+class TestSolutionTierComponentSpec:
+    """Verify build_component_spec() for each solution-tier DFN."""
+
+    def _get_dfn(self, dfn_name, all_dfns):
+        if dfn_name not in all_dfns:
+            pytest.skip(f"{dfn_name} not available in DFN set")
+        return all_dfns[dfn_name]
+
+    def test_class_name(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+        dfn = self._get_dfn(dfn_name, all_dfns)
+        spec = build_component_spec(dfn, root=Path("/fake"))
+        assert spec.class_name == expected_class
+
+    def test_base_class(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+        dfn = self._get_dfn(dfn_name, all_dfns)
+        spec = build_component_spec(dfn, root=Path("/fake"))
+        assert spec.base_class == expected_base
+
+    def test_slntype(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+        dfn = self._get_dfn(dfn_name, all_dfns)
+        spec = build_component_spec(dfn, root=Path("/fake"))
+        assert spec.slntype == expected_slntype
+
+    def test_outpath(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+        root = Path("/fake/mf6")
+        dfn = self._get_dfn(dfn_name, all_dfns)
+        spec = build_component_spec(dfn, root=root)
+        assert spec.outpath == root / f"{expected_class.lower()}.py"
+
+    def test_imports_include_solution(
+        self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns
+    ):
+        dfn = self._get_dfn(dfn_name, all_dfns)
+        spec = build_component_spec(dfn, root=Path("/fake"))
+        all_imports = "\n".join(
+            spec.imports.get("stdlib", [])
+            + spec.imports.get("third_party", [])
+            + spec.imports.get("flopy4", [])
+        )
+        assert "xattree" in all_imports
+        assert "Solution" in all_imports
+        assert "ClassVar" in all_imports
+
+
 # Layer 2b: List-field expansion
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
     """gwf-mvr list sub-tables should expand into per-column FieldSpecs, all Optional."""
@@ -305,6 +390,92 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     for col in pkg_cols:
         assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
         assert field_map[col].type_annotation.startswith("Optional[")
+
+
+# Layer 2c: Compound record expansion
+def test_can_expand_record_all_keywords(all_dfns):
+    """A record whose children are all keyword type (like cvoptions) is expandable."""
+    if "gwf-npf" not in all_dfns:
+        pytest.skip("gwf-npf not in DFN set")
+    cvoptions = all_dfns["gwf-npf"].blocks["options"]["cvoptions"]
+    assert can_expand_record(cvoptions)
+
+
+def test_can_expand_record_with_positional_required_data(all_dfns):
+    """A record with required scalar+keyword children (rewet_record) generates an inner class."""
+    if "gwf-npf" not in all_dfns:
+        pytest.skip("gwf-npf not in DFN set")
+    from flopy4.mf6.utils.codegen.filters import can_generate_record_class
+
+    rewet_record = all_dfns["gwf-npf"].blocks["options"]["rewet_record"]
+    assert not can_expand_record(rewet_record)
+    assert can_generate_record_class(rewet_record)
+
+
+def test_rcloserecord_generates_inner_class(all_dfns):
+    """rcloserecord has a tagged scalar first child (not keyword): generates an inner class."""
+    if "sln-ims" not in all_dfns:
+        pytest.skip("sln-ims not in DFN set")
+    from flopy4.mf6.utils.codegen.filters import can_generate_record_class
+
+    rcloserecord = all_dfns["sln-ims"].blocks["linear"]["rcloserecord"]
+    assert can_generate_record_class(rcloserecord)
+
+
+def test_ims_compound_records_expanded(all_dfns):
+    """sln-ims: rcloserecord and no_ptcrecord both become inner classes."""
+    if "sln-ims" not in all_dfns:
+        pytest.skip("sln-ims not in DFN set")
+    spec = build_component_spec(all_dfns["sln-ims"], root=Path("/fake"))
+    field_map = {f.py_name: f for f in spec.fields}
+
+    # rcloserecord: tagged scalar first child, no keyword trigger → inner class with _keyword=""
+    assert "rcloserecord" in field_map, "rcloserecord should generate as inner class parent field"
+    assert field_map["rcloserecord"].generatable
+    assert field_map["rcloserecord"].type_annotation == "Optional[Rcloserecord]"
+    assert any(r.class_name == "Rcloserecord" for r in spec.inner_classes)
+
+    # inner_rclose is now inside Rcloserecord, not a standalone flat field
+    assert "inner_rclose" not in field_map, "inner_rclose should not be a standalone field"
+
+    # no_ptcrecord has trigger keyword + optional string child → inner class
+    assert "no_ptcrecord" in field_map, "no_ptcrecord should generate as inner class parent field"
+    assert field_map["no_ptcrecord"].generatable
+    assert field_map["no_ptcrecord"].type_annotation == "Optional[NoPtcrecord]"
+    assert any(r.class_name == "NoPtcrecord" for r in spec.inner_classes)
+
+    # no_ptc is the inner class trigger keyword, not a standalone flat field
+    assert "no_ptc" not in field_map, "no_ptc should not be a standalone field"
+
+    # no partial TODOs for either record
+    todo_names = {f.dfn_name for f in spec.fields if not f.generatable}
+    assert "rcloserecord" not in todo_names
+    assert "no_ptcrecord" not in todo_names
+
+
+def test_npf_compound_records_expanded(all_dfns):
+    """gwf-npf: cvoptions/xt3doptions expand to flat bools; rewet_record becomes an inner class."""
+    if "gwf-npf" not in all_dfns:
+        pytest.skip("gwf-npf not in DFN set")
+    spec = build_component_spec(all_dfns["gwf-npf"], root=Path("/fake"))
+    field_map = {f.py_name: f for f in spec.fields}
+
+    # cvoptions children: variablecv and dewatered are both keywords — fully expanded
+    assert "variablecv" in field_map and field_map["variablecv"].generatable
+    assert "dewatered" in field_map and field_map["dewatered"].generatable
+
+    # xt3doptions children: xt3d and rhs — fully expanded
+    assert "xt3d" in field_map and field_map["xt3d"].generatable
+    assert "rhs" in field_map and field_map["rhs"].generatable
+
+    # rewet_record has trigger keyword + required tagged scalar children → inner class
+    assert "rewet_record" in field_map and field_map["rewet_record"].generatable
+    assert field_map["rewet_record"].type_annotation == "Optional[RewetRecord]"
+    assert any(r.class_name == "RewetRecord" for r in spec.inner_classes)
+
+    # No TODOs in NPF options now
+    todo_names = {f.dfn_name for f in spec.fields if not f.generatable}
+    assert "rewet_record" not in todo_names
 
 
 # Layer 3: End-to-end generation
@@ -344,3 +515,124 @@ def test_simple_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
                 del sys.modules[key]
 
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
+
+
+def test_solution_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+    """Run make_all() and verify each solution-tier file is importable with Solution base."""
+    from flopy4.mf6.solution import Solution
+
+    skip = {n for n in load_flat(v2_dfn_dir) if n not in SOLUTION_TIER}
+    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+
+    generated = {s.dfn_name: s for s in specs}
+
+    for dfn_name, (expected_class, _, expected_slntype) in SOLUTION_TIER.items():
+        if dfn_name not in all_dfns:
+            continue
+        if dfn_name not in generated:
+            pytest.fail(f"{dfn_name} was expected but not generated")
+
+        spec = generated[dfn_name]
+        assert spec.outpath.exists(), f"Missing {spec.outpath}"
+
+        mod_name = f"_codegen_test_sln.{expected_class.lower()}"
+        mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
+        mod = importlib.util.module_from_spec(mod_spec)
+
+        components_snapshot = dict(COMPONENTS)
+        sys_modules_keys = set(sys.modules)
+        try:
+            mod_spec.loader.exec_module(mod)
+        finally:
+            COMPONENTS.clear()
+            COMPONENTS.update(components_snapshot)
+            for key in set(sys.modules) - sys_modules_keys:
+                del sys.modules[key]
+
+        assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
+        cls = getattr(mod, expected_class)
+        assert issubclass(cls, Solution), f"{expected_class} should subclass Solution"
+        assert (
+            cls.slntype == expected_slntype
+        ), f"{expected_class}.slntype expected {expected_slntype!r}, got {cls.slntype!r}"
+
+
+def _load_class_from_spec(spec, mod_name: str, expected_class: str):
+    """Generate, load, and return the class from a ComponentSpec. Cleans up module state."""
+    mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
+    mod = importlib.util.module_from_spec(mod_spec)
+    components_snapshot = dict(COMPONENTS)
+    sys_modules_keys = set(sys.modules)
+    try:
+        mod_spec.loader.exec_module(mod)
+        assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
+        return getattr(mod, expected_class)
+    finally:
+        COMPONENTS.clear()
+        COMPONENTS.update(components_snapshot)
+        for key in set(sys.modules) - sys_modules_keys:
+            del sys.modules[key]
+
+
+def test_transport_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+    """gwt-disv, gwt-ist, gwe-disv generate importable Package subclasses."""
+    for subdir in ("gwt", "gwe"):
+        (tmp_path / subdir).mkdir()
+
+    target = {n for n in TRANSPORT_TIER if n in all_dfns}
+    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
+    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+    generated = {s.dfn_name: s for s in specs}
+
+    from flopy4.mf6.package import Package
+
+    for dfn_name, (expected_class, _, subdir) in TRANSPORT_TIER.items():
+        if dfn_name not in all_dfns:
+            continue
+        assert dfn_name in generated, f"{dfn_name} was not generated"
+        spec = generated[dfn_name]
+        assert spec.outpath == tmp_path / subdir / f"{expected_class.lower()}.py"
+        cls = _load_class_from_spec(spec, f"_codegen_test_transport.{dfn_name}", expected_class)
+        assert issubclass(cls, Package)
+
+
+def test_utl_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+    """utl-* packages generate importable Package subclasses (including utl-tas inner classes)."""
+    (tmp_path / "utl").mkdir()
+
+    target = {n for n in UTL_TIER if n in all_dfns}
+    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
+    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
+    generated = {s.dfn_name: s for s in specs}
+
+    from flopy4.mf6.package import Package
+
+    for dfn_name, (expected_class, _) in UTL_TIER.items():
+        if dfn_name not in all_dfns:
+            continue
+        assert dfn_name in generated, f"{dfn_name} was not generated"
+        spec = generated[dfn_name]
+        assert spec.outpath == tmp_path / "utl" / f"{expected_class.lower()}.py"
+        cls = _load_class_from_spec(spec, f"_codegen_test_utl.{dfn_name}", expected_class)
+        assert issubclass(cls, Package)
+
+
+def test_exg_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+    """exg-* packages generate importable Package subclasses (including 0-field pass-only)."""
+    (tmp_path / "exg").mkdir()
+
+    target = {n for n in EXG_TIER if n in all_dfns}
+    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
+    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
+    generated = {s.dfn_name: s for s in specs}
+
+    from flopy4.mf6.package import Package
+
+    for dfn_name, (expected_class, _) in EXG_TIER.items():
+        if dfn_name not in all_dfns:
+            continue
+        assert dfn_name in generated, f"{dfn_name} was not generated"
+        spec = generated[dfn_name]
+        assert spec.outpath == tmp_path / "exg" / f"{expected_class.lower()}.py"
+        cls = _load_class_from_spec(spec, f"_codegen_test_exg.{dfn_name}", expected_class)
+        assert issubclass(cls, Package)

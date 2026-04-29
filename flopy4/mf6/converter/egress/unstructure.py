@@ -1,8 +1,9 @@
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+import attrs
 import numpy as np
 import xarray as xr
 import xattree
@@ -186,6 +187,31 @@ def _unstructure_block_param(
             if child_spec.metadata["block"] == block_name:  # type: ignore
                 return
 
+    # xattree.asdict converts inner-class attrs instances (like Rcloserecord) to
+    # plain dicts before this function sees them. Check the raw component attribute
+    # first so the attrs match case can fire on the real object.
+    raw_value = getattr(value, field_name, None)
+    cls = type(raw_value)
+    if attrs.has(cls) and "_keyword" in vars(cls):
+        # Generated inner class record: convert to keyword-prefixed tuple.
+        # _keyword is "" for records with no leading trigger token (e.g. rcloserecord).
+        keyword: str = vars(cls)["_keyword"]
+        tokens: list[Any] = [keyword.upper()] if keyword else []
+        for a in attrs.fields(cast(type[attrs.AttrsInstance], cls)):
+            val = getattr(raw_value, a.name)
+            if val is None:
+                continue
+            if a.metadata.get("tagged", False):
+                tokens.append(a.name.upper())
+                tokens.append(val)
+            elif isinstance(val, bool):
+                if val:
+                    tokens.append(a.name.upper())
+            else:
+                tokens.append(val)
+        blocks[block_name][field_name] = tuple(tokens)
+        return
+
     # filter out empty values and false keywords, and convert:
     #   - paths to records
     #   - datetimes to ISO format
@@ -302,6 +328,13 @@ def _unstructure_array_component(value: Component) -> dict[str, Any]:
 # These blocks should only be written when they contain data.
 _SKIP_IF_EMPTY = frozenset({"dimensions", "tracktimes"})
 
+# Block names whose fields are list columns (one array per column, same dim)
+# rather than independent grid arrays.  Only these blocks are auto-combined
+# into an xr.Dataset for row-per-record output.  griddata-style blocks must
+# NOT be in this set — their fields are written individually with
+# INTERNAL/CONSTANT/NETCDF format.
+_LIST_BLOCK_NAMES = frozenset({"packagedata", "packages", "perioddata", "table"})
+
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
     blockspec = blocks_dict(type(value))
@@ -360,11 +393,6 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                                 block, coords=block[arr_name].coords
                             )
 
-        # combine "perioddata" block arrays (tdis, ats) into datasets
-        # so they render as lists. temp hack TODO do this generically
-        if perioddata := blocks.get("perioddata", None):
-            blocks["perioddata"] = {"perioddata": xr.Dataset(perioddata)}
-
         if vertices := blocks.get("vertices", None):
             # TODO comes twice once with "vertices" key and once with dataarrays
             if "vertices" in vertices:
@@ -372,6 +400,18 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             if "iv" in vertices:
                 vertices["iv"] = vertices["iv"] + 1
             blocks["vertices"] = {"vertices": xr.Dataset(vertices)}
+
+        # Combine list-style blocks into a Dataset for row-per-record output.
+        # Only applies to known list block names — griddata-style blocks (each
+        # field a separate array) must NOT be combined.
+        if block_name in _LIST_BLOCK_NAMES:
+            current_block = blocks.get(block_name, {})
+            if current_block:
+                das = [v for v in current_block.values() if isinstance(v, xr.DataArray)]
+                if das and len(das) == len(current_block):
+                    first_dim = das[0].dims[0] if das[0].dims else None
+                    if first_dim and all(da.dims and da.dims[0] == first_dim for da in das):
+                        blocks[block_name] = {block_name: xr.Dataset(current_block)}
 
     blocks = dict(sorted(blocks.items(), key=block_sort_key))
 
