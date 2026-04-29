@@ -186,7 +186,7 @@ warn_unreachable = true
 
 [tool.codespell]
 skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*"
-ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt"]
+ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt", "ist"]
 
 
 [tool.pytest_env]
