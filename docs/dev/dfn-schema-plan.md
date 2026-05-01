@@ -24,7 +24,7 @@ Another distinction is between simulation structure and MF6 input file format. C
 
 **1 DFN file per input component.** DFN files do not currently map 1-1 to hydrologic processes. A DFN file describes a single way of representing a process, not necessarily the only one. Where multiple DFN files represent the same process in different formats (e.g. `gwf-wel`/`gwf-welg`, `gwf-rch`/`gwf-rcha`), the relationship should be explicit in the schema. Unification can be deferred to a future schema version.
 
-**Explicit parent-child relationships.** Parent-child relationships are intrinsic to a component's identity and should be explicitly defined. Two parent-child relationship types are distinguished: fixed and free. Fixed-parent components have a single possible parent (e.g. `gwf-chd` always under `gwf-nam`). Free-parent components may be attached to multiple possible parents; historically we have called these "subpackages". Fixed-parent relations are specification invariants, while free-parent relationships are resolved later.
+**Explicit parent-child relationships.** Parent-child relationships are intrinsic to a component's identity and should be explicitly defined. Two parent-child relationship types are distinguished: fixed and free. Fixed-parent components have a single possible parent (e.g. `gwf-chd` always under `gwf-nam`). Free-parent components may be attached to multiple possible parents; historically we have called these "subpackages". Fixed-parent relations are specification invariants, while free-parent relationships are resolved later. Free-parent relationships are not necessarily unconstrained; some subpackages may only be attached to certain component types (e.g. only to packages, not to models), some may be attached to multiple component types (e.g. packages or models), some may only be attached to specifically named parent components.
 
 ## Design
 
@@ -51,7 +51,7 @@ Attributes (beyond base):
 - `dimension: bool = False`: Marks a valid target for shape expressions; enables shape validation at schema load time. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`). `maxbound` does NOT get `dimension=True`, it is a formatting concern to be dropped from the structural schema.
 - `index: bool = False`: Marks a 1-based integer index field. Applies to PK columns (named by `ListFieldV2.key`) and FK columns referencing PKs in other lists.
 - `references_pk_of: str | None = None`: Names a sibling string field whose runtime value identifies the target component. The codec resolves that component and uses its declared `ListFieldV2.key` for FK validation and 0-based conversion. Used for dynamic cross-component FKs where the target component type is not statically known (e.g. `gwf-mvr.period.id1` references `pname1`).
-- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead).
+- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
 - `valid: list[str] | None`: Permitted values for `string` fields (enumeration constraint). Not inferrable. Empty `valid` (artifact of v1 `block_variable` fields) is treated as absent.
 
 ##### `ArrayFieldV2`
@@ -60,8 +60,8 @@ Type: `array`
 
 Attributes (beyond base):
 - `shape: list[str]`: The array's shape, defined by reference to dimension scalars.
-- `time_series: bool = False`: Marks fields where the READARRAY invocation may be replaced by a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Distinct from the scalar case: references `utl-tas`, not `utl-ts`.
-- `repeating: bool = False`: Marks a field that may appear multiple times within a single block occurrence, with each appearance appended to an accumulated sequence. See `repeating` section below.
+- `time_series: bool = False`: Marks fields where the READARRAY invocation may be replaced by a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Distinct from the scalar case: references `utl-tas`, not `utl-ts`. Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
+- `repeat: str | None = None`: Names the field (within the same component) whose runtime length determines how many times this field is read sequentially within a single block occurrence, with each reading appended to an accumulated sequence. Non-null implies repeating. See `repeat` section below.
 
 ##### `RecordFieldV2`
 
@@ -87,14 +87,14 @@ Some v1 attributes need to remain, some can be dropped.
 
 | v1 attribute | v2 fate | Reason | Notes |
 |---|---|---|---|
-| `tagged` | drop | Determined by block type + field type + position | |
+| `tagged` | keep | Can't reliably infer | |
 | `preserve_case` | undecided | Needed for non-path case-sensitive strings (e.g. `crs`); may survive in v2 | |
 | `time_series` | keep for `ScalarFieldV2`, `ArrayFieldV2` | Not inferrable; many `double` fields in the same blocks lack it | |
 | `layered` | drop (derivable) | Exactly correlated with `nlay` in shape for readarray fields; zero corpus exceptions | |
 | `jagged_array` | drop | Not in Fortran IDM; `ja` is a flat 1D array in MF6; raggedness is a codec concern | |
 | `numeric_index` | replace with `ScalarFieldV2.index` + `ListFieldV2.key` | Explicit PK/FK semantics; `model_validator` enforces key consistency | |
 | `valid` | keep for string `ScalarFieldV2` | Structural constraint; not inferrable | |
-| `repeating` | keep | Not inferrable; behavior is file-format-level | |
+| `repeating` | replace with `repeat: str | None` | Not inferrable; explicit count reference unifies utl-tas and RCHA/EVTA aux patterns | |
 | `just_data` | drop | Single occurrence (`utl-tas`); structurally inferrable | |
 | `block_variable` | drop | Replace with first-class block repetition at block/component level | |
 | `block` | drop | Field position in block hierarchy makes inline attribute redundant; codec concern | |
@@ -127,13 +127,14 @@ The MF6 parser converts strings to uppercase by default. The `preserve_case` fla
 
 #### `tagged`
 
-The `tagged` attribute previously indicated whether a field, usually a record subfield, must be preceded by its keyword name. This can be dropped as it can be derived from structural position and field type:
+The `tagged` attribute currently indicates whether a field, usually a record subfield, must be preceded by its keyword name. This cannot be dropped yet as it cannot consistently be derived from structural position and field type.
+
+Two cases can be reliably derived:
 
 1. **`keyword` anywhere:** always tagged — the keyword IS its own token; it appears with no associated value.
 2. **top-level field in a keyword-value block:** tagged — its name precedes its value in the input file.
-3. **Field inside a record (`in_record=true` in v1):** depends on type:
-   - `keyword` members: tagged (they introduce or select the record's structure)
-   - All other types (`integer`, `double`, `string`, `array`): untagged — positional within the record
+
+Fields inside records, however, are inconsistent and cannot be reliably derived. For example, GWF-OC's `formatrecord`. Also, `tagged` does not always appear where it should, e.g. GWF-NPF's `rewet_record`.
 
 #### `time_series`
 
@@ -143,7 +144,9 @@ The `tagged` attribute previously indicated whether a field, usually a record su
 
 **Array case (readarray fields):** The field accepts either inline READARRAY data (a numeric array provided in the input file using READARRAY syntax: `CONSTANT`, `INTERNAL`, binary file reference, etc.) or a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Six fields in the corpus take this form: `gwf-rcha.recharge`, `gwf-rcha.aux`, `gwf-evta.rate`, `gwf-evta.aux`, `utl-spca.concentration`, `utl-spca.temperature`.
 
-The two cases reference fundamentally different objects: TS (`utl-ts`) is a scalar-valued time function; TAS (`utl-tas`) is an array-valued time function. The attribute name `time_series` is kept for both in v2 because the name is established, and the two cases apply to disjoint field types (`ScalarFieldV2` vs `ArrayFieldV2`), so no ambiguity arises. The distinction is documented here rather than in the attribute name.
+The two cases reference fundamentally different objects: TS (`utl-ts`) is a scalar-valued time function; TAS (`utl-tas`) is an array-valued time function.
+
+**Schema constraint:** `ArrayFieldV2.time_series=True` requires `nlay` in shape, since utl-tas currently only supports layered arrays. A Pydantic `model_validator` enforces this at schema load time. The constraint may be relaxed in a future MF6 version if TAS support is extended to non-layered arrays. The attribute name `time_series` is kept for both in v2 because the name is established, and the two cases apply to disjoint field types (`ScalarFieldV2` vs `ArrayFieldV2`), so no ambiguity arises. The distinction is documented here rather than in the attribute name.
 
 Corpus distribution:
 
@@ -182,21 +185,22 @@ Structural constraint — not inferrable. Empty `valid` (v1 artifact on `block_v
 
 **In v2:** `valid: list[str] | None` on `ScalarFieldV2` (string).
 
-#### `repeating`
+#### `repeat`
 
-`repeating=true` marks a field that may appear multiple times within a single block occurrence, with each appearance appended to an accumulated sequence. Active in only one field in the current corpus:
+`repeat: str | None` replaces v1's `repeating: bool`. When non-null, it names the field (within the same component, potentially in a different block) whose runtime length determines how many times the annotated field is read sequentially within a single block occurrence. Each reading is appended to an accumulated sequence.
 
-- `utl-tas.dfn` → `tas_array` (time block, READARRAY) — appears once per named TAS within each labeled `time` block
+Two patterns in the corpus share this structure — N sequential READARRAY calls per block occurrence, where N is the length of a declared list field:
 
-Two additional occurrences in `prt-oc.dfn` and `prt-prp.dfn` are `removed 6.6.0`.
+- **`utl-tas.tas_array`** (`time` block, READARRAY): read once per named TAS per labeled `time` block. `repeat="time_series_name"`, where `time_series_name` is declared in the `attributes` block with `shape (any1d)`.
+- **`gwf-rcha.aux` / `gwf-evta.aux`** (`period` block, READARRAY): read once per declared auxiliary variable per labeled `period` block. `repeat="auxiliary"`, where `auxiliary` is declared in the `options` block with `shape (naux)`.
 
-The `utl-tas` structure: the `attributes` block declares N named time-array series (via `time_series_name`, which has `shape (any1d)`). Each labeled `time` block then contains N sequential READARRAY invocations of `tas_array`, one per named TAS. The count N is determined at runtime by the number of names in the `attributes` block — it is not a fixed schema constant.
+The RCHA/EVTA `aux` fields carry no `repeating` annotation in v1 — the N-repetition behavior is implicit in the Fortran code, which loops explicitly over `naux`. V2 makes this explicit and consistent with utl-tas.
 
-**Codec mechanism:** when reading a labeled `time` block, the codec reads one READARRAY invocation of `tas_array`, appends the result, then checks whether the block has ended. If not, it reads another. This repeats until `end time`. The count is discovered by consumption, not pre-declared.
+In both cases `repeat` names the declared list or array field whose length is the count, not a scalar dimension variable (e.g. `naux`). These are the same value; the field reference is used because it identifies a declared schema entity.
 
-**Open question:** should the repetition count be bound explicitly to a dimension field? E.g., `repeating_count: str | None = "time_series_name"` naming the field whose length determines how many occurrences to expect. This would be more principled but adds cross-block reference complexity for a single edge case.
+Two additional occurrences of `repeating=true` in `prt-oc.dfn` and `prt-prp.dfn` are `removed 6.6.0`.
 
-Not inferrable. **In v2:** `repeating: bool` on relevant field types, with the above codec semantics.
+**Codec mechanism:** the codec reads the referenced field to determine N, then reads the repeating field exactly N times, appending each result. This replaces the v1 "read until end of block" mechanism for `utl-tas` with an explicit pre-declared count.
 
 #### `just_data`
 
@@ -349,7 +353,7 @@ Alternatives considered:
 - Capability tag on DFN (`mover_compatible: bool`) + FK references all tagged PKs — flexible but adds DFN-level attribute and complex cross-DFN lookup
 - No encoding — handle MVR entirely in codec; loses schema expressiveness
 
-`references_pk_of` is the cleanest option: encodes the rule without enumerating targets.
+`references_pk_of` seems like the cleanest option, encoding the rule without enumerating targets.
 
 **Key matching between components:** PK lookup for cross-component FKs is always in the context of a specific resolved target component (via `references_pk_of`), so there are no global naming collisions. Column names need only be unique within their component's list field. No global prefix is required.
 
@@ -357,14 +361,27 @@ Alternatives considered:
 
 ### Parent/child relations
 
-In v1 DFNs, fixed parent-child relationships are implicit in component naming (e.g. `gwf-*` means the component is necessarily a child of a GWF model) while free parent-child relationships are encoded in a special comment line at the top of the DFN file, mainly for flopy's benefit.
+In v1 DFNs, parent-child relationships are implicit or encoded in special comment lines. Fixed relationships are implicit in component naming (e.g., `gwf-*` is always a child of a GWF model); subpackage relationships are declared via `# flopy subpackage` / `# flopy parent_name_type` comment pairs.
 
-In v2, these relationships should all be explicit:
+In v2, all parent relationships are explicit via `Dfn.parent: str | list[str] | None`:
 
-- `Dfn.parent: str | None` — declares a fixed parent (e.g. `gwf-chd` always under `gwf-nam`).
-- `Dfn.accepts: list[str]` — declares which subpackage types a parent can contain (replaces `subcomponents`).
+- `None` — no parent; the component is simulation-level.
+- `"*"` — matches any parent component type.
+- A string or list of strings — declares the set of valid parent component types. Entries are either:
+  - **Type names** (`"model"`, `"package"`) — matches any component of that semantic type. Type names never contain a hyphen.
+  - **Component IDs** (`"gwf-sfr"`, `"gwf-nam"`) — matches only that specific component type. Component IDs always contain a hyphen.
+  - In a mixed list, a type name subsumes any named component of the same type: `["gwf-sfr", "package"]` reduces to `["package"]` since `gwf-sfr` is a package.
 
-A component with no declared `parent` is a "free" subcomponent: the parent signals compatibility with the subpackage via `accepts`, and the relationship is resolved at simulation instantiation time.  `DfnSpec` provides traversal and lookup methods but does not own the relationship data.
+**Examples (mapped from v1 comment encoding):**
+
+| v1 encoding | v2 `parent` |
+|---|---|
+| _(implicit from `gwf-*` naming convention)_ | `"gwf-nam"` |
+| `parent_name_type parent_package MFPackage` | `"package"` |
+| `parent_name_type parent_model MFModel` | `"model"` |
+| _(obs, attached to model or package)_ | `["model", "package"]` |
+| _(subpackage restricted to specific components)_ | `["gwf-sfr", "gwf-maw"]` |
+| _(attached to any parent)_ | `"*"` |
 
 ### Solution compatibility
 
