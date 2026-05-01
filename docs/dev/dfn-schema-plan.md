@@ -50,7 +50,8 @@ Types: `keyword`, `integer`, `double`, `string`, `path`.
 Attributes (beyond base):
 - `dimension: bool = False`: Marks a valid target for shape expressions; enables shape validation at schema load time. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`). `maxbound` does NOT get `dimension=True`, it is a formatting concern to be dropped from the structural schema.
 - `index: bool = False`: Marks a 1-based integer index field. Applies to PK columns (named by `ListFieldV2.key`) and FK columns referencing PKs in other lists.
-- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name. Not inferrable from structural type. Also appears on `ArrayFieldV2`.
+- `references_pk_of: str | None = None`: Names a sibling string field whose runtime value identifies the target component. The codec resolves that component and uses its declared `ListFieldV2.key` for FK validation and 0-based conversion. Used for dynamic cross-component FKs where the target component type is not statically known (e.g. `gwf-mvr.period.id1` references `pname1`).
+- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead).
 - `valid: list[str] | None`: Permitted values for `string` fields (enumeration constraint). Not inferrable. Empty `valid` (artifact of v1 `block_variable` fields) is treated as absent.
 
 ##### `ArrayFieldV2`
@@ -59,8 +60,8 @@ Type: `array`
 
 Attributes (beyond base):
 - `shape: list[str]`: The array's shape, defined by reference to dimension scalars.
-- `layered: bool = False`: Marks READARRAY array fields provided as separate per-layer invocations, one per layer. Not inferrable from shape alone (presence of `nlay` in shape is necessary but not sufficient).
-- `time_series: bool = False`: Same semantics as on `ScalarFieldV2`; applies to READARRAY double arrays.
+- `time_series: bool = False`: Marks fields where the READARRAY invocation may be replaced by a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Distinct from the scalar case: references `utl-tas`, not `utl-ts`.
+- `repeating: bool = False`: Marks a field that may appear multiple times within a single block occurrence, with each appearance appended to an accumulated sequence. See `repeating` section below.
 
 ##### `RecordFieldV2`
 
@@ -87,9 +88,9 @@ Some v1 attributes need to remain, some can be dropped.
 | v1 attribute | v2 fate | Reason | Notes |
 |---|---|---|---|
 | `tagged` | drop | Determined by block type + field type + position | |
-| `preserve_case` | drop | Always-preserve-case policy in v2; `path` type retained for semantics only | |
+| `preserve_case` | undecided | Needed for non-path case-sensitive strings (e.g. `crs`); may survive in v2 | |
 | `time_series` | keep for `ScalarFieldV2`, `ArrayFieldV2` | Not inferrable; many `double` fields in the same blocks lack it | |
-| `layered` | keep for `ArrayFieldV2` | Not inferrable from shape alone; `nlay` in shape is necessary but not sufficient | |
+| `layered` | drop (derivable) | Exactly correlated with `nlay` in shape for readarray fields; zero corpus exceptions | |
 | `jagged_array` | drop | Not in Fortran IDM; `ja` is a flat 1D array in MF6; raggedness is a codec concern | |
 | `numeric_index` | replace with `ScalarFieldV2.index` + `ListFieldV2.key` | Explicit PK/FK semantics; `model_validator` enforces key consistency | |
 | `valid` | keep for string `ScalarFieldV2` | Structural constraint; not inferrable | |
@@ -97,7 +98,7 @@ Some v1 attributes need to remain, some can be dropped.
 | `just_data` | drop | Single occurrence (`utl-tas`); structurally inferrable | |
 | `block_variable` | drop | Replace with first-class block repetition at block/component level | |
 | `block` | drop | Field position in block hierarchy makes inline attribute redundant; codec concern | |
-| `netcdf` | keep for now? | not in Fortran IDM, not a structural property, but temporarily necessary | how much longer will this be needed? |
+| `netcdf` | keep until MF6 IDM support | not in Fortran IDM, not a structural property; required until netcdf is fully supported in MF6 IDM | drop when IDM support is complete |
 | `reader` | **drop** | Infer from block type | |
 
 #### `preserve_case`
@@ -136,7 +137,13 @@ The `tagged` attribute previously indicated whether a field, usually a record su
 
 #### `time_series`
 
-`time_series=true` marks fields where the parser accepts either a numeric literal or a time-series name (a string token referencing a named TS object). Not inferrable from structural type.
+`time_series=true` in v1 marks fields where the parser accepts either a numeric literal or a time-varying external reference. Not inferrable from structural type. The attribute is used in two structurally distinct cases that are semantically analogous but mechanistically different:
+
+**Scalar case (urword fields):** The field accepts either a numeric literal or a TS name referencing a `utl-ts` time series object. At any model time, the TS provides a single interpolated scalar value. The MF6 Fortran parser reads all tokens via `urword` as raw strings. For `double precision` fields, it immediately converts the string to a real number — passing a TS name string would be a fatal error. The v1 workaround was to declare these fields as `string` type, bypassing the numeric conversion; higher-level code then checks whether the string is a TS name or parseable as a number. These 55 fields are structurally `double` and are retyped as such in v2, with `time_series=True` retained to signal to the codec that TS names are also valid.
+
+**Array case (readarray fields):** The field accepts either inline READARRAY data (a numeric array provided in the input file using READARRAY syntax: `CONSTANT`, `INTERNAL`, binary file reference, etc.) or a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Six fields in the corpus take this form: `gwf-rcha.recharge`, `gwf-rcha.aux`, `gwf-evta.rate`, `gwf-evta.aux`, `utl-spca.concentration`, `utl-spca.temperature`.
+
+The two cases reference fundamentally different objects: TS (`utl-ts`) is a scalar-valued time function; TAS (`utl-tas`) is an array-valued time function. The attribute name `time_series` is kept for both in v2 because the name is established, and the two cases apply to disjoint field types (`ScalarFieldV2` vs `ArrayFieldV2`), so no ambiguity arises. The distinction is documented here rather than in the attribute name.
 
 Corpus distribution:
 
@@ -149,15 +156,11 @@ Corpus distribution:
 | `double precision` | `outlets` | `urword` | true | 4 |
 | `string` | `packagedata` | `urword` | true | 1 |
 
-The 55 `string`+`time_series=true` fields are structurally `double` — declared `string` in v1 to bypass numeric validation. In v2, these are retyped as `double` with `time_series=True` retained.
-
-WPB: what does "bypass numeric validation" mean? Why is time_series used on both scalars and arrays? I would think it'd only be valid for arrays..
-
-**In v2:** `time_series: bool` on `ScalarFieldV2` (double) and `ArrayFieldV2` (double).
+**In v2:** `time_series: bool` on `ScalarFieldV2` (double; references `utl-ts`) and `ArrayFieldV2` (double; references `utl-tas`).
 
 #### `layered`
 
-`layered=true` marks READARRAY array fields provided as separate per-layer READARRAY invocations rather than a single call. The presence of a layer dimension in `shape` (e.g. `nlay`) is necessary but not sufficient.
+`layered=true` marks READARRAY array fields that are read as separate per-layer READARRAY invocations (one per layer) rather than a single call. The MF6 READARRAY routine uses the `LAYERED` keyword to signal this mode.
 
 Example from `gwf-dis`:
 
@@ -169,9 +172,7 @@ Example from `gwf-dis`:
 | `delr` | `(ncol)` | — |
 | `delc` | `(nrow)` | — |
 
-**In v2:** `layered: bool` on `ArrayFieldV2`. Present only in READARRAY blocks.
-
-WPB: why do we need this? isn't this an mf6 parser concern? layered is just one of the ways to specify a grid-shaped array.
+**Decision:** Drop from v2 — fully derivable from shape. A corpus-wide search confirms that every readarray field whose shape contains `nlay` has `layered=true`, and no readarray field with `nlay` in shape is non-layered (zero exceptions). The rule is logically sound: the MF6 READARRAY parser has no path to read a multi-layer array in a single call; the `LAYERED` keyword is mandatory when `nlay` is a dimension. Rule: `ArrayFieldV2` is layered iff `nlay` appears in its shape expression.
 
 #### `valid`
 
@@ -183,21 +184,25 @@ Structural constraint — not inferrable. Empty `valid` (v1 artifact on `block_v
 
 #### `repeating`
 
-`repeating=true` marks a field that may appear multiple times in a block, with each occurrence appended to an accumulated value. Active in only one field in the current corpus:
+`repeating=true` marks a field that may appear multiple times within a single block occurrence, with each appearance appended to an accumulated sequence. Active in only one field in the current corpus:
 
-- `utl-tas.dfn` → `tas_array` (time block, READARRAY, `just_data=true`) — time-array series data repeated once per TAS name
+- `utl-tas.dfn` → `tas_array` (time block, READARRAY) — appears once per named TAS within each labeled `time` block
 
 Two additional occurrences in `prt-oc.dfn` and `prt-prp.dfn` are `removed 6.6.0`.
 
-Not inferrable. **In v2:** `repeating: bool` on relevant field types.
+The `utl-tas` structure: the `attributes` block declares N named time-array series (via `time_series_name`, which has `shape (any1d)`). Each labeled `time` block then contains N sequential READARRAY invocations of `tas_array`, one per named TAS. The count N is determined at runtime by the number of names in the `attributes` block — it is not a fixed schema constant.
 
-WPB: why is this needed, if it's only used for utl-tas -> tas_array, which seems like a normal array? What's the difference? I'd like to drop this if possible. Historically, I thought this was used to indicate a tuple was variadic, like the final field in a record potentially having multiple space separated values..
+**Codec mechanism:** when reading a labeled `time` block, the codec reads one READARRAY invocation of `tas_array`, appends the result, then checks whether the block has ended. If not, it reads another. This repeats until `end time`. The count is discovered by consumption, not pre-declared.
+
+**Open question:** should the repetition count be bound explicitly to a dimension field? E.g., `repeating_count: str | None = "time_series_name"` naming the field whose length determines how many occurrences to expect. This would be more principled but adds cross-block reference complexity for a single edge case.
+
+Not inferrable. **In v2:** `repeating: bool` on relevant field types, with the above codec semantics.
 
 #### `just_data`
 
-`just_data=true` appears exactly once: `utl-tas.dfn` `tas_array`. It marks a field whose value occupies the entire block body with no keyword prefix. Rather than carrying this as a general field attribute in v2, the case is handled by the structural description of the block itself (a single array field with no keyword, read by READARRAY). **Dropped in v2.**
+`just_data=true` appears exactly once: `utl-tas.dfn` `tas_array`. It marks a field whose value occupies the entire block body with no keyword prefix — the `begin time X` line serves as the label, and the body is just raw READARRAY data with no field keyword.
 
-WPB: how exactly is the utl-tas.dfn block supposed to look, with this? I don't understand why this was ever necessary in the first place.
+**Dropped in v2.** The case is handled structurally by the `Block` class: a labeled block (`label="time_from_model_start"`) whose only body field is an unlabeled READARRAY field. The absence of a keyword prefix is derivable from structure (single body field, `tagged=false`, READARRAY reader) without an explicit attribute.
 
 #### `block`
 
@@ -209,9 +214,9 @@ In v2, drop `block_variable` and replace with a first-class block repetition con
 
 #### `netcdf`
 
-`netcdf` on the v1 `Field` base class marks fields that can appear in NetCDF output. This is an output-format annotation, not a structural property. The Fortran IDM (`InputParamDefinitionType`) has no `netcdf` field. **Dropped in v2.**
+`netcdf` on the v1 `Field` base class marks fields that can appear in NetCDF output. This is an output-format annotation, not a structural property. The Fortran IDM (`InputParamDefinitionType`) has no `netcdf` field.
 
-WPB: until netcdf is fully supported in the MF6 IDM, we need this attribute to indicate that a field supports netcdf. it should probably be dropped eventually, but we likely won't be ready by the time we want to release v2.
+**Decision:** Keep in v2 until NetCDF is fully supported in the MF6 IDM. Once IDM support is complete and the attribute is no longer needed to bridge the gap, drop it.
 
 ### Blocks
 
@@ -234,7 +239,7 @@ Three block types can be identified:
 - readarray
 - list/table
 
-WPB: what's the operative difference between readarray and keyword-value blocks?  Isn't a readarray block a special case of the latter?
+READARRAY blocks and keyword-value blocks look superficially similar (both have a keyword token preceding a value), but the reader mechanism is entirely different. In keyword-value blocks, each field's value is read by `urword` — a single token on the same line. In READARRAY blocks, the value is read by the READARRAY routine, which consumes one or more subsequent lines, supports `CONSTANT`/`INTERNAL`/binary-file invocations, and handles layered arrays via multiple sequential calls. The codec derives which routine to invoke from the field types in the block — because there are no mixed array/non-array blocks in the corpus, the inference is unambiguous.
 
 ##### Keyword-value block
 
@@ -272,7 +277,26 @@ begin period 1
 end period 1
 ```
 
-WPB: so, how to handle repeating blocks, like the period block? What's the specific mechanism? We mentioned making this a first class concept, but I don't see specifics anywhere.
+#### Block class
+
+Blocks are first-class objects in the v2 schema. A `Block` Pydantic model hosts structural block attributes:
+
+```python
+class Block(BaseModel):
+    name: str
+    fields: dict[str, FieldV2]
+    label: str | None = None   # field name appearing on begin/end line, not in body
+    optional: bool = False
+```
+
+When `label` is set, the block is a **labeled block**: it can repeat with different label values, and the named field appears on the `begin`/`end` delimiter lines rather than in the block body. The labeled field is excluded from `fields`. This replaces `block_variable=true` in v1.
+
+The `just_data` case is handled structurally: a block whose only body field is an unlabeled READARRAY field has no keyword prefix for that field. This is derivable from structure (single field, `tagged=false`, READARRAY reader) and requires no explicit attribute.
+
+**Labeled block examples:**
+- `period` block in stress packages: `label="iper"` — repeats once per stress period, labeled by the period number
+- `time` block in `utl-tas`: `label="time_from_model_start"` — repeats once per time point, labeled by the simulation time
+- `timeseries` / `continuous` blocks in `utl-ts` / `utl-obs`: similarly labeled by name
 
 ## Component-level attributes
 
@@ -310,9 +334,26 @@ Above we propose adding `dimension: bool = False` to `ScalarFieldV2`. Shape expr
 
 ### PK/FK relations
 
-Sometimes an integer column in one list identifies a row in another. Within-component cross-block FKs are covered by `ListFieldV2.key` + `ScalarFieldV2.index`. Cross-component integer FKs are rare in the corpus; `index=True` on both the PK and FK columns is sufficient for the codec.
+Sometimes an integer column in one list identifies a row in another. Within-component cross-block FKs are covered by `ListFieldV2.key` + `ScalarFieldV2.index`. Three patterns appear in the corpus:
 
-WPB: examples of cross-component FKs? Is that only for indices into the grid node list?
+**Grid topology integers** (`gwf-disu.connectiondata.ja`, `iac`, and equivalents in `gwe-disu`, `gwt-disu`): cell numbers in the unstructured grid. These reference grid nodes, not a DFN-declared list with a `ListFieldV2.key`. `index=True` applies for 0-based conversion; no FK declaration needed.
+
+**Within-component cross-block FKs** (`gwf-sfr.connectiondata.ic`): references SFR's own reach numbers (`rno`), which is the PK of SFR's `packagedata` list. Covered by `ListFieldV2.key="rno"` + `index=True` on the FK column.
+
+**Cross-component dynamic FK** (`gwf-mvr.period.id1`): references a row in another package's packagedata list — the target package is identified at runtime by the sibling field `pname1` (package name string). The target type is polymorphic: `id1` can be a reach number (SFR), well number (MAW), UZF cell number, or lake outlet number, depending on which package `pname1` resolves to.
+
+To encode this explicitly, add `references_pk_of: str | None` to `ScalarFieldV2`: the field names the sibling string field whose runtime value identifies the target component. The codec resolves the target component from that value and uses its declared `ListFieldV2.key` for validation and 0-based conversion.
+
+Alternatives considered:
+- `fk_targets: list[str]` — enumerate all valid target DFN types explicitly; brittle when new mover-compatible packages are added
+- Capability tag on DFN (`mover_compatible: bool`) + FK references all tagged PKs — flexible but adds DFN-level attribute and complex cross-DFN lookup
+- No encoding — handle MVR entirely in codec; loses schema expressiveness
+
+`references_pk_of` is the cleanest option: encodes the rule without enumerating targets.
+
+**Key matching between components:** PK lookup for cross-component FKs is always in the context of a specific resolved target component (via `references_pk_of`), so there are no global naming collisions. Column names need only be unique within their component's list field. No global prefix is required.
+
+**Distinguishing grid topology indices from declared PKs:** an `index=True` field that matches no `ListFieldV2.key` anywhere in the schema is a raw topology/grid index. The absence of a matching declared PK is diagnostic — no explicit annotation is needed.
 
 ### Parent/child relations
 
