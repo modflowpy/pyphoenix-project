@@ -10,7 +10,7 @@ The MODFLOW 6 definition file ("DFN") format is a simple text format described i
 
 **v1.1** is a slightly normalized version generated from v1 DFN files by `modflow_devtools.dfn`. It parses bools, resolves `common.dfn` substitutions, drops some attributes, and does some structural transforms. Flopy 3.x codegen consumes v1.1, serializing to/from TOML. v1.1 only exists due to poor planning (WPB) and will be retired with devtools v2. Flopy 3.x should be altered to consume v1 or v2 directly.
 
-**v2** is the target. A more substantially transformed schema version has evolved as flopy 4.x development proceeds, facilitated by `modflow_devtools.dfns` (plural; distinct from the old `dfn` module). This document makes the v2 schema explicit and formalizes it. The newly formalized, versioned schema can be published with devtools 2.x, then become the foundation of flopy 4.x. MF6 tooling will later begin to consume v2 schema too.
+**v2+** is the target. A more substantially transformed schema version has evolved as flopy 4.x development proceeds, facilitated by `modflow_devtools.dfns` (plural; distinct from the old `dfn` module). This document makes the v2 schema explicit and formalizes it. The newly formalized, versioned schema can be published with devtools 2.x, then become the foundation of flopy 4.x. MF6 tooling will later begin to consume v2 schema too.
 
 ## Principles
 
@@ -20,11 +20,13 @@ The MODFLOW 6 definition file ("DFN") format is a simple text format described i
 
 **Separation of concerns.** A fundamental distinction is between schema and serialization format. The content of DFN files could be written to TOML, YAML, or JSON. That content (the schema) describes the data's shape and characteristics: which components exist, what fields they have, how they are connected. In other words, structural information, defining the valid structure of each simulation component. Choice of data interchange format is a separate issue.
 
-Another distinction is between simulation structure and MF6 input file format. Current DFN files carry both structural information and input file format information. For example, DFNs describe time-varying boundary condition fields not as distinct variables aligned to the grid and time discretizations, but as dataframes whose row count is an artificial dimension `maxbound`, corresponding to the sparse list-based input format MF6 expects in the period block. The sole purpose of `maxbound` is to inform the MF6 block parser how many array slots to allocate. Ideally the MF6 input specification would be agnostic to input file format, with format information either derived from the schema via a well-defined ruleset, or expressed as a separate schema annotation layer specifically scoped to MF6 input format, with the core specification responsible only for describing the simulation in a "canonical form" carrying only structural info.
+Another distinction is between simulation structure and MF6 input file format. Current DFN files carry both structural information and input file format information. A clear example of a pure format artifact is `maxbound` in v1 sparse stress period blocks: its sole purpose is to tell the MF6 block parser how many array slots to allocate. It carries no structural information and is dropped in v2. Where format information cannot be derived unambiguously from the structural spec, it is expressed as a separate annotation layer specifically scoped to MF6 input format. The core structural schema should be free of pure format artifacts.
+
+Note: the sparse list representation of period block data (rows of `(cellid, value...)`) is **not** a format artifact — it is structurally meaningful. A sparse list covers an arbitrary subset of grid cells and permits multiple entries per cell (e.g., multiple wells at the same node), properties a dense grid-aligned array cannot express. The list vs. array distinction at the period block level is therefore preserved in v2; it is part of what structurally distinguishes component variants such as `gwf-wel` (sparse list) and `gwf-welg` (grid array). See "Format variants".
 
 **1 DFN file per input component.** DFN files do not currently map 1-1 to hydrologic processes. A DFN file describes a single way of representing a process, not necessarily the only one. Where multiple DFN files represent the same process in different formats (e.g. `gwf-wel`/`gwf-welg`, `gwf-rch`/`gwf-rcha`), the relationship should be explicit in the schema. Unification can be deferred to a future schema version.
 
-**Explicit parent-child relationships.** Parent-child relationships are intrinsic to a component's identity and should be explicitly defined. Two parent-child relationship types are distinguished: fixed and free. Fixed-parent components have a single possible parent (e.g. `gwf-chd` always under `gwf-nam`). Free-parent components may be attached to multiple possible parents; historically we have called these "subpackages". Fixed-parent relations are specification invariants, while free-parent relationships are resolved later. Free-parent relationships are not necessarily unconstrained; some subpackages may only be attached to certain component types (e.g. only to packages, not to models), some may be attached to multiple component types (e.g. packages or models), some may only be attached to specifically named parent components.
+**Explicit parent-child relationships.** Parent-child relationships are intrinsic to a component's identity and should be explicitly defined. A component's valid parents range from fully constrained (a single named component type, e.g. `gwf-chd` always under `gwf-nam`) to loosely constrained (any component of a given semantic type, e.g. any package) to unconstrained (any parent). Components with looser parent constraints are historically called "subpackages". All relationships are resolved at simulation instantiation time; the schema states the constraint, not the instance.
 
 ## Design
 
@@ -35,26 +37,41 @@ The existing design attempts to shoehorn all field types into a single field def
 Refactor `modflow_devtools.dfns.schema.FieldV2` into a Pydantic discriminated union of the concrete field types:
 
 ```python
-FieldV2 = Annotated[
-    ScalarFieldV2 | ArrayFieldV2 | RecordFieldV2 | ListFieldV2 | UnionFieldV2,
+Field = Annotated[
+    ScalarField | ArrayField | RecordField | ListField | UnionField,
     PydanticField(discriminator="type")
 ]
 ```
 
+#### V1 → V2 type mapping
+
+| v1 type | v2 type | Notes |
+|---|---|---|
+| `double precision` | `double` | Renamed. |
+| `recarray` | `list` | Becomes `ListFieldV2` with typed `item`. |
+| `keystring` | `union` | Becomes `UnionFieldV2` with named `arms`. |
+| `record` | `record` | Becomes `RecordFieldV2` with typed `fields`. |
+| `keyword`, `integer`, `string`, `path` | same | Becomes `ScalarFieldV2`. |
+| `string` + `time_series=true` | `double` | v1 used `string` to bypass numeric validation while accepting TS names; structurally `double` in v2 with `time_series=true` in the format layer. |
+| scalar with non-null `shape` | `array` | Becomes `ArrayFieldV2`. |
+
+V1 uses flat `in_record=True` top-level fields to represent structural nesting. V2 replaces this with explicit nesting: record columns go into `RecordFieldV2.fields`, union arms into `UnionFieldV2.arms`, and list item columns into `ListFieldV2.item`. The `in_record` attribute is dropped.
+
 #### Field types
 
-##### `ScalarFieldV2`
+##### Scalar
 
 Types: `keyword`, `integer`, `double`, `string`, `path`.
 
 Attributes (beyond base):
 - `dimension: bool = False`: Marks a valid target for shape expressions; enables shape validation at schema load time. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`). `maxbound` does NOT get `dimension=True`, it is a formatting concern to be dropped from the structural schema.
-- `index: bool = False`: Marks a 1-based integer index field. Applies to PK columns (named by `ListFieldV2.key`) and FK columns referencing PKs in other lists.
-- `references_pk_of: str | None = None`: Names a sibling string field whose runtime value identifies the target component. The codec resolves that component and uses its declared `ListFieldV2.key` for FK validation and 0-based conversion. Used for dynamic cross-component FKs where the target component type is not statically known (e.g. `gwf-mvr.period.id1` references `pname1`).
 - `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
 - `valid: list[str] | None`: Permitted values for `string` fields (enumeration constraint). Not inferrable. Empty `valid` (artifact of v1 `block_variable` fields) is treated as absent.
+- `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Exactly one column per list item may be marked pk.
+- `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
+- `fk_ref: str | None = None`: For FKs whose target component is only known at runtime. Names a sibling string field whose value identifies the target component. May be set alone (block within target also unknown) or together with `fk` as a bare block name (block known, component not). See "Primary/foreign keys".
 
-##### `ArrayFieldV2`
+##### Array
 
 Type: `array`
 
@@ -63,23 +80,26 @@ Attributes (beyond base):
 - `time_series: bool = False`: Marks fields where the READARRAY invocation may be replaced by a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Distinct from the scalar case: references `utl-tas`, not `utl-ts`. Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
 - `repeat: str | None = None`: Names the field (within the same component) whose runtime length determines how many times this field is read sequentially within a single block occurrence, with each reading appended to an accumulated sequence. Non-null implies repeating. See `repeat` section below.
 
-##### `RecordFieldV2`
+##### Record
 
 Type: `record`
 
 Attributes (beyond base):
 - `fields: dict[str, FieldV2]`: named columns, required.
 
-##### `ListFieldV2`
+##### List
 
-Has `item: RecordFieldV2 | UnionFieldV2`: the row type, required.
+Type: `list`
 
 Attributes (beyond base):
-- `key: str | None`: Names the column within the list's record type that serves as the primary key (a unique, 1-based row identifier). A Pydantic `model_validator` asserts the named column exists and has `index=True`. Example: `packagedata` has `key="ifno"`.
+- `item: RecordField | UnionField`: the item type, required.
 
-##### `UnionFieldV2`
+##### Union
 
-Has `arms: dict[str, FieldV2]`: named alternatives, required.
+Type: `union`
+
+Attributes (beyond base):
+- `arms: dict[str, FieldV2]`: named alternatives, required.
 
 #### Field attributes
 
@@ -92,7 +112,7 @@ Some v1 attributes need to remain, some can be dropped.
 | `time_series` | keep for `ScalarFieldV2`, `ArrayFieldV2` | Not inferrable; many `double` fields in the same blocks lack it | |
 | `layered` | drop (derivable) | Exactly correlated with `nlay` in shape for readarray fields; zero corpus exceptions | |
 | `jagged_array` | drop | Not in Fortran IDM; `ja` is a flat 1D array in MF6; raggedness is a codec concern | |
-| `numeric_index` | replace with `ScalarFieldV2.index` + `ListFieldV2.key` | Explicit PK/FK semantics; `model_validator` enforces key consistency | |
+| `numeric_index` | replace with `ScalarFieldV2.pk` / `.fk` / `.fk_ref` | Explicit PK/FK semantics; `model_validator` enforces consistency | See "Primary/foreign keys" |
 | `valid` | keep for string `ScalarFieldV2` | Structural constraint; not inferrable | |
 | `repeating` | replace with `repeat: str | None` | Not inferrable; explicit count reference unifies utl-tas and RCHA/EVTA aux patterns | |
 | `just_data` | drop | Single occurrence (`utl-tas`); structurally inferrable | |
@@ -115,15 +135,11 @@ The MF6 parser converts strings to uppercase by default. The `preserve_case` fla
 
 `numeric_index=true` in v1 marks integer fields that carry 1-based indices and should be presented 0-based to Python tools. Very common: ~100 fields across all model types.
 
-**Decision:** Replace with explicit PK/FK semantics:
+**Decision:** Replace with explicit PK/FK semantics via `ScalarFieldV2.pk`, `ScalarFieldV2.fk`, and `ScalarFieldV2.fk_ref` (see "Scalar" field type and "Primary/foreign keys" sections). Valid on integer and string scalars that are columns in a `ListFieldV2` item record.
 
-1. **`ListFieldV2.key: str | None`** — names the column within a list's record type that serves as the primary key. The named column must have `index=True`. A Pydantic `model_validator` enforces this at schema load time.
+**`utl-obs` `id`/`id2` fields:** Each accepts either a boundary name (string) or a cellid (integer). Both arms of the `UnionFieldV2` are FKs: the string arm is a string FK to a named boundary in a package resolved at runtime via `obstype` (`fk_ref="obstype"`); the integer arm is an integer FK to the parent model's spatial discretization (`fk_ref` as appropriate). No residual `index` attribute is needed.
 
-2. **`ScalarFieldV2.index: bool = False`** — marks an integer scalar as a 1-based index. Set `True` on PK columns (named by `ListFieldV2.key`) and on FK columns referencing PKs in other lists. The codec applies 0-based conversion to all `index=True` fields.
-
-**`utl-obs` `id`/`id2` fields:** These accept either a boundary name (string) or a cellid (integer, 1-based). Model as `UnionFieldV2` with two arms: a `string` arm for boundary names and an `integer` arm with `index=True` for cellid values. No special annotation needed.
-
-**`iper` block labels:** 1-based period numbers but not annotated with `index=True` — they are not data fields in the block body; the block repetition model handles their semantics directly.
+**`iper` block labels:** Period numbers, but not a data field in the block body — the block repetition model handles their semantics directly. No pk/fk annotation.
 
 #### `tagged`
 
@@ -271,7 +287,9 @@ READARRAY blocks and keyword-value blocks look superficially similar (both have 
 
 **Examples:** `period` blocks in sparse stress packages (`gwf-chd`, `gwf-wel`, etc.), `packagedata`, `vertices`, `cell2d`, `exchangedata`, `gncdata`, `models`, `exchanges`, `packages`, `tracktimes`, `solutiongroup`.
 
-v1 DFNs define the period block as containing a single `recarray` field with a `cellid` column. This is a sparse `(cell, value...)` list representation of one or more grid- and time-aligned variables, defined in v1 as recarray columns. Structurally, each column is a distinct variable defined over a spatial subset of the grid with a shape determined by grid type and time dimension. The v2 schema proposes to define period block variables separately, rather than in a combined/tabular form like v1.
+V1 sparse stress period blocks contain a single `recarray` with a `cellid` column followed by per-variable value columns (e.g., `q` for wells). V2 preserves this as a `ListField` whose item record contains `cellid` (a FK to the parent model's spatial discretization) and one or more value columns. `maxbound` is dropped — it is a parser allocation hint with no structural meaning. The list-based representation is correct and natural: it specifies stress on an arbitrary spatial subset of the grid and supports multiple entries per cell (e.g., two wells in the same node). These properties cannot be expressed by a dense grid-aligned array. Array-based period blocks (`gwf-rcha`, `gwf-evta`, `-g` suffix packages) remain `ArrayField` — they are structurally distinct from sparse list blocks, not a transformed version of the same thing.
+
+**Python representation:** Sparse list-based period data is represented as a `pandas.DataFrame` (or `geopandas.GeoDataFrame` where spatial operations are relevant), one row per entry. This is more ergonomic than an xarray `DataArray` for sparse, irregularly distributed features and is consistent with the list structure in the schema.
 
 The period block repeats to support time-varying data: v1 DFNs define period blocks with an index field with `block_variable=true`, typically called `iper`. This block index (perhaps better thought of as an arbitrary but unique label) appears on the `BEGIN PERIOD n` line, not inside the block body:
 
@@ -283,24 +301,21 @@ end period 1
 
 #### Block class
 
-Blocks are first-class objects in the v2 schema. A `Block` Pydantic model hosts structural block attributes:
+Blocks can be first-class objects in v2.
 
 ```python
 class Block(BaseModel):
     name: str
     fields: dict[str, FieldV2]
-    label: str | None = None   # field name appearing on begin/end line, not in body
+    labeled: bool = False
     optional: bool = False
 ```
 
-When `label` is set, the block is a **labeled block**: it can repeat with different label values, and the named field appears on the `begin`/`end` delimiter lines rather than in the block body. The labeled field is excluded from `fields`. This replaces `block_variable=true` in v1.
+If `labeled`, the block may be repeated. Each repetition must have a unique label. The label must follow the `begin`/`end` delimiters. This replaces the `block_variable` attribute used in v1. In v2 the label takes the place of the explicit block variables:
 
-The `just_data` case is handled structurally: a block whose only body field is an unlabeled READARRAY field has no keyword prefix for that field. This is derivable from structure (single field, `tagged=false`, READARRAY reader) and requires no explicit attribute.
-
-**Labeled block examples:**
-- `period` block in stress packages: `label="iper"` — repeats once per stress period, labeled by the period number
-- `time` block in `utl-tas`: `label="time_from_model_start"` — repeats once per time point, labeled by the simulation time
-- `timeseries` / `continuous` blocks in `utl-ts` / `utl-obs`: similarly labeled by name
+- stress package `period.iper`: period number
+- `utl-tas.time.time_from_model_start`: simulation time
+- `utl-obs.continuous.output`: output file record
 
 ## Component-level attributes
 
@@ -318,52 +333,82 @@ Components of which multiple instances are allowed are called "multi-packages", 
 
 In v2, components can have a top-level attribute `multi` or similar.
 
-## Cross-component constraints
+## Cross-cutting constraints
 
-Component definitions are not entirely self-contained. Some component definitions refer to other component definitions. Several kinds of cross-component constraints exist:
+Field and component definitions are not entirely self-contained. Some fields may refer to other fields, in the same component or in another. Likewise, component definitions may refer to other component definitions. Several kinds of cross-cutting constraints exist:
 
-- dimension references
-- row indices, i.e. PK/FKs
-- parent-child relationships
+- array dimensions
+- primary/foreign keys
+- parent-child relations
 - solution compatibility
-- format variants
+- input format variants
 
-### Dimension references
+### Array dimensions
 
 A scalar integer field defined in one component can be referenced by name in the `shape` expression of an array field in the same or another component.
 
 Examples: `nlay`, `nrow`, `ncol`, `nper`, `nodes`, `nja`, `nvert`, `ncpl`, `naux`.
 
-Above we propose adding `dimension: bool = False` to `ScalarFieldV2`. Shape expressions may only reference `dimension=True` fields; a reference to any other field becomes a schema validation error. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`), so instead of trying to infer which integer fields are dimensions from block names, make it explicit. Since `maxbound` is an artificial dimension only relevant for MF6 input file formatting, drop it from v2 structural schema.
+#### V2
 
-### PK/FK relations
+Shape expressions may only reference `dimension=True` fields; a reference to any other field becomes a schema validation error.
 
-Sometimes an integer column in one list identifies a row in another. Within-component cross-block FKs are covered by `ListFieldV2.key` + `ScalarFieldV2.index`. Three patterns appear in the corpus:
+### Primary/foreign keys
 
-**Grid topology integers** (`gwf-disu.connectiondata.ja`, `iac`, and equivalents in `gwe-disu`, `gwt-disu`): cell numbers in the unstructured grid. These reference grid nodes, not a DFN-declared list with a `ListFieldV2.key`. `index=True` applies for 0-based conversion; no FK declaration needed.
+Sometimes a column in one list identifies a row in another — or in a grid cell. This is modelled as a primary key (PK) / foreign key (FK) relation. PK/FK attributes are valid on integer and string scalar fields that are columns in a `ListFieldV2` item record.
 
-**Within-component cross-block FKs** (`gwf-sfr.connectiondata.ic`): references SFR's own reach numbers (`rno`), which is the PK of SFR's `packagedata` list. Covered by `ListFieldV2.key="rno"` + `index=True` on the FK column.
+#### V1
 
-**Cross-component dynamic FK** (`gwf-mvr.period.id1`): references a row in another package's packagedata list — the target package is identified at runtime by the sibling field `pname1` (package name string). The target type is polymorphic: `id1` can be a reach number (SFR), well number (MAW), UZF cell number, or lake outlet number, depending on which package `pname1` resolves to.
+In v1 this is indicated by `numeric_index`. This attribute is overloaded as both primary and foreign key:
 
-To encode this explicitly, add `references_pk_of: str | None` to `ScalarFieldV2`: the field names the sibling string field whose runtime value identifies the target component. The codec resolves the target component from that value and uses its declared `ListFieldV2.key` for validation and 0-based conversion.
+- PK: e.g. `packagedata.lakeno`, `packagedata.rno`, `vertices.iv`, `cell2d.icell2d`
+- FK: e.g. `period.lakeno`/`rno`, `connectiondata.iconn`
+- String usage: `utl-obs.continuous.id1`/`id2` also carry `numeric_index`, even though they are string fields; the relationship is PK/FK-like and should be marked in v2.
 
-Alternatives considered:
-- `fk_targets: list[str]` — enumerate all valid target DFN types explicitly; brittle when new mover-compatible packages are added
-- Capability tag on DFN (`mover_compatible: bool`) + FK references all tagged PKs — flexible but adds DFN-level attribute and complex cross-DFN lookup
-- No encoding — handle MVR entirely in codec; loses schema expressiveness
+The `ja` array in DISU also carries `numeric_index`, but as a flat array whose elements encode grid topology positionally (not a distinct index column into a DFN list), this is unnecessary in v2.
 
-`references_pk_of` seems like the cleanest option, encoding the rule without enumerating targets.
+#### V2
 
-**Key matching between components:** PK lookup for cross-component FKs is always in the context of a specific resolved target component (via `references_pk_of`), so there are no global naming collisions. Column names need only be unique within their component's list field. No global prefix is required.
+Three attributes on `ScalarFieldV2` encode PK/FK semantics — `pk`, `fk`, and `fk_ref` (described in full under "Scalar" above). A `model_validator` enforces type and structural constraints at schema load time.
 
-**Distinguishing grid topology indices from declared PKs:** an `index=True` field that matches no `ListFieldV2.key` anywhere in the schema is a raw topology/grid index. The absence of a matching declared PK is diagnostic — no explicit annotation is needed.
+#### `fk` path format
+
+`fk` takes one of three forms:
+
+- **Hierarchical path** — `"block.field"` for within-component references, `"component.block.field"` for cross-component references where the target is statically known. Used without `fk_ref`.
+- **`"node"` sentinel** — indicates a grid cell reference. The target is the parent model's spatial discretization, resolved at runtime. Used without `fk_ref`, wherever a field carries a cellid (e.g., `cellid` columns in sparse stress period blocks, the integer arm of `utl-obs.continuous.id`).
+- **Bare block name** (e.g., `"packagedata"`) — used together with `fk_ref`. `fk_ref` resolves the target component at runtime; `fk` names the block within it. The codec then finds the unique `pk=True` field in that block. A bare block name contains no dot and is not `"node"`.
+
+#### `fk_ref` resolution
+
+`fk_ref` names a sibling string field whose runtime value identifies the target component. Two sub-cases:
+
+- **With `fk`** (bare block name): the codec resolves the component from `fk_ref`, then finds the unique `pk=True` field in the block named by `fk`. This is fully explicit and preferred when the target block is known. For all current corpus cases where `fk_ref` is used with a polymorphic integer pk target (SFR, MAW, UZF, LAK via `gwf-mvr`), the block is `packagedata`; `fk="packagedata"` should therefore always be set alongside `fk_ref` for these cases.
+- **Without `fk`**: the target block is also unknown at schema time. The codec must resolve case-by-case. This mode is unavoidable when the target block itself varies by component (e.g., the `utl-obs.continuous.id` string arm, where the target is a boundary name field whose block varies by package type). Document these cases explicitly rather than relying on a generic convention.
+
+#### Examples
+
+| Field | `pk` | `fk` | `fk_ref` | Notes |
+|---|---|---|---|---|
+| `gwf-sfr.packagedata.rno` | `True` | — | — | PK of the reach list |
+| `gwf-sfr.connectiondata.ic` | — | `"packagedata.rno"` | — | within-component |
+| `gwf-sfr.period.rno` | — | `"packagedata.rno"` | — | within-component |
+| `gwf-mvr.packages.pname` | `True` | — | — | string PK of the package list |
+| `gwf-mvr.period.pname1` | — | `"packages.pname"` | — | string FK, within-component |
+| `gwf-mvr.period.id1` | — | `"packagedata"` | `"pname1"` | component resolved from pname1; codec finds unique pk in packagedata |
+| `utl-obs.continuous.id` (string arm) | — | — | `"obstype"` | **Open:** target block varies by package type; codec must handle case-by-case |
+| `utl-obs.continuous.id` (integer arm) | — | `"node"` | — | grid cell reference |
+| `gwf-wel.period.cellid` | — | `"node"` | — | grid cell reference |
 
 ### Parent/child relations
 
+#### V1
+
 In v1 DFNs, parent-child relationships are implicit or encoded in special comment lines. Fixed relationships are implicit in component naming (e.g., `gwf-*` is always a child of a GWF model); subpackage relationships are declared via `# flopy subpackage` / `# flopy parent_name_type` comment pairs.
 
-In v2, all parent relationships are explicit via `Dfn.parent: str | list[str] | None`:
+#### V2
+
+In v2, all parent relationships can be made explicit via `Dfn.parent: str | list[str] | None`:
 
 - `None` — no parent; the component is simulation-level.
 - `"*"` — matches any parent component type.
@@ -385,6 +430,8 @@ In v2, all parent relationships are explicit via `Dfn.parent: str | list[str] | 
 
 ### Solution compatibility
 
+#### V1
+
 Solver components are called "solution packages", and currently indicated by a comment at the top of the DFN, e.g.:
 
 ```
@@ -393,11 +440,21 @@ Solver components are called "solution packages", and currently indicated by a c
 
 The right-most two tokens are respectively the solution package abbreviation, and the model types the package may be used to solve. In v1 both IMS and EMS currently use "*", meaning the v1 spec does not reflect existing constraints about which solutions may be used with which models.
 
+#### V2
+
 In v2 a top-level component attribute should reflect constraints: that numerical models must be solved by IMS and explicit models by EMS. We can either explicitly list the model types that each solver package can solve, or we can derive this by annotating models and solver packages as numerical or explicit, and matching them to each other.
 
 ### Format variants
 
+#### V1
+
+In v1, variants can be identified by naming convention (suffix "a" or "g").
+
+#### V2
+
 In v2, a component-level attribute like `Dfn.variant_of: str | None` can identify format-variant pairs (e.g. `gwf-welg` is a variant of `gwf-wel`). This does require choosing which variant is the "canonical" component.
+
+The list vs. array distinction at the period block level is part of what structurally defines a variant — `gwf-wel` and `gwf-welg` are not different serializations of the same structure; they have different field types (`ListField` vs. `ArrayField`) and different structural semantics (sparse per-cell entries vs. full-grid arrays). V2 preserves both representations as-is; unification is deferred to a future schema version.
 
 ## Related GitHub discussions
 
