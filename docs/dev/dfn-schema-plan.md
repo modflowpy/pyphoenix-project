@@ -6,13 +6,13 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
 
 The MODFLOW 6 definition (DFN) file format is a simple text format used to specify the logical structure of MODFLOW 6 input components. This includes shape, relationships, and various other characteristics. Taken together, a full set of DFNs carry several types of information: which components exist, what fields they have, component- and field-level attributes, and how components may be connected to one another. DFNs also inevitably reflect representational choices.
 
-Thus, DFN files specify the valid structure of a simulation and the expected contents of input files. Input files specify (i.e. can instantiate) a simulation. DFNs are therefore one level "above" input files: they specify simulation invariants. Input files describe a particular simulation instance in the context of the rules established by the DFNs. Put differently: input files specify simulations, DFNs specify how to specify simulations.
+DFNs are therefore one level "above" input files: DFNs specify the abstract structure of a simulation and the expected contents of input files. Put differently, DFNs specify how to specify a simulation. Input files specify a simulation.
+
+DFNs must be interpreted in the context of the [natural language specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) describing them, as well as the MF6IO documentation, which describes MF6 input parsing routines. While DFNs are versioned in sync with MF6, the DFN schema itself is informal and unversioned.
+
+Though the existing DFN spec is unversioned, this document will refer to it as **v1** for convenience. This schema is implicit in the DFN files' contents understood with reference to the MF6IO guide. This document describes a plan to formalize and version the DFN specification, ultimately producing formally versioned **v2+** DFN schemata.
 
 ## Background
-
-There is currently no formal DFN schema. DFN files must be interpreted in the context of a) the [natural language spec](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) describing them and b) the MF6IO documentation, which characterizes MF6 input parsing rules. Thus, while definitions are versioned (along with MF6), the definition schema itself is currently informal and unversioned.
-
-Though the existing DFN spec is unversioned, this document will refer to it as **v1** for convenience: **v1** is the existing schema, whose structure is implicit in the DFN files' contents understood with reference to the MF6IO guide. This document describes a plan to formalize and version the DFN specification, ultimately producing **v2+** DFN schemata.
 
 DFNs don't map 1-1 to hydrologic processes. A DFN describes a single way of representing a process; not necessarily the only way. The purpose of representational variants is to allow the user to trade performance and convenience as appropriate for the case at hand. For example, a model with just a few wells is most easily defined with the standard WEL package, while a model with wells covering most of the grid may be easier to express in terms of grid-shaped arrays with WELG.
 
