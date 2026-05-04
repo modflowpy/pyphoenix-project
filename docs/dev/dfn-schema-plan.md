@@ -1,205 +1,219 @@
-# DFN schema formalization plan
+# DFN schema plan
 
-This document captures the current state of the DFN specification and outlines a plan to formalize it.
+This document outlines a plan to formalize and iterate the MF6 DFN specification.
+
+## Overview
+
+The MODFLOW 6 definition (DFN) file format is a simple text format used to specify the logical structure of MODFLOW 6 input components. This includes shape, relationships, and various other characteristics. Taken together, a full set of DFNs carry several types of information: which components exist, what fields they have, component- and field-level attributes, and how components may be connected to one another. DFNs also inevitably reflect representational choices.
+
+Thus, DFN files specify the valid structure of a simulation and the expected contents of input files. Input files specify (i.e. can instantiate) a simulation. DFNs are therefore one level "above" input files: they specify simulation invariants. Input files describe a particular simulation instance in the context of the rules established by the DFNs. Put differently: input files specify simulations, DFNs specify how to specify simulations.
 
 ## Background
 
-The MODFLOW 6 definition file ("DFN") format is a simple text format described in [natural language](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html). The schema is implicit in this description and in the content of the existing DFN files, which must be read in the context of the MF6IO documentation (and vice versa).
+There is currently no formal DFN schema. DFN files must be interpreted in the context of a) the [natural language spec](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) describing them and b) the MF6IO documentation, which characterizes MF6 input parsing rules. Thus, while definitions are versioned (along with MF6), the definition schema itself is currently informal and unversioned.
 
-**v1** is the existing schema. Its content is faithfully parsed from DFN files, with no alterations. Currently v1 is consumed by tooling in the MF6 repository.
+Though the existing DFN spec is unversioned, this document will refer to it as **v1** for convenience: **v1** is the existing schema, whose structure is implicit in the DFN files' contents understood with reference to the MF6IO guide. This document describes a plan to formalize and version the DFN specification, ultimately producing **v2+** DFN schemata.
 
-**v1.1** is a slightly normalized version generated from v1 DFN files by `modflow_devtools.dfn`. It parses bools, resolves `common.dfn` substitutions, drops some attributes, and does some structural transforms. Flopy 3.x codegen consumes v1.1, serializing to/from TOML. v1.1 only exists due to poor planning (WPB) and will be retired with devtools v2. Flopy 3.x should be altered to consume v1 or v2 directly.
+DFNs don't map 1-1 to hydrologic processes. A DFN describes a single way of representing a process; not necessarily the only way. The purpose of representational variants is to allow the user to trade performance and convenience as appropriate for the case at hand. For example, a model with just a few wells is most easily defined with the standard WEL package, while a model with wells covering most of the grid may be easier to express in terms of grid-shaped arrays with WELG.
 
-**v2+** is the target. A more substantially transformed schema version has evolved as flopy 4.x development proceeds, facilitated by `modflow_devtools.dfns` (plural; distinct from the old `dfn` module). This document makes the v2 schema explicit and formalizes it. The newly formalized, versioned schema can be published with devtools 2.x, then become the foundation of flopy 4.x. MF6 tooling will later begin to consume v2 schema too.
+For small data, representation is less critical. This is the case for the DFN schema itself; because it is relatively small and presents no difficulty to read or write, by machine or by hand, it has no need for compressed arrays or representational variants. Given sufficiently expressive serialization formats and small enough data, the format can be chosen independently of the data to be encoded: DFNs could be written to TOML, YAML, or JSON.
 
-## Principles
+But representation matters for MF6 input data, which may be large. As such, the logical structure of a simulation cannot be completely agnostic to input file format or to the internal implementation. Representational choices must be made in both regards (how to store data on disk and in memory). These choices are reflected in component definitions.
 
-**Schema versioning.** Allows adding/removing from the schema in a disciplined way.
+For example, the purpose of `maxbound` is to tell MF6 how many array slots to allocate before loading proceeds. Insofar as one can imagine `maxbound` being unnecessary with a dense internal/external representation, or if MF6 counted lines before allocating arrays, `maxbound` could be considered a secondary, contingent piece of information, unlike the described boundary condition itself, whose hydrologic meaning is primary and constant whether stored sparsely as a list of records or densely as grid-aligned arrays.
 
-**Schema validation.** Allows checking if a given component specification conforms.
+But given that each component reflects a conscious choice about convenience/performance with corresponding tradeoffs, information like `maxbound`, necessary to some particular representional scheme, can be considered primary or fundamental to the structure of the component. Moreover, while all input component variants currently load to a consistent sparse internal representation, other internal representations have been considered. If runtime (not just load-time) performance becomes conditional on selection of components the line between primary/structural and secondary/format-specific information will blur even more.
 
-**Separation of concerns.** A fundamental distinction is between schema and serialization format. The content of DFN files could be written to TOML, YAML, or JSON. That content (the schema) describes the data's shape and characteristics: which components exist, what fields they have, how they are connected. In other words, structural information, defining the valid structure of each simulation component. Choice of data interchange format is a separate issue.
-
-Another distinction is between simulation structure and MF6 input file format. Current DFN files carry both structural information and input file format information. A clear example of a pure format artifact is `maxbound` in v1 sparse stress period blocks: its sole purpose is to tell the MF6 block parser how many array slots to allocate. It carries no structural information and is dropped in v2. Where format information cannot be derived unambiguously from the structural spec, it is expressed as a separate annotation layer specifically scoped to MF6 input format. The core structural schema should be free of pure format artifacts.
-
-Note: the sparse list representation of period block data (rows of `(cellid, value...)`) is **not** a format artifact — it is structurally meaningful. A sparse list covers an arbitrary subset of grid cells and permits multiple entries per cell (e.g., multiple wells at the same node), properties a dense grid-aligned array cannot express. The list vs. array distinction at the period block level is therefore preserved in v2; it is part of what structurally distinguishes component variants such as `gwf-wel` (sparse list) and `gwf-welg` (grid array). See "Format variants".
-
-**1 DFN file per input component.** DFN files do not currently map 1-1 to hydrologic processes. A DFN file describes a single way of representing a process, not necessarily the only one. Where multiple DFN files represent the same process in different formats (e.g. `gwf-wel`/`gwf-welg`, `gwf-rch`/`gwf-rcha`), the relationship should be explicit in the schema. Unification can be deferred to a future schema version.
-
-**Explicit parent-child relationships.** Parent-child relationships are intrinsic to a component's identity and should be explicitly defined. A component's valid parents range from fully constrained (a single named component type, e.g. `gwf-chd` always under `gwf-nam`) to loosely constrained (any component of a given semantic type, e.g. any package) to unconstrained (any parent). Components with looser parent constraints are historically called "subpackages". All relationships are resolved at simulation instantiation time; the schema states the constraint, not the instance.
+Some representations may be more expressive than others. For example, the sparse list representation of period block data permits multiple entries per cell (e.g., multiple wells at the same node), something a dense grid-aligned array cannot express. This is another reason for considering format-specific information fundamental in the context of component definitions.
 
 ## Design
 
+The aim is to provide structure and rigor to the DFN specification without departing too much from the general approach taken in v1. Fundamental concepts like 1 DFN per possible representation of a component, as described above, will not change.
+ 
+Changes will be motivated by one or more of the following design principles:
+
+**Versioning.** Allow modifying the schema in a disciplined way.
+
+**Validation.** Allow checking if a component specification conforms.
+
+**Explicitness.** Make information currently implicit in the DFNs explicit.
+
+**Expressivity.** Make valid data easy to represent, invalid data impossible.
+
+**Consistency.** Consolidate conceptually similar patterns where appropriate.
+
 ### Fields
 
-The existing design attempts to shoehorn all field types into a single field definition. This is error-prone as invalid field definitions can be represented.
+#### Attributes
 
-Refactor `modflow_devtools.dfns.schema.FieldV2` into a Pydantic discriminated union of the concrete field types:
+In v1, fields are described by a single set of attributes, some mandatory, some optional, depending on the field type. Describing all field types with a single field definition is error-prone and requires manual validation, as it is possible to represent invalid state. It can also make it difficult to determine what type a field is: e.g., scalars and arrays are distinguished in v1 by a non-empty `shape` attribute; `type` alone is not sufficient. In v1, `type` may well be understood as "dtype", with scalar fields as special cases of arrays. (The `.array` syntax to retrieve the value of a scalar in FloPy 3.x may evidence such an understanding.)
+
+In v2, define a field instead as a [sum type](https://en.wikipedia.org/wiki/Tagged_union) (discriminated union) of concrete types, each consisting only of the attributes relevant to it. For example, with Pydantic:
 
 ```python
+Scalar = Annotated[
+    Keyword | String | Integer | Double | Path,
+    PydanticField(discriminator="type")
+]
 Field = Annotated[
-    ScalarField | ArrayField | RecordField | ListField | UnionField,
+    Scalar | Array | Record | Union | List,
     PydanticField(discriminator="type")
 ]
 ```
 
-#### V1 → V2 type mapping
+#### Scalars
 
-| v1 type | v2 type | Notes |
-|---|---|---|
-| `double precision` | `double` | Renamed. |
-| `recarray` | `list` | Becomes `ListFieldV2` with typed `item`. |
-| `keystring` | `union` | Becomes `UnionFieldV2` with named `arms`. |
-| `record` | `record` | Becomes `RecordFieldV2` with typed `fields`. |
-| `keyword`, `integer`, `string`, `path` | same | Becomes `ScalarFieldV2`. |
-| `string` + `time_series=true` | `double` | v1 used `string` to bypass numeric validation while accepting TS names; structurally `double` in v2 with `time_series=true` in the format layer. |
-| scalar with non-null `shape` | `array` | Becomes `ArrayFieldV2`. |
+##### Keyword
 
-V1 uses flat `in_record=True` top-level fields to represent structural nesting. V2 replaces this with explicit nesting: record columns go into `RecordFieldV2.fields`, union arms into `UnionFieldV2.arms`, and list item columns into `ListFieldV2.item`. The `in_record` attribute is dropped.
+Type `keyword`. Represents a boolean choice. In input files, the presence of a keyword indicates true, its absence false.
 
-#### Field types
+##### String
 
-##### Scalar
-
-Types: `keyword`, `integer`, `double`, `string`, `path`.
+Type `string`.
 
 Attributes (beyond base):
-- `dimension: bool = False`: Marks a valid target for shape expressions; enables shape validation at schema load time. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`). `maxbound` does NOT get `dimension=True`, it is a formatting concern to be dropped from the structural schema.
-- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
-- `valid: list[str] | None`: Permitted values for `string` fields (enumeration constraint). Not inferrable. Empty `valid` (artifact of v1 `block_variable` fields) is treated as absent.
+- `tagged: bool = False`: Indicates that the field value should be preceded by the field name. Valid only for record subfields.
+- `valid: list[str] | None`: Permitted values (enumeration constraint). Empty list is treated as absent.
+- `case_sensitive: bool = False`: Indicates that the string's case must be preserved. The MF6 parser uppercases strings by default. Renamed from v1's `preserve_case`.
 - `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Exactly one column per list item may be marked pk.
 - `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
 - `fk_ref: str | None = None`: For FKs whose target component is only known at runtime. Names a sibling string field whose value identifies the target component. May be set alone (block within target also unknown) or together with `fk` as a bare block name (block known, component not). See "Primary/foreign keys".
 
-##### Array
+##### Integer
 
-Type: `array`
+Type `integer`.
 
 Attributes (beyond base):
+- `tagged: bool = False`: Indicates that the field value should be preceded by the field name. Valid only for record subfields.
+- `valid: list[str] | None`: Permitted values (enumeration constraint). Empty list is treated as absent.
+- `dimension: bool = False`: Marks a valid target for shape expressions; enables shape validation at schema load time. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`). `maxbound` does NOT get `dimension=True`, it is a formatting concern to be dropped from the structural schema.
+- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
+- `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Exactly one column per list item may be marked pk.
+- `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
+- `fk_ref: str | None = None`: For FKs whose target component is only known at runtime. Names a sibling string field whose value identifies the target component. May be set alone (block within target also unknown) or together with `fk` as a bare block name (block known, component not). See "Primary/foreign keys".
+
+##### Double
+
+Attributes (beyond base):
+- `tagged: bool = False`: Indicates that the field value should be preceded by the field name. Valid only for record subfields.
+
+##### Path
+
+Type `path`.
+
+Attributes (beyond base):
+- `mode: Literal["filein", "fileout"]`: Whether the path is to an input or output file.
+
+First-class path type replaces the v1 approach using a record with 3 subfields: keyword name, "filein" or "fileout" keyword, and file path. The `preserve_case` attribute is no longer needed as path fields can be assumed case-sensitive.
+
+#### Composites
+
+Three kinds of composite type are relevant to MF6: [product](https://en.wikipedia.org/wiki/Product_type) (record), [sum](https://en.wikipedia.org/wiki/Tagged_union) (union), and collection (array, list).
+
+In v1, each component definition is a flat list of field specifications. The structure of composite fields is inferred from the field `type` (`recarray`, `record` or `keystring`),other attributes (e.g. `in_record`), and the order in which field definitions appear.
+
+In v2, define composite fields as explicitly nested, so that the composite structure is reflected in the schema. Product and sum types have multiple nested subfields. Lists have a single nested subfield. Arrays have no nested subfields; see below.
+
+##### Array
+
+Type `array`.
+
+Arrays are not proper composites in v1 or v2. An array does not have an item subfield as does a list. Instead, it has a `dtype` attribute identifying its scalar element type. An array may not contain composites; `dtype` must be a scalar type.
+
+Attributes (beyond base):
+- `dtype: str`: The array's data type. Must be one of the scalar types.
 - `shape: list[str]`: The array's shape, defined by reference to dimension scalars.
 - `time_series: bool = False`: Marks fields where the READARRAY invocation may be replaced by a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Distinct from the scalar case: references `utl-tas`, not `utl-ts`. Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
-- `repeat: str | None = None`: Names the field (within the same component) whose runtime length determines how many times this field is read sequentially within a single block occurrence, with each reading appended to an accumulated sequence. Non-null implies repeating. See `repeat` section below.
+- `repeat: str | None = None`: Names the field (within the same component) whose runtime length determines how many times this field is read sequentially within an array block, with each reading appended to an accumulated sequence. See `repeat` section below.
 
 ##### Record
 
-Type: `record`
+Type `record`. Product type. In MF6 input files, records appear on a single line. Record subfields may or may not be `tagged`. While blocks can be considered product types also, in the DFN specification only records are considered fields; blocks are considered named collections of related fields.
 
 Attributes (beyond base):
-- `fields: dict[str, FieldV2]`: named columns, required.
-
-##### List
-
-Type: `list`
-
-Attributes (beyond base):
-- `item: RecordField | UnionField`: the item type, required.
+- `fields: dict[str, Scalar]`: subfields, required.
 
 ##### Union
 
-Type: `union`
+Type `union`, renamed from v1's `keystring`. Sum type.
 
 Attributes (beyond base):
-- `arms: dict[str, FieldV2]`: named alternatives, required.
+- `arms: dict[str, Scalar | Record | Union]`: subfields, required.
+
+##### List
+
+Type `list`, renamed from v1's `recarray`. Collection type. Unlimited but for one rule: a list may not contain another list.
+
+Attributes (beyond base):
+- `item: Record | Union`: subfield (item type), required.
 
 #### Field attributes
 
-Some v1 attributes need to remain, some can be dropped.
+Some v1 attributes are preserved as-is. Some are renamed with semantics preserved. Others may have the same name with modified semantics, or a new name and modified semantics.
 
-| v1 attribute | v2 fate | Reason | Notes |
+| v1 attribute | v2 fate | notes |
 |---|---|---|---|
-| `tagged` | keep | Can't reliably infer | |
-| `preserve_case` | undecided | Needed for non-path case-sensitive strings (e.g. `crs`); may survive in v2 | |
-| `time_series` | keep for `ScalarFieldV2`, `ArrayFieldV2` | Not inferrable; many `double` fields in the same blocks lack it | |
-| `layered` | drop (derivable) | Exactly correlated with `nlay` in shape for readarray fields; zero corpus exceptions | |
-| `jagged_array` | drop | Not in Fortran IDM; `ja` is a flat 1D array in MF6; raggedness is a codec concern | |
-| `numeric_index` | replace with `ScalarFieldV2.pk` / `.fk` / `.fk_ref` | Explicit PK/FK semantics; `model_validator` enforces consistency | See "Primary/foreign keys" |
-| `valid` | keep for string `ScalarFieldV2` | Structural constraint; not inferrable | |
-| `repeating` | replace with `repeat: str | None` | Not inferrable; explicit count reference unifies utl-tas and RCHA/EVTA aux patterns | |
-| `just_data` | drop | Single occurrence (`utl-tas`); structurally inferrable | |
-| `block_variable` | drop | Replace with first-class block repetition at block/component level | |
-| `block` | drop | Field position in block hierarchy makes inline attribute redundant; codec concern | |
-| `netcdf` | keep until MF6 IDM support | not in Fortran IDM, not a structural property; required until netcdf is fully supported in MF6 IDM | drop when IDM support is complete |
-| `reader` | **drop** | Infer from block type | |
-
-#### `preserve_case`
-
-The MF6 parser converts strings to uppercase by default. The `preserve_case` flag in v1 indicates that a string field should not be uppercased. The main use case is file paths, which will have a distinct field type in, but there are other case-sensitive strings (e.g. CRS), so we may still need the attribute in v2.
-
-#### `jagged_array`
-
-`jagged_array: str` marks READARRAY fields whose row lengths vary and are determined by a named counter array (`iac`). Appears only in DISU `connectiondata` blocks (15 occurrences across `gwf-disu`, `gwe-disu`, `gwt-disu`).
-
-**Decision:** Drop from the structural schema. The Fortran IDM (`InputParamDefinitionType` in `InputDefinition.f90`) has no `jagged_array` field. In the MF6 Fortran parser, `ja` is read as a plain flat 1D integer array of shape `NJA` — no ragedness is expressed at the parser level. The jagged presentation is a Python data-presentation transform belonging in the codec layer, not the schema. The `connectiondata` arrays remain `ArrayFieldV2` with shape `NJA`.
-
-#### `numeric_index`
-
-`numeric_index=true` in v1 marks integer fields that carry 1-based indices and should be presented 0-based to Python tools. Very common: ~100 fields across all model types.
-
-**Decision:** Replace with explicit PK/FK semantics via `ScalarFieldV2.pk`, `ScalarFieldV2.fk`, and `ScalarFieldV2.fk_ref` (see "Scalar" field type and "Primary/foreign keys" sections). Valid on integer and string scalars that are columns in a `ListFieldV2` item record.
-
-**`utl-obs` `id`/`id2` fields:** Each accepts either a boundary name (string) or a cellid (integer). Both arms of the `UnionFieldV2` are FKs: the string arm is a string FK to a named boundary in a package resolved at runtime via `obstype` (`fk_ref="obstype"`); the integer arm is an integer FK to the parent model's spatial discretization (`fk_ref` as appropriate). No residual `index` attribute is needed.
-
-**`iper` block labels:** Period numbers, but not a data field in the block body — the block repetition model handles their semantics directly. No pk/fk annotation.
+| `reader` | Drop | Infer from field type and attributes. |
+| `tagged` | Keep | Some records may have a mix of tagged and untagged subfields. And arrays may not be tagged if the array's identity is clear from the block name, as for UTL-TAS tas_array. |
+| `preserve_case` | Rename `case_sensitive` | No longer needed for path strings, still necessary for some others (e.g. `crs`). |
+| `time_series` | Keep | Overloaded; different semantics for scalars and arrays. |
+| `layered` | Drop | Perfectly correlated with `nlay` in shape. |
+| `jagged_array` | Drop | Raggedness is cosmetic, simply parse as 1D. Only used for DISU `ja`. |
+| `numeric_index` | Drop | Replace with explicit PK/FK semantics, see section below. |
+| `valid` | Keep | Applicable only to strings and integers. |
+| `repeating` | Rename/retype to `repeat: str | None` | Unifies UTL-TAS and GWF-RCHA/EVTA aux patterns, see section below. |
+| `just_data` | Drop | Only used in UTL-TAS; use `tagged` instead. |
+| `block_variable` | Drop | Replace with first-class block repetition semantics, see section below. |
+| `block` | Drop | Field membership in block hierarchy makes inline attribute redundant. |
+| `netcdf` | Keep (for now) | Required so long as NetCDF is opt-in for individual fields. Not necessary if all fields are to be read from NetCDF files, or if field-level inclusion in NetCDF files can be determined by some rule (e.g. data but not configuration fields). |
+| `reader` | Drop | Can be inferred from block type, see section below. |
 
 #### `tagged`
 
-The `tagged` attribute currently indicates whether a field, usually a record subfield, must be preceded by its keyword name. This cannot be dropped yet as it cannot consistently be derived from structural position and field type.
+The v1 `tagged` attribute indicates whether a field, usually but not necessarily a record subfield, must be preceded by its name. This attribute remains in v2 and becomes optional.
 
-Two cases can be reliably derived:
+By default, `tagged=True`. Tagging is only optional for fields whose identity can be unambiguously determined from their value or their position in a line or block. Some fields must always be `tagged`:
 
-1. **`keyword` anywhere:** always tagged — the keyword IS its own token; it appears with no associated value.
-2. **top-level field in a keyword-value block:** tagged — its name precedes its value in the input file.
+1. Keyword fields. Only the presence/absence of the keyword can signal the field's value.
+2. Top-level fields in a dictionary block.
 
-Fields inside records, however, are inconsistent and cannot be reliably derived. For example, GWF-OC's `formatrecord`. Also, `tagged` does not always appear where it should, e.g. GWF-NPF's `rewet_record`.
+Setting `tagged=False` for either of these cases is a validation error.
+
+Some records mix tagged and untagged subfields. For example, GWF-OC's `formatrecord`.
+
+#### `preserve_case`
+
+The MF6 parser converts strings to uppercase by default. The `preserve_case` flag in v1 indicates that a string field should not be uppercased. The main use case is file paths, but there are other case-sensitive strings (e.g. CRS). Rename to `case_sensitive` in v2, and apply only to non-path fields, since case-sensitivity can be assumed for paths.
+
+#### `jagged_array`
+
+The `jagged_array: str` attribute in v1 marks an array field which can be spread across multiple lines, with varying numbers of elements per line; the number determined by the named array (`iac`). Used only for DISU `connectiondata`.
+
+This exists for the benefit of FloPy 3.x only. Drop in v2. The MF6 input file parser has no concept of raggedness; `ja` is read as a flat 1D array of shape `NJA`.
+
+#### `numeric_index`
+
+In v1 `numeric_index` marks fields that index an element of some collection. In general, the index is into a list defined in the same package. But there are more exotic cases; for example, `iper` block indices representing period numbers, or UTL-OBS `id`/`id2` fields accepting either a boundary name or a cellid, and for which the target collection may be 1) a list defined in another package or 2) the grid's node list, which is implicit in the discretization, not an explicit field.
+
+Replace `numeric_index` in v2 with explicit PK/FK semantics (see section below). Valid only on integer and string subfields of a record which is itself a list's item type.
 
 #### `time_series`
 
-`time_series=true` in v1 marks fields where the parser accepts either a numeric literal or a time-varying external reference. Not inferrable from structural type. The attribute is used in two structurally distinct cases that are semantically analogous but mechanistically different:
+In v1 `time_series` marks fields which may be configured as a scalar- or array-valued timeseries.
 
-**Scalar case (urword fields):** The field accepts either a numeric literal or a TS name referencing a `utl-ts` time series object. At any model time, the TS provides a single interpolated scalar value. The MF6 Fortran parser reads all tokens via `urword` as raw strings. For `double precision` fields, it immediately converts the string to a real number — passing a TS name string would be a fatal error. The v1 workaround was to declare these fields as `string` type, bypassing the numeric conversion; higher-level code then checks whether the string is a TS name or parseable as a number. These 55 fields are structurally `double` and are retyped as such in v2, with `time_series=True` retained to signal to the codec that TS names are also valid.
+Applied to a string (`reader urword`) field, indicates that it accepts either a real numeric value or a TS name referencing a `utl-ts` time series object.
 
-**Array case (readarray fields):** The field accepts either inline READARRAY data (a numeric array provided in the input file using READARRAY syntax: `CONSTANT`, `INTERNAL`, binary file reference, etc.) or a TAS name referencing a `utl-tas` time-array series object. At any model time, the TAS provides an interpolated grid-shaped array. Six fields in the corpus take this form: `gwf-rcha.recharge`, `gwf-rcha.aux`, `gwf-evta.rate`, `gwf-evta.aux`, `utl-spca.concentration`, `utl-spca.temperature`.
-
-The two cases reference fundamentally different objects: TS (`utl-ts`) is a scalar-valued time function; TAS (`utl-tas`) is an array-valued time function.
-
-**Schema constraint:** `ArrayFieldV2.time_series=True` requires `nlay` in shape, since utl-tas currently only supports layered arrays. A Pydantic `model_validator` enforces this at schema load time. The constraint may be relaxed in a future MF6 version if TAS support is extended to non-layered arrays. The attribute name `time_series` is kept for both in v2 because the name is established, and the two cases apply to disjoint field types (`ScalarFieldV2` vs `ArrayFieldV2`), so no ambiguity arises. The distinction is documented here rather than in the attribute name.
-
-Corpus distribution:
-
-| v1 type | block | reader | in_record | count |
-|---|---|---|---|---|
-| `double precision` | `period` | `urword` | true | 96 |
-| `string` | `period` | `urword` | true | 55 |
-| `double precision` | `packagedata` | `urword` | true | 13 |
-| `double precision` | `period` | `readarray` | — | 6 |
-| `double precision` | `outlets` | `urword` | true | 4 |
-| `string` | `packagedata` | `urword` | true | 1 |
-
-**In v2:** `time_series: bool` on `ScalarFieldV2` (double; references `utl-ts`) and `ArrayFieldV2` (double; references `utl-tas`).
+Applied to an array (`reader readarray`) field, indicates that it accepts either inline array data using READARRAY syntax, or a TAS name referencing a time-array series object. At any model time, the TAS provides an interpolated grid-shaped array.
 
 #### `layered`
 
-`layered=true` marks READARRAY array fields that are read as separate per-layer READARRAY invocations (one per layer) rather than a single call. The MF6 READARRAY routine uses the `LAYERED` keyword to signal this mode.
+In v1 `layered` marks array fields that must be read as separate layer arrays: distinct READARRAY sections for each layer, rather than one with one greater dimension. Required because the READARRAY routine works on arrays of at most 2 dimensions.
 
-Example from `gwf-dis`:
-
-| field | shape | layered |
-|---|---|---|
-| `top` | `(ncol, nrow)` | — |
-| `botm` | `(ncol, nrow, nlay)` | `true` |
-| `idomain` | `(ncol, nrow, nlay)` | `true` |
-| `delr` | `(ncol)` | — |
-| `delc` | `(nrow)` | — |
-
-**Decision:** Drop from v2 — fully derivable from shape. A corpus-wide search confirms that every readarray field whose shape contains `nlay` has `layered=true`, and no readarray field with `nlay` in shape is non-layered (zero exceptions). The rule is logically sound: the MF6 READARRAY parser has no path to read a multi-layer array in a single call; the `LAYERED` keyword is mandatory when `nlay` is a dimension. Rule: `ArrayFieldV2` is layered iff `nlay` appears in its shape expression.
+Every array whose shape contains `nlay` also has `layered`, and no array with `nlay` in its shape is non-layered, so `layered` can be dropped in v2 and inferred from dimensions.
 
 #### `valid`
 
-`valid` lists permitted token values for a `string` field (enumeration constraint). Appears on 15 fields in the corpus. Examples: advection scheme (`central`, `upstream`, `tvd`), sorption type (`linear`, `freundlich`, `langmuir`), solution type (`ims6`, `ems6`).
-
-Structural constraint — not inferrable. Empty `valid` (v1 artifact on `block_variable` fields) is treated as absent.
-
-**In v2:** `valid: list[str] | None` on `ScalarFieldV2` (string).
+In v1 `valid` enumerates permissible values for string fields. Retain in v2; also allow applying to integers fields.
 
 #### `repeat`
 
@@ -402,6 +416,8 @@ Three attributes on `ScalarFieldV2` encode PK/FK semantics — `pk`, `fk`, and `
 
 ### Parent/child relations
 
+Parent-child relationships are intrinsic to a component's identity and should be explicitly defined. A component's valid parents range from fully constrained (a single named component type, e.g. `gwf-chd` always under `gwf-nam`) to loosely constrained (any component of a given semantic type, e.g. any package) to unconstrained (any parent). Components with looser parent constraints are historically called "subpackages". All relationships are resolved at simulation instantiation time; the schema states the constraint, not the instance.
+
 #### V1
 
 In v1 DFNs, parent-child relationships are implicit or encoded in special comment lines. Fixed relationships are implicit in component naming (e.g., `gwf-*` is always a child of a GWF model); subpackage relationships are declared via `# flopy subpackage` / `# flopy parent_name_type` comment pairs.
@@ -445,6 +461,8 @@ The right-most two tokens are respectively the solution package abbreviation, an
 In v2 a top-level component attribute should reflect constraints: that numerical models must be solved by IMS and explicit models by EMS. We can either explicitly list the model types that each solver package can solve, or we can derive this by annotating models and solver packages as numerical or explicit, and matching them to each other.
 
 ### Format variants
+
+The list vs. array distinction at the period block level is preserved in v2; it is part of what structurally distinguishes component variants such as `gwf-wel` (sparse list) and `gwf-welg` (grid array).
 
 #### V1
 
