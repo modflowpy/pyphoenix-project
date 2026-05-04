@@ -149,7 +149,7 @@ Some v1 attributes are preserved as-is. Some are renamed with semantics preserve
 
 | v1 attribute | v2 fate | notes |
 |---|---|---|
-| `reader` | Drop | Infer from field type and attributes. |
+| `reader` | Drop | Infer from field/block type and attributes. |
 | `tagged` | Keep | Some records may have a mix of tagged and untagged subfields. And arrays may not be tagged if the array's identity is clear from the block name, as for UTL-TAS tas_array. |
 | `preserve_case` | Rename `case_sensitive` | No longer needed for path strings, still necessary for some others (e.g. `crs`). |
 | `time_series` | Keep | Overloaded; different semantics for scalars and arrays. |
@@ -162,7 +162,6 @@ Some v1 attributes are preserved as-is. Some are renamed with semantics preserve
 | `block_variable` | Drop | Replace with first-class block repetition semantics, see section below. |
 | `block` | Drop | Field membership in block hierarchy makes inline attribute redundant. |
 | `netcdf` | Keep (for now) | Required so long as NetCDF is opt-in for individual fields. Not necessary if all fields are to be read from NetCDF files, or if field-level inclusion in NetCDF files can be determined by some rule (e.g. data but not configuration fields). |
-| `reader` | Drop | Can be inferred from block type, see section below. |
 
 #### `tagged`
 
