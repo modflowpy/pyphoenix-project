@@ -265,49 +265,29 @@ A block's input style is determined by structural composition of its top-level f
 
 Three block types can be identified:
 
-- keyword-value
-- readarray
-- list/table
+- dictionary
+- array
+- list
 
-READARRAY blocks and keyword-value blocks look superficially similar (both have a keyword token preceding a value), but the reader mechanism is entirely different. In keyword-value blocks, each field's value is read by `urword` — a single token on the same line. In READARRAY blocks, the value is read by the READARRAY routine, which consumes one or more subsequent lines, supports `CONSTANT`/`INTERNAL`/binary-file invocations, and handles layered arrays via multiple sequential calls. The codec derives which routine to invoke from the field types in the block — because there are no mixed array/non-array blocks in the corpus, the inference is unambiguous.
+Array and dictionary blocks look superficially similar, but the reader mechanism is different. In dictionary blocks, fields are read by `urword`. Array blocks are read by the READARRAY routine.
 
-##### Keyword-value block
+##### Dictionary block
 
-**Pattern:** All top-level fields are scalar or record type (`keyword`, `integer`, `double`, `string`, `path`, `record`, `union`).
-
-**Input style:** Each field is read by `urword`. Scalar fields are preceded by their keyword name. Record fields are read as tagged keyword + optional subsequent keywords + positional values.
+All top-level fields are tagged scalars or records. Each field is read by `urword`. Scalar fields are preceded by their keyword name. Record fields are read as tagged keyword + optional subsequent keywords + positional values.
 
 **Examples:** `options`, `dimensions`, `linear`, `nonlinear`, `solutiongroup` (after excluding the block-variable field — see below).
 
-##### READARRAY block
+##### Array block
 
-**Pattern:** At least one top-level field is an array type (structural type `array`, i.e. a scalar type with a non-null `shape`).
-
-**Input style:** Each array field is a separate READARRAY invocation. All fields in the block share this style; there are no mixed array/non-array blocks in the corpus.
+At least one top-level field is an array type (structural type `array`, i.e. a scalar type with a non-null `shape`). Each array field is a separate READARRAY invocation. All fields in the block share this style; there are no mixed array/non-array blocks in the corpus.
 
 **Examples:** `griddata`, DISU `connectiondata`, array-based `period` blocks in `gwf-rcha`, `gwf-evta`, and all `-g`/`-a` suffix packages.
 
-**Sub-case — DISU `connectiondata`:** Fields have variable-length rows determined by the `iac` counter array. In v1, this was annotated `jagged_array: str`. In v2, `jagged_array` is dropped — the Fortran parser reads these as flat 1D arrays; the ragged structure is a Python codec concern. Input style for the block remains READARRAY.
+##### List block
 
-##### List/table block
-
-**Pattern:** Exactly one top-level field is a list (recarray) type
-
-**Input style:** Rows are read sequentially by `urword`; each row matches the list's record or union item type.
+Exactly one top-level field is a list (recarray) type. Rows are read sequentially by `urword`; each row matches the list's record or union item type.
 
 **Examples:** `period` blocks in sparse stress packages (`gwf-chd`, `gwf-wel`, etc.), `packagedata`, `vertices`, `cell2d`, `exchangedata`, `gncdata`, `models`, `exchanges`, `packages`, `tracktimes`, `solutiongroup`.
-
-V1 sparse stress period blocks contain a single `recarray` with a `cellid` column followed by per-variable value columns (e.g., `q` for wells). V2 preserves this as a `ListField` whose item record contains `cellid` (a FK to the parent model's spatial discretization) and one or more value columns. `maxbound` is dropped — it is a parser allocation hint with no structural meaning. The list-based representation is correct and natural: it specifies stress on an arbitrary spatial subset of the grid and supports multiple entries per cell (e.g., two wells in the same node). These properties cannot be expressed by a dense grid-aligned array. Array-based period blocks (`gwf-rcha`, `gwf-evta`, `-g` suffix packages) remain `ArrayField` — they are structurally distinct from sparse list blocks, not a transformed version of the same thing.
-
-**Python representation:** Sparse list-based period data is represented as a `pandas.DataFrame` (or `geopandas.GeoDataFrame` where spatial operations are relevant), one row per entry. This is more ergonomic than an xarray `DataArray` for sparse, irregularly distributed features and is consistent with the list structure in the schema.
-
-The period block repeats to support time-varying data: v1 DFNs define period blocks with an index field with `block_variable=true`, typically called `iper`. This block index (perhaps better thought of as an arbitrary but unique label) appears on the `BEGIN PERIOD n` line, not inside the block body:
-
-```
-begin period 1
-   ...
-end period 1
-```
 
 #### Block class
 
