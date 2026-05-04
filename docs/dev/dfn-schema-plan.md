@@ -148,7 +148,7 @@ Attributes (beyond base):
 Some v1 attributes are preserved as-is. Some are renamed with semantics preserved. Others may have the same name with modified semantics, or a new name and modified semantics.
 
 | v1 attribute | v2 fate | notes |
-|---|---|---|---|
+|---|---|---|
 | `reader` | Drop | Infer from field type and attributes. |
 | `tagged` | Keep | Some records may have a mix of tagged and untagged subfields. And arrays may not be tagged if the array's identity is clear from the block name, as for UTL-TAS tas_array. |
 | `preserve_case` | Rename `case_sensitive` | No longer needed for path strings, still necessary for some others (e.g. `crs`). |
