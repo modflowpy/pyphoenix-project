@@ -163,6 +163,10 @@ Some v1 attributes are preserved as-is. Some are renamed with semantics preserve
 | `block` | Drop | Field membership in block hierarchy makes inline attribute redundant. |
 | `netcdf` | Keep (for now) | Required so long as NetCDF is opt-in for individual fields. Not necessary if all fields are to be read from NetCDF files, or if field-level inclusion in NetCDF files can be determined by some rule (e.g. data but not configuration fields). |
 
+#### `reader`
+
+The v1 `reader` indicates which MF6 parsing routine is to be used for the field. This can be inferred in v2 from the field type and other attributes, so `reader` can be dropped.
+
 #### `tagged`
 
 The v1 `tagged` attribute indicates whether a field, usually but not necessarily a record subfield, must be preceded by its name. This attribute remains in v2 and becomes optional.
@@ -208,48 +212,42 @@ Every array whose shape contains `nlay` also has `layered`, and no array with `n
 
 #### `valid`
 
-In v1 `valid` enumerates permissible values for string fields. Retain in v2; also allow applying to integers fields.
+In v1 `valid` enumerates permissible values for string fields. Keep in v2, and allow on integers too.
 
 #### `repeat`
 
-`repeat: str | None` replaces v1's `repeating: bool`. When non-null, it names the field (within the same component, potentially in a different block) whose runtime length determines how many times the annotated field is read sequentially within a single block occurrence. Each reading is appended to an accumulated sequence.
+In v1 `repeating` has been applied in two different ways, only one of which is still in use:
 
-Two patterns in the corpus share this structure — N sequential READARRAY calls per block occurrence, where N is the length of a declared list field:
+- For UTL-TAS `tas_array`, `repeating` indicates that the `time` block may contain multiple array values, up to the number of timeseries names provided in `time_series_name`.
+- Prior to MF6.6.0, PRT-PRP and PRT-OC used `repeating` to signal an "inline" 1D array that is not formatted according to READARRAY requirements, but simply consists of a single line of space-separated elements; could also be considered a variadic tuple. These usages were unique and non-standard, and the relevant fields were removed in MF6.6.0.
 
-- **`utl-tas.tas_array`** (`time` block, READARRAY): read once per named TAS per labeled `time` block. `repeat="time_series_name"`, where `time_series_name` is declared in the `attributes` block with `shape (any1d)`.
-- **`gwf-rcha.aux` / `gwf-evta.aux`** (`period` block, READARRAY): read once per declared auxiliary variable per labeled `period` block. `repeat="auxiliary"`, where `auxiliary` is declared in the `options` block with `shape (naux)`.
+GWF-RCHA/EVTA period block `aux` shares the same semantics as UTL-TAS `tas_array`: multiple READARRAY calls per block, up to the number of elements (`naux`) in the `auxiliary` string array. But `aux` is not annotated with `repeating`; the repetition is implicit.
 
-The RCHA/EVTA `aux` fields carry no `repeating` annotation in v1 — the N-repetition behavior is implicit in the Fortran code, which loops explicitly over `naux`. V2 makes this explicit and consistent with utl-tas.
+In v2, rename `repeating` to `repeat`, and switch from a boolean to a string naming a 1D array field in the same component whose length determines how many times the `repeat`-annotated field is repeated sequentially within a single block. Then apply to both the UTL-TAS and RCHA/EVTA cases. Also make the shape of the array field meaningful, even if it is not an explicitly defined field (e.g., instead of `any1d`, introduce `ntas` or similar, analogous to `naux`).
 
-In both cases `repeat` names the declared list or array field whose length is the count, not a scalar dimension variable (e.g. `naux`). These are the same value; the field reference is used because it identifies a declared schema entity.
-
-Two additional occurrences of `repeating=true` in `prt-oc.dfn` and `prt-prp.dfn` are `removed 6.6.0`.
-
-**Codec mechanism:** the codec reads the referenced field to determine N, then reads the repeating field exactly N times, appending each result. This replaces the v1 "read until end of block" mechanism for `utl-tas` with an explicit pre-declared count.
+Perhaps `repeat` could alternatively accept a scalar dimension field identifying the repetition count. This pattern does not currently appear in the DFN corpus, but could be useful in future.
 
 #### `just_data`
 
-`just_data=true` appears exactly once: `utl-tas.dfn` `tas_array`. It marks a field whose value occupies the entire block body with no keyword prefix — the `begin time X` line serves as the label, and the body is just raw READARRAY data with no field keyword.
+In v1 `just_data` marks a field whose value occupies the entire block body, and signals the absence of a keyword tag. This attribute is used only for UTL-TAS `tas_array`: this indicates that each `begin time X` block header will be followed by READARRAY input with no leading keyword (tag).
 
-**Dropped in v2.** The case is handled structurally by the `Block` class: a labeled block (`label="time_from_model_start"`) whose only body field is an unlabeled READARRAY field. The absence of a keyword prefix is derivable from structure (single body field, `tagged=false`, READARRAY reader) without an explicit attribute.
+This is redundant with `tagged` and unnecessary in v2.
 
 #### `block`
 
-In v1, `Field.block: str` places a field into a named block as an inline attribute. In v2, block membership is expressed structurally — fields are nested inside block objects in the schema hierarchy. In the TOML serialization format, block membership is expressed by table path (e.g. `[gwf-dis.griddata.botm]`), not an inline attribute. **Dropped from field schema in v2.**
+In v1 `block` signals a field's membership in a block. This is necessary as in v1, DFN blocks are delimited by cosmetic comment lines which are ignored by the MF6 parser. In v2, an explicit `block` attribute is unnecessary: membership is expressed structurally, with field nested inside blocks. When serialized to TOML, membership can therefore be expressed as a table path (e.g. `[gwf-dis.griddata.botm]`).
 
 #### `block_variable`
 
-In v2, drop `block_variable` and replace with a first-class block repetition concept at the component/block level.
+In v1 `block_variable` marks fields like `iper` which appear in the block header line rather than within the block body. The purpose of these is to distinguish blocks when a block may be repeated (e.g. period block, TAS time block). Drop in v2; first-class block repetition via block labels suffices instead (see `repeat` section above).
 
 #### `netcdf`
 
-`netcdf` on the v1 `Field` base class marks fields that can appear in NetCDF output. This is an output-format annotation, not a structural property. The Fortran IDM (`InputParamDefinitionType`) has no `netcdf` field.
-
-**Decision:** Keep in v2 until NetCDF is fully supported in the MF6 IDM. Once IDM support is complete and the attribute is no longer needed to bridge the gap, drop it.
+In v1 `netcdf` marks fields that can appear in NetCDF input files. Keep in v2 for now, pending a decision whether fields will continue to opt into NetCDF support or whether fields will be included/excluded based on some rule.
 
 ### Blocks
 
-A block is group of related fields; essentially a product type. Record fields are also product types; the distinction is that records occupy a single line in MF6 input files, while blocks are multiline constructs delimited by headers, e.g.
+A block is group of related fields, essentially a product type. Record fields are also product types. The distinction is that records occupy a single line in MF6 input files, while blocks are multiline constructs delimited by headers, e.g.
 
 ```
 begin <block name>
