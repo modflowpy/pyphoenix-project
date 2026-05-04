@@ -71,8 +71,8 @@ Attributes (beyond base):
 - `tagged: bool = False`: Indicates that the field value should be preceded by the field name. Valid only for record subfields.
 - `valid: list[str] | None`: Permitted values (enumeration constraint). Empty list is treated as absent.
 - `case_sensitive: bool = False`: Indicates that the string's case must be preserved. The MF6 parser uppercases strings by default. Renamed from v1's `preserve_case`.
-- `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Exactly one column per list item may be marked pk.
-- `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
+- `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a list item record. Exactly one column per list item may be marked pk.
+- `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a list item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
 - `fk_ref: str | None = None`: For FKs whose target component is only known at runtime. Names a sibling string field whose value identifies the target component. May be set alone (block within target also unknown) or together with `fk` as a bare block name (block known, component not). See "Primary/foreign keys".
 
 ##### Integer
@@ -83,16 +83,16 @@ Attributes (beyond base):
 - `tagged: bool = False`: Indicates that the field value should be preceded by the field name. Valid only for record subfields.
 - `valid: list[str] | None`: Permitted values (enumeration constraint). Empty list is treated as absent.
 - `dimension: bool = False`: Marks a valid target for shape expressions; enables shape validation at schema load time. Fields in `dimensions` blocks are primary candidates, but some `options` scalars also qualify (e.g. `naux`).
-- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
-- `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Exactly one column per list item may be marked pk.
-- `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a `ListFieldV2` item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
+- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on array fields (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
+- `pk: bool = False`: Marks this scalar as the primary key of its containing list's item record. Valid only on integer or string scalars that are columns in a list item record. Exactly one column per list item may be marked pk.
+- `fk: str | None = None`: Marks this scalar as a foreign key. Valid only on integer or string scalars that are columns in a list item record. Three forms: (1) hierarchical path `"block.field"` or `"component.block.field"` — fully static, used without `fk_ref`; (2) sentinel `"node"` — grid cell reference, used without `fk_ref`; (3) bare block name (e.g., `"packagedata"`) — used together with `fk_ref` to name the block within the runtime-resolved target component, leaving only the pk field to be discovered. See "Primary/foreign keys".
 - `fk_ref: str | None = None`: For FKs whose target component is only known at runtime. Names a sibling string field whose value identifies the target component. May be set alone (block within target also unknown) or together with `fk` as a bare block name (block known, component not). See "Primary/foreign keys".
 
 ##### Double
 
 Attributes (beyond base):
 - `tagged: bool = False`: Indicates that the field value should be preceded by the field name. Valid only for record subfields.
-- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on `ArrayFieldV2` (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
+- `time_series: bool = False`: Marks fields where the parser accepts either a numeric literal or a time-series name (referencing a `utl-ts` object). Not inferrable from structural type. Also appears on array fields (where it references a `utl-tas` object instead). Note that `utl-tas` currently only works with layered arrays, not full-grid arrays, though generalizing has been considered.
 
 ##### Path
 
@@ -280,7 +280,7 @@ Blocks can be first-class objects in v2.
 ```python
 class Block(BaseModel):
     name: str
-    fields: dict[str, FieldV2]
+    fields: dict[str, Field]
     labeled: bool = False
     optional: bool = False
 ```
@@ -332,7 +332,7 @@ In v2, shape expressions may only reference `dimension` fields; a reference to a
 
 ### Primary/foreign keys
 
-Sometimes a column in one list identifies a row in another list, or a grid cell. This can be modelled in v2 as a primary key (PK) / foreign key (FK) relation. PK/FK attributes are valid on integer and string scalar fields that are columns in a `ListFieldV2` item record.
+Sometimes a column in one list identifies a row in another list, or a grid cell. This can be modelled in v2 as a primary key (PK) / foreign key (FK) relation. PK/FK attributes are valid on integer and string scalar fields that are columns in a list item record.
 
 In v1 this was indicated by `numeric_index`. This attribute was overloaded as both primary and foreign key:
 
