@@ -4,9 +4,9 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
 
 ## Overview
 
-The MODFLOW 6 definition (DFN) file format is a simple text format used to specify the logical structure of MODFLOW 6 input components. This includes shape, relationships, and various other characteristics. Taken together, a full set of DFNs carry several types of information: which components exist, what fields they have, component- and field-level attributes, and how components may be connected to one another. DFNs also inevitably reflect representational choices.
+The MODFLOW 6 definition (DFN) file format is a simple text format used to specify the logical structure of MODFLOW 6 input components. This includes shape, relationships, and various other characteristics. Taken together, a full set of DFNs carry several types of information: which components exist, what fields they have, component- and field-level attributes, and how components may be connected to one another. DFNs also inevitably reflect representational choices and may carry format-specific information.
 
-DFNs are therefore one level "above" input files: DFNs specify the abstract structure of a simulation and the expected contents of input files. Put differently, DFNs specify how to specify a simulation. Input files specify a simulation.
+DFNs are a level "above" input files: DFNs specify the structure of a simulation and the contents of input files. Put differently, DFNs specify how to specify simulations. Input files specify simulations.
 
 DFNs must be interpreted in the context of the [natural language specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) describing them, as well as the MF6IO documentation, which describes MF6 input parsing routines. While DFNs are versioned in sync with MF6, the DFN schema itself is informal and unversioned.
 
