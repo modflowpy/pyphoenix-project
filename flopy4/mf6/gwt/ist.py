@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
+import attrs
 import numpy as np
 from attrs import Converter
 from numpy.typing import NDArray
@@ -17,6 +18,11 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Ist(Package):
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class Cimprint:
+        _keyword: ClassVar[str] = "cim"
+        print_format: bool = attrs.field(metadata={"tagged": True})
 
     save_flows: bool = field(
         block="options", default=False, longname="save calculated flows to budget file"
@@ -37,10 +43,7 @@ class Ist(Package):
     cim_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    cim: bool = field(block="options", default=False, longname="cim keyword")
-    print_format: bool = field(
-        block="options", default=False, longname="keyword to indicate that a print format follows"
-    )
+    cimprintrecord: Optional[Cimprint] = field(block="options", default=None)
     sorbate_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )

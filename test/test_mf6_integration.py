@@ -67,7 +67,7 @@ def test_gwf_chd01(function_tmpdir):
         under_relaxation="none",
         inner_maximum=300,
         inner_dvclose=1.00000000e-06,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1.00000000e-06),
+        rcloserecord=Ims.Rclose(inner_rclose=1.00000000e-06),
         linear_acceleration="cg",
         relaxation_factor=1.0,
         scaling_method="none",
@@ -255,7 +255,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         under_relaxation="dbd",
         inner_maximum=300,
         inner_dvclose=1.00000000e-09,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1.00000000e-03),
+        rcloserecord=Ims.Rclose(inner_rclose=1.00000000e-03),
         linear_acceleration="bicgstab",
         relaxation_factor=0.97000000,
         scaling_method="none",
@@ -830,7 +830,7 @@ def test_gwf_wel(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -875,7 +875,7 @@ def test_gwf_drn(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -925,7 +925,7 @@ def test_gwf_riv(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -976,7 +976,7 @@ def test_gwf_rch(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1030,7 +1030,7 @@ def test_gwf_rcha(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1083,7 +1083,7 @@ def test_gwf_evt(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1140,7 +1140,7 @@ def test_gwf_evta(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1205,7 +1205,7 @@ def test_gwf_mvr(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1294,7 +1294,7 @@ def test_gwt_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwt = Ims(
@@ -1305,7 +1305,7 @@ def test_gwt_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1376,7 +1376,7 @@ def test_gwe_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwe = Ims(
@@ -1387,7 +1387,7 @@ def test_gwe_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1459,7 +1459,7 @@ def test_gwf_buy(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwt = Ims(
@@ -1470,7 +1470,7 @@ def test_gwf_buy(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1555,7 +1555,7 @@ def test_gwf_vsc(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwe = Ims(
@@ -1566,7 +1566,7 @@ def test_gwf_vsc(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rcloserecord(inner_rclose=1e-6),
+        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1669,7 +1669,7 @@ def test_prt_basic(function_tmpdir):
                 outer_maximum=50,
                 inner_maximum=100,
                 inner_dvclose=1e-6,
-                rcloserecord=Ims.Rcloserecord(inner_rclose=1e-3),
+                rcloserecord=Ims.Rclose(inner_rclose=1e-3),
                 linear_acceleration="cg",
             )
         },

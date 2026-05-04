@@ -432,17 +432,17 @@ def test_ims_compound_records_expanded(all_dfns):
     # rcloserecord: tagged scalar first child, no keyword trigger → inner class with _keyword=""
     assert "rcloserecord" in field_map, "rcloserecord should generate as inner class parent field"
     assert field_map["rcloserecord"].generatable
-    assert field_map["rcloserecord"].type_annotation == "Optional[Rcloserecord]"
-    assert any(r.class_name == "Rcloserecord" for r in spec.inner_classes)
+    assert field_map["rcloserecord"].type_annotation == "Optional[Rclose]"
+    assert any(r.class_name == "Rclose" for r in spec.inner_classes)
 
-    # inner_rclose is now inside Rcloserecord, not a standalone flat field
+    # inner_rclose is now inside Rclose, not a standalone flat field
     assert "inner_rclose" not in field_map, "inner_rclose should not be a standalone field"
 
     # no_ptcrecord has trigger keyword + optional string child → inner class
     assert "no_ptcrecord" in field_map, "no_ptcrecord should generate as inner class parent field"
     assert field_map["no_ptcrecord"].generatable
-    assert field_map["no_ptcrecord"].type_annotation == "Optional[NoPtcrecord]"
-    assert any(r.class_name == "NoPtcrecord" for r in spec.inner_classes)
+    assert field_map["no_ptcrecord"].type_annotation == "Optional[NoPtc]"
+    assert any(r.class_name == "NoPtc" for r in spec.inner_classes)
 
     # no_ptc is the inner class trigger keyword, not a standalone flat field
     assert "no_ptc" not in field_map, "no_ptc should not be a standalone field"
@@ -454,24 +454,31 @@ def test_ims_compound_records_expanded(all_dfns):
 
 
 def test_npf_compound_records_expanded(all_dfns):
-    """gwf-npf: cvoptions/xt3doptions expand to flat bools; rewet_record becomes an inner class."""
+    """gwf-npf: cvoptions/xt3doptions/rewet_record all become inner classes."""
     if "gwf-npf" not in all_dfns:
         pytest.skip("gwf-npf not in DFN set")
     spec = build_component_spec(all_dfns["gwf-npf"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
+    class_names = {r.class_name for r in spec.inner_classes}
 
-    # cvoptions children: variablecv and dewatered are both keywords — fully expanded
-    assert "variablecv" in field_map and field_map["variablecv"].generatable
-    assert "dewatered" in field_map and field_map["dewatered"].generatable
+    # cvoptions (variablecv + dewatered) → inner class, not flat bools
+    assert "cvoptions" in field_map and field_map["cvoptions"].generatable
+    assert field_map["cvoptions"].type_annotation == "Optional[Cvoptions]"
+    assert "Cvoptions" in class_names
+    assert "variablecv" not in field_map
+    assert "dewatered" not in field_map
 
-    # xt3doptions children: xt3d and rhs — fully expanded
-    assert "xt3d" in field_map and field_map["xt3d"].generatable
-    assert "rhs" in field_map and field_map["rhs"].generatable
+    # xt3doptions (xt3d + rhs) → inner class, not flat bools
+    assert "xt3doptions" in field_map and field_map["xt3doptions"].generatable
+    assert field_map["xt3doptions"].type_annotation == "Optional[Xt3doptions]"
+    assert "Xt3doptions" in class_names
+    assert "xt3d" not in field_map
+    assert "rhs" not in field_map
 
     # rewet_record has trigger keyword + required tagged scalar children → inner class
     assert "rewet_record" in field_map and field_map["rewet_record"].generatable
-    assert field_map["rewet_record"].type_annotation == "Optional[RewetRecord]"
-    assert any(r.class_name == "RewetRecord" for r in spec.inner_classes)
+    assert field_map["rewet_record"].type_annotation == "Optional[Rewet]"
+    assert "Rewet" in class_names
 
     # No TODOs in NPF options now
     todo_names = {f.dfn_name for f in spec.fields if not f.generatable}

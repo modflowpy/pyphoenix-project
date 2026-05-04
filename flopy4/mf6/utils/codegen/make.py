@@ -256,7 +256,16 @@ def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
             )
         )
 
-    class_name = "".join(word.capitalize() for word in f.name.split("_"))
+    words = f.name.split("_")
+    # Strip trailing "record" — either as a whole word or as a suffix of the last word
+    # e.g. "rewet_record" → "Rewet", "rcloserecord" → "Rclose", "xt3d" → "Xt3d"
+    if words:
+        last = words[-1].lower()
+        if last == "record":
+            words = words[:-1]
+        elif last.endswith("record"):
+            words[-1] = words[-1][: -len("record")]
+    class_name = "".join(w.capitalize() for w in words if w)
     return InnerClassSpec(class_name=class_name, keyword=keyword, fields=inner_fields)
 
 

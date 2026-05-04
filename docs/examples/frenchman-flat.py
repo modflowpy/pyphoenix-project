@@ -719,7 +719,7 @@ ims = flopy4.mf6.Ims(
     under_relaxation_gamma=0.000000,
     under_relaxation_momentum=0.000000,
     inner_dvclose=0.00001,
-    rcloserecord=flopy4.mf6.Ims.Rcloserecord(inner_rclose=0.1),
+    rcloserecord=flopy4.mf6.Ims.Rclose(inner_rclose=0.1),
     inner_maximum=100,
     linear_acceleration="bicgstab",
     number_orthogonalizations=0,

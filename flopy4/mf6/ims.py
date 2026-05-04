@@ -16,12 +16,12 @@ class Ims(Solution):
     slntype: ClassVar[str] = "ims"
 
     @attrs.define
-    class NoPtcrecord:
+    class NoPtc:
         _keyword: ClassVar[str] = "no_ptc"
         no_ptc_option: Optional[str] = attrs.field(default=None)
 
     @attrs.define
-    class Rcloserecord:
+    class Rclose:
         _keyword: ClassVar[str] = ""
         inner_rclose: float = attrs.field(metadata={"tagged": True})
         rclose_option: Optional[str] = attrs.field(default=None)
@@ -37,7 +37,7 @@ class Ims(Solution):
     csv_inner_output_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    no_ptcrecord: Optional[NoPtcrecord] = field(block="options", default=None)
+    no_ptcrecord: Optional[NoPtc] = field(block="options", default=None)
     ats_outer_maximum_fraction: Optional[float] = field(
         block="options", default=None, longname="fraction of outer maximum used with ats"
     )
@@ -97,7 +97,7 @@ class Ims(Solution):
     inner_dvclose: float = field(
         block="linear", default=None, longname="dependent-variable change tolerance"
     )
-    rcloserecord: Optional[Rcloserecord] = field(block="linear", default=None)
+    rcloserecord: Optional[Rclose] = field(block="linear", default=None)
     linear_acceleration: str = field(
         block="linear", default=None, longname="linear acceleration method"
     )

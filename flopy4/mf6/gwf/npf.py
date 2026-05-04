@@ -18,11 +18,21 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Npf(Package):
     @attrs.define
-    class RewetRecord:
+    class Cvoptions:
+        _keyword: ClassVar[str] = "variablecv"
+        dewatered: Optional[bool] = attrs.field(default=None)
+
+    @attrs.define
+    class Rewet:
         _keyword: ClassVar[str] = "rewet"
         wetfct: float = attrs.field(metadata={"tagged": True})
         iwetit: int = attrs.field(metadata={"tagged": True})
         ihdwet: int = attrs.field(metadata={"tagged": True})
+
+    @attrs.define
+    class Xt3doptions:
+        _keyword: ClassVar[str] = "xt3d"
+        rhs: Optional[bool] = attrs.field(default=None)
 
     save_flows: bool = field(block="options", default=False, longname="keyword to save npf flows")
     print_flows: bool = field(
@@ -34,18 +44,12 @@ class Npf(Package):
     thickstrt: bool = field(
         block="options", default=False, longname="keyword to activate thickstrt option"
     )
-    variablecv: bool = field(
-        block="options", default=False, longname="keyword to activate variablecv option"
-    )
-    dewatered: bool = field(
-        block="options", default=False, longname="keyword to activate dewatered option"
-    )
+    cvoptions: Optional[Cvoptions] = field(block="options", default=None)
     perched: bool = field(
         block="options", default=False, longname="keyword to activate perched option"
     )
-    rewet_record: Optional[RewetRecord] = field(block="options", default=None)
-    xt3d: bool = field(block="options", default=False, longname="keyword to activate xt3d")
-    rhs: bool = field(block="options", default=False, longname="keyword to xt3d on right hand side")
+    rewet_record: Optional[Rewet] = field(block="options", default=None)
+    xt3doptions: Optional[Xt3doptions] = field(block="options", default=None)
     highest_cell_saturation: bool = field(
         block="options",
         default=False,

@@ -296,21 +296,29 @@ _RECORD_CLASS_SCALAR_TYPES = frozenset({"integer", "double precision", "double",
 def can_generate_record_class(f: Field) -> bool:
     """True when a compound record should be rendered as an inner attrs class.
 
-    Targets records with at least one scalar (non-keyword) child where every
-    child has a supported scalar or keyword type.  The first child may be a
-    trigger keyword (e.g. REWET) or a tagged scalar (e.g. INNER_RCLOSE) —
-    records without a leading keyword token use ``_keyword = ""``.  Records
-    with union/recarray/complex children fall back to TODO comments.
-    All-keyword compound records (e.g. variablecv/dewatered, xt3d/rhs)
-    continue to use flat-field expansion via :func:`can_expand_record`.
+    All non-file records whose children are entirely scalars and/or keywords
+    become inner attrs classes.  The first keyword child (if any) is the
+    trigger token (``_keyword``); remaining keyword children become
+    ``Optional[bool]`` fields so related options stay grouped.
+
+    All-keyword records with only one child (a lone flag keyword) are left to
+    :func:`can_expand_record` — a bare bool field is cleaner there than an
+    empty inner class.  Records with unsupported child types (recarray, union,
+    complex shapes) fall back to TODO comments.
     """
     if is_file_record(f) or not f.children:
         return False
     children = list(f.children.values())
     _supported = _RECORD_CLASS_SCALAR_TYPES | {"keyword"}
-    has_scalar = any(c.get("type") in _RECORD_CLASS_SCALAR_TYPES for c in children)
     all_supported = all(c.get("type") in _supported for c in children)
-    return has_scalar and all_supported
+    if not all_supported:
+        return False
+    has_scalar = any(c.get("type") in _RECORD_CLASS_SCALAR_TYPES for c in children)
+    # All-keyword records need at least 2 children (trigger + modifier) to
+    # justify a class; a single lone keyword expands more cleanly to a bool.
+    if not has_scalar:
+        return len(children) >= 2
+    return True
 
 
 def can_expand_record(f: Field) -> bool:

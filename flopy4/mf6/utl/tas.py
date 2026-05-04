@@ -18,25 +18,25 @@ class Tas(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class TimeSeriesNamerecord:
+    class TimeSeriesName:
         _keyword: ClassVar[str] = "name"
         time_series_name: str = attrs.field()
 
     @attrs.define
-    class InterpolationMethodrecord:
+    class InterpolationMethod:
         _keyword: ClassVar[str] = "method"
         interpolation_method: str = attrs.field()
 
     @attrs.define
-    class Sfacrecord:
+    class Sfac:
         _keyword: ClassVar[str] = "sfac"
         sfacval: float = attrs.field()
 
-    time_series_namerecord: Optional[TimeSeriesNamerecord] = field(block="attributes", default=None)
-    interpolation_methodrecord: Optional[InterpolationMethodrecord] = field(
+    time_series_namerecord: Optional[TimeSeriesName] = field(block="attributes", default=None)
+    interpolation_methodrecord: Optional[InterpolationMethod] = field(
         block="attributes", default=None
     )
-    sfacrecord: Optional[Sfacrecord] = field(block="attributes", default=None)
+    sfacrecord: Optional[Sfac] = field(block="attributes", default=None)
     tas_array: NDArray[np.float64] = array(
         block="time",
         dims=("unknown",),

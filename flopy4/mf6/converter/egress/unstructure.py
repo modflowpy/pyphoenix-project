@@ -187,7 +187,7 @@ def _unstructure_block_param(
             if child_spec.metadata["block"] == block_name:  # type: ignore
                 return
 
-    # xattree.asdict converts inner-class attrs instances (like Rcloserecord) to
+    # xattree.asdict converts inner-class attrs instances (like Rclose) to
     # plain dicts before this function sees them. Check the raw component attribute
     # first so the attrs match case can fire on the real object.
     raw_value = getattr(value, field_name, None)

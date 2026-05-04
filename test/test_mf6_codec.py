@@ -518,7 +518,7 @@ def test_dumps_npf():
 
     dis = Dis(nlay=2, nrow=5, ncol=5)
     gwf = Gwf(dis=dis)
-    npf = Npf(parent=gwf, variablecv=True, dewatered=True, k=1.0)
+    npf = Npf(parent=gwf, cvoptions=Npf.Cvoptions(dewatered=True), k=1.0)
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(npf))
     print("NPF dump:")
@@ -703,15 +703,15 @@ def test_clean_last_chunk():
 def test_dumps_tas_inner_classes():
     """utl-tas: multi=True package with 3 inner record classes unstructures correctly.
 
-    TimeSeriesNamerecord, InterpolationMethodrecord, and Sfacrecord each have a
-    _keyword token that must appear before the scalar value in the ATTRIBUTES block.
+    TimeSeriesName, InterpolationMethod, and Sfac each have a _keyword token that
+    must appear before the scalar value in the ATTRIBUTES block.
     """
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_namerecord=Tas.TimeSeriesNamerecord(time_series_name="my_ts"),
-        interpolation_methodrecord=Tas.InterpolationMethodrecord(interpolation_method="linear"),
-        sfacrecord=Tas.Sfacrecord(sfacval=1.5),
+        time_series_namerecord=Tas.TimeSeriesName(time_series_name="my_ts"),
+        interpolation_methodrecord=Tas.InterpolationMethod(interpolation_method="linear"),
+        sfacrecord=Tas.Sfac(sfacval=1.5),
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
