@@ -18,19 +18,17 @@ DFNs don't map 1-1 to hydrologic processes. A DFN describes a single way of repr
 
 For small data, representation is less critical. This is the case for the DFN schema itself; because it is relatively small and presents no difficulty to read or write, by machine or by hand, it has no need for compressed arrays or representational variants. Given sufficiently expressive serialization formats and small enough data, the format can be chosen independently of the data to be encoded: DFNs could be written to TOML, YAML, or JSON.
 
-But representation matters for MF6 input data, which may be large. As such, the logical structure of a simulation cannot be completely agnostic to input file format or to the internal implementation. Representational choices must be made in both regards (how to store data on disk and in memory). These choices are reflected in component definitions.
+But representation matters for MF6 input data, which may be large. As such, the logical structure of a simulation cannot be completely agnostic to input file format or to internal implementation. Representational choices must be made. These choices are reflected in component definitions.
 
-For example, the purpose of `maxbound` is to tell MF6 how many array slots to allocate before loading proceeds. Insofar as one can imagine `maxbound` being unnecessary with a dense internal/external representation, or if MF6 counted lines before allocating arrays, `maxbound` could be considered a secondary, contingent piece of information, unlike the described boundary condition itself, whose hydrologic meaning is primary and constant whether stored sparsely as a list of records or densely as grid-aligned arrays.
+For example, the purpose of `maxbound` is to tell MF6 how many array slots to allocate before loading proceeds. Insofar as one can imagine `maxbound` being unnecessary with a dense internal/external representation, or if MF6 counted lines before allocating arrays, `maxbound` could be considered a secondary, contingent piece of information, unlike the described boundary condition itself, whose hydrologic meaning is primary and invariant whether stored sparsely as a list of records or densely as grid-aligned arrays.
 
-But given that each component reflects a conscious choice about convenience/performance with corresponding tradeoffs, information like `maxbound`, necessary to some particular representional scheme, can be considered primary or fundamental to the structure of the component. Moreover, while all input component variants currently load to a consistent sparse internal representation, other internal representations have been considered. If runtime (not just load-time) performance becomes conditional on selection of components the line between primary/structural and secondary/format-specific information will blur even more.
+But given that each component reflects a conscious choice about convenience/performance with corresponding tradeoffs, information like `maxbound`, necessary to some particular representional scheme, can be considered primary or fundamental to the structure of the component. Moreover, while all input component variants currently load to a consistent sparse internal representation, other internal representations have been considered. If runtime (not just load-time) performance becomes conditional on selection of components the line between structural and format-specific information will blur even more.
 
-Some representations may be more expressive than others. For example, the sparse list representation of period block data permits multiple entries per cell (e.g., multiple wells at the same node), something a dense grid-aligned array cannot express. This is another reason for considering format-specific information fundamental in the context of component definitions.
+Some representations may be more expressive than others. For example, the sparse list representation of period block data permits multiple entries per cell (e.g., multiple wells at the same node), something a dense grid-aligned array cannot express.
 
 ## Design
 
-The aim is to provide structure and rigor to the DFN specification without departing too much from the general approach taken in v1. Fundamental concepts like 1 DFN per possible representation of a component, as described above, will not change.
- 
-Changes will be motivated by one or more of the following design principles:
+The aim is to provide structure and rigor to the DFN specification without departing too much from the general approach taken in v1. Fundamental concepts like 1 DFN per possible representation of a component, as described above, will stay. Changes will typically be motivated by one or more of the following:
 
 **Versioning.** Allow modifying the schema in a disciplined way.
 
@@ -43,8 +41,6 @@ Changes will be motivated by one or more of the following design principles:
 **Consistency.** Consolidate conceptually similar patterns where appropriate.
 
 ### Fields
-
-#### Attributes
 
 In v1, fields are described by a single set of attributes, some mandatory, some optional, depending on the field type. Describing all field types with a single field definition is error-prone and requires manual validation, as it is possible to represent invalid state. It can also make it difficult to determine what type a field is: e.g., scalars and arrays are distinguished in v1 by a non-empty `shape` attribute; `type` alone is not sufficient. In v1, `type` may well be understood as "dtype", with scalar fields as special cases of arrays. (The `.array` syntax to retrieve the value of a scalar in FloPy 3.x may evidence such an understanding.)
 
