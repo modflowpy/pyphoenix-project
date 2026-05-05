@@ -2,6 +2,63 @@
 
 This document outlines a plan to formalize and iterate the MF6 DFN specification.
 
+## Contents
+
+- [Overview](#overview)
+- [Background](#background)
+- [Design](#design)
+  - [Blocks](#blocks)
+    - [Block flavors](#block-flavors)
+      - [Dictionary block](#dictionary-block)
+      - [List block](#list-block)
+    - [Exceptions](#exceptions)
+    - [Block class](#block-class)
+  - [Fields](#fields)
+    - [Attributes](#attributes)
+      - [`name`](#name)
+      - [`type`](#type)
+      - [`longname`](#longname)
+      - [`description`](#description)
+      - [`optional`](#optional)
+      - [`default`](#default)
+      - [`developmode`](#developmode)
+    - [Scalars](#scalars)
+      - [Keyword](#keyword)
+      - [String](#string)
+      - [Integer](#integer)
+      - [Double](#double)
+      - [Path](#path)
+    - [Composites](#composites)
+      - [Array](#array)
+      - [Record](#record)
+      - [Union](#union)
+      - [List](#list)
+    - [Field attributes](#field-attributes)
+    - [`reader`](#reader)
+    - [`tagged`](#tagged)
+    - [`preserve_case`](#preserve_case)
+    - [`jagged_array`](#jagged_array)
+    - [`numeric_index`](#numeric_index)
+    - [`time_series`](#time_series)
+    - [`layered`](#layered)
+    - [`valid`](#valid)
+    - [`repeat`](#repeat)
+    - [`just_data`](#just_data)
+    - [`block`](#block)
+    - [`block_variable`](#block_variable)
+    - [`netcdf`](#netcdf)
+  - [Components](#components)
+    - [Parent bindings](#parent-bindings)
+    - [Multi-packages](#multi-packages)
+- [Cross-cutting constraints](#cross-cutting-constraints)
+  - [Array dimensions](#array-dimensions)
+  - [Primary/foreign keys](#primaryforeign-keys)
+    - [Examples](#examples)
+  - [Parent/child relations](#parentchild-relations)
+  - [Solution compatibility](#solution-compatibility)
+  - [Format variants](#format-variants)
+- [Related GitHub discussions](#related-github-discussions)
+
 ## Overview
 
 The MODFLOW 6 definition (DFN) file format is a simple text format used to specify the logical structure of MODFLOW 6 input components. This includes shape, relationships, and various other characteristics. Taken together, a full set of DFNs carry several types of information: which components exist, what fields they have, component- and field-level attributes, and how components may be connected to one another. DFNs also inevitably reflect representational choices and may carry format-specific information.
@@ -40,6 +97,51 @@ The aim is to provide structure and rigor to the DFN specification without depar
 
 **Consistency.** Consolidate conceptually similar patterns where appropriate.
 
+### Blocks
+
+A block is group of related fields, essentially a product type. Record fields are also product types. The distinction is that records occupy a single line in MF6 input files, while blocks are multiline constructs delimited by headers, e.g.
+
+```
+begin <block name>
+   field1 value
+   field2 value
+end <block name>
+```
+
+#### Block flavors
+
+Blocks are treated differently depending on the structural composition of their top-level fields. Two block types can be identified: dictionary and list.
+
+There is one exception: SIM-NAM `solutiongroup`, in which a single tagged scalar `mxiter` preceeds a list field. TODO: choose whether to support this pattern. If so, it voids the distinction between dictionary and list blocks. One can imagine a more flexible rule 
+
+##### Dictionary block
+
+A dictionary block consists of one or more top-level scalar, record, or array fields. If the block contains more than one field, all fields must be tagged.
+
+##### List block
+
+A list block consists of exactly one top-level list field. Rows are read sequentially by `urword`; each row matches the list's record or union item type.
+
+#### Exceptions
+
+#### Block class
+
+Blocks can be first-class objects in v2.
+
+```python
+class Block(BaseModel):
+    name: str
+    fields: dict[str, Field]
+    repeats: bool = False
+    optional: bool = False
+```
+
+The `repeats` attribute indicates that the block may be repeated. Each repetition must have a unique label. The label must follow the `begin`/`end` delimiters. This replaces the `block_variable` attribute used in v1. In v2 the label takes the place of the explicit block variables:
+
+- stress package `period.iper`: period number
+- `utl-tas.time.time_from_model_start`: simulation time
+- `utl-obs.continuous.output`: output file record
+
 ### Fields
 
 In v1, fields are described by a single set of attributes, some mandatory, some optional, depending on the field type. Describing all field types with a single field definition is error-prone and requires manual validation, as it is possible to represent invalid state. It can also make it difficult to determine what type a field is: e.g., scalars and arrays are distinguished in v1 by a non-empty `shape` attribute; `type` alone is not sufficient. In v1, `type` may well be understood as "dtype", with scalar fields as special cases of arrays. (The `.array` syntax to retrieve the value of a scalar in FloPy 3.x may evidence such an understanding.)
@@ -56,6 +158,56 @@ Field = Annotated[
     PydanticField(discriminator="type")
 ]
 ```
+
+#### Attributes
+
+There is a core set of base attributes shared by all fields:
+
+- `name`
+- `type`
+- `longname`
+- `description`
+- `optional`
+- `default`
+- `developmode`
+
+##### `name`
+
+The field's name.
+
+##### `type`
+
+The field's type, one of:
+
+- `keyword`
+- `integer`
+- `double`
+- `array`
+- `string`
+- `path`
+- `record`
+- `union`
+- `list`
+
+##### `longname`
+
+A longer, more descriptive name. From the [NetCDF conventions](https://docs.unidata.ucar.edu/nug/current/attribute_conventions.html#long_name). May contain spaces.
+
+##### `description`
+
+A detailed description of the field.
+
+##### `optional`
+
+Indicates that the field is not mandatory and may be omitted. May be applied to blocks and to fields, both composite and scalar.
+
+##### `default`
+
+The field's default value. Only relevant for optional fields. TODO: determine whether to keep. MF6 doesn't read DFN defaults, only flopy does. MF6 implements defaults internally, so care must be taken to keep DFNs in sync, or maybe IDM could read the default from the DFNs.
+
+##### `developmode`
+
+Feature flag indicating that the field is not to be released yet, only to be allowed in develop mode builds.
 
 #### Scalars
 
@@ -128,14 +280,20 @@ Attributes (beyond base):
 Type `record`. Product type. In MF6 input files, records appear on a single line. Record subfields may or may not be `tagged`. While blocks can be considered product types also, in the DFN specification only records are considered fields; blocks are considered named collections of related fields.
 
 Attributes (beyond base):
-- `fields: dict[str, Scalar]`: subfields, required.
+- `fields: dict[str, Scalar | Array | Record | Union]`: subfields, required.
+
+**Note:** if an array appears in a record, it will appear inline, not in the READARRAY format. TODO: info like this should be in a separate format-scoped document.
+
+**Note:** if a nested record appears inside another record, the inner record's contents should appear inline inside the outer record's contents, on the same line.
 
 ##### Union
 
 Type `union`, renamed from v1's `keystring`. Sum type.
 
 Attributes (beyond base):
-- `arms: dict[str, Scalar | Record | Union]`: subfields, required.
+- `arms: dict[str, Scalar | Record]`: subfields, required.
+
+**Note:** 
 
 ##### List
 
@@ -174,8 +332,8 @@ The v1 `tagged` attribute indicates whether a field, usually but not necessarily
 
 By default, `tagged=True`. Tagging is only optional for fields whose identity can be unambiguously determined from their value or their position in a line or block. Some fields must always be `tagged`:
 
-1. Keyword fields. Only the presence/absence of the keyword can signal the field's value.
-2. Top-level fields in a dictionary block.
+1. Fields in a dictionary block.
+2. Keyword fields. Only the presence/absence of the keyword can signal the field's value.
 
 Setting `tagged=False` for either of these cases is a validation error.
 
@@ -246,63 +404,18 @@ In v1 `block_variable` marks fields like `iper` which appear in the block header
 
 In v1 `netcdf` marks fields that can appear in NetCDF input files. Keep in v2 for now, pending a decision whether fields will continue to opt into NetCDF support or whether fields will be included/excluded based on some rule.
 
-### Blocks
-
-A block is group of related fields, essentially a product type. Record fields are also product types. The distinction is that records occupy a single line in MF6 input files, while blocks are multiline constructs delimited by headers, e.g.
-
-```
-begin <block name>
-   field1 value
-   field2 value
-end <block name>
-```
-
-#### Block flavors
-
-Blocks are treated differently depending on the structural composition of their top-level fields. Two block types can be identified: dictionary and list.
-
-##### Dictionary block
-
-A dictionary block consists of one or more top-level scalar, record, or array fields. If the block contains more than one field, all fields must be tagged.
-
-**Examples:** `options`, `dimensions`, `linear`, `nonlinear`, `solutiongroup`, `griddata`, DISU `connectiondata`, array-based `period` blocks in `gwf-rcha`, `gwf-evta`, and all `-g`/`-a` suffix packages.
-
-##### List block
-
-A list block consists of exactly one top-level list field. Rows are read sequentially by `urword`; each row matches the list's record or union item type.
-
-**Examples:** `period` blocks in stress packages (`gwf-chd`, `gwf-wel`, etc.), `packagedata`, `vertices`, `cell2d`, `exchangedata`, `gncdata`, `models`, `exchanges`, `packages`, `tracktimes`, `solutiongroup`.
-
-#### Block class
-
-Blocks can be first-class objects in v2.
-
-```python
-class Block(BaseModel):
-    name: str
-    fields: dict[str, Field]
-    labeled: bool = False
-    optional: bool = False
-```
-
-If `labeled`, the block may be repeated. Each repetition must have a unique label. The label must follow the `begin`/`end` delimiters. This replaces the `block_variable` attribute used in v1. In v2 the label takes the place of the explicit block variables:
-
-- stress package `period.iper`: period number
-- `utl-tas.time.time_from_model_start`: simulation time
-- `utl-obs.continuous.output`: output file record
-
-## Components
+### Components
 
 Each component is specified by a DFN. Component definitions may include component-scoped information:
 
 - the component's (possible) parent(s), if any
 - whether multiple instances of the component are allowed
 
-### Parent bindings
+#### Parent bindings
 
 See the section on parent-child relations below.
 
-### Multi-packages
+#### Multi-packages
 
 Components of which multiple instances are allowed are called "multi-packages", indicated in v1 by a special comment line at the top of the DFN:
 
@@ -326,9 +439,7 @@ Field and component definitions are not entirely self-contained. Some fields may
 
 A scalar integer field defined in one component can be referenced by name in the `shape` expression of an array field in the same or another component.
 
-Examples: `nlay`, `nrow`, `ncol`, `nper`, `nodes`, `nja`, `nvert`, `ncpl`, `naux`.
-
-In v2, shape expressions may only reference `dimension` fields; a reference to any other field becomes a schema validation error.
+In v2, shape expressions may only reference `dimension` fields; a reference to any other field becomes a schema validation error. TODO: how to handle derived fields? Make explicit in the spec? Define expression computing derived fields from explicit fields?
 
 ### Primary/foreign keys
 
@@ -394,6 +505,8 @@ In v2, all parent relationships can be made explicit with a component attribute 
 | _(obs, attached to model or package)_ | `["model", "package"]` |
 | _(subpackage restricted to specific components)_ | `["gwf-sfr", "gwf-maw"]` |
 | _(attached to any parent)_ | `"*"` |
+
+**Note:** the `parent` attribute defines relationships bottom-up, from the child to the parent. In some contexts it is necessary to traverse the specification top-down, however, from parents to children. To support this, the `Dfn` class can provide dynamic properties computing connectivity from the bottom-up specification.
 
 ### Solution compatibility
 
