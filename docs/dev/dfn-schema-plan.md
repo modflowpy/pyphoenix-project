@@ -57,7 +57,6 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
   - [Parent/child relations](#parentchild-relations)
   - [Solution compatibility](#solution-compatibility)
   - [Format variants](#format-variants)
-- [Related GitHub discussions](#related-github-discussions)
 
 ## Overview
 
@@ -529,13 +528,3 @@ In v1, component variants can be identified by naming convention (suffix "a" or 
 In v2, a component-level attribute like `variant_of` can identify format-variant pairs (e.g. `gwf-welg` is a variant of `gwf-wel`). This requires choosing which variant is the "canonical" component.
 
 The dictionary vs list block distinction is part of what structurally defines a variant; `gwf-wel` and `gwf-welg` are different representations/serializations of the same semantics.
-
-## Related GitHub discussions
-
-- `modflow-devtools` #262 — DFNs API (needs stable schema versioning)
-- `modflow-devtools` #259 — schema naming discussion
-- `modflow-devtools` #233 — separated format from schema version
-- `pyphoenix-project` #246 — separate structural from format spec
-- `pyphoenix-project` #282 — consider pydantic
-- `pyphoenix-project` #205, #206, #218 — specific schema issues to resolve before finalizing
-- `modflowpy/pyphoenix-project` discussion #47 — DFN schema/format (TOML design)
