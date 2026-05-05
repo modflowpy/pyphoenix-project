@@ -17,7 +17,13 @@ from modflow_devtools.dfns import Dfn, load_flat
 from modflow_devtools.dfns.schema.field import Field as DfnField
 
 from . import filters
-from .overrides import apply_to_child, extra_record_children
+from .overrides import (
+    apply_to_child,
+    extra_list_blocks,
+    extra_record_children,
+    replace_list_blocks,
+    replace_list_fields,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -395,9 +401,15 @@ def build_component_spec(
     field_specs: list[FieldSpec] = []
     inner_class_specs: list[InnerClassSpec] = []
     generatable_field_objects: list[DfnField] = []
+    _replace_blocks = replace_list_blocks(dfn.name)
+    _extra_blocks = {lb["block"] for lb in extra_list_blocks(dfn.name)}
+
     has_list_cols = False
     has_oc_fields = False
     for f in all_fields:
+        if filters.is_list_field(f) and f.block in (_replace_blocks | _extra_blocks):
+            # List field replaced by explicit path fields or injected via extra_list_blocks.
+            continue
         if filters.is_list_field(f):
             expanded = _expand_list_field(f, dfn)
             field_specs.extend(expanded)
@@ -430,6 +442,72 @@ def build_component_spec(
             if spec.generatable:
                 generatable_field_objects.append(f)
 
+    # Inject extra list blocks from dfn_overrides.toml (_package_extras section).
+    # These are list blocks entirely missing from v2 TOML conversion (e.g. SSM sources).
+    # Each block contributes: one dim() field (in __dim__ sentinel block, never written)
+    # and one array() field per column (in the declared block).
+    # Inject path fields that replace heterogeneous list blocks (e.g. prt-fmi packagedata).
+    # Each injected entry becomes an Optional[Path] field using the path() spec.
+    has_injected_paths = False
+    for entry in replace_list_fields(dfn.name):
+        has_injected_paths = True
+        ln = entry.get("longname", "")
+        args = [
+            f'block="{entry["block"]}"',
+            "default=None",
+            "converter=to_path",
+            f'inout="{entry["inout"]}"',
+        ]
+        if ln:
+            args.append(f"longname={repr(ln)}")
+        field_specs.append(
+            FieldSpec(
+                dfn_name=entry["name"],
+                py_name=filters.safe_name(entry["name"]),
+                type_annotation="Optional[Path]",
+                spec_call=f"path({', '.join(args)})",
+                generatable=True,
+            )
+        )
+
+    has_extra_dims = False
+    for lb in extra_list_blocks(dfn.name):
+        block_name = lb["block"]
+        dim_name = lb["dim"]
+        has_extra_dims = True
+        field_specs.append(
+            FieldSpec(
+                dfn_name=dim_name,
+                py_name=filters.safe_name(dim_name),
+                type_annotation="Optional[int]",
+                spec_call='dim(block="__dim__", coord=False, default=None)',
+                generatable=True,
+            )
+        )
+        for col in lb.get("columns", []):
+            col_name = col["name"]
+            col_type = col.get("type", "string")
+            col_longname = col.get("longname", "")
+            dtype = filters.ARRAY_NUMPY_DTYPES.get(col_type, "np.object_")
+            args = [
+                f'block="{block_name}"',
+                f'dims=("{dim_name}",)',
+                "default=None",
+                "converter=Converter(structure_array, takes_self=True, takes_field=True)",
+            ]
+            if col_longname:
+                args.append(f"longname={repr(col_longname)}")
+            field_specs.append(
+                FieldSpec(
+                    dfn_name=col_name,
+                    py_name=filters.safe_name(col_name),
+                    type_annotation=f"Optional[NDArray[{dtype}]]",
+                    spec_call=f"array({', '.join(args)})",
+                    generatable=True,
+                )
+            )
+        has_list_cols = True
+
     base = _base_class(dfn)
     multi = bool(dfn.multi)
     slntype = _slntype(dfn)
@@ -444,6 +522,8 @@ def build_component_spec(
         has_list_cols=has_list_cols,
         has_inner_classes=has_inner_classes,
         has_oc_fields=has_oc_fields,
+        has_extra_dims=has_extra_dims,
+        has_injected_paths=has_injected_paths,
     )
 
     template = "package.py.jinja"

@@ -44,13 +44,11 @@ class Ims(Solution):
     outer_hclose: Optional[float] = field(
         block="nonlinear", default=None, longname="head change criterion"
     )
-    outer_dvclose: float = field(
-        block="nonlinear", default=None, longname="dependent-variable change criterion"
-    )
+    outer_dvclose: float = field(block="nonlinear", longname="dependent-variable change criterion")
     outer_rclosebnd: Optional[float] = field(
         block="nonlinear", default=None, longname="boundary package flow residual tolerance"
     )
-    outer_maximum: int = field(block="nonlinear", default=None, longname="outer maximum iterations")
+    outer_maximum: int = field(block="nonlinear", longname="outer maximum iterations")
     under_relaxation: Optional[str] = field(
         block="nonlinear", default=None, longname="under relaxation scheme"
     )
@@ -88,19 +86,13 @@ class Ims(Solution):
         default=None,
         longname="limit to which the residual is reduced with backtracking",
     )
-    inner_maximum: int = field(
-        block="linear", default=None, longname="maximum number of inner iterations"
-    )
+    inner_maximum: int = field(block="linear", longname="maximum number of inner iterations")
     inner_hclose: Optional[float] = field(
         block="linear", default=None, longname="head change tolerance"
     )
-    inner_dvclose: float = field(
-        block="linear", default=None, longname="dependent-variable change tolerance"
-    )
+    inner_dvclose: float = field(block="linear", longname="dependent-variable change tolerance")
     rclose: Optional[Rclose] = field(block="linear", default=None)
-    linear_acceleration: str = field(
-        block="linear", default=None, longname="linear acceleration method"
-    )
+    linear_acceleration: str = field(block="linear", longname="linear acceleration method")
     relaxation_factor: Optional[float] = field(
         block="linear", default=None, longname="relaxation factor used by ilu factorization"
     )

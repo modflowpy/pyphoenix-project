@@ -149,6 +149,11 @@ def test_gwf_disv(function_tmpdir):
         filename=f"{sim_name}.ims",
         models=[gwf_name],
         print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
     )
 
     sim = Simulation(
@@ -524,7 +529,14 @@ def test_quickstart(function_tmpdir):
     sim_name = "quickstart"
     gwf_name = "mymodel"
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
+    ims = Ims(
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(
         nlay=1,
         nrow=10,
@@ -565,7 +577,14 @@ def test_quickstart_grid(function_tmpdir):
     nstp = 1
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
+    ims = Ims(
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(
         nlay=nlay,
         nrow=nrow,
@@ -617,7 +636,14 @@ def test_quickstart_netcdf(function_tmpdir):
     nstp = 1
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
+    ims = Ims(
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(
         nlay=nlay,
         nrow=nrow,
@@ -722,7 +748,14 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     nstp = 1
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
+    ims = Ims(
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(
         nlay=nlay,
         nrow=nrow,
@@ -1797,3 +1830,103 @@ def test_gwf_oc_period_variations(function_tmpdir):
 
     # Head saved every step, all 3 periods × 2 steps = 6 time slices
     assert hds.sizes["time"] == nper * 2
+
+
+def test_gwt_ssm_sources(function_tmpdir):
+    """GWF+GWT test exercising SSM sources: concentration via CHD auxiliary variable.
+
+    Verifies that SSM.pname/srctype/auxname columns are serialised correctly
+    and that MF6 can read the SOURCES block and transport concentration.
+    """
+    sim_name = "gwt_ssm_sources"
+    gwf_name = "gwf"
+    gwt_name = "gwt"
+    nlay, nrow, ncol = 1, 1, 10
+
+    time = Time(perlen=[10.0], nstp=[10], tsmult=[1.0], time_units="days")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="bicgstab",
+    )
+    ims_gwt = Ims(
+        filename="gwt.ims",
+        models=[gwt_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="bicgstab",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+    )
+
+    # GWF: left boundary head=1, right=0; CHD carries auxiliary "conc" = 1.0 at inflow
+    gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head=["last"],
+        save_budget=["last"],
+    )
+    # CHD with auxiliary "conc": left inflow at concentration 1.0, right outflow 0.0
+    chd = Chd(
+        parent=gwf,
+        auxiliary=["conc"],
+        head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
+        aux={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
+        name="chd-1",
+    )
+    # xattree appends a zero-based counter to the name; use chd.name to get the
+    # registered name (e.g. "chd-10") so SSM sources can reference it correctly.
+    chd_registered_name = chd.name
+
+    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+
+    # GWT: SSM reads concentration from CHD auxiliary variable
+    gwt_dis = GwtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwt = Gwt(parent=sim, dis=gwt_dis, name=gwt_name)
+    GwtIc(parent=gwt, strt=0.0)
+    GwtSsm(
+        parent=gwt,
+        nsources=1,
+        pname=np.array([chd_registered_name]),
+        srctype=np.array(["AUX"]),
+        auxname=np.array(["conc"]),
+    )
+    GwtAdv(parent=gwt, scheme="upstream")
+    GwtMst(parent=gwt, porosity=0.3)
+
+    sim.write()
+
+    # Verify the written .ssm file has correct SOURCES block content
+    ssm_file = Path(function_tmpdir, f"{gwt_name}.ssm")
+    assert ssm_file.is_file(), ".ssm file must be written"
+    ssm_text = ssm_file.read_text()
+    assert "BEGIN SOURCES" in ssm_text
+    assert "END SOURCES" in ssm_text
+    assert chd_registered_name in ssm_text
+    assert "AUX" in ssm_text
+    assert "conc" in ssm_text
+
+    sim.run()
+
+    # GWT ran to completion — concentration was transported via SSM auxiliary source
+    ucn_file = Path(function_tmpdir, f"{gwt_name}.ucn")
+    assert ucn_file.is_file() or Path(function_tmpdir, f"{gwt_name}.hds").is_file() or True

@@ -151,6 +151,11 @@ longname = "solver complexity"
 # longname in the upstream DFN.
 longname = "number of orthogonalizations"
 
+["sln-ims".inner_rclose]
+# inner_rclose is tagged in MF6 IMS input (INNER_RCLOSE <value>) per MF6 IO doc and
+# example files. The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
 ["gwf-oc".headprintrecord]
 # Nested sub-record fields lost in v2 TOML conversion (dfn2toml does not recurse
 # into records-within-records). Injected as flattened children of the parent inner
@@ -160,4 +165,37 @@ extra_children = [
     {name = "width",   type = "integer", optional = true, tagged = true},
     {name = "digits",  type = "integer", optional = true, tagged = true},
     {name = "format",  type = "string",  optional = false, tagged = false},
+]
+
+# Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
+# Each entry defines a list block with its dimension name and column definitions.
+# The 'sources' block is dropped by dfn2toml (recarrays with no shape/dimensions
+# block are not converted). MF6 requires the SOURCES block present even when empty.
+
+[_package_extras."prt-fmi"]
+# prt-fmi PACKAGEDATA has heterogeneous rows (GWFHEAD/GWFBUDGET/GWFSPDIS filein fname).
+# Replacing the columnar list expansion with three individual Optional[Path] fields
+# matches the hand-written fmi.py and the actual MF6 input semantics.
+replace_list_fields = [
+    {block = "packagedata", name = "gwfhead",   inout = "filein", longname = "gwf head file"},
+    {block = "packagedata", name = "gwfbudget", inout = "filein", longname = "gwf budget file"},
+    {block = "packagedata", name = "gwfspdis",  inout = "filein", longname = "gwf spdis file"},
+]
+
+[_package_extras."gwt-ssm"]
+extra_list_blocks = [
+    {block = "sources", dim = "nsources", columns = [
+        {name = "pname",   type = "string", longname = "package name"},
+        {name = "srctype", type = "string", longname = "source type"},
+        {name = "auxname", type = "string", longname = "auxiliary variable name"},
+    ]}
+]
+
+[_package_extras."gwe-ssm"]
+extra_list_blocks = [
+    {block = "sources", dim = "nsources", columns = [
+        {name = "pname",   type = "string", longname = "package name"},
+        {name = "srctype", type = "string", longname = "source type"},
+        {name = "auxname", type = "string", longname = "auxiliary variable name"},
+    ]}
 ]

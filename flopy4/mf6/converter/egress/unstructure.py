@@ -313,7 +313,8 @@ _SKIP_IF_EMPTY = frozenset({"dimensions", "tracktimes"})
 # into an xr.Dataset for row-per-record output.  griddata-style blocks must
 # NOT be in this set — their fields are written individually with
 # INTERNAL/CONSTANT/NETCDF format.
-_LIST_BLOCK_NAMES = frozenset({"packagedata", "packages", "perioddata", "table"})
+# "sources" is the SSM sources block (pname/srctype/auxname per-row tabular input).
+_LIST_BLOCK_NAMES = frozenset({"packagedata", "packages", "perioddata", "sources", "table"})
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
@@ -405,5 +406,5 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     return {
         name: block
         for name, block in blocks.items()
-        if name != "period" and (block or name not in _SKIP_IF_EMPTY)
+        if name != "period" and not name.startswith("__") and (block or name not in _SKIP_IF_EMPTY)
     }

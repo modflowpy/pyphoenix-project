@@ -42,15 +42,6 @@ _SKIP = {
     "prt-dis",
     # time discretization (hand-written tdis.py)
     "sim-tdis",
-    # solution tier: sln-ims and sln-ems are now generated; sln-pts was already generated
-    # OC packages: gwf-oc, gwt-oc, gwe-oc, prt-oc are now generated with is_oc_record expansion.
-    # SSM: hand-written; sources placeholder field ensures empty SOURCES block is
-    # written, which MF6 requires; generated version omits it (sources is a TODO)
-    "gwt-ssm",
-    "gwe-ssm",
-    # PRT-FMI: packagedata has heterogeneous rows (gwfhead/gwfbudget/gwfspdis),
-    # each a separate FILEIN record — hand-written to emit correct output
-    "prt-fmi",
 }
 
 

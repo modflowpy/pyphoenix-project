@@ -906,3 +906,148 @@ def test_oc_dumps_steps_in_output():
     period2_start = next(i for i, l in enumerate(lines) if "BEGIN PERIOD 2" in l)
     period2_block = "\n".join(lines[period2_start:])
     assert "SAVE BUDGET" not in period2_block
+
+
+# ---------------------------------------------------------------------------
+# SSM tests
+# ---------------------------------------------------------------------------
+
+
+def _ssm_blocks(ssm):
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    return unstructure_component(ssm)
+
+
+def test_ssm_empty_sources_block_present():
+    """Empty SSM (no sources) must still write a SOURCES block for MF6."""
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm()
+    blocks = _ssm_blocks(ssm)
+    assert "sources" in blocks, "SOURCES block must appear even when no sources are configured"
+    assert "__dim__" not in blocks, "__dim__ sentinel block must never appear in output"
+    assert blocks["sources"] == {}, "sources block should be empty when no sources set"
+
+
+def test_ssm_sources_tabular_output():
+    """SSM with sources writes rows in MF6 tabular format."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm(
+        nsources=2,
+        pname=np.array(["chd-1", "rch-1"]),
+        srctype=np.array(["AUX", "AUXMIXED"]),
+        auxname=np.array(["conc", "conc"]),
+    )
+    blocks = _ssm_blocks(ssm)
+    assert "sources" in blocks
+    assert "__dim__" not in blocks
+
+    text = dumps(blocks)
+    assert "BEGIN SOURCES" in text
+    assert "END SOURCES" in text
+    assert "chd-1" in text
+    assert "rch-1" in text
+    assert "AUX" in text
+    assert "AUXMIXED" in text
+
+
+def test_ssm_options_passthrough():
+    """SSM options (print_flows, save_flows) serialise correctly."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm(print_flows=True, save_flows=True)
+    blocks = _ssm_blocks(ssm)
+    text = dumps(blocks)
+    assert "PRINT_FLOWS" in text.upper()
+    assert "SAVE_FLOWS" in text.upper()
+
+
+def test_ssm_sources_row_order():
+    """Sources rows appear in the order they were supplied."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm(
+        nsources=3,
+        pname=np.array(["pkg-a", "pkg-b", "pkg-c"]),
+        srctype=np.array(["AUX", "AUX", "AUXMIXED"]),
+        auxname=np.array(["c1", "c2", "c3"]),
+    )
+    text = dumps(_ssm_blocks(ssm))
+    sources_block = text[text.index("BEGIN SOURCES") : text.index("END SOURCES")]
+    positions = [sources_block.index(p) for p in ["pkg-a", "pkg-b", "pkg-c"]]
+    assert positions == sorted(positions), "sources must appear in supplied order"
+
+
+def test_gwe_ssm_empty_sources_block_present():
+    """GWE SSM (heat transport) also writes an empty SOURCES block."""
+    from flopy4.mf6.gwe.ssm import Ssm as GweSsm
+
+    ssm = GweSsm()
+    blocks = _ssm_blocks(ssm)
+    assert "sources" in blocks
+    assert "__dim__" not in blocks
+
+
+def test_ims_required_fields_enforced():
+    """Required IMS fields (outer_dvclose etc.) must be provided at construction."""
+    from flopy4.mf6.ims import Ims
+
+    with pytest.raises(TypeError, match="missing.*required"):
+        Ims()
+
+    with pytest.raises(TypeError, match="missing.*required"):
+        Ims(outer_dvclose=1e-6)  # still missing outer_maximum, inner_*, linear_acceleration
+
+    # All required fields → no error
+    ims = Ims(
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
+    assert ims.outer_dvclose == pytest.approx(1e-6)
+    assert ims.linear_acceleration == "cg"
+
+
+def test_ims_inner_rclose_tagged_output():
+    """inner_rclose must serialise as 'INNER_RCLOSE <value>', not a bare float."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.ims import Ims
+
+    ims = Ims(
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        rclose=Ims.Rclose(inner_rclose=0.1),
+        linear_acceleration="cg",
+    )
+    text = dumps(unstructure_component(ims))
+    assert "INNER_RCLOSE" in text.upper(), "inner_rclose must be keyword-tagged in LINEAR block"
+    assert "0.1" in text
+
+
+def test_fmi_dumps_partial_paths():
+    """Fmi with two of three path fields set serialises only the present ones."""
+    from pathlib import Path
+
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.prt.fmi import Fmi
+
+    fmi = Fmi(
+        gwfhead=Path("gwf.hds"),
+        gwfbudget=Path("gwf.cbc"),
+    )
+    text = dumps(unstructure_component(fmi))
+    assert "GWFHEAD" in text.upper()
+    assert "GWFBUDGET" in text.upper()
+    assert "FILEIN" in text.upper()
+    assert "GWFSPDIS" not in text.upper(), "unset optional path must not appear in output"

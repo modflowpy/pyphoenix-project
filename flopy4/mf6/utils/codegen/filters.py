@@ -590,6 +590,14 @@ def spec_call(f: Field, *, has_maxbound: bool = False) -> str:
             if f.longname:
                 args.append(f"longname={repr(f.longname)}")
             return f"dim({', '.join(args)})"
+    # Required scalar with no DFN default: omit default= entirely so the field is
+    # positional-required at construction.  Matches MF6 semantics (the user MUST
+    # supply a value) and avoids the float/int annotation contradicting default=None.
+    if is_scalar(f) and not f.optional and f.default is None and f.type != "keyword":
+        args = [f'block="{f.block}"']
+        if ln := _longname_repr(f.longname):
+            args.append(f"longname={ln}")
+        return f"field({', '.join(args)})"
     args = [f'block="{f.block}"', f"default={_default_repr(f)}"]
     if ln := _longname_repr(f.longname):
         args.append(f"longname={ln}")
@@ -609,6 +617,8 @@ def needed_imports(
     has_list_cols: bool = False,
     has_inner_classes: bool = False,
     has_oc_fields: bool = False,
+    has_extra_dims: bool = False,
+    has_injected_paths: bool = False,
 ) -> dict[str, list[str]]:
     """Compute the import lines needed for a generated module.
 
@@ -620,7 +630,7 @@ def needed_imports(
         or has_oc_fields
     )
     has_aux_list = any(is_aux_list_field(f) for f in generatable_fields)
-    has_path = any(is_file_record(f) for f in generatable_fields)
+    has_path = any(is_file_record(f) for f in generatable_fields) or has_injected_paths
     has_optional = any(
         (f.optional or is_period_array(f)) and f.type != "keyword" for f in generatable_fields
     )
@@ -629,8 +639,9 @@ def needed_imports(
     has_boundname = any(is_boundname_field(f) for f in generatable_fields)
     has_classvar = multi or slntype or has_inner_classes
 
-    # dimensions, aux list, list-expansion columns, and inner class parents are always Optional
-    if has_dimensions or has_aux_list or has_list_cols or has_inner_classes:
+    # dimensions, aux list, list-expansion columns, inner class parents,
+    # and injected paths are always Optional
+    if has_dimensions or has_aux_list or has_list_cols or has_inner_classes or has_injected_paths:
         has_optional = True
 
     stdlib: list[str] = []
@@ -659,8 +670,9 @@ def needed_imports(
         "Context": "from flopy4.mf6.context import Context",
     }
 
-    has_user_dims = any(
-        is_dimensions_scalar(f) and f.name != "maxbound" for f in generatable_fields
+    has_user_dims = (
+        any(is_dimensions_scalar(f) and f.name != "maxbound" for f in generatable_fields)
+        or has_extra_dims
     )
 
     spec_funcs: list[str] = ["field"]
