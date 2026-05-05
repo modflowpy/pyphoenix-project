@@ -25,10 +25,10 @@ class Mvr(Package):
     modelnames: bool = field(
         block="options", default=False, longname="precede all package names with model names"
     )
-    budget_filerecord: Optional[Path] = path(
+    budget_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    budgetcsv_filerecord: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     maxmvr: Optional[int] = dim(

@@ -116,26 +116,12 @@ def _hack_structured_grid_dims(
 
 
 def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
-    from flopy4.mf6.gwf import Oc
-
-    def oc_setting_data(rec, dat, iper):
-        if rec.steps.first:
-            dat[iper] = "first"
-        elif rec.steps.last:
-            dat[iper] = "last"
-        elif rec.steps.steps:
-            steps = " ".join(str(x + 1) for x in rec.steps.steps)
-            dat[iper] = f"steps {steps}"
-        elif rec.steps.all:
-            # check last as this defaults to True
-            dat[iper] = "all"
-
     data = {}
     match value.dtype:
         case np.bool:
             # supports boolean dataarrays, e.g. STO steady_state and transient
-            # e.g. steady_state to steady-state, why is't this the dfn name?
-            fname = name.replace("_", "-")  # type: ignore
+            # Strip trailing _ first (safe_name adds _ for Python builtins, e.g. all_ → all)
+            fname = name.rstrip("_").replace("_", "-")  # type: ignore
             dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
             data[fname] = dat
         case np.dtypes.StringDType():
@@ -144,29 +130,10 @@ def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[i
             dat = {
                 kper: value.values[kper]
                 for kper in range(value.sizes["nper"])
-                if value.values[kper].lower() in ["first", "last", "steps", "all"]
+                if (tokens := value.values[kper].lower().split())
+                and tokens[0] in ["first", "last", "steps", "all"]
             }
             data[fname] = dat
-        case object():
-            # supports object dataararys, e.g. OC PrintSaveSetting
-            for i, setting in enumerate(value.values):
-                if isinstance(value.values[i], Oc.PrintSaveSetting):
-                    if hasattr(value.values[i], "printrecord") and isinstance(
-                        value.values[i].printrecord, list
-                    ):
-                        for rec in value.values[i].printrecord:
-                            key = f"{rec.print} {rec.rtype}"
-                            if key not in data:
-                                data[key] = {}
-                            oc_setting_data(rec, data[key], i)
-                    if hasattr(value.values[i], "saverecord") and isinstance(
-                        value.values[i].saverecord, list
-                    ):
-                        for rec in value.values[i].saverecord:  # type: ignore
-                            key = f"{rec.save} {rec.rtype}"  # type: ignore
-                            if key not in data:
-                                data[key] = {}
-                            oc_setting_data(rec, data[key], i)
 
     return data
 
@@ -197,13 +164,26 @@ def _unstructure_block_param(
         # _keyword is "" for records with no leading trigger token (e.g. rcloserecord).
         keyword: str = vars(cls)["_keyword"]
         tokens: list[Any] = [keyword.upper()] if keyword else []
-        for a in attrs.fields(cast(type[attrs.AttrsInstance], cls)):
+        # Emit fixed syntax tokens (e.g. PRINT_FORMAT) before user fields.
+        for tok in vars(cls).get("_extra_tokens", ()):
+            tokens.append(tok)
+        # Emit tagged (positional options) before untagged (required data)
+        # so the MF6 token order matches the DFN regardless of attrs field order.
+        all_fields = attrs.fields(cast(type[attrs.AttrsInstance], cls))
+        tagged_fields = [a for a in all_fields if a.metadata.get("tagged", False)]
+        untagged_fields = [a for a in all_fields if not a.metadata.get("tagged", False)]
+        for a in tagged_fields + untagged_fields:
             val = getattr(raw_value, a.name)
             if val is None:
                 continue
             if a.metadata.get("tagged", False):
-                tokens.append(a.name.upper())
-                tokens.append(val)
+                if isinstance(val, bool):
+                    # keyword-type tagged field: emit name only, no value
+                    if val:
+                        tokens.append(a.name.upper())
+                else:
+                    tokens.append(a.name.upper())
+                    tokens.append(val)
             elif isinstance(val, bool):
                 if val:
                     tokens.append(a.name.upper())

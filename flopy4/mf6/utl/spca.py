@@ -22,7 +22,7 @@ class Spca(Package):
     print_input: bool = field(
         block="options", default=False, longname="print input to listing file"
     )
-    tas_filerecord: Optional[Path] = path(
+    tas_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     concentration: Optional[NDArray[np.float64]] = array(

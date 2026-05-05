@@ -36,10 +36,8 @@ class Src(Package):
     save_flows: bool = field(
         block="options", default=False, longname="save src flows to budget file"
     )
-    ts_filerecord: Optional[Path] = path(
-        block="options", default=None, converter=to_path, inout="filein"
-    )
-    obs_filerecord: Optional[Path] = path(
+    ts_file: Optional[Path] = path(block="options", default=None, converter=to_path, inout="filein")
+    obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     highest_saturated: bool = field(

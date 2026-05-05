@@ -214,6 +214,31 @@ def is_boundname_field(f: Field) -> bool:
     return f.block == "period" and f.name == "boundname"
 
 
+# Per-package OC record types.  Each entry maps a DFN name to the list of
+# rtype strings that are valid for its SAVE/PRINT period records.
+_OC_RTYPES: dict[str, list[str]] = {
+    "gwf-oc": ["head", "budget"],
+    "gwt-oc": ["concentration", "budget"],
+    "gwe-oc": ["temperature", "budget"],
+    "prt-oc": ["budget"],
+}
+
+
+def is_oc_record(f: Field, dfn_name: str) -> bool:
+    """True for saverecord/printrecord in OC-style period blocks.
+
+    These records take the form ``SAVE|PRINT RTYPE OCSETTING`` and are
+    expanded by codegen into per-rtype NDArray[np.str_] fields rather than
+    being emitted as inner classes or TODO comments.
+    """
+    return (
+        f.block == "period"
+        and f.type.startswith("record")
+        and f.name in ("saverecord", "printrecord")
+        and dfn_name in _OC_RTYPES
+    )
+
+
 def is_list_field(f: Field) -> bool:
     """True for list-type sub-table fields (packagedata, perioddata, etc.)."""
     return f.type == "list"
@@ -583,12 +608,17 @@ def needed_imports(
     has_maxbound: bool = False,
     has_list_cols: bool = False,
     has_inner_classes: bool = False,
+    has_oc_fields: bool = False,
 ) -> dict[str, list[str]]:
     """Compute the import lines needed for a generated module.
 
     Returns a dict with keys 'stdlib', 'third_party', 'flopy4'.
     """
-    has_array = any(is_array(f) or is_keyword_array(f) for f in generatable_fields) or has_list_cols
+    has_array = (
+        any(is_array(f) or is_keyword_array(f) for f in generatable_fields)
+        or has_list_cols
+        or has_oc_fields
+    )
     has_aux_list = any(is_aux_list_field(f) for f in generatable_fields)
     has_path = any(is_file_record(f) for f in generatable_fields)
     has_optional = any(

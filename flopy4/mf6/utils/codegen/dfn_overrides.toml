@@ -150,3 +150,14 @@ longname = "solver complexity"
 # number_orthogonalizations longname is a copy-paste of preconditioner_drop_tolerance's
 # longname in the upstream DFN.
 longname = "number of orthogonalizations"
+
+["gwf-oc".headprintrecord]
+# Nested sub-record fields lost in v2 TOML conversion (dfn2toml does not recurse
+# into records-within-records). Injected as flattened children of the parent inner
+# class. Remove if dfn2toml is updated to capture nested records.
+extra_children = [
+    {name = "columns", type = "integer", optional = true, tagged = true},
+    {name = "width",   type = "integer", optional = true, tagged = true},
+    {name = "digits",  type = "integer", optional = true, tagged = true},
+    {name = "format",  type = "string",  optional = false, tagged = false},
+]

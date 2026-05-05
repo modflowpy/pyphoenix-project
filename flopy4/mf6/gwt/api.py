@@ -24,7 +24,7 @@ class Api(Package):
     save_flows: bool = field(
         block="options", default=False, longname="save api flows to budget file"
     )
-    obs_filerecord: Optional[Path] = path(
+    obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     mover: bool = field(block="options", default=False)

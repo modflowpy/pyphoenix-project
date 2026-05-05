@@ -20,7 +20,7 @@ class Buy(Package):
         block="options", default=False, longname="hh formulation on right-hand side"
     )
     denseref: Optional[float] = field(block="options", default=None, longname="reference density")
-    density_filerecord: Optional[Path] = path(
+    density_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     dev_efh_formulation: bool = field(

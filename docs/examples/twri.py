@@ -199,7 +199,7 @@ ims = flopy4.mf6.Ims(
     outer_maximum=500,
     under_relaxation=None,
     inner_dvclose=1.0e-4,
-    rcloserecord=flopy4.mf6.Ims.Rclose(inner_rclose=0.001),
+    rclose=flopy4.mf6.Ims.Rclose(inner_rclose=0.001),
     inner_maximum=100,
     linear_acceleration="cg",
     scaling_method=None,

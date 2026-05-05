@@ -54,9 +54,21 @@ def apply(dfn_name: str, f: Field) -> Field:
         dataclass instance with the patched attributes.
     """
     patches = _OVERRIDES.get(dfn_name, {}).get(f.name, {})
+    # extra_children is consumed by extra_record_children(), not a Field attribute
+    patches = {k: v for k, v in patches.items() if k != "extra_children"}
     if not patches:
         return f
     return dataclasses.replace(f, **patches)
+
+
+def extra_record_children(dfn_name: str, field_name: str) -> list[dict]:
+    """Return extra child dicts to inject into an inner-class record.
+
+    Used to flatten nested sub-records that are lost in the v2 TOML conversion
+    (dfn2toml does not recurse into records-within-records).  Each dict has the
+    same shape as a v2 child dict: name, type, optional, tagged, etc.
+    """
+    return list(_OVERRIDES.get(dfn_name, {}).get(field_name, {}).get("extra_children", []))
 
 
 def apply_to_child(dfn_name: str, child: dict) -> dict:

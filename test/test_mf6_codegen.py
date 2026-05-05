@@ -79,16 +79,24 @@ SIMPLE_TIER = {
     "gwf-buy": ("Buy", "Package"),
     "gwf-vsc": ("Vsc", "Package"),
     "gwf-mvr": ("Mvr", "Package"),
-    # Tier 6: compressible storage and horizontal flow barrier
+    # Tier 6: compressible storage
     # (gwf-sfr, gwf-maw excluded: keystring period settings silently absent)
     # (gwf-uzf excluded: duplicated ifno attribute and not currently functional)
+    # (gwf-hfb excluded: cell-pair recarray Tier 7, requires framework changes)
     "gwf-csub": ("Csub", "Package"),
-    "gwf-hfb": ("Hfb", "Package"),
 }
 
 # Transport model packages: gwt-ist (immobile storage transport, multi=True).
 TRANSPORT_TIER = {
     "gwt-ist": ("Ist", "Package", "gwt"),
+}
+
+# Tier 1a: OC record expansion — saverecord/printrecord → per-rtype NDArray[np.str_] fields.
+# Each tuple is (class_name, base_class, model_prefix).
+OC_TIER = {
+    "gwt-oc": ("Oc", "Package", "gwt"),
+    "gwe-oc": ("Oc", "Package", "gwe"),
+    "prt-oc": ("Oc", "Package", "prt"),
 }
 
 # Utility packages (utl/), including utl-tas with 3 inner record classes.
@@ -429,23 +437,20 @@ def test_ims_compound_records_expanded(all_dfns):
     spec = build_component_spec(all_dfns["sln-ims"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # rcloserecord: tagged scalar first child, no keyword trigger → inner class with _keyword=""
-    assert "rcloserecord" in field_map, "rcloserecord should generate as inner class parent field"
-    assert field_map["rcloserecord"].generatable
-    assert field_map["rcloserecord"].type_annotation == "Optional[Rclose]"
+    # rcloserecord dfn → rclose field (record suffix stripped), Rclose inner class
+    assert "rclose" in field_map, "rclose should generate as inner class parent field"
+    assert field_map["rclose"].generatable
+    assert field_map["rclose"].type_annotation == "Optional[Rclose]"
     assert any(r.class_name == "Rclose" for r in spec.inner_classes)
 
     # inner_rclose is now inside Rclose, not a standalone flat field
     assert "inner_rclose" not in field_map, "inner_rclose should not be a standalone field"
 
-    # no_ptcrecord has trigger keyword + optional string child → inner class
-    assert "no_ptcrecord" in field_map, "no_ptcrecord should generate as inner class parent field"
-    assert field_map["no_ptcrecord"].generatable
-    assert field_map["no_ptcrecord"].type_annotation == "Optional[NoPtc]"
+    # no_ptcrecord dfn → no_ptc field (record suffix stripped), NoPtc inner class
+    assert "no_ptc" in field_map, "no_ptc should generate as inner class parent field"
+    assert field_map["no_ptc"].generatable
+    assert field_map["no_ptc"].type_annotation == "Optional[NoPtc]"
     assert any(r.class_name == "NoPtc" for r in spec.inner_classes)
-
-    # no_ptc is the inner class trigger keyword, not a standalone flat field
-    assert "no_ptc" not in field_map, "no_ptc should not be a standalone field"
 
     # no partial TODOs for either record
     todo_names = {f.dfn_name for f in spec.fields if not f.generatable}
@@ -475,9 +480,9 @@ def test_npf_compound_records_expanded(all_dfns):
     assert "xt3d" not in field_map
     assert "rhs" not in field_map
 
-    # rewet_record has trigger keyword + required tagged scalar children → inner class
-    assert "rewet_record" in field_map and field_map["rewet_record"].generatable
-    assert field_map["rewet_record"].type_annotation == "Optional[Rewet]"
+    # rewet_record dfn → rewet field (record suffix stripped), Rewet inner class
+    assert "rewet" in field_map and field_map["rewet"].generatable
+    assert field_map["rewet"].type_annotation == "Optional[Rewet]"
     assert "Rewet" in class_names
 
     # No TODOs in NPF options now
@@ -601,6 +606,31 @@ def test_transport_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfn
         assert spec.outpath == tmp_path / subdir / f"{expected_class.lower()}.py"
         cls = _load_class_from_spec(spec, f"_codegen_test_transport.{dfn_name}", expected_class)
         assert issubclass(cls, Package)
+
+
+def test_oc_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+    """gwt-oc, gwe-oc, prt-oc generate importable Package subclasses with OC period fields."""
+    for subdir in ("gwt", "gwe", "prt"):
+        (tmp_path / subdir).mkdir()
+
+    target = {n for n in OC_TIER if n in all_dfns}
+    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
+    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+    generated = {s.dfn_name: s for s in specs}
+
+    from flopy4.mf6.package import Package
+
+    for dfn_name, (expected_class, _, subdir) in OC_TIER.items():
+        if dfn_name not in all_dfns:
+            continue
+        assert dfn_name in generated, f"{dfn_name} was not generated"
+        spec = generated[dfn_name]
+        assert spec.outpath == tmp_path / subdir / f"{expected_class.lower()}.py"
+        cls = _load_class_from_spec(spec, f"_codegen_test_oc.{dfn_name}", expected_class)
+        assert issubclass(cls, Package)
+        # Verify at least one OC period field was generated
+        oc_fields = [f for f in spec.fields if f.py_name.startswith(("save_", "print_"))]
+        assert oc_fields, f"{dfn_name} should have save_/print_ period fields"
 
 
 def test_utl_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):

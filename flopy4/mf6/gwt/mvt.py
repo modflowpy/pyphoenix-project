@@ -21,9 +21,9 @@ class Mvt(Package):
     save_flows: bool = field(
         block="options", default=False, longname="save mvt flows to budget file"
     )
-    budget_filerecord: Optional[Path] = path(
+    budget_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    budgetcsv_filerecord: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )

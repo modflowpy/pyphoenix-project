@@ -18,13 +18,9 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Oc(Package):
     @attrs.define
-    class Headprint:
-        _keyword: ClassVar[str] = "head"
+    class Temperatureprint:
+        _keyword: ClassVar[str] = "temperature"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
-        format_: str = attrs.field()
-        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
 
     budget_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
@@ -32,11 +28,11 @@ class Oc(Package):
     budgetcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    head_file: Optional[Path] = path(
+    temperature_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    headprint: Optional[Headprint] = field(block="options", default=None)
-    save_head: Optional[NDArray[np.str_]] = array(
+    temperatureprint: Optional[Temperatureprint] = field(block="options", default=None)
+    save_temperature: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
         block="period",
         dims=("nper",),
@@ -50,7 +46,7 @@ class Oc(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
-    print_head: Optional[NDArray[np.str_]] = array(
+    print_temperature: Optional[NDArray[np.str_]] = array(
         dtype=np.dtypes.StringDType(),
         block="period",
         dims=("nper",),

@@ -26,7 +26,7 @@ class Mst(Package):
         block="options", default=False, longname="activate zero-order decay"
     )
     sorption: Optional[str] = field(block="options", default=None, longname="activate sorption")
-    sorbate_filerecord: Optional[Path] = path(
+    sorbate_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     export_array_ascii: bool = field(

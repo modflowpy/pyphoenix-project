@@ -73,37 +73,35 @@ class Csub(Package):
         default=False,
         longname="keyword to indicate that specific storage will be calculate using the effective stress from the previous time step",
     )
-    strainib_filerecord: Optional[Path] = path(
+    strainib_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    straincg_filerecord: Optional[Path] = path(
+    straincg_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    compaction_filerecord: Optional[Path] = path(
+    compaction_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    compaction_elastic_filerecord: Optional[Path] = path(
+    compaction_elastic_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    compaction_inelastic_filerecord: Optional[Path] = path(
+    compaction_inelastic_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    compaction_interbed_filerecord: Optional[Path] = path(
+    compaction_interbed_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    compaction_coarse_filerecord: Optional[Path] = path(
+    compaction_coarse_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    zdisplacement_filerecord: Optional[Path] = path(
+    zdisplacement_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    package_convergence_filerecord: Optional[Path] = path(
+    package_convergence_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    ts_filerecord: Optional[Path] = path(
-        block="options", default=None, converter=to_path, inout="filein"
-    )
-    obs_filerecord: Optional[Path] = path(
+    ts_file: Optional[Path] = path(block="options", default=None, converter=to_path, inout="filein")
+    obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     ninterbeds: Optional[int] = dim(

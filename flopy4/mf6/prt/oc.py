@@ -18,25 +18,25 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Oc(Package):
     @attrs.define
-    class TrackTimesrecord:
+    class TrackTimes:
         _keyword: ClassVar[str] = "track_times"
         times: float = attrs.field()
 
     @attrs.define
-    class TrackTimesfilerecord:
+    class TrackTimesfile:
         _keyword: ClassVar[str] = "track_timesfile"
         timesfile: str = attrs.field()
 
-    budget_filerecord: Optional[Path] = path(
+    budget_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    budgetcsv_filerecord: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    track_filerecord: Optional[Path] = path(
+    track_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    trackcsv_filerecord: Optional[Path] = path(
+    trackcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     track_release: bool = field(block="options", default=False, longname="track release")
@@ -51,8 +51,8 @@ class Oc(Package):
     track_dropped: bool = field(
         block="options", default=False, longname="track drops to water table"
     )
-    track_timesrecord: Optional[TrackTimesrecord] = field(block="options", default=None)
-    track_timesfilerecord: Optional[TrackTimesfilerecord] = field(block="options", default=None)
+    track_times: Optional[TrackTimes] = field(block="options", default=None)
+    track_timesfile: Optional[TrackTimesfile] = field(block="options", default=None)
     dev_dump_event_trace: bool = field(
         block="options", default=False, longname="print particle tracking events"
     )
@@ -66,5 +66,17 @@ class Oc(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="release time",
     )
-    # TODO: saverecord — complex type 'record' not yet supported
-    # TODO: printrecord — complex type 'record' not yet supported
+    save_budget: Optional[NDArray[np.str_]] = array(
+        dtype=np.dtypes.StringDType(),
+        block="period",
+        dims=("nper",),
+        default=None,
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
+    )
+    print_budget: Optional[NDArray[np.str_]] = array(
+        dtype=np.dtypes.StringDType(),
+        block="period",
+        dims=("nper",),
+        default=None,
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
+    )

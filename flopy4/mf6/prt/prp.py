@@ -20,12 +20,12 @@ class Prp(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class ReleaseTimesrecord:
+    class ReleaseTimes:
         _keyword: ClassVar[str] = "release_times"
         times: float = attrs.field()
 
     @attrs.define
-    class ReleaseTimesfilerecord:
+    class ReleaseTimesfile:
         _keyword: ClassVar[str] = "release_timesfile"
         timesfile: str = attrs.field()
 
@@ -47,10 +47,10 @@ class Prp(Package):
         default=False,
         longname="whether to extend tracking beyond the end of the simulation",
     )
-    track_filerecord: Optional[Path] = path(
+    track_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    trackcsv_filerecord: Optional[Path] = path(
+    trackcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     stoptime: Optional[float] = field(block="options", default=None, longname="stop time")
@@ -60,8 +60,8 @@ class Prp(Package):
     stop_at_weak_sink: bool = field(block="options", default=False, longname="stop at weak sink")
     istopzone: Optional[int] = field(block="options", default=None, longname="stop zone number")
     drape: bool = field(block="options", default=False, longname="drape")
-    release_timesrecord: Optional[ReleaseTimesrecord] = field(block="options", default=None)
-    release_timesfilerecord: Optional[ReleaseTimesfilerecord] = field(block="options", default=None)
+    release_times: Optional[ReleaseTimes] = field(block="options", default=None)
+    release_timesfile: Optional[ReleaseTimesfile] = field(block="options", default=None)
     dry_tracking_method: Optional[str] = field(
         block="options", default=None, longname="what to do in dry-but-active cells"
     )

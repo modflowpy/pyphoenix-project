@@ -43,8 +43,7 @@ _SKIP = {
     # time discretization (hand-written tdis.py)
     "sim-tdis",
     # solution tier: sln-ims and sln-ems are now generated; sln-pts was already generated
-    # OC: hand-written; period block uses custom keystring types not yet generated
-    "gwf-oc",
+    # OC packages: gwf-oc, gwt-oc, gwe-oc, prt-oc are now generated with is_oc_record expansion.
     # SSM: hand-written; sources placeholder field ensures empty SOURCES block is
     # written, which MF6 requires; generated version omits it (sources is a TODO)
     "gwt-ssm",
@@ -52,10 +51,6 @@ _SKIP = {
     # PRT-FMI: packagedata has heterogeneous rows (gwfhead/gwfbudget/gwfspdis),
     # each a separate FILEIN record — hand-written to emit correct output
     "prt-fmi",
-    # keystring period block: ocsetting and releasesetting not yet supported by codegen;
-    # files are partially functional (OPTIONS block only) and used in integration tests
-    "prt-oc",
-    "prt-prp",
 }
 
 

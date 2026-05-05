@@ -34,7 +34,7 @@ class Vsc(Package):
     thermal_a4: Optional[float] = field(
         block="options", default=None, longname="coefficient used in nonlinear viscosity function"
     )
-    viscosity_filerecord: Optional[Path] = path(
+    viscosity_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     nviscspecies: Optional[int] = dim(

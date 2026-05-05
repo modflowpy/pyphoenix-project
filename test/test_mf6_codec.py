@@ -93,14 +93,8 @@ def test_dumps_oc():
         head_file="test.hds",
         save_head={0: "all"},
         save_budget={0: "all"},
-        perioddata={
-            0: Oc.PrintSaveSetting(
-                printrecord=[
-                    Oc.PrintRecord("head", Oc.Steps(all=True)),
-                    Oc.PrintRecord("budget", Oc.Steps(all=True)),
-                ],
-            )
-        },
+        print_head={0: "all"},
+        print_budget={0: "all"},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
@@ -124,18 +118,9 @@ def test_dumps_oc2():
         dims={"nper": 1},
         budget_file="test.bud",
         head_file="test.hds",
-        perioddata={
-            0: Oc.PrintSaveSetting(
-                printrecord=[
-                    Oc.PrintRecord("head", Oc.Steps(first=True)),
-                    Oc.PrintRecord("budget", Oc.Steps(steps=(0, 1, 3))),
-                ],
-                saverecord=[
-                    Oc.SaveRecord("head", Oc.Steps(last=True)),
-                    Oc.SaveRecord("budget", Oc.Steps(first=True)),
-                ],
-            )
-        },
+        save_head={0: "last"},
+        save_budget={0: "first"},
+        print_head={0: "first"},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
@@ -144,7 +129,6 @@ def test_dumps_oc2():
     assert "SAVE HEAD last" in dumped
     assert "SAVE BUDGET first" in dumped
     assert "PRINT HEAD first" in dumped
-    assert "PRINT BUDGET steps 1 2 4" in dumped
     assert dumped
 
     loaded = loads(dumped)
@@ -709,16 +693,16 @@ def test_dumps_tas_inner_classes():
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_namerecord=Tas.TimeSeriesName(time_series_name="my_ts"),
-        interpolation_methodrecord=Tas.InterpolationMethod(interpolation_method="linear"),
-        sfacrecord=Tas.Sfac(sfacval=1.5),
+        time_series_name=Tas.TimeSeriesName(time_series_name="my_ts"),
+        interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
+        sfac=Tas.Sfac(sfacval=1.5),
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
     assert "attributes" in unstructured
-    assert unstructured["attributes"]["time_series_namerecord"] == ("NAME", "my_ts")
-    assert unstructured["attributes"]["interpolation_methodrecord"] == ("METHOD", "linear")
-    assert unstructured["attributes"]["sfacrecord"] == ("SFAC", 1.5)
+    assert unstructured["attributes"]["time_series_name"] == ("NAME", "my_ts")
+    assert unstructured["attributes"]["interpolation_method"] == ("METHOD", "linear")
+    assert unstructured["attributes"]["sfac"] == ("SFAC", 1.5)
 
     dumped = dumps(unstructured)
     assert "BEGIN ATTRIBUTES" in dumped
@@ -742,3 +726,183 @@ def test_dumps_zero_field_exg():
         assert unstructured == {}, f"{cls.__name__} should unstructure to empty dict"
         dumped = dumps(unstructured)
         assert dumped == "", f"{cls.__name__} should produce no output"
+
+
+def test_dumps_gwt_oc_per_period():
+    """gwt-oc save/print fields write SAVE CONCENTRATION and SAVE BUDGET per period."""
+    from flopy4.mf6.gwt.oc import Oc
+
+    oc = Oc(
+        dims={"nper": 2},
+        budget_file="gwt.bud",
+        concentration_file="gwt.conc",
+        save_concentration={0: "last", 1: "all"},
+        save_budget={0: "last"},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
+    assert "SAVE CONCENTRATION last" in dumped
+    assert "SAVE CONCENTRATION all" in dumped
+    assert "SAVE BUDGET last" in dumped
+
+
+def test_dumps_gwt_oc_wildcard():
+    """gwt-oc wildcard period key '*' sets period 0, which MF6 inherits to all periods."""
+    from flopy4.mf6.gwt.oc import Oc
+
+    oc = Oc(
+        dims={"nper": 1},
+        budget_file="gwt.bud",
+        concentration_file="gwt.conc",
+        save_concentration={"*": "last"},
+        save_budget={"*": "all"},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
+    assert "SAVE CONCENTRATION last" in dumped
+    assert "SAVE BUDGET all" in dumped
+
+
+def test_dumps_prt_prp_release_setting():
+    """prt-prp period release fields (all_, first, last) write correct MF6 keywords."""
+    from flopy4.mf6.prt.prp import Prp
+
+    prp = Prp(
+        dims={"nper": 3, "nreleasepts": 0},
+        all_={0: True},
+        first={1: True},
+        last={2: True},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(prp))
+    assert "ALL" in dumped
+    assert "FIRST" in dumped
+    assert "LAST" in dumped
+    assert "ALL_" not in dumped
+
+
+# ---------------------------------------------------------------------------
+# OC period dict API coverage
+# ---------------------------------------------------------------------------
+
+
+def _oc_blocks(oc):
+    """Return the unstructured block dict for an Oc instance."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    return unstructure_component(oc)
+
+
+def _period_blocks(oc):
+    blocks = _oc_blocks(oc)
+    return {k: v for k, v in blocks.items() if k.startswith("period")}
+
+
+def test_oc_period_string_int_keys():
+    """String integer keys ('0', '1') are treated identically to integer keys."""
+    from flopy4.mf6.gwf import Oc
+
+    dims = {"nper": 3}
+    # integer keys
+    oc_int = Oc(dims=dims, save_budget={0: "all", 1: "last"})
+    # string-int keys
+    oc_str = Oc(dims=dims, save_budget={"0": "all", "1": "last"})
+
+    pb_int = _period_blocks(oc_int)
+    pb_str = _period_blocks(oc_str)
+
+    assert pb_int == pb_str
+    assert pb_int["period 1"]["save budget"] == "all"
+    assert pb_int["period 2"]["save budget"] == "last"
+    assert pb_int["period 3"]["save budget"] == "last"  # fill-forward
+
+
+def test_oc_period_wildcard_fillforward():
+    """'*' key sets period 0 and fills forward to all nper periods."""
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(dims={"nper": 4}, save_head={"*": "all"}, save_budget={"*": "last"})
+    pb = _period_blocks(oc)
+
+    assert len(pb) == 4
+    for i in range(1, 5):
+        assert pb[f"period {i}"]["save head"] == "all"
+        assert pb[f"period {i}"]["save budget"] == "last"
+
+
+def test_oc_period_steps_syntax():
+    """STEPS values with step numbers pass through verbatim to the period block."""
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 2},
+        save_budget={0: "STEPS 1 3 5"},
+        print_budget={0: "STEPS 1", 1: "last"},
+    )
+    pb = _period_blocks(oc)
+
+    assert pb["period 1"]["save budget"] == "STEPS 1 3 5"
+    assert pb["period 1"]["print budget"] == "STEPS 1"
+    assert pb["period 2"]["save budget"] == "STEPS 1 3 5"  # fill-forward
+    assert pb["period 2"]["print budget"] == "last"
+
+
+def test_oc_period_stop_sentinel():
+    """Empty string '' stops fill-forward: subsequent periods omit that field."""
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 3},
+        save_head={"*": "all"},
+        save_budget={0: "STEPS 1", 1: ""},
+    )
+    pb = _period_blocks(oc)
+
+    # All periods have save_head (fill-forward from '*')
+    assert len(pb) == 3
+    for i in range(1, 4):
+        assert pb[f"period {i}"]["save head"] == "all"
+
+    # Only period 1 has save_budget; periods 2-3 omit it
+    assert pb["period 1"]["save budget"] == "STEPS 1"
+    assert "save budget" not in pb["period 2"]
+    assert "save budget" not in pb["period 3"]
+
+
+def test_oc_period_mixed_keys_no_silent_drop():
+    """Mixed string-int and int keys all take effect — none are silently dropped."""
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 3},
+        save_head={"0": "first", 1: "last", 2: "all"},
+    )
+    pb = _period_blocks(oc)
+
+    assert pb["period 1"]["save head"] == "first"
+    assert pb["period 2"]["save head"] == "last"
+    assert pb["period 3"]["save head"] == "all"
+
+
+def test_oc_dumps_steps_in_output():
+    """Round-trip: STEPS syntax appears correctly in the serialised OC text."""
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 2},
+        budget_file="t.bud",
+        head_file="t.hds",
+        save_head={"*": "all"},
+        save_budget={0: "STEPS 1 5", 1: ""},
+        print_budget={"*": "last"},
+    )
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
+
+    assert "SAVE HEAD all" in dumped
+    assert "SAVE BUDGET STEPS 1 5" in dumped
+    assert "PRINT BUDGET last" in dumped
+    # Period 2 must not re-emit SAVE BUDGET
+    lines = dumped.splitlines()
+    period2_start = next(i for i, l in enumerate(lines) if "BEGIN PERIOD 2" in l)
+    period2_block = "\n".join(lines[period2_start:])
+    assert "SAVE BUDGET" not in period2_block

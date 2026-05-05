@@ -27,7 +27,7 @@ class Sto(Package):
         default=False,
         longname="keyword to indicate specific storage only applied under confined conditions",
     )
-    tvs_filerecord: Optional[Path] = path(
+    tvs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     export_array_ascii: bool = field(

@@ -22,15 +22,15 @@ class Ist(Package):
     @attrs.define
     class Cimprint:
         _keyword: ClassVar[str] = "cim"
-        print_format: bool = attrs.field(metadata={"tagged": True})
+        _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
 
     save_flows: bool = field(
         block="options", default=False, longname="save calculated flows to budget file"
     )
-    budget_filerecord: Optional[Path] = path(
+    budget_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    budgetcsv_filerecord: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     sorption: Optional[str] = field(block="options", default=None, longname="activate sorption")
@@ -40,11 +40,11 @@ class Ist(Package):
     zero_order_decay: bool = field(
         block="options", default=False, longname="activate zero-order decay"
     )
-    cim_filerecord: Optional[Path] = path(
+    cim_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    cimprintrecord: Optional[Cimprint] = field(block="options", default=None)
-    sorbate_filerecord: Optional[Path] = path(
+    cimprint: Optional[Cimprint] = field(block="options", default=None)
+    sorbate_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     export_array_ascii: bool = field(

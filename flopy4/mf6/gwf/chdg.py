@@ -37,7 +37,7 @@ class Chdg(Package):
     save_flows: bool = field(
         block="options", default=False, longname="save chd flows to budget file"
     )
-    obs_filerecord: Optional[Path] = path(
+    obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     export_array_netcdf: bool = field(

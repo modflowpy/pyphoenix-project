@@ -48,7 +48,7 @@ class Npf(Package):
     perched: bool = field(
         block="options", default=False, longname="keyword to activate perched option"
     )
-    rewet_record: Optional[Rewet] = field(block="options", default=None)
+    rewet: Optional[Rewet] = field(block="options", default=None)
     xt3doptions: Optional[Xt3doptions] = field(block="options", default=None)
     highest_cell_saturation: bool = field(
         block="options",
@@ -67,7 +67,7 @@ class Npf(Package):
     k33overk: bool = field(
         block="options", default=False, longname="keyword to indicate that specified k33 is a ratio"
     )
-    tvk_filerecord: Optional[Path] = path(
+    tvk_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     export_array_ascii: bool = field(

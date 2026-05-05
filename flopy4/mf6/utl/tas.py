@@ -32,11 +32,9 @@ class Tas(Package):
         _keyword: ClassVar[str] = "sfac"
         sfacval: float = attrs.field()
 
-    time_series_namerecord: Optional[TimeSeriesName] = field(block="attributes", default=None)
-    interpolation_methodrecord: Optional[InterpolationMethod] = field(
-        block="attributes", default=None
-    )
-    sfacrecord: Optional[Sfac] = field(block="attributes", default=None)
+    time_series_name: Optional[TimeSeriesName] = field(block="attributes", default=None)
+    interpolation_method: Optional[InterpolationMethod] = field(block="attributes", default=None)
+    sfac: Optional[Sfac] = field(block="attributes", default=None)
     tas_array: NDArray[np.float64] = array(
         block="time",
         dims=("unknown",),

@@ -10,6 +10,7 @@ from flopy4.mf6.gwt.dsp import Dsp
 from flopy4.mf6.gwt.ic import Ic
 from flopy4.mf6.gwt.mst import Mst
 from flopy4.mf6.gwt.mvt import Mvt
+from flopy4.mf6.gwt.oc import Oc
 from flopy4.mf6.gwt.src import Src
 from flopy4.mf6.gwt.ssm import Ssm
 from flopy4.mf6.model import Model
@@ -25,6 +26,7 @@ __all__ = [
     "Ic",
     "Mst",
     "Mvt",
+    "Oc",
     "Src",
     "Ssm",
 ]

@@ -28,16 +28,16 @@ class Ims(Solution):
 
     print_option: Optional[str] = field(block="options", default=None, longname="print option")
     complexity: Optional[str] = field(block="options", default=None, longname="solver complexity")
-    csv_output_filerecord: Optional[Path] = path(
+    csv_output_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    csv_outer_output_filerecord: Optional[Path] = path(
+    csv_outer_output_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    csv_inner_output_filerecord: Optional[Path] = path(
+    csv_inner_output_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    no_ptcrecord: Optional[NoPtc] = field(block="options", default=None)
+    no_ptc: Optional[NoPtc] = field(block="options", default=None)
     ats_outer_maximum_fraction: Optional[float] = field(
         block="options", default=None, longname="fraction of outer maximum used with ats"
     )
@@ -97,7 +97,7 @@ class Ims(Solution):
     inner_dvclose: float = field(
         block="linear", default=None, longname="dependent-variable change tolerance"
     )
-    rcloserecord: Optional[Rclose] = field(block="linear", default=None)
+    rclose: Optional[Rclose] = field(block="linear", default=None)
     linear_acceleration: str = field(
         block="linear", default=None, longname="linear acceleration method"
     )

@@ -40,13 +40,13 @@ class Welg(Package):
     auto_flow_reduce: Optional[float] = field(
         block="options", default=None, longname="cell fractional thickness for reduced pumping"
     )
-    afrcsv_filerecord: Optional[Path] = path(
+    afrcsv_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
     flow_reduction_length: bool = field(
         block="options", default=False, longname="flow reduction length keyword"
     )
-    obs_filerecord: Optional[Path] = path(
+    obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     mover: bool = field(block="options", default=False)

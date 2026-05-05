@@ -17,7 +17,7 @@ from modflow_devtools.dfns import Dfn, load_flat
 from modflow_devtools.dfns.schema.field import Field as DfnField
 
 from . import filters
-from .overrides import apply_to_child
+from .overrides import apply_to_child, extra_record_children
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,8 @@ class InnerClassSpec:
 
     class_name: str
     keyword: str
+    extra_tokens: list[str]
+    extra_tokens_repr: str  # pre-formatted Python tuple literal, e.g. '("PRINT_FORMAT",)'
     fields: list[InnerClassFieldSpec]
 
 
@@ -79,9 +81,17 @@ class ComponentSpec:
 
 def _build_field_spec(f: DfnField, *, has_maxbound: bool = False) -> FieldSpec:
     generatable = filters.is_generatable(f)
+    # Strip 'record' suffix from file record names for a cleaner API
+    # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
+    # Compound records get the same treatment via _strip_record_words in
+    # build_component_spec; this keeps the two paths consistent.
+    if filters.is_file_record(f):
+        py_name = filters.safe_name("_".join(_strip_record_words(f.name)))
+    else:
+        py_name = filters.safe_name(f.name)
     return FieldSpec(
         dfn_name=f.name,
-        py_name=filters.safe_name(f.name),
+        py_name=py_name,
         type_annotation=filters.py_type(f) if generatable else "Any",
         spec_call=filters.spec_call(f, has_maxbound=has_maxbound) if generatable else "",
         generatable=generatable,
@@ -210,6 +220,57 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
     return specs
 
 
+def _expand_oc_record_field(f: DfnField, dfn_name: str) -> list[FieldSpec]:
+    """Expand saverecord/printrecord into per-rtype NDArray[np.str_] fields.
+
+    Generates one array field per rtype (e.g. save_concentration, save_budget)
+    using StringDType so the egress writer can produce ``SAVE CONCENTRATION all``
+    by splitting on ``_`` → replacing with space.
+    """
+    rtypes = filters._OC_RTYPES.get(dfn_name, [])
+    action = "save" if f.name == "saverecord" else "print"
+    specs: list[FieldSpec] = []
+    for rtype in rtypes:
+        py_name = f"{action}_{rtype}"
+        spec_call = (
+            "array("
+            "dtype=np.dtypes.StringDType(), "
+            'block="period", '
+            'dims=("nper",), '
+            "default=None, "
+            "converter=Converter(structure_array, takes_self=True, takes_field=True)"
+            ")"
+        )
+        specs.append(
+            FieldSpec(
+                dfn_name=f"{f.name}_{rtype}",
+                py_name=py_name,
+                type_annotation="Optional[NDArray[np.str_]]",
+                spec_call=spec_call,
+                generatable=True,
+            )
+        )
+    return specs
+
+
+def _strip_record_words(name: str) -> list[str]:
+    """Split a DFN field name and strip any trailing 'record' component.
+
+    Works for both underscore-separated suffixes ('rewet_record' → ['rewet'])
+    and concatenated suffixes ('rcloserecord' → ['rclose']).
+    Returns a list of words suitable for joining as a field name or title-casing
+    into a class name.
+    """
+    words = name.split("_")
+    if words:
+        last = words[-1].lower()
+        if last == "record":
+            words = words[:-1]
+        elif last.endswith("record"):
+            words[-1] = words[-1][: -len("record")]
+    return [w for w in words if w]
+
+
 _SCALAR_PY_TYPES_INNER: dict[str, str] = {
     "keyword": "bool",
     "integer": "int",
@@ -226,6 +287,14 @@ def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
     (``_keyword``) and is not emitted as a data field.  When the first child
     is a tagged scalar there is no leading keyword token (``_keyword = ""``)
     and all children become data fields.
+
+    Required keyword children after the trigger are treated as fixed tokens
+    (always emitted, not user-facing fields) stored in ``_extra_tokens``.
+    Optional keyword children become Optional[bool] fields.
+
+    Extra children from ``dfn_overrides.toml`` (used to flatten nested
+    sub-records lost in v2 TOML conversion) are appended after the direct
+    children.  All fields are sorted required-first to satisfy attrs.
     """
     children = list((f.children or {}).values())
     first = children[0]
@@ -236,37 +305,63 @@ def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
         keyword = ""
         data_children = children
 
+    extra_tokens: list[str] = []
     inner_fields: list[InnerClassFieldSpec] = []
-    for child_dict in data_children:
+
+    def _process_child(child_dict: dict) -> None:
         child_dict = apply_to_child(dfn_name, child_dict)
         child_type = child_dict.get("type", "string")
         child_name = child_dict["name"]
         is_optional = child_dict.get("optional", False)
         tagged = child_dict.get("tagged", False)
 
-        base_type = _SCALAR_PY_TYPES_INNER.get(child_type, "Any")
-        type_annotation = f"Optional[{base_type}]" if is_optional else base_type
-
-        inner_fields.append(
-            InnerClassFieldSpec(
-                py_name=filters.safe_name(child_name),
-                type_annotation=type_annotation,
-                tagged=tagged,
-                optional=is_optional,
+        if child_type == "keyword":
+            if not is_optional:
+                # Required keyword: always emitted as a fixed syntax token.
+                extra_tokens.append(child_name.upper())
+            else:
+                # Optional keyword: user chooses whether to set it.
+                inner_fields.append(
+                    InnerClassFieldSpec(
+                        py_name=filters.safe_name(child_name),
+                        type_annotation="Optional[bool]",
+                        tagged=tagged,
+                        optional=True,
+                    )
+                )
+        else:
+            base_type = _SCALAR_PY_TYPES_INNER.get(child_type, "Any")
+            type_annotation = f"Optional[{base_type}]" if is_optional else base_type
+            inner_fields.append(
+                InnerClassFieldSpec(
+                    py_name=filters.safe_name(child_name),
+                    type_annotation=type_annotation,
+                    tagged=tagged,
+                    optional=is_optional,
+                )
             )
-        )
 
-    words = f.name.split("_")
-    # Strip trailing "record" — either as a whole word or as a suffix of the last word
-    # e.g. "rewet_record" → "Rewet", "rcloserecord" → "Rclose", "xt3d" → "Xt3d"
-    if words:
-        last = words[-1].lower()
-        if last == "record":
-            words = words[:-1]
-        elif last.endswith("record"):
-            words[-1] = words[-1][: -len("record")]
-    class_name = "".join(w.capitalize() for w in words if w)
-    return InnerClassSpec(class_name=class_name, keyword=keyword, fields=inner_fields)
+    for child_dict in data_children:
+        _process_child(child_dict)
+
+    for child_dict in extra_record_children(dfn_name, f.name):
+        _process_child(child_dict)
+
+    # attrs requires fields with defaults to follow fields without defaults.
+    inner_fields.sort(key=lambda field: field.optional)
+
+    words = _strip_record_words(f.name)
+    class_name = "".join(w.capitalize() for w in words)
+    extra_tokens_repr = (
+        "(" + ", ".join(f'"{t}"' for t in extra_tokens) + ",)" if extra_tokens else ""
+    )
+    return InnerClassSpec(
+        class_name=class_name,
+        keyword=keyword,
+        extra_tokens=extra_tokens,
+        extra_tokens_repr=extra_tokens_repr,
+        fields=inner_fields,
+    )
 
 
 _SLN_PREFIX = "sln"
@@ -301,18 +396,24 @@ def build_component_spec(
     inner_class_specs: list[InnerClassSpec] = []
     generatable_field_objects: list[DfnField] = []
     has_list_cols = False
+    has_oc_fields = False
     for f in all_fields:
         if filters.is_list_field(f):
             expanded = _expand_list_field(f, dfn)
             field_specs.extend(expanded)
             has_list_cols = has_list_cols or any(fs.generatable for fs in expanded)
+        elif filters.is_oc_record(f, dfn.name):
+            expanded = _expand_oc_record_field(f, dfn.name)
+            field_specs.extend(expanded)
+            has_oc_fields = has_oc_fields or any(fs.generatable for fs in expanded)
         elif filters.can_generate_record_class(f):
             record_spec = _build_inner_class_spec(f, dfn.name)
             inner_class_specs.append(record_spec)
+            clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
             field_specs.append(
                 FieldSpec(
                     dfn_name=f.name,
-                    py_name=filters.safe_name(f.name),
+                    py_name=clean_name,
                     type_annotation=f"Optional[{record_spec.class_name}]",
                     spec_call=f'field(block="{f.block}", default=None)',
                     generatable=True,
@@ -342,6 +443,7 @@ def build_component_spec(
         has_maxbound=has_maxbound,
         has_list_cols=has_list_cols,
         has_inner_classes=has_inner_classes,
+        has_oc_fields=has_oc_fields,
     )
 
     template = "package.py.jinja"

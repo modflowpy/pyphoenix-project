@@ -10,6 +10,7 @@ from flopy4.mf6.gwe.esl import Esl
 from flopy4.mf6.gwe.est import Est
 from flopy4.mf6.gwe.ic import Ic
 from flopy4.mf6.gwe.mve import Mve
+from flopy4.mf6.gwe.oc import Oc
 from flopy4.mf6.gwe.ssm import Ssm
 from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field
@@ -24,6 +25,7 @@ __all__ = [
     "Est",
     "Ic",
     "Mve",
+    "Oc",
     "Ssm",
 ]
 

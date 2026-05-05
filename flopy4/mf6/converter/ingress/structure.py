@@ -443,6 +443,11 @@ def _parse_dict_format(
         # Handle special '*' key (means period/layer 0, don't fill forward)
         if key == "*":
             key = 0
+        elif isinstance(key, str):
+            try:
+                key = int(key)
+            except ValueError:
+                continue
 
         # Skip non-integer keys
         if not isinstance(key, int):

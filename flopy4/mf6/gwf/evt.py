@@ -41,10 +41,8 @@ class Evt(Package):
     save_flows: bool = field(
         block="options", default=False, longname="save evapotranspiration rates to budget file"
     )
-    ts_filerecord: Optional[Path] = path(
-        block="options", default=None, converter=to_path, inout="filein"
-    )
-    obs_filerecord: Optional[Path] = path(
+    ts_file: Optional[Path] = path(block="options", default=None, converter=to_path, inout="filein")
+    obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     surf_rate_specified: bool = field(

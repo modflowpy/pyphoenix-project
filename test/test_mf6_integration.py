@@ -67,7 +67,7 @@ def test_gwf_chd01(function_tmpdir):
         under_relaxation="none",
         inner_maximum=300,
         inner_dvclose=1.00000000e-06,
-        rcloserecord=Ims.Rclose(inner_rclose=1.00000000e-06),
+        rclose=Ims.Rclose(inner_rclose=1.00000000e-06),
         linear_acceleration="cg",
         relaxation_factor=1.0,
         scaling_method="none",
@@ -100,7 +100,6 @@ def test_gwf_chd01(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        head="PRINT_FORMAT COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL",
         save_head=["last"],
         save_budget=["last"],
         print_head=["last"],
@@ -255,7 +254,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         under_relaxation="dbd",
         inner_maximum=300,
         inner_dvclose=1.00000000e-09,
-        rcloserecord=Ims.Rclose(inner_rclose=1.00000000e-03),
+        rclose=Ims.Rclose(inner_rclose=1.00000000e-03),
         linear_acceleration="bicgstab",
         relaxation_factor=0.97000000,
         scaling_method="none",
@@ -446,7 +445,6 @@ def test_gwf_disv_uzf(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        head="PRINT_FORMAT COLUMNS  10  WIDTH  15  DIGITS  6  GENERAL",
         save_head={0: "all"},
         save_budget={0: "all"},
         print_head={0: "all"},
@@ -830,7 +828,7 @@ def test_gwf_wel(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -875,7 +873,7 @@ def test_gwf_drn(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -925,7 +923,7 @@ def test_gwf_riv(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -976,7 +974,7 @@ def test_gwf_rch(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1030,7 +1028,7 @@ def test_gwf_rcha(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1083,7 +1081,7 @@ def test_gwf_evt(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1140,7 +1138,7 @@ def test_gwf_evta(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1205,7 +1203,7 @@ def test_gwf_mvr(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="cg",
     )
 
@@ -1294,7 +1292,7 @@ def test_gwt_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwt = Ims(
@@ -1305,7 +1303,7 @@ def test_gwt_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1376,7 +1374,7 @@ def test_gwe_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwe = Ims(
@@ -1387,7 +1385,7 @@ def test_gwe_basic(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1459,7 +1457,7 @@ def test_gwf_buy(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwt = Ims(
@@ -1470,7 +1468,7 @@ def test_gwf_buy(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1555,7 +1553,7 @@ def test_gwf_vsc(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
     ims_gwe = Ims(
@@ -1566,7 +1564,7 @@ def test_gwf_vsc(function_tmpdir):
         outer_maximum=100,
         inner_maximum=300,
         inner_dvclose=1e-6,
-        rcloserecord=Ims.Rclose(inner_rclose=1e-6),
+        rclose=Ims.Rclose(inner_rclose=1e-6),
         linear_acceleration="bicgstab",
     )
 
@@ -1669,7 +1667,7 @@ def test_prt_basic(function_tmpdir):
                 outer_maximum=50,
                 inner_maximum=100,
                 inner_dvclose=1e-6,
-                rcloserecord=Ims.Rclose(inner_rclose=1e-3),
+                rclose=Ims.Rclose(inner_rclose=1e-3),
                 linear_acceleration="cg",
             )
         },
@@ -1712,7 +1710,7 @@ def test_prt_basic(function_tmpdir):
         gwfhead=Path(f"{gwf_name}.hds"),
         gwfbudget=Path(f"{gwf_name}.cbc"),
     )
-    PrtOc(parent=prt, track_filerecord=f"{prt_name}.trk", trackcsv_filerecord=f"{prt_name}.trk.csv")
+    PrtOc(parent=prt, track_file=f"{prt_name}.trk", trackcsv_file=f"{prt_name}.trk.csv")
     prt_sim.write()
     prt_sim.run()
 
@@ -1729,3 +1727,73 @@ def test_prt_basic(function_tmpdir):
 
     oc_content = oc_path.read_text()
     assert "TRACK FILEOUT" in oc_content
+
+
+def test_gwf_oc_period_variations(function_tmpdir):
+    """OC period dict: verify stop-sentinel and STEPS produce correct CBC record counts.
+
+    Uses a minimal 3-period, 1-layer, 3x3 model with:
+    - save_budget={0: "STEPS 1", 1: ""}: budget only for period 1, step 1
+    - save_head={"*": "all"}: head every timestep, all periods
+
+    Asserts the CBC has exactly 1 FLOW-JA-FACE record (stop sentinel halts fill-forward)
+    and the HDS has records for all three periods.
+    """
+    from flopy4.mf6.utils import open_cbc, open_hds
+
+    sim_name = "oc_periods"
+    gwf_name = "gwf_oc"
+    nper = 3
+
+    time = Time(perlen=[1.0] * nper, nstp=[2] * nper, tsmult=[1.0] * nper)
+
+    ims = Ims(
+        filename="sln.ims",
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=50,
+        inner_maximum=100,
+        inner_dvclose=1e-6,
+        rclose=Ims.Rclose(inner_rclose=1e-3),
+        linear_acceleration="cg",
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(nlay=1, nrow=3, ncol=3, delr=1.0, delc=1.0, top=1.0, botm=0.0, idomain=1)
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, k=1.0, icelltype=0)
+    Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 0, 2): 0.0}}, name="chd-1")
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head={"*": "all"},
+        save_budget={0: "STEPS 1", 1: ""},
+        dims={"nper": nper},
+    )
+
+    sim.write()
+    sim.run()
+
+    cbc = open_cbc(
+        Path(function_tmpdir, f"{gwf_name}.cbc"),
+        Path(function_tmpdir, f"{gwf_name}.dis.grb"),
+    )
+    hds = open_hds(
+        Path(function_tmpdir, f"{gwf_name}.hds"),
+        Path(function_tmpdir, f"{gwf_name}.dis.grb"),
+    )
+
+    # Stop sentinel: budget saved only at step 1 of period 1 → 1 flow record
+    assert "flow-right-face" in cbc
+    assert cbc["flow-right-face"].sizes["time"] == 1
+
+    # Head saved every step, all 3 periods × 2 steps = 6 time slices
+    assert hds.sizes["time"] == nper * 2
