@@ -7,6 +7,9 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
 - [Overview](#overview)
 - [Background](#background)
 - [Design](#design)
+  - [Components](#components)
+    - [Parent bindings](#parent-bindings)
+    - [Multi-packages](#multi-packages)
   - [Blocks](#blocks)
     - [Block flavors](#block-flavors)
       - [Dictionary block](#dictionary-block)
@@ -14,7 +17,7 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
     - [Exceptions](#exceptions)
     - [Block class](#block-class)
   - [Fields](#fields)
-    - [Attributes](#attributes)
+    - [Shared attributes](#shared-attributes)
       - [`name`](#name)
       - [`type`](#type)
       - [`longname`](#longname)
@@ -22,6 +25,20 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
       - [`optional`](#optional)
       - [`default`](#default)
       - [`developmode`](#developmode)
+    - [Other attributes](#other-attributes)
+      - [`reader`](#reader)
+      - [`tagged`](#tagged)
+      - [`preserve_case`](#preserve_case)
+      - [`jagged_array`](#jagged_array)
+      - [`numeric_index`](#numeric_index)
+      - [`time_series`](#time_series)
+      - [`layered`](#layered)
+      - [`valid`](#valid)
+      - [`repeat`](#repeat)
+      - [`just_data`](#just_data)
+      - [`block`](#block)
+      - [`block_variable`](#block_variable)
+      - [`netcdf`](#netcdf)
     - [Scalars](#scalars)
       - [Keyword](#keyword)
       - [String](#string)
@@ -33,23 +50,6 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
       - [Record](#record)
       - [Union](#union)
       - [List](#list)
-    - [Field attributes](#field-attributes)
-    - [`reader`](#reader)
-    - [`tagged`](#tagged)
-    - [`preserve_case`](#preserve_case)
-    - [`jagged_array`](#jagged_array)
-    - [`numeric_index`](#numeric_index)
-    - [`time_series`](#time_series)
-    - [`layered`](#layered)
-    - [`valid`](#valid)
-    - [`repeat`](#repeat)
-    - [`just_data`](#just_data)
-    - [`block`](#block)
-    - [`block_variable`](#block_variable)
-    - [`netcdf`](#netcdf)
-  - [Components](#components)
-    - [Parent bindings](#parent-bindings)
-    - [Multi-packages](#multi-packages)
 - [Cross-cutting constraints](#cross-cutting-constraints)
   - [Array dimensions](#array-dimensions)
   - [Primary/foreign keys](#primaryforeign-keys)
@@ -96,6 +96,29 @@ The aim is to provide structure and rigor to the DFN specification without depar
 **Expressivity.** Make valid data easy to represent, invalid data impossible.
 
 **Consistency.** Consolidate conceptually similar patterns where appropriate.
+
+### Components
+
+Each component is specified by a DFN. Component definitions consist of zero or more block definitions (see below).
+
+Component definitions may also include component-scoped information:
+
+- the component's (possible) parent(s), if any
+- whether multiple instances of the component are allowed
+
+#### Parent bindings
+
+See the section on parent-child relations below.
+
+#### Multi-packages
+
+Components of which multiple instances are allowed are called "multi-packages", indicated in v1 by a special comment line at the top of the DFN:
+
+```
+# flopy multi-package
+```
+
+In v2, introduce a top-level component attribute `multi`.
 
 ### Blocks
 
@@ -159,7 +182,7 @@ Field = Annotated[
 ]
 ```
 
-#### Attributes
+#### Shared attributes
 
 There is a core set of base attributes shared by all fields:
 
@@ -208,6 +231,108 @@ The field's default value. Only relevant for optional fields. TODO: determine wh
 ##### `developmode`
 
 Feature flag indicating that the field is not to be released yet, only to be allowed in develop mode builds.
+
+#### Other attributes
+
+Some v1 attributes are preserved as-is. Some are renamed with semantics preserved. Others may have the same name with modified semantics, or a new name and modified semantics.
+
+| v1 attribute | v2 fate | notes |
+|---|---|---|
+| `reader` | Drop | Infer from field/block type and attributes. |
+| `tagged` | Keep | Some records may have a mix of tagged and untagged subfields. And arrays may not be tagged if the array's identity is clear from the block name, as for UTL-TAS tas_array. |
+| `preserve_case` | Rename `case_sensitive` | No longer needed for path strings, still necessary for some others (e.g. `crs`). |
+| `time_series` | Keep | Overloaded; different semantics for scalars and arrays. |
+| `layered` | Drop | Perfectly correlated with `nlay` in shape. |
+| `jagged_array` | Drop | Raggedness is cosmetic, simply parse as 1D. Only used for DISU `ja`. |
+| `numeric_index` | Drop | Replace with explicit PK/FK semantics, see section below. |
+| `valid` | Keep | Applicable only to strings and integers. |
+| `repeating` | Rename/retype to `repeat: str | None` | Unifies UTL-TAS and GWF-RCHA/EVTA aux patterns, see section below. |
+| `just_data` | Drop | Only used in UTL-TAS; use `tagged` instead. |
+| `block_variable` | Drop | Replace with first-class block repetition semantics, see section below. |
+| `block` | Drop | Field membership in block hierarchy makes inline attribute redundant. |
+| `netcdf` | Keep (for now) | Required so long as NetCDF is opt-in for individual fields. Not necessary if all fields are to be read from NetCDF files, or if field-level inclusion in NetCDF files can be determined by some rule (e.g. data but not configuration fields). |
+
+##### `reader`
+
+The v1 `reader` indicates which MF6 parsing routine is to be used for the field. This can be inferred in v2 from the field type and other attributes, so `reader` can be dropped: arrays are read with READARRAY, other field types with urword.
+
+##### `tagged`
+
+The v1 `tagged` attribute indicates whether a field, usually but not necessarily a record subfield, must be preceded by its name. This attribute remains in v2 and becomes optional.
+
+By default, `tagged=True`. Tagging is only optional for fields whose identity can be unambiguously determined from their value or their position in a line or block. Some fields must always be `tagged`:
+
+1. Fields in a dictionary block.
+2. Keyword fields. Only the presence/absence of the keyword can signal the field's value.
+
+Setting `tagged=False` for either of these cases is a validation error.
+
+Some records mix tagged and untagged subfields. For example, GWF-OC's `formatrecord`.
+
+##### `preserve_case`
+
+The MF6 parser converts strings to uppercase by default. The `preserve_case` flag in v1 indicates that a string field should not be uppercased. The main use case is file paths, but there are other case-sensitive strings (e.g. CRS). Rename to `case_sensitive` in v2, and apply only to non-path fields, since case-sensitivity can be assumed for paths.
+
+##### `jagged_array`
+
+The `jagged_array: str` attribute in v1 marks an array field which can be spread across multiple lines, with varying numbers of elements per line; the number determined by the named array (`iac`). Used only for DISU `connectiondata`.
+
+This exists for the benefit of FloPy 3.x only. Drop in v2. The MF6 input file parser has no concept of raggedness; `ja` is read as a flat 1D array of shape `NJA`.
+
+##### `numeric_index`
+
+In v1 `numeric_index` marks fields that index an element of some collection. In general, the index is into a list defined in the same package. But there are more exotic cases; for example, `iper` block indices representing period numbers, or UTL-OBS `id`/`id2` fields accepting either a boundary name or a cellid, and for which the target collection may be 1) a list defined in another package or 2) the grid's node list, which is implicit in the discretization, not an explicit field.
+
+Replace `numeric_index` in v2 with explicit PK/FK semantics (see section below). Valid only on integer and string subfields of a record which is itself a list's item type.
+
+##### `time_series`
+
+In v1 `time_series` marks fields which may be configured as a scalar- or array-valued timeseries.
+
+Applied to a string (`reader urword`) field, indicates that it accepts either a real numeric value or a TS name referencing a `utl-ts` time series object.
+
+Applied to an array (`reader readarray`) field, indicates that it accepts either inline array data using READARRAY syntax, or a TAS name referencing a time-array series object. At any model time, the TAS provides an interpolated grid-shaped array.
+
+##### `layered`
+
+In v1 `layered` marks array fields that must be read as separate layer arrays: distinct READARRAY sections for each layer, rather than one with one greater dimension. Required because the READARRAY routine works on arrays of at most 2 dimensions.
+
+Every array whose shape contains `nlay` also has `layered`, and no array with `nlay` in its shape is non-layered, so `layered` can be dropped in v2 and inferred from dimensions.
+
+##### `valid`
+
+In v1 `valid` enumerates permissible values for string fields. Keep in v2, and allow on integers too.
+
+##### `repeat`
+
+In v1 `repeating` has been applied in two different ways, only one of which is still in use:
+
+- For UTL-TAS `tas_array`, `repeating` indicates that the `time` block may contain multiple array values, up to the number of timeseries names provided in `time_series_name`.
+- Prior to MF6.6.0, PRT-PRP and PRT-OC used `repeating` to signal an "inline" 1D array that is not formatted according to READARRAY requirements, but simply consists of a single line of space-separated elements; could also be considered a variadic tuple. These usages were unique and non-standard, and the relevant fields were removed in MF6.6.0.
+
+GWF-RCHA/EVTA period block `aux` shares the same semantics as UTL-TAS `tas_array`: multiple READARRAY calls per block, up to the number of elements (`naux`) in the `auxiliary` string array. But `aux` is not annotated with `repeating`; the repetition is implicit.
+
+In v2, rename `repeating` to `repeat`, and switch from a boolean to a string naming a 1D array field in the same component whose length determines how many times the `repeat`-annotated field is repeated sequentially within a single block. Then apply to both the UTL-TAS and RCHA/EVTA cases. Also make the shape of the array field meaningful, even if it is not an explicitly defined field (e.g., instead of `any1d`, introduce `ntas` or similar, analogous to `naux`).
+
+Perhaps `repeat` could alternatively accept a scalar dimension field identifying the repetition count. This pattern does not currently appear in the DFN corpus, but could be useful in future.
+
+##### `just_data`
+
+In v1 `just_data` marks a field whose value occupies the entire block body, and signals the absence of a keyword tag. This attribute is used only for UTL-TAS `tas_array`: this indicates that each `begin time X` block header will be followed by READARRAY input with no leading keyword (tag).
+
+This is redundant with `tagged` and unnecessary in v2.
+
+##### `block`
+
+In v1 `block` signals a field's membership in a block. This is necessary as in v1, DFN blocks are delimited by cosmetic comment lines which are ignored by the MF6 parser. In v2, an explicit `block` attribute is unnecessary: membership is expressed structurally, with field nested inside blocks. When serialized to TOML, membership can therefore be expressed as a table path (e.g. `[gwf-dis.griddata.botm]`).
+
+##### `block_variable`
+
+In v1 `block_variable` marks fields like `iper` which appear in the block header line rather than within the block body. The purpose of these is to distinguish blocks when a block may be repeated (e.g. period block, TAS time block). Drop in v2; first-class block repetition via block labels suffices instead (see `repeat` section above).
+
+##### `netcdf`
+
+In v1 `netcdf` marks fields that can appear in NetCDF input files. Keep in v2 for now, pending a decision whether fields will continue to opt into NetCDF support or whether fields will be included/excluded based on some rule.
 
 #### Scalars
 
@@ -301,129 +426,6 @@ Type `list`, renamed from v1's `recarray`. Collection type. Unlimited but for on
 
 Attributes (beyond base):
 - `item: Record | Union`: subfield (item type), required.
-
-#### Field attributes
-
-Some v1 attributes are preserved as-is. Some are renamed with semantics preserved. Others may have the same name with modified semantics, or a new name and modified semantics.
-
-| v1 attribute | v2 fate | notes |
-|---|---|---|
-| `reader` | Drop | Infer from field/block type and attributes. |
-| `tagged` | Keep | Some records may have a mix of tagged and untagged subfields. And arrays may not be tagged if the array's identity is clear from the block name, as for UTL-TAS tas_array. |
-| `preserve_case` | Rename `case_sensitive` | No longer needed for path strings, still necessary for some others (e.g. `crs`). |
-| `time_series` | Keep | Overloaded; different semantics for scalars and arrays. |
-| `layered` | Drop | Perfectly correlated with `nlay` in shape. |
-| `jagged_array` | Drop | Raggedness is cosmetic, simply parse as 1D. Only used for DISU `ja`. |
-| `numeric_index` | Drop | Replace with explicit PK/FK semantics, see section below. |
-| `valid` | Keep | Applicable only to strings and integers. |
-| `repeating` | Rename/retype to `repeat: str | None` | Unifies UTL-TAS and GWF-RCHA/EVTA aux patterns, see section below. |
-| `just_data` | Drop | Only used in UTL-TAS; use `tagged` instead. |
-| `block_variable` | Drop | Replace with first-class block repetition semantics, see section below. |
-| `block` | Drop | Field membership in block hierarchy makes inline attribute redundant. |
-| `netcdf` | Keep (for now) | Required so long as NetCDF is opt-in for individual fields. Not necessary if all fields are to be read from NetCDF files, or if field-level inclusion in NetCDF files can be determined by some rule (e.g. data but not configuration fields). |
-
-#### `reader`
-
-The v1 `reader` indicates which MF6 parsing routine is to be used for the field. This can be inferred in v2 from the field type and other attributes, so `reader` can be dropped: arrays are read with READARRAY, other field types with urword.
-
-#### `tagged`
-
-The v1 `tagged` attribute indicates whether a field, usually but not necessarily a record subfield, must be preceded by its name. This attribute remains in v2 and becomes optional.
-
-By default, `tagged=True`. Tagging is only optional for fields whose identity can be unambiguously determined from their value or their position in a line or block. Some fields must always be `tagged`:
-
-1. Fields in a dictionary block.
-2. Keyword fields. Only the presence/absence of the keyword can signal the field's value.
-
-Setting `tagged=False` for either of these cases is a validation error.
-
-Some records mix tagged and untagged subfields. For example, GWF-OC's `formatrecord`.
-
-#### `preserve_case`
-
-The MF6 parser converts strings to uppercase by default. The `preserve_case` flag in v1 indicates that a string field should not be uppercased. The main use case is file paths, but there are other case-sensitive strings (e.g. CRS). Rename to `case_sensitive` in v2, and apply only to non-path fields, since case-sensitivity can be assumed for paths.
-
-#### `jagged_array`
-
-The `jagged_array: str` attribute in v1 marks an array field which can be spread across multiple lines, with varying numbers of elements per line; the number determined by the named array (`iac`). Used only for DISU `connectiondata`.
-
-This exists for the benefit of FloPy 3.x only. Drop in v2. The MF6 input file parser has no concept of raggedness; `ja` is read as a flat 1D array of shape `NJA`.
-
-#### `numeric_index`
-
-In v1 `numeric_index` marks fields that index an element of some collection. In general, the index is into a list defined in the same package. But there are more exotic cases; for example, `iper` block indices representing period numbers, or UTL-OBS `id`/`id2` fields accepting either a boundary name or a cellid, and for which the target collection may be 1) a list defined in another package or 2) the grid's node list, which is implicit in the discretization, not an explicit field.
-
-Replace `numeric_index` in v2 with explicit PK/FK semantics (see section below). Valid only on integer and string subfields of a record which is itself a list's item type.
-
-#### `time_series`
-
-In v1 `time_series` marks fields which may be configured as a scalar- or array-valued timeseries.
-
-Applied to a string (`reader urword`) field, indicates that it accepts either a real numeric value or a TS name referencing a `utl-ts` time series object.
-
-Applied to an array (`reader readarray`) field, indicates that it accepts either inline array data using READARRAY syntax, or a TAS name referencing a time-array series object. At any model time, the TAS provides an interpolated grid-shaped array.
-
-#### `layered`
-
-In v1 `layered` marks array fields that must be read as separate layer arrays: distinct READARRAY sections for each layer, rather than one with one greater dimension. Required because the READARRAY routine works on arrays of at most 2 dimensions.
-
-Every array whose shape contains `nlay` also has `layered`, and no array with `nlay` in its shape is non-layered, so `layered` can be dropped in v2 and inferred from dimensions.
-
-#### `valid`
-
-In v1 `valid` enumerates permissible values for string fields. Keep in v2, and allow on integers too.
-
-#### `repeat`
-
-In v1 `repeating` has been applied in two different ways, only one of which is still in use:
-
-- For UTL-TAS `tas_array`, `repeating` indicates that the `time` block may contain multiple array values, up to the number of timeseries names provided in `time_series_name`.
-- Prior to MF6.6.0, PRT-PRP and PRT-OC used `repeating` to signal an "inline" 1D array that is not formatted according to READARRAY requirements, but simply consists of a single line of space-separated elements; could also be considered a variadic tuple. These usages were unique and non-standard, and the relevant fields were removed in MF6.6.0.
-
-GWF-RCHA/EVTA period block `aux` shares the same semantics as UTL-TAS `tas_array`: multiple READARRAY calls per block, up to the number of elements (`naux`) in the `auxiliary` string array. But `aux` is not annotated with `repeating`; the repetition is implicit.
-
-In v2, rename `repeating` to `repeat`, and switch from a boolean to a string naming a 1D array field in the same component whose length determines how many times the `repeat`-annotated field is repeated sequentially within a single block. Then apply to both the UTL-TAS and RCHA/EVTA cases. Also make the shape of the array field meaningful, even if it is not an explicitly defined field (e.g., instead of `any1d`, introduce `ntas` or similar, analogous to `naux`).
-
-Perhaps `repeat` could alternatively accept a scalar dimension field identifying the repetition count. This pattern does not currently appear in the DFN corpus, but could be useful in future.
-
-#### `just_data`
-
-In v1 `just_data` marks a field whose value occupies the entire block body, and signals the absence of a keyword tag. This attribute is used only for UTL-TAS `tas_array`: this indicates that each `begin time X` block header will be followed by READARRAY input with no leading keyword (tag).
-
-This is redundant with `tagged` and unnecessary in v2.
-
-#### `block`
-
-In v1 `block` signals a field's membership in a block. This is necessary as in v1, DFN blocks are delimited by cosmetic comment lines which are ignored by the MF6 parser. In v2, an explicit `block` attribute is unnecessary: membership is expressed structurally, with field nested inside blocks. When serialized to TOML, membership can therefore be expressed as a table path (e.g. `[gwf-dis.griddata.botm]`).
-
-#### `block_variable`
-
-In v1 `block_variable` marks fields like `iper` which appear in the block header line rather than within the block body. The purpose of these is to distinguish blocks when a block may be repeated (e.g. period block, TAS time block). Drop in v2; first-class block repetition via block labels suffices instead (see `repeat` section above).
-
-#### `netcdf`
-
-In v1 `netcdf` marks fields that can appear in NetCDF input files. Keep in v2 for now, pending a decision whether fields will continue to opt into NetCDF support or whether fields will be included/excluded based on some rule.
-
-### Components
-
-Each component is specified by a DFN. Component definitions may include component-scoped information:
-
-- the component's (possible) parent(s), if any
-- whether multiple instances of the component are allowed
-
-#### Parent bindings
-
-See the section on parent-child relations below.
-
-#### Multi-packages
-
-Components of which multiple instances are allowed are called "multi-packages", indicated in v1 by a special comment line at the top of the DFN:
-
-```
-# flopy multi-package
-```
-
-In v2, introduce a top-level component attribute `multi`.
 
 ## Cross-cutting constraints
 
