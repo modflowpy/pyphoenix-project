@@ -62,8 +62,6 @@ This document outlines a plan to formalize and iterate the MF6 DFN specification
 
 The MODFLOW 6 definition (DFN) file format is a simple text format used to specify the logical structure of MODFLOW 6 input components. This includes shape, relationships, and various other characteristics. Taken together, a full set of DFNs carry several types of information: which components exist, what fields they have, component- and field-level attributes, and how components may be connected to one another. DFNs also inevitably reflect representational choices and may carry format-specific information.
 
-DFNs are a level "above" input files: DFNs specify the structure of a simulation and the contents of input files. Put differently, DFNs specify how to specify simulations. Input files specify simulations.
-
 DFNs must be interpreted in the context of the [natural language specification](https://modflow6.readthedocs.io/en/latest/_dev/dfn.html) describing them, as well as the MF6IO documentation, which describes MF6 input parsing routines. While DFNs are versioned in sync with MF6, the DFN schema itself is informal and unversioned.
 
 Though the existing DFN spec is unversioned, this document will refer to it as **v1** for convenience. This schema is implicit in the DFN files' contents understood with reference to the MF6IO guide. This document describes a plan to formalize and version the DFN specification, ultimately producing formally versioned **v2+** DFN schemata.
@@ -104,6 +102,12 @@ Component definitions may also include component-scoped information:
 
 - the component's (possible) parent(s), if any
 - whether multiple instances of the component are allowed
+
+#### Component definition
+
+A component definition is an immutable object with top-level attributes: `name`, `schema_version`, `parent`, `multi`, `advanced`, `variant_of`, and `blocks`.
+
+`children` is an optional attribute, absent in flat specs and populated when components are organized into a hierarchy. Top-down traversal is also supported without building a full hierarchy: a full specification object can invert the bottom-up `parent` declarations on demand.
 
 #### Parent bindings
 
@@ -148,15 +152,7 @@ A list block consists of exactly one top-level list field. Rows are read sequent
 
 #### Block class
 
-Blocks can be first-class objects in v2.
-
-```python
-class Block(BaseModel):
-    name: str
-    fields: dict[str, Field]
-    repeats: bool = False
-    optional: bool = False
-```
+Blocks are first-class objects in v2 with four attributes: `name`, `fields`, `repeats`, and `optional`.
 
 The `repeats` attribute indicates that the block may be repeated. Each repetition must have a unique label. The label must follow the `begin`/`end` delimiters. This replaces the `block_variable` attribute used in v1. In v2 the label takes the place of the explicit block variables:
 
@@ -168,22 +164,11 @@ The `repeats` attribute indicates that the block may be repeated. Each repetitio
 
 In v1, fields are described by a single set of attributes, some mandatory, some optional, depending on the field type. Describing all field types with a single field definition is error-prone and requires manual validation, as it is possible to represent invalid state. It can also make it difficult to determine what type a field is: e.g., scalars and arrays are distinguished in v1 by a non-empty `shape` attribute; `type` alone is not sufficient. In v1, `type` may well be understood as "dtype", with scalar fields as special cases of arrays. (The `.array` syntax to retrieve the value of a scalar in FloPy 3.x may evidence such an understanding.)
 
-In v2, define a field instead as a [sum type](https://en.wikipedia.org/wiki/Tagged_union) (discriminated union) of concrete types, each consisting only of the attributes relevant to it. For example, with Pydantic:
-
-```python
-Scalar = Annotated[
-    Keyword | String | Integer | Double | Path,
-    PydanticField(discriminator="type")
-]
-Field = Annotated[
-    Scalar | Array | Record | Union | List,
-    PydanticField(discriminator="type")
-]
-```
+In v2, define a field as a [sum type](https://en.wikipedia.org/wiki/Tagged_union) (discriminated union) of concrete types, each consisting only of the attributes relevant to it. Concrete types are discriminated by the `type` attribute.
 
 #### Shared attributes
 
-There is a core set of base attributes shared by all fields:
+There is a core set of attributes shared by all field types:
 
 - `name`
 - `type`
@@ -440,7 +425,12 @@ Field and component definitions are not entirely self-contained. Some fields may
 
 A scalar integer field defined in one component can be referenced by name in the `shape` expression of an array field in the same or another component.
 
-In v2, shape expressions may only reference `dimension` fields; a reference to any other field becomes a schema validation error. TODO: how to handle derived fields? Make explicit in the spec? Define expression computing derived fields from explicit fields?
+In v2, shape expressions may only reference declared dimension names. Two kinds exist:
+
+- **Explicit dimensions**: integer scalar fields marked `dimension=True`. Fields in `dimensions` blocks are primary candidates; some `options` scalars also qualify (e.g. `naux`).
+- **Derived dimensions**: dimensions not present as explicit DFN fields but computable from other fields. Examples: `nodes` (product of grid dimension fields for structured grids), `nja` (derived from the connectivity array). Derived dimensions are declared explicitly in the schema with a defining expression.
+
+A shape expression referencing a name that is neither an explicit `dimension` field nor a declared derived dimension is a schema validation error.
 
 ### Primary/foreign keys
 
@@ -506,8 +496,6 @@ In v2, all parent relationships can be made explicit with a component attribute 
 | _(obs, attached to model or package)_ | `["model", "package"]` |
 | _(subpackage restricted to specific components)_ | `["gwf-sfr", "gwf-maw"]` |
 | _(attached to any parent)_ | `"*"` |
-
-**Note:** the `parent` attribute defines relationships bottom-up, from the child to the parent. In some contexts it is necessary to traverse the specification top-down, however, from parents to children. To support this, the `Dfn` class can provide dynamic properties computing connectivity from the bottom-up specification.
 
 ### Solution compatibility
 
