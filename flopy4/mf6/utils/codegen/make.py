@@ -486,21 +486,31 @@ def build_component_spec(
         )
         for col in lb.get("columns", []):
             col_name = col["name"]
+            col_py_name = filters.safe_name(col.get("py_name", col_name))
             col_type = col.get("type", "string")
             col_longname = col.get("longname", "")
+            col_prefix = col.get("prefix", None)
+            is_keyword = col_type == "keyword"
             dtype = filters.ARRAY_NUMPY_DTYPES.get(col_type, "np.object_")
             args = [
                 f'block="{block_name}"',
                 f'dims=("{dim_name}",)',
                 "default=None",
-                "converter=Converter(structure_array, takes_self=True, takes_field=True)",
             ]
+            if not is_keyword:
+                args.append(
+                    "converter=Converter(structure_array, takes_self=True, takes_field=True)"
+                )
             if col_longname:
                 args.append(f"longname={repr(col_longname)}")
+            if col_prefix:
+                args.append(f"prefix={tuple(col_prefix)!r}")
+            if is_keyword:
+                args.append(f"row_keyword={col_name.upper()!r}")
             field_specs.append(
                 FieldSpec(
                     dfn_name=col_name,
-                    py_name=filters.safe_name(col_name),
+                    py_name=col_py_name,
                     type_annotation=f"Optional[NDArray[{dtype}]]",
                     spec_call=f"array({', '.join(args)})",
                     generatable=True,

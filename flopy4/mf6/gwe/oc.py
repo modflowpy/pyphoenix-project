@@ -11,6 +11,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
+from flopy4.mf6.record import Record
 from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
 
@@ -18,7 +19,7 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Oc(Package):
     @attrs.define
-    class Temperatureprint:
+    class Temperatureprint(Record):
         _keyword: ClassVar[str] = "temperature"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
 

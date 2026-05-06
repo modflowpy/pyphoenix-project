@@ -27,7 +27,7 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endif %}
 {% for rec in spec.inner_classes %}
     @attrs.define
-    class {{ rec.class_name }}:
+    class {{ rec.class_name }}(Record):
         _keyword: ClassVar[str] = "{{ rec.keyword }}"
 {% if rec.extra_tokens_repr %}
         _extra_tokens: ClassVar[tuple[str, ...]] = {{ rec.extra_tokens_repr }}

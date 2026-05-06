@@ -11,6 +11,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
+from flopy4.mf6.record import Record
 from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
 
@@ -18,19 +19,19 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Npf(Package):
     @attrs.define
-    class Cvoptions:
+    class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"
         dewatered: Optional[bool] = attrs.field(default=None)
 
     @attrs.define
-    class Rewet:
+    class Rewet(Record):
         _keyword: ClassVar[str] = "rewet"
         wetfct: float = attrs.field(metadata={"tagged": True})
         iwetit: int = attrs.field(metadata={"tagged": True})
         ihdwet: int = attrs.field(metadata={"tagged": True})
 
     @attrs.define
-    class Xt3doptions:
+    class Xt3doptions(Record):
         _keyword: ClassVar[str] = "xt3d"
         rhs: Optional[bool] = attrs.field(default=None)
 

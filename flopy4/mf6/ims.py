@@ -6,6 +6,7 @@ from typing import ClassVar, Optional
 import attrs
 from xattree import xattree
 
+from flopy4.mf6.record import Record
 from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import field, path
 from flopy4.utils import to_path
@@ -16,12 +17,12 @@ class Ims(Solution):
     slntype: ClassVar[str] = "ims"
 
     @attrs.define
-    class NoPtc:
+    class NoPtc(Record):
         _keyword: ClassVar[str] = "no_ptc"
         no_ptc_option: Optional[str] = attrs.field(default=None)
 
     @attrs.define
-    class Rclose:
+    class Rclose(Record):
         _keyword: ClassVar[str] = ""
         inner_rclose: float = attrs.field(metadata={"tagged": True})
         rclose_option: Optional[str] = attrs.field(default=None)

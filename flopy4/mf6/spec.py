@@ -157,9 +157,11 @@ def array(
     block: str | None = None,
     netcdf: bool | None = None,
     longname: str | None = None,
+    prefix: tuple[str, ...] | None = None,
+    row_keyword: bool | str = False,
 ):
     """Define an array field."""
-    if block or netcdf or longname:
+    if block or netcdf or longname or prefix or row_keyword:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
@@ -167,6 +169,10 @@ def array(
             metadata["netcdf"] = netcdf
         if longname:
             metadata["longname"] = longname
+        if prefix:
+            metadata["prefix"] = tuple(prefix)
+        if row_keyword:
+            metadata["row_keyword"] = row_keyword
     return flopy_array(
         dtype=dtype,
         dims=dims,

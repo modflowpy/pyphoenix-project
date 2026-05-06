@@ -690,6 +690,8 @@ def needed_imports(
     if has_array:
         flopy4.append("from flopy4.mf6.converter import structure_array")
     flopy4.append(_base_imports.get(base_class, _base_imports["Package"]))
+    if has_inner_classes:
+        flopy4.append("from flopy4.mf6.record import Record")
     flopy4.append(f"from flopy4.mf6.spec import {', '.join(spec_funcs)}")
     if has_path:
         flopy4.append("from flopy4.utils import to_path")

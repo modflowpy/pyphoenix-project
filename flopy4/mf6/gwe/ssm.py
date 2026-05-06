@@ -20,7 +20,6 @@ class Ssm(Package):
     save_flows: bool = field(
         block="options", default=False, longname="save calculated flows to budget file"
     )
-    # TODO: fileinput — could not determine list column dimension
     nsources: Optional[int] = dim(block="__dim__", coord=False, default=None)
     pname: Optional[NDArray[np.object_]] = array(
         block="sources",
@@ -42,4 +41,27 @@ class Ssm(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="auxiliary variable name",
+    )
+    nfileinput: Optional[int] = dim(block="__dim__", coord=False, default=None)
+    fi_pname: Optional[NDArray[np.object_]] = array(
+        block="fileinput",
+        dims=("nfileinput",),
+        default=None,
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="package name",
+    )
+    fi_spc6_filename: Optional[NDArray[np.object_]] = array(
+        block="fileinput",
+        dims=("nfileinput",),
+        default=None,
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="spc6 file name",
+        prefix=("SPC6", "FILEIN"),
+    )
+    fi_mixed: Optional[NDArray[np.bool_]] = array(
+        block="fileinput",
+        dims=("nfileinput",),
+        default=None,
+        longname="mixed keyword",
+        row_keyword="MIXED",
     )

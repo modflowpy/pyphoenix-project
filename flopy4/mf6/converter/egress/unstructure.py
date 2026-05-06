@@ -248,6 +248,14 @@ def _unstructure_block_param(
                     for n, v in dat.items():
                         period_data[n] = v
             else:
+                arr_spec = xatspec.arrays.get(field_name)
+                field_meta = (arr_spec.metadata or {}) if arr_spec is not None else {}
+                if "prefix" in field_meta or "row_keyword" in field_meta:
+                    field_value = field_value.copy()
+                    if "prefix" in field_meta:
+                        field_value.attrs["prefix"] = field_meta["prefix"]
+                    if "row_keyword" in field_meta:
+                        field_value.attrs["row_keyword"] = field_meta["row_keyword"]
                 blocks[block_name][field_name] = field_value
         case _:
             blocks[block_name][field_name] = field_value
@@ -306,7 +314,7 @@ def _unstructure_array_component(value: Component) -> dict[str, Any]:
 
 # Block names that MF6 rejects if present but empty.
 # These blocks should only be written when they contain data.
-_SKIP_IF_EMPTY = frozenset({"dimensions", "tracktimes"})
+_SKIP_IF_EMPTY = frozenset({"dimensions", "fileinput", "tracktimes"})
 
 # Block names whose fields are list columns (one array per column, same dim)
 # rather than independent grid arrays.  Only these blocks are auto-combined
@@ -314,7 +322,9 @@ _SKIP_IF_EMPTY = frozenset({"dimensions", "tracktimes"})
 # NOT be in this set — their fields are written individually with
 # INTERNAL/CONSTANT/NETCDF format.
 # "sources" is the SSM sources block (pname/srctype/auxname per-row tabular input).
-_LIST_BLOCK_NAMES = frozenset({"packagedata", "packages", "perioddata", "sources", "table"})
+_LIST_BLOCK_NAMES = frozenset(
+    {"packagedata", "packages", "perioddata", "sources", "fileinput", "table"}
+)
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:

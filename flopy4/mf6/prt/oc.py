@@ -11,6 +11,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
+from flopy4.mf6.record import Record
 from flopy4.mf6.spec import array, dim, field, path
 from flopy4.utils import to_path
 
@@ -18,12 +19,12 @@ from flopy4.utils import to_path
 @xattree(kw_only=True)
 class Oc(Package):
     @attrs.define
-    class TrackTimes:
+    class TrackTimes(Record):
         _keyword: ClassVar[str] = "track_times"
         times: float = attrs.field()
 
     @attrs.define
-    class TrackTimesfile:
+    class TrackTimesfile(Record):
         _keyword: ClassVar[str] = "track_timesfile"
         timesfile: str = attrs.field()
 

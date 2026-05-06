@@ -1051,3 +1051,176 @@ def test_fmi_dumps_partial_paths():
     assert "GWFBUDGET" in text.upper()
     assert "FILEIN" in text.upper()
     assert "GWFSPDIS" not in text.upper(), "unset optional path must not appear in output"
+
+
+def test_ssm_fileinput_row_format():
+    """fileinput rows must serialise as 'pname SPC6 FILEIN spc6_filename [MIXED]'."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm(
+        nfileinput=2,
+        fi_pname=np.array(["rch-1", "wel-1"]),
+        fi_spc6_filename=np.array(["rch.spc6", "wel.spc6"]),
+        fi_mixed=np.array([True, False]),
+    )
+    text = dumps(unstructure_component(ssm))
+
+    assert "BEGIN FILEINPUT" in text
+    assert "END FILEINPUT" in text
+    # each row contains the fixed tokens immediately before the filename
+    assert "rch-1 SPC6 FILEIN rch.spc6" in text
+    assert "wel-1 SPC6 FILEIN wel.spc6" in text
+    # MIXED only appended to the row where fi_mixed=True
+    assert "rch.spc6 MIXED" in text
+    assert "wel.spc6 MIXED" not in text
+    # row order preserved
+    assert text.index("rch-1") < text.index("wel-1")
+
+
+def test_ssm_fileinput_no_mixed():
+    """fileinput rows without fi_mixed omit the MIXED keyword entirely."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm(
+        nfileinput=1,
+        fi_pname=np.array(["rch-1"]),
+        fi_spc6_filename=np.array(["rch.spc6"]),
+    )
+    text = dumps(unstructure_component(ssm))
+    assert "SPC6" in text
+    assert "FILEIN" in text
+    assert "MIXED" not in text
+
+
+def test_ssm_fileinput_absent_when_empty():
+    """FILEINPUT block must not be written when no fileinput data is configured."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    blocks = unstructure_component(Ssm())
+    assert "fileinput" not in blocks, "empty FILEINPUT block must be suppressed"
+    assert "__dim__" not in blocks
+
+
+def test_ssm_sources_and_fileinput_together():
+    """SSM correctly writes both SOURCES and FILEINPUT blocks when both are set."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt.ssm import Ssm
+
+    ssm = Ssm(
+        nsources=1,
+        pname=np.array(["chd-1"]),
+        srctype=np.array(["AUX"]),
+        auxname=np.array(["conc"]),
+        nfileinput=1,
+        fi_pname=np.array(["rch-1"]),
+        fi_spc6_filename=np.array(["rch.spc6"]),
+    )
+    text = dumps(unstructure_component(ssm))
+    assert "BEGIN SOURCES" in text
+    assert "chd-1 AUX conc" in text
+    assert "BEGIN FILEINPUT" in text
+    assert "rch-1 SPC6 FILEIN rch.spc6" in text
+    # block order: SOURCES before FILEINPUT
+    assert text.index("BEGIN SOURCES") < text.index("BEGIN FILEINPUT")
+
+
+# ---------------------------------------------------------------------------
+# Record.from_tokens tests
+# ---------------------------------------------------------------------------
+
+
+def test_headprint_from_tokens_full_string():
+    """Full DFN string including keyword and extra tokens is parsed correctly."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    hp = Oc.Headprint.from_tokens("HEAD PRINT_FORMAT COLUMNS 10 WIDTH 12 DIGITS 6 exponential")
+    assert hp.format_ == "exponential"
+    assert hp.columns == 10
+    assert hp.width == 12
+    assert hp.digits == 6
+
+
+def test_headprint_from_tokens_no_prefix():
+    """Tokens without the leading keyword/extra_tokens prefix are parsed correctly."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    hp = Oc.Headprint.from_tokens("COLUMNS 10 WIDTH 12 DIGITS 6 exponential")
+    assert hp.format_ == "exponential"
+    assert hp.columns == 10
+    assert hp.width == 12
+    assert hp.digits == 6
+
+
+def test_headprint_from_tokens_format_only():
+    """A single untagged token populates the required positional field."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    hp = Oc.Headprint.from_tokens("exponential")
+    assert hp.format_ == "exponential"
+    assert hp.columns is None
+    assert hp.width is None
+    assert hp.digits is None
+
+
+def test_headprint_from_tokens_list():
+    """Token list form works the same as the string form."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    hp = Oc.Headprint.from_tokens(["COLUMNS", "10", "exponential"])
+    assert hp.format_ == "exponential"
+    assert hp.columns == 10
+    assert hp.width is None
+    assert hp.digits is None
+
+
+def test_headprint_from_tokens_tagged_types():
+    """Tagged integer fields are coerced from string tokens to int."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    hp = Oc.Headprint.from_tokens("WIDTH 15 DIGITS 4 fixed")
+    assert isinstance(hp.width, int)
+    assert hp.width == 15
+    assert isinstance(hp.digits, int)
+    assert hp.digits == 4
+    assert hp.columns is None
+
+
+def test_rclose_from_tokens_with_keyword():
+    """Rclose parses the INNER_RCLOSE keyword prefix and float value."""
+    from flopy4.mf6.ims import Ims
+
+    rc = Ims.Rclose.from_tokens("INNER_RCLOSE 0.1")
+    assert rc.inner_rclose == pytest.approx(0.1)
+    assert rc.rclose_option is None
+
+
+def test_rclose_from_tokens_value_only():
+    """Rclose parses a bare float without the keyword prefix."""
+    from flopy4.mf6.ims import Ims
+
+    rc = Ims.Rclose.from_tokens("0.001")
+    assert rc.inner_rclose == pytest.approx(0.001)
+    assert rc.rclose_option is None
+
+
+def test_rclose_from_tokens_with_option():
+    """Rclose parses both the float and the optional rclose_option string."""
+    from flopy4.mf6.ims import Ims
+
+    rc = Ims.Rclose.from_tokens("INNER_RCLOSE 1e-6 strict")
+    assert rc.inner_rclose == pytest.approx(1e-6)
+    assert rc.rclose_option == "strict"
+
+
+def test_from_tokens_missing_required_raises():
+    """attrs raises TypeError when a required field has no value."""
+    from flopy4.mf6.gwf.oc import Oc
+
+    with pytest.raises(TypeError):
+        Oc.Headprint.from_tokens("")

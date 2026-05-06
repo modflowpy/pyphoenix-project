@@ -11,6 +11,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
+from flopy4.mf6.record import Record
 from flopy4.mf6.spec import array, field, path
 from flopy4.utils import to_path
 
@@ -20,7 +21,7 @@ class Ist(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class Cimprint:
+    class Cimprint(Record):
         _keyword: ClassVar[str] = "cim"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
 

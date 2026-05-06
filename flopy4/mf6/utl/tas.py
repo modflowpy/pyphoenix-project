@@ -10,6 +10,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
+from flopy4.mf6.record import Record
 from flopy4.mf6.spec import array, field
 
 
@@ -18,17 +19,17 @@ class Tas(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class TimeSeriesName:
+    class TimeSeriesName(Record):
         _keyword: ClassVar[str] = "name"
         time_series_name: str = attrs.field()
 
     @attrs.define
-    class InterpolationMethod:
+    class InterpolationMethod(Record):
         _keyword: ClassVar[str] = "method"
         interpolation_method: str = attrs.field()
 
     @attrs.define
-    class Sfac:
+    class Sfac(Record):
         _keyword: ClassVar[str] = "sfac"
         sfacval: float = attrs.field()
 

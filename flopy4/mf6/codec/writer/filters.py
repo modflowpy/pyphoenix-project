@@ -243,12 +243,16 @@ def dataset2list(value: xr.Dataset):
                 yield (*name.split("_"), val)  # type: ignore
 
         else:
-            vals = []
-            for name in value.data_vars.keys():
-                val = value[name]
-                val = val.item() if val.shape == () else val
-                vals.append(val)
-            yield tuple(vals)
+            row: list[Any] = []
+            for name, da in value.data_vars.items():
+                val = da.item() if da.shape == () else da
+                if kw := da.attrs.get("row_keyword", False):
+                    if val:
+                        row.append(kw if isinstance(kw, str) else str(name).upper())
+                else:
+                    row.extend(da.attrs.get("prefix", ()))
+                    row.append(val)
+            yield tuple(row)
         return
 
     combined_mask: Any = None
@@ -266,15 +270,20 @@ def dataset2list(value: xr.Dataset):
             for name in value.data_vars.keys():
                 val = value[name][tuple(idx[i] for idx in indices)]
                 val = val.item() if val.shape == () else val
-                yield (*name.split("_"), val)  # type: ignore
+                yield (*str(name).split("_"), val)  # type: ignore
         else:
-            vals = []
-            for name in value.data_vars.keys():
-                val = value[name][tuple(idx[i] for idx in indices)]
+            row2: list[Any] = []
+            for name, da in value.data_vars.items():
+                val = da[tuple(idx[i] for idx in indices)]
                 val = val.item() if val.shape == () else val
-                vals.append(val)
+                if kw := da.attrs.get("row_keyword", False):
+                    if val:
+                        row2.append(kw if isinstance(kw, str) else str(name).upper())
+                else:
+                    row2.extend(da.attrs.get("prefix", ()))
+                    row2.append(val)
             if has_spatial_dims:
                 cellid = tuple(idx[i] + 1 for idx in indices)
-                yield cellid + tuple(vals)
+                yield tuple(cellid) + tuple(row2)
             else:
-                yield tuple(vals)
+                yield tuple(row2)

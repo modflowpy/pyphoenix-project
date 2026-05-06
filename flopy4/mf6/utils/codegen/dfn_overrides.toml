@@ -188,7 +188,12 @@ extra_list_blocks = [
         {name = "pname",   type = "string", longname = "package name"},
         {name = "srctype", type = "string", longname = "source type"},
         {name = "auxname", type = "string", longname = "auxiliary variable name"},
-    ]}
+    ]},
+    {block = "fileinput", dim = "nfileinput", columns = [
+        {name = "pname",         py_name = "fi_pname",        type = "string",  longname = "package name"},
+        {name = "spc6_filename", py_name = "fi_spc6_filename", type = "string",  longname = "spc6 file name", prefix = ["SPC6", "FILEIN"]},
+        {name = "mixed",         py_name = "fi_mixed",         type = "keyword", longname = "mixed keyword"},
+    ]},
 ]
 
 [_package_extras."gwe-ssm"]
@@ -197,5 +202,10 @@ extra_list_blocks = [
         {name = "pname",   type = "string", longname = "package name"},
         {name = "srctype", type = "string", longname = "source type"},
         {name = "auxname", type = "string", longname = "auxiliary variable name"},
-    ]}
+    ]},
+    {block = "fileinput", dim = "nfileinput", columns = [
+        {name = "pname",         py_name = "fi_pname",        type = "string",  longname = "package name"},
+        {name = "spc6_filename", py_name = "fi_spc6_filename", type = "string",  longname = "spc6 file name", prefix = ["SPC6", "FILEIN"]},
+        {name = "mixed",         py_name = "fi_mixed",         type = "keyword", longname = "mixed keyword"},
+    ]},
 ]
