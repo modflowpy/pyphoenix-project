@@ -89,13 +89,11 @@ A MODFLOW 6 simulation consists of a hierarchy of modules, each module represent
 
 This document distinguishes **modules**, conceptual units of functionality as defined in the MF6 IO guide, from **components**: particular representations of modules.
 
-Each component may be configured by a corresponding input file. The MODFLOW 6 definition (DFN) file format is a simple text format used to specify MF6 component input, including the structure of components and fields, relationships between components, and in certain cases, file format information. DFNs map 1-1 to components and should not be expected to map 1-1 to modules. Each DFN is one single way of representing a module; not necessarily the only way. Several representational variants may exist, usually to trade performance and convenience characteristics as appropriate for the use case.
-
-A note on terminology: "definition" is commonly abbreviated as "DFN" and the terms are used interchangeably. The terms "specify/specification" must be used with care, so it is clear what is being specified. DFN files (assuming knowledge of general MF6 input format rules) specify input files. This document and the schema it describes specify DFN files.
+Each component is defined by a **component definition** (DFN), which specifies the valid contents of the component's input file. A definition characterizes the component and  its fields, relationships between fields or to other components, and data representations and in some cases formatting information. Component definitions should not be expected to map 1-1 to modules. A definition is one way of representing a module; it may not be the only way. Any number of representational variants may exist, each of which reflects a certain tradeoff between properties like program runtime, memory or disk usage, and convenience.
 
 ## Components
 
-Each component is specified by a DFN. Component definitions consist primarily of a name, zero or more block definitions, as well as other optional attributes.
+Component definitions consist primarily of a name, zero or more block definitions, as well as other optional attributes.
 
 - `type`: the component type (`"simulation"`, `"model"`, or `"package"`)
 - `name`: the component's name
