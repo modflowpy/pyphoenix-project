@@ -55,3 +55,55 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields %}
     pass
 {% endif %}
+{% if spec.block_properties %}
+    __block_col_maps__: ClassVar[dict] = {
+{% for bp in spec.block_properties %}
+        "{{ bp.block_name }}": {
+{% for col_name, attr_name in bp.attr_name_map.items() %}
+            "{{ col_name }}": "{{ attr_name }}",
+{% endfor %}
+        },
+{% endfor %}
+    }
+
+    def __attrs_post_init__(self):
+{% for bp in spec.block_properties %}
+        if self._{{ bp.block_name }} is not None:
+            self._set_block(
+                "{{ bp.block_name }}",
+                "{{ bp.dim_attr }}",
+                {{ bp.dim_is_dfn_declared }},
+                {
+{% for col_name, attr_name in bp.attr_name_map.items() %}
+                    "{{ col_name }}": "{{ attr_name }}",
+{% endfor %}
+                },
+                self._{{ bp.block_name }},
+            )
+{% endfor %}
+
+{% for bp in spec.block_properties %}
+    @property
+    def {{ bp.block_name }}(self):
+        return self._get_block({
+{% for col_name, attr_name in bp.attr_name_map.items() %}
+            "{{ col_name }}": "{{ attr_name }}",
+{% endfor %}
+        })
+
+    @{{ bp.block_name }}.setter
+    def {{ bp.block_name }}(self, value) -> None:
+        self._set_block(
+            "{{ bp.block_name }}",
+            "{{ bp.dim_attr }}",
+            {{ bp.dim_is_dfn_declared }},
+            {
+{% for col_name, attr_name in bp.attr_name_map.items() %}
+                "{{ col_name }}": "{{ attr_name }}",
+{% endfor %}
+            },
+            value,
+        )
+
+{% endfor %}
+{% endif %}

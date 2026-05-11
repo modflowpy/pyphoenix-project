@@ -10,12 +10,17 @@ from flopy4.mf6.context import Context
 from flopy4.mf6.converter.egress.unstructure import (
     unstructure_component,
 )
-from flopy4.mf6.converter.ingress.structure import structure_array, structure_keyword
+from flopy4.mf6.converter.ingress.structure import (
+    structure_array,
+    structure_component,
+    structure_keyword,
+)
 
 __all__ = [
     "structure",
     "unstructure",
     "structure_array",
+    "structure_component",
     "unstructure_array",
     "structure_keyword",
     "COMPONENT_CONVERTER",

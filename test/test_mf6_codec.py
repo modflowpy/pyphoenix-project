@@ -814,11 +814,12 @@ def test_oc_period_string_int_keys():
     assert pb_int == pb_str
     assert pb_int["period 1"]["save budget"] == "all"
     assert pb_int["period 2"]["save budget"] == "last"
-    assert pb_int["period 3"]["save budget"] == "last"  # fill-forward
+    # No fill-forward: period 3 was not specified so it produces no block.
+    assert "period 3" not in pb_int
 
 
 def test_oc_period_wildcard_fillforward():
-    """'*' key sets period 0 and fills forward to all nper periods."""
+    """'*' key expands to all periods not covered by explicit integer keys."""
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(dims={"nper": 4}, save_head={"*": "all"}, save_budget={"*": "last"})
@@ -843,12 +844,12 @@ def test_oc_period_steps_syntax():
 
     assert pb["period 1"]["save budget"] == "STEPS 1 3 5"
     assert pb["period 1"]["print budget"] == "STEPS 1"
-    assert pb["period 2"]["save budget"] == "STEPS 1 3 5"  # fill-forward
+    assert "save budget" not in pb["period 2"]  # no fill-forward: period 2 not specified
     assert pb["period 2"]["print budget"] == "last"
 
 
 def test_oc_period_stop_sentinel():
-    """Empty string '' stops fill-forward: subsequent periods omit that field."""
+    """Empty string '' suppresses output for that period; unspecified periods are omitted."""
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
@@ -908,6 +909,99 @@ def test_oc_dumps_steps_in_output():
     assert "SAVE BUDGET" not in period2_block
 
 
+def test_oc_period_frequency():
+    """FREQUENCY n ocsetting is emitted and preserved in the period block."""
+    from flopy4.mf6.gwf import Oc
+
+    oc = Oc(
+        dims={"nper": 3},
+        save_head={"*": "FREQUENCY 2"},
+        save_budget={0: "all"},
+    )
+    pb = _period_blocks(oc)
+
+    assert pb["period 1"]["save head"] == "FREQUENCY 2"
+    assert pb["period 2"]["save head"] == "FREQUENCY 2"
+    assert pb["period 3"]["save head"] == "FREQUENCY 2"
+    assert pb["period 1"]["save budget"] == "all"
+
+
+# ---------------------------------------------------------------------------
+# LAK period tests
+# ---------------------------------------------------------------------------
+
+
+def _lak_period_blocks(lak):
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    blocks = unstructure_component(lak)
+    return {k: v for k, v in blocks.items() if k.startswith("period")}
+
+
+def test_lak_period_lake_keywords():
+    """LAK lake-keyword period rows: ifno KEYWORD value."""
+    from flopy4.mf6.gwf.lak import Lak
+
+    lak = Lak(
+        dims={"nper": 2},
+        nlakes=2,
+        status={0: ["ACTIVE", "CONSTANT"]},
+        stage={0: [np.nan, 5.0]},
+    )
+    pb = _lak_period_blocks(lak)
+
+    # period 1 rows: STATUS for both lakes + STAGE for lake 2 (lake 1 is NaN → fill → skipped)
+    rows_p1 = pb["period 1"]["lak_period"]
+    assert (1, "STATUS", "ACTIVE") in rows_p1
+    assert (2, "STATUS", "CONSTANT") in rows_p1
+    assert (2, "STAGE", 5.0) in rows_p1
+    # lake 1 STAGE is NaN → no row
+    assert not any(r[0] == 1 and r[1] == "STAGE" for r in rows_p1)
+
+    # period 2 fill-forwards period 1 values
+    rows_p2 = pb["period 2"]["lak_period"]
+    assert (1, "STATUS", "ACTIVE") in rows_p2
+
+
+def test_lak_period_outlet_keywords():
+    """LAK outlet-keyword period rows: ioutletno KEYWORD value."""
+    from flopy4.mf6.gwf.lak import Lak
+
+    lak = Lak(
+        dims={"nper": 2},
+        nlakes=1,
+        noutlets=2,
+        rate={0: [100.0, 200.0]},
+        invert={0: [4.5, 3.5]},
+    )
+    pb = _lak_period_blocks(lak)
+
+    rows = pb["period 1"]["lak_period"]
+    assert (1, "RATE", 100.0) in rows
+    assert (2, "RATE", 200.0) in rows
+    assert (1, "INVERT", 4.5) in rows
+    assert (2, "INVERT", 3.5) in rows
+
+
+def test_lak_period_dumps():
+    """LAK period rows are written in the expected MF6 format."""
+    from flopy4.mf6.gwf.lak import Lak
+
+    lak = Lak(
+        dims={"nper": 1},
+        nlakes=2,
+        status={0: ["ACTIVE", "CONSTANT"]},
+        stage={0: [np.nan, 5.0]},
+    )
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(lak))
+    print("LAK dump:")
+    print(dumped)
+    assert "BEGIN PERIOD 1" in dumped
+    assert "1 STATUS ACTIVE" in dumped
+    assert "2 STATUS CONSTANT" in dumped
+    assert "2 STAGE 5.0" in dumped
+
+
 # ---------------------------------------------------------------------------
 # SSM tests
 # ---------------------------------------------------------------------------
@@ -936,10 +1030,11 @@ def test_ssm_sources_tabular_output():
     from flopy4.mf6.gwt.ssm import Ssm
 
     ssm = Ssm(
-        nsources=2,
-        pname=np.array(["chd-1", "rch-1"]),
-        srctype=np.array(["AUX", "AUXMIXED"]),
-        auxname=np.array(["conc", "conc"]),
+        sources={
+            "pname": np.array(["chd-1", "rch-1"]),
+            "srctype": np.array(["AUX", "AUXMIXED"]),
+            "auxname": np.array(["conc", "conc"]),
+        },
     )
     blocks = _ssm_blocks(ssm)
     assert "sources" in blocks
@@ -972,10 +1067,11 @@ def test_ssm_sources_row_order():
     from flopy4.mf6.gwt.ssm import Ssm
 
     ssm = Ssm(
-        nsources=3,
-        pname=np.array(["pkg-a", "pkg-b", "pkg-c"]),
-        srctype=np.array(["AUX", "AUX", "AUXMIXED"]),
-        auxname=np.array(["c1", "c2", "c3"]),
+        sources={
+            "pname": np.array(["pkg-a", "pkg-b", "pkg-c"]),
+            "srctype": np.array(["AUX", "AUX", "AUXMIXED"]),
+            "auxname": np.array(["c1", "c2", "c3"]),
+        },
     )
     text = dumps(_ssm_blocks(ssm))
     sources_block = text[text.index("BEGIN SOURCES") : text.index("END SOURCES")]
@@ -1060,10 +1156,11 @@ def test_ssm_fileinput_row_format():
     from flopy4.mf6.gwt.ssm import Ssm
 
     ssm = Ssm(
-        nfileinput=2,
-        fi_pname=np.array(["rch-1", "wel-1"]),
-        fi_spc6_filename=np.array(["rch.spc6", "wel.spc6"]),
-        fi_mixed=np.array([True, False]),
+        fileinput={
+            "pname": np.array(["rch-1", "wel-1"]),
+            "spc6_filename": np.array(["rch.spc6", "wel.spc6"]),
+            "mixed": np.array([True, False]),
+        },
     )
     text = dumps(unstructure_component(ssm))
 
@@ -1086,9 +1183,10 @@ def test_ssm_fileinput_no_mixed():
     from flopy4.mf6.gwt.ssm import Ssm
 
     ssm = Ssm(
-        nfileinput=1,
-        fi_pname=np.array(["rch-1"]),
-        fi_spc6_filename=np.array(["rch.spc6"]),
+        fileinput={
+            "pname": np.array(["rch-1"]),
+            "spc6_filename": np.array(["rch.spc6"]),
+        },
     )
     text = dumps(unstructure_component(ssm))
     assert "SPC6" in text
@@ -1113,13 +1211,15 @@ def test_ssm_sources_and_fileinput_together():
     from flopy4.mf6.gwt.ssm import Ssm
 
     ssm = Ssm(
-        nsources=1,
-        pname=np.array(["chd-1"]),
-        srctype=np.array(["AUX"]),
-        auxname=np.array(["conc"]),
-        nfileinput=1,
-        fi_pname=np.array(["rch-1"]),
-        fi_spc6_filename=np.array(["rch.spc6"]),
+        sources={
+            "pname": np.array(["chd-1"]),
+            "srctype": np.array(["AUX"]),
+            "auxname": np.array(["conc"]),
+        },
+        fileinput={
+            "pname": np.array(["rch-1"]),
+            "spc6_filename": np.array(["rch.spc6"]),
+        },
     )
     text = dumps(unstructure_component(ssm))
     assert "BEGIN SOURCES" in text
@@ -1224,3 +1324,288 @@ def test_from_tokens_missing_required_raises():
 
     with pytest.raises(TypeError):
         Oc.Headprint.from_tokens("")
+
+
+# ---------------------------------------------------------------------------
+# LAK integration-style test: gwf-lak-status
+#
+# Recreates the model structure from
+# modflow6/autotest/test_gwf_lak_status.py for manual comparison.
+#
+# Grid layout (C=CHD, L=lake cell):
+#   C . . . . . . . . .
+#   . . . . . . . . . .
+#   . . . . . . . . . .
+#   . . . L L L . . . .
+#   . . . L L L . . . .
+#   . . . L L L . . . .
+#   . . . . . . . . . .
+#   . . . . . . . . . .
+#   . . . . . . . . . .
+#   . . . . . . . . . C
+#
+# 3 stress periods:
+#   period 1  RAINFALL 0.1 (lake active, default)
+#   period 2  STATUS inactive
+#   period 3  STATUS active  (returns to active; rainfall fill-forwards)
+# ---------------------------------------------------------------------------
+
+
+def test_lak_status_input():
+    """Recreate gwf-lak-status LAK input for manual comparison.
+
+    The expected MF6 packagedata / connectiondata / period text is shown
+    in the docstring so the output of dumps() can be compared visually.
+
+    Expected period block output::
+
+        BEGIN PERIOD 1
+          1 RAINFALL 0.1
+        END PERIOD 1
+
+        BEGIN PERIOD 2
+          1 STATUS inactive
+        END PERIOD 2
+
+        BEGIN PERIOD 3
+          1 STATUS active
+        END PERIOD 3
+    """
+    from flopy4.mf6.gwf.lak import Lak
+
+    nper = 3
+    nlakes = 1
+    # Lake occupies rows 3-5, cols 3-5 (0-based); writer adds +1 → file: rows 4-6, cols 4-6
+    bedleak = 1.0
+    nconn = 9
+    lake_connections = [
+        (3, 3),
+        (3, 4),
+        (3, 5),
+        (4, 3),
+        (4, 4),
+        (4, 5),
+        (5, 3),
+        (5, 4),
+        (5, 5),
+    ]
+
+    cellids = np.array([(0, r, c) for r, c in lake_connections])  # (9, 3) int array
+    lak = Lak(
+        dims={"nper": nper},
+        nlakes=nlakes,
+        surfdep=1.0,
+        print_input=True,
+        print_stage=True,
+        print_flows=True,
+        save_flows=True,
+        # block property dict API: dict keys match v1 DFN column names
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([100.0]),
+            "nlakeconn": np.array([nconn]),
+            "boundname": np.array(["lake1"], dtype=object),
+        },
+        connectiondata={
+            "ifno": np.zeros(nconn, dtype=int),
+            "iconn": np.arange(nconn, dtype=int),
+            "cellid": cellids,  # (9, 3) int array; converter packs into tuples
+            "claktype": np.full(nconn, "vertical", dtype=object),
+            "bedleak": np.full(nconn, bedleak),
+            "belev": np.zeros(nconn),
+            "telev": np.zeros(nconn),
+            "connlen": np.zeros(nconn),
+            "connwidth": np.zeros(nconn),
+        },
+        # period data: period 0 sets RAINFALL; period 1 → inactive; period 2 → active
+        rainfall={0: [0.1]},
+        status={1: ["inactive"], 2: ["active"]},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(lak))
+    print("LAK status input:")
+    print(dumped)
+
+    # --- period block checks ---
+    assert "BEGIN PERIOD 1" in dumped
+    assert "1 RAINFALL 0.1" in dumped
+    assert "BEGIN PERIOD 2" in dumped
+    assert "1 STATUS inactive" in dumped
+    assert "BEGIN PERIOD 3" in dumped
+    assert "1 STATUS active" in dumped
+
+    # RAINFALL should fill-forward into periods 2 and 3 (array fill-forward)
+    # but period 2 STATUS=inactive suppresses the lake so rainfall is irrelevant
+    # (that's a MF6 runtime concern; we just verify it's in the input text)
+
+    # --- packagedata checks ---
+    assert "BEGIN PACKAGEDATA" in dumped
+    assert "lake1" in dumped
+    assert "100.0" in dumped  # initial stage
+
+    # --- connectiondata checks ---
+    # All indices written 1-based: ifno, iconn, layer, row, col all get +1
+    assert "BEGIN CONNECTIONDATA" in dumped
+    # first row: ifno=0→1, iconn=0→1, layer=0→1, row=3→4, col=3→4
+    assert " 1 1 1 4 4 vertical" in dumped
+    # last row: ifno=0→1, iconn=8→9, layer=0→1, row=5→6, col=5→6
+    assert " 1 9 1 6 6 vertical" in dumped
+
+
+def test_lak_structure_component_roundtrip():
+    """structure_component reconstructs a Lak from loads() output."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.lak import Lak
+
+    nconn = 3
+    cellids = np.array([(0, 0, 0), (0, 0, 1), (0, 1, 0)])
+    lak = Lak(
+        nlakes=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([5.0]),
+            "nlakeconn": np.array([nconn]),
+            "boundname": np.array(["lake1"], dtype=object),
+        },
+        connectiondata={
+            "ifno": np.zeros(nconn, dtype=int),
+            "iconn": np.arange(nconn, dtype=int),
+            "cellid": cellids,
+            "claktype": np.full(nconn, "vertical", dtype=object),
+            "bedleak": np.ones(nconn),
+            "belev": np.zeros(nconn),
+            "telev": np.zeros(nconn),
+            "connlen": np.zeros(nconn),
+            "connwidth": np.zeros(nconn),
+        },
+    )
+
+    text = dumps(unstructure_component(lak))
+    raw = loads(text)
+    lak2 = structure_component(raw, Lak)
+
+    assert lak2.nlakes == 1
+    pd = lak2.packagedata
+    assert list(pd["strt"].values) == [5.0]
+    assert list(pd["boundname"].values) == ["lake1"]
+    cd = lak2.connectiondata
+    assert list(cd["ifno"].values) == [0, 0, 0]
+    assert list(cd["iconn"].values) == [0, 1, 2]
+    assert cd["cellid"].values[0] == (0, 0, 0)
+    assert cd["cellid"].values[1] == (0, 0, 1)
+    assert cd["cellid"].values[2] == (0, 1, 0)
+    assert list(cd["claktype"].values) == ["vertical", "vertical", "vertical"]
+
+
+# ---------------------------------------------------------------------------
+# GWT/GWE FMI — packagedata block with prefix=("FILEIN",) on fname column
+# ---------------------------------------------------------------------------
+
+
+def test_gwt_fmi_packagedata_dump():
+    """gwt.Fmi packagedata writes flowtype and FILEIN fname tokens."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt.fmi import Fmi
+
+    fmi = Fmi(
+        packagedata={
+            "flowtype": np.array(["HEAD", "BUDGET"]),
+            "fname": np.array(["gwf.hds", "gwf.cbc"]),
+        }
+    )
+    text = dumps(unstructure_component(fmi))
+    assert "BEGIN PACKAGEDATA" in text
+    assert "END PACKAGEDATA" in text
+    assert "HEAD FILEIN gwf.hds" in text
+    assert "BUDGET FILEIN gwf.cbc" in text
+
+
+def test_gwt_fmi_packagedata_roundtrip():
+    """gwt.Fmi packagedata survives a dump→load→structure_component cycle."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.fmi import Fmi
+
+    fmi = Fmi(
+        packagedata={
+            "flowtype": np.array(["HEAD"]),
+            "fname": np.array(["gwf.hds"]),
+        }
+    )
+    text = dumps(unstructure_component(fmi))
+    raw = loads(text)
+    fmi2 = structure_component(raw, Fmi)
+    pd = fmi2.packagedata
+    assert list(pd["flowtype"].values) == ["HEAD"]
+    assert list(pd["fname"].values) == ["gwf.hds"]
+
+
+def test_gwe_fmi_packagedata_dump():
+    """gwe.Fmi packagedata writes flowtype and FILEIN fname tokens."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwe.fmi import Fmi
+
+    fmi = Fmi(
+        packagedata={
+            "flowtype": np.array(["HEAD"]),
+            "fname": np.array(["gwf.hds"]),
+        }
+    )
+    text = dumps(unstructure_component(fmi))
+    assert "BEGIN PACKAGEDATA" in text
+    assert "HEAD FILEIN gwf.hds" in text
+
+
+# ---------------------------------------------------------------------------
+# HPC — partitions block (simple 2-column, no prefix)
+# ---------------------------------------------------------------------------
+
+
+def test_hpc_partitions_dump():
+    """Hpc partitions block writes mname and mrank columns."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.utl.hpc import Hpc
+
+    hpc = Hpc(
+        partitions={
+            "mname": np.array(["model1", "model2"]),
+            "mrank": np.array([0, 1], dtype=np.int64),
+        }
+    )
+    text = dumps(unstructure_component(hpc))
+    assert "BEGIN PARTITIONS" in text
+    assert "END PARTITIONS" in text
+    assert "model1" in text
+    assert "model2" in text
+    assert text.index("model1") < text.index("model2")
+
+
+def test_hpc_partitions_roundtrip():
+    """Hpc partitions survive a dump→load→structure_component cycle."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl.hpc import Hpc
+
+    hpc = Hpc(
+        partitions={
+            "mname": np.array(["model1", "model2"]),
+            "mrank": np.array([0, 1], dtype=np.int64),
+        }
+    )
+    text = dumps(unstructure_component(hpc))
+    raw = loads(text)
+    hpc2 = structure_component(raw, Hpc)
+    parts = hpc2.partitions
+    assert list(parts["mname"].values) == ["model1", "model2"]
+    assert list(parts["mrank"].values) == [0, 1]
+
+
+# ---------------------------------------------------------------------------
+# SPC / TVK / TVS — options-only packages with path(inout="filein")
+# ---------------------------------------------------------------------------

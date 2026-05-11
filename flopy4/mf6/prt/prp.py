@@ -87,19 +87,22 @@ class Prp(Package):
     nreleasetimes: Optional[int] = dim(
         block="dimensions", coord=False, default=None, longname="number of particle release times"
     )
+    _packagedata: Optional[dict] = attrs.field(alias="packagedata", default=None, repr=False)
     irptno: Optional[NDArray[np.int64]] = array(
         block="packagedata",
         dims=("nreleasepts",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="prp id number for release point",
+        longname="PRP id number for release point",
+        cellid=True,
     )
-    cellid: Optional[NDArray[np.int64]] = array(
+    cellid: Optional[NDArray[np.object_]] = array(
         block="packagedata",
         dims=("nreleasepts",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="cell identifier",
+        cellid=True,
     )
     xrpt: Optional[NDArray[np.float64]] = array(
         block="packagedata",
@@ -129,6 +132,7 @@ class Prp(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="release point name",
     )
+    _releasetimes: Optional[dict] = attrs.field(alias="releasetimes", default=None, repr=False)
     time: Optional[NDArray[np.float64]] = array(
         block="releasetimes",
         dims=("nreleasetimes",),
@@ -172,3 +176,93 @@ class Prp(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
+    __block_col_maps__: ClassVar[dict] = {
+        "packagedata": {
+            "irptno": "irptno",
+            "cellid": "cellid",
+            "xrpt": "xrpt",
+            "yrpt": "yrpt",
+            "zrpt": "zrpt",
+            "boundname": "boundname",
+        },
+        "releasetimes": {
+            "time": "time",
+        },
+    }
+
+    def __attrs_post_init__(self):
+        if self._packagedata is not None:
+            self._set_block(
+                "packagedata",
+                "nreleasepts",
+                True,
+                {
+                    "irptno": "irptno",
+                    "cellid": "cellid",
+                    "xrpt": "xrpt",
+                    "yrpt": "yrpt",
+                    "zrpt": "zrpt",
+                    "boundname": "boundname",
+                },
+                self._packagedata,
+            )
+        if self._releasetimes is not None:
+            self._set_block(
+                "releasetimes",
+                "nreleasetimes",
+                True,
+                {
+                    "time": "time",
+                },
+                self._releasetimes,
+            )
+
+    @property
+    def packagedata(self):
+        return self._get_block(
+            {
+                "irptno": "irptno",
+                "cellid": "cellid",
+                "xrpt": "xrpt",
+                "yrpt": "yrpt",
+                "zrpt": "zrpt",
+                "boundname": "boundname",
+            }
+        )
+
+    @packagedata.setter
+    def packagedata(self, value) -> None:
+        self._set_block(
+            "packagedata",
+            "nreleasepts",
+            True,
+            {
+                "irptno": "irptno",
+                "cellid": "cellid",
+                "xrpt": "xrpt",
+                "yrpt": "yrpt",
+                "zrpt": "zrpt",
+                "boundname": "boundname",
+            },
+            value,
+        )
+
+    @property
+    def releasetimes(self):
+        return self._get_block(
+            {
+                "time": "time",
+            }
+        )
+
+    @releasetimes.setter
+    def releasetimes(self, value) -> None:
+        self._set_block(
+            "releasetimes",
+            "nreleasetimes",
+            True,
+            {
+                "time": "time",
+            },
+            value,
+        )

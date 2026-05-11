@@ -12,7 +12,7 @@ from xattree import xattree
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import array, field, path
+from flopy4.mf6.spec import field, keystring, path
 from flopy4.utils import to_path
 
 
@@ -33,29 +33,25 @@ class Oc(Package):
         block="options", default=None, converter=to_path, inout="fileout"
     )
     concentrationprint: Optional[Concentrationprint] = field(block="options", default=None)
-    save_concentration: Optional[NDArray[np.str_]] = array(
-        dtype=np.dtypes.StringDType(),
+    save_concentration: Optional[NDArray[np.str_]] = keystring(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
-    save_budget: Optional[NDArray[np.str_]] = array(
-        dtype=np.dtypes.StringDType(),
+    save_budget: Optional[NDArray[np.str_]] = keystring(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
-    print_concentration: Optional[NDArray[np.str_]] = array(
-        dtype=np.dtypes.StringDType(),
+    print_concentration: Optional[NDArray[np.str_]] = keystring(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
-    print_budget: Optional[NDArray[np.str_]] = array(
-        dtype=np.dtypes.StringDType(),
+    print_budget: Optional[NDArray[np.str_]] = keystring(
         block="period",
         dims=("nper",),
         default=None,

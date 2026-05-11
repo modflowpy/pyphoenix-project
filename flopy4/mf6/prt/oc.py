@@ -12,7 +12,7 @@ from xattree import xattree
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import array, dim, field, path
+from flopy4.mf6.spec import array, dim, field, keystring, path
 from flopy4.utils import to_path
 
 
@@ -60,6 +60,7 @@ class Oc(Package):
     ntracktimes: Optional[int] = dim(
         block="dimensions", coord=False, default=None, longname="number of particle tracking times"
     )
+    _tracktimes: Optional[dict] = attrs.field(alias="tracktimes", default=None, repr=False)
     time: Optional[NDArray[np.float64]] = array(
         block="tracktimes",
         dims=("ntracktimes",),
@@ -67,17 +68,52 @@ class Oc(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="release time",
     )
-    save_budget: Optional[NDArray[np.str_]] = array(
-        dtype=np.dtypes.StringDType(),
+    save_budget: Optional[NDArray[np.str_]] = keystring(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
-    print_budget: Optional[NDArray[np.str_]] = array(
-        dtype=np.dtypes.StringDType(),
+    print_budget: Optional[NDArray[np.str_]] = keystring(
         block="period",
         dims=("nper",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
     )
+    __block_col_maps__: ClassVar[dict] = {
+        "tracktimes": {
+            "time": "time",
+        },
+    }
+
+    def __attrs_post_init__(self):
+        if self._tracktimes is not None:
+            self._set_block(
+                "tracktimes",
+                "ntracktimes",
+                True,
+                {
+                    "time": "time",
+                },
+                self._tracktimes,
+            )
+
+    @property
+    def tracktimes(self):
+        return self._get_block(
+            {
+                "time": "time",
+            }
+        )
+
+    @tracktimes.setter
+    def tracktimes(self, value) -> None:
+        self._set_block(
+            "tracktimes",
+            "ntracktimes",
+            True,
+            {
+                "time": "time",
+            },
+            value,
+        )

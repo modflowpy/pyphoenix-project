@@ -1,5 +1,6 @@
 from typing import Any
 
+import attrs
 import numpy as np
 import pandas as pd
 import sparse
@@ -15,6 +16,187 @@ from flopy4.mf6.dimensions import DimensionResolver
 
 def structure_keyword(value, field) -> str | None:
     return field.name if value else None
+
+
+def _list_block_col_info(col_map: dict, xatspec) -> dict[str, tuple[bool, bool, Any, tuple]]:
+    """Return {col_name: (is_true_cellid, is_numeric_index, dtype, prefix)} for a col_map.
+
+    is_true_cellid  — object-dtype field, expands to ncelldim tokens in the file
+    is_numeric_index — int-dtype field, single 1-based token in the file
+    dtype            — numpy dtype for type-compatibility checks when skipping
+                       absent optional columns
+    prefix           — tuple of fixed keyword tokens that precede the value in each row
+                       (e.g. ("FILEIN",) for fname in FMI packagedata)
+    """
+    info = {}
+    for col_name, attr_name in col_map.items():
+        fspec = xatspec.flat.get(attr_name)
+        if fspec is None:
+            info[col_name] = (False, False, object, ())
+            continue
+        meta = getattr(fspec, "metadata", {}) or {}
+        has_cellid_flag = bool(meta.get("cellid"))
+        dtype = getattr(fspec, "dtype", object)
+        is_object = dtype == object or dtype == np.object_  # noqa: E721
+        prefix = tuple(meta.get("prefix", ()))
+        info[col_name] = (
+            has_cellid_flag and is_object,  # true cellid → multi-token tuple
+            has_cellid_flag and not is_object,  # numeric index → 1-based single token
+            dtype,
+            prefix,
+        )
+    return info
+
+
+def _token_fits(token: Any, dtype: Any) -> bool:
+    """True if *token* is type-compatible with *dtype*.
+
+    Numeric dtypes (float64, int64, …) require a numeric token (int or float).
+    Object dtype accepts any token.  Used to detect absent optional columns
+    whose token slot would otherwise consume the next column's value.
+    """
+    if dtype == object or dtype == np.object_:  # noqa: E721
+        return True
+    return isinstance(token, (int, float))
+
+
+def _parse_list_block_rows(
+    rows: list,
+    col_map: dict,
+    col_info: dict[str, tuple[bool, bool, Any, tuple]],
+) -> dict[str, Any]:
+    """Parse token rows into {col_name: numpy_array} using col_map.
+
+    Token→value rules:
+    - true cellid  (object dtype + cellid flag): consume ncelldim tokens, pack
+      to a tuple, subtract 1 from each component.  ncelldim is inferred from
+      row length minus the count of remaining single-token columns.
+    - numeric index (int dtype + cellid flag): consume 1 token, subtract 1.
+    - regular column: consume 1 token, no transform.
+
+    Absent optional columns are detected by type mismatch: if the current token
+    is a string but the column dtype is numeric, the column is marked absent and
+    the token is left for the next column.  All-absent columns are omitted from
+    the returned dict.
+    """
+    col_names = list(col_map.keys())
+    col_lists: dict[str, list] = {c: [] for c in col_names}
+
+    for row in rows:
+        tok_idx = 0
+        for i, col_name in enumerate(col_names):
+            is_true_cellid, is_numeric_index, dtype, prefix = col_info[col_name]
+
+            if tok_idx >= len(row):
+                col_lists[col_name].append(None)
+                continue
+
+            # Skip fixed prefix tokens (e.g. "FILEIN" before a filename column).
+            tok_idx += len(prefix)
+            if tok_idx >= len(row):
+                col_lists[col_name].append(None)
+                continue
+
+            cur_tok = row[tok_idx]
+
+            if is_true_cellid:
+                # Infer ncelldim from remaining tokens: remaining = single-token cols after this
+                remaining_single = sum(1 for cn in col_names[i + 1 :] if not col_info[cn][0])
+                ncelldim = len(row) - tok_idx - remaining_single
+                if ncelldim < 1:
+                    ncelldim = 1
+                cellid = tuple(int(row[tok_idx + j]) - 1 for j in range(ncelldim))
+                col_lists[col_name].append(cellid)
+                tok_idx += ncelldim
+            elif is_numeric_index:
+                if not _token_fits(cur_tok, np.int64):
+                    col_lists[col_name].append(None)
+                    continue
+                col_lists[col_name].append(int(cur_tok) - 1)
+                tok_idx += 1
+            else:
+                if not _token_fits(cur_tok, dtype):
+                    col_lists[col_name].append(None)
+                    continue
+                col_lists[col_name].append(cur_tok)
+                tok_idx += 1
+
+    result = {}
+    for col_name, vals in col_lists.items():
+        if any(v is None for v in vals):
+            continue
+        if vals and isinstance(vals[0], tuple):
+            # True cellid: 2D int array (N, ncelldim); _set_block packs to tuples
+            try:
+                result[col_name] = np.array(vals, dtype=int)
+            except (ValueError, TypeError):
+                result[col_name] = np.array(vals, dtype=object)
+        elif vals and isinstance(vals[0], int):
+            result[col_name] = np.array(vals, dtype=np.int64)
+        elif vals and isinstance(vals[0], float):
+            result[col_name] = np.array(vals, dtype=np.float64)
+        else:
+            result[col_name] = np.array(vals, dtype=object)
+    return result
+
+
+def structure_component(raw: dict, cls: type) -> Any:
+    """Reconstruct a component instance from a raw parsed MF6 input dict.
+
+    Parameters
+    ----------
+    raw : dict
+        Output of ``loads()`` — {block_name_upper: list_of_token_rows}.
+    cls : type
+        The component class to instantiate (must be an xattree attrs class).
+
+    Returns
+    -------
+    Component instance.
+    """
+    raw_lower = {k.lower(): v for k, v in raw.items()}
+    xatspec = get_xatspec(cls)
+    block_col_maps: dict[str, dict[str, str]] = getattr(cls, "__block_col_maps__", {})
+
+    # Build (name → attrs.Attribute) for init-eligibility checks
+    all_attrs = {f.name: f for f in attrs.fields(cls)}
+
+    kwargs: dict[str, Any] = {}
+
+    for block_name, rows in raw_lower.items():
+        if not rows:
+            continue
+
+        # Skip period blocks — not yet supported
+        if block_name.startswith("period"):
+            continue
+
+        # List block with known col_map
+        if block_name in block_col_maps:
+            col_map = block_col_maps[block_name]
+            col_info = _list_block_col_info(col_map, xatspec)
+            block_dict = _parse_list_block_rows(rows, col_map, col_info)
+            if block_dict:
+                kwargs[block_name] = block_dict
+            continue
+
+        # Scalar block (options / dimensions): rows are token lists
+        for row in rows:
+            if not row:
+                continue
+            if len(row) == 1:
+                # keyword field — token is the field name
+                key = str(row[0]).lower()
+                af = all_attrs.get(key)
+                if af is not None and af.init is not False:
+                    kwargs[key] = True
+            elif len(row) >= 2:
+                key = str(row[0]).lower()
+                af = all_attrs.get(key)
+                if af is not None and af.init is not False:
+                    kwargs[key] = row[1]
+
+    return cls(**kwargs)
 
 
 def _resolve_dimensions(
@@ -437,12 +619,13 @@ def _parse_dict_format(
             return {0: value["data"]}
         return {0: value}
 
+    wildcard_val = None
     parsed: dict[int, Any] = {}
 
     for key, val in value.items():
-        # Handle special '*' key (means period/layer 0, don't fill forward)
         if key == "*":
-            key = 0
+            wildcard_val = val
+            continue
         elif isinstance(key, str):
             try:
                 key = int(key)
@@ -496,6 +679,16 @@ def _parse_dict_format(
         else:
             # Unknown type, store as-is
             parsed[key] = val
+
+    # Expand "*" to every period not already covered by an explicit key.
+    if wildcard_val is not None:
+        nper = dim_dict.get("nper")
+        if nper is not None:
+            for kper in range(nper):
+                if kper not in parsed:
+                    parsed[kper] = wildcard_val
+        elif 0 not in parsed:
+            parsed[0] = wildcard_val
 
     return parsed
 
@@ -624,13 +817,17 @@ def structure_array(
             # Dense approach
             result = np.full(shape, FILL_DNODATA, dtype=field.dtype)
 
-            # Fill in values with fill-forward logic
+            # Keystring (OC) fields use no fill-forward: each key covers only
+            # that period.  Stress-package dicts fill forward from each key to
+            # the next specified key so boundary conditions persist by default.
+            is_keystring = getattr(field, "metadata", {}).get("keystring", False)
+
             sorted_keys = sorted(parsed_dict.keys())
             for idx, key in enumerate(sorted_keys):
                 val = parsed_dict[key]
 
-                # Determine fill range (current key to next key or end)
-                if "nper" in dims_names:
+                # Determine fill range
+                if "nper" in dims_names and not is_keystring:
                     next_key = (
                         sorted_keys[idx + 1]
                         if idx + 1 < len(sorted_keys)
@@ -698,6 +895,20 @@ def structure_array(
         result = _parse_list_format(value, dims_names, tuple(shape), field)
 
     elif isinstance(value, (xr.DataArray, np.ndarray)):
+        # For cellid=True fields: convert 2D (N, ncelldim) integer array to 1D object array
+        # of tuples so the writer can emit each component individually with +1 conversion.
+        if (
+            isinstance(value, np.ndarray)
+            and value.ndim == 2
+            and len(shape) == 1
+            and value.shape[0] == shape[0]
+            and getattr(field, "metadata", {}).get("cellid")
+        ):
+            obj = np.empty(value.shape[0], dtype=object)
+            for _ci in range(value.shape[0]):
+                obj[_ci] = tuple(int(x) for x in value[_ci])
+            value = obj
+
         # Duck array - validate and reshape if needed
         result = _validate_duck_array(value, dims_names, tuple(shape), dim_dict)
 

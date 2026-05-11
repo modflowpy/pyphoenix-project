@@ -281,7 +281,13 @@ def dataset2list(value: xr.Dataset):
                         row2.append(kw if isinstance(kw, str) else str(name).upper())
                 else:
                     row2.extend(da.attrs.get("prefix", ()))
-                    row2.append(val)
+                    if da.attrs.get("cellid"):
+                        if isinstance(val, tuple):
+                            row2.extend(c + 1 for c in val)
+                        else:
+                            row2.append(val + 1)
+                    else:
+                        row2.append(val)
             if has_spatial_dims:
                 cellid = tuple(idx[i] + 1 for idx in indices)
                 yield tuple(cellid) + tuple(row2)

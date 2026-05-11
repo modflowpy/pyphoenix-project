@@ -376,6 +376,37 @@ class TestSolutionTierComponentSpec:
 
 
 # Layer 2b: List-field expansion
+def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
+    """v1 DFN numeric_index=True on ifno/iconn auto-sets cellid; is_cellid stored as object."""
+    if "gwf-lak" not in all_dfns:
+        pytest.skip("gwf-lak not in DFN set")
+    v1_dfns = load_flat(dfn_path)
+    spec = build_component_spec(
+        all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
+    )
+    field_map = {f.py_name: f for f in spec.fields}
+
+    # Feature ordinals — block-prefixed due to collision across packagedata/connectiondata/tables.
+    # v1 DFN has numeric_index=True; auto-detected as cellid.
+    for py_name in ("packagedata_ifno", "connectiondata_ifno", "iconn", "tables_ifno"):
+        assert py_name in field_map, f"{py_name!r} not in generated fields"
+        sc = field_map[py_name].spec_call
+        assert (
+            "cellid=True" in sc
+        ), f"{py_name!r} spec_call should contain cellid=True (via numeric_index), got: {sc!r}"
+
+    # Spatial cellid column — is_cellid=True in v1 DFN (shape=(ncelldim)); stored as object dtype.
+    assert "cellid" in field_map, "'cellid' not in generated fields"
+    cellid_sc = field_map["cellid"].spec_call
+    assert (
+        "cellid=True" in cellid_sc
+    ), f"'cellid' spec_call should contain cellid=True (via is_cellid), got: {cellid_sc!r}"
+    cellid_ann = field_map["cellid"].type_annotation
+    assert (
+        "np.object_" in cellid_ann
+    ), f"'cellid' type_annotation should use np.object_, got: {cellid_ann!r}"
+
+
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
     """gwf-mvr list sub-tables should expand into per-column FieldSpecs, all Optional."""
     if "gwf-mvr" not in all_dfns:
@@ -398,6 +429,89 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     for col in pkg_cols:
         assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
         assert field_map[col].type_annotation.startswith("Optional[")
+
+
+# Layer 2d: BlockPropertySpec (Phase 2)
+class TestBlockPropertySpec:
+    """Verify BlockPropertySpec population in build_component_spec."""
+
+    @pytest.fixture
+    def lak_spec(self, all_dfns, dfn_path):
+        if "gwf-lak" not in all_dfns:
+            pytest.skip("gwf-lak not in DFN set")
+        v1_dfns = load_flat(dfn_path)
+        return build_component_spec(
+            all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
+        )
+
+    def test_lak_block_count(self, lak_spec):
+        assert len(lak_spec.block_properties) == 4
+
+    def test_lak_block_names(self, lak_spec):
+        names = [bp.block_name for bp in lak_spec.block_properties]
+        assert set(names) == {"packagedata", "connectiondata", "tables", "outlets"}
+
+    def test_lak_packagedata_dim_declared(self, lak_spec):
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "packagedata")
+        assert bp.dim_attr == "nlakes"
+        assert bp.dim_is_dfn_declared is True
+
+    def test_lak_connectiondata_dim_synthetic(self, lak_spec):
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "connectiondata")
+        assert bp.dim_attr == "nconnectiondata"
+        assert bp.dim_is_dfn_declared is False
+
+    def test_lak_tables_dim_declared(self, lak_spec):
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "tables")
+        assert bp.dim_attr == "ntables"
+        assert bp.dim_is_dfn_declared is True
+
+    def test_lak_outlets_dim_declared(self, lak_spec):
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "outlets")
+        assert bp.dim_attr == "noutlets"
+        assert bp.dim_is_dfn_declared is True
+
+    def test_lak_ifno_collision_prefixed(self, lak_spec):
+        # ifno appears in packagedata, connectiondata, and tables — all get block-prefixed attrs
+        for block in ("packagedata", "connectiondata", "tables"):
+            bp = next(b for b in lak_spec.block_properties if b.block_name == block)
+            assert (
+                bp.attr_name_map.get("ifno") == f"{block}_ifno"
+            ), f"ifno in {block} should be prefixed as {block}_ifno"
+
+    def test_lak_outlets_period_collision_prefixed(self, lak_spec):
+        # invert/width/slope/rough appear as both outlets packagedata columns and
+        # period field keywords — static columns must take outlets_ prefix so period
+        # fields can always use the bare keyword name.
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "outlets")
+        for col_name in ("invert", "width", "slope", "rough"):
+            assert bp.attr_name_map.get(col_name) == f"outlets_{col_name}", (
+                f"outlets.{col_name} should be prefixed as outlets_{col_name} "
+                "(collides with period field keyword)"
+            )
+        # outletno, lakein, lakeout, couttype are not period field names — bare names
+        for col_name in ("outletno", "lakein", "lakeout", "couttype"):
+            assert (
+                bp.attr_name_map.get(col_name) == col_name
+            ), f"outlets.{col_name} should use bare name (no period field conflict)"
+
+    def test_lak_connectiondata_cellid(self, lak_spec):
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "connectiondata")
+        cellid_col = next((c for c in bp.columns if c.name == "cellid"), None)
+        assert cellid_col is not None
+        assert cellid_col.is_cellid is True
+
+    def test_lak_tables_prefix_columns_excluded(self, lak_spec):
+        bp = next(b for b in lak_spec.block_properties if b.block_name == "tables")
+        # tab6 and filein are prefix tokens — excluded from attr_name_map
+        assert "tab6" not in bp.attr_name_map
+        assert "filein" not in bp.attr_name_map
+
+    def test_no_block_properties_without_v1(self, all_dfns):
+        if "gwf-lak" not in all_dfns:
+            pytest.skip("gwf-lak not in DFN set")
+        spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
+        assert spec.block_properties == []
 
 
 # Layer 2c: Compound record expansion

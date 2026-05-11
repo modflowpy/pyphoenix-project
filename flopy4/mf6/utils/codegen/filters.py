@@ -8,6 +8,8 @@ than in Jinja macros) makes edge-case handling easier to test and debug.
 
 import builtins
 import keyword
+from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 from modflow_devtools.dfns import Dfn
@@ -619,6 +621,8 @@ def needed_imports(
     has_oc_fields: bool = False,
     has_extra_dims: bool = False,
     has_injected_paths: bool = False,
+    has_period_keystring: bool = False,
+    has_block_properties: bool = False,
 ) -> dict[str, list[str]]:
     """Compute the import lines needed for a generated module.
 
@@ -637,7 +641,7 @@ def needed_imports(
     has_dimensions = any(is_dimensions_scalar(f) for f in generatable_fields)
     has_stress_arrays = any(is_period_array(f) for f in generatable_fields)
     has_boundname = any(is_boundname_field(f) for f in generatable_fields)
-    has_classvar = multi or slntype or has_inner_classes
+    has_classvar = multi or slntype or has_inner_classes or has_block_properties
 
     # dimensions, aux list, list-expansion columns, inner class parents,
     # and injected paths are always Optional
@@ -656,7 +660,7 @@ def needed_imports(
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
     third_party: list[str] = []
-    if has_inner_classes:
+    if has_inner_classes or has_block_properties:
         third_party.append("import attrs")
     if has_array:
         third_party.append("import numpy as np")
@@ -678,6 +682,10 @@ def needed_imports(
     spec_funcs: list[str] = ["field"]
     if has_array or has_aux_list:
         spec_funcs.append("array")
+    if has_period_keystring:
+        spec_funcs.append("embedded_keystring")
+    if has_oc_fields:
+        spec_funcs.append("keystring")
     if has_path:
         spec_funcs.append("path")
     if has_user_dims:
@@ -699,3 +707,110 @@ def needed_imports(
         flopy4.append("from flopy4.mf6.utils.grid import update_maxbound")
 
     return {"stdlib": stdlib, "third_party": third_party, "flopy4": flopy4}
+
+
+# ---------------------------------------------------------------------------
+# v1 DFN block schema utilities
+# ---------------------------------------------------------------------------
+# These functions derive recarray block column schemas from v1 DFN data.
+# Used by make.py to auto-detect list blocks and build BlockPropertySpec.
+# ---------------------------------------------------------------------------
+
+
+def _as_bool(val) -> bool:
+    """Normalize a v1 DFN attribute that may be bool or string 'true'/'false'."""
+    if isinstance(val, bool):
+        return val
+    return str(val).lower() == "true"
+
+
+@dataclass
+class ColumnSpec:
+    """Schema for one column in a v1 DFN recarray block."""
+
+    name: str
+    type: str
+    longname: str
+    is_cellid: bool  # shape=(ncelldim) — stored as object-dtype tuple attr
+    is_prefix: bool  # tagged non-optional keyword — write-side token only, no attr
+    is_row_keyword: bool  # optional keyword — stored as bool attr
+    numeric_index: bool  # 0-based index written as 1-based (+1 at write time)
+
+
+def block_schema(v1_dfn: Dfn, block_name: str) -> list[ColumnSpec]:
+    """Derive column schema for a recarray block from a v1 DFN.
+
+    Skips the recarray header field (in_record=False). Returns one
+    ColumnSpec per in_record=True field in DFN order.
+    """
+    v1_block = (v1_dfn.blocks or {}).get(block_name) or {}
+    result = []
+    for name, f in v1_block.items():
+        if not getattr(f, "in_record", False):
+            continue
+        ftype = getattr(f, "type", "") or ""
+        optional = _as_bool(getattr(f, "optional", False))
+        tagged = _as_bool(getattr(f, "tagged", False))
+        shape = str(getattr(f, "shape", "") or "")
+        is_keyword = ftype.lower() == "keyword"
+        result.append(
+            ColumnSpec(
+                name=name,
+                type=ftype,
+                longname=getattr(f, "longname", "") or "",
+                is_cellid="(ncelldim)" in shape,
+                is_prefix=is_keyword and tagged and not optional,
+                is_row_keyword=is_keyword and optional,
+                numeric_index=bool(getattr(f, "numeric_index", False)),
+            )
+        )
+    return result
+
+
+def list_block_names(dfn: Dfn) -> list[str]:
+    """Return block names that contain list-type (recarray) fields, in DFN order."""
+    seen: set[str] = set()
+    result = []
+    for f in flat_fields(dfn):
+        if is_list_field(f) and f.block not in seen:
+            seen.add(f.block)
+            result.append(f.block)
+    return result
+
+
+def v1_list_block_names(v1_dfn: Dfn) -> list[str]:
+    """Return recarray block names from a v1 DFN, in order.
+
+    A block is a recarray when it contains a header field whose ``type``
+    starts with ``"recarray"``.  This is more precise than checking
+    ``in_record=True``, which also matches sub-fields of compound records
+    (filerecord entries) inside scalar options blocks.
+    Used to discover blocks that dfn2toml dropped from the v2 TOML.
+    """
+    seen: set[str] = set()
+    result = []
+    for block_name, block in (v1_dfn.blocks or {}).items():
+        if block_name in seen:
+            continue
+        if any(
+            str(getattr(f, "type", "") or "").lower().startswith("recarray") for f in block.values()
+        ):
+            result.append(block_name)
+            seen.add(block_name)
+    return result
+
+
+def collision_names(
+    block_schemas: dict[str, list[ColumnSpec]],
+    reserved: frozenset[str] = frozenset(),
+) -> set[str]:
+    """Column names that require block-prefixed Python attr names.
+
+    A name is a collision when it appears in more than one static list block,
+    OR when it appears in any block AND is reserved by a period field.  The
+    latter ensures that static block attrs never shadow bare period field names.
+    Prefix columns are excluded since they produce no attr.
+    """
+    names = [col.name for cols in block_schemas.values() for col in cols if not col.is_prefix]
+    counts = Counter(names)
+    return {name for name, count in counts.items() if count > 1 or name in reserved}

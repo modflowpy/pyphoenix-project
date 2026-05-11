@@ -1,7 +1,9 @@
 from abc import ABC
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from xattree import xattree
 
 from flopy4.mf6.component import Component
@@ -195,7 +197,93 @@ class Package(Component, ABC):
 
         return df
 
-    @stress_period_data.setter
+    def _get_block(self, col_map: dict) -> Optional[xr.Dataset]:
+        """Assemble a block xr.Dataset from backing column attrs.
+
+        Parameters
+        ----------
+        col_map : dict[str, str]
+            Mapping from column name (DFN) to Python attr name.
+        """
+        cols = {col_name: getattr(self, attr_name) for col_name, attr_name in col_map.items()}
+        if all(v is None for v in cols.values()):
+            return None
+        return xr.Dataset({k: xr.DataArray(v) for k, v in cols.items() if v is not None})
+
+    def _set_block(
+        self,
+        block_name: str,
+        dim_attr: str,
+        dim_is_declared: bool,
+        col_map: dict,
+        value,
+    ) -> None:
+        """Set a static recarray block from dict, DataFrame, or xr.Dataset.
+
+        Parameters
+        ----------
+        block_name : str
+            DFN block name (used in error messages).
+        dim_attr : str
+            Python attr name of the dimension field (e.g. 'nlakes').
+        dim_is_declared : bool
+            True when the dim is DFN-declared; validates against user-set value.
+        col_map : dict[str, str]
+            Mapping from column name (DFN) to Python attr name.
+        value :
+            Block data dict, DataFrame, or xr.Dataset, or None to clear.
+        """
+        if value is None:
+            for attr_name in col_map.values():
+                setattr(self, attr_name, None)
+            return
+
+        if isinstance(value, xr.Dataset):
+            d = {k: value[k].values for k in value.data_vars}
+        elif hasattr(value, "to_dict") and callable(value.to_dict):
+            d = value.to_dict("list")
+        elif isinstance(value, dict):
+            d = value
+        else:
+            raise TypeError(
+                f"Expected dict, DataFrame, or xr.Dataset for {block_name}, "
+                f"got {type(value).__name__}"
+            )
+
+        lengths = {k: len(v) for k, v in d.items() if k in col_map}
+        if lengths and len(set(lengths.values())) != 1:
+            raise ValueError(f"{block_name} columns must have equal length: {lengths}")
+        n = next(iter(lengths.values())) if lengths else 0
+
+        current_dim = getattr(self, dim_attr, None)
+        if dim_is_declared and current_dim is not None and current_dim != n:
+            raise ValueError(f"{block_name} has {n} rows but {dim_attr}={current_dim}")
+
+        # Clear existing tree variables to allow re-dimensioning.
+        # Skipped during __attrs_post_init__ (tree not yet initialized).
+        if current_dim is not None:
+            try:
+                _where = type(self).__xattree__["where"]  # type: ignore[attr-defined]
+                tree = self.__dict__.get(_where)
+                if tree is not None:
+                    for attr_name in col_map.values():
+                        tree[attr_name] = None
+            except (KeyError, AttributeError):
+                pass
+
+        setattr(self, dim_attr, n)
+        for col_name, attr_name in col_map.items():
+            val = d.get(col_name)
+            # Pack 2D int arrays (N, ncelldim) → 1D object array of tuples.
+            # Column block fields are always 1D; a 2D input is a compound cellid.
+            if isinstance(val, np.ndarray) and val.ndim == 2:
+                obj = np.empty(val.shape[0], dtype=object)
+                for _ci in range(val.shape[0]):
+                    obj[_ci] = tuple(int(x) for x in val[_ci])
+                val = obj
+            setattr(self, attr_name, val)
+
+    @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
     def stress_period_data(self, value: pd.DataFrame) -> None:
         """
         Set stress period data from a DataFrame.

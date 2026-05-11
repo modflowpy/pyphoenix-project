@@ -182,30 +182,24 @@ replace_list_fields = [
     {block = "packagedata", name = "gwfspdis",  inout = "filein", longname = "gwf spdis file"},
 ]
 
-[_package_extras."gwt-ssm"]
-extra_list_blocks = [
-    {block = "sources", dim = "nsources", columns = [
-        {name = "pname",   type = "string", longname = "package name"},
-        {name = "srctype", type = "string", longname = "source type"},
-        {name = "auxname", type = "string", longname = "auxiliary variable name"},
-    ]},
-    {block = "fileinput", dim = "nfileinput", columns = [
-        {name = "pname",         py_name = "fi_pname",        type = "string",  longname = "package name"},
-        {name = "spc6_filename", py_name = "fi_spc6_filename", type = "string",  longname = "spc6 file name", prefix = ["SPC6", "FILEIN"]},
-        {name = "mixed",         py_name = "fi_mixed",         type = "keyword", longname = "mixed keyword"},
-    ]},
-]
-
-[_package_extras."gwe-ssm"]
-extra_list_blocks = [
-    {block = "sources", dim = "nsources", columns = [
-        {name = "pname",   type = "string", longname = "package name"},
-        {name = "srctype", type = "string", longname = "source type"},
-        {name = "auxname", type = "string", longname = "auxiliary variable name"},
-    ]},
-    {block = "fileinput", dim = "nfileinput", columns = [
-        {name = "pname",         py_name = "fi_pname",        type = "string",  longname = "package name"},
-        {name = "spc6_filename", py_name = "fi_spc6_filename", type = "string",  longname = "spc6 file name", prefix = ["SPC6", "FILEIN"]},
-        {name = "mixed",         py_name = "fi_mixed",         type = "keyword", longname = "mixed keyword"},
-    ]},
+[_package_extras."gwf-lak"]
+# packagedata/connectiondata/tables/outlets list blocks are auto-detected from
+# the v1 DFN via v1_list_block_names in _build_block_property_specs (no extra_list_blocks needed).
+extra_period_fields = [
+    # Lake keyword fields — shape (nper, nlakes); always bare keyword name
+    {keyword = "STATUS",      feature_dim = "nlakes",   dtype = "string"},
+    {keyword = "STAGE",       feature_dim = "nlakes"},
+    {keyword = "RAINFALL",    feature_dim = "nlakes"},
+    {keyword = "EVAPORATION", feature_dim = "nlakes"},
+    {keyword = "RUNOFF",      feature_dim = "nlakes"},
+    {keyword = "INFLOW",      feature_dim = "nlakes"},
+    {keyword = "WITHDRAWAL",  feature_dim = "nlakes"},
+    # Outlet keyword fields — shape (nper, noutlets); always bare keyword name
+    # Note: INVERT/WIDTH/SLOPE/ROUGH also appear as outlets packagedata columns;
+    # those static columns get outlets_ prefix (collision_names with reserved period names).
+    {keyword = "RATE",        feature_dim = "noutlets"},
+    {keyword = "INVERT",      feature_dim = "noutlets"},
+    {keyword = "WIDTH",       feature_dim = "noutlets"},
+    {keyword = "SLOPE",       feature_dim = "noutlets"},
+    {keyword = "ROUGH",       feature_dim = "noutlets"},
 ]

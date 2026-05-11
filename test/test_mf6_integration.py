@@ -28,6 +28,7 @@ from flopy4.mf6.gwf import (
     Ghb,
     Gwf,
     Ic,
+    Lak,
     Mvr,
     Npf,
     Oc,
@@ -1905,10 +1906,11 @@ def test_gwt_ssm_sources(function_tmpdir):
     GwtIc(parent=gwt, strt=0.0)
     GwtSsm(
         parent=gwt,
-        nsources=1,
-        pname=np.array([chd_registered_name]),
-        srctype=np.array(["AUX"]),
-        auxname=np.array(["conc"]),
+        sources={
+            "pname": np.array([chd_registered_name]),
+            "srctype": np.array(["AUX"]),
+            "auxname": np.array(["conc"]),
+        },
     )
     GwtAdv(parent=gwt, scheme="upstream")
     GwtMst(parent=gwt, porosity=0.3)
@@ -1930,3 +1932,181 @@ def test_gwt_ssm_sources(function_tmpdir):
     # GWT ran to completion — concentration was transported via SSM auxiliary source
     ucn_file = Path(function_tmpdir, f"{gwt_name}.ucn")
     assert ucn_file.is_file() or Path(function_tmpdir, f"{gwt_name}.hds").is_file() or True
+
+
+def test_gwf_lak_status(function_tmpdir):
+    """
+    Recreate modflow6 autotest/test_gwf_lak_status.py, case "gwf-lak-status".
+
+    1-layer 10x10 model with a single lake occupying a 3x3 block of cells
+    (rows 3-5, cols 3-5, 0-based).  Three stress periods:
+      - Period 1: lake active, rainfall = 0.1
+      - Period 2: lake STATUS inactive
+      - Period 3: lake STATUS active again
+
+    Reference: modflow6/autotest/test_gwf_lak_status.py
+    Checks:
+      - Stage file: period 2 stage == dhnoflo (inactive), others != dhnoflo
+      - Head file: head[0] ≈ head[2]; head[1] all ≤ 100; some head[0] > 100
+      - Lake budget: GWF exchange == 0 when inactive, non-zero otherwise
+    """
+    from flopy.utils import CellBudgetFile, HeadFile
+
+    sim_name = "gwf-lak-status"
+    gwf_name = "gwf-lak-status"
+    nlay, nrow, ncol = 1, 10, 10
+    delr = delc = 300.0 / nrow
+    nper = 3
+
+    time = Time(
+        perlen=[1.0, 1.0, 1.0],
+        nstp=[1, 1, 1],
+        tsmult=[1.0, 1.0, 1.0],
+        time_units="days",
+    )
+
+    ims = Ims(
+        filename="sln1.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-9,
+        outer_maximum=100,
+        under_relaxation="dbd",
+        inner_maximum=300,
+        inner_dvclose=1e-9,
+        rclose=Ims.Rclose(inner_rclose=1e-3),
+        linear_acceleration="bicgstab",
+        relaxation_factor=0.97,
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=90.0,
+        botm=0.0,
+    )
+
+    gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
+    ic = Ic(parent=gwf, strt=100.0)
+    npf = Npf(parent=gwf, save_flows=True, k=1.0, k33=0.01, icelltype=1)
+    sto = Sto(
+        parent=gwf,
+        save_flows=True,
+        ss=0.0,
+        sy=0.1,
+        iconvert=1,
+        steady_state=np.array([True, False, False]),
+    )
+    oc = Oc(
+        parent=gwf,
+        head_file=f"{gwf_name}.hds",
+        budget_file=f"{gwf_name}.cbc",
+        save_head={0: "all"},
+        save_budget={0: "all"},
+        print_head={0: "all"},
+        print_budget={0: "all"},
+    )
+    chd = Chd(
+        parent=gwf,
+        head={0: {(0, 0, 0): 100.0, (0, nrow - 1, ncol - 1): 95.0}},
+        name="chd-1",
+    )
+
+    # Lake: 3x3 block of vertical connections, rows 3-5 cols 3-5 (0-based).
+    # cellid values are 0-based; writer adds +1 for MF6 file.
+    lake_connections = [
+        (3, 3),
+        (3, 4),
+        (3, 5),
+        (4, 3),
+        (4, 4),
+        (4, 5),
+        (5, 3),
+        (5, 4),
+        (5, 5),
+    ]
+    nconn = len(lake_connections)
+
+    lak = Lak(
+        parent=gwf,
+        dims={"nper": nper},
+        boundnames=True,
+        surfdep=1.0,
+        print_input=True,
+        print_stage=True,
+        print_flows=True,
+        save_flows=True,
+        stage_file=f"{gwf_name}.lak.stage",
+        budget_file=f"{gwf_name}.lak.bud",
+        nlakes=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([100.0]),
+            "nlakeconn": np.array([nconn]),
+            "boundname": np.array(["lake1"], dtype=object),
+        },
+        connectiondata={
+            "ifno": np.zeros(nconn, dtype=int),
+            "iconn": np.arange(nconn, dtype=int),
+            "cellid": np.array([(0, r, c) for r, c in lake_connections]),
+            "claktype": np.full(nconn, "vertical", dtype=object),
+            "bedleak": np.full(nconn, 1.0),
+            "belev": np.zeros(nconn),
+            "telev": np.zeros(nconn),
+            "connlen": np.zeros(nconn),
+            "connwidth": np.zeros(nconn),
+        },
+        rainfall={0: [0.1]},
+        status={1: ["inactive"], 2: ["active"]},
+        name="lak-1",
+    )
+
+    sim.write()
+    sim.run()
+
+    assert Path(function_tmpdir, f"{gwf_name}.lak.stage").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.lak.bud").is_file()
+    assert Path(function_tmpdir, f"{gwf_name}.hds").is_file()
+
+    # Stage file: period 2 (inactive) → dhnoflo; periods 1 and 3 → real stage
+    dhnoflo = 1.0e30
+    with HeadFile(
+        function_tmpdir / f"{gwf_name}.lak.stage", text="stage", precision="double"
+    ) as hf:
+        times = hf.get_times()
+        for kper, t in enumerate(times):
+            stage = hf.get_data(totim=t).flatten()
+            if kper == 1:
+                assert stage[0] == dhnoflo, f"period 2 stage should be dhnoflo, got {stage[0]}"
+            else:
+                assert stage[0] != dhnoflo, f"period {kper + 1} stage should not be dhnoflo"
+
+    # Head file: period 1 ≈ period 3; period 2 heads all ≤ 100; some period 1 > 100
+    with HeadFile(function_tmpdir / f"{gwf_name}.hds", precision="double") as hf:
+        times = hf.get_times()
+        head0 = hf.get_data(totim=times[0]).flatten()
+        head1 = hf.get_data(totim=times[1]).flatten()
+        head2 = hf.get_data(totim=times[2]).flatten()
+    assert np.allclose(head0, head2), "period 1 and 3 heads should match"
+    assert np.all(head1 <= 100.0), "period 2 heads should all be ≤ 100"
+    assert np.any(head0 > 100.0), "some period 1 heads should exceed 100 (lake mounding)"
+
+    # Lake budget: GWF exchange == 0 when inactive, non-zero when active
+    with CellBudgetFile(function_tmpdir / f"{gwf_name}.lak.bud", precision="double") as bf:
+        times = bf.get_times()
+        for kper, t in enumerate(times):
+            for r in bf.get_data(text="GWF", totim=t)[0]:
+                if kper == 1:
+                    assert r["q"] == 0.0, f"period 2 GWF exchange should be 0, got {r['q']}"
+                else:
+                    assert r["q"] != 0.0, f"period {kper + 1} GWF exchange should be non-zero"

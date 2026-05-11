@@ -661,7 +661,7 @@ oc = flopy4.mf6.gwf.Oc(
     budget_file=Path("ff.cbc"),
     head_file=Path("ff.hds"),
     save_head={"0": "all", 1: "all"},
-    save_budget={"0": "STEPS 1", 1: ""},
+    save_budget={"0": "STEPS 1"},
     print_budget={"0": "STEPS 1 15", 1: "last"},
     dims=dims,
 )

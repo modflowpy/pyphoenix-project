@@ -119,6 +119,7 @@ def generate_classes(
             skip=_SKIP,
             makedirs=makedirs,
             existing_only=existing_only,
+            v1dfndir=v1dir,
         )
 
     logger.info(f"Generated {len(generated)} files.")

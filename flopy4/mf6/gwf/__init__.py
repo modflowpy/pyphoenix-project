@@ -13,6 +13,7 @@ from xattree import xattree
 from flopy4.mf6.gwf.buy import Buy
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
+from flopy4.mf6.gwf.csub import Csub
 from flopy4.mf6.gwf.dis import Dis
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwf.disv import Disv
@@ -23,6 +24,7 @@ from flopy4.mf6.gwf.evta import Evta
 from flopy4.mf6.gwf.ghb import Ghb
 from flopy4.mf6.gwf.ghbg import Ghbg
 from flopy4.mf6.gwf.ic import Ic
+from flopy4.mf6.gwf.lak import Lak
 from flopy4.mf6.gwf.mvr import Mvr
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
@@ -53,6 +55,8 @@ __all__ = [
     "Ghb",
     "Ghbg",
     "Ic",
+    "Csub",
+    "Lak",
     "Npf",
     "Oc",
     "Rch",
@@ -168,6 +172,8 @@ class Gwf(Model):
     ghb: list[Union[Ghb, Ghbg]] = field(block="packages")
     rch: list[Union[Rch, Rcha]] = field(block="packages")
     riv: list[Union[Riv, Rivg]] = field(block="packages")
+    csub: list[Csub] = field(block="packages")
+    lak: list[Lak] = field(block="packages")
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
     wel: list[Union[Wel, Welg]] = field(block="packages")

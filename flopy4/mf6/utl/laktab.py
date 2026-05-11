@@ -2,6 +2,7 @@
 # ruff: noqa: E501
 from typing import ClassVar, Optional
 
+import attrs
 import numpy as np
 from attrs import Converter
 from numpy.typing import NDArray
@@ -22,6 +23,7 @@ class Laktab(Package):
     ncol: Optional[int] = dim(
         block="dimensions", coord=False, default=None, longname="number of table columns"
     )
+    _table: Optional[dict] = attrs.field(alias="table", default=None, repr=False)
     stage: Optional[NDArray[np.float64]] = array(
         block="table",
         dims=("nrow",),
@@ -48,5 +50,54 @@ class Laktab(Package):
         dims=("nrow",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="lake-gwf exchange area",
+        longname="lake-GWF exchange area",
     )
+    __block_col_maps__: ClassVar[dict] = {
+        "table": {
+            "stage": "stage",
+            "volume": "volume",
+            "sarea": "sarea",
+            "barea": "barea",
+        },
+    }
+
+    def __attrs_post_init__(self):
+        if self._table is not None:
+            self._set_block(
+                "table",
+                "nrow",
+                True,
+                {
+                    "stage": "stage",
+                    "volume": "volume",
+                    "sarea": "sarea",
+                    "barea": "barea",
+                },
+                self._table,
+            )
+
+    @property
+    def table(self):
+        return self._get_block(
+            {
+                "stage": "stage",
+                "volume": "volume",
+                "sarea": "sarea",
+                "barea": "barea",
+            }
+        )
+
+    @table.setter
+    def table(self, value) -> None:
+        self._set_block(
+            "table",
+            "nrow",
+            True,
+            {
+                "stage": "stage",
+                "volume": "volume",
+                "sarea": "sarea",
+                "barea": "barea",
+            },
+            value,
+        )

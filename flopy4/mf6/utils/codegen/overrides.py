@@ -91,6 +91,20 @@ def replace_list_blocks(dfn_name: str) -> set[str]:
     return {entry["block"] for entry in replace_list_fields(dfn_name)}
 
 
+def extra_period_fields(dfn_name: str) -> list[dict]:
+    """Return embedded-keystring period field definitions for a DFN.
+
+    Used for advanced packages (LAK, MAW, SFR) whose period block uses
+    ``feature_num KEYWORD value`` rows rather than columnar arrays.  Each
+    dict requires ``keyword`` and ``feature_dim``; ``prefix`` is optional
+    (py_name is derived as ``{prefix}_{keyword.lower()}`` when set, else
+    ``keyword.lower()``); ``dtype`` defaults to ``"double precision"``.
+    """
+    return list(
+        _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("extra_period_fields", [])
+    )
+
+
 def extra_record_children(dfn_name: str, field_name: str) -> list[dict]:
     """Return extra child dicts to inject into an inner-class record.
 

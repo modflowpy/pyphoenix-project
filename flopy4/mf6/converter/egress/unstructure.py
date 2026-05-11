@@ -115,27 +115,68 @@ def _hack_structured_grid_dims(
     )
 
 
+_OC_SETTING_KEYWORDS = frozenset({"all", "first", "last", "steps", "frequency"})
+
+
+def _is_emb_fill(val) -> bool:
+    """Return True if val is a fill/absent value for embedded keystring rows."""
+    if val is None:
+        return True
+    try:
+        f = float(val)
+        return f == FILL_DNODATA or np.isnan(f)
+    except (TypeError, ValueError):
+        return False
+
+
+def _accumulate_embedded_keystring(
+    field_value: xr.DataArray,
+    field_meta: dict,
+    period_data: dict,
+) -> None:
+    """Collect (ifno, keyword, value) rows per kper from a 2D embedded keystring field."""
+    keyword = field_meta["keyword"]
+    feature_dim = next((d for d in field_value.dims if d != "nper"), None)
+    if feature_dim is None:
+        return
+    rows_by_kper: dict = period_data.setdefault("__embedded_rows__", {})
+    for kper in range(field_value.sizes["nper"]):
+        kper_slice = field_value.isel(nper=kper).values
+        for ifeat, val in enumerate(kper_slice):
+            if not _is_emb_fill(val):
+                rows_by_kper.setdefault(kper, []).append((ifeat + 1, keyword, val))
+
+
+def _unstructure_period_keystring(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
+    """Unstructure a keystring period field (e.g. save_head, print_budget).
+
+    The field name encodes the MF6 keyword: save_head → 'save head'.
+    Values are ocsetting strings such as 'ALL', 'LAST', 'STEPS 1 3', 'FREQUENCY 2'.
+    Empty strings act as a stop sentinel — they suppress fill-forward for that period.
+    """
+    fname = name.replace("_", " ")
+    dat = {
+        kper: value.values[kper]
+        for kper in range(value.sizes["nper"])
+        if (tokens := value.values[kper].lower().split()) and tokens[0] in _OC_SETTING_KEYWORDS
+    }
+    return {fname: dat}
+
+
+def _unstructure_period_bool(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
+    """Unstructure a boolean period field (e.g. STO steady_state, transient)."""
+    fname = name.rstrip("_").replace("_", "-")  # type: ignore
+    dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
+    return {fname: dat}
+
+
 def _hack_period_non_numeric(name: str, value: xr.DataArray) -> dict[str, dict[int, Any]]:
-    data = {}
     match value.dtype:
         case np.bool:
-            # supports boolean dataarrays, e.g. STO steady_state and transient
-            # Strip trailing _ first (safe_name adds _ for Python builtins, e.g. all_ → all)
-            fname = name.rstrip("_").replace("_", "-")  # type: ignore
-            dat = {kper: "" for kper in range(value.sizes["nper"]) if value.values[kper]}
-            data[fname] = dat
+            return _unstructure_period_bool(name, value)
         case np.dtypes.StringDType():
-            # supports string dataarrays, e.g. OC save_budget, save_head
-            fname = name.replace("_", " ")
-            dat = {
-                kper: value.values[kper]
-                for kper in range(value.sizes["nper"])
-                if (tokens := value.values[kper].lower().split())
-                and tokens[0] in ["first", "last", "steps", "all"]
-            }
-            data[fname] = dat
-
-    return data
+            return _unstructure_period_keystring(name, value)
+    return {}
 
 
 def _unstructure_block_param(
@@ -229,6 +270,11 @@ def _unstructure_block_param(
                     structured_grid_dims=value.data.dims,  # type: ignore
                 )
             if "nper" in field_value.dims and block_name == "period":
+                arr_spec = xatspec.arrays.get(field_name)
+                _field_meta = (arr_spec.metadata or {}) if arr_spec is not None else {}
+                if _field_meta.get("embedded_keystring"):
+                    _accumulate_embedded_keystring(field_value, _field_meta, period_data)
+                    return
                 is_tabular = (
                     np.issubdtype(field_value.dtype, np.number)
                     or np.issubdtype(field_value.dtype, np.str_)
@@ -250,12 +296,14 @@ def _unstructure_block_param(
             else:
                 arr_spec = xatspec.arrays.get(field_name)
                 field_meta = (arr_spec.metadata or {}) if arr_spec is not None else {}
-                if "prefix" in field_meta or "row_keyword" in field_meta:
+                if "prefix" in field_meta or "row_keyword" in field_meta or "cellid" in field_meta:
                     field_value = field_value.copy()
                     if "prefix" in field_meta:
                         field_value.attrs["prefix"] = field_meta["prefix"]
                     if "row_keyword" in field_meta:
                         field_value.attrs["row_keyword"] = field_meta["row_keyword"]
+                    if "cellid" in field_meta:
+                        field_value.attrs["cellid"] = True
                 blocks[block_name][field_name] = field_value
         case _:
             blocks[block_name][field_name] = field_value
@@ -314,16 +362,29 @@ def _unstructure_array_component(value: Component) -> dict[str, Any]:
 
 # Block names that MF6 rejects if present but empty.
 # These blocks should only be written when they contain data.
-_SKIP_IF_EMPTY = frozenset({"dimensions", "fileinput", "tracktimes"})
+_SKIP_IF_EMPTY = frozenset({"dimensions", "fileinput", "tables", "outlets", "tracktimes"})
 
 # Block names whose fields are list columns (one array per column, same dim)
 # rather than independent grid arrays.  Only these blocks are auto-combined
 # into an xr.Dataset for row-per-record output.  griddata-style blocks must
 # NOT be in this set — their fields are written individually with
 # INTERNAL/CONSTANT/NETCDF format.
+# Extend when adding a new recarray block; keep in sync with __block_col_maps__
+# on generated Package classes.
 # "sources" is the SSM sources block (pname/srctype/auxname per-row tabular input).
 _LIST_BLOCK_NAMES = frozenset(
-    {"packagedata", "packages", "perioddata", "sources", "fileinput", "table"}
+    {
+        "packagedata",
+        "packages",
+        "partitions",
+        "perioddata",
+        "sources",
+        "fileinput",
+        "table",
+        "outlets",
+        "connectiondata",
+        "tables",
+    }
 )
 
 
@@ -368,7 +429,15 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         for kper, block in period_blocks.items():
             key = f"period {kper + 1}"
             for arr_name, val in block.items():
-                if np.any(val != FILL_DNODATA):
+                if arr_name == "__embedded_rows__":
+                    # Embedded keystring rows: list of (ifno, keyword, value) tuples.
+                    # Accumulated from all embedded_keystring fields; write as a list
+                    # so the Jinja 'list' macro renders each tuple as a record row.
+                    if val:
+                        if key not in blocks:
+                            blocks[key] = {}
+                        blocks[key]["lak_period"] = val
+                elif np.any(val != FILL_DNODATA):
                     # don't create the block (so it isn't written)
                     # unless there is data to write
                     if key not in blocks:

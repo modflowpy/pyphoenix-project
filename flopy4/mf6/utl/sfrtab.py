@@ -2,6 +2,7 @@
 # ruff: noqa: E501
 from typing import ClassVar, Optional
 
+import attrs
 import numpy as np
 from attrs import Converter
 from numpy.typing import NDArray
@@ -22,6 +23,7 @@ class Sfrtab(Package):
     ncol: Optional[int] = dim(
         block="dimensions", coord=False, default=None, longname="number of table columns"
     )
+    _table: Optional[dict] = attrs.field(alias="table", default=None, repr=False)
     xfraction: Optional[NDArray[np.float64]] = array(
         block="table",
         dims=("nrow",),
@@ -41,5 +43,50 @@ class Sfrtab(Package):
         dims=("nrow",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="manning's roughness coefficient",
+        longname="Manning's roughness coefficient",
     )
+    __block_col_maps__: ClassVar[dict] = {
+        "table": {
+            "xfraction": "xfraction",
+            "height": "height",
+            "manfraction": "manfraction",
+        },
+    }
+
+    def __attrs_post_init__(self):
+        if self._table is not None:
+            self._set_block(
+                "table",
+                "nrow",
+                True,
+                {
+                    "xfraction": "xfraction",
+                    "height": "height",
+                    "manfraction": "manfraction",
+                },
+                self._table,
+            )
+
+    @property
+    def table(self):
+        return self._get_block(
+            {
+                "xfraction": "xfraction",
+                "height": "height",
+                "manfraction": "manfraction",
+            }
+        )
+
+    @table.setter
+    def table(self, value) -> None:
+        self._set_block(
+            "table",
+            "nrow",
+            True,
+            {
+                "xfraction": "xfraction",
+                "height": "height",
+                "manfraction": "manfraction",
+            },
+            value,
+        )

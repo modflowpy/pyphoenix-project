@@ -9,6 +9,7 @@ import logging
 import subprocess
 import sys
 from dataclasses import dataclass
+from dataclasses import field as dc_field
 from os import PathLike
 from pathlib import Path
 
@@ -17,9 +18,11 @@ from modflow_devtools.dfns import Dfn, load_flat
 from modflow_devtools.dfns.schema.field import Field as DfnField
 
 from . import filters
+from .filters import ColumnSpec
 from .overrides import (
     apply_to_child,
     extra_list_blocks,
+    extra_period_fields,
     extra_record_children,
     replace_list_blocks,
     replace_list_fields,
@@ -67,6 +70,23 @@ class InnerClassSpec:
 
 
 @dataclass
+class BlockPropertySpec:
+    """Pre-computed schema for one list (recarray) block property.
+
+    Produced by build_component_spec from v1 DFN data. Stored on
+    ComponentSpec.block_properties for use by the Phase 3 template.
+    The template is currently unchanged — this field is computed but
+    not yet emitted.
+    """
+
+    block_name: str
+    dim_attr: str  # Python name of the dim field
+    dim_is_dfn_declared: bool  # False → synthetic (__dim__), not written to file
+    columns: list[ColumnSpec]
+    attr_name_map: dict[str, str]  # col_name → Python attr name (bare or block-prefixed)
+
+
+@dataclass
 class ComponentSpec:
     """Pre-computed context for a generated component class."""
 
@@ -79,6 +99,7 @@ class ComponentSpec:
     fields: list[FieldSpec]
     inner_classes: list[InnerClassSpec]
     outpath: Path
+    block_properties: list[BlockPropertySpec] = dc_field(default_factory=list)
     template: str = "package.py.jinja"
 
 
@@ -239,8 +260,7 @@ def _expand_oc_record_field(f: DfnField, dfn_name: str) -> list[FieldSpec]:
     for rtype in rtypes:
         py_name = f"{action}_{rtype}"
         spec_call = (
-            "array("
-            "dtype=np.dtypes.StringDType(), "
+            "keystring("
             'block="period", '
             'dims=("nper",), '
             "default=None, "
@@ -370,6 +390,94 @@ def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
     )
 
 
+def _build_block_property_specs(
+    dfn: Dfn,
+    v1_dfn: Dfn,
+    *,
+    extra_blocks: set[str],
+    replace_blocks: set[str],
+) -> tuple[list[BlockPropertySpec], set[str]]:
+    """Compute BlockPropertySpec for all static list blocks in a DFN.
+
+    Uses v1 DFN column schemas (which dfn2toml drops) to build the
+    block property API for each recarray block.  Returns (specs, block_names)
+    where block_names is used as a skip-set in the main field loop.
+    """
+    dfn_dims = set((dfn.blocks or {}).get("dimensions", {}).keys())
+    dfn_dims_ordered = list((dfn.blocks or {}).get("dimensions", {}).keys())
+
+    # Collect v2 list blocks, excluding those handled by TOML overrides.
+    list_fields_map: dict[str, DfnField | None] = {
+        f.block: f
+        for f in filters.flat_fields(dfn)
+        if filters.is_list_field(f)
+        and f.block not in extra_blocks
+        and f.block not in replace_blocks
+        and "period" not in f.block
+    }
+    # Add recarray blocks present in v1 DFN but dropped by dfn2toml (e.g. SSM sources/fileinput).
+    for v1_block in filters.v1_list_block_names(v1_dfn):
+        if v1_block in list_fields_map or v1_block in replace_blocks or "period" in v1_block:
+            continue
+        list_fields_map[v1_block] = None
+
+    v1_schemas = {block: filters.block_schema(v1_dfn, block) for block in list_fields_map}
+    # Period field bare names: static columns sharing a name with a period field
+    # must take the block-prefixed attr name so the period field keeps the bare name.
+    bare_period_names = frozenset(pf["keyword"].lower() for pf in extra_period_fields(dfn.name))
+    collisions = filters.collision_names(v1_schemas, reserved=bare_period_names)
+
+    # Resolve which DFN dimension scalar each block maps to.
+    dim_resolutions: dict[str, tuple[str, bool]] = {}
+    claimed_dims: set[str] = set()
+    maxbound_blocks: list[str] = []
+
+    for block_name, lf in list_fields_map.items():
+        if lf is None:
+            dim_resolutions[block_name] = (f"n{block_name}", False)
+            continue
+        dfn_dim = filters.list_col_dim(lf, dfn)
+        if dfn_dim and dfn_dim in dfn_dims:
+            dim_resolutions[block_name] = (dfn_dim, True)
+            claimed_dims.add(dfn_dim)
+        elif lf.shape and "maxbound" in str(lf.shape) and dfn_dims:
+            maxbound_blocks.append(block_name)
+        else:
+            dim_resolutions[block_name] = (f"n{block_name}", False)
+
+    unclaimed = [d for d in dfn_dims_ordered if d not in claimed_dims]
+    for block_name in maxbound_blocks:
+        dim_resolutions[block_name] = (
+            (unclaimed.pop(0), True) if unclaimed else (f"n{block_name}", False)
+        )
+
+    specs: list[BlockPropertySpec] = []
+    block_names: set[str] = set()
+    for block_name, v1_cols in v1_schemas.items():
+        dim_attr_raw, dim_is_dfn_declared = dim_resolutions[block_name]
+        attr_name_map = {
+            col.name: (
+                filters.safe_name(f"{block_name}_{col.name}")
+                if col.name in collisions
+                else filters.safe_name(col.name)
+            )
+            for col in v1_cols
+            if not col.is_prefix
+        }
+        specs.append(
+            BlockPropertySpec(
+                block_name=block_name,
+                dim_attr=filters.safe_name(dim_attr_raw),
+                dim_is_dfn_declared=dim_is_dfn_declared,
+                columns=v1_cols,
+                attr_name_map=attr_name_map,
+            )
+        )
+        block_names.add(block_name)
+
+    return specs, block_names
+
+
 _SLN_PREFIX = "sln"
 
 
@@ -392,17 +500,47 @@ def build_component_spec(
     *,
     root: Path,
     developmode: bool = False,
+    v1_dfn: Dfn | None = None,
 ) -> ComponentSpec:
     """Build all template context for a DFN component."""
     all_fields = filters.flat_fields(dfn, developmode=developmode)
 
     has_maxbound = filters.has_dimensions_block(dfn)
 
-    field_specs: list[FieldSpec] = []
+    # Fields are collected into four ordered buckets so the generated class has
+    # fields in DFN block order without hard-coding block names in any sort key.
+    # Stable sort in blocks_dict (with devtools block_sort_key) then preserves
+    # DFN order naturally for all existing and future block names.
+    #
+    #   prefix_specs  — options + dimensions (from DFN)
+    #   extra_specs   — injected list blocks / path replacements (from dfn_overrides)
+    #   data_specs    — remaining DFN data blocks (e.g. outlets)
+    #   period_specs  — period fields from DFN + embedded keystring fields
+    #
+    # extra_specs come before data_specs because injected blocks replace blocks that
+    # dfn2toml dropped; those blocks always precede any surviving DFN data blocks
+    # (like outlets) in the v1 DFN canonical order.
+    prefix_specs: list[FieldSpec] = []
+    extra_specs: list[FieldSpec] = []
+    data_specs: list[FieldSpec] = []
+    period_specs: list[FieldSpec] = []
+
     inner_class_specs: list[InnerClassSpec] = []
     generatable_field_objects: list[DfnField] = []
     _replace_blocks = replace_list_blocks(dfn.name)
     _extra_blocks = {lb["block"] for lb in extra_list_blocks(dfn.name)}
+
+    # BlockPropertySpec for static list blocks — must precede the main field loop
+    # since _bp_block_names is used there as a skip-set.
+    block_properties: list[BlockPropertySpec] = []
+    _bp_block_names: set[str] = set()
+    if v1_dfn is not None:
+        block_properties, _bp_block_names = _build_block_property_specs(
+            dfn,
+            v1_dfn,
+            extra_blocks=_extra_blocks,
+            replace_blocks=_replace_blocks,
+        )
 
     has_list_cols = False
     has_oc_fields = False
@@ -410,19 +548,30 @@ def build_component_spec(
         if filters.is_list_field(f) and f.block in (_replace_blocks | _extra_blocks):
             # List field replaced by explicit path fields or injected via extra_list_blocks.
             continue
+        if filters.is_list_field(f) and f.block in _bp_block_names:
+            # List field covered by BlockPropertySpec; column attrs generated below.
+            continue
+
+        if f.block in ("options", "dimensions"):
+            target = prefix_specs
+        elif "period" in f.block:
+            target = period_specs
+        else:
+            target = data_specs
+
         if filters.is_list_field(f):
             expanded = _expand_list_field(f, dfn)
-            field_specs.extend(expanded)
+            target.extend(expanded)
             has_list_cols = has_list_cols or any(fs.generatable for fs in expanded)
         elif filters.is_oc_record(f, dfn.name):
             expanded = _expand_oc_record_field(f, dfn.name)
-            field_specs.extend(expanded)
+            target.extend(expanded)
             has_oc_fields = has_oc_fields or any(fs.generatable for fs in expanded)
         elif filters.can_generate_record_class(f):
             record_spec = _build_inner_class_spec(f, dfn.name)
             inner_class_specs.append(record_spec)
             clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
-            field_specs.append(
+            target.append(
                 FieldSpec(
                     dfn_name=f.name,
                     py_name=clean_name,
@@ -434,18 +583,14 @@ def build_component_spec(
             generatable_field_objects.append(f)
         elif filters.can_expand_record(f):
             specs, gen_fields = _expand_record_field(f, has_maxbound=has_maxbound)
-            field_specs.extend(specs)
+            target.extend(specs)
             generatable_field_objects.extend(gen_fields)
         else:
             spec = _build_field_spec(f, has_maxbound=has_maxbound)
-            field_specs.append(spec)
+            target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append(f)
 
-    # Inject extra list blocks from dfn_overrides.toml (_package_extras section).
-    # These are list blocks entirely missing from v2 TOML conversion (e.g. SSM sources).
-    # Each block contributes: one dim() field (in __dim__ sentinel block, never written)
-    # and one array() field per column (in the declared block).
     # Inject path fields that replace heterogeneous list blocks (e.g. prt-fmi packagedata).
     # Each injected entry becomes an Optional[Path] field using the path() spec.
     has_injected_paths = False
@@ -460,7 +605,7 @@ def build_component_spec(
         ]
         if ln:
             args.append(f"longname={repr(ln)}")
-        field_specs.append(
+        extra_specs.append(
             FieldSpec(
                 dfn_name=entry["name"],
                 py_name=filters.safe_name(entry["name"]),
@@ -470,26 +615,39 @@ def build_component_spec(
             )
         )
 
+    # Inject extra list blocks from dfn_overrides.toml (_package_extras section).
+    # These are list blocks entirely missing from v2 TOML conversion (e.g. SSM sources).
+    # Each block contributes: one dim() field (in __dim__ sentinel block, never written)
+    # and one array() field per column (in the declared block).
+    # Entries must be listed in dfn_overrides.toml in v1 DFN block order so that
+    # stable sort on key 3 in block_sort_key produces the correct write sequence.
     has_extra_dims = False
+    _dfn_dim_names = set((dfn.blocks or {}).get("dimensions", {}).keys())
     for lb in extra_list_blocks(dfn.name):
         block_name = lb["block"]
         dim_name = lb["dim"]
-        has_extra_dims = True
-        field_specs.append(
-            FieldSpec(
-                dfn_name=dim_name,
-                py_name=filters.safe_name(dim_name),
-                type_annotation="Optional[int]",
-                spec_call='dim(block="__dim__", coord=False, default=None)',
-                generatable=True,
+        # Only add the dim field when it is not already declared in the DFN's
+        # dimensions block (e.g. ntables for LAK is already there; nconn is not).
+        if dim_name not in _dfn_dim_names:
+            has_extra_dims = True
+            extra_specs.append(
+                FieldSpec(
+                    dfn_name=dim_name,
+                    py_name=filters.safe_name(dim_name),
+                    type_annotation="Optional[int]",
+                    spec_call='dim(block="__dim__", coord=False, default=None)',
+                    generatable=True,
+                )
             )
-        )
+        v1_block = (v1_dfn.blocks or {}).get(block_name, {}) if v1_dfn else {}
         for col in lb.get("columns", []):
             col_name = col["name"]
             col_py_name = filters.safe_name(col.get("py_name", col_name))
             col_type = col.get("type", "string")
             col_longname = col.get("longname", "")
             col_prefix = col.get("prefix", None)
+            v1_field = v1_block.get(col_name)
+            col_cellid = col.get("cellid", False) or getattr(v1_field, "numeric_index", False)
             is_keyword = col_type == "keyword"
             dtype = filters.ARRAY_NUMPY_DTYPES.get(col_type, "np.object_")
             args = [
@@ -507,7 +665,9 @@ def build_component_spec(
                 args.append(f"prefix={tuple(col_prefix)!r}")
             if is_keyword:
                 args.append(f"row_keyword={col_name.upper()!r}")
-            field_specs.append(
+            if col_cellid:
+                args.append("cellid=True")
+            extra_specs.append(
                 FieldSpec(
                     dfn_name=col_name,
                     py_name=col_py_name,
@@ -517,6 +677,113 @@ def build_component_spec(
                 )
             )
         has_list_cols = True
+
+    # Inject embedded-keystring period fields (e.g. LAK STATUS/STAGE/RAINFALL).
+    # These use embedded_keystring() rather than array(), as the period block for
+    # advanced packages emits rows of the form: ``feature_num KEYWORD value``.
+    has_period_keystring = False
+    # Period fields always use the bare keyword name. Static block columns that
+    # share a name with a period field take the block-prefixed attr name instead
+    # (see _bare_period_names + collision_names(reserved=...)).
+    for pf in extra_period_fields(dfn.name):
+        kw = pf["keyword"]
+        feat_dim = pf["feature_dim"]
+        py_name = filters.safe_name(kw.lower())
+        dtype_str = pf.get("dtype", "double precision")
+        numpy_dtype = filters.ARRAY_NUMPY_DTYPES.get(dtype_str, "np.object_")
+        is_str = numpy_dtype == "np.object_"
+        args = [
+            f'"{kw}"',
+            f'"{feat_dim}"',
+        ]
+        if is_str:
+            args.append(f"dtype={numpy_dtype}")
+        args += [
+            'block="period"',
+            "default=None",
+            "converter=Converter(structure_array, takes_self=True, takes_field=True)",
+        ]
+        period_specs.append(
+            FieldSpec(
+                dfn_name=kw.lower(),
+                py_name=py_name,
+                type_annotation=f"Optional[NDArray[{numpy_dtype}]]",
+                spec_call=f"embedded_keystring({', '.join(args)})",
+                generatable=True,
+            )
+        )
+        has_period_keystring = True
+
+    # BlockPropertySpec-driven column fields.
+    # Each block gets: private init-only dict field, optional synthetic dim, column arrays.
+    # _bp_emitted_dims prevents emitting the same synthetic dim twice when two blocks
+    # share a dimension (e.g. connectiondata and tables both using nconnectiondata).
+    _bp_emitted_dims: set[str] = set()
+    for bp in block_properties:
+        if not bp.columns:
+            continue
+        extra_specs.append(
+            FieldSpec(
+                dfn_name=f"_{bp.block_name}",
+                py_name=f"_{bp.block_name}",
+                type_annotation="Optional[dict]",
+                spec_call=f'attrs.field(alias="{bp.block_name}", default=None, repr=False)',
+                generatable=True,
+            )
+        )
+        if not bp.dim_is_dfn_declared and bp.dim_attr not in _bp_emitted_dims:
+            has_extra_dims = True
+            _bp_emitted_dims.add(bp.dim_attr)
+            extra_specs.append(
+                FieldSpec(
+                    dfn_name=bp.dim_attr,
+                    py_name=bp.dim_attr,
+                    type_annotation="Optional[int]",
+                    spec_call='dim(block="__dim__", coord=False, default=None)',
+                    generatable=True,
+                )
+            )
+        _pending_prefixes: list[str] = []
+        for col in bp.columns:
+            if col.is_prefix:
+                _pending_prefixes.append(col.name.upper())
+                continue
+            attr_name = bp.attr_name_map[col.name]
+            dtype = (
+                "np.object_"
+                if col.is_cellid
+                else filters.ARRAY_NUMPY_DTYPES.get(col.type, "np.object_")
+            )
+            args = [
+                f'block="{bp.block_name}"',
+                f'dims=("{bp.dim_attr}",)',
+                "default=None",
+            ]
+            if not col.is_row_keyword:
+                args.append(
+                    "converter=Converter(structure_array, takes_self=True, takes_field=True)"
+                )
+            if col.longname:
+                args.append(f"longname={repr(col.longname)}")
+            if _pending_prefixes:
+                args.append(f"prefix={tuple(_pending_prefixes)!r}")
+                _pending_prefixes = []
+            if col.is_row_keyword:
+                args.append(f"row_keyword={col.name.upper()!r}")
+            if col.is_cellid or col.numeric_index:
+                args.append("cellid=True")
+            extra_specs.append(
+                FieldSpec(
+                    dfn_name=col.name,
+                    py_name=attr_name,
+                    type_annotation=f"Optional[NDArray[{dtype}]]",
+                    spec_call=f"array({', '.join(args)})",
+                    generatable=True,
+                )
+            )
+        has_list_cols = True
+
+    field_specs = prefix_specs + extra_specs + data_specs + period_specs
 
     base = _base_class(dfn)
     multi = bool(dfn.multi)
@@ -529,14 +796,14 @@ def build_component_spec(
         multi=multi,
         slntype=slntype is not None,
         has_maxbound=has_maxbound,
-        has_list_cols=has_list_cols,
+        has_list_cols=has_list_cols or has_period_keystring,
         has_inner_classes=has_inner_classes,
         has_oc_fields=has_oc_fields,
         has_extra_dims=has_extra_dims,
         has_injected_paths=has_injected_paths,
+        has_period_keystring=has_period_keystring,
+        has_block_properties=bool(block_properties),
     )
-
-    template = "package.py.jinja"
 
     return ComponentSpec(
         dfn_name=dfn.name,
@@ -548,7 +815,7 @@ def build_component_spec(
         fields=field_specs,
         inner_classes=inner_class_specs,
         outpath=filters.output_path(dfn.name, root),
-        template=template,
+        block_properties=block_properties,
     )
 
 
@@ -610,6 +877,7 @@ def make_all(
     skip: set[str] | None = None,
     makedirs: bool = False,
     existing_only: bool = False,
+    v1dfndir: PathLike | None = None,
 ) -> list[ComponentSpec]:
     """Generate Python source files for all DFNs in dfndir.
 
@@ -629,6 +897,11 @@ def make_all(
         If True, create output subdirectories as needed.
     existing_only :
         If True, only (re)generate files that already exist on disk.
+    v1dfndir :
+        Optional directory containing v1 DFN files (.dfn). When provided,
+        numeric_index is read from the v1 DFN to auto-detect cellid columns
+        in extra_list_blocks without requiring explicit ``cellid=true`` in
+        dfn_overrides.toml.
 
     Returns
     -------
@@ -640,11 +913,14 @@ def make_all(
     skip = skip or set()
     env = _get_env()
     dfns = load_flat(dfndir)
+    v1_dfns = load_flat(v1dfndir) if v1dfndir else {}
     specs = []
     for name, dfn in dfns.items():
         if name in skip:
             continue
-        spec = build_component_spec(dfn, root=outdir, developmode=developmode)
+        spec = build_component_spec(
+            dfn, root=outdir, developmode=developmode, v1_dfn=v1_dfns.get(name)
+        )
         if existing_only and not spec.outpath.exists():
             logger.info(f"{spec.outpath} does not exist — skipping {name} (existing_only)")
             continue
