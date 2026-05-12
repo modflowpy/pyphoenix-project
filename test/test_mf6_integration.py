@@ -13,8 +13,9 @@ from flopy4.mf6.gwe import Ctp as GweCtp
 from flopy4.mf6.gwe import Dis as GweDis
 from flopy4.mf6.gwe import Esl as GweEsl
 from flopy4.mf6.gwe import Est as GweEst
-from flopy4.mf6.gwe import Gwe
+from flopy4.mf6.gwe import Gwe, Lke
 from flopy4.mf6.gwe import Ic as GweIc
+from flopy4.mf6.gwe import Oc as GweOc
 from flopy4.mf6.gwe import Ssm as GweSsm
 from flopy4.mf6.gwf import (
     Buy,
@@ -43,9 +44,10 @@ from flopy4.mf6.gwt import Adv as GwtAdv
 from flopy4.mf6.gwt import Cnc as GwtCnc
 from flopy4.mf6.gwt import Dis as GwtDis
 from flopy4.mf6.gwt import Dsp as GwtDsp
-from flopy4.mf6.gwt import Gwt
+from flopy4.mf6.gwt import Gwt, Lkt
 from flopy4.mf6.gwt import Ic as GwtIc
 from flopy4.mf6.gwt import Mst as GwtMst
+from flopy4.mf6.gwt import Oc as GwtOc
 from flopy4.mf6.gwt import Src as GwtSrc
 from flopy4.mf6.gwt import Ssm as GwtSsm
 from flopy4.mf6.ims import Ims
@@ -2110,3 +2112,664 @@ def test_gwf_lak_status(function_tmpdir):
                     assert r["q"] == 0.0, f"period 2 GWF exchange should be 0, got {r['q']}"
                 else:
                     assert r["q"] != 0.0, f"period {kper + 1} GWF exchange should be non-zero"
+
+
+def test_gwt_lkt01(function_tmpdir):
+    """
+    Recreate modflow6 autotest/test_gwt_lkt01.py.
+
+    1-layer 1-row 5-col model with a single lake at cell (0,0,2) connected
+    horizontally to cells (0,0,1) and (0,0,3) and vertically below.
+    CHD boundaries hold heads at -0.5 at both ends.  LKT sets lake
+    STATUS=CONSTANT with CONCENTRATION=100.
+
+    Reference: modflow6/autotest/test_gwt_lkt01.py
+    Checks:
+      - LKT concentration binary file is written
+      - Lake concentration is 100 at all timesteps (CONSTANT)
+      - Aquifer concentrations are > 0 after 1 period (lake leaks into aquifer)
+      - Center cell (0,0,2) has higher concentration than edge cells
+    """
+    from flopy.utils import HeadFile
+
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    sim_name = "gwt_lkt01"
+    gwf_name = "gwf_lkt01"
+    gwt_name = "gwt_lkt01"
+
+    nlay, nrow, ncol = 1, 1, 5
+    delr = delc = 1.0
+    # Cell 2 has lower top so it becomes the lake cell; shape (nrow, ncol)
+    top = np.array([[0.0, 0.0, -0.90, 0.0, 0.0]])
+    botm = np.full((nlay, nrow, ncol), -1.0)
+
+    nper = 1
+    perlen, nstp, tsmult = 0.1, 10, 1.0
+    hclose = 1e-8
+
+    time = Time(perlen=[perlen], nstp=[nstp], tsmult=[tsmult], time_units="DAYS")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="ALL",
+        outer_dvclose=hclose,
+        outer_maximum=700,
+        inner_maximum=300,
+        inner_dvclose=hclose,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="BICGSTAB",
+        relaxation_factor=0.97,
+    )
+    ims_gwt = Ims(
+        filename="gwt.ims",
+        models=[gwt_name],
+        print_option="ALL",
+        outer_dvclose=hclose,
+        outer_maximum=700,
+        inner_maximum=300,
+        inner_dvclose=hclose,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="BICGSTAB",
+        relaxation_factor=0.97,
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+    )
+
+    # GWF model
+    gwf_dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=0.0)
+    Npf(parent=gwf, icelltype=0, k=20.0, k33=20.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head={0: "ALL"},
+        save_budget={0: "ALL"},
+    )
+    Chd(parent=gwf, head={0: {(0, 0, 0): -0.5, (0, 0, ncol - 1): -0.5}}, name="CHD-1")
+
+    # Lake: 3 connections — horizontal to cols 1 and 3, vertical below col 2
+    connlen = connwidth = delr / 2.0
+    nconn = 3
+    lak = Lak(
+        parent=gwf,
+        dims={"nper": nper},
+        save_flows=True,
+        print_input=True,
+        print_stage=True,
+        stage_file=f"{gwf_name}.lak.stage",
+        budget_file=f"{gwf_name}.lak.bud",
+        nlakes=1,
+        noutlets=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([-0.4]),
+            "nlakeconn": np.array([nconn]),
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+        connectiondata={
+            "ifno": np.zeros(nconn, dtype=np.int64),
+            "iconn": np.arange(nconn, dtype=np.int64),
+            "cellid": np.array([(0, 0, 1), (0, 0, 3), (0, 0, 2)]),
+            "claktype": np.array(["HORIZONTAL", "HORIZONTAL", "VERTICAL"], dtype=object),
+            "bedleak": np.full(nconn, FILL_DNODATA),
+            "belev": np.full(nconn, 10.0),
+            "telev": np.full(nconn, 10.0),
+            "connlen": np.full(nconn, connlen),
+            "connwidth": np.full(nconn, connwidth),
+        },
+        # lakeout=-1 is the Python/0-based external-drain sentinel; the codec writes
+        # it as 0 in the file (MF6's 1-based convention for "no downstream lake").
+        outlets={
+            "outletno": np.array([0], dtype=np.int64),
+            "lakein": np.array([0], dtype=np.int64),
+            "lakeout": np.array([-1], dtype=np.int64),
+            "couttype": np.array(["SPECIFIED"], dtype=object),
+            "invert": np.array([999.0]),
+            "width": np.array([999.0]),
+            "rough": np.array([999.0]),
+            "slope": np.array([999.0]),
+        },
+        status={0: ["CONSTANT"]},
+        stage={0: [-0.4]},
+        rainfall={0: [0.1]},
+        evaporation={0: [0.2]},
+        runoff={0: [0.1 * delr * delc]},
+        withdrawal={0: [0.1]},
+        rate={0: [-0.1]},
+        name="LAK-1",
+    )
+    # xattree renames list-kind children: "LAK-1" + index 0 = "LAK-10".
+    # Use lak.name so flow_package_name always matches the PNAME written to the nam file.
+
+    # GWF-GWT exchange
+    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+
+    # GWT model
+    gwt_dis = GwtDis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    gwt = Gwt(parent=sim, dis=gwt_dis, name=gwt_name)
+    GwtIc(parent=gwt, strt=0.0)
+    GwtAdv(parent=gwt, scheme="UPSTREAM")
+    GwtMst(parent=gwt, porosity=0.30)
+    GwtSsm(parent=gwt)
+
+    Lkt(
+        parent=gwt,
+        dims={"nper": nper},
+        boundnames=True,
+        save_flows=True,
+        print_input=True,
+        print_flows=True,
+        print_concentration=True,
+        concentration_file=f"{gwt_name}.lkt.bin",
+        budget_file=f"{gwt_name}.lkt.bud",
+        flow_package_name=lak.name,
+        nlakes=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([35.0]),
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+        status={0: ["CONSTANT"]},
+        concentration={0: [100.0]},
+        rainfall={0: [25.0]},
+        evaporation={0: [25.0]},
+        runoff={0: [25.0]},
+        name="LKT-1",
+    )
+
+    GwtOc(
+        parent=gwt,
+        budget_file=f"{gwt_name}.cbc",
+        concentration_file=f"{gwt_name}.ucn",
+        save_concentration={0: "ALL"},
+        print_concentration={0: "ALL"},
+        print_budget={0: "ALL"},
+    )
+
+    sim.write()
+    sim.run()
+
+    # LKT concentration binary file must exist
+    lkt_bin = function_tmpdir / f"{gwt_name}.lkt.bin"
+    assert lkt_bin.is_file(), f"LKT concentration file not found: {lkt_bin}"
+
+    # Lake concentration must be CONSTANT at 100.0 throughout
+    cobj = HeadFile(str(lkt_bin), text="CONCENTRATION")
+    clak = cobj.get_alldata().flatten()
+    assert np.allclose(clak, 100.0), f"Lake concentration should be 100.0, got {clak}"
+
+    # Aquifer concentrations: all > 0 (lake leaked into aquifer)
+    ucn = function_tmpdir / f"{gwt_name}.ucn"
+    assert ucn.is_file(), f"GWT concentration file not found: {ucn}"
+    cobj2 = HeadFile(str(ucn), text="CONCENTRATION")
+    caq = cobj2.get_alldata()[-1].flatten()
+    assert np.all(caq > 0.0), f"All aquifer concentrations should be > 0, got {caq}"
+
+    # Center cell (0,0,2) — directly below lake — should have highest concentration
+    assert caq[2] > caq[0], f"Center cell should have higher conc than edge: {caq}"
+    assert caq[2] > caq[4], f"Center cell should have higher conc than edge: {caq}"
+
+
+def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
+    """
+    Test LAK auxiliary-concentration linkage to LKT via FLOW_PACKAGE_AUXILIARY_NAME.
+
+    Same 1-layer 1-row 5-col model with a lake at cell (0,0,2) as
+    test_gwt_lkt01, but LAK carries an AUXILIARY variable named CONCENTRATION
+    and LKT uses FLOW_PACKAGE_AUXILIARY_NAME to reference it.  LKT status
+    remains CONSTANT at 100 so the physical assertions are the same as lkt01.
+
+    Checks:
+      - FLOW_PACKAGE_AUXILIARY_NAME is written and accepted by MODFLOW 6
+      - LKT concentration binary file is written
+      - Lake concentration is 100 at all timesteps (CONSTANT)
+      - Aquifer concentrations are > 0 (lake leaks into aquifer)
+      - Center cell has higher concentration than edge cells
+    """
+    from flopy.utils import HeadFile
+
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    sim_name = "gwt_lkt_aux"
+    gwf_name = "gwf_lkt_aux"
+    gwt_name = "gwt_lkt_aux"
+
+    nlay, nrow, ncol = 1, 1, 5
+    delr = delc = 1.0
+    top = np.array([[0.0, 0.0, -0.90, 0.0, 0.0]])
+    botm = np.full((nlay, nrow, ncol), -1.0)
+
+    nper = 1
+    perlen, nstp, tsmult = 0.1, 10, 1.0
+    hclose = 1e-8
+
+    time = Time(perlen=[perlen], nstp=[nstp], tsmult=[tsmult], time_units="DAYS")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="ALL",
+        outer_dvclose=hclose,
+        outer_maximum=700,
+        inner_maximum=300,
+        inner_dvclose=hclose,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="BICGSTAB",
+        relaxation_factor=0.97,
+    )
+    ims_gwt = Ims(
+        filename="gwt.ims",
+        models=[gwt_name],
+        print_option="ALL",
+        outer_dvclose=hclose,
+        outer_maximum=700,
+        inner_maximum=300,
+        inner_dvclose=hclose,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="BICGSTAB",
+        relaxation_factor=0.97,
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+    )
+
+    # GWF model
+    gwf_dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=0.0)
+    Npf(parent=gwf, icelltype=0, k=20.0, k33=20.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head={0: "ALL"},
+        save_budget={0: "ALL"},
+    )
+    Chd(parent=gwf, head={0: {(0, 0, 0): -0.5, (0, 0, ncol - 1): -0.5}}, name="CHD-1")
+
+    connlen = connwidth = delr / 2.0
+    nconn = 3
+    # LAK carries CONCENTRATION as an auxiliary variable; LKT will reference it
+    # via FLOW_PACKAGE_AUXILIARY_NAME so that the boundary-exchange concentration
+    # is drawn from the flow package rather than specified again in LKT period data.
+    lak = Lak(
+        parent=gwf,
+        dims={"nper": nper},
+        auxiliary=["CONCENTRATION"],
+        save_flows=True,
+        print_input=True,
+        print_stage=True,
+        stage_file=f"{gwf_name}.lak.stage",
+        budget_file=f"{gwf_name}.lak.bud",
+        nlakes=1,
+        noutlets=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([-0.4]),
+            "nlakeconn": np.array([nconn]),
+            "aux": np.array([[100.0]]),
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+        connectiondata={
+            "ifno": np.zeros(nconn, dtype=np.int64),
+            "iconn": np.arange(nconn, dtype=np.int64),
+            "cellid": np.array([(0, 0, 1), (0, 0, 3), (0, 0, 2)]),
+            "claktype": np.array(["HORIZONTAL", "HORIZONTAL", "VERTICAL"], dtype=object),
+            "bedleak": np.full(nconn, FILL_DNODATA),
+            "belev": np.full(nconn, 10.0),
+            "telev": np.full(nconn, 10.0),
+            "connlen": np.full(nconn, connlen),
+            "connwidth": np.full(nconn, connwidth),
+        },
+        outlets={
+            "outletno": np.array([0], dtype=np.int64),
+            "lakein": np.array([0], dtype=np.int64),
+            "lakeout": np.array([-1], dtype=np.int64),
+            "couttype": np.array(["SPECIFIED"], dtype=object),
+            "invert": np.array([999.0]),
+            "width": np.array([999.0]),
+            "rough": np.array([999.0]),
+            "slope": np.array([999.0]),
+        },
+        status={0: ["CONSTANT"]},
+        stage={0: [-0.4]},
+        rainfall={0: [0.1]},
+        evaporation={0: [0.2]},
+        runoff={0: [0.1 * delr * delc]},
+        withdrawal={0: [0.1]},
+        rate={0: [-0.1]},
+        name="LAK-1",
+    )
+
+    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+
+    # GWT model
+    gwt_dis = GwtDis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    gwt = Gwt(parent=sim, dis=gwt_dis, name=gwt_name)
+    GwtIc(parent=gwt, strt=0.0)
+    GwtAdv(parent=gwt, scheme="UPSTREAM")
+    GwtMst(parent=gwt, porosity=0.30)
+    GwtSsm(parent=gwt)
+
+    Lkt(
+        parent=gwt,
+        dims={"nper": nper},
+        boundnames=True,
+        save_flows=True,
+        print_input=True,
+        print_flows=True,
+        print_concentration=True,
+        concentration_file=f"{gwt_name}.lkt.bin",
+        budget_file=f"{gwt_name}.lkt.bud",
+        flow_package_name=lak.name,
+        flow_package_auxiliary_name="CONCENTRATION",
+        nlakes=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([35.0]),
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+        status={0: ["CONSTANT"]},
+        concentration={0: [100.0]},
+        rainfall={0: [25.0]},
+        evaporation={0: [25.0]},
+        runoff={0: [25.0]},
+        name="LKT-1",
+    )
+
+    GwtOc(
+        parent=gwt,
+        budget_file=f"{gwt_name}.cbc",
+        concentration_file=f"{gwt_name}.ucn",
+        save_concentration={0: "ALL"},
+        print_concentration={0: "ALL"},
+        print_budget={0: "ALL"},
+    )
+
+    sim.write()
+    sim.run()
+
+    # LKT concentration binary file must exist
+    lkt_bin = function_tmpdir / f"{gwt_name}.lkt.bin"
+    assert lkt_bin.is_file(), f"LKT concentration file not found: {lkt_bin}"
+
+    # Lake concentration must be CONSTANT at 100.0 throughout
+    cobj = HeadFile(str(lkt_bin), text="CONCENTRATION")
+    clak = cobj.get_alldata().flatten()
+    assert np.allclose(clak, 100.0), f"Lake concentration should be 100.0, got {clak}"
+
+    # Aquifer concentrations: all > 0 (lake leaked into aquifer)
+    ucn = function_tmpdir / f"{gwt_name}.ucn"
+    assert ucn.is_file(), f"GWT concentration file not found: {ucn}"
+    cobj2 = HeadFile(str(ucn), text="CONCENTRATION")
+    caq = cobj2.get_alldata()[-1].flatten()
+    assert np.all(caq > 0.0), f"All aquifer concentrations should be > 0, got {caq}"
+
+    # Center cell (0,0,2) — directly below lake — should have highest concentration
+    assert caq[2] > caq[0], f"Center cell should have higher conc than edge: {caq}"
+    assert caq[2] > caq[4], f"Center cell should have higher conc than edge: {caq}"
+
+
+def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
+    """
+    GWE analog of test_gwt_lkt_flow_package_auxiliary_name using LKE.
+
+    Same 1-layer 1-row 5-col model with a lake at cell (0,0,2).  LAK carries
+    an AUXILIARY variable named TEMPERATURE and LKE uses
+    FLOW_PACKAGE_AUXILIARY_NAME to reference it.  LKE status is CONSTANT at
+    20 °C so physical assertions mirror the GWT/LKT test.
+
+    Checks:
+      - FLOW_PACKAGE_AUXILIARY_NAME is written and accepted by MODFLOW 6
+      - LKE temperature binary file is written
+      - Lake temperature is 20 °C at all timesteps (CONSTANT)
+      - Aquifer temperatures are > 0 (lake leaks heat into aquifer)
+      - Center cell has higher temperature than edge cells
+    """
+    from flopy.utils import HeadFile
+
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    sim_name = "gwe_lke_aux"
+    gwf_name = "gwf_lke_aux"
+    gwe_name = "gwe_lke_aux"
+
+    nlay, nrow, ncol = 1, 1, 5
+    delr = delc = 1.0
+    top = np.array([[0.0, 0.0, -0.90, 0.0, 0.0]])
+    botm = np.full((nlay, nrow, ncol), -1.0)
+
+    nper = 1
+    perlen, nstp, tsmult = 0.1, 10, 1.0
+    hclose = 1e-8
+
+    time = Time(perlen=[perlen], nstp=[nstp], tsmult=[tsmult], time_units="DAYS")
+
+    ims_gwf = Ims(
+        filename="gwf.ims",
+        models=[gwf_name],
+        print_option="ALL",
+        outer_dvclose=hclose,
+        outer_maximum=700,
+        inner_maximum=300,
+        inner_dvclose=hclose,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="BICGSTAB",
+        relaxation_factor=0.97,
+    )
+    ims_gwe = Ims(
+        filename="gwe.ims",
+        models=[gwe_name],
+        print_option="ALL",
+        outer_dvclose=hclose,
+        outer_maximum=700,
+        inner_maximum=300,
+        inner_dvclose=hclose,
+        rclose=Ims.Rclose(inner_rclose=1e-6),
+        linear_acceleration="BICGSTAB",
+        relaxation_factor=0.97,
+    )
+
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
+    )
+
+    # GWF model
+    gwf_dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    gwf = Gwf(parent=sim, save_flows=True, dis=gwf_dis, name=gwf_name)
+    Ic(parent=gwf, strt=0.0)
+    Npf(parent=gwf, icelltype=0, k=20.0, k33=20.0)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.cbc",
+        head_file=f"{gwf_name}.hds",
+        save_head={0: "ALL"},
+        save_budget={0: "ALL"},
+    )
+    Chd(parent=gwf, head={0: {(0, 0, 0): -0.5, (0, 0, ncol - 1): -0.5}}, name="CHD-1")
+
+    connlen = connwidth = delr / 2.0
+    nconn = 3
+    lak = Lak(
+        parent=gwf,
+        dims={"nper": nper},
+        auxiliary=["TEMPERATURE"],
+        save_flows=True,
+        print_input=True,
+        print_stage=True,
+        stage_file=f"{gwf_name}.lak.stage",
+        budget_file=f"{gwf_name}.lak.bud",
+        nlakes=1,
+        noutlets=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([-0.4]),
+            "nlakeconn": np.array([nconn]),
+            "aux": np.array([[20.0]]),
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+        connectiondata={
+            "ifno": np.zeros(nconn, dtype=np.int64),
+            "iconn": np.arange(nconn, dtype=np.int64),
+            "cellid": np.array([(0, 0, 1), (0, 0, 3), (0, 0, 2)]),
+            "claktype": np.array(["HORIZONTAL", "HORIZONTAL", "VERTICAL"], dtype=object),
+            "bedleak": np.full(nconn, FILL_DNODATA),
+            "belev": np.full(nconn, 10.0),
+            "telev": np.full(nconn, 10.0),
+            "connlen": np.full(nconn, connlen),
+            "connwidth": np.full(nconn, connwidth),
+        },
+        outlets={
+            "outletno": np.array([0], dtype=np.int64),
+            "lakein": np.array([0], dtype=np.int64),
+            "lakeout": np.array([-1], dtype=np.int64),
+            "couttype": np.array(["SPECIFIED"], dtype=object),
+            "invert": np.array([999.0]),
+            "width": np.array([999.0]),
+            "rough": np.array([999.0]),
+            "slope": np.array([999.0]),
+        },
+        status={0: ["CONSTANT"]},
+        stage={0: [-0.4]},
+        rainfall={0: [0.1]},
+        evaporation={0: [0.2]},
+        runoff={0: [0.1 * delr * delc]},
+        withdrawal={0: [0.1]},
+        rate={0: [-0.1]},
+        name="LAK-1",
+    )
+
+    GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
+
+    # GWE model
+    gwe_dis = GweDis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    gwe = Gwe(parent=sim, dis=gwe_dis, name=gwe_name)
+    GweIc(parent=gwe, strt=0.0)
+    GweAdv(parent=gwe, scheme="UPSTREAM")
+    GweEst(parent=gwe, porosity=0.30, heat_capacity_solid=800.0, density_solid=2700.0)
+    GweCnd(parent=gwe, ktw=0.58, kts=3.0)
+    GweSsm(parent=gwe)
+
+    Lke(
+        parent=gwe,
+        dims={"nper": nper},
+        boundnames=True,
+        save_flows=True,
+        print_input=True,
+        print_flows=True,
+        print_temperature=True,
+        temperature_file=f"{gwe_name}.lke.bin",
+        budget_file=f"{gwe_name}.lke.bud",
+        flow_package_name=lak.name,
+        flow_package_auxiliary_name="TEMPERATURE",
+        nlakes=1,
+        packagedata={
+            "lakeno": np.array([0]),
+            "strt": np.array([5.0]),
+            "ktf": np.array([0.6]),
+            "rbthcnd": np.array([0.1]),
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+        status={0: ["CONSTANT"]},
+        temperature={0: [20.0]},
+        rainfall={0: [5.0]},
+        evaporation={0: [5.0]},
+        runoff={0: [5.0]},
+        name="LKE-1",
+    )
+
+    GweOc(
+        parent=gwe,
+        budget_file=f"{gwe_name}.cbc",
+        temperature_file=f"{gwe_name}.utn",
+        save_temperature={0: "ALL"},
+        print_temperature={0: "ALL"},
+        print_budget={0: "ALL"},
+    )
+
+    sim.write()
+    sim.run()
+
+    # LKE temperature binary file must exist
+    lke_bin = function_tmpdir / f"{gwe_name}.lke.bin"
+    assert lke_bin.is_file(), f"LKE temperature file not found: {lke_bin}"
+
+    # Lake temperature must be CONSTANT at 20 °C throughout
+    cobj = HeadFile(str(lke_bin), text="TEMPERATURE")
+    tlak = cobj.get_alldata().flatten()
+    assert np.allclose(tlak, 20.0), f"Lake temperature should be 20.0, got {tlak}"
+
+    # Aquifer temperatures: all > 0 (lake leaked heat into aquifer)
+    utn = function_tmpdir / f"{gwe_name}.utn"
+    assert utn.is_file(), f"GWE temperature file not found: {utn}"
+    cobj2 = HeadFile(str(utn), text="TEMPERATURE")
+    taq = cobj2.get_alldata()[-1].flatten()
+    assert np.all(taq > 0.0), f"All aquifer temperatures should be > 0, got {taq}"
+
+    # Center cell (0,0,2) — directly below lake — should have highest temperature
+    assert taq[2] > taq[0], f"Center cell should have higher temp than edge: {taq}"
+    assert taq[2] > taq[4], f"Center cell should have higher temp than edge: {taq}"

@@ -11,7 +11,7 @@ from xattree import xattree
 from flopy4.mf6.constants import LENBOUNDNAME
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field, path
+from flopy4.mf6.spec import array, dim, field, path
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.utils import to_path
 
@@ -46,6 +46,7 @@ class Chd(Package):
     maxbound: Optional[int] = field(
         block="dimensions", default=None, init=False, longname="maximum number of constant heads"
     )
+    naux: Optional[int] = dim(block="__dim__", coord=False, default=None)
     head: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
@@ -56,7 +57,7 @@ class Chd(Package):
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
-        dims=("nper", "nodes"),
+        dims=("nper", "nodes", "naux"),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
@@ -71,3 +72,6 @@ class Chd(Package):
         on_setattr=update_maxbound,
         longname="constant head boundary name",
     )
+    __period_col_maps__: ClassVar[dict] = {
+        "head": "head",
+    }

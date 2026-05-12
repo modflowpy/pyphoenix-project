@@ -10,7 +10,7 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, field, path
+from flopy4.mf6.spec import array, dim, field, path
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.utils import to_path
 
@@ -50,6 +50,7 @@ class Rivg(Package):
         init=False,
         longname="maximum number of river cells in any stress period",
     )
+    naux: Optional[int] = dim(block="__dim__", coord=False, default=None)
     stage: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
@@ -79,10 +80,15 @@ class Rivg(Package):
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
-        dims=("nper", "nodes"),
+        dims=("nper", "nodes", "naux"),
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
         longname="river auxiliary variable iaux",
     )
+    __period_col_maps__: ClassVar[dict] = {
+        "stage": "stage",
+        "cond": "cond",
+        "rbot": "rbot",
+    }

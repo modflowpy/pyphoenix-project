@@ -59,6 +59,7 @@ class Evt(Package):
     nseg: Optional[int] = dim(
         block="dimensions", coord=False, default=None, longname="number of et segments"
     )
+    naux: Optional[int] = dim(block="__dim__", coord=False, default=None)
     surface: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
@@ -109,7 +110,7 @@ class Evt(Package):
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",
-        dims=("nper", "nodes"),
+        dims=("nper", "nodes", "naux"),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
@@ -124,3 +125,11 @@ class Evt(Package):
         on_setattr=update_maxbound,
         longname="evapotranspiration name",
     )
+    __period_col_maps__: ClassVar[dict] = {
+        "surface": "surface",
+        "rate": "rate",
+        "depth": "depth",
+        "pxdp": "pxdp",
+        "petm": "petm",
+        "petm0": "petm0",
+    }

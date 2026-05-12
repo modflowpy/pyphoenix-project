@@ -8,6 +8,7 @@ from flopy4.mf6.gwt.cnc import Cnc
 from flopy4.mf6.gwt.dis import Dis
 from flopy4.mf6.gwt.dsp import Dsp
 from flopy4.mf6.gwt.ic import Ic
+from flopy4.mf6.gwt.lkt import Lkt
 from flopy4.mf6.gwt.mst import Mst
 from flopy4.mf6.gwt.mvt import Mvt
 from flopy4.mf6.gwt.oc import Oc
@@ -24,6 +25,7 @@ __all__ = [
     "Cnc",
     "Dsp",
     "Ic",
+    "Lkt",
     "Mst",
     "Mvt",
     "Oc",
@@ -41,11 +43,13 @@ class Gwt(Model):
     dependent_variable_scaling: bool = field(block="options", default=False)
     dis: Dis | None = field(block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
+    oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)
     dsp: Dsp | None = field(block="packages", default=None)
     mst: Mst | None = field(block="packages", default=None)
     cnc: list[Cnc] = field(block="packages")
     src: list[Src] = field(block="packages")
+    lkt: list[Lkt] = field(block="packages")
     ssm: Ssm | None = field(block="packages", default=None)
     mvt: Mvt | None = field(block="packages", default=None)
     api: Api | None = field(block="packages", default=None)

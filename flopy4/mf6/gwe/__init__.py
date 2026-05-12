@@ -9,6 +9,7 @@ from flopy4.mf6.gwe.dis import Dis
 from flopy4.mf6.gwe.esl import Esl
 from flopy4.mf6.gwe.est import Est
 from flopy4.mf6.gwe.ic import Ic
+from flopy4.mf6.gwe.lke import Lke
 from flopy4.mf6.gwe.mve import Mve
 from flopy4.mf6.gwe.oc import Oc
 from flopy4.mf6.gwe.ssm import Ssm
@@ -24,6 +25,7 @@ __all__ = [
     "Esl",
     "Est",
     "Ic",
+    "Lke",
     "Mve",
     "Oc",
     "Ssm",
@@ -39,10 +41,12 @@ class Gwe(Model):
     dependent_variable_scaling: bool = field(block="options", default=False)
     dis: Dis | None = field(block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
+    oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)
     cnd: Cnd | None = field(block="packages", default=None)
     est: Est | None = field(block="packages", default=None)
     ctp: list[Ctp] = field(block="packages")
     esl: list[Esl] = field(block="packages")
+    lke: list[Lke] = field(block="packages")
     ssm: Ssm | None = field(block="packages", default=None)
     mve: Mve | None = field(block="packages", default=None)

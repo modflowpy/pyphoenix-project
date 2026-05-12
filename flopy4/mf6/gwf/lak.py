@@ -77,6 +77,7 @@ class Lak(Package):
         block="dimensions", coord=False, default=None, longname="number of tables"
     )
     _packagedata: Optional[dict] = attrs.field(alias="packagedata", default=None, repr=False)
+    naux: Optional[int] = dim(block="__dim__", coord=False, default=None)
     packagedata_ifno: Optional[NDArray[np.int64]] = array(
         block="packagedata",
         dims=("nlakes",),
@@ -101,7 +102,7 @@ class Lak(Package):
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="packagedata",
-        dims=("nlakes",),
+        dims=("nlakes", "naux"),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="auxiliary variables",
@@ -379,6 +380,9 @@ class Lak(Package):
     }
 
     def __attrs_post_init__(self):
+        if self.auxiliary is not None:
+            _aux = self.auxiliary
+            self.naux = int(_aux.values.size) if hasattr(_aux, "values") else len(_aux)
         if self._packagedata is not None:
             self._set_block(
                 "packagedata",

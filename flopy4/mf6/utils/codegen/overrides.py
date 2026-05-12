@@ -115,6 +115,17 @@ def extra_record_children(dfn_name: str, field_name: str) -> list[dict]:
     return list(_OVERRIDES.get(dfn_name, {}).get(field_name, {}).get("extra_children", []))
 
 
+def block_dim_override(dfn_name: str, block_name: str) -> str | None:
+    """Return an explicit dim name for a block, or None to use auto-resolution.
+
+    Used when a DFN has no DIMENSIONS block but the correct dim comes from a
+    coupled package (e.g. gwt-lkt/gwe-lke packagedata rows are indexed by
+    nlakes from the paired gwf-lak).
+    """
+    key = f"{block_name}_dim"
+    return _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get(key)
+
+
 def apply_to_child(dfn_name: str, child: dict) -> dict:
     """Return ``child`` dict with any registered overrides applied.
 

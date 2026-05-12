@@ -240,6 +240,10 @@ class Csub(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="geostatic stress offset",
     )
+    __period_col_maps__: ClassVar[dict] = {
+        "sig0": "sig0",
+    }
+
     __block_col_maps__: ClassVar[dict] = {
         "packagedata": {
             "icsubno": "icsubno",

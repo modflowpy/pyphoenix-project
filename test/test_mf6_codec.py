@@ -592,6 +592,28 @@ def test_dumps_wel_with_aux():
     pprint(loaded)
 
 
+def test_dumps_wel_double_aux():
+    """Two auxiliary variables in WEL period block round-trip correctly."""
+    from flopy4.mf6.gwf import Dis, Gwf, Wel
+
+    dis = Dis(nlay=2, nrow=5, ncol=5)
+    gwf = Gwf(dis=dis)
+    wel = Wel(
+        parent=gwf,
+        auxiliary=["well_id", "temp"],
+        q={0: {(0, 1, 2): -75.0}},
+        aux={0: {(0, 1, 2): [1.0, 25.0]}},
+        dims={"nper": 1},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(wel))
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
+    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
+    assert len(lines) == 1
+    # cellid q aux1 aux2
+    assert "1 2 3 -75.0 1.0 25.0" in dumped
+
+
 def test_dumps_gwf():
     from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 
@@ -1498,6 +1520,119 @@ def test_lak_structure_component_roundtrip():
     assert list(cd["claktype"].values) == ["vertical", "vertical", "vertical"]
 
 
+def test_lak_packagedata_single_aux_roundtrip():
+    """LAK packagedata with one aux variable round-trips through dump→load→structure."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.lak import Lak
+
+    lak = Lak(
+        auxiliary=["CONCENTRATION"],
+        nlakes=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([5.0]),
+            "nlakeconn": np.array([2]),
+            "aux": np.array([100.0]),
+            "boundname": np.array(["lake1"], dtype=object),
+        },
+    )
+
+    text = dumps(unstructure_component(lak))
+    print("LAK single-aux dump:")
+    print(text)
+
+    # Aux value must appear in the packagedata row between nlakeconn and boundname
+    assert "100.0" in text or "100.00000000" in text or "1.00000000e+02" in text
+    assert "lake1" in text
+
+    raw = loads(text)
+    lak2 = structure_component(raw, Lak)
+    pd = lak2.packagedata
+    assert list(pd["strt"].values) == [5.0]
+    aux_vals = pd["aux"].values
+    assert len(aux_vals) == 1
+    assert float(aux_vals[0]) == pytest.approx(100.0)
+    assert list(pd["boundname"].values) == ["lake1"]
+
+
+def test_lak_packagedata_double_aux_roundtrip():
+    """LAK packagedata with two aux variables (e.g. CONCENTRATION DENSITY) round-trips."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.lak import Lak
+
+    # Two lakes, two aux variables each.
+    lak = Lak(
+        auxiliary=["CONCENTRATION", "DENSITY"],
+        nlakes=2,
+        packagedata={
+            "ifno": np.array([0, 1]),
+            "strt": np.array([-0.4, -0.5]),
+            "nlakeconn": np.array([3, 2]),
+            "aux": np.array([[0.0, 1025.0], [5.0, 1010.0]]),  # shape (nlakes, naux)
+            "boundname": np.array(["lake1", "lake2"], dtype=object),
+        },
+    )
+
+    text = dumps(unstructure_component(lak))
+    print("LAK double-aux dump:")
+    print(text)
+
+    # Both rows must include both aux values
+    assert "1025" in text
+    assert "1010" in text
+    assert "lake1" in text
+    assert "lake2" in text
+
+    raw = loads(text)
+    lak2 = structure_component(raw, Lak)
+    pd = lak2.packagedata
+    assert lak2.nlakes == 2
+    aux_arr = pd["aux"].values  # expect shape (2, 2) or similar
+    assert aux_arr[0, 0] == pytest.approx(0.0)
+    assert aux_arr[0, 1] == pytest.approx(1025.0)
+    assert aux_arr[1, 0] == pytest.approx(5.0)
+    assert aux_arr[1, 1] == pytest.approx(1010.0)
+
+
+def test_lkt_packagedata_double_aux_roundtrip():
+    """LKT packagedata with two aux variables round-trips."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.lkt import Lkt
+
+    lkt = Lkt(
+        auxiliary=["aux1", "aux2"],
+        nlakes=1,
+        packagedata={
+            "ifno": np.array([0]),
+            "strt": np.array([35.0]),
+            "aux": np.array([[99.0, 999.0]]),  # shape (nlakes=1, naux=2)
+            "boundname": np.array(["mylake"], dtype=object),
+        },
+    )
+
+    text = dumps(unstructure_component(lkt))
+    print("LKT double-aux dump:")
+    print(text)
+
+    assert "99" in text
+    assert "999" in text
+    assert "mylake" in text
+
+    raw = loads(text)
+    lkt2 = structure_component(raw, Lkt)
+    pd = lkt2.packagedata
+    aux_arr = pd["aux"].values
+    assert aux_arr[0, 0] == pytest.approx(99.0)
+    assert aux_arr[0, 1] == pytest.approx(999.0)
+    assert list(pd["boundname"].values) == ["mylake"]
+
+
 # ---------------------------------------------------------------------------
 # GWT/GWE FMI — packagedata block with prefix=("FILEIN",) on fname column
 # ---------------------------------------------------------------------------
@@ -1604,6 +1739,642 @@ def test_hpc_partitions_roundtrip():
     parts = hpc2.partitions
     assert list(parts["mname"].values) == ["model1", "model2"]
     assert list(parts["mrank"].values) == [0, 1]
+
+
+# ---------------------------------------------------------------------------
+# GWT-LKT / GWE-LKE — lake transport/energy packages with coupled nlakes dim
+# ---------------------------------------------------------------------------
+
+
+def _lkt_period_blocks(lkt):
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    blocks = unstructure_component(lkt)
+    return {k: v for k, v in blocks.items() if k.startswith("period")}
+
+
+def test_lkt_period_keywords():
+    """LKT period rows: ifno KEYWORD value (STATUS and CONCENTRATION)."""
+    from flopy4.mf6.gwt.lkt import Lkt
+
+    lkt = Lkt(
+        dims={"nper": 1},
+        nlakes=2,
+        status={0: ["ACTIVE", "CONSTANT"]},
+        concentration={0: [10.0, 20.0]},
+    )
+    pb = _lkt_period_blocks(lkt)
+    rows = pb["period 1"]["lak_period"]
+    assert (1, "STATUS", "ACTIVE") in rows
+    assert (2, "STATUS", "CONSTANT") in rows
+    assert (1, "CONCENTRATION", 10.0) in rows
+    assert (2, "CONCENTRATION", 20.0) in rows
+
+
+def test_lkt_period_dumps():
+    """LKT period block is written in the expected MF6 format."""
+    from flopy4.mf6.gwt.lkt import Lkt
+
+    lkt = Lkt(
+        dims={"nper": 1},
+        nlakes=2,
+        status={0: ["ACTIVE", "CONSTANT"]},
+        concentration={0: [10.0, np.nan]},
+    )
+    text = dumps(COMPONENT_CONVERTER.unstructure(lkt))
+    assert "BEGIN PERIOD 1" in text
+    assert "1 STATUS ACTIVE" in text
+    assert "2 STATUS CONSTANT" in text
+    assert "1 CONCENTRATION 10.0" in text
+    assert not any("CONCENTRATION" in line and "2 " in line for line in text.splitlines())
+
+
+def test_lkt_packagedata_roundtrip():
+    """LKT packagedata survives a dump→load→structure_component cycle."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.lkt import Lkt
+
+    lkt = Lkt(
+        nlakes=2,
+        packagedata={
+            "ifno": np.array([0, 1]),
+            "strt": np.array([1.0, 2.0]),
+            "boundname": np.array(["lake_a", "lake_b"], dtype=object),
+        },
+    )
+    text = dumps(unstructure_component(lkt))
+    raw = loads(text)
+    lkt2 = structure_component(raw, Lkt)
+
+    assert lkt2.nlakes == 2
+    pd = lkt2.packagedata
+    assert list(pd["strt"].values) == [1.0, 2.0]
+    assert list(pd["boundname"].values) == ["lake_a", "lake_b"]
+
+
+def _lke_period_blocks(lke):
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    blocks = unstructure_component(lke)
+    return {k: v for k, v in blocks.items() if k.startswith("period")}
+
+
+def test_lke_period_keywords():
+    """LKE period rows: lakeno KEYWORD value (STATUS and TEMPERATURE)."""
+    from flopy4.mf6.gwe.lke import Lke
+
+    lke = Lke(
+        dims={"nper": 1},
+        nlakes=2,
+        status={0: ["ACTIVE", "CONSTANT"]},
+        temperature={0: [15.0, 20.0]},
+    )
+    pb = _lke_period_blocks(lke)
+    rows = pb["period 1"]["lak_period"]
+    assert (1, "STATUS", "ACTIVE") in rows
+    assert (2, "STATUS", "CONSTANT") in rows
+    assert (1, "TEMPERATURE", 15.0) in rows
+    assert (2, "TEMPERATURE", 20.0) in rows
+
+
+def test_lke_period_dumps():
+    """LKE period block is written in the expected MF6 format."""
+    from flopy4.mf6.gwe.lke import Lke
+
+    lke = Lke(
+        dims={"nper": 1},
+        nlakes=1,
+        temperature={0: [18.5]},
+    )
+    text = dumps(COMPONENT_CONVERTER.unstructure(lke))
+    assert "BEGIN PERIOD 1" in text
+    assert "1 TEMPERATURE 18.5" in text
+
+
+def test_lke_packagedata_roundtrip():
+    """LKE packagedata survives a dump→load→structure_component cycle."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwe.lke import Lke
+
+    lke = Lke(
+        nlakes=2,
+        packagedata={
+            "lakeno": np.array([0, 1]),
+            "strt": np.array([12.0, 14.0]),
+            "ktf": np.array([0.6, 0.6]),
+            "rbthcnd": np.array([0.1, 0.1]),
+            "boundname": np.array(["lakeA", "lakeB"], dtype=object),
+        },
+    )
+    text = dumps(unstructure_component(lke))
+    raw = loads(text)
+    lke2 = structure_component(raw, Lke)
+
+    assert lke2.nlakes == 2
+    pd = lke2.packagedata
+    assert list(pd["strt"].values) == [12.0, 14.0]
+    assert list(pd["ktf"].values) == [0.6, 0.6]
+    assert list(pd["boundname"].values) == ["lakeA", "lakeB"]
+
+
+def test_lke_packagedata_double_aux_roundtrip():
+    """LKE packagedata with two aux variables round-trips through dump→load→structure."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwe.lke import Lke
+
+    lke = Lke(
+        auxiliary=["aux1", "aux2"],
+        nlakes=2,
+        packagedata={
+            "lakeno": np.array([0, 1]),
+            "strt": np.array([12.0, 14.0]),
+            "ktf": np.array([0.6, 0.7]),
+            "rbthcnd": np.array([0.1, 0.2]),
+            "aux": np.array([[10.0, 20.0], [30.0, 40.0]]),
+            "boundname": np.array(["lakeA", "lakeB"], dtype=object),
+        },
+    )
+
+    text = dumps(unstructure_component(lke))
+
+    assert "10" in text
+    assert "20" in text
+    assert "lakeA" in text
+    assert "lakeB" in text
+
+    raw = loads(text)
+    lke2 = structure_component(raw, Lke)
+
+    assert lke2.nlakes == 2
+    pd = lke2.packagedata
+    aux_arr = pd["aux"].values
+    assert aux_arr[0, 0] == pytest.approx(10.0)
+    assert aux_arr[0, 1] == pytest.approx(20.0)
+    assert aux_arr[1, 0] == pytest.approx(30.0)
+    assert aux_arr[1, 1] == pytest.approx(40.0)
+    assert list(pd["boundname"].values) == ["lakeA", "lakeB"]
+
+
+# ---------------------------------------------------------------------------
+# Period block roundtrip — CHD / WEL / DRN
+# ---------------------------------------------------------------------------
+
+
+def test_chd_period_roundtrip():
+    """structure_component reconstructs CHD head values from loads(dumps(...))."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Chd, Dis, Gwf
+
+    dis = Dis(nrow=10, ncol=10)
+    gwf = Gwf(dis=dis)
+    chd = Chd(
+        parent=gwf,
+        head={
+            0: {(0, 0, 0): 10.0, (0, 9, 9): 0.0},
+        },
+        dims={"nper": 1},
+    )
+
+    text = dumps(unstructure_component(chd))
+    raw = loads(text)
+    chd2 = structure_component(raw, Chd, dims={"nper": 1, "nodes": 100, "nrow": 10, "ncol": 10})
+
+    assert chd2.head is not None
+    head_arr = chd2.head if not hasattr(chd2.head, "values") else chd2.head.values
+    assert float(head_arr[0, 0]) == pytest.approx(10.0)
+    # kper=0, node (0,9,9) → flat index 99
+    assert float(head_arr[0, 99]) == pytest.approx(0.0)
+
+
+def test_chd_period_multi_stress_period_roundtrip():
+    """CHD with two stress periods reconstructs correctly."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Chd, Dis, Gwf
+
+    dis = Dis(nrow=5, ncol=5)
+    gwf = Gwf(dis=dis)
+    chd = Chd(
+        parent=gwf,
+        head={
+            0: {(0, 0, 0): 10.0, (0, 4, 4): 5.0},
+            1: {(0, 0, 0): 8.0, (0, 4, 4): 3.0},
+        },
+        dims={"nper": 2},
+    )
+
+    text = dumps(unstructure_component(chd))
+    raw = loads(text)
+    chd2 = structure_component(raw, Chd, dims={"nper": 2, "nodes": 25, "nrow": 5, "ncol": 5})
+
+    assert chd2.head is not None
+    head_arr = chd2.head if not hasattr(chd2.head, "values") else chd2.head.values
+    assert float(head_arr[0, 0]) == pytest.approx(10.0)
+    assert float(head_arr[0, 24]) == pytest.approx(5.0)
+    assert float(head_arr[1, 0]) == pytest.approx(8.0)
+    assert float(head_arr[1, 24]) == pytest.approx(3.0)
+
+
+def test_wel_period_roundtrip():
+    """structure_component reconstructs WEL q values from loads(dumps(...))."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Dis, Gwf, Wel
+
+    dis = Dis(nlay=2, nrow=5, ncol=5)
+    gwf = Gwf(dis=dis)
+    wel = Wel(
+        parent=gwf,
+        q={
+            0: {(0, 1, 2): -75.0, (1, 3, 4): -25.0},
+        },
+        dims={"nper": 1},
+    )
+
+    text = dumps(unstructure_component(wel))
+    raw = loads(text)
+    # nlay=2, nrow=5, ncol=5 → 50 nodes
+    wel2 = structure_component(raw, Wel, dims={"nper": 1, "nodes": 50, "nrow": 5, "ncol": 5})
+
+    assert wel2.q is not None
+    q_arr = wel2.q if not hasattr(wel2.q, "values") else wel2.q.values
+    # (0,1,2) → flat index 7; (1,3,4) → flat index 44
+    ncol, nrow = 5, 5
+    nn1 = 0 * nrow * ncol + 1 * ncol + 2  # = 7
+    nn2 = 1 * nrow * ncol + 3 * ncol + 4  # = 44
+    assert float(q_arr[0, nn1]) == pytest.approx(-75.0)
+    assert float(q_arr[0, nn2]) == pytest.approx(-25.0)
+
+
+def test_drn_period_roundtrip():
+    """structure_component reconstructs DRN elev+cond values."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Dis, Drn, Gwf
+
+    dis = Dis(nrow=5, ncol=5)
+    gwf = Gwf(dis=dis)
+    drn = Drn(
+        parent=gwf,
+        elev={0: {(0, 2, 2): 5.0}},
+        cond={0: {(0, 2, 2): 1.0}},
+        dims={"nper": 1},
+    )
+
+    text = dumps(unstructure_component(drn))
+    raw = loads(text)
+    drn2 = structure_component(raw, Drn, dims={"nper": 1, "nodes": 25, "nrow": 5, "ncol": 5})
+
+    assert drn2.elev is not None
+    assert drn2.cond is not None
+    elev_arr = drn2.elev if not hasattr(drn2.elev, "values") else drn2.elev.values
+    cond_arr = drn2.cond if not hasattr(drn2.cond, "values") else drn2.cond.values
+    # (0,2,2) → flat index 12
+    assert float(elev_arr[0, 12]) == pytest.approx(5.0)
+    assert float(cond_arr[0, 12]) == pytest.approx(1.0)
+
+
+def test_wel_period_aux_ingress_from_file():
+    """structure_component reconstructs WEL aux from a raw MF6 input string."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Wel
+
+    text = """
+BEGIN options
+  AUXILIARY well_id
+  PRINT_INPUT
+END options
+BEGIN period 1
+  1 2 3 -75.000000000e+00 1.000000000e+00
+END period 1
+"""
+    raw = loads(text)
+    # nlay=1, nrow=5, ncol=5 → 25 nodes; (0,1,2) → flat index 7
+    wel = structure_component(raw, Wel, dims={"nper": 1, "nodes": 25, "nrow": 5, "ncol": 5})
+
+    assert wel.aux is not None
+    aux_arr = wel.aux if not hasattr(wel.aux, "values") else wel.aux.values
+    # shape must be (nper, nodes, naux)
+    assert aux_arr.ndim == 3
+    assert aux_arr.shape[0] == 1  # nper
+    assert aux_arr.shape[2] == 1  # naux=1
+    node = 0 * 5 + 1 * 5 + 2  # (0,1,2) → 7
+    assert float(aux_arr[0, node, 0]) == pytest.approx(1.0)
+
+    assert wel.q is not None
+    q_arr = wel.q if not hasattr(wel.q, "values") else wel.q.values
+    assert float(q_arr[0, node]) == pytest.approx(-75.0)
+
+
+def test_wel_period_double_aux_ingress_from_file():
+    """structure_component reconstructs WEL with two aux variables from a raw MF6 input string."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Wel
+
+    text = """
+BEGIN options
+  AUXILIARY well_id temp
+  PRINT_INPUT
+END options
+BEGIN period 1
+  1 2 3 -75.000000000e+00 1.000000000e+00 2.500000000e+01
+END period 1
+"""
+    raw = loads(text)
+    # nlay=1, nrow=5, ncol=5 → 25 nodes; (0,1,2) → flat index 7
+    wel = structure_component(raw, Wel, dims={"nper": 1, "nodes": 25, "nrow": 5, "ncol": 5})
+
+    assert wel.aux is not None
+    aux_arr = wel.aux if not hasattr(wel.aux, "values") else wel.aux.values
+    assert aux_arr.ndim == 3
+    assert aux_arr.shape[0] == 1  # nper
+    assert aux_arr.shape[2] == 2  # naux=2
+    node = 0 * 5 + 1 * 5 + 2  # (0,1,2) → 7
+    assert float(aux_arr[0, node, 0]) == pytest.approx(1.0)
+    assert float(aux_arr[0, node, 1]) == pytest.approx(25.0)
+
+
+# ---------------------------------------------------------------------------
+# Period-block aux for GWT/GWE transport and GWF array-recharge packages
+# ---------------------------------------------------------------------------
+
+
+def test_cnc_period_aux_roundtrip():
+    """GWT CNC: conc + aux round-trip through dumps/loads/structure_component."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.cnc import Cnc
+
+    # node (2,) with explicit dims — no GWT model parent needed
+    cnc = Cnc(
+        auxiliary=["tracer_id"],
+        conc={0: {(2,): 35.0}},
+        aux={0: {(2,): 99.0}},
+        dims={"nper": 1, "nodes": 5},
+    )
+
+    text = dumps(unstructure_component(cnc))
+    assert "35" in text
+    assert "99" in text
+
+    raw = loads(text)
+    cnc2 = structure_component(raw, Cnc, dims={"nper": 1, "nodes": 5})
+
+    assert cnc2.conc is not None
+    assert cnc2.aux is not None
+    conc_arr = cnc2.conc if not hasattr(cnc2.conc, "values") else cnc2.conc.values
+    aux_arr = cnc2.aux if not hasattr(cnc2.aux, "values") else cnc2.aux.values
+    assert float(conc_arr[0, 2]) == pytest.approx(35.0)
+    assert aux_arr.shape == (1, 5, 1)
+    assert float(aux_arr[0, 2, 0]) == pytest.approx(99.0)
+
+
+def test_src_period_aux_roundtrip():
+    """GWT SRC: smassrate + aux round-trip through dumps/loads/structure_component."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.src import Src
+
+    # node (3,) with explicit dims
+    src = Src(
+        auxiliary=["src_id"],
+        smassrate={0: {(3,): 0.5}},
+        aux={0: {(3,): 7.0}},
+        dims={"nper": 1, "nodes": 5},
+    )
+
+    text = dumps(unstructure_component(src))
+    assert "0.5" in text
+    assert "7" in text
+
+    raw = loads(text)
+    src2 = structure_component(raw, Src, dims={"nper": 1, "nodes": 5})
+
+    assert src2.smassrate is not None
+    assert src2.aux is not None
+    rate_arr = src2.smassrate if not hasattr(src2.smassrate, "values") else src2.smassrate.values
+    aux_arr = src2.aux if not hasattr(src2.aux, "values") else src2.aux.values
+    assert float(rate_arr[0, 3]) == pytest.approx(0.5)
+    assert aux_arr.shape == (1, 5, 1)
+    assert float(aux_arr[0, 3, 0]) == pytest.approx(7.0)
+
+
+def test_ctp_period_aux_roundtrip():
+    """GWE CTP: temp + aux round-trip through dumps/loads/structure_component."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwe.ctp import Ctp
+
+    # node (1,) with explicit dims
+    ctp = Ctp(
+        auxiliary=["zone"],
+        temp={0: {(1,): 20.0}},
+        aux={0: {(1,): 3.0}},
+        dims={"nper": 1, "nodes": 5},
+    )
+
+    text = dumps(unstructure_component(ctp))
+    assert "20" in text
+    assert "3" in text
+
+    raw = loads(text)
+    ctp2 = structure_component(raw, Ctp, dims={"nper": 1, "nodes": 5})
+
+    assert ctp2.temp is not None
+    assert ctp2.aux is not None
+    temp_arr = ctp2.temp if not hasattr(ctp2.temp, "values") else ctp2.temp.values
+    aux_arr = ctp2.aux if not hasattr(ctp2.aux, "values") else ctp2.aux.values
+    assert float(temp_arr[0, 1]) == pytest.approx(20.0)
+    assert aux_arr.shape == (1, 5, 1)
+    assert float(aux_arr[0, 1, 0]) == pytest.approx(3.0)
+
+
+def test_esl_period_aux_roundtrip():
+    """GWE ESL: senerrate + aux round-trip through dumps/loads/structure_component."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwe.esl import Esl
+
+    # node (4,) with explicit dims
+    esl = Esl(
+        auxiliary=["esl_id"],
+        senerrate={0: {(4,): 1.25}},
+        aux={0: {(4,): 55.0}},
+        dims={"nper": 1, "nodes": 5},
+    )
+
+    text = dumps(unstructure_component(esl))
+    assert "1.25" in text
+    assert "55" in text
+
+    raw = loads(text)
+    esl2 = structure_component(raw, Esl, dims={"nper": 1, "nodes": 5})
+
+    assert esl2.senerrate is not None
+    assert esl2.aux is not None
+    rate_arr = esl2.senerrate if not hasattr(esl2.senerrate, "values") else esl2.senerrate.values
+    aux_arr = esl2.aux if not hasattr(esl2.aux, "values") else esl2.aux.values
+    assert float(rate_arr[0, 4]) == pytest.approx(1.25)
+    assert aux_arr.shape == (1, 5, 1)
+    assert float(aux_arr[0, 4, 0]) == pytest.approx(55.0)
+
+
+def test_rch_period_aux_roundtrip():
+    """GWF RCH: recharge + aux round-trip through dumps/loads/structure_component."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.rch import Rch
+
+    # node (0,) with explicit dims
+    rch = Rch(
+        auxiliary=["rch_id"],
+        recharge={0: {(0,): 0.001}},
+        aux={0: {(0,): 42.0}},
+        dims={"nper": 1, "nodes": 5},
+    )
+
+    text = dumps(unstructure_component(rch))
+    assert "0.001" in text
+    assert "42" in text
+
+    raw = loads(text)
+    rch2 = structure_component(raw, Rch, dims={"nper": 1, "nodes": 5})
+
+    assert rch2.recharge is not None
+    assert rch2.aux is not None
+    rch_arr = rch2.recharge if not hasattr(rch2.recharge, "values") else rch2.recharge.values
+    aux_arr = rch2.aux if not hasattr(rch2.aux, "values") else rch2.aux.values
+    assert float(rch_arr[0, 0]) == pytest.approx(0.001)
+    assert aux_arr.shape == (1, 5, 1)
+    assert float(aux_arr[0, 0, 0]) == pytest.approx(42.0)
+
+
+# ---------------------------------------------------------------------------
+# G/A variant aux — RCHA and CHDG with auxiliary period arrays
+# ---------------------------------------------------------------------------
+
+
+def test_rcha_period_aux_dump():
+    """RCHA aux array is written as a named readarray block per variable."""
+    from flopy4.mf6.gwf import Dis, Gwf, Rcha
+
+    nlay = 1
+    nrow = 3
+    ncol = 3
+    ncpl = nrow * ncol
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.full(ncpl, FILL_DNODATA, dtype=float)
+    recharge[4] = 1.0e-3
+    aux = np.full(ncpl, FILL_DNODATA, dtype=float)
+    aux[4] = 7.0
+
+    rch = Rcha(
+        parent=gwf,
+        auxiliary=["tracer"],
+        recharge=np.expand_dims(recharge, axis=0),
+        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),  # (nper, ncpl, naux)
+        dims={"nper": 1, "naux": 1},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(rch))
+    print("RCHA aux dump:")
+    print(dumped)
+
+    assert "READASARRAYS" in dumped.upper()
+    assert "AUXILIARY TRACER" in dumped.upper()
+    assert "BEGIN PERIOD 1" in dumped.upper()
+    assert "RECHARGE" in dumped.upper()
+    assert "TRACER" in dumped.upper()
+
+    # aux variable block appears under its name, not as "aux"
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0]
+    assert "tracer" in period_section.lower()
+    assert " aux " not in period_section.lower()
+
+
+def test_chdg_period_aux_dump():
+    """CHDG aux array is written as a named readarray block per variable."""
+    from flopy4.mf6.gwf import Chdg, Dis, Gwf
+
+    nlay = 1
+    nrow = 3
+    ncol = 3
+    ncpl = nrow * ncol
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    head = np.full(ncpl, FILL_DNODATA, dtype=float)
+    head[0] = 1.0
+    aux = np.full(ncpl, FILL_DNODATA, dtype=float)
+    aux[0] = 99.0
+
+    chd = Chdg(
+        parent=gwf,
+        auxiliary=["well_id"],
+        head=np.expand_dims(head, axis=0),
+        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),
+        dims={"nper": 1, "naux": 1},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+    print("CHDG aux dump:")
+    print(dumped)
+
+    assert "READARRAYGRID" in dumped.upper()
+    assert "AUXILIARY WELL_ID" in dumped.upper()
+    assert "BEGIN PERIOD 1" in dumped.upper()
+    assert "WELL_ID" in dumped.upper()
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0]
+    assert "well_id" in period_section.lower()
+    assert " aux " not in period_section.lower()
+
+
+def test_rcha_period_double_aux_dump():
+    """RCHA with two aux variables emits two named readarray blocks."""
+    from flopy4.mf6.gwf import Dis, Gwf, Rcha
+
+    nlay = 1
+    nrow = 2
+    ncol = 2
+    ncpl = nrow * ncol
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.zeros(ncpl, dtype=float)
+    recharge[0] = 1.0e-4
+    aux = np.zeros((ncpl, 2), dtype=float)
+    aux[0, 0] = 5.0
+    aux[0, 1] = 10.0
+
+    rch = Rcha(
+        parent=gwf,
+        auxiliary=["tracer_a", "tracer_b"],
+        recharge=np.expand_dims(recharge, axis=0),
+        aux=np.expand_dims(aux, axis=0),  # (nper, ncpl, naux)
+        dims={"nper": 1, "naux": 2},
+    )
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(rch))
+    print("RCHA double aux dump:")
+    print(dumped)
+
+    assert "TRACER_A" in dumped.upper()
+    assert "TRACER_B" in dumped.upper()
+
+    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0]
+    assert "tracer_a" in period_section.lower()
+    assert "tracer_b" in period_section.lower()
 
 
 # ---------------------------------------------------------------------------

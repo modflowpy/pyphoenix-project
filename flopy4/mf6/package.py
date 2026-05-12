@@ -115,6 +115,57 @@ class Package(Component, ABC):
                 except ImportError:
                     pass
 
+                # Aux field with multiple aux variables: expand into one column each.
+                # Column names come from self.auxiliary; fall back to aux_0, aux_1, ...
+                if (
+                    field_name == "aux"
+                    and hasattr(per_data, "dims")
+                    and "naux" in per_data.dims
+                    and per_data.sizes["naux"] > 1
+                ):
+                    _n = per_data.sizes["naux"]
+                    _aux_opt = getattr(self, "auxiliary", None)
+                    if _aux_opt is not None:
+                        _opt_list = list(
+                            _aux_opt.values if hasattr(_aux_opt, "values") else _aux_opt
+                        )
+                        _col_names = (
+                            _opt_list[:_n]
+                            if len(_opt_list) >= _n
+                            else [f"aux_{k}" for k in range(_n)]
+                        )
+                    else:
+                        _col_names = [f"aux_{k}" for k in range(_n)]
+
+                    _arr = per_data.values if hasattr(per_data, "values") else np.asarray(per_data)
+                    _smask = (_arr != FILL_DNODATA).any(axis=-1)
+                    for _node in np.where(_smask)[0]:
+                        _vals = _arr[int(_node)]
+                        if has_structured_grid and nlay and nrow and ncol:
+                            _layer = int(_node) // (nrow * ncol)
+                            _row = (int(_node) % (nrow * ncol)) // ncol
+                            _col = int(_node) % ncol
+                            _rec = {
+                                "kper": kper,
+                                "layer": _layer,
+                                "row": _row,
+                                "col": _col,
+                            }
+                            if coord_columns is None:
+                                coord_columns = ["kper", "layer", "row", "col"]
+                        else:
+                            _rec = {"kper": kper, "node": int(_node)}
+                            if coord_columns is None:
+                                coord_columns = ["kper", "node"]
+                        for _k, _cname in enumerate(_col_names):
+                            _rec[_cname] = float(_vals[_k])
+                        all_records.append(_rec)
+                    continue
+
+                # Squeeze naux=1 to scalar per node before standard processing.
+                if hasattr(per_data, "dims") and "naux" in per_data.dims:
+                    per_data = per_data.squeeze("naux")
+
                 # Find non-empty cells
                 # Handle different dtypes for the mask
                 if np.issubdtype(per_data.dtype, np.str_) or np.issubdtype(
@@ -274,13 +325,23 @@ class Package(Component, ABC):
         setattr(self, dim_attr, n)
         for col_name, attr_name in col_map.items():
             val = d.get(col_name)
-            # Pack 2D int arrays (N, ncelldim) → 1D object array of tuples.
-            # Column block fields are always 1D; a 2D input is a compound cellid.
             if isinstance(val, np.ndarray) and val.ndim == 2:
-                obj = np.empty(val.shape[0], dtype=object)
-                for _ci in range(val.shape[0]):
-                    obj[_ci] = tuple(int(x) for x in val[_ci])
-                val = obj
+                if np.issubdtype(val.dtype, np.integer):
+                    # Cellid: pack rows as int tuples for xattree object array
+                    obj = np.empty(val.shape[0], dtype=object)
+                    for _ci in range(val.shape[0]):
+                        obj[_ci] = tuple(int(x) for x in val[_ci])
+                    val = obj
+                # else: float 2D (e.g. multi-aux) — xattree handles natively
+            elif (
+                col_name == "aux"
+                and isinstance(val, np.ndarray)
+                and val.ndim == 1
+                and np.issubdtype(val.dtype, np.floating)
+            ):
+                # Single-aux compat: reshape (nlakes,) → (nlakes, 1)
+                _naux = getattr(self, "naux", None) or 1
+                val = val.reshape(-1, _naux)
             setattr(self, attr_name, val)
 
     @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
@@ -334,8 +395,34 @@ class Package(Component, ABC):
         if not period_fields:
             raise TypeError("No period block fields found in package")
 
+        # Detect aux columns and normalise into a packed "aux" column.
+        # Handles three cases from the getter:
+        #   naux=1 → "aux" column with scalar values (no repack needed)
+        #   naux>1, named → columns named after self.auxiliary entries
+        #   naux>1, fallback → columns named aux_0, aux_1, ...
+        aux_col_names: list[str] = []
+        df_for_conversion = value  # may be replaced below for multi-aux
+        if "aux" in period_fields and "aux" not in value.columns:
+            _aux_opt = getattr(self, "auxiliary", None)
+            if _aux_opt is not None:
+                _opt_list = list(_aux_opt.values if hasattr(_aux_opt, "values") else _aux_opt)
+                _named = [c for c in _opt_list if c in value.columns]
+                if _named:
+                    aux_col_names = _named
+            if not aux_col_names:
+                _k = 0
+                while f"aux_{_k}" in value.columns:
+                    aux_col_names.append(f"aux_{_k}")
+                    _k += 1
+            if aux_col_names:
+                df_for_conversion = value.copy()
+                df_for_conversion["aux"] = df_for_conversion[aux_col_names].apply(list, axis=1)
+                df_for_conversion = df_for_conversion.drop(columns=aux_col_names)
+                if hasattr(self, "naux"):
+                    self.naux: Optional[int] = len(aux_col_names)
+
         # Check which fields are present in the DataFrame
-        available_fields = [f for f in period_fields if f in value.columns]
+        available_fields = [f for f in period_fields if f in df_for_conversion.columns]
         if not available_fields:
             raise ValueError(
                 f"DataFrame must contain at least one period field column. "
@@ -376,9 +463,14 @@ class Package(Component, ABC):
         for field_name in available_fields:
             field_obj = field_objects[field_name]
 
+            # For aux, pass naux in dim_dict so _resolve_dimensions can use it
+            _dims = dict(dim_dict) if dim_dict else {}
+            if field_name == "aux" and aux_col_names:
+                _dims["naux"] = len(aux_col_names)
+
             # Call converter with explicit dims parameter
             converted_value = structure_array(
-                value, self, field_obj, dims=dim_dict if dim_dict else None
+                df_for_conversion, self, field_obj, dims=_dims if _dims else None
             )
 
             # Set the attribute, which will trigger on_setattr hooks (e.g., update_maxbound)

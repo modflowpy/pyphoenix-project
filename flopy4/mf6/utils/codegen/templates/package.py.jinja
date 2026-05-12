@@ -55,6 +55,14 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields %}
     pass
 {% endif %}
+{% if spec.period_col_map %}
+    __period_col_maps__: ClassVar[dict] = {
+{% for col_name, attr_name in spec.period_col_map.items() %}
+        "{{ col_name }}": "{{ attr_name }}",
+{% endfor %}
+    }
+
+{% endif %}
 {% if spec.block_properties %}
     __block_col_maps__: ClassVar[dict] = {
 {% for bp in spec.block_properties %}
@@ -67,6 +75,11 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     }
 
     def __attrs_post_init__(self):
+{% if spec.has_aux %}
+        if self.auxiliary is not None:
+            _aux = self.auxiliary
+            self.naux = int(_aux.values.size) if hasattr(_aux, "values") else len(_aux)
+{% endif %}
 {% for bp in spec.block_properties %}
         if self._{{ bp.block_name }} is not None:
             self._set_block(

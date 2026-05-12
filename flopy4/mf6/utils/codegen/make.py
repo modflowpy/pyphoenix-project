@@ -21,6 +21,7 @@ from . import filters
 from .filters import ColumnSpec
 from .overrides import (
     apply_to_child,
+    block_dim_override,
     extra_list_blocks,
     extra_period_fields,
     extra_record_children,
@@ -101,6 +102,8 @@ class ComponentSpec:
     outpath: Path
     block_properties: list[BlockPropertySpec] = dc_field(default_factory=list)
     template: str = "package.py.jinja"
+    has_aux: bool = False
+    period_col_map: dict[str, str] = dc_field(default_factory=dict)
 
 
 # Context builders
@@ -443,7 +446,8 @@ def _build_block_property_specs(
         elif lf.shape and "maxbound" in str(lf.shape) and dfn_dims:
             maxbound_blocks.append(block_name)
         else:
-            dim_resolutions[block_name] = (f"n{block_name}", False)
+            override = block_dim_override(dfn.name, block_name)
+            dim_resolutions[block_name] = (override or f"n{block_name}", False)
 
     unclaimed = [d for d in dfn_dims_ordered if d not in claimed_dims]
     for block_name in maxbound_blocks:
@@ -719,6 +723,7 @@ def build_component_spec(
     # _bp_emitted_dims prevents emitting the same synthetic dim twice when two blocks
     # share a dimension (e.g. connectiondata and tables both using nconnectiondata).
     _bp_emitted_dims: set[str] = set()
+    _naux_emitted = False  # emit naux dim at most once per package
     for bp in block_properties:
         if not bp.columns:
             continue
@@ -743,6 +748,20 @@ def build_component_spec(
                     generatable=True,
                 )
             )
+        # Emit naux synthetic dim once when this block carries an aux column
+        _bp_has_aux = "aux" in bp.attr_name_map
+        if _bp_has_aux and not _naux_emitted:
+            _naux_emitted = True
+            has_extra_dims = True
+            extra_specs.append(
+                FieldSpec(
+                    dfn_name="naux",
+                    py_name="naux",
+                    type_annotation="Optional[int]",
+                    spec_call='dim(block="__dim__", coord=False, default=None)',
+                    generatable=True,
+                )
+            )
         _pending_prefixes: list[str] = []
         for col in bp.columns:
             if col.is_prefix:
@@ -756,7 +775,12 @@ def build_component_spec(
             )
             args = [
                 f'block="{bp.block_name}"',
-                f'dims=("{bp.dim_attr}",)',
+                # aux carries a second dimension for the number of auxiliary variables
+                (
+                    f'dims=("{bp.dim_attr}", "naux")'
+                    if col.name == "aux"
+                    else f'dims=("{bp.dim_attr}",)'
+                ),
                 "default=None",
             ]
             if not col.is_row_keyword:
@@ -783,7 +807,51 @@ def build_component_spec(
             )
         has_list_cols = True
 
+    # Emit naux synthetic dim when any period field carries aux.
+    # List-based packages (CHD/WEL/etc.) have "naux" in the DFN shape.
+    # G/A variants (CHDG/WELG/RCHA/EVTA) use per-variable readarray blocks so
+    # naux is absent from the DFN shape; detect them by field name instead.
+    if not _naux_emitted:
+        for _f in all_fields:
+            if (
+                _f.block == "period"
+                and filters.is_array(_f)
+                and _f.shape
+                and ("naux" in _f.shape or _f.name == "aux")
+            ):
+                _naux_emitted = True
+                has_extra_dims = True
+                extra_specs.append(
+                    FieldSpec(
+                        dfn_name="naux",
+                        py_name="naux",
+                        type_annotation="Optional[int]",
+                        spec_call='dim(block="__dim__", coord=False, default=None)',
+                        generatable=True,
+                    )
+                )
+                break
+
     field_specs = prefix_specs + extra_specs + data_specs + period_specs
+
+    # Build period_col_map: value columns in the period block (cellid/aux/boundname excluded).
+    # Only packages with a standard stress-period list format produce a non-empty map.
+    # Advanced packages (LAK/MAW/UZF) use embedded_keystring rows and will have no
+    # is_period_array fields with scalar type, so their map stays empty.
+    period_col_map: dict[str, str] = {}
+    for _f in all_fields:
+        # Only node-based floating/integer list columns: excludes keyword period arrays
+        # (STO steady-state/transient flags) and non-list period blocks.
+        if not (_f.block == "period" and filters.is_array(_f)):
+            continue
+        if _f.name in ("boundname", "aux"):
+            continue
+        if _f.shape and "naux" in _f.shape:
+            continue
+        # Require node dimension (nnodes/nodes in shape) — excludes OC and period-level scalars
+        if not _f.shape or ("nnodes" not in _f.shape and "nodes" not in _f.shape):
+            continue
+        period_col_map[_f.name] = filters.safe_name(_f.name)
 
     base = _base_class(dfn)
     multi = bool(dfn.multi)
@@ -803,6 +871,7 @@ def build_component_spec(
         has_injected_paths=has_injected_paths,
         has_period_keystring=has_period_keystring,
         has_block_properties=bool(block_properties),
+        has_period_col_map=bool(period_col_map),
     )
 
     return ComponentSpec(
@@ -816,6 +885,8 @@ def build_component_spec(
         inner_classes=inner_class_specs,
         outpath=filters.output_path(dfn.name, root),
         block_properties=block_properties,
+        has_aux=_naux_emitted,
+        period_col_map=period_col_map,
     )
 
 

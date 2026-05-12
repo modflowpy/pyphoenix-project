@@ -101,11 +101,20 @@ def _hack_structured_grid_dims(
             "nlay": range(structured_grid_dims["nlay"]),
             "ncpl": range(structured_grid_dims["ncpl"]),
         }
+    else:
+        # No structured grid decomposition available — keep nodes dim as-is.
+        return value
 
     if "nper" in value.dims:
         shape.insert(0, value.sizes["nper"])
         dims.insert(0, "nper")
         coords = {"nper": value.coords["nper"], **coords}
+
+    if "naux" in value.dims:
+        naux = value.sizes["naux"]
+        shape.append(naux)
+        dims.append("naux")
+        coords["naux"] = range(naux)
 
     return xr.DataArray(
         value.data.reshape(shape),
@@ -352,12 +361,31 @@ def _unstructure_array_component(value: Component) -> dict[str, Any]:
         for kper, block in period_blocks.items():
             key = f"period {kper + 1}"
             for arr_name, val in block.items():
-                if not np.all(val == FILL_DNODATA):
+                # G/A variant aux: split naux-dimensioned array into one readarray
+                # block per auxiliary variable, named by value.auxiliary.
+                if arr_name == "aux" and isinstance(val, xr.DataArray) and "naux" in val.dims:
+                    _aux = getattr(value, "auxiliary", None)
+                    if _aux is not None and hasattr(_aux, "values"):
+                        aux_names = [str(n) for n in _aux.values.tolist()]
+                    else:
+                        aux_names = list(_aux or [])
+                    for k in range(val.sizes["naux"]):
+                        aux_slice = val.isel(naux=k)
+                        if not np.all(aux_slice.values == FILL_DNODATA):
+                            if key not in blocks:
+                                blocks[key] = {}
+                            name = aux_names[k] if k < len(aux_names) else f"aux{k}"
+                            blocks[key][name] = aux_slice
+                elif not np.all(val == FILL_DNODATA):
                     if key not in blocks:
                         blocks[key] = {}
                     blocks[key][arr_name] = val
 
-    return {name: block for name, block in blocks.items() if name != "period"}
+    return {
+        name: block
+        for name, block in blocks.items()
+        if name != "period" and not name.startswith("__")
+    }
 
 
 # Block names that MF6 rejects if present but empty.
@@ -467,6 +495,17 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         if block_name in _LIST_BLOCK_NAMES:
             current_block = blocks.get(block_name, {})
             if current_block:
+                # Expand any 2D DataArrays (e.g. aux with shape (nlakes, naux)) into
+                # separate per-column 1D DataArrays so the Dataset stays uniformly 1D.
+                expanded: dict[str, Any] = {}
+                for name, v in current_block.items():
+                    if isinstance(v, xr.DataArray) and v.ndim == 2:
+                        for j in range(v.shape[1]):
+                            expanded[f"{name}_{j}"] = v.isel({v.dims[1]: j})
+                    else:
+                        expanded[name] = v
+                current_block = expanded
+
                 das = [v for v in current_block.values() if isinstance(v, xr.DataArray)]
                 if das and len(das) == len(current_block):
                     first_dim = das[0].dims[0] if das[0].dims else None

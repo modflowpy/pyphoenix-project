@@ -182,6 +182,30 @@ replace_list_fields = [
     {block = "packagedata", name = "gwfspdis",  inout = "filein", longname = "gwf spdis file"},
 ]
 
+[_package_extras."gwt-lkt"]
+# nlakes comes from the paired gwf-lak model; gwt-lkt has no DIMENSIONS block.
+packagedata_dim = "nlakes"
+extra_period_fields = [
+    {keyword = "STATUS",        feature_dim = "nlakes", dtype = "string"},
+    {keyword = "CONCENTRATION", feature_dim = "nlakes"},
+    {keyword = "RAINFALL",      feature_dim = "nlakes"},
+    {keyword = "EVAPORATION",   feature_dim = "nlakes"},
+    {keyword = "RUNOFF",        feature_dim = "nlakes"},
+    {keyword = "EXT-INFLOW",    feature_dim = "nlakes"},
+]
+
+[_package_extras."gwe-lke"]
+# nlakes comes from the paired gwf-lak model; gwe-lke has no DIMENSIONS block.
+packagedata_dim = "nlakes"
+extra_period_fields = [
+    {keyword = "STATUS",      feature_dim = "nlakes", dtype = "string"},
+    {keyword = "TEMPERATURE", feature_dim = "nlakes"},
+    {keyword = "RAINFALL",    feature_dim = "nlakes"},
+    {keyword = "EVAPORATION", feature_dim = "nlakes"},
+    {keyword = "RUNOFF",      feature_dim = "nlakes"},
+    {keyword = "EXT-INFLOW",  feature_dim = "nlakes"},
+]
+
 [_package_extras."gwf-lak"]
 # packagedata/connectiondata/tables/outlets list blocks are auto-detected from
 # the v1 DFN via v1_list_block_names in _build_block_property_specs (no extra_list_blocks needed).

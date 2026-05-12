@@ -15,7 +15,7 @@ from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
-COMPONENTS = {}
+COMPONENTS: dict[str, type] = {}
 """MF6 component registry."""
 
 

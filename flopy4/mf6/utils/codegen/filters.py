@@ -476,10 +476,15 @@ def safe_name(name: str) -> str:
 # spec() call strings
 
 
-def _dims_tuple(shape: str) -> str:
+def _dims_tuple(shape: str, *, keep: frozenset[str] | None = None) -> str:
     """Convert a DFN shape string to a Python dims tuple literal.
 
     Applies _ALT_DIM_TOKENS, then _DIM_ALIASES to normalise dimension names.
+
+    Parameters
+    ----------
+    keep : frozenset[str], optional
+        Dimension names to preserve even if they are in _DROP_DIMS.
 
     Examples
     --------
@@ -490,7 +495,8 @@ def _dims_tuple(shape: str) -> str:
     resolved = _resolve_alt_grid(shape)
     inner = resolved.strip().strip("()")
     raw = [_DIM_ALIASES.get(p.strip(), p.strip()) for p in inner.split(",") if p.strip()]
-    parts = [p for p in raw if p not in _DROP_DIMS]
+    drop = _DROP_DIMS - (keep or frozenset())
+    parts = [p for p in raw if p not in drop]
     quoted = ", ".join(f'"{p}"' for p in parts)
     suffix = "," if len(parts) == 1 else ""
     return f"({quoted}{suffix})"
@@ -523,7 +529,13 @@ def _array_args(f: Field, *, has_maxbound: bool = False) -> list[str]:
     the boundname field; everything else (dims, netcdf, converter,
     on_setattr, longname) is identical.
     """
-    dims = _dims_tuple(f.shape) if f.shape else '("nodes",)'
+    shape = f.shape
+    # G/A variant period aux: DFN shape omits naux (one readarray block per aux
+    # variable), but the array still needs a trailing naux dimension.
+    if f.name == "aux" and f.block == "period" and shape and "naux" not in shape:
+        shape = shape.rstrip(")").rstrip() + ", naux)"
+    _keep = frozenset({"naux"}) if shape and "naux" in shape else None
+    dims = _dims_tuple(shape, keep=_keep) if shape else '("nodes",)'
     args = [
         f'block="{f.block}"',
         f"dims={dims}",
@@ -623,6 +635,7 @@ def needed_imports(
     has_injected_paths: bool = False,
     has_period_keystring: bool = False,
     has_block_properties: bool = False,
+    has_period_col_map: bool = False,
 ) -> dict[str, list[str]]:
     """Compute the import lines needed for a generated module.
 
@@ -641,7 +654,9 @@ def needed_imports(
     has_dimensions = any(is_dimensions_scalar(f) for f in generatable_fields)
     has_stress_arrays = any(is_period_array(f) for f in generatable_fields)
     has_boundname = any(is_boundname_field(f) for f in generatable_fields)
-    has_classvar = multi or slntype or has_inner_classes or has_block_properties
+    has_classvar = (
+        multi or slntype or has_inner_classes or has_block_properties or has_period_col_map
+    )
 
     # dimensions, aux list, list-expansion columns, inner class parents,
     # and injected paths are always Optional
