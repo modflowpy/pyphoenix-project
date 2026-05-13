@@ -930,7 +930,7 @@ def make_component(
     """Render and write a single component file."""
     template = env.get_template(spec.template)
     rendered = template.render(spec=spec)
-    spec.outpath.write_text(rendered)
+    spec.outpath.write_text(rendered, newline="\n")
     logger.info(f"Wrote {spec.outpath}")
     if fmt:
         try:
