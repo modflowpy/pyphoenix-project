@@ -2377,6 +2377,64 @@ def test_rcha_period_double_aux_dump():
     assert "tracer_b" in period_section.lower()
 
 
+def test_evt_period_aux_roundtrip():
+    """EVT aux column round-trips through dumps/loads/structure_component.
+
+    EVT is list-based: aux is a trailing inline column in each period row.
+    All six period fields must be present in each row so the ingress can
+    back-compute ncelldim = len(row) - n_value - naux correctly.
+    """
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Dis, Evt, Gwf
+
+    nlay = 1
+    nrow = 3
+    ncol = 3
+    ncpl = nrow * ncol
+
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    def _field(val):
+        a = np.full(ncpl, FILL_DNODATA, dtype=float)
+        a[4] = val
+        return np.expand_dims(a, axis=0)
+
+    aux = np.full(ncpl, FILL_DNODATA, dtype=float)
+    aux[4] = 3.14
+
+    evt = Evt(
+        parent=gwf,
+        auxiliary=["et_zone"],
+        surface=_field(10.0),
+        rate=_field(1.5e-3),
+        depth=_field(2.0),
+        pxdp=_field(0.5),
+        petm=_field(0.9),
+        petm0=_field(0.1),
+        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),
+        dims={"nper": 1, "naux": 1},
+    )
+
+    text = dumps(unstructure_component(evt))
+    assert "AUXILIARY ET_ZONE" in text.upper()
+    assert "3.14" in text
+
+    raw = loads(text)
+    evt2 = structure_component(
+        raw, Evt, dims={"nper": 1, "nlay": nlay, "nrow": nrow, "ncol": ncol, "nodes": ncpl}
+    )
+
+    assert evt2.surface is not None
+    assert evt2.aux is not None
+    surf_arr = evt2.surface if not hasattr(evt2.surface, "values") else evt2.surface.values
+    aux_arr = evt2.aux if not hasattr(evt2.aux, "values") else evt2.aux.values
+    assert float(surf_arr[0, 4]) == pytest.approx(10.0)
+    assert aux_arr.shape == (1, ncpl, 1)
+    assert float(aux_arr[0, 4, 0]) == pytest.approx(3.14)
+
+
 # ---------------------------------------------------------------------------
 # SPC / TVK / TVS — options-only packages with path(inout="filein")
 # ---------------------------------------------------------------------------

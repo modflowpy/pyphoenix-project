@@ -544,6 +544,34 @@ def test_stress_period_data_setter_with_two_named_aux_columns():
 # ---------------------------------------------------------------------------
 
 
+def test_rcha_stress_period_data_no_aux():
+    """RCHA stress_period_data getter returns recharge and irch columns (no aux)."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    nlay, nrow, ncol = 1, 3, 3
+    ncpl = nrow * ncol
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.full(ncpl, FILL_DNODATA, dtype=float)
+    recharge[2] = 5.0e-4
+    recharge[7] = 1.2e-3
+
+    rch = Rcha(
+        parent=gwf,
+        recharge=np.expand_dims(recharge, axis=0),
+        dims={"nper": 1},
+    )
+
+    df = rch.stress_period_data
+    assert isinstance(df, pd.DataFrame)
+    assert "recharge" in df.columns
+    assert len(df) == 2
+    vals = sorted(df["recharge"].tolist())
+    assert vals[0] == pytest.approx(5.0e-4)
+    assert vals[1] == pytest.approx(1.2e-3)
+
+
 def test_rcha_stress_period_data_getter_with_aux():
     """RCHA stress_period_data getter returns recharge and named aux columns."""
     from flopy4.mf6.constants import FILL_DNODATA

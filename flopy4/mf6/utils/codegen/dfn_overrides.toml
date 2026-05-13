@@ -169,8 +169,6 @@ extra_children = [
 
 # Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
 # Each entry defines a list block with its dimension name and column definitions.
-# The 'sources' block is dropped by dfn2toml (recarrays with no shape/dimensions
-# block are not converted). MF6 requires the SOURCES block present even when empty.
 
 [_package_extras."prt-fmi"]
 # prt-fmi PACKAGEDATA has heterogeneous rows (GWFHEAD/GWFBUDGET/GWFSPDIS filein fname).

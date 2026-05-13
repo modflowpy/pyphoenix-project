@@ -124,6 +124,10 @@ _ALT_DIM_TOKENS: dict[str, str] = {
 # repeated columns per row like naux, not a separate array dimension.
 _DROP_DIMS: frozenset[str] = frozenset({"naux", "nseg-1"})
 
+# dtype expression for the boundname array field.  Used in both the Python type
+# annotation and the array() spec call so both stay in sync if LENBOUNDNAME changes.
+_BOUNDNAME_DTYPE = 'f"<U{LENBOUNDNAME}"'
+
 
 def _has_file_child(f: Field) -> bool:
     if f.children:
@@ -437,7 +441,6 @@ def py_type(f: Field) -> str:
     if is_file_record(f):
         base = "Path"
     elif is_boundname_field(f):
-        # boundname uses a fixed-width string dtype, not generic object
         base = "NDArray[np.str_]"
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
@@ -525,7 +528,7 @@ def _array_args(f: Field, *, has_maxbound: bool = False) -> list[str]:
     """Build the argument list for an array() spec call.
 
     Shared by both is_array and is_keyword_array branches. The only
-    difference between them is that is_array may prepend a dtype for
+    difference between them is that is_array prepends _BOUNDNAME_DTYPE for
     the boundname field; everything else (dims, netcdf, converter,
     on_setattr, longname) is identical.
     """
@@ -547,7 +550,7 @@ def _array_args(f: Field, *, has_maxbound: bool = False) -> list[str]:
     if is_period_array(f) and has_maxbound:
         args.append("on_setattr=update_maxbound")
     if is_boundname_field(f):
-        args.insert(0, 'dtype=f"<U{LENBOUNDNAME}"')
+        args.insert(0, f"dtype={_BOUNDNAME_DTYPE}")
     if ln := _longname_repr(f.longname):
         args.append(f"longname={ln}")
     return args
