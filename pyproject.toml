@@ -57,7 +57,7 @@ dependencies = [
     "pydantic",
     "tomli",
     "tomli_w",
-    "xugrid",
+    "xugrid==0.14.3",
 ]
 dynamic = ["version"]
 
@@ -93,7 +93,12 @@ include = ["flopy4", "flopy4.*"]
 [tool.setuptools.package-data]
 "flopy4.dfns" = ["dfns/*.dfn"]
 "flopy4.toml" = ["dfns/toml/*.toml"]
-"flopy4" = ["mf6/codec/**/*.lark", "mf6/codec/**/*.jinja"]
+"flopy4" = [
+    "mf6/codec/**/*.lark",
+    "mf6/codec/**/*.jinja",
+    "mf6/utils/codegen/templates/*.jinja",
+    "mf6/utils/codegen/dfn_overrides.toml",
+]
 
 [tool.ruff]
 line-length = 100
@@ -118,6 +123,7 @@ ignore = [
 
 [project.scripts]
 dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
+generate-mf6-classes = "flopy4.mf6.utils.codegen.generate_classes:cli_main"
 
 [project.entry-points.flopy4]
 plot = "flopy4.singledispatch.plot_int"
@@ -158,6 +164,14 @@ build-docs = { cmd = "jupyter-book build docs/" }
 [tool.pixi.feature.build.tasks]
 build = { cmd = "python -m build" }
 
+[tool.pixi.tasks.generate-classes]
+cmd = "generate-mf6-classes --ref develop --existing-only --verbose"
+description = "Regenerate existing MF6 classes in flopy4/mf6/ from upstream DFNs"
+
+[tool.pixi.tasks.generate-classes-preview]
+cmd = "generate-mf6-classes --ref develop --outdir ./tmp/mf6-preview --makedirs --verbose"
+description = "Generate MF6 classes into /tmp/mf6-preview (safe preview)"
+
 [tool.pixi.feature.test.tasks]
 test = { cmd = "pytest -v -n auto", env = { MPLBACKEND = "Agg" } }
 
@@ -172,7 +186,8 @@ warn_unreachable = true
 
 [tool.codespell]
 skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*"
-ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt"]
+ignore-words-list = ["wel", "nam", "coo", "datbase", "inout", "delt", "ist", "lke"]
+
 
 [tool.pytest_env]
 MPLBACKEND = "agg"

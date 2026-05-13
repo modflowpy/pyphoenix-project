@@ -656,38 +656,13 @@ wel_sampleQ = flopy4.mf6.gwf.Wel(
     dims=dims,
 )
 
-# Save heads at every time step; save budget only at selected steps to keep
-# output file size manageable for this large model.
+# Save heads at every time step; save budget at the last step of each period.
 oc = flopy4.mf6.gwf.Oc(
     budget_file=Path("ff.cbc"),
     head_file=Path("ff.hds"),
-    perioddata={
-        0: flopy4.mf6.gwf.Oc.PrintSaveSetting(
-            printrecord=[
-                flopy4.mf6.gwf.Oc.PrintRecord(
-                    "budget",
-                    flopy4.mf6.gwf.Oc.Steps(
-                        steps=(
-                            0,
-                            99,
-                        )
-                    ),
-                ),
-            ],
-            saverecord=[
-                flopy4.mf6.gwf.Oc.SaveRecord("head", flopy4.mf6.gwf.Oc.Steps(all=True)),
-                flopy4.mf6.gwf.Oc.SaveRecord("budget", flopy4.mf6.gwf.Oc.Steps(steps=(0,))),
-            ],
-        ),
-        1: flopy4.mf6.gwf.Oc.PrintSaveSetting(
-            printrecord=[
-                flopy4.mf6.gwf.Oc.PrintRecord("budget", flopy4.mf6.gwf.Oc.Steps(last=True)),
-            ],
-            saverecord=[
-                flopy4.mf6.gwf.Oc.SaveRecord("head", flopy4.mf6.gwf.Oc.Steps(all=True)),
-            ],
-        ),
-    },
+    save_head={"0": "all", 1: "all"},
+    save_budget={"0": "STEPS 1"},
+    print_budget={"0": "STEPS 1 15", 1: "last"},
     dims=dims,
 )
 
@@ -719,7 +694,7 @@ ims = flopy4.mf6.Ims(
     under_relaxation_gamma=0.000000,
     under_relaxation_momentum=0.000000,
     inner_dvclose=0.00001,
-    inner_rclose=0.1,
+    rclose=flopy4.mf6.Ims.Rclose(inner_rclose=0.1),
     inner_maximum=100,
     linear_acceleration="bicgstab",
     number_orthogonalizations=0,

@@ -16,7 +16,13 @@ def quickstart_model():
     ws = "./mymodel"
     name = "mymodel"
     tdis = Tdis()
-    ims = Ims()
+    ims = Ims(
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     sim = Simulation(name=name, tdis=tdis, solutions={"ims": ims})
     dis = Dis(nrow=10, ncol=10)
     gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
@@ -59,7 +65,13 @@ def test_flopy3_model(tmp_path):
     dims["nodes"] = grid.nnodes
 
     # ims = Ims(dims=dims)
-    ims = Ims()
+    ims = Ims(
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     ims.inner_hclose = 1e-6
     ims.inner_rclose = 0.1000000
     ic = Ic(dims=dims)

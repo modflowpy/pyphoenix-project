@@ -1,8 +1,10 @@
 """Tests for stress_period_data property."""
 
+import numpy as np
 import pandas as pd
+import pytest
 
-from flopy4.mf6.gwf import Chd, Drn, Gwf, Wel
+from flopy4.mf6.gwf import Chd, Chdg, Dis, Drn, Gwf, Rcha, Wel
 
 
 def test_chd_stress_period_data():
@@ -460,3 +462,232 @@ def test_stress_period_data_setter_errors():
         assert False, "Should have raised ValueError about missing dimensions"
     except ValueError as e:
         assert "missing required dimensions" in str(e)
+
+
+def test_stress_period_data_setter_with_named_aux_column():
+    """Setter packs a named aux column (matching self.auxiliary) into the aux field."""
+    dims = {"nper": 1, "nodes": 25}
+
+    # Create WEL with one auxiliary variable named "well_id"
+    wel = Wel(
+        dims=dims,
+        auxiliary=["well_id"],
+        q={0: {(7,): -75.0, (19,): -25.0}},
+        aux={0: {(7,): 1.0, (19,): 2.0}},
+    )
+
+    # Build a fresh DataFrame with the named aux column (not "aux")
+    new_df = pd.DataFrame(
+        {
+            "kper": [0, 0],
+            "node": [7, 19],
+            "q": [-100.0, -50.0],
+            "well_id": [10.0, 20.0],
+        }
+    )
+
+    # Setter should detect "well_id" ∈ self.auxiliary and pack it as the aux array
+    wel.stress_period_data = new_df
+
+    # Getter should squeeze naux=1 back to a scalar "aux" column
+    result_df = wel.stress_period_data
+    assert len(result_df) == 2
+    assert "q" in result_df.columns
+    assert "aux" in result_df.columns
+
+    n7 = result_df[result_df["node"] == 7].iloc[0]
+    n19 = result_df[result_df["node"] == 19].iloc[0]
+    assert n7["q"] == pytest.approx(-100.0)
+    assert n7["aux"] == pytest.approx(10.0)
+    assert n19["q"] == pytest.approx(-50.0)
+    assert n19["aux"] == pytest.approx(20.0)
+
+
+def test_stress_period_data_setter_with_two_named_aux_columns():
+    """Setter packs two named aux columns into a (nper, nodes, naux=2) array."""
+    dims = {"nper": 1, "nodes": 25}
+
+    wel = Wel(
+        dims=dims,
+        auxiliary=["well_id", "temp"],
+        q={0: {(7,): -75.0}},
+        aux={0: {(7,): [1.0, 25.0]}},
+    )
+
+    # Build a DataFrame with two named aux columns
+    new_df = pd.DataFrame(
+        {
+            "kper": [0],
+            "node": [7],
+            "q": [-200.0],
+            "well_id": [99.0],
+            "temp": [37.0],
+        }
+    )
+
+    wel.stress_period_data = new_df
+
+    # With naux=2, getter should expand to "well_id" and "temp" columns
+    result_df = wel.stress_period_data
+    assert len(result_df) == 1
+    assert "well_id" in result_df.columns
+    assert "temp" in result_df.columns
+
+    row = result_df.iloc[0]
+    assert row["q"] == pytest.approx(-200.0)
+    assert row["well_id"] == pytest.approx(99.0)
+    assert row["temp"] == pytest.approx(37.0)
+
+
+# ---------------------------------------------------------------------------
+# G/A variant stress_period_data getter/setter
+# ---------------------------------------------------------------------------
+
+
+def test_rcha_stress_period_data_no_aux():
+    """RCHA stress_period_data getter returns recharge and irch columns (no aux)."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    nlay, nrow, ncol = 1, 3, 3
+    ncpl = nrow * ncol
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.full(ncpl, FILL_DNODATA, dtype=float)
+    recharge[2] = 5.0e-4
+    recharge[7] = 1.2e-3
+
+    rch = Rcha(
+        parent=gwf,
+        recharge=np.expand_dims(recharge, axis=0),
+        dims={"nper": 1},
+    )
+
+    df = rch.stress_period_data
+    assert isinstance(df, pd.DataFrame)
+    assert "recharge" in df.columns
+    assert len(df) == 2
+    vals = sorted(df["recharge"].tolist())
+    assert vals[0] == pytest.approx(5.0e-4)
+    assert vals[1] == pytest.approx(1.2e-3)
+
+
+def test_rcha_stress_period_data_getter_with_aux():
+    """RCHA stress_period_data getter returns recharge and named aux columns."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    nlay, nrow, ncol = 1, 3, 3
+    ncpl = nrow * ncol
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.full(ncpl, FILL_DNODATA, dtype=float)
+    recharge[4] = 1.0e-3
+    aux = np.full((ncpl, 2), FILL_DNODATA, dtype=float)
+    aux[4, 0] = 7.0
+    aux[4, 1] = 8.0
+
+    rch = Rcha(
+        parent=gwf,
+        auxiliary=["tracer_a", "tracer_b"],
+        recharge=np.expand_dims(recharge, axis=0),
+        aux=np.expand_dims(aux, axis=0),
+        dims={"nper": 1, "naux": 2},
+    )
+
+    df = rch.stress_period_data
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 1
+    assert "recharge" in df.columns
+    assert "tracer_a" in df.columns
+    assert "tracer_b" in df.columns
+    row = df.iloc[0]
+    assert row["recharge"] == pytest.approx(1.0e-3)
+    assert row["tracer_a"] == pytest.approx(7.0)
+    assert row["tracer_b"] == pytest.approx(8.0)
+
+
+def test_rcha_stress_period_data_setter_with_aux():
+    """RCHA stress_period_data setter accepts named aux columns and round-trips."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    nlay, nrow, ncol = 1, 3, 3
+    ncpl = nrow * ncol
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    recharge = np.full(ncpl, FILL_DNODATA, dtype=float)
+    recharge[4] = 1.0e-3
+    aux = np.full((ncpl, 2), FILL_DNODATA, dtype=float)
+    aux[4, 0] = 7.0
+    aux[4, 1] = 8.0
+
+    rch = Rcha(
+        parent=gwf,
+        auxiliary=["tracer_a", "tracer_b"],
+        recharge=np.expand_dims(recharge, axis=0),
+        aux=np.expand_dims(aux, axis=0),
+        dims={"nper": 1, "naux": 2},
+    )
+
+    new_df = pd.DataFrame(
+        {
+            "kper": [0],
+            "layer": [0],
+            "row": [2],
+            "col": [2],
+            "recharge": [2.0e-3],
+            "tracer_a": [10.0],
+            "tracer_b": [20.0],
+        }
+    )
+    rch.stress_period_data = new_df
+
+    result = rch.stress_period_data
+    assert len(result) == 1
+    row = result.iloc[0]
+    assert row["recharge"] == pytest.approx(2.0e-3)
+    assert row["tracer_a"] == pytest.approx(10.0)
+    assert row["tracer_b"] == pytest.approx(20.0)
+
+
+def test_chdg_stress_period_data_getter_and_setter_with_aux():
+    """CHDG stress_period_data getter returns head and aux; setter round-trips."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    nlay, nrow, ncol = 1, 3, 3
+    ncpl = nrow * ncol
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
+    gwf = Gwf(dis=dis)
+
+    head = np.full(ncpl, FILL_DNODATA, dtype=float)
+    head[0] = 1.0
+    aux = np.full((ncpl, 1), FILL_DNODATA, dtype=float)
+    aux[0, 0] = 99.0
+
+    chd = Chdg(
+        parent=gwf,
+        auxiliary=["well_id"],
+        head=np.expand_dims(head, axis=0),
+        aux=np.expand_dims(aux, axis=0),
+        dims={"nper": 1, "naux": 1},
+    )
+
+    df = chd.stress_period_data
+    assert len(df) == 1
+    assert "head" in df.columns
+    assert "aux" in df.columns
+    row = df.iloc[0]
+    assert row["head"] == pytest.approx(1.0)
+    assert row["aux"] == pytest.approx(99.0)
+
+    # setter round-trip
+    new_df = pd.DataFrame(
+        {"kper": [0], "layer": [0], "row": [0], "col": [2], "head": [2.0], "well_id": [42.0]}
+    )
+    chd.stress_period_data = new_df
+    result = chd.stress_period_data
+    assert len(result) == 1
+    row = result.iloc[0]
+    assert row["head"] == pytest.approx(2.0)
+    assert row["aux"] == pytest.approx(42.0)

@@ -91,8 +91,8 @@ budget_file = name + ".bud"
 head_file = name + ".hds"
 oc = Oc(
     parent=gwf,
-    budget_filerecord=budget_file,
-    head_filerecord=head_file,
+    budget_file=budget_file,
+    head_file=head_file,
     # 1) tuples (like flopy3)
     perioddata=[("HEAD", "ALL"), ("BUDGET", "ALL")],
     # 2) typed records

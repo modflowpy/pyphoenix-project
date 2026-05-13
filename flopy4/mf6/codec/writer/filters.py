@@ -243,22 +243,34 @@ def dataset2list(value: xr.Dataset):
                 yield (*name.split("_"), val)  # type: ignore
 
         else:
-            vals = []
-            for name in value.data_vars.keys():
-                val = value[name]
-                val = val.item() if val.shape == () else val
-                vals.append(val)
-            yield tuple(vals)
+            row: list[Any] = []
+            for name, da in value.data_vars.items():
+                val = da.item() if da.shape == () else da
+                if kw := da.attrs.get("row_keyword", False):
+                    if val:
+                        row.append(kw if isinstance(kw, str) else str(name).upper())
+                else:
+                    row.extend(da.attrs.get("prefix", ()))
+                    row.append(val)
+            yield tuple(row)
         return
 
     combined_mask: Any = None
+    spatial_da = None  # a non-aux DataArray for deriving spatial dims/mask
     for name, first in value.data_vars.items():
-        mask = nonempty(first)
-        combined_mask = mask if combined_mask is None else combined_mask | mask
+        if "naux" in first.dims:
+            # nonempty gives (spatial..., naux) bool array; collapse naux with any()
+            mask = nonempty(first).any(axis=-1)
+        else:
+            mask = nonempty(first)
+            spatial_da = first
+        combined_mask = mask if combined_mask is None else (combined_mask | mask)
     if combined_mask is None or not np.any(combined_mask):
         return
 
-    spatial_dims = [d for d in first.dims if d in ("nlay", "nrow", "ncol", "nodes")]
+    if spatial_da is None:
+        spatial_da = first
+    spatial_dims = [d for d in spatial_da.dims if d in ("nlay", "nrow", "ncol", "nodes")]
     has_spatial_dims = len(spatial_dims) > 0
     indices = np.where(combined_mask)
     for i in range(len(indices[0])):
@@ -266,15 +278,29 @@ def dataset2list(value: xr.Dataset):
             for name in value.data_vars.keys():
                 val = value[name][tuple(idx[i] for idx in indices)]
                 val = val.item() if val.shape == () else val
-                yield (*name.split("_"), val)  # type: ignore
+                yield (*str(name).split("_"), val)  # type: ignore
         else:
-            vals = []
-            for name in value.data_vars.keys():
-                val = value[name][tuple(idx[i] for idx in indices)]
+            row2: list[Any] = []
+            for name, da in value.data_vars.items():
+                val = da[tuple(idx[i] for idx in indices)]
                 val = val.item() if val.shape == () else val
-                vals.append(val)
+                if kw := da.attrs.get("row_keyword", False):
+                    if val:
+                        row2.append(kw if isinstance(kw, str) else str(name).upper())
+                else:
+                    row2.extend(da.attrs.get("prefix", ()))
+                    if da.attrs.get("cellid"):
+                        if isinstance(val, tuple):
+                            row2.extend(c + 1 for c in val)
+                        else:
+                            row2.append(val + 1)
+                    else:
+                        if hasattr(val, "ndim") and val.ndim > 0:
+                            row2.extend(float(v) for v in np.asarray(val).flat)
+                        else:
+                            row2.append(val)
             if has_spatial_dims:
                 cellid = tuple(idx[i] + 1 for idx in indices)
-                yield cellid + tuple(vals)
+                yield tuple(cellid) + tuple(row2)
             else:
-                yield tuple(vals)
+                yield tuple(row2)

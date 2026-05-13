@@ -18,7 +18,16 @@ def dis_model_output(function_tmpdir):
     gwf_name = "gwf_dis"
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
-    ims = Ims(filename=f"{sim_name}.ims", models=[gwf_name], print_option="summary")
+    ims = Ims(
+        filename=f"{sim_name}.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name, solutions={"ims": ims})
 
     nlay, nrow, ncol = 2, 3, 4
@@ -75,7 +84,16 @@ def disv_model_output(function_tmpdir):
     gwf_name = "gwf_disv"
 
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
-    ims = Ims(filename=f"{sim_name}.ims", models=[gwf_name], print_option="summary")
+    ims = Ims(
+        filename=f"{sim_name}.ims",
+        models=[gwf_name],
+        print_option="summary",
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name, solutions={"ims": ims})
 
     nlay = 2

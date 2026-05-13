@@ -1,5 +1,6 @@
 from typing import Any
 
+import attrs
 import numpy as np
 import pandas as pd
 import sparse
@@ -15,6 +16,342 @@ from flopy4.mf6.dimensions import DimensionResolver
 
 def structure_keyword(value, field) -> str | None:
     return field.name if value else None
+
+
+def _list_block_col_info(col_map: dict, xatspec) -> dict[str, tuple[bool, bool, Any, tuple]]:
+    """Return {col_name: (is_true_cellid, is_numeric_index, dtype, prefix)} for a col_map.
+
+    is_true_cellid  — object-dtype field, expands to ncelldim tokens in the file
+    is_numeric_index — int-dtype field, single 1-based token in the file
+    dtype            — numpy dtype for type-compatibility checks when skipping
+                       absent optional columns
+    prefix           — tuple of fixed keyword tokens that precede the value in each row
+                       (e.g. ("FILEIN",) for fname in FMI packagedata)
+    """
+    info = {}
+    for col_name, attr_name in col_map.items():
+        fspec = xatspec.flat.get(attr_name)
+        if fspec is None:
+            info[col_name] = (False, False, object, ())
+            continue
+        meta = getattr(fspec, "metadata", {}) or {}
+        has_cellid_flag = bool(meta.get("cellid"))
+        dtype = getattr(fspec, "dtype", object)
+        is_object = dtype == object or dtype == np.object_  # noqa: E721
+        prefix = tuple(meta.get("prefix", ()))
+        info[col_name] = (
+            has_cellid_flag and is_object,  # true cellid → multi-token tuple
+            has_cellid_flag and not is_object,  # numeric index → 1-based single token
+            dtype,
+            prefix,
+        )
+    return info
+
+
+def _token_fits(token: Any, dtype: Any) -> bool:
+    """True if *token* is type-compatible with *dtype*.
+
+    Numeric dtypes (float64, int64, …) require a numeric token (int or float).
+    String tokens that look like numbers (e.g. '-0.4' from the grammar's word
+    rule) are also accepted for numeric dtypes.
+    Object dtype accepts any token.  Used to detect absent optional columns
+    whose token slot would otherwise consume the next column's value.
+    """
+    if dtype == object or dtype == np.object_:  # noqa: E721
+        return True
+    if isinstance(token, (int, float)):
+        return True
+    if isinstance(token, str):
+        try:
+            float(token)
+            return True
+        except ValueError:
+            return False
+    return False
+
+
+def _coerce_token(token: Any, dtype: Any) -> Any:
+    """Coerce a string token to its numeric value for numeric dtypes."""
+    if isinstance(token, str) and not (dtype == object or dtype == np.object_):  # noqa: E721
+        try:
+            if np.issubdtype(np.dtype(dtype), np.floating):
+                return float(token)
+            if np.issubdtype(np.dtype(dtype), np.integer):
+                return int(float(token))
+        except (ValueError, TypeError):
+            pass
+    return token
+
+
+def _parse_list_block_rows(
+    rows: list,
+    col_map: dict,
+    col_info: dict[str, tuple[bool, bool, Any, tuple]],
+    naux: int = 0,
+) -> dict[str, Any]:
+    """Parse token rows into {col_name: numpy_array} using col_map.
+
+    Token→value rules:
+    - true cellid  (object dtype + cellid flag): consume ncelldim tokens, pack
+      to a tuple, subtract 1 from each component.  ncelldim is inferred from
+      row length minus the count of remaining single-token columns.
+    - numeric index (int dtype + cellid flag): consume 1 token, subtract 1.
+    - aux column (col_name == "aux"): consume exactly naux float tokens and
+      return as a list; caller assembles into a 2D array (nlakes, naux).
+    - regular column: consume 1 token, no transform.
+
+    Absent optional columns are detected by type mismatch: if the current token
+    is a string but the column dtype is numeric, the column is marked absent and
+    the token is left for the next column.  All-absent columns are omitted from
+    the returned dict.
+    """
+    col_names = list(col_map.keys())
+    col_lists: dict[str, list] = {c: [] for c in col_names}
+
+    for row in rows:
+        tok_idx = 0
+        for i, col_name in enumerate(col_names):
+            is_true_cellid, is_numeric_index, dtype, prefix = col_info[col_name]
+
+            if tok_idx >= len(row):
+                col_lists[col_name].append(None)
+                continue
+
+            # Skip fixed prefix tokens (e.g. "FILEIN" before a filename column).
+            tok_idx += len(prefix)
+            if tok_idx >= len(row):
+                col_lists[col_name].append(None)
+                continue
+
+            cur_tok = row[tok_idx]
+
+            if is_true_cellid:
+                # Infer ncelldim from remaining tokens: remaining = single-token cols after this
+                remaining_single = sum(1 for cn in col_names[i + 1 :] if not col_info[cn][0])
+                ncelldim = len(row) - tok_idx - remaining_single
+                if ncelldim < 1:
+                    ncelldim = 1
+                cellid = tuple(int(row[tok_idx + j]) - 1 for j in range(ncelldim))
+                col_lists[col_name].append(cellid)
+                tok_idx += ncelldim
+            elif is_numeric_index:
+                if not _token_fits(cur_tok, np.int64):
+                    col_lists[col_name].append(None)
+                    continue
+                col_lists[col_name].append(int(float(str(cur_tok))) - 1)
+                tok_idx += 1
+            elif col_name == "aux":
+                # Aux: consume exactly naux float tokens
+                if naux == 0:
+                    col_lists[col_name].append(None)
+                else:
+                    aux_vals: list[float] = []
+                    ok = True
+                    for _ in range(naux):
+                        if tok_idx < len(row) and _token_fits(row[tok_idx], np.float64):
+                            aux_vals.append(float(str(row[tok_idx])))
+                            tok_idx += 1
+                        else:
+                            ok = False
+                            break
+                    col_lists[col_name].append(aux_vals if ok else None)
+            else:
+                if not _token_fits(cur_tok, dtype):
+                    col_lists[col_name].append(None)
+                    continue
+                col_lists[col_name].append(_coerce_token(cur_tok, dtype))
+                tok_idx += 1
+
+    result = {}
+    for col_name, vals in col_lists.items():
+        if any(v is None for v in vals):
+            continue
+        if vals and isinstance(vals[0], list):
+            # Multi-aux: list of naux-element lists → 2D float array (nrows, naux)
+            result[col_name] = np.array(vals, dtype=np.float64)
+        elif vals and isinstance(vals[0], tuple):
+            # True cellid: 2D int array (N, ncelldim); _set_block packs to tuples
+            try:
+                result[col_name] = np.array(vals, dtype=int)
+            except (ValueError, TypeError):
+                result[col_name] = np.array(vals, dtype=object)
+        elif vals and isinstance(vals[0], int):
+            result[col_name] = np.array(vals, dtype=np.int64)
+        elif vals and isinstance(vals[0], float):
+            result[col_name] = np.array(vals, dtype=np.float64)
+        else:
+            result[col_name] = np.array(vals, dtype=object)
+    return result
+
+
+def _parse_period_rows(
+    rows: list,
+    period_col_map: dict[str, str],
+    naux: int = 0,
+) -> dict[str, dict]:
+    """Parse token rows from one PERIOD block into {col_name: {cellid_tuple: value}}.
+
+    Handles cellid (variable-width tuple, 0-based after -1), value columns
+    (each 1 token, float64), and optional boundname (final non-numeric string).
+    Aux parsing is deferred — callers receive {"aux": {cellid: [v1, v2, ...]}}
+    when naux > 0.
+
+    Returns col_name → {cellid: value} for each column that has data.
+    """
+    n_value = len(period_col_map)
+    value_col_names = list(period_col_map.keys())
+    value_col_results: dict[str, dict] = {c: {} for c in value_col_names}
+    aux_results: dict = {}
+    bn_results: dict = {}
+
+    for row in rows:
+        if not row:
+            continue
+        last_tok = row[-1] if row else None
+        has_bn = (
+            last_tok is not None
+            and isinstance(last_tok, str)
+            and not _token_fits(last_tok, np.float64)
+        )
+        ncelldim = len(row) - n_value - naux - (1 if has_bn else 0)
+        if ncelldim < 1:
+            continue
+        cellid = tuple(int(row[j]) - 1 for j in range(ncelldim))
+        tok_idx = ncelldim
+        for col_name in value_col_names:
+            if tok_idx >= len(row):
+                break
+            value_col_results[col_name][cellid] = _coerce_token(row[tok_idx], np.float64)
+            tok_idx += 1
+        if naux > 0 and tok_idx + naux <= len(row):
+            aux_results[cellid] = [float(str(row[tok_idx + k])) for k in range(naux)]
+            tok_idx += naux
+        if has_bn:
+            bn_results[cellid] = str(last_tok)
+
+    result: dict[str, dict] = {}
+    for col_name, d in value_col_results.items():
+        if d:
+            result[col_name] = d
+    if aux_results:
+        result["aux"] = aux_results
+    if bn_results:
+        result["boundname"] = bn_results
+    return result
+
+
+def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> Any:
+    """Reconstruct a component instance from a raw parsed MF6 input dict.
+
+    Parameters
+    ----------
+    raw : dict
+        Output of ``loads()`` — {block_name_upper: list_of_token_rows}.
+    cls : type
+        The component class to instantiate (must be an xattree attrs class).
+
+    Returns
+    -------
+    Component instance.
+    """
+    raw_lower = {k.lower(): v for k, v in raw.items()}
+    xatspec = get_xatspec(cls)
+    block_col_maps: dict[str, dict[str, str]] = getattr(cls, "__block_col_maps__", {})
+
+    # Build (name → attrs.Attribute) for init-eligibility checks
+    all_attrs = {f.name: f for f in attrs.fields(cls)}
+
+    kwargs: dict[str, Any] = {}
+
+    # Scalar block (options / dimensions) pass: collect kwargs first so that
+    # auxiliary (and hence naux) is known when processing list blocks.
+    for block_name, rows in raw_lower.items():
+        if not rows or block_name in block_col_maps or block_name.startswith("period"):
+            continue
+        for row in rows:
+            if not row:
+                continue
+            if len(row) == 1:
+                key = str(row[0]).lower()
+                af = all_attrs.get(key)
+                if af is not None and af.init is not False:
+                    kwargs[key] = True
+            elif len(row) >= 2:
+                key = str(row[0]).lower()
+                af = all_attrs.get(key)
+                if af is not None and af.init is not False:
+                    # Collect all values for list-type options (e.g. auxiliary names)
+                    kwargs[key] = list(row[1:]) if len(row) > 2 else row[1]
+
+    # Derive naux from auxiliary option so list-block parsing can consume the
+    # right number of aux tokens per row.
+    naux = 0
+    if "auxiliary" in kwargs:
+        aux_opt = kwargs["auxiliary"]
+        naux = len(aux_opt) if isinstance(aux_opt, list) else 1
+
+    # Pass naux as constructor kwarg when the class declares a naux dim field.
+    # This ensures structure_array can resolve the naux dimension during __init__.
+    if naux > 0 and any(f.name == "naux" for f in attrs.fields(cls)):
+        kwargs["naux"] = naux
+
+    # List block pass
+    for block_name, rows in raw_lower.items():
+        if not rows or block_name.startswith("period"):
+            continue
+        if block_name in block_col_maps:
+            col_map = block_col_maps[block_name]
+            col_info = _list_block_col_info(col_map, xatspec)
+            block_dict = _parse_list_block_rows(rows, col_map, col_info, naux=naux)
+            if block_dict:
+                kwargs[block_name] = block_dict
+
+    # TODO: ingress for G/A variant period blocks is not yet supported.
+    # G-variants (CHDG/WELG/DRNG/GHBG/RIVG) and A-variants (RCHA/EVTA) use
+    # readarray-based period input, not the list-row format that
+    # _parse_period_rows handles.  Period aux for these packages is also not
+    # ingested; aux arrays are emitted as named readarray blocks per variable
+    # on egress but are not reconstructed on ingress.
+
+    # Period block pass: parse PERIOD N blocks using __period_col_maps__ ClassVar.
+    period_col_map: dict[str, str] = getattr(cls, "__period_col_maps__", {})
+    if period_col_map:
+        # Group raw rows by 0-based kper
+        kper_rows: dict[int, list] = {}
+        for block_name, rows in raw_lower.items():
+            if not block_name.startswith("period"):
+                continue
+            parts = block_name.split()
+            if len(parts) < 2:
+                continue
+            try:
+                kper = int(parts[1]) - 1
+            except ValueError:
+                continue
+            kper_rows[kper] = rows
+
+        if kper_rows:
+            # {col_name: {kper: {cellid: value}}}
+            col_period_dicts: dict[str, dict] = {}
+            for kper, rows in sorted(kper_rows.items()):
+                period_data = _parse_period_rows(rows, period_col_map, naux=naux)
+                for col_name, cellid_dict in period_data.items():
+                    if cellid_dict:
+                        col_period_dicts.setdefault(col_name, {})[kper] = cellid_dict
+
+            # aux and boundname share the same attr name as their col_name
+            all_col_map = dict(period_col_map)
+            all_col_map["aux"] = "aux"
+            all_col_map["boundname"] = "boundname"
+            cls_attr_names = {f.name for f in attrs.fields(cls)}
+            for col_name, period_dict in col_period_dicts.items():
+                attr_name = all_col_map.get(col_name, col_name)
+                if attr_name in cls_attr_names:
+                    kwargs[attr_name] = period_dict
+
+    if dims:
+        kwargs["dims"] = dims
+    return cls(**kwargs)
 
 
 def _resolve_dimensions(
@@ -229,6 +566,14 @@ def _validate_duck_array(
                     target_shape is not None
                 )  # target_shape is always set when needs_reshape is True
                 return _reshape_grid(value, target_shape)
+            # Allow 1D float input as a (n, 1) shorthand when the target has a trailing
+            # dimension of size 1 (e.g. single-aux: (nlakes,) → (nlakes, naux=1)).
+            if (
+                value.ndim + 1 == len(expected_shape)
+                and expected_shape[-1] == 1
+                and np.issubdtype(value.dtype, np.floating)
+            ):
+                return value.reshape(*value.shape, 1)
             raise ValueError(f"Shape mismatch: {value.shape} vs {expected_shape}")
         return value
 
@@ -437,12 +782,18 @@ def _parse_dict_format(
             return {0: value["data"]}
         return {0: value}
 
+    wildcard_val = None
     parsed: dict[int, Any] = {}
 
     for key, val in value.items():
-        # Handle special '*' key (means period/layer 0, don't fill forward)
         if key == "*":
-            key = 0
+            wildcard_val = val
+            continue
+        elif isinstance(key, str):
+            try:
+                key = int(key)
+            except ValueError:
+                continue
 
         # Skip non-integer keys
         if not isinstance(key, int):
@@ -492,7 +843,40 @@ def _parse_dict_format(
             # Unknown type, store as-is
             parsed[key] = val
 
+    # Expand "*" to every period not already covered by an explicit key.
+    if wildcard_val is not None:
+        nper = dim_dict.get("nper")
+        if nper is not None:
+            for kper in range(nper):
+                if kper not in parsed:
+                    parsed[kper] = wildcard_val
+        elif 0 not in parsed:
+            parsed[0] = wildcard_val
+
     return parsed
+
+
+def _infer_naux(value) -> int | None:
+    """Infer the naux dimension from a period-aux value when self_.naux is not set.
+
+    Peeks at the first leaf of a nested dict (kper → cellid → aux_list) or uses
+    the last dimension of an array.  Returns None when naux cannot be determined.
+    """
+    if isinstance(value, np.ndarray):
+        return int(value.shape[-1]) if value.ndim >= 3 else 1
+    if isinstance(value, xr.DataArray):
+        return int(value.shape[-1]) if value.ndim >= 3 else 1
+    if isinstance(value, dict):
+        v: object = value
+        while isinstance(v, dict):
+            if not v:
+                return 0
+            v = next(iter(v.values()))
+        if isinstance(v, (list, tuple)):
+            return len(v)
+        if isinstance(v, (int, float)):
+            return 1
+    return None
 
 
 def structure_array(
@@ -536,6 +920,20 @@ def structure_array(
     xr.DataArray | np.ndarray | sparse.COO
         Structured array with proper shape and metadata
     """
+    # When naux is in the field dims but self_ hasn't had it set yet (direct
+    # construction without explicit naux kwarg), infer it from the value shape.
+    # Also set self_.naux so xattree's dimension resolution can see it when it
+    # processes the returned DataArray during __setattr__.
+    if field.dims and "naux" in field.dims and not isinstance(getattr(self_, "naux", None), int):
+        inferred = _infer_naux(value)
+        if inferred is not None:
+            try:
+                self_.naux = inferred
+            except Exception:
+                pass
+            dims = dict(dims or {})
+            dims["naux"] = inferred
+
     # Resolve dimensions
     dims_names, shape, dim_dict = _resolve_dimensions(self_, field, dims=dims)
     threshold = sparse_threshold if sparse_threshold is not None else SPARSE_THRESHOLD
@@ -619,13 +1017,17 @@ def structure_array(
             # Dense approach
             result = np.full(shape, FILL_DNODATA, dtype=field.dtype)
 
-            # Fill in values with fill-forward logic
+            # Keystring (OC) fields use no fill-forward: each key covers only
+            # that period.  Stress-package dicts fill forward from each key to
+            # the next specified key so boundary conditions persist by default.
+            is_keystring = getattr(field, "metadata", {}).get("keystring", False)
+
             sorted_keys = sorted(parsed_dict.keys())
             for idx, key in enumerate(sorted_keys):
                 val = parsed_dict[key]
 
-                # Determine fill range (current key to next key or end)
-                if "nper" in dims_names:
+                # Determine fill range
+                if "nper" in dims_names and not is_keystring:
                     next_key = (
                         sorted_keys[idx + 1]
                         if idx + 1 < len(sorted_keys)
@@ -693,6 +1095,20 @@ def structure_array(
         result = _parse_list_format(value, dims_names, tuple(shape), field)
 
     elif isinstance(value, (xr.DataArray, np.ndarray)):
+        # For cellid=True fields: convert 2D (N, ncelldim) integer array to 1D object array
+        # of tuples so the writer can emit each component individually with +1 conversion.
+        if (
+            isinstance(value, np.ndarray)
+            and value.ndim == 2
+            and len(shape) == 1
+            and value.shape[0] == shape[0]
+            and getattr(field, "metadata", {}).get("cellid")
+        ):
+            obj = np.empty(value.shape[0], dtype=object)
+            for _ci in range(value.shape[0]):
+                obj[_ci] = tuple(int(x) for x in value[_ci])
+            value = obj
+
         # Duck array - validate and reshape if needed
         result = _validate_duck_array(value, dims_names, tuple(shape), dim_dict)
 

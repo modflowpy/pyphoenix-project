@@ -19,12 +19,16 @@ from flopy4.mf6.utils.time import Time
 
 
 def test_registry():
+    from flopy4.mf6.gwt.ic import Ic as GwtIc
+
     assert COMPONENTS["simulation"] is Simulation
     assert COMPONENTS["tdis"] is Tdis
     assert COMPONENTS["gwf"] is Gwf
-    assert COMPONENTS["npf"] is Npf
-    assert COMPONENTS["ic"] is Ic
-    assert COMPONENTS["oc"] is Oc
+    # Qualified keys are deterministic regardless of import order.
+    assert COMPONENTS["gwf-npf"] is Npf
+    assert COMPONENTS["gwf-ic"] is Ic
+    assert COMPONENTS["gwt-ic"] is GwtIc
+    assert COMPONENTS["gwf-oc"] is Oc
 
 
 def test_init_empty_sim():
@@ -334,7 +338,14 @@ def test_write_ascii(function_tmpdir):
     sim_name = "sim"
     gwf_name = "gwf"
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=[gwf_name])
+    ims = Ims(
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(
         nlay=1,
         nrow=10,
@@ -452,7 +463,14 @@ def test_to_dict_on_component():
 
 def test_to_dict_on_context():
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=["gwf"])
+    ims = Ims(
+        models=["gwf"],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     sim = Simulation(tdis=time, solutions={"ims": ims})
 
     result = sim.to_dict()
@@ -501,7 +519,14 @@ def test_to_xarray_on_component():
 
 def test_to_xarray_on_context(function_tmpdir):
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
-    ims = Ims(models=["gwf"])
+    ims = Ims(
+        models=["gwf"],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     sim = Simulation(tdis=time, solutions={"ims": ims}, workspace=function_tmpdir)
     dt = sim.to_xarray()
     assert isinstance(dt, xr.DataTree)

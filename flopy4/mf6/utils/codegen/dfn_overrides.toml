@@ -1,0 +1,227 @@
+# Local DFN field overrides pending upstream modflow6 repository PRs.
+#
+# Format: ["<dfn-name>".<field-name>]
+#           <FieldV2-attribute> = <value>
+#
+# Remove each entry once the corresponding upstream PR merges.
+
+["gwf-ic".strt]
+# strt should default to 1.0 per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 1.0 to gwf-ic.dfn
+default = 1.0
+
+["gwf-npf".icelltype]
+# icelltype should default to 0 (confined) per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 0 to gwf-npf.dfn
+default = 0
+
+["gwf-npf".k]
+# k should default to 1.0 per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 1.0 to gwf-npf.dfn
+default = 1.0
+
+["gwf-npf".wetfct]
+# wetfct is tagged in MF6 input (WETFCT <value>) per MF6 IO doc p.50 and user examples.
+# The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
+["gwf-npf".iwetit]
+# iwetit is tagged in MF6 input (IWETIT <value>) per MF6 IO doc p.50.
+# The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
+["gwf-npf".ihdwet]
+# ihdwet is tagged in MF6 input (IHDWET <value>) per MF6 IO doc p.50.
+# The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
+["gwf-sto".iconvert]
+# iconvert should default to 0 (confined) per MODFLOW 6 user documentation.
+# TODO: open modflow6 PR to add default_value = 0 to gwf-sto.dfn
+default = 0
+
+["gwf-rcha".readasarrays]
+# readasarrays must default to True for array-based recharge input.
+# TODO: open modflow6 PR to add default_value = true to gwf-rcha.dfn
+default = true
+
+["gwf-evta".readasarrays]
+# readasarrays must default to True for array-based ET input.
+# TODO: open modflow6 PR to add default_value = true to gwf-evta.dfn
+default = true
+
+["gwf-chdg".readarraygrid]
+# readarraygrid is semantically non-developmode (like readasarrays) but marked
+# developmode=True in upstream DFN; override to expose it and default to True.
+developmode = false
+default = true
+
+["gwf-drng".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+["gwf-welg".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+["gwf-ghbg".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+["gwf-rivg".readarraygrid]
+# same as gwf-chdg.readarraygrid
+developmode = false
+default = true
+
+# Longname copy-paste and spelling errors — pending upstream modflow6 PRs
+
+["gwf-evta".rate]
+# rate longname is a copy-paste of the surface field above it in the DFN.
+longname = "evapotranspiration rate"
+
+["gwf-evta".save_flows]
+# save_flows longname copied from gwf-chd; should reference evta.
+longname = "save evta flows to budget file"
+
+["gwf-rivg".cond]
+# "conductnace" is a spelling error in the upstream DFN.
+longname = "river conductance"
+
+["gwf-riv".boundname]
+# boundname longname copied from gwf-drn; should reference riv.
+longname = "river name"
+
+["gwf-riv".save_flows]
+# save_flows longname copied from gwf-chd; should reference riv.
+longname = "save riv flows to budget file"
+
+["gwf-drn".save_flows]
+# save_flows longname copied from gwf-chd; should reference drn.
+longname = "save drn flows to budget file"
+
+["gwf-ghb".save_flows]
+# save_flows longname copied from gwf-chd; should reference ghb.
+longname = "save ghb flows to budget file"
+
+["gwf-rcha".save_flows]
+# save_flows longname copied from gwf-chd; should reference rcha.
+longname = "save rcha flows to budget file"
+
+["gwt-src".save_flows]
+# save_flows longname copied from gwf-wel; should reference src.
+longname = "save src flows to budget file"
+
+["gwt-src".boundname]
+# boundname longname copied from gwf-wel; should reference src.
+longname = "source name"
+
+["gwt-mvt".save_flows]
+# save_flows longname copied from gwf-lak; should reference mvt.
+longname = "save mvt flows to budget file"
+
+["gwe-esl".save_flows]
+# save_flows longname copied from gwf-wel; should reference esl.
+longname = "save esl flows to budget file"
+
+["gwe-esl".boundname]
+# boundname longname copied from gwf-wel; should reference esl.
+longname = "energy source loading name"
+
+["gwe-mve".save_flows]
+# save_flows longname copied from gwf-lak; should reference mve.
+longname = "save mve flows to budget file"
+
+["gwf-csub".boundname]
+# boundname longname copied from gwf-wel; should reference csub interbeds.
+longname = "interbed name"
+
+["gwf-csub".sig0]
+# sig0 longname copied from gwf-wel; should reference csub geostatic stress offset.
+longname = "geostatic stress offset"
+
+["sln-ims".complexity]
+# complexity longname is a copy-paste of print_option's longname in the upstream DFN.
+longname = "solver complexity"
+
+["sln-ims".number_orthogonalizations]
+# number_orthogonalizations longname is a copy-paste of preconditioner_drop_tolerance's
+# longname in the upstream DFN.
+longname = "number of orthogonalizations"
+
+["sln-ims".inner_rclose]
+# inner_rclose is tagged in MF6 IMS input (INNER_RCLOSE <value>) per MF6 IO doc and
+# example files. The upstream DFN omits 'tagged = true'; override pending upstream PR.
+tagged = true
+
+["gwf-oc".headprintrecord]
+# Nested sub-record fields lost in v2 TOML conversion (dfn2toml does not recurse
+# into records-within-records). Injected as flattened children of the parent inner
+# class. Remove if dfn2toml is updated to capture nested records.
+extra_children = [
+    {name = "columns", type = "integer", optional = true, tagged = true},
+    {name = "width",   type = "integer", optional = true, tagged = true},
+    {name = "digits",  type = "integer", optional = true, tagged = true},
+    {name = "format",  type = "string",  optional = false, tagged = false},
+]
+
+# Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
+# Each entry defines a list block with its dimension name and column definitions.
+
+[_package_extras."prt-fmi"]
+# prt-fmi PACKAGEDATA has heterogeneous rows (GWFHEAD/GWFBUDGET/GWFSPDIS filein fname).
+# Replacing the columnar list expansion with three individual Optional[Path] fields
+# matches the hand-written fmi.py and the actual MF6 input semantics.
+replace_list_fields = [
+    {block = "packagedata", name = "gwfhead",   inout = "filein", longname = "gwf head file"},
+    {block = "packagedata", name = "gwfbudget", inout = "filein", longname = "gwf budget file"},
+    {block = "packagedata", name = "gwfspdis",  inout = "filein", longname = "gwf spdis file"},
+]
+
+[_package_extras."gwt-lkt"]
+# nlakes comes from the paired gwf-lak model; gwt-lkt has no DIMENSIONS block.
+packagedata_dim = "nlakes"
+extra_period_fields = [
+    {keyword = "STATUS",        feature_dim = "nlakes", dtype = "string"},
+    {keyword = "CONCENTRATION", feature_dim = "nlakes"},
+    {keyword = "RAINFALL",      feature_dim = "nlakes"},
+    {keyword = "EVAPORATION",   feature_dim = "nlakes"},
+    {keyword = "RUNOFF",        feature_dim = "nlakes"},
+    {keyword = "EXT-INFLOW",    feature_dim = "nlakes"},
+]
+
+[_package_extras."gwe-lke"]
+# nlakes comes from the paired gwf-lak model; gwe-lke has no DIMENSIONS block.
+packagedata_dim = "nlakes"
+extra_period_fields = [
+    {keyword = "STATUS",      feature_dim = "nlakes", dtype = "string"},
+    {keyword = "TEMPERATURE", feature_dim = "nlakes"},
+    {keyword = "RAINFALL",    feature_dim = "nlakes"},
+    {keyword = "EVAPORATION", feature_dim = "nlakes"},
+    {keyword = "RUNOFF",      feature_dim = "nlakes"},
+    {keyword = "EXT-INFLOW",  feature_dim = "nlakes"},
+]
+
+[_package_extras."gwf-lak"]
+# packagedata/connectiondata/tables/outlets list blocks are auto-detected from
+# the v1 DFN via v1_list_block_names in _build_block_property_specs (no extra_list_blocks needed).
+extra_period_fields = [
+    # Lake keyword fields — shape (nper, nlakes); always bare keyword name
+    {keyword = "STATUS",      feature_dim = "nlakes",   dtype = "string"},
+    {keyword = "STAGE",       feature_dim = "nlakes"},
+    {keyword = "RAINFALL",    feature_dim = "nlakes"},
+    {keyword = "EVAPORATION", feature_dim = "nlakes"},
+    {keyword = "RUNOFF",      feature_dim = "nlakes"},
+    {keyword = "INFLOW",      feature_dim = "nlakes"},
+    {keyword = "WITHDRAWAL",  feature_dim = "nlakes"},
+    # Outlet keyword fields — shape (nper, noutlets); always bare keyword name
+    # Note: INVERT/WIDTH/SLOPE/ROUGH also appear as outlets packagedata columns;
+    # those static columns get outlets_ prefix (collision_names with reserved period names).
+    {keyword = "RATE",        feature_dim = "noutlets"},
+    {keyword = "INVERT",      feature_dim = "noutlets"},
+    {keyword = "WIDTH",       feature_dim = "noutlets"},
+    {keyword = "SLOPE",       feature_dim = "noutlets"},
+    {keyword = "ROUGH",       feature_dim = "noutlets"},
+]

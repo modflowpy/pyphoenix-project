@@ -6,18 +6,35 @@ from tomli import load as load_toml
 from tomli_w import dump as dump_toml
 
 # Import submodules to make them accessible via flopy4.mf6.*
-from flopy4.mf6 import gwf, simulation, solution, utils
+from flopy4.mf6 import gwe, gwf, gwt, prt, simulation, solution, utils
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
 from flopy4.mf6.converter import structure, unstructure
+from flopy4.mf6.ems import Ems
+from flopy4.mf6.exchange import GwfGwe, GwfGwt
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 from flopy4.uio import DEFAULT_REGISTRY
 
-__all__ = ["gwf", "simulation", "solution", "utils", "Ims", "NetCDFModel", "Tdis", "Simulation"]
+__all__ = [
+    "gwf",
+    "gwt",
+    "gwe",
+    "prt",
+    "simulation",
+    "solution",
+    "utils",
+    "Ems",
+    "GwfGwe",
+    "GwfGwt",
+    "Ims",
+    "NetCDFModel",
+    "Tdis",
+    "Simulation",
+]
 
 
 class WriteError(Exception):

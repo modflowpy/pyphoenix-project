@@ -101,7 +101,14 @@ def test_write_context_thread_local():
 def test_component_write_with_context(function_tmpdir):
     """Test writing component with explicit context."""
     time = Time(perlen=[1.0], nstp=[1])
-    ims = Ims(models=["gwf"])
+    ims = Ims(
+        models=["gwf"],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
 
     sim = Simulation(
@@ -129,7 +136,14 @@ def test_component_write_with_context(function_tmpdir):
 def test_write_context_manager_with_component(function_tmpdir):
     """Test using WriteContext as context manager with component write."""
     time = Time(perlen=[1.0], nstp=[1])
-    ims = Ims(models=["gwf"])
+    ims = Ims(
+        models=["gwf"],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
     dis = Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
 
     sim = Simulation(

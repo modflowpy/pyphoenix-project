@@ -64,7 +64,16 @@ grid = StructuredGrid(
 
 sim = Simulation(name=name, workspace=workspace, tdis=time)
 gwf_name = "mymodel"
-ims = Ims(parent=sim, models=[gwf_name])  # registered with sim; references the model by name
+ims = Ims(
+    parent=sim,
+    models=[gwf_name],
+    outer_dvclose=1e-3,
+    outer_maximum=25,
+    inner_maximum=50,
+    inner_dvclose=1e-3,
+    rclose=Ims.Rclose(inner_rclose=0.1),
+    linear_acceleration="cg",
+)  # registered with sim; references the model by name
 gwf = Gwf(parent=sim, name=gwf_name, save_flows=True, dis=grid)
 
 # Node-property flow: isotropic conductivity; saves specific-discharge for quiver plots.

@@ -157,9 +157,12 @@ def array(
     block: str | None = None,
     netcdf: bool | None = None,
     longname: str | None = None,
+    prefix: tuple[str, ...] | None = None,
+    row_keyword: bool | str = False,
+    cellid: bool = False,
 ):
     """Define an array field."""
-    if block or netcdf or longname:
+    if block or netcdf or longname or prefix or row_keyword or cellid:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
@@ -167,6 +170,12 @@ def array(
             metadata["netcdf"] = netcdf
         if longname:
             metadata["longname"] = longname
+        if prefix:
+            metadata["prefix"] = tuple(prefix)
+        if row_keyword:
+            metadata["row_keyword"] = row_keyword
+        if cellid:
+            metadata["cellid"] = True
     return flopy_array(
         dtype=dtype,
         dims=dims,
@@ -176,6 +185,67 @@ def array(
         repr=repr,
         eq=eq,
         on_setattr=on_setattr,
+        metadata=metadata,
+    )
+
+
+def embedded_keystring(
+    keyword: str,
+    feature_dim: str,
+    dtype: np.dtype | str | type | None = None,
+    default=None,
+    block: str | None = None,
+    longname: str | None = None,
+    converter=None,
+):
+    """Define a 2D period field for embedded keystring output (e.g. LAK, MAW).
+
+    Values indexed by (nper, feature_dim) emit rows:
+        ``feature_num KEYWORD value``
+    one row per non-fill entry.  Fill is FILL_DNODATA for numeric fields
+    and None for object fields.
+    """
+    metadata: dict = {
+        "embedded_keystring": True,
+        "keyword": keyword,
+    }
+    if block:
+        metadata["block"] = block
+    if longname:
+        metadata["longname"] = longname
+    return flopy_array(
+        dtype=dtype if dtype is not None else np.float64,
+        dims=("nper", feature_dim),
+        default=default,
+        converter=converter,
+        metadata=metadata,
+    )
+
+
+def keystring(
+    default=None,
+    block: str | None = None,
+    dims: tuple = ("nper",),
+    longname: str | None = None,
+    converter=None,
+):
+    """Define a period output-control keystring field.
+
+    Values are strings representing a valid ocsetting alternative,
+    e.g. 'ALL', 'LAST', 'STEPS 1 3', 'FREQUENCY 2'.  The 'keystring'
+    metadata key distinguishes these from plain string arrays so the
+    egress writer can route them through the correct serialiser.
+    """
+    metadata: dict = {"keystring": True}
+    if block:
+        metadata["block"] = block
+    if longname:
+        metadata["longname"] = longname
+    return flopy_array(
+        dtype=np.dtypes.StringDType(),
+        dims=dims,
+        default=default,
+        converter=converter,
         metadata=metadata,
     )
 
