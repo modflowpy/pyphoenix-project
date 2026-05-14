@@ -136,10 +136,11 @@ def main():
             print(f"ERROR: {py_file} does not exist.", file=sys.stderr)
             sys.exit(1)
         nb_file = py_file.with_suffix(".ipynb")
-        ok = sync_and_execute(py_file) if nb_file.exists() else create_and_execute(py_file)
+        is_new = not nb_file.exists()
+        ok = sync_and_execute(py_file) if not is_new else create_and_execute(py_file)
         if not ok:
             sys.exit(1)
-        if not nb_file.exists():
+        if is_new:
             print(
                 f"\nNote: {nb_file.name} is new — add it to docs/_toc.yml to publish it.",
                 file=sys.stderr,
