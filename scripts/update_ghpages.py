@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Sync and re-execute example notebooks for gh-pages deployment.
+"""Update gh-pages content: sync/execute notebooks or add a dev doc to the TOC.
 
-For each docs/examples/*.py that has a paired .ipynb:
-  1. jupytext --sync <script>      # push py changes into notebook structure
-  2. jupyter nbconvert --execute   # re-run all cells and update output
+Default (no flags): sync and re-execute all paired example notebooks.
+  For each docs/examples/*.py that has a paired .ipynb:
+    1. jupytext --sync <script>      # push py changes into notebook structure
+    2. jupyter nbconvert --execute   # re-run all cells and update output
 
-Optionally adds a new dev doc to docs/_toc.yml under Developer Notes.
+--add-dev-doc: only update docs/_toc.yml, do not touch notebooks.
 """
 
 import argparse
@@ -83,19 +84,22 @@ def add_dev_doc(filename: str) -> None:
 
 
 def main():
+    sys.argv = [sys.argv[0]] + [a for a in sys.argv[1:] if a != "--"]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--add-dev-doc",
         metavar="FILENAME",
         help=(
-            "Add a dev doc to _toc.yml under Developer Notes "
-            "(e.g. dfn-schema-plan or dfn-schema-plan.md)"
+            "Add a dev doc to _toc.yml under Developer Notes and exit "
+            "(e.g. dfn-schema-plan or dfn-schema-plan.md). "
+            "Does not sync or execute notebooks."
         ),
     )
     args = parser.parse_args()
 
     if args.add_dev_doc:
         add_dev_doc(args.add_dev_doc)
+        return
 
     failed = []
     for py_file in sorted(EXAMPLES.glob("*.py")):
