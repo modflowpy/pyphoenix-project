@@ -46,12 +46,10 @@ Extend the nightly build CI matrix to produce `linux64ext` and `mac64ext` (and p
 
 The intent is that a user browsing the repo would not know to look for them. A brief note in `CONTRIBUTING.md` or similar can document that extended Linux/Mac artifacts exist for CI tooling use only, with no support or stability guarantees.
 
-The reasons these builds are not promoted to general users are substantive:
+The reasons these builds are not promoted to general users are specific to Linux and Mac — they do not apply to `win64ext`, which is already a supported release artifact:
 
-- **glibc compatibility**: Linux binaries are built against a specific minimum glibc version. A binary built on Ubuntu 22.04 will not run on older enterprise distros (e.g. RHEL 7 / CentOS 7 with glibc 2.17). Unlike Windows, there is no single Linux ABI that works universally, so a general-purpose Linux distribution would need multiple variants to be broadly useful — a maintenance burden not justified for a CI-internal artifact.
-- **Mac architecture fragmentation**: Apple Silicon (`aarch64`) and Intel (`x86_64`) require separate binaries. `macos-latest` on GitHub Actions has shifted to ARM, but many user machines are still Intel, and universal binaries add build complexity. Providing one without the other would generate user confusion and support requests.
-- **No user-facing support infrastructure**: the nightly build's user contract is that the standard executables work on supported platforms. Adding extended Linux/Mac builds without equivalent testing, documentation, and issue triage capacity sets a false expectation of supportability.
-- **Extended dependency complexity**: PETSc and NetCDF introduce runtime behaviors (solver configuration, file format versions, parallel execution) that vary across environments in ways the standard binary does not. Supporting these for general users requires documentation and debugging capacity beyond what CI-internal use demands.
+- **glibc compatibility (Linux)**: Linux binaries are built against a specific minimum glibc version. A binary built on Ubuntu 22.04 will not run on older enterprise distros (e.g. RHEL 7 / CentOS 7 with glibc 2.17). Unlike Windows, there is no single Linux ABI that works universally — a general-purpose Linux distribution would need multiple variants to be broadly useful, a maintenance burden not justified for a CI-internal artifact.
+- **Architecture fragmentation (Mac)**: Apple Silicon (`aarch64`) and Intel (`x86_64`) require separate binaries. `macos-latest` on GitHub Actions has shifted to ARM, but many user machines are still Intel, and building a universal binary adds complexity. Providing one architecture without the other would generate user confusion and support requests that `win64ext` does not face.
 
 This approach reuses the existing build infrastructure with minimal additional overhead — the extended build jobs are primarily a CI matrix addition.
 
@@ -102,7 +100,7 @@ The local `scripts/update_ghpages.py` workflow remains useful for contributors p
 
 ### Support burden
 
-Once the Linux/Mac extended artifacts exist in the release, users will eventually discover and use them directly regardless of documentation intent. A clear note in the nightly build repo (e.g. `CONTRIBUTING.md`) should state that extended Linux/Mac artifacts are provided for CI tooling use and carry no support guarantee, are subject to change without notice, and should be accessed via `install-modflow-action` rather than directly.
+Once the Linux/Mac extended artifacts exist in the release, users will eventually discover and use them directly regardless of documentation intent. A clear note in the nightly build repo (e.g. `CONTRIBUTING.md`) should explain that these artifacts are not promoted because a single binary cannot serve the full range of Linux distributions (glibc variation) or cover both Mac architectures — not because extended builds are unsupportable in principle, as `win64ext` demonstrates. Users should be directed to `install-modflow-action` as the supported access path and made aware that direct use on non-GitHub-Actions environments may encounter compatibility issues.
 
 ### Build reliability
 
