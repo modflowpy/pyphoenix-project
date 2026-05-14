@@ -6,6 +6,10 @@ Default (no flags): sync and re-execute all paired example notebooks.
     1. jupytext --sync <script>      # push py changes into notebook structure
     2. jupyter nbconvert --execute   # re-run all cells and update output
 
+--example: sync/execute a single notebook; creates the .ipynb if it doesn't
+  exist yet. Note: a newly created notebook must be added to docs/_toc.yml
+  manually (or via --add-dev-doc) before it appears in the published docs.
+
 --add-dev-doc: only update docs/_toc.yml, do not touch notebooks.
 """
 
@@ -21,15 +25,7 @@ EXAMPLES = DOCS / "examples"
 TOC = DOCS / "_toc.yml"
 
 
-def sync_and_execute(py_file: Path) -> bool:
-    nb_file = py_file.with_suffix(".ipynb")
-
-    print(f"\n--- {py_file.name} ---")
-    result = subprocess.run(["jupytext", "--sync", str(py_file)])
-    if result.returncode != 0:
-        print("ERROR: jupytext --sync failed", file=sys.stderr)
-        return False
-
+def execute(nb_file: Path) -> bool:
     result = subprocess.run(
         [
             "jupyter",
@@ -46,8 +42,31 @@ def sync_and_execute(py_file: Path) -> bool:
     if result.returncode != 0:
         print("ERROR: nbconvert failed", file=sys.stderr)
         return False
-
     return True
+
+
+def sync_and_execute(py_file: Path) -> bool:
+    nb_file = py_file.with_suffix(".ipynb")
+
+    print(f"\n--- {py_file.name} ---")
+    result = subprocess.run(["jupytext", "--sync", str(py_file)])
+    if result.returncode != 0:
+        print("ERROR: jupytext --sync failed", file=sys.stderr)
+        return False
+
+    return execute(nb_file)
+
+
+def create_and_execute(py_file: Path) -> bool:
+    nb_file = py_file.with_suffix(".ipynb")
+
+    print(f"\n--- {py_file.name} (creating {nb_file.name}) ---")
+    result = subprocess.run(["jupytext", "--to", "notebook", str(py_file)])
+    if result.returncode != 0:
+        print("ERROR: jupytext --to notebook failed", file=sys.stderr)
+        return False
+
+    return execute(nb_file)
 
 
 def add_dev_doc(filename: str) -> None:
@@ -87,6 +106,15 @@ def main():
     sys.argv = [sys.argv[0]] + [a for a in sys.argv[1:] if a != "--"]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--example",
+        metavar="NAME",
+        help=(
+            "Sync and execute a single example notebook (e.g. twri). "
+            "Creates the .ipynb if it does not already exist. "
+            "Does not affect other notebooks."
+        ),
+    )
+    parser.add_argument(
         "--add-dev-doc",
         metavar="FILENAME",
         help=(
@@ -99,6 +127,23 @@ def main():
 
     if args.add_dev_doc:
         add_dev_doc(args.add_dev_doc)
+        return
+
+    if args.example:
+        name = Path(args.example).stem
+        py_file = EXAMPLES / f"{name}.py"
+        if not py_file.exists():
+            print(f"ERROR: {py_file} does not exist.", file=sys.stderr)
+            sys.exit(1)
+        nb_file = py_file.with_suffix(".ipynb")
+        ok = sync_and_execute(py_file) if nb_file.exists() else create_and_execute(py_file)
+        if not ok:
+            sys.exit(1)
+        if not nb_file.exists():
+            print(
+                f"\nNote: {nb_file.name} is new — add it to docs/_toc.yml to publish it.",
+                file=sys.stderr,
+            )
         return
 
     failed = []

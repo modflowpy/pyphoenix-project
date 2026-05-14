@@ -46,7 +46,7 @@ Extend the nightly build CI matrix to produce `linux64ext` and `mac64ext` (and p
 
 The intent is that a user browsing the repo would not know to look for them. A brief note in `CONTRIBUTING.md` or similar can document that extended Linux/Mac artifacts exist for CI tooling use only, with no support or stability guarantees.
 
-The reasons these builds are not promoted to general users are specific to Linux and Mac — they do not apply to `win64ext`, which is already a supported release artifact:
+The reasons these builds are not promoted to general users are:
 
 - **glibc compatibility (Linux)**: Linux binaries are built against a specific minimum glibc version. A binary built on Ubuntu 22.04 will not run on older enterprise distros (e.g. RHEL 7 / CentOS 7 with glibc 2.17). Unlike Windows, there is no single Linux ABI that works universally — a general-purpose Linux distribution would need multiple variants to be broadly useful, a maintenance burden not justified for a CI-internal artifact.
 - **Architecture fragmentation (Mac)**: Apple Silicon (`aarch64`) and Intel (`x86_64`) require separate binaries. `macos-latest` on GitHub Actions has shifted to ARM, but many user machines are still Intel, and building a universal binary adds complexity. Providing one architecture without the other would generate user confusion and support requests that `win64ext` does not face.
