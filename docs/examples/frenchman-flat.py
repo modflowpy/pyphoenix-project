@@ -912,7 +912,7 @@ if os.getenv("MF6_EXTENDED"):
 
 # The mesh2d NetCDF written to `netcdf_mesh/frenchman-flat.nc` can be loaded
 # into QGIS as a mesh layer via **Layer -> Add Layer -> Add Mesh Layer**.
-# The screenshot below shows the field <field> overlaid on the
+# The screenshot below shows NPF K layer 7 array input overlaid on the
 # variable-resolution Frenchman Flat grid.
 #
 # ![QGIS: Frenchman Flat K layer 7 input — layered mesh](images/ff.qgis.npf-k-layer7.png)
