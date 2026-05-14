@@ -157,9 +157,12 @@ proj = ">=9.7.0,<10"
 
 [tool.pixi.feature.docs.pypi-dependencies]
 jupyter-book = ">=1.0,<2"
+jupyter = "*"
+jupytext = "*"
 
 [tool.pixi.feature.docs.tasks]
 build-docs = { cmd = "jupyter-book build docs/" }
+update-ghpages = { cmd = "python scripts/update_ghpages.py", description = "Sync and re-execute example notebooks for gh-pages deployment" }
 
 [tool.pixi.feature.build.tasks]
 build = { cmd = "python -m build" }
