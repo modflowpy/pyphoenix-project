@@ -291,7 +291,7 @@ def dataset2list(value: xr.Dataset):
     # per-row loop uses O(1) numpy scalar access instead of per-cell xarray
     # label-based indexing (which has ~80µs overhead per call).
     extracted: dict[str, np.ndarray] = {
-        name: da.values[tuple(indices)] for name, da in value.data_vars.items()
+        str(name): da.values[tuple(indices)] for name, da in value.data_vars.items()
     }
 
     # Pre-compute 1-based cellids for all active cells.
@@ -300,13 +300,13 @@ def dataset2list(value: xr.Dataset):
     for i in range(n_active):
         if is_oc:
             for name in value.data_vars.keys():
-                raw = extracted[name][i]
+                raw = extracted[str(name)][i]
                 val = raw.item() if hasattr(raw, "ndim") and raw.ndim == 0 else raw
                 yield (*str(name).split("_"), val)  # type: ignore
         else:
             row2: list[Any] = []
             for name, da in value.data_vars.items():
-                raw = extracted[name][i]
+                raw = extracted[str(name)][i]
                 val = raw.item() if hasattr(raw, "ndim") and raw.ndim == 0 else raw
                 if kw := da.attrs.get("row_keyword", False):
                     if val:
