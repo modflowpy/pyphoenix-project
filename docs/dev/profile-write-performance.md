@@ -40,6 +40,8 @@ All profile scripts live in `docs/profile/`.
 - flopy3 v3.10.0; flopy4 `profile` branch.
 - Large test models from `modflow6-largetestmodels` are required for
   `test1000_write.py` and `test1005_write.py` and are not bundled.
+  Pass `--models-root <DIR>` (or via `run_all.py --models-root`) to specify
+  the repo root; without it those scripts exit with a clear error.
 - Grid-based (WELG/CHDG) variants write full (nper × nlay × nrow × ncol) ASCII
   arrays; impractical for very large or high-period-count grids.
 

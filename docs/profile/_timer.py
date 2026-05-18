@@ -28,6 +28,14 @@ def make_parser(description: str) -> argparse.ArgumentParser:
         action="store_true",
         help=f"run all variants even if first run exceeds {SLOW_THRESHOLD:.0f}s",
     )
+    p.add_argument(
+        "--models-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="root directory of the modflow6-largetestmodels repo "
+        "(required by test1000_write.py and test1005_write.py)",
+    )
     return p
 
 

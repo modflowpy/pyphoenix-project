@@ -8,6 +8,7 @@ Usage
     python run_all.py --output results.json   # save JSON
     python run_all.py --report report.md      # save Markdown table
     python run_all.py --include-slow          # don't skip slow variants
+    python run_all.py --models-root /path/to/modflow6-largetestmodels
 
 Scripts run (in order):
     ff_write.py        frenchman-flat  (~12 variants)
@@ -30,10 +31,14 @@ SCRIPTS = [
 ]
 
 
-def run_script(script: Path, runs: int, include_slow: bool, json_out: Path) -> dict | None:
+def run_script(
+    script: Path, runs: int, include_slow: bool, json_out: Path, models_root: Path | None
+) -> dict | None:
     cmd = [sys.executable, str(script), "--runs", str(runs), "--output", str(json_out)]
     if include_slow:
         cmd.append("--include-slow")
+    if models_root is not None:
+        cmd += ["--models-root", str(models_root)]
     result = subprocess.run(cmd, capture_output=False)
     if result.returncode != 0:
         print(f"  [ERROR] {script.name} exited with code {result.returncode}")
@@ -87,6 +92,14 @@ def main():
         metavar="SCRIPT",
         help="run only these script names (e.g. ff_write.py test1000_write.py)",
     )
+    p.add_argument(
+        "--models-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="root directory of the modflow6-largetestmodels repo "
+        "(required for test1000_write.py and test1005_write.py)",
+    )
     args = p.parse_args()
 
     tmp_dir = HERE / "results" / "_tmp"
@@ -104,7 +117,7 @@ def main():
         print(f"# {label}")
         print(f"{'#'*60}")
         json_out = tmp_dir / f"{script.stem}.json"
-        data = run_script(script, args.runs, args.include_slow, json_out)
+        data = run_script(script, args.runs, args.include_slow, json_out, args.models_root)
         if data:
             all_data.append(data)
 

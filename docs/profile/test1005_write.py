@@ -7,7 +7,8 @@ Scenario: WEL (3971 cells × 6 periods) + CHD (18647 cells) + RCHA (array)
 Grid variants (WELG/CHDG) are omitted: at 6×16×130×275 = 34M elements
 the arrays are too sparse and large for meaningful ASCII profiling.
 
-Requires: /home/mreon/.clone/dev/modflow6-largetestmodels/test1005_secp
+Requires: modflow6-largetestmodels/test1005_secp
+Pass --models-root <DIR> to specify the repo root.
 """
 
 import sys
@@ -21,7 +22,6 @@ from _timer import make_parser, report, time_writes, write_results
 
 import flopy4
 
-SRC = Path("/home/mreon/.clone/dev/modflow6-largetestmodels/test1005_secp")
 OUT = Path(__file__).parent / "results"
 
 
@@ -29,9 +29,12 @@ def main():
     args = make_parser("test1005_secp write-time comparison").parse_args()
     N, include_slow = args.runs, args.include_slow
 
+    if args.models_root is None:
+        print("ERROR: --models-root <DIR> is required (root of modflow6-largetestmodels repo)")
+        raise SystemExit(1)
+    SRC = args.models_root / "test1005_secp"
     if not SRC.exists():
-        print(f"ERROR: large test model not found at {SRC}")
-        print("Set the path or skip this script.")
+        print(f"ERROR: model not found at {SRC}")
         raise SystemExit(1)
 
     # ── load source data ─────────────────────────────────────────────────────

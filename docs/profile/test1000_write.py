@@ -11,7 +11,8 @@ flopy4 grid variants (WELG/CHDG) included in scenario 1.
 Dense list variants are slow in flopy4 and will be skipped by default
 unless --include-slow is passed.
 
-Requires: /home/mreon/.clone/dev/modflow6-largetestmodels/test1000_751x751
+Requires: modflow6-largetestmodels/test1000_751x751
+Pass --models-root <DIR> to specify the repo root.
 """
 
 import sys
@@ -25,7 +26,6 @@ from _timer import make_parser, report, time_writes, write_results
 
 import flopy4
 
-SRC = Path("/home/mreon/.clone/dev/modflow6-largetestmodels/test1000_751x751")
 OUT = Path(__file__).parent / "results"
 
 
@@ -33,9 +33,12 @@ def main():
     args = make_parser("test1000_751x751 write-time comparison").parse_args()
     N, include_slow = args.runs, args.include_slow
 
+    if args.models_root is None:
+        print("ERROR: --models-root <DIR> is required (root of modflow6-largetestmodels repo)")
+        raise SystemExit(1)
+    SRC = args.models_root / "test1000_751x751"
     if not SRC.exists():
-        print(f"ERROR: large test model not found at {SRC}")
-        print("Set the path or skip this script.")
+        print(f"ERROR: model not found at {SRC}")
         raise SystemExit(1)
 
     # ── load source data ─────────────────────────────────────────────────────
