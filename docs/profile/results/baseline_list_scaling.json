@@ -1,0 +1,24 @@
+{
+  "description": "flopy4 Rch list write scaling baseline — before fix",
+  "date": "2026-05-18",
+  "git_branch": "profile",
+  "note": "Jinja2 per-row getattr overhead; O(n) linear but ~10x worse constant than flopy3",
+  "scaling": [
+    {"cells": 1000,   "time_s": 0.220},
+    {"cells": 5000,   "time_s": 0.938},
+    {"cells": 25000,  "time_s": 4.522},
+    {"cells": 100000, "time_s": 18.028},
+    {"cells": 250000, "time_s": 45.948}
+  ],
+  "test1000_1run": {
+    "flopy4_list_rch_582k":   348.5,
+    "flopy4_array_rcha_582k": 0.245,
+    "flopy3_list_rch_582k":    12.2,
+    "flopy3_array_rcha_582k":   2.0
+  },
+  "profile_25k_cells": {
+    "total_function_calls": 26623031,
+    "wall_time_under_cprofile_s": 84.5,
+    "hotspot": "macros.jinja:138 list macro — 25K jinja2 getattr calls per write, ~160us/cell"
+  }
+}

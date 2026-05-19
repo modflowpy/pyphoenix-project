@@ -22,11 +22,9 @@
 {{ inset ~ value|join(" ") -}}
 {% endmacro %}
 
-{% macro list(value) %}
-{% for row in (value|data2list) %}
-{{ record(row) }}{% if not loop.last %}{{ "\n" }}{% endif %}
-{%- endfor %}
-{% endmacro %}
+{% macro list(value) -%}
+{{ value|data2lines -}}
+{%- endmacro %}
 
 {% macro array(name, value, how="internal") %}
 {% if how == "netcdf" %}{{ inset ~ name.upper() }} NETCDF
