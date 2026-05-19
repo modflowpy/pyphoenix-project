@@ -18,7 +18,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 import flopy
-from _timer import make_parser, report, time_writes, write_results
+from _timer import make_parser, profile_fn, report, time_writes, write_results
 
 import flopy4
 
@@ -299,6 +299,7 @@ def build_flopy4_base(k, k33, ss):
 def main():
     args = make_parser("Frenchman Flat write-time comparison").parse_args()
     N, include_slow = args.runs, args.include_slow
+    flopy4_only = args.flopy4_only
     sections = []
 
     k, k33, ss = load_arrays(nlay=10, nrow=87, ncol=87)
@@ -318,6 +319,8 @@ def main():
         solutions={"ims": ims},
         workspace=ws,
     )
+    if args.profile:
+        profile_fn(sim.write, "flopy4 list (WEL)")
     results.append(
         report("flopy4 list  (WEL)", time_writes(sim.write, N, "flopy4 list  (WEL)", include_slow))
     )
@@ -423,74 +426,79 @@ def main():
     )
 
     # ── flopy3 list ──────────────────────────────────────────────────────────
-    ws3 = OUT / "flopy3_list"
-    ws3.mkdir(parents=True, exist_ok=True)
-    pd3 = [(p, 15, 1.1) for p in PERLEN]
+    if not flopy4_only:
+        ws3 = OUT / "flopy3_list"
+        ws3.mkdir(parents=True, exist_ok=True)
+        pd3 = [(p, 15, 1.1) for p in PERLEN]
 
-    sim3 = flopy.mf6.MFSimulation(sim_name="ff", sim_ws=str(ws3), verbosity_level=0)
-    flopy.mf6.ModflowTdis(sim3, nper=nper, perioddata=pd3)
-    flopy.mf6.ModflowIms(
-        sim3,
-        print_option="summary",
-        complexity="moderate",
-        outer_dvclose=0.01,
-        outer_maximum=50,
-        under_relaxation="DBD",
-        under_relaxation_theta=0.9,
-        under_relaxation_kappa=0.0001,
-        inner_dvclose=0.00001,
-        rcloserecord=0.1,
-        inner_maximum=100,
-        linear_acceleration="bicgstab",
-        number_orthogonalizations=0,
-    )
-    gwf3 = flopy.mf6.ModflowGwf(sim3, modelname="ff")
-    flopy.mf6.ModflowGwfdis(
-        gwf3,
-        nlay=nlay,
-        nrow=nrow,
-        ncol=ncol,
-        delr=DELR,
-        delc=DELR.copy(),
-        top=np.zeros((nrow, ncol)),
-        botm=np.stack(
-            [
-                np.full((nrow, ncol), v)
-                for v in [-200, -400, -600, -800, -1050, -1350, -1700, -2200, -2950, -3950]
-            ]
-        ),
-    )
-    flopy.mf6.ModflowGwfic(gwf3, strt=0.0)
-    flopy.mf6.ModflowGwfnpf(
-        gwf3, icelltype=np.zeros((nlay, nrow, ncol), dtype=int), k=k, k33=k33, save_flows=True
-    )
-    flopy.mf6.ModflowGwfsto(gwf3, ss=ss, iconvert=0)
-    for name, data in zip(_WEL_NAMES, _WEL_DICTS):
-        flopy.mf6.ModflowGwfwel(
-            gwf3,
-            filename=f"ff.{name}.wel",
-            pname=f"wel_{name}",
-            print_input=True,
-            print_flows=True,
-            save_flows=True,
-            stress_period_data={
-                p: [(*list(cellid), q) for cellid, q in cells.items()] for p, cells in data.items()
-            },
+        sim3 = flopy.mf6.MFSimulation(sim_name="ff", sim_ws=str(ws3), verbosity_level=0)
+        flopy.mf6.ModflowTdis(sim3, nper=nper, perioddata=pd3)
+        flopy.mf6.ModflowIms(
+            sim3,
+            print_option="summary",
+            complexity="moderate",
+            outer_dvclose=0.01,
+            outer_maximum=50,
+            under_relaxation="DBD",
+            under_relaxation_theta=0.9,
+            under_relaxation_kappa=0.0001,
+            inner_dvclose=0.00001,
+            rcloserecord=0.1,
+            inner_maximum=100,
+            linear_acceleration="bicgstab",
+            number_orthogonalizations=0,
         )
-    flopy.mf6.ModflowGwfoc(
-        gwf3,
-        budget_filerecord="ff.cbc",
-        head_filerecord="ff.hds",
-        saverecord={0: [("HEAD", "ALL"), ("BUDGET", "FIRST")]},
-    )
-    results.append(
-        report(
-            "flopy3 list  (WEL)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True), N, "flopy3 list  (WEL)", include_slow
+        gwf3 = flopy.mf6.ModflowGwf(sim3, modelname="ff")
+        flopy.mf6.ModflowGwfdis(
+            gwf3,
+            nlay=nlay,
+            nrow=nrow,
+            ncol=ncol,
+            delr=DELR,
+            delc=DELR.copy(),
+            top=np.zeros((nrow, ncol)),
+            botm=np.stack(
+                [
+                    np.full((nrow, ncol), v)
+                    for v in [-200, -400, -600, -800, -1050, -1350, -1700, -2200, -2950, -3950]
+                ]
             ),
         )
-    )
+        flopy.mf6.ModflowGwfic(gwf3, strt=0.0)
+        flopy.mf6.ModflowGwfnpf(
+            gwf3, icelltype=np.zeros((nlay, nrow, ncol), dtype=int), k=k, k33=k33, save_flows=True
+        )
+        flopy.mf6.ModflowGwfsto(gwf3, ss=ss, iconvert=0)
+        for name, data in zip(_WEL_NAMES, _WEL_DICTS):
+            flopy.mf6.ModflowGwfwel(
+                gwf3,
+                filename=f"ff.{name}.wel",
+                pname=f"wel_{name}",
+                print_input=True,
+                print_flows=True,
+                save_flows=True,
+                stress_period_data={
+                    p: [(*list(cellid), q) for cellid, q in cells.items()]
+                    for p, cells in data.items()
+                },
+            )
+        flopy.mf6.ModflowGwfoc(
+            gwf3,
+            budget_filerecord="ff.cbc",
+            head_filerecord="ff.hds",
+            saverecord={0: [("HEAD", "ALL"), ("BUDGET", "FIRST")]},
+        )
+        results.append(
+            report(
+                "flopy3 list  (WEL)",
+                time_writes(
+                    lambda: sim3.write_simulation(silent=True),
+                    N,
+                    "flopy3 list  (WEL)",
+                    include_slow,
+                ),
+            )
+        )
 
     sections.append({"name": "frenchman-flat", "results": results})
 

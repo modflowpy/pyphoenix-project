@@ -4,8 +4,9 @@ test1005_secp write-time comparison: flopy4 vs flopy3.
 Scenario: WEL (3971 cells × 6 periods) + CHD (18647 cells) + RCHA (array)
   16 layers × 130 rows × 275 cols = 572,000 cells, 6 stress periods
 
-Grid variants (WELG/CHDG) are omitted: at 6×16×130×275 = 34M elements
-the arrays are too sparse and large for meaningful ASCII profiling.
+ASCII grid variants (WELG/CHDG) are omitted: at 6×16×130×275 = 34M elements
+the arrays are too large for meaningful ASCII profiling.  NetCDF grid variants
+are included — binary format makes the 34M-element arrays practical to write.
 
 Requires: modflow6-largetestmodels/test1005_secp
 Pass --models-root <DIR> to specify the repo root.
@@ -18,7 +19,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 import flopy
-from _timer import make_parser, report, time_writes, write_results
+from _timer import make_parser, profile_fn, report, time_writes, write_results
 
 import flopy4
 
@@ -28,6 +29,7 @@ OUT = Path(__file__).parent / "results"
 def main():
     args = make_parser("test1005_secp write-time comparison").parse_args()
     N, include_slow = args.runs, args.include_slow
+    flopy4_only = args.flopy4_only
 
     if args.models_root is None:
         print("ERROR: --models-root <DIR> is required (root of modflow6-largetestmodels repo)")
@@ -178,6 +180,8 @@ def main():
         dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, chd=chd4, wel=wel4, rch=[rcha4], dims=dims
     )
     sim4 = make_sim4(ws_root / "flopy4_list", gwf4)
+    if args.profile:
+        profile_fn(sim4.write, "flopy4 list (WEL+CHD+RCHA)")
     results.append(
         report(
             "flopy4 list  (WEL+CHD+RCHA)",
@@ -186,35 +190,102 @@ def main():
     )
 
     # flopy3 list
-    sim3, gwf3 = make_base3(ws_root / "flopy3_list")
-    flopy.mf6.ModflowGwfchd(
-        gwf3,
-        print_flows=True,
-        save_flows=True,
-        stress_period_data={0: [(cellid, h) for cellid, h in chd_dict.items()]},
+    if not flopy4_only:
+        sim3, gwf3 = make_base3(ws_root / "flopy3_list")
+        flopy.mf6.ModflowGwfchd(
+            gwf3,
+            print_flows=True,
+            save_flows=True,
+            stress_period_data={0: [(cellid, h) for cellid, h in chd_dict.items()]},
+        )
+        flopy.mf6.ModflowGwfwel(
+            gwf3,
+            save_flows=True,
+            stress_period_data={
+                p: [(cellid, q) for cellid, q in cells.items()] for p, cells in wel_dicts.items()
+            },
+        )
+        flopy.mf6.ModflowGwfoc(
+            gwf3,
+            budget_filerecord="test1005.cbc",
+            head_filerecord="test1005.hds",
+            saverecord={0: [("HEAD", "LAST"), ("BUDGET", "LAST")]},
+        )
+        results.append(
+            report(
+                "flopy3 list  (WEL+CHD+RCHA)",
+                time_writes(
+                    lambda: sim3.write_simulation(silent=True),
+                    N,
+                    "flopy3 list (WEL+CHD+RCHA)",
+                    include_slow,
+                ),
+            )
+        )
+
+    # flopy4 NetCDF variants — build WELG/CHDG arrays (34M elements; ASCII omitted)
+    welg_arr = np.full((nper, nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
+    for period, cells in wel_dicts.items():
+        for (la, ro, co), q in cells.items():
+            welg_arr[period, la, ro, co] = q
+
+    chdg_arr = np.full((nper, nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
+    for (la, ro, co), h in chd_dict.items():
+        chdg_arr[0, la, ro, co] = h
+
+    dis_nc, ic_nc, npf_nc, sto_nc, oc_nc = make_base4()
+    rcha_nc = flopy4.mf6.gwf.Rcha(recharge=rch_array[:, 0, :, :].reshape(nper, ncpl), dims=dims)
+    welg_nc = flopy4.mf6.gwf.Welg(q=welg_arr, save_flows=True, dims=dims)
+    chdg_nc = flopy4.mf6.gwf.Chdg(head=chdg_arr, print_flows=True, save_flows=True, dims=dims)
+    gwf_nc = flopy4.mf6.gwf.Gwf(
+        dis=grid,
+        ic=ic_nc,
+        npf=npf_nc,
+        sto=sto_nc,
+        oc=oc_nc,
+        chd=chdg_nc,
+        wel=welg_nc,
+        rch=[rcha_nc],
+        dims=dims,
     )
-    flopy.mf6.ModflowGwfwel(
-        gwf3,
-        save_flows=True,
-        stress_period_data={
-            p: [(cellid, q) for cellid, q in cells.items()] for p, cells in wel_dicts.items()
-        },
+    sim_nc = make_sim4(ws_root / "flopy4_nc_mesh", gwf_nc)
+
+    nc_fpth_m = ws_root / "flopy4_nc_mesh" / "test1005.input.nc"
+    gwf_nc.netcdf_file = nc_fpth_m
+    gwf_nc.netcdf_mesh2d_file = Path("test1005.nc")
+    nc_mesh = flopy4.mf6.netcdf.NetCDFModel.from_model(
+        gwf_nc, mesh="layered", grid=grid, time=time4
     )
-    flopy.mf6.ModflowGwfoc(
-        gwf3,
-        budget_filerecord="test1005.cbc",
-        head_filerecord="test1005.hds",
-        saverecord={0: [("HEAD", "LAST"), ("BUDGET", "LAST")]},
-    )
+
+    def write_nc_mesh():
+        nc_mesh.to_netcdf(nc_fpth_m)
+        with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+            sim_nc.write()
+
     results.append(
         report(
-            "flopy3 list  (WEL+CHD+RCHA)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True),
-                N,
-                "flopy3 list (WEL+CHD+RCHA)",
-                include_slow,
-            ),
+            "flopy4 netcdf_mesh  (WELG+CHDG+RCHA)",
+            time_writes(write_nc_mesh, N, "flopy4 netcdf_mesh (WELG+CHDG+RCHA)", include_slow),
+        )
+    )
+
+    ws_ncs = ws_root / "flopy4_nc_struct"
+    ws_ncs.mkdir(parents=True, exist_ok=True)
+    sim_nc.workspace = ws_ncs
+    nc_fpth_s = ws_ncs / "test1005.input.nc"
+    gwf_nc.netcdf_file = nc_fpth_s
+    gwf_nc.netcdf_mesh2d_file = None
+    nc_struct = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf_nc, grid=grid, time=time4)
+
+    def write_nc_struct():
+        nc_struct.to_netcdf(nc_fpth_s)
+        with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+            sim_nc.write()
+
+    results.append(
+        report(
+            "flopy4 netcdf_struct (WELG+CHDG+RCHA)",
+            time_writes(write_nc_struct, N, "flopy4 netcdf_struct (WELG+CHDG+RCHA)", include_slow),
         )
     )
 

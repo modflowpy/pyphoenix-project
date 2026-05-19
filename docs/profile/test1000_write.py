@@ -7,7 +7,8 @@ Three scenarios
 2. Dense uniform RCH   — Rch/Rcha applied to all 582K cells, constant value
 3. Dense hetero  RCH   — Rch/Rcha applied to all 582K cells, K-derived variable
 
-flopy4 grid variants (WELG/CHDG) included in scenario 1.
+flopy4 grid variants (WELG/CHDG) and NetCDF variants included in scenario 1.
+flopy4 NetCDF variants included for array (Rcha) in scenarios 2 and 3.
 Dense list variants are slow in flopy4 and will be skipped by default
 unless --include-slow is passed.
 
@@ -22,7 +23,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 import flopy
-from _timer import make_parser, report, time_writes, write_results
+from _timer import make_parser, profile_fn, report, time_writes, write_results
 
 import flopy4
 
@@ -30,8 +31,23 @@ OUT = Path(__file__).parent / "results"
 
 
 def main():
-    args = make_parser("test1000_751x751 write-time comparison").parse_args()
+    p = make_parser("test1000_751x751 write-time comparison")
+    p.add_argument(
+        "--scenarios",
+        nargs="+",
+        type=int,
+        choices=[1, 2, 3],
+        default=[1, 2, 3],
+        metavar="N",
+        help=(
+            "which scenarios to run: 1=sparse WEL+CHD, 2=dense uniform RCH, "
+            "3=dense hetero RCH (default: all)"
+        ),
+    )
+    args = p.parse_args()
     N, include_slow = args.runs, args.include_slow
+    flopy4_only = args.flopy4_only
+    scenarios = set(args.scenarios)
 
     if args.models_root is None:
         print("ERROR: --models-root <DIR> is required (root of modflow6-largetestmodels repo)")
@@ -61,16 +77,8 @@ def main():
 
     rch_uniform_arr = np.full((nper, ncpl), RCH_UNIFORM)
     rch_het_arr = np.stack([(_gwf.npf.k.array[0] * 1e-5).reshape(ncpl)] * nper)
-
-    rch_uniform_dict = {
-        p: {(0, r, c): RCH_UNIFORM for r in range(nrow) for c in range(ncol)} for p in range(nper)
-    }
-    rch_het_dict = {
-        p: {
-            (0, r, c): float(rch_het_arr[p, r * ncol + c]) for r in range(nrow) for c in range(ncol)
-        }
-        for p in range(nper)
-    }
+    # rch_*_dict are built lazily inside scenario blocks to avoid ~5-10 s dict construction
+    # for scenarios that are skipped.
 
     # ── shared flopy4 helpers ────────────────────────────────────────────────
     grid = flopy4.mf6.utils.grid.StructuredGrid(
@@ -182,179 +190,363 @@ def main():
     sections = []
 
     # ── Scenario 1: Sparse ───────────────────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"Scenario 1: Sparse  (WEL 1 cell + CHD 1550 cells)  n={N}")
-    print(f"{'='*60}")
-    results = []
+    if 1 in scenarios:
+        print(f"\n{'='*60}")
+        print(f"Scenario 1: Sparse  (WEL 1 cell + CHD 1550 cells)  n={N}")
+        print(f"{'='*60}")
+        results = []
 
-    dis, ic, npf, sto, oc = make_base4()
-    chd4 = flopy4.mf6.gwf.Chd(head={0: chd_dict}, print_flows=True, save_flows=True, dims=dims)
-    wel4 = flopy4.mf6.gwf.Wel(q={1: wel_dict}, save_flows=True, dims=dims)
-    gwf4 = flopy4.mf6.gwf.Gwf(
-        dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, chd=chd4, wel=wel4, dims=dims
-    )
-    sim4 = make_sim4(ws_root / "s1_flopy4_list", gwf4)
-    results.append(
-        report(
-            "flopy4 list  (WEL+CHD)",
-            time_writes(sim4.write, N, "flopy4 list (WEL+CHD)", include_slow),
+        # flopy4 list
+        dis, ic, npf, sto, oc = make_base4()
+        chd4 = flopy4.mf6.gwf.Chd(head={0: chd_dict}, print_flows=True, save_flows=True, dims=dims)
+        wel4 = flopy4.mf6.gwf.Wel(q={1: wel_dict}, save_flows=True, dims=dims)
+        gwf4 = flopy4.mf6.gwf.Gwf(
+            dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, chd=chd4, wel=wel4, dims=dims
         )
-    )
+        sim4 = make_sim4(ws_root / "s1_flopy4_list", gwf4)
+        if args.profile:
+            profile_fn(sim4.write, "flopy4 list (WEL+CHD)")
+        results.append(
+            report(
+                "flopy4 list        (WEL+CHD)",
+                time_writes(sim4.write, N, "flopy4 list (WEL+CHD)", include_slow),
+            )
+        )
 
-    chd_arr = np.full((nper, nlay, nrow, ncol), NODATA)
-    for (la, ro, co), h in chd_dict.items():
-        chd_arr[0, la, ro, co] = h
-    wel_arr = np.full((nper, nlay, nrow, ncol), NODATA)
-    for (la, ro, co), q in wel_dict.items():
-        wel_arr[1, la, ro, co] = q
-    dis, ic, npf, sto, oc = make_base4()
-    chdg4 = flopy4.mf6.gwf.Chdg(head=chd_arr, print_flows=True, save_flows=True, dims=dims)
-    welg4 = flopy4.mf6.gwf.Welg(q=wel_arr, save_flows=True, dims=dims)
-    gwf4g = flopy4.mf6.gwf.Gwf(
-        dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, chd=chdg4, wel=welg4, dims=dims
-    )
-    sim4g = make_sim4(ws_root / "s1_flopy4_grid", gwf4g)
-    results.append(
-        report(
-            "flopy4 grid  (WELG+CHDG, 1.74M sparse)",
-            time_writes(sim4g.write, N, "flopy4 grid (WELG+CHDG)", include_slow),
+        # flopy4 grid ASCII
+        chd_arr = np.full((nper, nlay, nrow, ncol), NODATA)
+        for (la, ro, co), h in chd_dict.items():
+            chd_arr[0, la, ro, co] = h
+        wel_arr = np.full((nper, nlay, nrow, ncol), NODATA)
+        for (la, ro, co), q in wel_dict.items():
+            wel_arr[1, la, ro, co] = q
+        dis, ic, npf, sto, oc = make_base4()
+        chdg4 = flopy4.mf6.gwf.Chdg(head=chd_arr, print_flows=True, save_flows=True, dims=dims)
+        welg4 = flopy4.mf6.gwf.Welg(q=wel_arr, save_flows=True, dims=dims)
+        gwf4g = flopy4.mf6.gwf.Gwf(
+            dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, chd=chdg4, wel=welg4, dims=dims
         )
-    )
+        sim4g = make_sim4(ws_root / "s1_flopy4_grid", gwf4g)
+        results.append(
+            report(
+                "flopy4 grid ASCII  (WELG+CHDG, 1.74M sparse)",
+                time_writes(sim4g.write, N, "flopy4 grid (WELG+CHDG)", include_slow),
+            )
+        )
 
-    sim3, gwf3 = make_base3(ws_root / "s1_flopy3_list")
-    flopy.mf6.ModflowGwfchd(
-        gwf3, print_flows=True, save_flows=True, stress_period_data={0: list(chd_dict.items())}
-    )
-    flopy.mf6.ModflowGwfwel(gwf3, save_flows=True, stress_period_data={1: list(wel_dict.items())})
-    results.append(
-        report(
-            "flopy3 list  (WEL+CHD)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True), N, "flopy3 list (WEL+CHD)", include_slow
-            ),
+        # flopy4 netcdf_mesh (reuse gwf4g / sim4g)
+        ws_nc = ws_root / "s1_flopy4_nc_mesh"
+        ws_nc.mkdir(parents=True, exist_ok=True)
+        sim4g.workspace = ws_nc
+        nc_fpth_s1m = ws_nc / "test1000.input.nc"
+        gwf4g.netcdf_file = nc_fpth_s1m
+        gwf4g.netcdf_mesh2d_file = Path("test1000.nc")
+        nc_s1m = flopy4.mf6.netcdf.NetCDFModel.from_model(
+            gwf4g, mesh="layered", grid=grid, time=time4
         )
-    )
-    sections.append({"name": "sparse (WEL+CHD)", "results": results})
+
+        def write_s1_nc_mesh():
+            nc_s1m.to_netcdf(nc_fpth_s1m)
+            with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+                sim4g.write()
+
+        results.append(
+            report(
+                "flopy4 netcdf_mesh (WELG+CHDG)",
+                time_writes(write_s1_nc_mesh, N, "flopy4 netcdf_mesh (WELG+CHDG)", include_slow),
+            )
+        )
+
+        # flopy4 netcdf_structured
+        ws_nc = ws_root / "s1_flopy4_nc_struct"
+        ws_nc.mkdir(parents=True, exist_ok=True)
+        sim4g.workspace = ws_nc
+        nc_fpth_s1s = ws_nc / "test1000.input.nc"
+        gwf4g.netcdf_file = nc_fpth_s1s
+        gwf4g.netcdf_mesh2d_file = None
+        nc_s1s = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf4g, grid=grid, time=time4)
+
+        def write_s1_nc_struct():
+            nc_s1s.to_netcdf(nc_fpth_s1s)
+            with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+                sim4g.write()
+
+        results.append(
+            report(
+                "flopy4 netcdf_struct (WELG+CHDG)",
+                time_writes(
+                    write_s1_nc_struct, N, "flopy4 netcdf_struct (WELG+CHDG)", include_slow
+                ),
+            )
+        )
+
+        if not flopy4_only:
+            sim3, gwf3 = make_base3(ws_root / "s1_flopy3_list")
+            flopy.mf6.ModflowGwfchd(
+                gwf3,
+                print_flows=True,
+                save_flows=True,
+                stress_period_data={0: list(chd_dict.items())},
+            )
+            flopy.mf6.ModflowGwfwel(
+                gwf3, save_flows=True, stress_period_data={1: list(wel_dict.items())}
+            )
+            results.append(
+                report(
+                    "flopy3 list        (WEL+CHD)",
+                    time_writes(
+                        lambda: sim3.write_simulation(silent=True),
+                        N,
+                        "flopy3 list (WEL+CHD)",
+                        include_slow,
+                    ),
+                )
+            )
+        sections.append({"name": "sparse (WEL+CHD)", "results": results})
 
     # ── Scenario 2: Dense uniform RCH ───────────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"Scenario 2: Dense uniform RCH  ({ncpl:,} cells)  n={N}")
-    print(f"{'='*60}")
-    results = []
+    if 2 in scenarios:
+        print(f"\n{'='*60}")
+        print(f"Scenario 2: Dense uniform RCH  ({ncpl:,} cells)  n={N}")
+        print(f"{'='*60}")
+        results = []
 
-    dis, ic, npf, sto, oc = make_base4()
-    rch4l = flopy4.mf6.gwf.Rch(recharge=rch_uniform_dict, dims=dims)
-    gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rch4l], dims=dims)
-    sim4 = make_sim4(ws_root / "s2_flopy4_rch_list", gwf4)
-    results.append(
-        report(
-            "flopy4 list  (Rch, 1.74M entries)",
-            time_writes(sim4.write, N, "flopy4 list (Rch)", include_slow),
-        )
-    )
-
-    dis, ic, npf, sto, oc = make_base4()
-    rcha4 = flopy4.mf6.gwf.Rcha(recharge=rch_uniform_arr, dims=dims)
-    gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rcha4], dims=dims)
-    sim4 = make_sim4(ws_root / "s2_flopy4_rch_array", gwf4)
-    results.append(
-        report(
-            "flopy4 array (Rcha, CONSTANT)",
-            time_writes(sim4.write, N, "flopy4 array (Rcha)", include_slow),
-        )
-    )
-
-    sim3, gwf3 = make_base3(ws_root / "s2_flopy3_rch_list")
-    flopy.mf6.ModflowGwfrch(
-        gwf3,
-        stress_period_data={
-            p: [((0, r, c), RCH_UNIFORM) for r in range(nrow) for c in range(ncol)]
+        # Build the list dict here to avoid unnecessary overhead when scenario is skipped
+        rch_uniform_dict = {
+            p: {(0, r, c): RCH_UNIFORM for r in range(nrow) for c in range(ncol)}
             for p in range(nper)
-        },
-    )
-    results.append(
-        report(
-            "flopy3 list  (Rch)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True), N, "flopy3 list (Rch)", include_slow
-            ),
-        )
-    )
+        }
 
-    sim3, gwf3 = make_base3(ws_root / "s2_flopy3_rch_array")
-    flopy.mf6.ModflowGwfrcha(gwf3, recharge=RCH_UNIFORM)
-    results.append(
-        report(
-            "flopy3 array (Rcha, CONSTANT)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True), N, "flopy3 array (Rcha)", include_slow
-            ),
+        # flopy4 list
+        dis, ic, npf, sto, oc = make_base4()
+        rch4l = flopy4.mf6.gwf.Rch(recharge=rch_uniform_dict, dims=dims)
+        gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rch4l], dims=dims)
+        sim4 = make_sim4(ws_root / "s2_flopy4_rch_list", gwf4)
+        results.append(
+            report(
+                "flopy4 list        (Rch, 1.74M entries)",
+                time_writes(sim4.write, N, "flopy4 list (Rch)", include_slow),
+            )
         )
-    )
-    sections.append({"name": "dense uniform RCH", "results": results})
+
+        # flopy4 array ASCII
+        dis, ic, npf, sto, oc = make_base4()
+        rcha4 = flopy4.mf6.gwf.Rcha(recharge=rch_uniform_arr, dims=dims)
+        gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rcha4], dims=dims)
+        sim4 = make_sim4(ws_root / "s2_flopy4_rch_array", gwf4)
+        results.append(
+            report(
+                "flopy4 array ASCII (Rcha, CONSTANT)",
+                time_writes(sim4.write, N, "flopy4 array (Rcha)", include_slow),
+            )
+        )
+
+        # flopy4 netcdf_mesh (reuse gwf4 / sim4)
+        ws_nc = ws_root / "s2_flopy4_nc_mesh"
+        ws_nc.mkdir(parents=True, exist_ok=True)
+        sim4.workspace = ws_nc
+        nc_fpth_s2m = ws_nc / "test1000.input.nc"
+        gwf4.netcdf_file = nc_fpth_s2m
+        gwf4.netcdf_mesh2d_file = Path("test1000.nc")
+        nc_s2m = flopy4.mf6.netcdf.NetCDFModel.from_model(
+            gwf4, mesh="layered", grid=grid, time=time4
+        )
+
+        def write_s2_nc_mesh():
+            nc_s2m.to_netcdf(nc_fpth_s2m)
+            with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+                sim4.write()
+
+        results.append(
+            report(
+                "flopy4 netcdf_mesh (Rcha, CONSTANT)",
+                time_writes(write_s2_nc_mesh, N, "flopy4 netcdf_mesh (Rcha)", include_slow),
+            )
+        )
+
+        # flopy4 netcdf_structured
+        ws_nc = ws_root / "s2_flopy4_nc_struct"
+        ws_nc.mkdir(parents=True, exist_ok=True)
+        sim4.workspace = ws_nc
+        nc_fpth_s2s = ws_nc / "test1000.input.nc"
+        gwf4.netcdf_file = nc_fpth_s2s
+        gwf4.netcdf_mesh2d_file = None
+        nc_s2s = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf4, grid=grid, time=time4)
+
+        def write_s2_nc_struct():
+            nc_s2s.to_netcdf(nc_fpth_s2s)
+            with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+                sim4.write()
+
+        results.append(
+            report(
+                "flopy4 netcdf_struct (Rcha, CONSTANT)",
+                time_writes(write_s2_nc_struct, N, "flopy4 netcdf_struct (Rcha)", include_slow),
+            )
+        )
+
+        if not flopy4_only:
+            sim3, gwf3 = make_base3(ws_root / "s2_flopy3_rch_list")
+            flopy.mf6.ModflowGwfrch(
+                gwf3,
+                stress_period_data={
+                    p: [((0, r, c), RCH_UNIFORM) for r in range(nrow) for c in range(ncol)]
+                    for p in range(nper)
+                },
+            )
+            results.append(
+                report(
+                    "flopy3 list        (Rch)",
+                    time_writes(
+                        lambda: sim3.write_simulation(silent=True),
+                        N,
+                        "flopy3 list (Rch)",
+                        include_slow,
+                    ),
+                )
+            )
+
+            sim3, gwf3 = make_base3(ws_root / "s2_flopy3_rch_array")
+            flopy.mf6.ModflowGwfrcha(gwf3, recharge=RCH_UNIFORM)
+            results.append(
+                report(
+                    "flopy3 array       (Rcha, CONSTANT)",
+                    time_writes(
+                        lambda: sim3.write_simulation(silent=True),
+                        N,
+                        "flopy3 array (Rcha)",
+                        include_slow,
+                    ),
+                )
+            )
+        sections.append({"name": "dense uniform RCH", "results": results})
 
     # ── Scenario 3: Dense heterogeneous RCH ─────────────────────────────────
-    print(f"\n{'='*60}")
-    print(f"Scenario 3: Dense heterogeneous RCH  ({ncpl:,} cells)  n={N}")
-    print(f"{'='*60}")
-    results = []
+    if 3 in scenarios:
+        print(f"\n{'='*60}")
+        print(f"Scenario 3: Dense heterogeneous RCH  ({ncpl:,} cells)  n={N}")
+        print(f"{'='*60}")
+        results = []
 
-    dis, ic, npf, sto, oc = make_base4()
-    rch4l = flopy4.mf6.gwf.Rch(recharge=rch_het_dict, dims=dims)
-    gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rch4l], dims=dims)
-    sim4 = make_sim4(ws_root / "s3_flopy4_rch_list", gwf4)
-    results.append(
-        report(
-            "flopy4 list  (Rch, 1.74M entries)",
-            time_writes(sim4.write, N, "flopy4 list (Rch)", include_slow),
-        )
-    )
-
-    dis, ic, npf, sto, oc = make_base4()
-    rcha4 = flopy4.mf6.gwf.Rcha(recharge=rch_het_arr, dims=dims)
-    gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rcha4], dims=dims)
-    sim4 = make_sim4(ws_root / "s3_flopy4_rch_array", gwf4)
-    results.append(
-        report(
-            "flopy4 array (Rcha, per-cell)",
-            time_writes(sim4.write, N, "flopy4 array (Rcha)", include_slow),
-        )
-    )
-
-    sim3, gwf3 = make_base3(ws_root / "s3_flopy3_rch_list")
-    flopy.mf6.ModflowGwfrch(
-        gwf3,
-        stress_period_data={
-            p: [
-                ((0, r, c), float(rch_het_arr[p, r * ncol + c]))
+        # Build the list dict here to avoid unnecessary overhead when scenario is skipped
+        rch_het_dict = {
+            p: {
+                (0, r, c): float(rch_het_arr[p, r * ncol + c])
                 for r in range(nrow)
                 for c in range(ncol)
-            ]
+            }
             for p in range(nper)
-        },
-    )
-    results.append(
-        report(
-            "flopy3 list  (Rch)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True), N, "flopy3 list (Rch)", include_slow
-            ),
-        )
-    )
+        }
 
-    sim3, gwf3 = make_base3(ws_root / "s3_flopy3_rch_array")
-    flopy.mf6.ModflowGwfrcha(
-        gwf3, recharge={p: rch_het_arr[p].reshape(nrow, ncol) for p in range(nper)}
-    )
-    results.append(
-        report(
-            "flopy3 array (Rcha, per-cell)",
-            time_writes(
-                lambda: sim3.write_simulation(silent=True), N, "flopy3 array (Rcha)", include_slow
-            ),
+        # flopy4 list
+        dis, ic, npf, sto, oc = make_base4()
+        rch4l = flopy4.mf6.gwf.Rch(recharge=rch_het_dict, dims=dims)
+        gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rch4l], dims=dims)
+        sim4 = make_sim4(ws_root / "s3_flopy4_rch_list", gwf4)
+        results.append(
+            report(
+                "flopy4 list        (Rch, 1.74M entries)",
+                time_writes(sim4.write, N, "flopy4 list (Rch)", include_slow),
+            )
         )
-    )
-    sections.append({"name": "dense heterogeneous RCH", "results": results})
+
+        # flopy4 array ASCII
+        dis, ic, npf, sto, oc = make_base4()
+        rcha4 = flopy4.mf6.gwf.Rcha(recharge=rch_het_arr, dims=dims)
+        gwf4 = flopy4.mf6.gwf.Gwf(dis=grid, ic=ic, npf=npf, sto=sto, oc=oc, rch=[rcha4], dims=dims)
+        sim4 = make_sim4(ws_root / "s3_flopy4_rch_array", gwf4)
+        results.append(
+            report(
+                "flopy4 array ASCII (Rcha, per-cell)",
+                time_writes(sim4.write, N, "flopy4 array (Rcha)", include_slow),
+            )
+        )
+
+        # flopy4 netcdf_mesh (reuse gwf4 / sim4)
+        ws_nc = ws_root / "s3_flopy4_nc_mesh"
+        ws_nc.mkdir(parents=True, exist_ok=True)
+        sim4.workspace = ws_nc
+        nc_fpth_s3m = ws_nc / "test1000.input.nc"
+        gwf4.netcdf_file = nc_fpth_s3m
+        gwf4.netcdf_mesh2d_file = Path("test1000.nc")
+        nc_s3m = flopy4.mf6.netcdf.NetCDFModel.from_model(
+            gwf4, mesh="layered", grid=grid, time=time4
+        )
+
+        def write_s3_nc_mesh():
+            nc_s3m.to_netcdf(nc_fpth_s3m)
+            with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+                sim4.write()
+
+        results.append(
+            report(
+                "flopy4 netcdf_mesh (Rcha, per-cell)",
+                time_writes(write_s3_nc_mesh, N, "flopy4 netcdf_mesh (Rcha)", include_slow),
+            )
+        )
+
+        # flopy4 netcdf_structured
+        ws_nc = ws_root / "s3_flopy4_nc_struct"
+        ws_nc.mkdir(parents=True, exist_ok=True)
+        sim4.workspace = ws_nc
+        nc_fpth_s3s = ws_nc / "test1000.input.nc"
+        gwf4.netcdf_file = nc_fpth_s3s
+        gwf4.netcdf_mesh2d_file = None
+        nc_s3s = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf4, grid=grid, time=time4)
+
+        def write_s3_nc_struct():
+            nc_s3s.to_netcdf(nc_fpth_s3s)
+            with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
+                sim4.write()
+
+        results.append(
+            report(
+                "flopy4 netcdf_struct (Rcha, per-cell)",
+                time_writes(write_s3_nc_struct, N, "flopy4 netcdf_struct (Rcha)", include_slow),
+            )
+        )
+
+        if not flopy4_only:
+            sim3, gwf3 = make_base3(ws_root / "s3_flopy3_rch_list")
+            flopy.mf6.ModflowGwfrch(
+                gwf3,
+                stress_period_data={
+                    p: [
+                        ((0, r, c), float(rch_het_arr[p, r * ncol + c]))
+                        for r in range(nrow)
+                        for c in range(ncol)
+                    ]
+                    for p in range(nper)
+                },
+            )
+            results.append(
+                report(
+                    "flopy3 list        (Rch)",
+                    time_writes(
+                        lambda: sim3.write_simulation(silent=True),
+                        N,
+                        "flopy3 list (Rch)",
+                        include_slow,
+                    ),
+                )
+            )
+
+            sim3, gwf3 = make_base3(ws_root / "s3_flopy3_rch_array")
+            flopy.mf6.ModflowGwfrcha(
+                gwf3, recharge={p: rch_het_arr[p].reshape(nrow, ncol) for p in range(nper)}
+            )
+            results.append(
+                report(
+                    "flopy3 array       (Rcha, per-cell)",
+                    time_writes(
+                        lambda: sim3.write_simulation(silent=True),
+                        N,
+                        "flopy3 array (Rcha)",
+                        include_slow,
+                    ),
+                )
+            )
+        sections.append({"name": "dense heterogeneous RCH", "results": results})
 
     if args.output:
         write_results(args.output, "test1000_write", N, sections)

@@ -36,6 +36,16 @@ def make_parser(description: str) -> argparse.ArgumentParser:
         help="root directory of the modflow6-largetestmodels repo "
         "(required by test1000_write.py and test1005_write.py)",
     )
+    p.add_argument(
+        "--flopy4-only",
+        action="store_true",
+        help="skip all flopy3 variants (useful for optimisation iteration)",
+    )
+    p.add_argument(
+        "--profile",
+        action="store_true",
+        help="run cProfile on the first flopy4 list variant and print top-20 cumulative stats",
+    )
     return p
 
 
@@ -63,6 +73,22 @@ def time_writes(fn, n: int, label: str, include_slow: bool = False):
         fn()
         times.append(time.perf_counter() - t0)
     return times
+
+
+def profile_fn(fn, label: str, n_lines: int = 20) -> None:
+    """Run fn() once under cProfile and print the top n_lines cumulative stats."""
+    import cProfile
+    import io
+    import pstats
+
+    print(f"\n--- cProfile: {label} ---")
+    pr = cProfile.Profile()
+    pr.enable()
+    fn()
+    pr.disable()
+    buf = io.StringIO()
+    pstats.Stats(pr, stream=buf).sort_stats("cumulative").print_stats(n_lines)
+    print(buf.getvalue())
 
 
 def report(label: str, times: list[float]) -> dict:
