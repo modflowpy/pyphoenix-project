@@ -5,11 +5,29 @@ Builds a minimal 1-layer structured grid at increasing cell counts and times
 the write for each size.  The shape of the curve (O(n), O(n²), …) points to
 where the bottleneck lives.
 
+When to use
+-----------
+Run this after any change to the list write path (filters.py, macros.jinja,
+dataset2list) to confirm scaling remains linear.  The main benchmark scripts
+(ff_write.py, test1000_write.py) measure absolute time on real models; this
+script measures *scaling behaviour* on a synthetic grid and catches regressions
+that only manifest at larger cell counts.
+
+Interpreting output
+-------------------
+The `~complexity` column estimates the local scaling exponent between
+consecutive sizes.  O(n^1.0) is ideal linear scaling; O(n^2.0) indicates a
+quadratic loop.  Values close to 1.0 across all size steps confirm the write
+path is O(n).
+
+Usage
+-----
+    python diag_list_scaling.py               # scaling table only
+    python diag_list_scaling.py --profile     # + cProfile on 25K cells
+    python diag_list_scaling.py --profile --profile-n 100000
+
 Sizes tested: 1K, 5K, 25K, 100K, 250K cells (single stress period, 1 run each).
 If a run exceeds 60 s it is skipped so the script stays interactive.
-
-Optional: pass --profile to run cProfile on the 25K-cell case and print the
-top 20 cumulative-time frames.
 """
 
 import argparse
