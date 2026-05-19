@@ -1,0 +1,6 @@
+# Ignore profile run output (simulation input files written by flopy4/flopy3)
+# but keep saved baseline JSON files.
+ff/
+test1000/
+test1005/
+_tmp/

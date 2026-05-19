@@ -25,9 +25,9 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SCRIPTS = [
-    ("ff_write.py", "frenchman-flat"),
-    ("test1000_write.py", "test1000_751x751"),
-    ("test1005_write.py", "test1005_secp"),
+    ("ff_write.py", "frenchman-flat", False),
+    ("test1000_write.py", "test1000_751x751", True),
+    ("test1005_write.py", "test1005_secp", True),
 ]
 
 
@@ -106,8 +106,11 @@ def main():
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     all_data = []
-    for fname, label in SCRIPTS:
+    for fname, label, needs_models_root in SCRIPTS:
         if args.only and fname not in args.only:
+            continue
+        if needs_models_root and args.models_root is None:
+            print(f"\n  [SKIP] {fname} requires --models-root (modflow6-largetestmodels repo)")
             continue
         script = HERE / fname
         if not script.exists():
