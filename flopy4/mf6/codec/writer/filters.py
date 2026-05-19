@@ -324,7 +324,7 @@ def dataset2list(value: xr.Dataset):
                         else:
                             row2.append(val)
             if has_spatial_dims:
-                cellid = tuple(int(cid[i]) for cid in cellids)
+                cellid = tuple(cid[i].item() for cid in cellids)
                 yield cellid + tuple(row2)
             else:
                 yield tuple(row2)

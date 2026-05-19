@@ -36,7 +36,7 @@ All profile scripts live in `docs/profile/`.
 
 **Caveats:**
 - Timings are wall-clock on a single Linux workstation (no isolation, no warmup).
-- flopy3 v3.10.0; flopy4 `profile` branch.
+- flopy3 v3.10.0; flopy4 post-merge from `profile` branch.
 - Large test models from `modflow6-largetestmodels` are required for
   `test1000_write.py` and `test1005_write.py` and are not bundled.
   Pass `--models-root <DIR>` (or via `run_all.py --models-root`) to specify the repo root.
@@ -53,7 +53,7 @@ apples-to-apples) and a flopy4-only format comparison (list ASCII vs array ASCII
 vs array NetCDF). flopy3 has no NetCDF output path, so it does not appear in the
 format comparison.
 
-All timings are minimum of 5 runs, 2026-05-19, `profile` branch.
+All timings are minimum of 5 runs, 2026-05-19, commit def1808.
 
 ### flopy4 vs flopy3
 
