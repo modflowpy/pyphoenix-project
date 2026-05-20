@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 import attrs
@@ -8,8 +9,9 @@ from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.spec import array, dim, field
+from flopy4.mf6.spec import array, dim, field, path
 from flopy4.mf6.utils.grid import VertexGrid
+from flopy4.utils import to_path
 
 
 @xattree
@@ -44,6 +46,11 @@ class Disv(DisBase):
         block="options",
         default=None,
         longname="CRS user input string",
+    )
+    # NCF subpackage reference — writes "NCF6 FILEIN <file>" in DISV OPTIONS.
+    # TODO: should be emitted by codegen from ncf_filerecord in gwf-disv.dfn.
+    ncf6_filerecord: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="filein"
     )
     nlay: int = dim(
         block="dimensions",
