@@ -284,6 +284,11 @@ class StructuredGrid(LegacyStructuredGrid):
     @legacy.setter
     def legacy(self, value):
         self._legacy = value
+        if value:
+            # Flopy caches xycenters/xyedges using self.delr/delc, which return
+            # DataArrays when legacy=False.  Invalidate so properties recompute
+            # as plain numpy arrays on the next access.
+            self._require_cache_updates()
 
     @property
     def dataset(self) -> xr.Dataset:
@@ -980,6 +985,8 @@ class VertexGrid(LegacyVertexGrid):
     @legacy.setter
     def legacy(self, value):
         self._legacy = value
+        if value:
+            self._require_cache_updates()
 
     @property
     def dataset(self) -> xr.Dataset:
