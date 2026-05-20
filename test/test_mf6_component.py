@@ -16,6 +16,7 @@ from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
+from flopy4.mf6.utl.ncf import Ncf
 
 
 def test_registry():
@@ -1271,3 +1272,73 @@ def test_grid_with_idomain():
     assert grid.dataset["idomain"].values[0, 0, 0] == 0
     assert grid.dataset["idomain"].values[1, 2, 2] == -1
     assert grid.dataset["idomain"].values[0, 1, 1] == 1
+
+
+def test_ncf_subpackage_write(function_tmpdir):
+    """NCF subpackage file is written when attached to Dis."""
+    nrow, ncol = 2, 3
+    ncpl = nrow * ncol
+    ncf = Ncf(
+        ncpl=ncpl,
+        latitude=np.array([35.1, 35.2, 35.3, 35.4, 35.5, 35.6]),
+        longitude=np.array([-120.1, -120.2, -120.3, -120.4, -120.5, -120.6]),
+    )
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    dis = Dis(nlay=1, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    dis.write()
+
+    assert (function_tmpdir / "gwf.dis").exists()
+    assert (function_tmpdir / "gwf.dis.ncf").exists()
+    dis_text = (function_tmpdir / "gwf.dis").read_text()
+    assert "NCF6 FILEIN gwf.dis.ncf" in dis_text
+
+
+def test_ncf_subpackage_auto_sync_filerecord(function_tmpdir):
+    """ncf6_filerecord is auto-populated from ncf.filename when not pre-set."""
+    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    assert dis.ncf6_filerecord is None
+
+    dis.write()
+
+    assert dis.ncf6_filerecord == Path("gwf.dis.ncf")
+
+
+def test_ncf_subpackage_no_overwrite_filerecord(function_tmpdir):
+    """Pre-set ncf6_filerecord is preserved — auto-sync is skipped."""
+    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
+    ncf.filename = str(function_tmpdir / "actual.ncf")
+
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    dis.ncf6_filerecord = Path("explicit.ncf")
+
+    dis.write()
+
+    assert dis.ncf6_filerecord == Path("explicit.ncf")
+
+
+def test_ncf_subpackage_float_precision(function_tmpdir):
+    """NCF lat/lon arrays are written with float64 precision (15 sig figs)."""
+    lat = 35.123456789012345
+    lon = -120.987654321098765
+    ncf = Ncf(ncpl=1, latitude=[lat], longitude=[lon])
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    dis = Dis(nlay=1, nrow=1, ncol=1, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    dis.write()
+
+    ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
+    # default precision is 8 sig figs (3.51234568e+01); at precision=15 more digits survive
+    assert "3.512345678901" in ncf_text
+    assert "1.209876543210" in ncf_text
