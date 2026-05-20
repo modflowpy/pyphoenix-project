@@ -11,6 +11,7 @@ from flopy4.mf6.converter import structure_array
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.spec import array, dim, field, path
 from flopy4.mf6.utils.grid import VertexGrid
+from flopy4.mf6.utl.ncf import Ncf
 from flopy4.utils import to_path
 
 
@@ -52,6 +53,9 @@ class Disv(DisBase):
     ncf6_filerecord: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
+    # Attached Ncf subpackage; set filename then call sim.write() to auto-write.
+    # DisBase.write() syncs ncf6_filerecord and calls ncf.write() if set.
+    ncf: Optional[Ncf] = attrs.field(default=None)
     nlay: int = dim(
         block="dimensions",
         coord="lay",

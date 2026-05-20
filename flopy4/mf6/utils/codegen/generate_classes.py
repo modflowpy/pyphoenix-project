@@ -33,6 +33,18 @@ _MF6_REPO_NAME = "modflow6"
 # dis/disv: require DisBase + grid conversion methods (dis tier).
 # tdis/ims: top-level hand-written files, not yet templated.
 # *g / *a variants: gridded/array package variants, deferred.
+#
+# TODO (subpackage tier): DFN annotations of the form
+#   # flopy subpackage <parent_field> <child_pkg> <child_block> <child_param>
+# mark utility subpackages (e.g. ncf_filerecord → utl-ncf, ts6_filerecord →
+# utl-ts).  Codegen should detect these and emit:
+#   1. A typed child attrs field: ncf: Optional[Ncf] = attrs.field(default=None)
+#   2. Keep the path field: ncf6_filerecord = path(block="options", inout="filein")
+#   3. Import the child package class from flopy4.mf6.utl.<pkg>
+# DisBase.write() already handles the child write for NCF (the established
+# pattern); the generated child field follows the same convention.
+# Timeseries (utl-ts) requires additional work: period-block values that
+# reference a timeseries by name must be emitted as strings, not numbers.
 _SKIP = {
     # discretization tier (require DisBase + grid methods)
     "gwf-dis",
