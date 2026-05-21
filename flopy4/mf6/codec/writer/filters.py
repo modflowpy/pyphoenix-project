@@ -145,6 +145,19 @@ def array2string(value: NDArray, precision: int = 9) -> str:
     return buffer.getvalue().strip()
 
 
+def quote_if_needed(value: str) -> str:
+    """
+    Wrap a string in single quotes if it contains spaces or double-quotes.
+
+    MF6 input requires single-quoted strings for values that contain
+    whitespace or special characters (e.g. WKT CRS strings).
+    Plain tokens like 'METERS' or 'EPSG:26911' are left unquoted.
+    """
+    if isinstance(value, str) and (" " in value or '"' in value):
+        return f"'{value}'"
+    return str(value)
+
+
 def nonempty(value: NDArray | xr.DataArray) -> NDArray:
     """
     Return a boolean mask of non-empty (non-nodata) values in an array.

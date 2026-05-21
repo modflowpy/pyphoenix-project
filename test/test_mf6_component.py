@@ -1342,3 +1342,15 @@ def test_ncf_subpackage_float_precision(function_tmpdir):
     # default precision is 8 sig figs (3.51234568e+01); at precision=15 more digits survive
     assert "3.512345678901" in ncf_text
     assert "1.209876543210" in ncf_text
+
+
+def test_ncf_wkt_write(function_tmpdir):
+    """Ncf accepts a plain WKT string and writes it single-quoted in OPTIONS."""
+    wkt = 'PROJCS["NAD83 / UTM zone 11N",GEOGCS["NAD83",DATUM["North_American_Datum_1983"]]]'
+    ncf = Ncf(wkt=wkt)
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    ncf.write()
+
+    ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
+    assert f"WKT '{wkt}'" in ncf_text

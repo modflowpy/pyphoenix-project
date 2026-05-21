@@ -173,11 +173,18 @@ def is_scalar(f: Field) -> bool:
     return f.type in _SCALAR_TYPES and not f.shape
 
 
+_STRING_LENGTH_DIMS = frozenset({"lenbigline", "linelength"})
+
+
 def is_array(f: Field) -> bool:
     """True for array fields (numeric or string type with a shape).
 
     Excludes auxiliary variable lists, which are handled by is_aux_list_field.
     """
+    # TODO: emit string fields shaped only by lenbigline/linelength as field(Optional[str]);
+    # for now exclude so they fall to scalar handling (see ncf.py Ncf.wkt for the pattern).
+    if f.type == "string" and f.shape and all(s in _STRING_LENGTH_DIMS for s in f.shape):
+        return False
     return (
         f.type in _ARRAY_BASE_TYPES
         and bool(f.shape)
