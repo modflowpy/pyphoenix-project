@@ -1,4 +1,5 @@
 from typing import Optional
+from warnings import warn
 
 import numpy as np
 from attrs import Converter
@@ -6,6 +7,7 @@ from numpy.typing import NDArray
 from xattree import xattree
 
 from flopy4.mf6.converter import structure_array
+from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import array, dim, field
 
@@ -17,11 +19,12 @@ class Ncf(Package):
     Two distinct use cases:
 
     - **Mesh (NETCDF_MESH2D)**: set ``wkt`` to embed CRS metadata in UGRID output.
-      Use :meth:`from_grid_wkt` to derive the WKT string from a grid's CRS.
+      Use :meth:`from_grid` with ``NetCDFFormat.LAYERED_MESH`` to derive the WKT
+      string from a grid's CRS.
     - **Structured (NETCDF_STRUCTURED)**: set ``latitude`` / ``longitude`` to
       provide explicit geographic cell-centre coordinates for CF output.
-      Use :meth:`from_grid_latlon` to derive them from a grid's CRS.
-      ``wkt`` is ignored when lat/lon arrays are present.
+      Use :meth:`from_grid` with ``NetCDFFormat.STRUCTURED`` to derive them from
+      a grid's CRS.  ``wkt`` is ignored when lat/lon arrays are present.
     """
 
     # lenbigline in the DFN is a Fortran string-length artifact; Python uses plain str.
@@ -73,22 +76,42 @@ class Ncf(Package):
     )
 
     @classmethod
-    def from_grid_wkt(cls, grid) -> "Ncf":
-        """Build Ncf with a WKT1_GDAL CRS string; applies to both mesh and structured NetCDF."""
-        from pyproj import CRS
-        from pyproj.enums import WktVersion
+    def from_grid(cls, grid, netcdf_format: NetCDFFormat) -> "Ncf":
+        """Build an Ncf configured for the given NetCDF output format.
 
-        if grid.crs is None:
-            raise ValueError("Grid has no CRS; set grid.crs before calling from_grid_wkt().")
-        wkt = CRS.from_user_input(grid.crs).to_wkt(WktVersion.WKT1_GDAL)
-        return cls(wkt=wkt)
+        For ``NetCDFFormat.LAYERED_MESH``: embeds a WKT1_GDAL CRS string in
+        the OPTIONS block so MODFLOW can label the coordinate system in the
+        UGRID output metadata.
 
-    @classmethod
-    def from_grid_latlon(cls, grid) -> "Ncf":
-        """Build Ncf with lat/lon cell-centre arrays for CF-structured NetCDF output."""
-        lats, lons = grid.latlon()
-        if lats is None:
-            raise ValueError(
-                "Grid has no CRS or latlon() failed; cannot derive lat/lon coordinates."
-            )
-        return cls(ncpl=len(lats), latitude=lats, longitude=lons)
+        For ``NetCDFFormat.STRUCTURED``: derives lat/lon cell-centre arrays
+        from the grid's CRS and stores them in the GRIDDATA block so the CF
+        output has explicit geographic coordinate axes.
+
+        In either case, if the grid has no CRS the method returns an
+        unconfigured ``Ncf()`` and emits a ``UserWarning``.
+        """
+        if netcdf_format == NetCDFFormat.LAYERED_MESH:
+            from pyproj import CRS
+            from pyproj.enums import WktVersion
+
+            if grid.crs is None:
+                warn(
+                    "Grid has no CRS; Ncf will have no WKT. "
+                    "Set grid.crs before calling Ncf.from_grid().",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                return cls()
+            wkt = CRS.from_user_input(grid.crs).to_wkt(WktVersion.WKT1_GDAL)
+            return cls(wkt=wkt)
+        else:
+            lats, lons = grid.latlon()
+            if lats is None:
+                warn(
+                    "Grid has no CRS or latlon() failed; Ncf will have no lat/lon. "
+                    "Set grid.crs before calling Ncf.from_grid().",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                return cls()
+            return cls(ncpl=len(lats), latitude=lats, longitude=lons)

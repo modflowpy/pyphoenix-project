@@ -11,7 +11,8 @@
 # The script demonstrates different input modes supported by flopy4:
 # 1. **Ascii list based input**: traditional MODFLOW package files (always run)
 # 2. **Ascii list based with base NetCDF input**: IC, NPF configurational input from NetCDF
-# 3. **Layered-mesh NetCDF array based** (`mesh="layered"`): 2-D face-based UGRID NetCDF
+# 3. **Layered-mesh NetCDF array based** (``NetCDFFormat.LAYERED_MESH``):
+#    2-D face-based UGRID NetCDF
 # 4. **Structured NetCDF array based** (no `mesh` arg): CF-convention DIS NetCDF
 #    (modes 2, 3 and 4 require extended `mf6` and environment variable
 #    `MF6_EXTENDED=1` to actually run the MODFLOW simulation)
@@ -27,6 +28,8 @@ from pathlib import Path
 import numpy as np
 
 import flopy4
+from flopy4.mf6.enums import NetCDFFormat
+from flopy4.mf6.utl.ncf import Ncf
 
 # ### Setup
 
@@ -670,7 +673,7 @@ oc = flopy4.mf6.gwf.Oc(
 
 # assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
-    dis=grid,
+    dis=dis,
     ic=ic,
     npf=npf,
     sto=sto,
@@ -747,9 +750,9 @@ plot_head_ugrid(head, cbc, grid, workspace)
 
 # ### NetCDF (mesh) base package input
 
-# `NetCDFModel.from_model(gwf, mesh="layered")` writes a layered UGRID mesh
-# NetCDF containing the NPF, STO, and IC arrays.  WEL packages remain list-
-# based in the text input files.  Requires `MF6_EXTENDED=1` to run MODFLOW.
+# ``NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH)`` writes
+# a UGRID layered-mesh NetCDF containing the NPF, STO, and IC arrays.  WEL
+# packages remain list-based in the text input files.  Requires ``MF6_EXTENDED=1``.
 
 # create new workspace
 workspace = FF_ROOT / "frenchman-flat" / "netcdf_base"
@@ -758,10 +761,14 @@ sim.workspace = workspace
 
 nc_fpth = workspace / "frenchman-flat.input.nc"
 gwf.netcdf_file = nc_fpth
+dis.ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
+dis.ncf.filename = workspace / "ff.dis.ncf"
 
 # Here, grid and time info is passed to the `NetCDFModel' constructor
 # so that coordinate and mesh data is written to the NetCDF file.
-nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
+    gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time
+)
 nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
@@ -864,12 +871,6 @@ welg_sampleQ = flopy4.mf6.gwf.Welg(
 )
 
 
-# Swap list-based WEL packages for their array-based equivalents.
-del gwf.wel[0]
-del gwf.wel[1]
-del gwf.wel[2]
-
-# Attach the array-based WEL packages.
 gwf.wel = [welg_crt, welg_leak, welg_sampleQ]
 
 # create new workspace
@@ -879,9 +880,13 @@ sim.workspace = workspace
 
 gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
 gwf.netcdf_file = Path("frenchman-flat.input.nc")
+dis.ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
+dis.ncf.filename = workspace / "ff.dis.ncf"
 
 # Again, with grid and time info
-nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered", grid=grid, time=time)
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
+    gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time
+)
 nc_model.to_netcdf(workspace / "frenchman-flat.input.nc")
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
@@ -889,11 +894,6 @@ with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
 if os.getenv("MF6_EXTENDED"):
     sim.run()
 
-    # Load head results
-    # head = flopy4.mf6.utils.open_hds(
-    #    workspace / "ff.hds",
-    #    workspace / "ff.dis.grb",
-    # )
     # Load head results — `UgridDataArray` backed by the NetCDF mesh2d output file.
     head = flopy4.mf6.utils.open_hds(
         workspace / gwf.netcdf_mesh2d_file,
@@ -926,8 +926,11 @@ workspace = FF_ROOT / "frenchman-flat" / "netcdf_structured"
 workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
-nc_fpth = workspace / "frenchnam-flat.input.nc"
+nc_fpth = workspace / "frenchman-flat.input.nc"
 gwf.netcdf_file = nc_fpth
+gwf.netcdf_mesh2d_file = None
+dis.ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
+dis.ncf.filename = workspace / "ff.dis.ncf"
 
 # Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, grid=grid, time=time)

@@ -10,6 +10,7 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
+from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
@@ -1356,8 +1357,8 @@ def test_ncf_wkt_write(function_tmpdir):
     assert f"WKT '{wkt}'" in ncf_text
 
 
-def test_ncf_from_grid_wkt(function_tmpdir):
-    """Ncf.from_grid_wkt() derives a WKT string from the grid's CRS."""
+def test_ncf_from_grid_layered_mesh(function_tmpdir):
+    """Ncf.from_grid(LAYERED_MESH) derives a WKT string from the grid's CRS."""
     grid = StructuredGrid(
         nlay=1,
         nrow=2,
@@ -1370,7 +1371,7 @@ def test_ncf_from_grid_wkt(function_tmpdir):
         yoff=4100000.0,
         crs="EPSG:26911",
     )
-    ncf = Ncf.from_grid_wkt(grid)
+    ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
     assert ncf.wkt is not None
     assert "NAD83" in ncf.wkt or "WGS 84" in ncf.wkt or "UTM" in ncf.wkt
     assert '"' in ncf.wkt
@@ -1381,15 +1382,16 @@ def test_ncf_from_grid_wkt(function_tmpdir):
     assert "WKT '" in ncf_text
 
 
-def test_ncf_from_grid_wkt_no_crs():
-    """Ncf.from_grid_wkt() raises when the grid has no CRS."""
+def test_ncf_from_grid_no_crs():
+    """Ncf.from_grid() warns and returns unconfigured Ncf when grid has no CRS."""
     grid = StructuredGrid(nlay=1, nrow=2, ncol=3, delr=1.0, delc=1.0, top=0.0, botm=[-1.0])
-    with pytest.raises(ValueError, match="no CRS"):
-        Ncf.from_grid_wkt(grid)
+    with pytest.warns(UserWarning, match="no CRS"):
+        ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
+    assert ncf.wkt is None
 
 
-def test_ncf_from_grid_latlon(function_tmpdir):
-    """Ncf.from_grid_latlon() derives lat/lon arrays from the grid's CRS."""
+def test_ncf_from_grid_structured(function_tmpdir):
+    """Ncf.from_grid(STRUCTURED) derives lat/lon arrays from the grid's CRS."""
     nrow, ncol = 2, 3
     grid = StructuredGrid(
         nlay=1,
@@ -1403,7 +1405,7 @@ def test_ncf_from_grid_latlon(function_tmpdir):
         yoff=4100000.0,
         crs="EPSG:26911",
     )
-    ncf = Ncf.from_grid_latlon(grid)
+    ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
     assert ncf.ncpl == nrow * ncol
     assert ncf.latitude is not None
     assert ncf.longitude is not None

@@ -12,6 +12,7 @@ from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
+from flopy4.mf6.enums import NetCDFFormat
 
 
 class StructuredGrid(LegacyStructuredGrid):
@@ -485,12 +486,16 @@ class StructuredGrid(LegacyStructuredGrid):
 
             return None, None
 
-    def to_xarray(self, modeltime=None, mesh_type=None, configuration=None):
+    def to_xarray(
+        self,
+        modeltime=None,
+        netcdf_format: NetCDFFormat = NetCDFFormat.STRUCTURED,
+        configuration=None,
+    ):
         """
-        modeltime : FloPy ModelTime object
-        mesh_type : dataset mesh type
-               valid mesh types are "layered" or None (i.e. "structured")
-        configuration : configuration dictionary
+        modeltime    : FloPy ModelTime object
+        netcdf_format: NetCDFFormat.LAYERED_MESH or NetCDFFormat.STRUCTURED
+        configuration: configuration dictionary
         """
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")
@@ -500,12 +505,10 @@ class StructuredGrid(LegacyStructuredGrid):
             ds = xr.Dataset()
             ds.attrs["modflow_grid"] = "STRUCTURED"
 
-            if mesh_type and mesh_type.upper() == "LAYERED":
+            if netcdf_format == NetCDFFormat.LAYERED_MESH:
                 ds = self._layered_mesh_dataset(ds, modeltime, configuration)
-            elif mesh_type is None:
-                ds = self._structured_dataset(ds, modeltime, configuration)
             else:
-                raise ValueError(f"Unknown mesh_type {mesh_type!r}. Expected 'LAYERED' or None.")
+                ds = self._structured_dataset(ds, modeltime, configuration)
 
             return ds
         finally:
@@ -1104,16 +1107,20 @@ class VertexGrid(LegacyVertexGrid):
             # z is 3D, not 1D, so don't set as index
         )
 
-    def to_xarray(self, modeltime=None, mesh_type=None, configuration=None):
+    def to_xarray(
+        self,
+        modeltime=None,
+        netcdf_format: NetCDFFormat = NetCDFFormat.LAYERED_MESH,
+        configuration=None,
+    ):
         """
-        modeltime : FloPy ModelTime object
-        mesh_type : dataset mesh type
-               valid mesh types are "layered" or None (i.e. "structured")
-               VertexGrid objects only support layered mesh
-        configuration : configuration dictionary
+        modeltime    : FloPy ModelTime object
+        netcdf_format: must be NetCDFFormat.LAYERED_MESH; VertexGrid only
+                       supports UGRID layered-mesh output
+        configuration: configuration dictionary
         """
-        if mesh_type is None or mesh_type.upper() != "LAYERED":
-            raise ValueError("Vertex grid only supports layered mesh datasets")
+        if netcdf_format != NetCDFFormat.LAYERED_MESH:
+            raise ValueError("VertexGrid only supports NetCDFFormat.LAYERED_MESH output")
 
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")

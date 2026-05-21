@@ -26,6 +26,7 @@ import flopy
 from _timer import make_parser, profile_fn, report, time_writes, write_results
 
 import flopy4
+from flopy4.mf6.enums import NetCDFFormat
 
 OUT = Path(__file__).parent / "results"
 
@@ -242,7 +243,7 @@ def main():
         gwf4g.netcdf_file = nc_fpth_s1m
         gwf4g.netcdf_mesh2d_file = Path("test1000.nc")
         nc_s1m = flopy4.mf6.netcdf.NetCDFModel.from_model(
-            gwf4g, mesh="layered", grid=grid, time=time4
+            gwf4g, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
         )
 
         def write_s1_nc_mesh():
@@ -349,7 +350,7 @@ def main():
         gwf4.netcdf_file = nc_fpth_s2m
         gwf4.netcdf_mesh2d_file = Path("test1000.nc")
         nc_s2m = flopy4.mf6.netcdf.NetCDFModel.from_model(
-            gwf4, mesh="layered", grid=grid, time=time4
+            gwf4, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
         )
 
         def write_s2_nc_mesh():
@@ -470,7 +471,7 @@ def main():
         gwf4.netcdf_file = nc_fpth_s3m
         gwf4.netcdf_mesh2d_file = Path("test1000.nc")
         nc_s3m = flopy4.mf6.netcdf.NetCDFModel.from_model(
-            gwf4, mesh="layered", grid=grid, time=time4
+            gwf4, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
         )
 
         def write_s3_nc_mesh():

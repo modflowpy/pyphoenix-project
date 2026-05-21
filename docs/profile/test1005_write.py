@@ -22,6 +22,7 @@ import flopy
 from _timer import make_parser, profile_fn, report, time_writes, write_results
 
 import flopy4
+from flopy4.mf6.enums import NetCDFFormat
 
 OUT = Path(__file__).parent / "results"
 
@@ -254,7 +255,7 @@ def main():
     gwf_nc.netcdf_file = nc_fpth_m
     gwf_nc.netcdf_mesh2d_file = Path("test1005.nc")
     nc_mesh = flopy4.mf6.netcdf.NetCDFModel.from_model(
-        gwf_nc, mesh="layered", grid=grid, time=time4
+        gwf_nc, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
     )
 
     def write_nc_mesh():
