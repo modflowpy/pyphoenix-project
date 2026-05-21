@@ -76,6 +76,11 @@ default = true
 developmode = false
 default = true
 
+["utl-ncf".wkt]
+# wkt is the primary CRS mechanism for NETCDF_MESH2D but also applies to
+# NETCDF_STRUCTURED; clarify before saying when it is ignored.
+description = "is the coordinate reference system (CRS) well-known text (WKT) string. Used to embed CRS metadata in NETCDF_MESH2D output. Ignored if latitude and longitude griddata arrays have been provided for NETCDF_STRUCTURED export type."
+
 # Longname copy-paste and spelling errors — pending upstream modflow6 PRs
 
 ["gwf-evta".rate]

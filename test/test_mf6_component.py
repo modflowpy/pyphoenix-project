@@ -1354,3 +1354,61 @@ def test_ncf_wkt_write(function_tmpdir):
 
     ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
     assert f"WKT '{wkt}'" in ncf_text
+
+
+def test_ncf_from_grid_wkt(function_tmpdir):
+    """Ncf.from_grid_wkt() derives a WKT string from the grid's CRS."""
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=2,
+        ncol=3,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=573000.0,
+        yoff=4100000.0,
+        crs="EPSG:26911",
+    )
+    ncf = Ncf.from_grid_wkt(grid)
+    assert ncf.wkt is not None
+    assert "NAD83" in ncf.wkt or "WGS 84" in ncf.wkt or "UTM" in ncf.wkt
+    assert '"' in ncf.wkt
+
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+    ncf.write()
+    ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
+    assert "WKT '" in ncf_text
+
+
+def test_ncf_from_grid_wkt_no_crs():
+    """Ncf.from_grid_wkt() raises when the grid has no CRS."""
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=3, delr=1.0, delc=1.0, top=0.0, botm=[-1.0])
+    with pytest.raises(ValueError, match="no CRS"):
+        Ncf.from_grid_wkt(grid)
+
+
+def test_ncf_from_grid_latlon(function_tmpdir):
+    """Ncf.from_grid_latlon() derives lat/lon arrays from the grid's CRS."""
+    nrow, ncol = 2, 3
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=nrow,
+        ncol=ncol,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=573000.0,
+        yoff=4100000.0,
+        crs="EPSG:26911",
+    )
+    ncf = Ncf.from_grid_latlon(grid)
+    assert ncf.ncpl == nrow * ncol
+    assert ncf.latitude is not None
+    assert ncf.longitude is not None
+    assert len(ncf.latitude) == nrow * ncol
+    assert len(ncf.longitude) == nrow * ncol
+    # EPSG:26911 is UTM zone 11N — expect latitudes ~37° and longitudes ~-120°
+    assert all(30 < lat < 45 for lat in np.asarray(ncf.latitude).ravel())
+    assert all(-125 < lon < -115 for lon in np.asarray(ncf.longitude).ravel())

@@ -55,3 +55,24 @@ class Ncf(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="cell center longitude",
     )
+
+    @classmethod
+    def from_grid_wkt(cls, grid) -> "Ncf":
+        """Build Ncf with a WKT1_GDAL CRS string; applies to both mesh and structured NetCDF."""
+        from pyproj import CRS
+        from pyproj.enums import WktVersion
+
+        if grid.crs is None:
+            raise ValueError("Grid has no CRS; set grid.crs before calling from_grid_wkt().")
+        wkt = CRS.from_user_input(grid.crs).to_wkt(WktVersion.WKT1_GDAL)
+        return cls(wkt=wkt)
+
+    @classmethod
+    def from_grid_latlon(cls, grid) -> "Ncf":
+        """Build Ncf with lat/lon cell-centre arrays for CF-structured NetCDF output."""
+        lats, lons = grid.latlon()
+        if lats is None:
+            raise ValueError(
+                "Grid has no CRS or latlon() failed; cannot derive lat/lon coordinates."
+            )
+        return cls(ncpl=len(lats), latitude=lats, longitude=lons)
