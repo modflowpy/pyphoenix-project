@@ -147,13 +147,14 @@ def array2string(value: NDArray, precision: int = 9) -> str:
 
 def quote_if_needed(value: str) -> str:
     """
-    Wrap a string in single quotes if it contains spaces or double-quotes.
+    Wrap a string in single quotes if it contains double-quotes.
 
-    MF6 input requires single-quoted strings for values that contain
-    whitespace or special characters (e.g. WKT CRS strings).
-    Plain tokens like 'METERS' or 'EPSG:26911' are left unquoted.
+    WKT CRS strings (e.g. PROJCS["NAD83 / UTM zone 11N",...]) always
+    contain double-quotes and must be single-quoted for MF6 to parse them.
+    MF6 keyword sequences like 'STEPS 1 5' or 'all' are left as-is even
+    if they contain spaces, because they are not string literals.
     """
-    if isinstance(value, str) and (" " in value or '"' in value):
+    if isinstance(value, str) and '"' in value:
         return f"'{value}'"
     return str(value)
 
