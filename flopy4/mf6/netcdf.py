@@ -13,6 +13,7 @@ from pydantic import (
 from xattree import XatSpec, asdict, get_xatspec
 
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
+from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import blocks_dict
@@ -123,7 +124,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
     def from_model(
         cls,
         model: Model,
-        mesh: str | None = None,
+        netcdf_format: NetCDFFormat = NetCDFFormat.STRUCTURED,
         grid: StructuredGrid | VertexGrid | None = None,
         time: Time | None = None,
     ):
@@ -137,8 +138,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
         packages = []
         distype = None
 
-        if mesh is not None and mesh.lower() != "structured":
-            attrs["mesh"] = mesh.lower()
+        if netcdf_format == NetCDFFormat.LAYERED_MESH:
+            attrs["mesh"] = NetCDFFormat.LAYERED_MESH.value
 
         for c in model.children:  # type: ignore
             package = model.children[c]  # type: ignore
@@ -216,7 +217,12 @@ class NetCDFModel(BaseModel, NetCDFInput):
             conventions = "CF-1.11"  # type: ignore
             if meta["attrs"]["mesh"] is not None:
                 conventions = f"{conventions} UGRID-1.0"
-            dss.append(self._grid.to_xarray(mesh_type=meta["attrs"]["mesh"], modeltime=self._time))
+            _fmt = (
+                NetCDFFormat.LAYERED_MESH
+                if meta["attrs"]["mesh"] is not None
+                else NetCDFFormat.STRUCTURED
+            )
+            dss.append(self._grid.to_xarray(netcdf_format=_fmt, modeltime=self._time))
             meta["attrs"]["Conventions"] = conventions
 
         for p in self.packages:

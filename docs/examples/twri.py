@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 
 import flopy4
+from flopy4.mf6.enums import NetCDFFormat
 
 # ### Setup
 
@@ -368,8 +369,8 @@ if os.getenv("MF6_EXTENDED"):
 
 # # NetCDF input — layered mesh
 #
-# `mesh="layered"` writes a layered UGRID mesh NetCDF, which MODFLOW 6
-# reads with its NetCDF-mesh2d input mode.
+# ``netcdf_format=NetCDFFormat.LAYERED_MESH`` writes a UGRID layered-mesh NetCDF,
+# which MODFLOW 6 reads with its NetCDF-mesh2d input mode.
 
 # Create workspace
 workspace = TWRI_ROOT / "twri" / "netcdf_mesh"
@@ -380,7 +381,7 @@ nc_fpth = workspace / "twri.input.nc"
 gwf.netcdf_file = nc_fpth
 
 # Again, no grid or time arguments defined
-nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, mesh="layered")
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH)
 nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):

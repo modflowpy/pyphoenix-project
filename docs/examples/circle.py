@@ -25,6 +25,7 @@ import xugrid as xu
 from flopy.mf6.utils.binarygrid_util import MfGrdFile
 
 import flopy4
+from flopy4.mf6.enums import NetCDFFormat
 
 # ### Setup
 
@@ -301,7 +302,7 @@ gwf.netcdf_file = nc_fpth
 # Here, grid and time info is passed to the `NetCDFModel' constructor
 # so that coordinate and mesh data is written to the NetCDF file.
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
-    gwf, mesh="layered", grid=disv.to_grid(), time=time
+    gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=disv.to_grid(), time=time
 )
 nc_model.to_netcdf(nc_fpth)
 
@@ -350,7 +351,7 @@ gwf.netcdf_file = nc_fpth
 
 # Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
-    gwf, mesh="layered", grid=disv.to_grid(), time=time
+    gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=disv.to_grid(), time=time
 )
 nc_model.to_netcdf(nc_fpth)
 

@@ -21,6 +21,7 @@ import flopy
 from _timer import make_parser, profile_fn, report, time_writes, write_results
 
 import flopy4
+from flopy4.mf6.enums import NetCDFFormat
 
 DATA_ROOT = Path(__file__).parent.parent / "examples" / "data" / "frenchman-flat" / "arrays"
 OUT = Path(__file__).parent / "results" / "ff"
@@ -368,7 +369,7 @@ def main():
     nc_fpth = ws / "frenchman-flat.input.nc"
     gwf.netcdf_file = nc_fpth
     nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
-        gwf, mesh="layered", grid=grid, time=time_data
+        gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time_data
     )
 
     def write_nc_base():
@@ -390,7 +391,7 @@ def main():
     gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
     gwf.netcdf_file = Path("frenchman-flat.input.nc")
     nc_model2 = flopy4.mf6.netcdf.NetCDFModel.from_model(
-        gwf, mesh="layered", grid=grid, time=time_data
+        gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time_data
     )
 
     def write_nc_mesh():

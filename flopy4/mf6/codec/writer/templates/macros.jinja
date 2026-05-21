@@ -15,7 +15,7 @@
 
 {% macro scalar(name, value) %}
 {% set type = value|field_type %}
-{% if value is not none %}{{ inset ~ name.upper() }}{% if type != 'keyword' %} {{ value }}{% endif %}{% endif %}
+{% if value is not none %}{{ inset ~ name.upper() }}{% if type != 'keyword' %} {{ value|quote_if_needed }}{% endif %}{% endif %}
 {% endmacro %}
 
 {% macro record(value) %}

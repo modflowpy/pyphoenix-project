@@ -45,13 +45,15 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
             case Component():
                 blocks[block_name][child_name] = [Binding.from_component(child).to_tuple()]
             case Mapping():
-                blocks[block_name][child_name] = [
+                bindings = [
                     Binding.from_component(c).to_tuple() for c in child.values() if c is not None
                 ]
+                if bindings:
+                    blocks[block_name][child_name] = bindings
             case Iterable():
-                blocks[block_name][child_name] = [
-                    Binding.from_component(c).to_tuple() for c in child if c is not None
-                ]
+                bindings = [Binding.from_component(c).to_tuple() for c in child if c is not None]
+                if bindings:
+                    blocks[block_name][child_name] = bindings
             case _:
                 raise ValueError(f"Unexpected child type: {type(child)}")
 

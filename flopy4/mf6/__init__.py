@@ -12,6 +12,7 @@ from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
 from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.ems import Ems
+from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.exchange import GwfGwe, GwfGwt
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.netcdf import NetCDFModel
@@ -28,6 +29,7 @@ __all__ = [
     "solution",
     "utils",
     "Ems",
+    "NetCDFFormat",
     "GwfGwe",
     "GwfGwt",
     "Ims",

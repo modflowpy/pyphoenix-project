@@ -739,6 +739,7 @@ def test_quickstart_netcdf(function_tmpdir):
 
 
 def test_quickstart_netcdf_mesh(function_tmpdir):
+    from flopy4.mf6.enums import NetCDFFormat
     from flopy4.mf6.netcdf import NetCDFModel
 
     sim_name = "quickstart"
@@ -796,7 +797,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
     gwf.netcdf_file = nc_fpth
 
-    nc_model = NetCDFModel.from_model(gwf, mesh="layered")
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH)
     ds = nc_model.to_xarray()
     ds.to_netcdf(nc_fpth)
 

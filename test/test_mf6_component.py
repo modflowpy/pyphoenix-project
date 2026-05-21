@@ -10,12 +10,14 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.constants import FILL_DNODATA, LENBOUNDNAME
+from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
+from flopy4.mf6.utl.ncf import Ncf
 
 
 def test_registry():
@@ -1271,3 +1273,144 @@ def test_grid_with_idomain():
     assert grid.dataset["idomain"].values[0, 0, 0] == 0
     assert grid.dataset["idomain"].values[1, 2, 2] == -1
     assert grid.dataset["idomain"].values[0, 1, 1] == 1
+
+
+def test_ncf_subpackage_write(function_tmpdir):
+    """NCF subpackage file is written when attached to Dis."""
+    nrow, ncol = 2, 3
+    ncpl = nrow * ncol
+    ncf = Ncf(
+        ncpl=ncpl,
+        latitude=np.array([35.1, 35.2, 35.3, 35.4, 35.5, 35.6]),
+        longitude=np.array([-120.1, -120.2, -120.3, -120.4, -120.5, -120.6]),
+    )
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    dis = Dis(nlay=1, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    dis.write()
+
+    assert (function_tmpdir / "gwf.dis").exists()
+    assert (function_tmpdir / "gwf.dis.ncf").exists()
+    dis_text = (function_tmpdir / "gwf.dis").read_text()
+    assert "NCF6 FILEIN gwf.dis.ncf" in dis_text
+
+
+def test_ncf_subpackage_auto_sync_filerecord(function_tmpdir):
+    """ncf6_filerecord is auto-populated from ncf.filename when not pre-set."""
+    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    assert dis.ncf6_filerecord is None
+
+    dis.write()
+
+    assert dis.ncf6_filerecord == Path("gwf.dis.ncf")
+
+
+def test_ncf_subpackage_no_overwrite_filerecord(function_tmpdir):
+    """Pre-set ncf6_filerecord is preserved — auto-sync is skipped."""
+    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
+    ncf.filename = str(function_tmpdir / "actual.ncf")
+
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    dis.ncf6_filerecord = Path("explicit.ncf")
+
+    dis.write()
+
+    assert dis.ncf6_filerecord == Path("explicit.ncf")
+
+
+def test_ncf_subpackage_float_precision(function_tmpdir):
+    """NCF lat/lon arrays are written with float64 precision (15 sig figs)."""
+    lat = 35.123456789012345
+    lon = -120.987654321098765
+    ncf = Ncf(ncpl=1, latitude=[lat], longitude=[lon])
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    dis = Dis(nlay=1, nrow=1, ncol=1, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    dis.write()
+
+    ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
+    # default precision is 8 sig figs (3.51234568e+01); at precision=15 more digits survive
+    assert "3.512345678901" in ncf_text
+    assert "1.209876543210" in ncf_text
+
+
+def test_ncf_wkt_write(function_tmpdir):
+    """Ncf accepts a plain WKT string and writes it single-quoted in OPTIONS."""
+    wkt = 'PROJCS["NAD83 / UTM zone 11N",GEOGCS["NAD83",DATUM["North_American_Datum_1983"]]]'
+    ncf = Ncf(wkt=wkt)
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+
+    ncf.write()
+
+    ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
+    assert f"WKT '{wkt}'" in ncf_text
+
+
+def test_ncf_from_grid_layered_mesh(function_tmpdir):
+    """Ncf.from_grid(LAYERED_MESH) derives a WKT string from the grid's CRS."""
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=2,
+        ncol=3,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=573000.0,
+        yoff=4100000.0,
+        crs="EPSG:26911",
+    )
+    ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
+    assert ncf.wkt is not None
+    assert "NAD83" in ncf.wkt or "WGS 84" in ncf.wkt or "UTM" in ncf.wkt
+    assert '"' in ncf.wkt
+
+    ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
+    ncf.write()
+    ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
+    assert "WKT '" in ncf_text
+
+
+def test_ncf_from_grid_no_crs():
+    """Ncf.from_grid() warns and returns unconfigured Ncf when grid has no CRS."""
+    grid = StructuredGrid(nlay=1, nrow=2, ncol=3, delr=1.0, delc=1.0, top=0.0, botm=[-1.0])
+    with pytest.warns(UserWarning, match="no CRS"):
+        ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
+    assert ncf.wkt is None
+
+
+def test_ncf_from_grid_structured(function_tmpdir):
+    """Ncf.from_grid(STRUCTURED) derives lat/lon arrays from the grid's CRS."""
+    nrow, ncol = 2, 3
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=nrow,
+        ncol=ncol,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=573000.0,
+        yoff=4100000.0,
+        crs="EPSG:26911",
+    )
+    ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
+    assert ncf.ncpl == nrow * ncol
+    assert ncf.latitude is not None
+    assert ncf.longitude is not None
+    assert len(ncf.latitude) == nrow * ncol
+    assert len(ncf.longitude) == nrow * ncol
+    # EPSG:26911 is UTM zone 11N — expect latitudes ~37° and longitudes ~-120°
+    assert all(30 < lat < 45 for lat in np.asarray(ncf.latitude).ravel())
+    assert all(-125 < lon < -115 for lon in np.asarray(ncf.longitude).ravel())

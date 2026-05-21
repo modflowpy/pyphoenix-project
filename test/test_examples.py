@@ -1,5 +1,6 @@
 """Test example notebooks."""
 
+import os
 import sys
 
 import numpy as np
@@ -86,7 +87,9 @@ def compare(example_script):
 
 @pytest.mark.slow
 def test_scripts(example_script):
+    env = os.environ.copy()
+    env["MPLBACKEND"] = "Agg"
     args = [sys.executable, example_script]
-    stdout, stderr, retcode = run_cmd(*args, verbose=True)
+    stdout, stderr, retcode = run_cmd(*args, verbose=True, env=env)
     assert not retcode, stdout + stderr
     compare(example_script)

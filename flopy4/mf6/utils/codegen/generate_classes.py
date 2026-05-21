@@ -33,6 +33,11 @@ _MF6_REPO_NAME = "modflow6"
 # dis/disv: require DisBase + grid conversion methods (dis tier).
 # tdis/ims: top-level hand-written files, not yet templated.
 # *g / *a variants: gridded/array package variants, deferred.
+#
+# TODO (subpackage tier): detect `# flopy subpackage` DFN annotations and emit
+# a typed child attrs field (e.g. ncf: Optional[Ncf]) alongside the existing path
+# field; DisBase.write() already establishes the write pattern for NCF.
+# utl-ts also needs period values referencing timeseries by name written as strings.
 _SKIP = {
     # discretization tier (require DisBase + grid methods)
     "gwf-dis",
@@ -42,6 +47,10 @@ _SKIP = {
     "prt-dis",
     # time discretization (hand-written tdis.py)
     "sim-tdis",
+    # hand-written: wkt field type override + Ncf.from_grid() factory.
+    # TODO: move factory to NcfBase (utl/ncf_base.py) so codegen can own utl/ncf.py,
+    # matching the DisBase pattern used for discretization packages.
+    "utl-ncf",
 }
 
 

@@ -145,6 +145,20 @@ def array2string(value: NDArray, precision: int = 9) -> str:
     return buffer.getvalue().strip()
 
 
+def quote_if_needed(value: str) -> str:
+    """
+    Wrap a string in single quotes if it contains double-quotes.
+
+    WKT CRS strings (e.g. PROJCS["NAD83 / UTM zone 11N",...]) always
+    contain double-quotes and must be single-quoted for MF6 to parse them.
+    MF6 keyword sequences like 'STEPS 1 5' or 'all' are left as-is even
+    if they contain spaces, because they are not string literals.
+    """
+    if isinstance(value, str) and '"' in value:
+        return f"'{value}'"
+    return str(value)
+
+
 def nonempty(value: NDArray | xr.DataArray) -> NDArray:
     """
     Return a boolean mask of non-empty (non-nodata) values in an array.
