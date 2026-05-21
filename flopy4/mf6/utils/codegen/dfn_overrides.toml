@@ -81,6 +81,31 @@ default = true
 # NETCDF_STRUCTURED; clarify before saying when it is ignored.
 description = "is the coordinate reference system (CRS) well-known text (WKT) string. Used to embed CRS metadata in NETCDF_MESH2D output. Ignored if latitude and longitude griddata arrays have been provided for NETCDF_STRUCTURED export type."
 
+["utl-ncf".deflate]
+# deflate description does not mention shuffle as its companion; add symmetry.
+description = "is the variable deflate level (0=min, 9=max) in the NetCDF file. Defining this parameter activates per-variable compression at the level specified. Use with the SHUFFLE option to also enable the shuffle filter."
+
+["utl-ncf".chunk_time]
+# chunk_* fields are integers, not keywords; fix "is the keyword used to provide"
+# and fix "the the" typo in the original.
+description = "is the chunk size for the time dimension in a NETCDF_MESH2D or NETCDF_STRUCTURED output file. Must be used in combination with the chunk_face parameter (NETCDF_MESH2D) or the chunk_z, chunk_y, and chunk_x parameter set (NETCDF_STRUCTURED) to have an effect."
+
+["utl-ncf".chunk_face]
+# chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
+description = "is the chunk size for the face dimension in a NETCDF_MESH2D output file. Must be used in combination with the chunk_time parameter to have an effect."
+
+["utl-ncf".chunk_z]
+# chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
+description = "is the chunk size for the z dimension in a NETCDF_STRUCTURED output file. Must be used in combination with the chunk_time, chunk_x, and chunk_y parameters to have an effect."
+
+["utl-ncf".chunk_y]
+# chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
+description = "is the chunk size for the y dimension in a NETCDF_STRUCTURED output file. Must be used in combination with the chunk_time, chunk_x, and chunk_z parameters to have an effect."
+
+["utl-ncf".chunk_x]
+# chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
+description = "is the chunk size for the x dimension in a NETCDF_STRUCTURED output file. Must be used in combination with the chunk_time, chunk_y, and chunk_z parameters to have an effect."
+
 # Longname copy-paste and spelling errors — pending upstream modflow6 PRs
 
 ["gwf-evta".rate]

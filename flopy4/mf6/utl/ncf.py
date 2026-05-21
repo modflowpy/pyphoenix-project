@@ -12,16 +12,32 @@ from flopy4.mf6.spec import array, dim, field
 
 @xattree(kw_only=True)
 class Ncf(Package):
+    """NetCDF configuration subpackage (UTL-NCF).
+
+    Two distinct use cases:
+
+    - **Mesh (NETCDF_MESH2D)**: set ``wkt`` to embed CRS metadata in UGRID output.
+      Use :meth:`from_grid_wkt` to derive the WKT string from a grid's CRS.
+    - **Structured (NETCDF_STRUCTURED)**: set ``latitude`` / ``longitude`` to
+      provide explicit geographic cell-centre coordinates for CF output.
+      Use :meth:`from_grid_latlon` to derive them from a grid's CRS.
+      ``wkt`` is ignored when lat/lon arrays are present.
+    """
+
     # lenbigline in the DFN is a Fortran string-length artifact; Python uses plain str.
     wkt: Optional[str] = field(
         block="options",
         default=None,
         longname="crs well-known text (wkt) string",
     )
+    # Compression: deflate activates per-variable compression; shuffle only has
+    # effect when deflate is also set.
     deflate: Optional[int] = field(
         block="options", default=None, longname="variable compression deflate level"
     )
     shuffle: bool = field(block="options", default=False)
+    # Chunking: chunk_time is shared. Pair it with chunk_face for NETCDF_MESH2D,
+    # or with chunk_z/chunk_y/chunk_x for NETCDF_STRUCTURED.
     chunk_time: Optional[int] = field(
         block="options", default=None, longname="chunking parameter for the time dimension"
     )
