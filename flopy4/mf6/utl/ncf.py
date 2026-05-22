@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -76,10 +76,15 @@ class Ncf(Package):
     )
 
     @classmethod
-    def from_grid(cls, grid, netcdf_format: NetCDFFormat) -> "Ncf":
+    def from_grid(
+        cls,
+        grid,
+        netcdf_format: NetCDFFormat,
+        wkt_version: Literal[1, 2] = 1,
+    ) -> "Ncf":
         """Build an Ncf configured for the given NetCDF output format.
 
-        For ``NetCDFFormat.LAYERED_MESH``: embeds a WKT1_GDAL CRS string in
+        For ``NetCDFFormat.LAYERED_MESH``: embeds a WKT CRS string in
         the OPTIONS block so MODFLOW can label the coordinate system in the
         UGRID output metadata.
 
@@ -89,6 +94,12 @@ class Ncf(Package):
 
         In either case, if the grid has no CRS the method returns an
         unconfigured ``Ncf()`` and emits a ``UserWarning``.
+
+        Parameters
+        ----------
+        wkt_version : {1, 2}
+            WKT version for the CRS string in LAYERED_MESH format.
+            1 (default) writes WKT1_GDAL; 2 writes WKT2_2019.
         """
         if netcdf_format == NetCDFFormat.LAYERED_MESH:
             from pyproj import CRS
@@ -102,7 +113,8 @@ class Ncf(Package):
                     stacklevel=2,
                 )
                 return cls()
-            wkt = CRS.from_user_input(grid.crs).to_wkt(WktVersion.WKT1_GDAL)
+            _wkt_version = WktVersion.WKT1_GDAL if wkt_version == 1 else WktVersion.WKT2_2019
+            wkt = CRS.from_user_input(grid.crs).to_wkt(_wkt_version)
             return cls(wkt=wkt)
         else:
             lats, lons = grid.latlon()

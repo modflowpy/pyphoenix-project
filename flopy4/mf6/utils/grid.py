@@ -527,7 +527,8 @@ class StructuredGrid(LegacyStructuredGrid):
         }
         ds = ds.assign(var_d)
         ds["time"].attrs["calendar"] = "standard"
-        ds["time"].attrs["units"] = f"{modeltime.time_units} since {modeltime.start_datetime}"
+        _tunits = modeltime.time_units if modeltime.time_units not in (None, "unknown") else "days"
+        ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
         ds["time"].attrs["axis"] = "T"
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
@@ -609,10 +610,13 @@ class StructuredGrid(LegacyStructuredGrid):
             if wkt_configured:
                 # wkt override to existing crs
                 ds["projection"].attrs["wkt"] = configuration["wkt"]
+                ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
             else:
                 from pyproj.enums import WktVersion
 
-                ds["projection"].attrs["wkt"] = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+                _wkt = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+                ds["projection"].attrs["wkt"] = _wkt
+                ds["projection"].attrs["crs_wkt"] = _wkt
 
         return ds
 
@@ -669,7 +673,8 @@ class StructuredGrid(LegacyStructuredGrid):
         ds = ds.assign(var_d)
 
         ds["time"].attrs["calendar"] = "standard"
-        ds["time"].attrs["units"] = f"{modeltime.time_units} since {modeltime.start_datetime}"
+        _tunits = modeltime.time_units if modeltime.time_units not in (None, "unknown") else "days"
+        ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
         ds["time"].attrs["axis"] = "T"
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
@@ -727,6 +732,7 @@ class StructuredGrid(LegacyStructuredGrid):
             ds["y"].attrs["grid_mapping"] = "projection"
             ds = ds.assign({"projection": ([], np.int64(1))})
             ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
+            ds["projection"].attrs["wkt"] = configuration["wkt"]
 
         return ds
 
@@ -1142,7 +1148,9 @@ class VertexGrid(LegacyVertexGrid):
             }
             ds = ds.assign(var_d)
             ds["time"].attrs["calendar"] = "standard"
-            ds["time"].attrs["units"] = f"{modeltime.time_units} since {modeltime.start_datetime}"
+            _tu = modeltime.time_units
+            _tunits = _tu if _tu not in (None, "unknown") else "days"
+            ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
             ds["time"].attrs["axis"] = "T"
             ds["time"].attrs["standard_name"] = "time"
             ds["time"].attrs["long_name"] = "time"
@@ -1220,10 +1228,13 @@ class VertexGrid(LegacyVertexGrid):
                 if wkt_configured:
                     # wkt override to existing crs
                     ds["projection"].attrs["wkt"] = configuration["wkt"]
+                    ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
                 else:
                     from pyproj.enums import WktVersion
 
-                    ds["projection"].attrs["wkt"] = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+                    _wkt = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+                    ds["projection"].attrs["wkt"] = _wkt
+                    ds["projection"].attrs["crs_wkt"] = _wkt
 
             return ds
         finally:

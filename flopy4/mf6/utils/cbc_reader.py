@@ -144,7 +144,7 @@ def open_cbc(
 
     if grb_info["grid_type"] == "DIS":
         cbc = _open_cbc_dis(cbc_path, grb_info["grid"], flowja, simulation_start_time, time_unit)
-        return xr.merge([cbc])
+        return xr.merge([cbc], compat="override")
     elif grb_info["grid_type"] == "DISV":
         cbc = _open_cbc_disv(cbc_path, grb_info, flowja, simulation_start_time, time_unit)
         # Build xr.Dataset from dict, extracting underlying xr.DataArrays

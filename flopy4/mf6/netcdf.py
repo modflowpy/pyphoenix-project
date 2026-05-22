@@ -233,7 +233,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
         dt = datetime.datetime.now()
         timestamp = dt.strftime("%m/%d/%Y %H:%M:%S")
-        meta["attrs"]["source"] = f"pyphoenix {__version__}"
+        meta["attrs"]["source"] = f"flopy4 {__version__}"
         meta["attrs"]["history"] = f"first created {timestamp}"
 
         for a in meta["attrs"]:
