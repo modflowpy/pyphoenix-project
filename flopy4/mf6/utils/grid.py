@@ -708,14 +708,12 @@ class StructuredGrid(LegacyStructuredGrid):
             lats, lons = self.latlon()
 
         if lats is not None and lons is not None:
-            # create coordinate vars
+            # create lat/lon auxiliary coordinate variables
             var_d = {
                 "lat": (["y", "x"], lats.reshape(yc.size, xc.size)),
                 "lon": (["y", "x"], lons.reshape(yc.size, xc.size)),
             }
             ds = ds.assign(var_d)
-
-            # set coordinate attributes
             ds["lat"].attrs["units"] = "degrees_north"
             ds["lat"].attrs["standard_name"] = "latitude"
             ds["lat"].attrs["long_name"] = "latitude"
@@ -723,16 +721,29 @@ class StructuredGrid(LegacyStructuredGrid):
             ds["lon"].attrs["standard_name"] = "longitude"
             ds["lon"].attrs["long_name"] = "longitude"
 
-        elif (
+        # Write projection variable whenever CRS is available
+        _wkt = None
+        if (
             configuration is not None
             and "wkt" in configuration
             and configuration["wkt"] is not None
         ):
-            ds["x"].attrs["grid_mapping"] = "projection"
-            ds["y"].attrs["grid_mapping"] = "projection"
+            _wkt = configuration["wkt"]
+        elif self.crs is not None:
+            from pyproj.enums import WktVersion
+
+            _wkt = self.crs.to_wkt(WktVersion.WKT1_GDAL)
+
+        if _wkt is not None:
+            ds["x"].attrs["grid_mapping"] = "projection"  # S2
+            ds["y"].attrs["grid_mapping"] = "projection"  # S2
+            if "lat" in ds:
+                ds["lat"].attrs["grid_mapping"] = "projection"  # SB2
+            if "lon" in ds:
+                ds["lon"].attrs["grid_mapping"] = "projection"  # SB2
             ds = ds.assign({"projection": ([], np.int64(1))})
-            ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
-            ds["projection"].attrs["wkt"] = configuration["wkt"]
+            ds["projection"].attrs["crs_wkt"] = _wkt
+            ds["projection"].attrs["wkt"] = _wkt
 
         return ds
 
