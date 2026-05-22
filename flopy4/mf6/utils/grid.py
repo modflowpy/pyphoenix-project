@@ -583,18 +583,6 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
         ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
 
-        # create grid index auxiliary coordinate variables
-        # k is on a new "z" dim (orphaned from nmesh_face) for layer indexing,
-        # consistent with VertexGrid. i/j are omitted here because the mesh
-        # uses nmesh_face as its spatial dim — not y/x — so row/col indices
-        # would create disconnected dimensions. Use icell2d on nmesh_face instead.
-        ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
-        ds = ds.assign_coords(icell2d=("nmesh_face", np.arange(self.nrow * self.ncol, dtype=int)))
-        ds = ds.set_xindex("k", PandasIndex)
-        ds = ds.set_xindex("icell2d", PandasIndex)
-        ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
-        ds["icell2d"].attrs["long_name"] = "cell index auxiliary coordinate"
-
         wkt_configured = (
             configuration is not None
             and "wkt" in configuration
@@ -608,15 +596,18 @@ class StructuredGrid(LegacyStructuredGrid):
             ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
             ds = ds.assign({"projection": ([], np.int64(1))})
             if wkt_configured:
-                # wkt override to existing crs
-                ds["projection"].attrs["wkt"] = configuration["wkt"]
-                ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
+                _wkt = configuration["wkt"]
             else:
                 from pyproj.enums import WktVersion
 
                 _wkt = self.crs.to_wkt(WktVersion.WKT1_GDAL)
-                ds["projection"].attrs["wkt"] = _wkt
-                ds["projection"].attrs["crs_wkt"] = _wkt
+            from pyproj import CRS as ProjCRS
+
+            ds["projection"].attrs["wkt"] = _wkt
+            ds["projection"].attrs["crs_wkt"] = _wkt
+            _gmn = ProjCRS.from_wkt(_wkt).to_cf().get("grid_mapping_name")
+            if _gmn:
+                ds["projection"].attrs["grid_mapping_name"] = _gmn
 
         return ds
 
@@ -657,17 +648,6 @@ class StructuredGrid(LegacyStructuredGrid):
         }
         ds = ds.assign_coords(var_d)
 
-        # create grid index auxiliary coordinate variables
-        ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
-        ds = ds.assign_coords(i=("y", np.arange(self.nrow, dtype=int)))
-        ds = ds.assign_coords(j=("x", np.arange(self.ncol, dtype=int)))
-        ds = ds.set_xindex("k", PandasIndex)
-        ds = ds.set_xindex("i", PandasIndex)
-        ds = ds.set_xindex("j", PandasIndex)
-        ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
-        ds["i"].attrs["long_name"] = "row index auxiliary coordinate"
-        ds["j"].attrs["long_name"] = "column index auxiliary coordinate"
-
         # create bound vars
         var_d = {"x_bnds": (["x", "bnd"], x_bnds), "y_bnds": (["y", "bnd"], y_bnds)}
         ds = ds.assign(var_d)
@@ -678,8 +658,6 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["axis"] = "T"
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
-        ds["k"].attrs["units"] = "layer"
-        ds["k"].attrs["long_name"] = "layer number"
         ds["y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
         ds["y"].attrs["axis"] = "Y"
         ds["y"].attrs["standard_name"] = "projection_y_coordinate"
@@ -690,38 +668,14 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["x"].attrs["long_name"] = "Easting"
         ds["x"].attrs["bounds"] = "x_bnds"
+        ds["x"].encoding["_FillValue"] = None
+        ds["y"].encoding["_FillValue"] = None
 
-        latlon_cfg = (
-            configuration is not None
-            and "latitude" in configuration
-            and configuration["latitude"] is not None
-            and "longitude" in configuration
-            and configuration["longitude"] is not None
-        )
-
-        lats = None
-        lons = None
-        if latlon_cfg:
-            lats = configuration["latitude"]
-            lons = configuration["longitude"]
-        elif self.crs is not None:
-            lats, lons = self.latlon()
-
-        if lats is not None and lons is not None:
-            # create lat/lon auxiliary coordinate variables
-            var_d = {
-                "lat": (["y", "x"], lats.reshape(yc.size, xc.size)),
-                "lon": (["y", "x"], lons.reshape(yc.size, xc.size)),
-            }
-            ds = ds.assign(var_d)
-            ds["lat"].attrs["units"] = "degrees_north"
-            ds["lat"].attrs["standard_name"] = "latitude"
-            ds["lat"].attrs["long_name"] = "latitude"
-            ds["lon"].attrs["units"] = "degrees_east"
-            ds["lon"].attrs["standard_name"] = "longitude"
-            ds["lon"].attrs["long_name"] = "longitude"
-
-        # Write projection variable whenever CRS is available
+        # Write projection variable whenever CRS is available.
+        # Lat/lon auxiliary coordinates are intentionally omitted: GDAL-based
+        # tools (QGIS, ArcGIS) misplace projected rasters when 2D lat/lon arrays
+        # coexist with projected x/y dimension coordinates. The NCF subpackage
+        # (separate text file) still carries lat/lon for MODFLOW 6 output.
         _wkt = None
         if (
             configuration is not None
@@ -735,15 +689,43 @@ class StructuredGrid(LegacyStructuredGrid):
             _wkt = self.crs.to_wkt(WktVersion.WKT1_GDAL)
 
         if _wkt is not None:
-            ds["x"].attrs["grid_mapping"] = "projection"  # S2
-            ds["y"].attrs["grid_mapping"] = "projection"  # S2
-            if "lat" in ds:
-                ds["lat"].attrs["grid_mapping"] = "projection"  # SB2
-            if "lon" in ds:
-                ds["lon"].attrs["grid_mapping"] = "projection"  # SB2
+            ds["x"].attrs["grid_mapping"] = "projection"
+            ds["y"].attrs["grid_mapping"] = "projection"
             ds = ds.assign({"projection": ([], np.int64(1))})
+            from pyproj import CRS as ProjCRS
+
             ds["projection"].attrs["crs_wkt"] = _wkt
             ds["projection"].attrs["wkt"] = _wkt
+            _gmn = ProjCRS.from_wkt(_wkt).to_cf().get("grid_mapping_name")
+            if _gmn:
+                ds["projection"].attrs["grid_mapping_name"] = _gmn
+
+            # GDAL-compatible georeferencing: GDAL's CF driver does not build a
+            # geotransform from projected 1D coordinate variables. Writing these
+            # two attributes on the projection variable ensures correct placement
+            # in GDAL-based tools (QGIS, ArcGIS Pro via GDAL). MF6 ignores them.
+            # Note: GDAL reads GeoTransform from the grid_mapping variable, not
+            # from global attrs — NC_GLOBAL#GeoTransform is ignored for extent.
+            # Derive effective pixel sizes from the actual grid bounds so that
+            # variable-spacing grids get the correct bounding box in GDAL.
+            # Using x[1]-x[0] only works for uniform grids; outer cells in
+            # Frenchman-Flat-style grids are much coarser than interior cells.
+            _x_left = float(x_bnds[0][0])
+            _x_right = float(x_bnds[-1][1])
+            _y_top = float(y_bnds[0][1])
+            _y_bot = float(y_bnds[-1][0])
+            _dx_eff = (_x_right - _x_left) / len(xc)
+            _dy_eff = (_y_bot - _y_top) / len(yc)  # negative for north-up
+            _gt = [
+                _x_left,  # upper-left x
+                _dx_eff,  # effective x pixel size
+                0.0,
+                _y_top,  # upper-left y
+                0.0,
+                _dy_eff,  # effective y pixel size (negative for north-up)
+            ]
+            ds["projection"].attrs["GeoTransform"] = " ".join(str(v) for v in _gt)
+            ds["projection"].attrs["spatial_ref"] = _wkt
 
         return ds
 
@@ -1216,14 +1198,6 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_face_nodes"].attrs["_FillValue"] = FILL_INT64
             ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
 
-            # create grid index auxiliary coordinate variables
-            ds = ds.assign_coords(k=("z", np.arange(self.nlay, dtype=int)))
-            ds = ds.assign_coords(icpl=("nmesh_face", np.arange(self.ncpl, dtype=int)))
-            ds = ds.set_xindex("k", PandasIndex)
-            ds = ds.set_xindex("icpl", PandasIndex)
-            ds["k"].attrs["long_name"] = "layer index auxiliary coordinate"
-            ds["icpl"].attrs["long_name"] = "cell index auxiliary coordinate"
-
             wkt_configured = (
                 configuration is not None
                 and "wkt" in configuration
@@ -1237,15 +1211,18 @@ class VertexGrid(LegacyVertexGrid):
                 ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
                 ds = ds.assign({"projection": ([], np.int64(1))})
                 if wkt_configured:
-                    # wkt override to existing crs
-                    ds["projection"].attrs["wkt"] = configuration["wkt"]
-                    ds["projection"].attrs["crs_wkt"] = configuration["wkt"]
+                    _wkt = configuration["wkt"]
                 else:
                     from pyproj.enums import WktVersion
 
                     _wkt = self.crs.to_wkt(WktVersion.WKT1_GDAL)
-                    ds["projection"].attrs["wkt"] = _wkt
-                    ds["projection"].attrs["crs_wkt"] = _wkt
+                from pyproj import CRS as ProjCRS
+
+                ds["projection"].attrs["wkt"] = _wkt
+                ds["projection"].attrs["crs_wkt"] = _wkt
+                _gmn = ProjCRS.from_wkt(_wkt).to_cf().get("grid_mapping_name")
+                if _gmn:
+                    ds["projection"].attrs["grid_mapping_name"] = _gmn
 
             return ds
         finally:

@@ -57,7 +57,7 @@ def get_spec(package_name: str) -> XatSpec:
 def dimmap(gridtype: str, dims: list[int]) -> dict:
     _map = {
         "time": dims[0],
-        "z": dims[1],
+        "layer": dims[1],
     }
     if gridtype == "structured":
         _map["y"] = dims[2]
@@ -594,22 +594,19 @@ class NetCDFParam(BaseModel, NetCDFInput):
             and self._context["grid"] is not None
             and self._context["grid"].crs is not None
         ):
-            coords = []
             ds[varname].attrs["grid_mapping"] = "projection"
             if "nmesh_face" in ds[varname].dims:
-                coords.append("icpl")
-                coords.append("mesh_face_x")
-                coords.append("mesh_face_y")
-            if "z" in ds[varname].dims:
-                coords.append("k")
-            if "y" in ds[varname].dims:
-                coords.append("i")
-            if "x" in ds[varname].dims:
-                coords.append("j")
-            if "y" in ds[varname].dims and "x" in ds[varname].dims:
-                coords.append("lon")
-                coords.append("lat")
-            ds[varname].attrs["coordinates"] = " ".join(coords)
+                ds[varname].attrs["coordinates"] = "mesh_face_x mesh_face_y"
+                ds[varname].attrs["mesh"] = "mesh"
+                ds[varname].attrs["location"] = "face"
+            else:
+                coords = []
+                if "y" in ds[varname].dims:
+                    coords.append("y")
+                if "x" in ds[varname].dims:
+                    coords.append("x")
+                if coords:
+                    ds[varname].attrs["coordinates"] = " ".join(coords)
 
         return ds
 
@@ -647,7 +644,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
         validate parameter shape
         """
         v = [dim.lower() if isinstance(dim, str) else dim for dim in v]
-        valid = ["time", "nmesh_face", "z", "y", "x"]
+        valid = ["time", "nmesh_face", "layer", "y", "x"]
         if not all(dim in valid for dim in v):
             raise ValueError(f"invalid param shape={v}. Valid dims={valid}.")
         return v
@@ -722,12 +719,12 @@ class NetCDFParam(BaseModel, NetCDFInput):
         def _structured_shape(dfn_shape):
             shape = ["time"] if "nper" in dfn_shape else []
             if "nodes" in dfn_shape:
-                shape += ["z", "y", "x"]
+                shape += ["layer", "y", "x"]
             elif "ncpl" in dfn_shape:
                 shape += ["y", "x"]
             else:
                 if "nlay" in dfn_shape:
-                    shape.append("z")
+                    shape.append("layer")
                 if "nrow" in dfn_shape:
                     shape.append("y")
                 if "ncol" in dfn_shape:
@@ -783,18 +780,18 @@ class NetCDFParam(BaseModel, NetCDFInput):
             if "layer" in _meta["attrs"]:
                 data = _meta["data"]
                 layer = _meta["attrs"]["layer"] - 1
-                if data.size == nval * context["dimmap"]["z"]:
+                if data.size == nval * context["dimmap"]["layer"]:
                     # provided data is for full grid
                     s = list(dims)  # copy to avoid mutating dims in-place
                     if "nodes" in spec.arrays[param].dims:  # type: ignore
                         if _meta["shape"][0] == "time":
-                            s.insert(1, context["dimmap"]["z"])
+                            s.insert(1, context["dimmap"]["layer"])
                             _meta["data"] = data.reshape(s)[:, layer, :]
                         else:
-                            s.insert(0, context["dimmap"]["z"])
+                            s.insert(0, context["dimmap"]["layer"])
                             _meta["data"] = data.reshape(s)[layer, :].ravel()
                     elif "nlay" in spec.arrays[param].dims:  # type: ignore
-                        s.insert(0, context["dimmap"]["z"])
+                        s.insert(0, context["dimmap"]["layer"])
                         _meta["data"] = data.reshape(s)[layer, :].ravel()
                 else:
                     # assume provided data is correctly formatted
