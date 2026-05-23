@@ -70,11 +70,11 @@ def test_model_nomesh():
     assert np.allclose(ds["welg_0_q"].values, welg_0_q)
     assert np.allclose(ds["welg_0_concentration"].values, FILL_DNODATA)
     assert np.allclose(ds["rcha_0_recharge"].values, rcha_0_recharge)
-    assert ds["welg_0_q"].dims == ("time", "z", "y", "x")
-    assert ds["welg_0_concentration"].dims == ("time", "z", "y", "x")
+    assert ds["welg_0_q"].dims == ("time", "layer", "y", "x")
+    assert ds["welg_0_concentration"].dims == ("time", "layer", "y", "x")
     assert ds["rcha_0_recharge"].dims == ("time", "y", "x")
     assert ds.sizes["time"] == 2
-    assert ds.sizes["z"] == 4
+    assert ds.sizes["layer"] == 4
     assert ds.sizes["y"] == 3
     assert ds.sizes["x"] == 2
     assert len(ds) == 3
@@ -128,11 +128,11 @@ def test_package_nomesh():
     assert np.allclose(ds["welg_0_q"].values.ravel(), FILL_DNODATA)
     assert np.allclose(ds["welg_0_concentration"].values, FILL_DNODATA)
     assert np.allclose(ds["welg_0_temperature"].values, FILL_DNODATA)
-    assert ds["welg_0_q"].dims == ("time", "z", "y", "x")
-    assert ds["welg_0_concentration"].dims == ("time", "z", "y", "x")
-    assert ds["welg_0_temperature"].dims == ("time", "z", "y", "x")
+    assert ds["welg_0_q"].dims == ("time", "layer", "y", "x")
+    assert ds["welg_0_concentration"].dims == ("time", "layer", "y", "x")
+    assert ds["welg_0_temperature"].dims == ("time", "layer", "y", "x")
     assert ds.sizes["time"] == 1
-    assert ds.sizes["z"] == 1
+    assert ds.sizes["layer"] == 1
     assert ds.sizes["y"] == 1
     assert ds.sizes["x"] == 1
     assert len(ds) == 3

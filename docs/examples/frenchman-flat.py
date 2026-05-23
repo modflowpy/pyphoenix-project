@@ -760,7 +760,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 nc_fpth = workspace / "frenchman-flat.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_input_file = nc_fpth
 dis.ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
 dis.ncf.filename = workspace / "ff.dis.ncf"
 
@@ -879,7 +879,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
-gwf.netcdf_file = Path("frenchman-flat.input.nc")
+gwf.netcdf_input_file = Path("frenchman-flat.input.nc")
 dis.ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
 dis.ncf.filename = workspace / "ff.dis.ncf"
 
@@ -927,7 +927,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 nc_fpth = workspace / "frenchman-flat.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_input_file = nc_fpth
 gwf.netcdf_mesh2d_file = None
 dis.ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
 dis.ncf.filename = workspace / "ff.dis.ncf"

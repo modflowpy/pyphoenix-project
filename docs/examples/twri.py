@@ -343,7 +343,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 nc_fpth = workspace / "twri.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_input_file = nc_fpth
 
 # Here the `NetCDFModel` object is created without passing optional grid
 # and time arguments.  This generates a data only file (no coordinate or
@@ -378,7 +378,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 nc_fpth = workspace / "twri.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_input_file = nc_fpth
 
 # Again, no grid or time arguments defined
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH)

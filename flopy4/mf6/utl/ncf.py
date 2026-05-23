@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -21,10 +21,10 @@ class Ncf(Package):
     - **Mesh (NETCDF_MESH2D)**: set ``wkt`` to embed CRS metadata in UGRID output.
       Use :meth:`from_grid` with ``NetCDFFormat.LAYERED_MESH`` to derive the WKT
       string from a grid's CRS.
-    - **Structured (NETCDF_STRUCTURED)**: set ``latitude`` / ``longitude`` to
-      provide explicit geographic cell-centre coordinates for CF output.
-      Use :meth:`from_grid` with ``NetCDFFormat.STRUCTURED`` to derive them from
-      a grid's CRS.  ``wkt`` is ignored when lat/lon arrays are present.
+    - **Structured (NETCDF_STRUCTURED)**: set ``wkt`` to embed CRS metadata in
+      CF-structured output.  Use :meth:`from_grid` with ``NetCDFFormat.STRUCTURED``
+      to derive the WKT string from a grid's CRS.  The ``latitude`` / ``longitude``
+      fields are available for explicit geographic coordinates when needed.
     """
 
     # lenbigline in the DFN is a Fortran string-length artifact; Python uses plain str.
@@ -76,35 +76,34 @@ class Ncf(Package):
     )
 
     @classmethod
-    def from_grid(cls, grid, netcdf_format: NetCDFFormat) -> "Ncf":
+    def from_grid(
+        cls,
+        grid,
+        netcdf_format: NetCDFFormat,
+        wkt_version: Literal[1, 2] = 1,
+        latlon: bool = False,
+    ) -> "Ncf":
         """Build an Ncf configured for the given NetCDF output format.
 
-        For ``NetCDFFormat.LAYERED_MESH``: embeds a WKT1_GDAL CRS string in
-        the OPTIONS block so MODFLOW can label the coordinate system in the
-        UGRID output metadata.
+        By default embeds a WKT CRS string (``wkt=``) for both
+        ``LAYERED_MESH`` and ``STRUCTURED`` formats.  Pass ``latlon=True``
+        to write cell-centre latitude/longitude arrays instead; this is
+        mutually exclusive with ``wkt`` — when ``latlon=True`` no WKT is set.
 
-        For ``NetCDFFormat.STRUCTURED``: derives lat/lon cell-centre arrays
-        from the grid's CRS and stores them in the GRIDDATA block so the CF
-        output has explicit geographic coordinate axes.
+        If the grid has no CRS the method returns an unconfigured ``Ncf()``
+        and emits a ``UserWarning``.
 
-        In either case, if the grid has no CRS the method returns an
-        unconfigured ``Ncf()`` and emits a ``UserWarning``.
+        Parameters
+        ----------
+        wkt_version : {1, 2}
+            WKT version for the CRS string (ignored when ``latlon=True``).
+            1 (default) writes WKT1_GDAL; 2 writes WKT2_2019.
+        latlon : bool
+            When ``True``, derive cell-centre lat/lon arrays from the grid
+            CRS and store them in the GRIDDATA block.  When ``False``
+            (default), embed a WKT string in the OPTIONS block instead.
         """
-        if netcdf_format == NetCDFFormat.LAYERED_MESH:
-            from pyproj import CRS
-            from pyproj.enums import WktVersion
-
-            if grid.crs is None:
-                warn(
-                    "Grid has no CRS; Ncf will have no WKT. "
-                    "Set grid.crs before calling Ncf.from_grid().",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                return cls()
-            wkt = CRS.from_user_input(grid.crs).to_wkt(WktVersion.WKT1_GDAL)
-            return cls(wkt=wkt)
-        else:
+        if latlon:
             lats, lons = grid.latlon()
             if lats is None:
                 warn(
@@ -115,3 +114,18 @@ class Ncf(Package):
                 )
                 return cls()
             return cls(ncpl=len(lats), latitude=lats, longitude=lons)
+
+        from pyproj import CRS
+        from pyproj.enums import WktVersion
+
+        if grid.crs is None:
+            warn(
+                "Grid has no CRS; Ncf will have no WKT. "
+                "Set grid.crs before calling Ncf.from_grid().",
+                UserWarning,
+                stacklevel=2,
+            )
+            return cls()
+        _wkt_version = WktVersion.WKT1_GDAL if wkt_version == 1 else WktVersion.WKT2_2019
+        wkt = CRS.from_user_input(grid.crs).to_wkt(_wkt_version)
+        return cls(wkt=wkt)

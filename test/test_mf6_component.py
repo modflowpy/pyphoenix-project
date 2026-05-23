@@ -1391,7 +1391,7 @@ def test_ncf_from_grid_no_crs():
 
 
 def test_ncf_from_grid_structured(function_tmpdir):
-    """Ncf.from_grid(STRUCTURED) derives lat/lon arrays from the grid's CRS."""
+    """Ncf.from_grid(STRUCTURED) embeds a WKT CRS string, same as LAYERED_MESH."""
     nrow, ncol = 2, 3
     grid = StructuredGrid(
         nlay=1,
@@ -1406,11 +1406,78 @@ def test_ncf_from_grid_structured(function_tmpdir):
         crs="EPSG:26911",
     )
     ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
-    assert ncf.ncpl == nrow * ncol
+    assert ncf.wkt is not None
+    assert "26911" in ncf.wkt
+    assert ncf.latitude is None
+    assert ncf.longitude is None
+
+
+def test_ncf_from_grid_latlon(function_tmpdir):
+    """Ncf.from_grid(..., latlon=True) derives lat/lon arrays and sets no wkt."""
+    nrow, ncol = 2, 3
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=nrow,
+        ncol=ncol,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=573000.0,
+        yoff=4100000.0,
+        crs="EPSG:26911",
+    )
+    ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED, latlon=True)
+    assert ncf.wkt is None
     assert ncf.latitude is not None
     assert ncf.longitude is not None
+    assert ncf.ncpl == nrow * ncol
     assert len(ncf.latitude) == nrow * ncol
-    assert len(ncf.longitude) == nrow * ncol
     # EPSG:26911 is UTM zone 11N — expect latitudes ~37° and longitudes ~-120°
     assert all(30 < lat < 45 for lat in np.asarray(ncf.latitude).ravel())
     assert all(-125 < lon < -115 for lon in np.asarray(ncf.longitude).ravel())
+
+
+def test_ncf_from_grid_latlon_no_crs(function_tmpdir):
+    """Ncf.from_grid(..., latlon=True) with no CRS warns and returns empty Ncf."""
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=2,
+        ncol=3,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=0.0,
+        yoff=0.0,
+    )
+    import warnings
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED, latlon=True)
+    assert any("CRS" in str(warning.message) or "latlon" in str(warning.message) for warning in w)
+    assert ncf.wkt is None
+    assert ncf.latitude is None
+    assert ncf.longitude is None
+
+
+def test_ncf_from_grid_wkt_version2(function_tmpdir):
+    """Ncf.from_grid(..., wkt_version=2) embeds a WKT2 string."""
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=2,
+        ncol=3,
+        delr=1000.0,
+        delc=1000.0,
+        top=0.0,
+        botm=[-10.0],
+        xoff=573000.0,
+        yoff=4100000.0,
+        crs="EPSG:26911",
+    )
+    ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED, wkt_version=2)
+    assert ncf.wkt is not None
+    assert "26911" in ncf.wkt
+    # WKT2 uses PROJCRS keyword; WKT1 uses PROJCS
+    assert ncf.wkt.startswith("PROJCRS")
