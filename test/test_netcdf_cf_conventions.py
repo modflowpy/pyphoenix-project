@@ -76,7 +76,6 @@ def vertex_grid():
 
 def _mesh_param_ds(grid, gridtype, ncpl):
     """Return a dataset for NPF-K layer 1 in layered-mesh context with grid injected."""
-    nrow_ncol = [3, 3] if gridtype == "structured" else []
     dims = [2, 2] + ([ncpl] if gridtype == "vertex" else [3, 3])
     context = {
         "mesh": "layered",
@@ -221,6 +220,31 @@ def test_mesh_disv_layer_coord(vertex_grid, modeltime):
     assert list(ds["layer"].values) == [1, 2]
     assert ds["layer"].attrs.get("axis") == "Z"
     assert ds["layer"].attrs.get("positive") == "down"
+
+
+def test_structured_merged_sel_layer(structured_grid, modeltime):
+    """sel(layer=N) on a merged structured model dataset selects from data variables."""
+    import xarray as xr
+
+    grid_ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    dims = [2, 2, 3, 3]
+    context = {
+        "mesh": None,
+        "modelname": "gwfmodel",
+        "gridtype": "structured",
+        "package_name": "npf",
+        "package_type": "gwf-npf",
+        "dims": dims,
+    }
+    param = NetCDFParam.from_dict({"name": "k", "attrs": {}}, context=context)
+    param._context["grid"] = structured_grid
+    merged = xr.merge([grid_ds, param.to_xarray()])
+    assert "layer" in merged.dims
+    assert "npf_k" in merged
+    assert merged["npf_k"].dims == ("layer", "y", "x")
+    sliced = merged.sel(layer=1)
+    assert "layer" not in sliced.dims, "layer dim should be dropped after sel"
+    assert sliced["npf_k"].dims == ("y", "x")
 
 
 def test_structured_dis_gdal_geotransform(structured_grid, modeltime, tmp_path):

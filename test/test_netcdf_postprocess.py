@@ -190,3 +190,29 @@ def test_postprocess_structured_nc_no_projection(tmp_path):
     ds2 = xr.open_dataset(result, mask_and_scale=False)
     assert "projection" not in ds2
     ds2.close()
+
+
+def test_postprocess_structured_nc_fallback_no_bnds(tmp_path):
+    """GeoTransform is derived from cell-centre spacing when x_bnds/y_bnds are absent."""
+    x = np.array([100.0, 200.0, 300.0])
+    y = np.array([600.0, 500.0, 400.0])
+    src = tmp_path / "no_bnds.nc"
+    ds = xr.Dataset(
+        {"projection": xr.Variable([], np.int32(1), attrs={"crs_wkt": _WKT})},
+        coords={
+            "x": xr.Variable(["x"], x),
+            "y": xr.Variable(["y"], y),
+        },
+    )
+    ds.to_netcdf(src)
+    ds.close()
+
+    postprocess_structured_nc(src)
+    ds2 = xr.open_dataset(src, mask_and_scale=False)
+    gt = [float(v) for v in ds2["projection"].attrs["GeoTransform"].split()]
+    # dx=100, dy=-100; x_left = x[0] - 0.5*dx = 50; y_top = y[0] - 0.5*dy = 650
+    assert gt[0] == pytest.approx(50.0)  # x origin (left edge)
+    assert gt[1] == pytest.approx(100.0)  # dx
+    assert gt[3] == pytest.approx(650.0)  # y origin (top edge)
+    assert gt[5] == pytest.approx(-100.0)  # dy
+    ds2.close()
