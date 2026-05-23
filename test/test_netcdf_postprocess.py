@@ -58,7 +58,8 @@ def test_postprocess_mesh_nc_adds_crs_wkt(tmp_path):
     p = ds["projection"]
     assert "wkt" in p.attrs
     assert "crs_wkt" in p.attrs
-    assert p.attrs["crs_wkt"] == p.attrs["wkt"]
+    assert p.attrs["crs_wkt"].startswith("PROJCRS["), "crs_wkt must be WKT2"
+    assert p.attrs["wkt"].startswith("PROJCS["), "wkt must be WKT1"
     assert "grid_mapping_name" in p.attrs
     assert p.attrs["grid_mapping_name"] == "transverse_mercator"
     ds.close()
@@ -144,11 +145,13 @@ def test_postprocess_structured_nc_adds_attrs(tmp_path):
     p = ds["projection"]
     assert "crs_wkt" in p.attrs
     assert "wkt" in p.attrs
-    assert p.attrs["wkt"] == p.attrs["crs_wkt"]
+    assert p.attrs["crs_wkt"].startswith("PROJCRS["), "crs_wkt must be WKT2"
+    assert p.attrs["wkt"].startswith("PROJCS["), "wkt must be WKT1"
     assert "grid_mapping_name" in p.attrs
     assert p.attrs["grid_mapping_name"] == "transverse_mercator"
     assert "GeoTransform" in p.attrs
     assert "spatial_ref" in p.attrs
+    assert p.attrs["spatial_ref"].startswith("PROJCS["), "spatial_ref must be WKT1 for GDAL"
     ds.close()
 
 

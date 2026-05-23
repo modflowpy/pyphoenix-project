@@ -157,7 +157,7 @@ class Gwf(Model):
     netcdf_structured_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"
     )
-    netcdf_file: Optional[Path] = path(
+    netcdf_input_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
     dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)

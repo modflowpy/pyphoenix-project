@@ -47,10 +47,13 @@ def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     except ImportError:
         return ds
 
+    from pyproj.enums import WktVersion
+
     crs = ProjCRS.from_wkt(wkt)
     cf = crs.to_cf()
 
-    ds["projection"].attrs.setdefault("crs_wkt", wkt)
+    # wkt on mesh output is WKT1; crs_wkt must be WKT2 per CF-1.11
+    ds["projection"].attrs.setdefault("crs_wkt", crs.to_wkt(WktVersion.WKT2_2019))
     gmn = cf.get("grid_mapping_name")
     if gmn:
         ds["projection"].attrs.setdefault("grid_mapping_name", gmn)
@@ -77,10 +80,17 @@ def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     except ImportError:
         return ds
 
+    from pyproj.enums import WktVersion
+
     crs = ProjCRS.from_wkt(wkt)
     cf = crs.to_cf()
 
-    ds["projection"].attrs.setdefault("wkt", wkt)
+    # MF6 structured output writes WKT1 to crs_wkt; overwrite with WKT2 per CF-1.11.
+    # wkt and spatial_ref remain WKT1 for GDAL/legacy-tool compatibility.
+    _wkt1 = crs.to_wkt(WktVersion.WKT1_GDAL)
+    _wkt2 = crs.to_wkt(WktVersion.WKT2_2019)
+    ds["projection"].attrs["crs_wkt"] = _wkt2
+    ds["projection"].attrs.setdefault("wkt", _wkt1)
     gmn = cf.get("grid_mapping_name")
     if gmn:
         ds["projection"].attrs.setdefault("grid_mapping_name", gmn)
@@ -113,7 +123,7 @@ def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
 
     gt = [x_left, dx_eff, 0.0, y_top, 0.0, dy_eff]
     ds["projection"].attrs.setdefault("GeoTransform", " ".join(str(v) for v in gt))
-    ds["projection"].attrs.setdefault("spatial_ref", wkt)
+    ds["projection"].attrs.setdefault("spatial_ref", _wkt1)
 
     return ds
 

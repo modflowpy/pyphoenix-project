@@ -1171,6 +1171,56 @@ def test_fmi_dumps_partial_paths():
     assert "GWFSPDIS" not in text.upper(), "unset optional path must not appear in output"
 
 
+def test_gwf_netcdf_input_file_serializes():
+    """netcdf_input_file must write 'NETCDF FILEIN <path>' in the NAM OPTIONS block."""
+    from pathlib import Path
+
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Dis, Gwf
+
+    gwf = Gwf(dis=Dis())
+    gwf.netcdf_input_file = Path("model.input.nc")
+    text = dumps(unstructure_component(gwf))
+    assert "NETCDF FILEIN model.input.nc" in text
+
+
+def test_gwt_netcdf_fields_serialize():
+    """All three NetCDF path fields on Gwt must produce the correct NAM OPTIONS tokens."""
+    from pathlib import Path
+
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt import Dis, Gwt
+
+    gwt = Gwt(dis=Dis())
+    gwt.netcdf_mesh2d_file = Path("model.mesh2d.nc")
+    gwt.netcdf_structured_file = Path("model.structured.nc")
+    gwt.netcdf_input_file = Path("model.input.nc")
+    text = dumps(unstructure_component(gwt))
+    assert "NETCDF_MESH2D FILEOUT model.mesh2d.nc" in text
+    assert "NETCDF_STRUCTURED FILEOUT model.structured.nc" in text
+    assert "NETCDF FILEIN model.input.nc" in text
+
+
+def test_gwe_netcdf_fields_serialize():
+    """All three NetCDF path fields on Gwe must produce the correct NAM OPTIONS tokens."""
+    from pathlib import Path
+
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwe import Dis, Gwe
+
+    gwe = Gwe(dis=Dis())
+    gwe.netcdf_mesh2d_file = Path("model.mesh2d.nc")
+    gwe.netcdf_structured_file = Path("model.structured.nc")
+    gwe.netcdf_input_file = Path("model.input.nc")
+    text = dumps(unstructure_component(gwe))
+    assert "NETCDF_MESH2D FILEOUT model.mesh2d.nc" in text
+    assert "NETCDF_STRUCTURED FILEOUT model.structured.nc" in text
+    assert "NETCDF FILEIN model.input.nc" in text
+
+
 def test_ssm_fileinput_row_format():
     """fileinput rows must serialise as 'pname SPC6 FILEIN spc6_filename [MIXED]'."""
     from flopy4.mf6.codec.writer import dumps

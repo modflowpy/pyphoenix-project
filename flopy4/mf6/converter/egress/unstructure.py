@@ -18,11 +18,13 @@ from flopy4.mf6.spec import FileInOut, blocks_dict
 
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
-    t = [name.upper()]
-    if name.endswith("_filerecord"):
-        t[0] = name.replace("_filerecord", "").upper()
-    elif name.endswith("_file"):
-        t[0] = name.replace("_file", "").upper()
+    for suffix in ("_input_file", "_filerecord", "_file"):
+        if name.endswith(suffix):
+            prefix = name[: -len(suffix)]
+            break
+    else:
+        prefix = name
+    t = [prefix.upper()]
     if inout:
         t.append(inout.upper())
     t.append(str(value))

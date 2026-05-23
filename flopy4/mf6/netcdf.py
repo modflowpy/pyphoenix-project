@@ -22,6 +22,27 @@ from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
 
 
+def _cf_var_attrs(dims: list[str], mesh: str | None, grid) -> dict:
+    """Return {"attrs": {...}, "encoding": {...}} for a NetCDF data variable.
+
+    coordinates goes in encoding because xarray strips it from attrs during to_netcdf().
+    In mesh context x/y are abstract row/col indices, not geographic — only nmesh_face
+    vars get coordinates linking. In structured context x/y ARE geographic.
+    """
+    attrs: dict[str, str] = {}
+    encoding: dict[str, object] = {}
+    has_crs = grid is not None and getattr(grid, "crs", None) is not None
+
+    if has_crs:
+        attrs["grid_mapping"] = "projection"
+        if "nmesh_face" in dims:
+            attrs["coordinates"] = "mesh_face_x mesh_face_y"
+            attrs["mesh"] = "mesh"
+            attrs["location"] = "face"
+
+    return {"attrs": attrs, "encoding": encoding}
+
+
 def metadata(attribute, key: str):
     if hasattr(attribute, "metadata"):
         meta = getattr(attribute, "metadata")
@@ -589,24 +610,13 @@ class NetCDFParam(BaseModel, NetCDFInput):
             if meta["encodings"][e] is not None:
                 ds[varname].encoding[e] = meta["encodings"][e]
 
-        if (
-            "grid" in self._context
-            and self._context["grid"] is not None
-            and self._context["grid"].crs is not None
-        ):
-            ds[varname].attrs["grid_mapping"] = "projection"
-            if "nmesh_face" in ds[varname].dims:
-                ds[varname].attrs["coordinates"] = "mesh_face_x mesh_face_y"
-                ds[varname].attrs["mesh"] = "mesh"
-                ds[varname].attrs["location"] = "face"
-            else:
-                coords = []
-                if "y" in ds[varname].dims:
-                    coords.append("y")
-                if "x" in ds[varname].dims:
-                    coords.append("x")
-                if coords:
-                    ds[varname].attrs["coordinates"] = " ".join(coords)
+        cf = _cf_var_attrs(
+            [str(d) for d in ds[varname].dims],
+            mesh,
+            self._context.get("grid"),
+        )
+        ds[varname].attrs.update(cf["attrs"])
+        ds[varname].encoding.update(cf["encoding"])
 
         return ds
 

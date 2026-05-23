@@ -252,7 +252,7 @@ def main():
     sim_nc = make_sim4(ws_root / "flopy4_nc_mesh", gwf_nc)
 
     nc_fpth_m = ws_root / "flopy4_nc_mesh" / "test1005.input.nc"
-    gwf_nc.netcdf_file = nc_fpth_m
+    gwf_nc.netcdf_input_file = nc_fpth_m
     gwf_nc.netcdf_mesh2d_file = Path("test1005.nc")
     nc_mesh = flopy4.mf6.netcdf.NetCDFModel.from_model(
         gwf_nc, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
@@ -274,7 +274,7 @@ def main():
     ws_ncs.mkdir(parents=True, exist_ok=True)
     sim_nc.workspace = ws_ncs
     nc_fpth_s = ws_ncs / "test1005.input.nc"
-    gwf_nc.netcdf_file = nc_fpth_s
+    gwf_nc.netcdf_input_file = nc_fpth_s
     gwf_nc.netcdf_mesh2d_file = None
     nc_struct = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf_nc, grid=grid, time=time4)
 

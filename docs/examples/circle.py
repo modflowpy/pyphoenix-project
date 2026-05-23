@@ -297,7 +297,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 nc_fpth = workspace / "circle.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_input_file = nc_fpth
 
 # Here, grid and time info is passed to the `NetCDFModel' constructor
 # so that coordinate and mesh data is written to the NetCDF file.
@@ -347,7 +347,7 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim.workspace = workspace
 
 nc_fpth = workspace / "circle.input.nc"
-gwf.netcdf_file = nc_fpth
+gwf.netcdf_input_file = nc_fpth
 
 # Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(

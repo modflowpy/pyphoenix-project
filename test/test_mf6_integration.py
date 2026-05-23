@@ -682,7 +682,7 @@ def test_quickstart_netcdf(function_tmpdir):
     )
 
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-    gwf.netcdf_file = nc_fpth
+    gwf.netcdf_input_file = nc_fpth
 
     nc_model = NetCDFModel.from_model(gwf)
     ds = nc_model.to_xarray()
@@ -795,7 +795,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     )
 
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-    gwf.netcdf_file = nc_fpth
+    gwf.netcdf_input_file = nc_fpth
 
     nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH)
     ds = nc_model.to_xarray()

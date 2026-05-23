@@ -353,7 +353,7 @@ def main():
     ws = OUT / "welg_ascii"
     ws.mkdir(parents=True, exist_ok=True)
     sim.workspace = ws
-    gwf.netcdf_file = None
+    gwf.netcdf_input_file = None
     gwf.netcdf_mesh2d_file = None
     results.append(
         report(
@@ -367,7 +367,7 @@ def main():
     ws.mkdir(parents=True, exist_ok=True)
     sim.workspace = ws
     nc_fpth = ws / "frenchman-flat.input.nc"
-    gwf.netcdf_file = nc_fpth
+    gwf.netcdf_input_file = nc_fpth
     nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
         gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time_data
     )
@@ -389,7 +389,7 @@ def main():
     ws.mkdir(parents=True, exist_ok=True)
     sim.workspace = ws
     gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
-    gwf.netcdf_file = Path("frenchman-flat.input.nc")
+    gwf.netcdf_input_file = Path("frenchman-flat.input.nc")
     nc_model2 = flopy4.mf6.netcdf.NetCDFModel.from_model(
         gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time_data
     )
@@ -411,7 +411,7 @@ def main():
     ws.mkdir(parents=True, exist_ok=True)
     sim.workspace = ws
     nc_fpth2 = ws / "frenchman-flat.input.nc"
-    gwf.netcdf_file = nc_fpth2
+    gwf.netcdf_input_file = nc_fpth2
     nc_model3 = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, grid=grid, time=time_data)
 
     def write_nc_struct():

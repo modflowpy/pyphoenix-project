@@ -240,7 +240,7 @@ def main():
         ws_nc.mkdir(parents=True, exist_ok=True)
         sim4g.workspace = ws_nc
         nc_fpth_s1m = ws_nc / "test1000.input.nc"
-        gwf4g.netcdf_file = nc_fpth_s1m
+        gwf4g.netcdf_input_file = nc_fpth_s1m
         gwf4g.netcdf_mesh2d_file = Path("test1000.nc")
         nc_s1m = flopy4.mf6.netcdf.NetCDFModel.from_model(
             gwf4g, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
@@ -263,7 +263,7 @@ def main():
         ws_nc.mkdir(parents=True, exist_ok=True)
         sim4g.workspace = ws_nc
         nc_fpth_s1s = ws_nc / "test1000.input.nc"
-        gwf4g.netcdf_file = nc_fpth_s1s
+        gwf4g.netcdf_input_file = nc_fpth_s1s
         gwf4g.netcdf_mesh2d_file = None
         nc_s1s = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf4g, grid=grid, time=time4)
 
@@ -347,7 +347,7 @@ def main():
         ws_nc.mkdir(parents=True, exist_ok=True)
         sim4.workspace = ws_nc
         nc_fpth_s2m = ws_nc / "test1000.input.nc"
-        gwf4.netcdf_file = nc_fpth_s2m
+        gwf4.netcdf_input_file = nc_fpth_s2m
         gwf4.netcdf_mesh2d_file = Path("test1000.nc")
         nc_s2m = flopy4.mf6.netcdf.NetCDFModel.from_model(
             gwf4, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
@@ -370,7 +370,7 @@ def main():
         ws_nc.mkdir(parents=True, exist_ok=True)
         sim4.workspace = ws_nc
         nc_fpth_s2s = ws_nc / "test1000.input.nc"
-        gwf4.netcdf_file = nc_fpth_s2s
+        gwf4.netcdf_input_file = nc_fpth_s2s
         gwf4.netcdf_mesh2d_file = None
         nc_s2s = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf4, grid=grid, time=time4)
 
@@ -468,7 +468,7 @@ def main():
         ws_nc.mkdir(parents=True, exist_ok=True)
         sim4.workspace = ws_nc
         nc_fpth_s3m = ws_nc / "test1000.input.nc"
-        gwf4.netcdf_file = nc_fpth_s3m
+        gwf4.netcdf_input_file = nc_fpth_s3m
         gwf4.netcdf_mesh2d_file = Path("test1000.nc")
         nc_s3m = flopy4.mf6.netcdf.NetCDFModel.from_model(
             gwf4, netcdf_format=NetCDFFormat.LAYERED_MESH, grid=grid, time=time4
@@ -491,7 +491,7 @@ def main():
         ws_nc.mkdir(parents=True, exist_ok=True)
         sim4.workspace = ws_nc
         nc_fpth_s3s = ws_nc / "test1000.input.nc"
-        gwf4.netcdf_file = nc_fpth_s3s
+        gwf4.netcdf_input_file = nc_fpth_s3s
         gwf4.netcdf_mesh2d_file = None
         nc_s3s = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf4, grid=grid, time=time4)
 

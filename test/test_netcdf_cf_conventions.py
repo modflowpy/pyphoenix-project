@@ -12,6 +12,7 @@ NetCDFParam.to_xarray() directly — no MODFLOW 6 simulation required.
 
 import numpy as np
 import pytest
+import xarray as xr
 from flopy.discretization.modeltime import ModelTime
 
 from flopy4.mf6.enums import NetCDFFormat
@@ -97,13 +98,15 @@ def test_structured_dis_projection_variable(structured_grid, modeltime):
 
 
 def test_structured_dis_crs_wkt_attrs(structured_grid, modeltime):
-    """Both crs_wkt and wkt must be present and equal on the projection variable."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
     proj = ds["projection"]
     assert "crs_wkt" in proj.attrs, "crs_wkt missing from projection variable"
     assert "wkt" in proj.attrs, "wkt missing from projection variable"
-    assert proj.attrs["crs_wkt"] == proj.attrs["wkt"], "crs_wkt and wkt must be identical"
-    assert len(proj.attrs["crs_wkt"]) > 0, "crs_wkt must not be empty"
+    # crs_wkt must be WKT2 (PROJCRS keyword); wkt must be WKT1 (PROJCS keyword)
+    assert proj.attrs["crs_wkt"].startswith("PROJCRS["), "crs_wkt must be WKT2"
+    assert proj.attrs["wkt"].startswith("PROJCS["), "wkt must be WKT1"
+    assert proj.attrs["crs_wkt"] != proj.attrs["wkt"], "crs_wkt and wkt must differ"
     assert "grid_mapping_name" in proj.attrs, "grid_mapping_name missing from projection variable"
     assert len(proj.attrs["grid_mapping_name"]) > 0
 
@@ -131,13 +134,15 @@ def test_mesh_dis_topology_variable(structured_grid, modeltime):
 
 
 def test_mesh_dis_projection_crs_attrs(structured_grid, modeltime):
-    """Both crs_wkt and wkt must be present and equal on the projection variable."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
     assert "projection" in ds
     proj = ds["projection"]
     assert "crs_wkt" in proj.attrs
     assert "wkt" in proj.attrs
-    assert proj.attrs["crs_wkt"] == proj.attrs["wkt"]
+    assert proj.attrs["crs_wkt"].startswith("PROJCRS["), "crs_wkt must be WKT2"
+    assert proj.attrs["wkt"].startswith("PROJCS["), "wkt must be WKT1"
+    assert proj.attrs["crs_wkt"] != proj.attrs["wkt"]
     assert "grid_mapping_name" in proj.attrs, "grid_mapping_name missing from projection variable"
     assert len(proj.attrs["grid_mapping_name"]) > 0
 
@@ -166,13 +171,15 @@ def test_mesh_disv_topology_variable(vertex_grid, modeltime):
 
 
 def test_mesh_disv_projection_crs_attrs(vertex_grid, modeltime):
-    """Both crs_wkt and wkt must be present and equal on the projection variable."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
     ds = vertex_grid.to_xarray(modeltime=modeltime)
     assert "projection" in ds
     proj = ds["projection"]
     assert "crs_wkt" in proj.attrs
     assert "wkt" in proj.attrs
-    assert proj.attrs["crs_wkt"] == proj.attrs["wkt"]
+    assert proj.attrs["crs_wkt"].startswith("PROJCRS["), "crs_wkt must be WKT2"
+    assert proj.attrs["wkt"].startswith("PROJCS["), "wkt must be WKT1"
+    assert proj.attrs["crs_wkt"] != proj.attrs["wkt"]
     assert "grid_mapping_name" in proj.attrs, "grid_mapping_name missing from projection variable"
     assert len(proj.attrs["grid_mapping_name"]) > 0
 
@@ -245,6 +252,96 @@ def test_structured_merged_sel_layer(structured_grid, modeltime):
     sliced = merged.sel(layer=1)
     assert "layer" not in sliced.dims, "layer dim should be dropped after sel"
     assert sliced["npf_k"].dims == ("y", "x")
+
+
+def _raw_var_attrs(path, varname: str) -> dict:
+    """Read raw NetCDF variable attributes bypassing xarray's CF decoder."""
+    nc4 = pytest.importorskip("netCDF4")
+    ds = nc4.Dataset(path)
+    try:
+        return {a: ds.variables[varname].getncattr(a) for a in ds.variables[varname].ncattrs()}
+    finally:
+        ds.close()
+
+
+def test_structured_data_var_no_redundant_coordinates(structured_grid, modeltime, tmp_path):
+    """Structured data vars must not carry a coordinates attr pointing to dimension coords.
+
+    y and x are dimension coordinates — CF tools find them via the dimension names.
+    A redundant coordinates attr would rely on xarray encoding internals to survive
+    to_netcdf and adds no information for any CF-aware consumer.
+    """
+    grid_ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    context = {
+        "mesh": None,
+        "modelname": "gwfmodel",
+        "gridtype": "structured",
+        "package_name": "npf",
+        "package_type": "gwf-npf",
+        "dims": [2, 2, 3, 3],
+    }
+    param = NetCDFParam.from_dict({"name": "k", "attrs": {}}, context=context)
+    param._context["grid"] = structured_grid
+    merged = xr.merge([grid_ds, param.to_xarray()])
+    path = tmp_path / "structured_roundtrip.nc"
+    merged.to_netcdf(path)
+    attrs = _raw_var_attrs(path, "npf_k")
+    coords_attr = attrs.get("coordinates", "")
+    assert coords_attr == "" or all(
+        c not in coords_attr for c in ["y", "x"]
+    ), f"structured data var should not carry redundant coordinates attr: {coords_attr!r}"
+
+
+def test_mesh_data_var_coordinates_survives_roundtrip(structured_grid, modeltime, tmp_path):
+    """coordinates = 'mesh_face_x mesh_face_y' on mesh face vars must survive round-trip.
+
+    Verified via raw netCDF4 because xarray strips the coordinates attr when reopening.
+    """
+    grid_ds = structured_grid.to_xarray(
+        modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH
+    )
+    context = {
+        "mesh": "layered",
+        "modelname": "gwfmodel",
+        "gridtype": "structured",
+        "package_name": "npf",
+        "package_type": "gwf-npf",
+        "dims": [2, 2, 3, 3],
+    }
+    param = NetCDFParam.from_dict({"name": "k", "attrs": {"layer": 1}}, context=context)
+    param._context["grid"] = structured_grid
+    merged = xr.merge([grid_ds, param.to_xarray()])
+    path = tmp_path / "mesh_roundtrip.nc"
+    merged.to_netcdf(path)
+    attrs = _raw_var_attrs(path, "npf_k_l1")
+    coords_attr = attrs.get("coordinates", "")
+    assert (
+        "mesh_face_x" in coords_attr and "mesh_face_y" in coords_attr
+    ), f"coordinates attr missing or wrong on raw disk: {coords_attr!r}"
+
+
+def test_mesh_data_var_cf_attrs_survive_roundtrip(structured_grid, modeltime, tmp_path):
+    """mesh, location, and grid_mapping attrs on face data vars must survive round-trip."""
+    grid_ds = structured_grid.to_xarray(
+        modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH
+    )
+    context = {
+        "mesh": "layered",
+        "modelname": "gwfmodel",
+        "gridtype": "structured",
+        "package_name": "npf",
+        "package_type": "gwf-npf",
+        "dims": [2, 2, 3, 3],
+    }
+    param = NetCDFParam.from_dict({"name": "k", "attrs": {"layer": 1}}, context=context)
+    param._context["grid"] = structured_grid
+    merged = xr.merge([grid_ds, param.to_xarray()])
+    path = tmp_path / "mesh_cf_attrs_roundtrip.nc"
+    merged.to_netcdf(path)
+    attrs = _raw_var_attrs(path, "npf_k_l1")
+    assert attrs.get("mesh") == "mesh", f"mesh attr missing after round-trip: {attrs}"
+    assert attrs.get("location") == "face", f"location attr missing after round-trip: {attrs}"
+    assert attrs.get("grid_mapping") == "projection", f"grid_mapping missing: {attrs}"
 
 
 def test_structured_dis_gdal_geotransform(structured_grid, modeltime, tmp_path):

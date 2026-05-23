@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from xattree import xattree
@@ -14,7 +15,8 @@ from flopy4.mf6.gwe.mve import Mve
 from flopy4.mf6.gwe.oc import Oc
 from flopy4.mf6.gwe.ssm import Ssm
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import field, path
+from flopy4.utils import to_path
 
 __all__ = [
     "Gwe",
@@ -39,6 +41,15 @@ class Gwe(Model):
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
     dependent_variable_scaling: bool = field(block="options", default=False)
+    netcdf_mesh2d_file: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    netcdf_structured_file: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="fileout"
+    )
+    netcdf_input_file: Optional[Path] = path(
+        block="options", default=None, converter=to_path, inout="filein"
+    )
     dis: Dis | None = field(block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
