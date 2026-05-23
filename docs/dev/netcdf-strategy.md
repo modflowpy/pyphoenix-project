@@ -274,9 +274,9 @@ internals whose behavior is not part of xarray's public API.
   (uniform grids) from Make Multidimensional Raster Layer (variable spacing)
   in notebook and repo docs.
 
-### MF6 Fortran — two-phase plan (see `docs/mf6-netcdf-cf-pr-plan.md`)
+### MF6 Fortran — two-phase plan
 
-**Phase 1 (zero risk, additive only):**
+**Phase 1 (low risk, additive only):**
 
 - Mesh output: write `crs_wkt` (WKT2) alongside existing `wkt`.
 - Structured output: write `wkt` (WKT1) alongside existing `crs_wkt`.
