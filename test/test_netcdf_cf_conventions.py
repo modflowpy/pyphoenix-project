@@ -229,6 +229,29 @@ def test_mesh_disv_layer_coord(vertex_grid, modeltime):
     assert ds["layer"].attrs.get("positive") == "down"
 
 
+def test_mesh_dis_face_nodes_fill_in_encoding(structured_grid, modeltime):
+    """mesh_face_nodes _FillValue must be in encoding, not attrs (DIS path).
+
+    xarray only writes a proper NetCDF _FillValue declaration when the fill
+    value is in encoding.  If it lands in attrs it becomes a plain variable
+    attribute and NetCDF4/UGRID readers will not recognise padding slots.
+    """
+    from flopy4.mf6.constants import FILL_INT64
+
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
+    assert "_FillValue" not in ds["mesh_face_nodes"].attrs, "_FillValue must not be in attrs"
+    assert ds["mesh_face_nodes"].encoding.get("_FillValue") == FILL_INT64
+
+
+def test_mesh_disv_face_nodes_fill_in_encoding(vertex_grid, modeltime):
+    """mesh_face_nodes _FillValue must be in encoding, not attrs (DISV path)."""
+    from flopy4.mf6.constants import FILL_INT64
+
+    ds = vertex_grid.to_xarray(modeltime=modeltime)
+    assert "_FillValue" not in ds["mesh_face_nodes"].attrs, "_FillValue must not be in attrs"
+    assert ds["mesh_face_nodes"].encoding.get("_FillValue") == FILL_INT64
+
+
 def test_structured_merged_sel_layer(structured_grid, modeltime):
     """sel(layer=N) on a merged structured model dataset selects from data variables."""
     import xarray as xr
