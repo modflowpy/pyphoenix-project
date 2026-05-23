@@ -532,6 +532,11 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["axis"] = "T"
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
+        ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
+        ds["layer"].attrs["long_name"] = "model layer"
+        ds["layer"].attrs["units"] = "1"
+        ds["layer"].attrs["positive"] = "down"
+        ds["layer"].attrs["axis"] = "Z"
 
         # mesh container variable
         ds = ds.assign({"mesh": ([], np.int64(1))})
@@ -645,6 +650,7 @@ class StructuredGrid(LegacyStructuredGrid):
             "time": (["time"], np.cumsum(modeltime.perlen)),
             "y": (["y"], yc),
             "x": (["x"], xc),
+            "layer": (["layer"], np.arange(1, self.nlay + 1)),
         }
         ds = ds.assign_coords(var_d)
 
@@ -670,6 +676,10 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["x"].attrs["bounds"] = "x_bnds"
         ds["x"].encoding["_FillValue"] = None
         ds["y"].encoding["_FillValue"] = None
+        ds["layer"].attrs["long_name"] = "model layer"
+        ds["layer"].attrs["units"] = "1"
+        ds["layer"].attrs["positive"] = "down"
+        ds["layer"].attrs["axis"] = "Z"
 
         # Write projection variable whenever CRS is available.
         # Lat/lon auxiliary coordinates are intentionally omitted: GDAL-based
@@ -1147,6 +1157,11 @@ class VertexGrid(LegacyVertexGrid):
             ds["time"].attrs["axis"] = "T"
             ds["time"].attrs["standard_name"] = "time"
             ds["time"].attrs["long_name"] = "time"
+            ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
+            ds["layer"].attrs["long_name"] = "model layer"
+            ds["layer"].attrs["units"] = "1"
+            ds["layer"].attrs["positive"] = "down"
+            ds["layer"].attrs["axis"] = "Z"
 
             # mesh container variable
             ds = ds.assign({"mesh": ([], np.int64(1))})

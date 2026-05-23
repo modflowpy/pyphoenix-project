@@ -7,7 +7,8 @@ full CF-1.11 compliance and GDAL-based tool support.
 - **Mesh output**: missing ``crs_wkt`` and ``grid_mapping_name``.
 - **Structured output**: missing ``wkt``, ``grid_mapping_name``, and the GDAL
   georeferencing attributes (``GeoTransform`` / ``spatial_ref``) needed for
-  correct placement in QGIS/ArcGIS.
+  correct placement in QGIS and other GDAL-based tools.  ArcGIS Pro does not
+  require these attributes — it reads ``crs_wkt`` directly from raw MF6 output.
 
 Usage::
 
@@ -162,7 +163,8 @@ def postprocess_structured_nc(
     Adds the missing ``wkt``, ``grid_mapping_name``, ``GeoTransform``, and
     ``spatial_ref`` attributes to the ``projection`` variable so the file
     matches the conventions written by flopy4 for input files and is correctly
-    placed by GDAL-based tools (QGIS, ArcGIS Pro).
+    placed by QGIS and other GDAL-based tools.  ArcGIS Pro reads ``crs_wkt``
+    directly from raw MF6 output and does not require this post-processing.
 
     Parameters
     ----------

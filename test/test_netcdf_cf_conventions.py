@@ -192,3 +192,82 @@ def test_mesh_disv_data_var_location_attr(vertex_grid):
     ds = _mesh_param_ds(vertex_grid, gridtype="vertex", ncpl=2)
     var = "npf_k_l1"
     assert ds[var].attrs.get("location") == "face", "location attr missing on data variable"
+
+
+def test_structured_dis_layer_coord(structured_grid, modeltime):
+    """layer must be a dimension coordinate with CF vertical attrs and label indexing."""
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    assert "layer" in ds.coords, "layer coordinate missing from structured dataset"
+    assert list(ds["layer"].values) == [1, 2]
+    assert ds["layer"].attrs.get("axis") == "Z"
+    assert ds["layer"].attrs.get("positive") == "down"
+    assert int(ds.sel(layer=1)["layer"].values) == 1
+    assert int(ds.sel(layer=2)["layer"].values) == 2
+
+
+def test_mesh_dis_layer_coord(structured_grid, modeltime):
+    """layer must be a dimension coordinate in the layered-mesh (DIS) dataset."""
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
+    assert "layer" in ds.coords, "layer coordinate missing from layered-mesh DIS dataset"
+    assert list(ds["layer"].values) == [1, 2]
+    assert ds["layer"].attrs.get("axis") == "Z"
+    assert ds["layer"].attrs.get("positive") == "down"
+
+
+def test_mesh_disv_layer_coord(vertex_grid, modeltime):
+    """layer must be a dimension coordinate in the layered-mesh (DISV) dataset."""
+    ds = vertex_grid.to_xarray(modeltime=modeltime)
+    assert "layer" in ds.coords, "layer coordinate missing from layered-mesh DISV dataset"
+    assert list(ds["layer"].values) == [1, 2]
+    assert ds["layer"].attrs.get("axis") == "Z"
+    assert ds["layer"].attrs.get("positive") == "down"
+
+
+def test_structured_dis_gdal_geotransform(structured_grid, modeltime, tmp_path):
+    """GDAL reads the correct GeoTransform from the projection variable."""
+    gdal = pytest.importorskip("osgeo.gdal")
+
+    import xarray as xr
+
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    ds["data"] = xr.Variable(
+        ["y", "x"],
+        np.zeros((3, 3), dtype=np.float32),
+        attrs={"grid_mapping": "projection"},
+    )
+    path = tmp_path / "structured.nc"
+    ds.to_netcdf(path)
+
+    gds = gdal.Open(f"NETCDF:{path}:data")
+    assert gds is not None, "GDAL could not open NetCDF file"
+    gt = gds.GetGeoTransform()
+    # xoff=300_000, yoff=4_000_000, delr=delc=100, nrow=ncol=3
+    # x_left = xoff,  y_top = yoff + nrow * delc = 4_000_300
+    assert gt[0] == pytest.approx(300_000.0)  # x origin (left edge)
+    assert gt[1] == pytest.approx(100.0)  # dx
+    assert gt[3] == pytest.approx(4_000_300.0)  # y origin (top edge)
+    assert gt[5] == pytest.approx(-100.0)  # dy (negative = north-up)
+    gds = None
+
+
+def test_structured_dis_gdal_crs(structured_grid, modeltime, tmp_path):
+    """GDAL recognizes the CRS from the projection variable crs_wkt."""
+    gdal = pytest.importorskip("osgeo.gdal")
+
+    import xarray as xr
+
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    ds["data"] = xr.Variable(
+        ["y", "x"],
+        np.zeros((3, 3), dtype=np.float32),
+        attrs={"grid_mapping": "projection"},
+    )
+    path = tmp_path / "structured_crs.nc"
+    ds.to_netcdf(path)
+
+    gds = gdal.Open(f"NETCDF:{path}:data")
+    assert gds is not None, "GDAL could not open NetCDF file"
+    srs = gds.GetSpatialRef()
+    assert srs is not None, "GDAL could not read spatial reference"
+    assert "32611" in srs.ExportToWkt()
+    gds = None
