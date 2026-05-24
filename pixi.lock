@@ -7655,7 +7655,7 @@ packages:
 - pypi: ./
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 36fbfd530ea1f3be5eb7caaf17017df710fe08bd7782acc2334e0afe8de5b626
+  sha256: 7835d35e83faa4f78a59a15c58dc8b9476b4aff376c0df10332e8834c0030edc
   requires_dist:
   - modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git
   - xattree @ git+https://github.com/wpbonelli/xattree.git
@@ -7671,8 +7671,8 @@ packages:
   - tomli
   - tomli-w
   - xugrid==0.14.3
+  - scipy>=1.16.2,<2
   - xarray[io,parallel]>=2025.10.1,<2026 ; extra == 'optional'
-  - scipy>=1.16.2,<2 ; extra == 'optional'
   - sparse>=0.17.0 ; extra == 'optional'
   - dask[array]>=2025.10.0,<2026 ; extra == 'optional'
   - pyproj>=3.7.2,<4 ; extra == 'optional'
