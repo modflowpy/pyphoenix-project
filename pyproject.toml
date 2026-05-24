@@ -45,6 +45,15 @@ dependencies = [
     "pandas>=2.3.3,<3",
     "toml>=0.10.2,<0.11",
     "networkx>=3.5,<4",
+    "boltons",
+    "pydantic",
+    "tomli",
+    "tomli_w",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+optional = [
     "xarray[parallel,io]>=2025.10.1,<2026",
     "scipy>=1.16.2,<2",
     "sparse>=0.17.0,<0.18",
@@ -53,16 +62,9 @@ dependencies = [
     "netcdf4>=1.7.3,<2",
     "pyshp>=3.0.2.post1,<4",
     "llvmlite>=0.45.1,<0.46",
-    "boltons",
-    "pydantic",
-    "tomli",
-    "tomli_w",
     "xugrid==0.14.3",
 ]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-dev = ["flopy4[lint,test,build]"]
+dev = ["flopy4[optional,lint,test,build]"]
 lint = ["codespell[toml] >=2.2.2", "ruff", "pre-commit>=4.0.1,<5", "mypy"]
 test = [
     "coverage",
@@ -134,7 +136,7 @@ channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tool.pixi.pypi-dependencies]
-flopy4 = { path = ".", editable = true }
+flopy4 = { path = ".", editable = true, extras = ["optional"] }
 
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
