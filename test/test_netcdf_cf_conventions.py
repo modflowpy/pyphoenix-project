@@ -310,9 +310,9 @@ def test_structured_data_var_no_redundant_coordinates(structured_grid, modeltime
     merged.to_netcdf(path)
     attrs = _raw_var_attrs(path, "npf_k")
     coords_attr = attrs.get("coordinates", "")
-    assert coords_attr == "" or all(
-        c not in coords_attr for c in ["y", "x"]
-    ), f"structured data var should not carry redundant coordinates attr: {coords_attr!r}"
+    assert coords_attr == "" or all(c not in coords_attr for c in ["y", "x"]), (
+        f"structured data var should not carry redundant coordinates attr: {coords_attr!r}"
+    )
 
 
 def test_mesh_data_var_coordinates_survives_roundtrip(structured_grid, modeltime, tmp_path):
@@ -338,9 +338,9 @@ def test_mesh_data_var_coordinates_survives_roundtrip(structured_grid, modeltime
     merged.to_netcdf(path)
     attrs = _raw_var_attrs(path, "npf_k_l1")
     coords_attr = attrs.get("coordinates", "")
-    assert (
-        "mesh_face_x" in coords_attr and "mesh_face_y" in coords_attr
-    ), f"coordinates attr missing or wrong on raw disk: {coords_attr!r}"
+    assert "mesh_face_x" in coords_attr and "mesh_face_y" in coords_attr, (
+        f"coordinates attr missing or wrong on raw disk: {coords_attr!r}"
+    )
 
 
 def test_mesh_data_var_cf_attrs_survive_roundtrip(structured_grid, modeltime, tmp_path):
