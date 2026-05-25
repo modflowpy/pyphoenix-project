@@ -7,7 +7,7 @@ import attrs
 import numpy as np
 import xarray as xr
 import xattree
-from modflow_devtools.dfns.schema.block import block_sort_key
+from modflow_devtools.dfn.schema import block_sort_key
 from xattree import XatSpec
 
 from flopy4.mf6.binding import Binding
