@@ -11,7 +11,7 @@ from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
-from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
+from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 
 
@@ -503,7 +503,7 @@ class StructuredGrid(LegacyStructuredGrid):
         self.legacy = True
         try:
             ds = xr.Dataset()
-            ds.attrs["modflow_grid"] = "STRUCTURED"
+            ds.attrs["modflow_grid"] = "structured"
 
             if netcdf_format == NetCDFFormat.LAYERED_MESH:
                 ds = self._layered_mesh_dataset(ds, modeltime, configuration)
@@ -583,6 +583,8 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
         ds["mesh_face_y"].encoding["_FillValue"] = None
+        ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
+        ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
 
         # mesh face nodes
         var_d = {
@@ -1153,7 +1155,7 @@ class VertexGrid(LegacyVertexGrid):
             topo = self._topology()
 
             ds = xr.Dataset()
-            ds.attrs["modflow_grid"] = "VERTEX"
+            ds.attrs["modflow_grid"] = "vertex"
 
             # create dataset coordinate vars
             # Use cumulative per-period time (one value per stress period)
@@ -1219,6 +1221,8 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
             ds["mesh_face_y"].encoding["_FillValue"] = None
+            ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
+            ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
 
             # mesh face nodes
             var_d = {
@@ -1294,8 +1298,8 @@ class VertexGrid(LegacyVertexGrid):
         idx = np.where(mask, 0, face_nodes - 1)
         x_bnds = node_x[idx].copy()
         y_bnds = node_y[idx].copy()
-        x_bnds[mask] = FILL_INT64
-        y_bnds[mask] = FILL_INT64
+        x_bnds[mask] = FILL_FLOAT64
+        y_bnds[mask] = FILL_FLOAT64
 
         return {
             "node_x": node_x,
