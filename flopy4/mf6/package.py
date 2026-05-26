@@ -158,7 +158,8 @@ class Package(Component, ABC):
                             if coord_columns is None:
                                 coord_columns = ["kper", "node"]
                         for _k, _cname in enumerate(_col_names):
-                            _rec[_cname] = float(_vals[_k])
+                            _v = _vals[_k]
+                            _rec[_cname] = _v.item() if hasattr(_v, "item") else float(_v)
                         all_records.append(_rec)
                     continue
 
