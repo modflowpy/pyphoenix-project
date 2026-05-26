@@ -7631,7 +7631,7 @@ packages:
 - pypi: ./
   name: flopy4
   version: 0.0.1.dev0
-  sha256: 2e796c4c153a117055e11da2c41f3864607b265b91650d3f7562289ecd16ac77
+  sha256: d0657a36fa302af187b3233c9845d1ff0aae3e7190456e489c3718937101498c
   requires_dist:
   - modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git
   - xattree @ git+https://github.com/wpbonelli/xattree.git
