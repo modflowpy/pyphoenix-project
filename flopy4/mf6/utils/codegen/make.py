@@ -14,8 +14,7 @@ from os import PathLike
 from pathlib import Path
 
 import jinja2
-from modflow_devtools.dfns import Dfn, load_flat
-from modflow_devtools.dfns.schema.field import Field as DfnField
+from modflow_devtools.dfn import Dfn, Field
 
 from . import filters
 from .filters import ColumnSpec
@@ -109,7 +108,7 @@ class ComponentSpec:
 # Context builders
 
 
-def _build_field_spec(f: DfnField, *, has_maxbound: bool = False) -> FieldSpec:
+def _build_field_spec(f: Field, *, has_maxbound: bool = False) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -118,7 +117,7 @@ def _build_field_spec(f: DfnField, *, has_maxbound: bool = False) -> FieldSpec:
     if filters.is_file_record(f):
         py_name = filters.safe_name("_".join(_strip_record_words(f.name)))
     else:
-        py_name = filters.safe_name(f.name)
+        py_name = filters.safe_name(f["name"])
     return FieldSpec(
         dfn_name=f.name,
         py_name=py_name,
@@ -148,14 +147,14 @@ _FIELD_KNOWN_KEYS = frozenset(
 )
 
 
-def _child_to_field(child_dict: dict) -> DfnField:
+def _child_to_field(child_dict: dict) -> Field:
     """Convert a record child dict to a Field object."""
-    return DfnField(**{k: v for k, v in child_dict.items() if k in _FIELD_KNOWN_KEYS})
+    return Field(**{k: v for k, v in child_dict.items() if k in _FIELD_KNOWN_KEYS})
 
 
 def _expand_record_field(
-    f: DfnField, *, has_maxbound: bool = False
-) -> tuple[list[FieldSpec], list[DfnField]]:
+    f: Field, *, has_maxbound: bool = False
+) -> tuple[list[FieldSpec], list[Field]]:
     """Expand a compound record into FieldSpecs for its generatable children.
 
     Returns (field_specs, generatable_child_fields).  field_specs contains one
@@ -164,7 +163,7 @@ def _expand_record_field(
     the corresponding list of Field objects used for import computation.
     """
     children = f.children or {}
-    expandable: list[DfnField] = []
+    expandable: list[Field] = []
     unexpandable_optional: list[str] = []
 
     for child_dict in children.values():
@@ -175,7 +174,7 @@ def _expand_record_field(
         # required unexpandable children were already blocked by can_expand_record
 
     specs: list[FieldSpec] = []
-    gen_fields: list[DfnField] = []
+    gen_fields: list[Field] = []
     for child_field in expandable:
         spec = _build_field_spec(child_field, has_maxbound=has_maxbound)
         specs.append(spec)
@@ -199,7 +198,7 @@ def _expand_record_field(
     return specs, gen_fields
 
 
-def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
+def _expand_list_field(f: Field, dfn: Dfn) -> list[FieldSpec]:
     """Expand a list-type sub-table field into one FieldSpec per column.
 
     Each column becomes an array() field with the list block's block name
@@ -249,7 +248,7 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
     return specs
 
 
-def _expand_oc_record_field(f: DfnField, dfn_name: str) -> list[FieldSpec]:
+def _expand_oc_record_field(f: Field, dfn_name: str) -> list[FieldSpec]:
     """Expand saverecord/printrecord into per-rtype NDArray[np.str_] fields.
 
     Generates one array field per rtype (e.g. save_concentration, save_budget)
@@ -308,7 +307,7 @@ _SCALAR_PY_TYPES_INNER: dict[str, str] = {
 }
 
 
-def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
+def _build_inner_class_spec(f: Field, dfn_name: str) -> InnerClassSpec:
     """Build an InnerClassSpec for a mixed-type compound record field.
 
     When the first child is a keyword type it becomes the trigger token
@@ -409,7 +408,7 @@ def _build_block_property_specs(
     dfn_dims_ordered = list((dfn.blocks or {}).get("dimensions", {}).keys())
 
     # Collect v2 list blocks, excluding those handled by TOML overrides.
-    list_fields_map: dict[str, DfnField | None] = {
+    list_fields_map: dict[str, Field | None] = {
         f.block: f
         for f in filters.flat_fields(dfn)
         if filters.is_list_field(f)
@@ -529,7 +528,7 @@ def build_component_spec(
     period_specs: list[FieldSpec] = []
 
     inner_class_specs: list[InnerClassSpec] = []
-    generatable_field_objects: list[DfnField] = []
+    generatable_field_objects: list[Field] = []
     _replace_blocks = replace_list_blocks(dfn.name)
     _extra_blocks = {lb["block"] for lb in extra_list_blocks(dfn.name)}
 
@@ -982,8 +981,8 @@ def make_all(
     outdir = Path(outdir)
     skip = skip or set()
     env = _get_env()
-    dfns = load_flat(dfndir)
-    v1_dfns = load_flat(v1dfndir) if v1dfndir else {}
+    dfns = Dfn.load_all(dfndir)
+    v1_dfns = Dfn.load_all(v1dfndir) if v1dfndir else {}
     specs = []
     for name, dfn in dfns.items():
         if name in skip:

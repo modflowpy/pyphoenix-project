@@ -1,9 +1,9 @@
 from collections.abc import Mapping
 
-from modflow_devtools.dfns.schema.v2 import FieldV2
+from modflow_devtools.dfn import Field
 
 
-def field_type(field: FieldV2) -> str:
+def field_type(field: Field) -> str:
     match field.type:
         case t if t in ["string", "integer", "double"] and field.shape:
             if "period" in field.block:
@@ -17,7 +17,7 @@ def field_type(field: FieldV2) -> str:
             return field.type
 
 
-def record_child_type(field: FieldV2) -> str:
+def record_child_type(field: Field) -> str:
     """
     Get the grammar type for a field within a record context.
 
@@ -37,7 +37,7 @@ def record_child_type(field: FieldV2) -> str:
             return field.type
 
 
-def is_period_list_field(field: FieldV2) -> bool:
+def is_period_list_field(field: Field) -> bool:
     """Check if a field is part of a period block list/recarray."""
     if not field.shape or not field.block:
         return False
@@ -48,7 +48,7 @@ def is_period_list_field(field: FieldV2) -> bool:
     )
 
 
-def group_period_fields(block_fields: Mapping[str, FieldV2]) -> dict[str, list[str]]:
+def group_period_fields(block_fields: Mapping[str, Field]) -> dict[str, list[str]]:
     """
     Group period block fields that should be combined into a single list.
 

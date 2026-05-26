@@ -3,14 +3,13 @@
 from typing import Any
 
 import xarray as xr
-from modflow_devtools.dfns.schema import Field
-from modflow_devtools.dfns.schema import FieldType
+from modflow_devtools.dfns import FieldBase, FieldType
 
 
 def field_type(value: Any) -> FieldType:
     """Get a value's type according to the MF6 specification."""
 
-    if isinstance(value, Field):
+    if isinstance(value, FieldBase):
         return value.type
     if isinstance(value, bool):
         return "keyword"

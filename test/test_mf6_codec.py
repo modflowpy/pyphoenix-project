@@ -1603,7 +1603,7 @@ def test_lak_packagedata_single_aux_roundtrip():
     assert list(pd["strt"].values) == [5.0]
     aux_vals = pd["aux"].values
     assert len(aux_vals) == 1
-    assert float(aux_vals[0]) == pytest.approx(100.0)
+    assert float(aux_vals[0, 0]) == pytest.approx(100.0)
     assert list(pd["boundname"].values) == ["lake1"]
 
 

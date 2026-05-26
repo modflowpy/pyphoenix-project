@@ -18,9 +18,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from modflow_devtools.dfns import load_flat
-from modflow_devtools.dfns.dfn2toml import convert as dfn2toml
-from modflow_devtools.dfns.schema.v2 import FieldV2
+from modflow_devtools.dfn import Dfn, Field
+from modflow_devtools.dfn2toml import convert as dfn2toml
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.utils.codegen.filters import (
@@ -39,17 +38,15 @@ from flopy4.mf6.utils.codegen.make import build_component_spec, make_all
 
 # Shared fixtures
 @pytest.fixture(scope="session")
-def v2_dfn_dir(dfn_path, tmp_path_factory):
-    """Convert the session-level v1 DFN directory to v2 TOML once."""
-    v2dir = tmp_path_factory.mktemp("dfn_v2")
+def dfn_dir(dfn_path, tmp_path_factory):
+    v2dir = tmp_path_factory.mktemp("dfn_v1_1")
     dfn2toml(dfn_path, v2dir)
     return v2dir
 
 
 @pytest.fixture(scope="session")
-def all_dfns(v2_dfn_dir):
-    """Load all v2 DFNs as a flat dict."""
-    return load_flat(v2_dfn_dir)
+def dfns(dfn_dir):
+    return Dfn.load_all(dfn_dir)
 
 
 # Simple tier: Package subclasses with only scalars, arrays, and path records.
@@ -209,7 +206,7 @@ class TestFilters:
         ],
     )
     def test_py_type(self, ftype, shape, optional, expected):
-        f = FieldV2(name="x", type=ftype, block="options", shape=shape, optional=optional)
+        f = Field(name="x", type=ftype, block="options", shape=shape, optional=optional)
         assert py_type(f) == expected
 
     @pytest.mark.parametrize(
@@ -222,7 +219,7 @@ class TestFilters:
     )
     def test_py_type_period_array_always_optional(self, ftype, shape):
         """Period arrays get Optional even when DFN marks them required."""
-        f = FieldV2(name="x", type=ftype, block="period", shape=shape, optional=False)
+        f = Field(name="x", type=ftype, block="period", shape=shape, optional=False)
         result = py_type(f)
         assert result.startswith("Optional["), (
             f"Expected Optional for period {ftype} array but got {result!r}"
@@ -241,13 +238,13 @@ class TestFilters:
         ],
     )
     def test_is_generatable(self, ftype, shape, generatable):
-        f = FieldV2(name="x", type=ftype, block="options", shape=shape)
+        f = Field(name="x", type=ftype, block="options", shape=shape)
         assert is_generatable(f) == generatable
 
     def test_is_generatable_file_record(self):
         """A record with a filein/fileout child is generatable as a path."""
-        child_in = FieldV2(name="filein", type="keyword", block="options")
-        f = FieldV2(
+        child_in = Field(name="filein", type="keyword", block="options")
+        f = Field(
             name="my_filerecord",
             type="record",
             block="options",
@@ -264,12 +261,12 @@ class TestFilters:
         ],
     )
     def test_spec_call_prefix(self, ftype, shape, check):
-        f = FieldV2(name="x", type=ftype, block="options", shape=shape)
+        f = Field(name="x", type=ftype, block="options", shape=shape)
         assert check(spec_call(f))
 
     def test_spec_call_file_record(self):
-        child = FieldV2(name="fileout", type="keyword", block="options")
-        f = FieldV2(
+        child = Field(name="fileout", type="keyword", block="options")
+        f = Field(
             name="budget_filerecord",
             type="record",
             block="options",
@@ -293,23 +290,23 @@ class TestSimpleTierComponentSpec:
             pytest.skip(f"{dfn_name} not available in DFN set")
         return all_dfns[dfn_name]
 
-    def test_class_name(self, dfn_name, expected_class, expected_base, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_class_name(self, dfn_name, expected_class, expected_base, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.class_name == expected_class
 
-    def test_base_class(self, dfn_name, expected_class, expected_base, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_base_class(self, dfn_name, expected_class, expected_base, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.base_class == expected_base
 
-    def test_has_fields(self, dfn_name, expected_class, expected_base, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_has_fields(self, dfn_name, expected_class, expected_base, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert len(spec.fields) > 0
 
-    def test_imports_include_base(self, dfn_name, expected_class, expected_base, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_imports_include_base(self, dfn_name, expected_class, expected_base, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         all_imports = "\n".join(
             spec.imports.get("stdlib", [])
@@ -319,9 +316,9 @@ class TestSimpleTierComponentSpec:
         assert "xattree" in all_imports
         assert "Package" in all_imports
 
-    def test_outpath(self, dfn_name, expected_class, expected_base, all_dfns):
+    def test_outpath(self, dfn_name, expected_class, expected_base, dfns):
         root = Path("/fake/mf6")
-        dfn = self._get_dfn(dfn_name, all_dfns)
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=root)
         assert spec.outpath == root / "gwf" / f"{expected_class.lower()}.py"
 
@@ -339,31 +336,31 @@ class TestSolutionTierComponentSpec:
             pytest.skip(f"{dfn_name} not available in DFN set")
         return all_dfns[dfn_name]
 
-    def test_class_name(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_class_name(self, dfn_name, expected_class, expected_base, expected_slntype, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.class_name == expected_class
 
-    def test_base_class(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_base_class(self, dfn_name, expected_class, expected_base, expected_slntype, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.base_class == expected_base
 
-    def test_slntype(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+    def test_slntype(self, dfn_name, expected_class, expected_base, expected_slntype, dfns):
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         assert spec.slntype == expected_slntype
 
-    def test_outpath(self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns):
+    def test_outpath(self, dfn_name, expected_class, expected_base, expected_slntype, dfns):
         root = Path("/fake/mf6")
-        dfn = self._get_dfn(dfn_name, all_dfns)
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=root)
         assert spec.outpath == root / f"{expected_class.lower()}.py"
 
     def test_imports_include_solution(
-        self, dfn_name, expected_class, expected_base, expected_slntype, all_dfns
+        self, dfn_name, expected_class, expected_base, expected_slntype, dfns
     ):
-        dfn = self._get_dfn(dfn_name, all_dfns)
+        dfn = self._get_dfn(dfn_name, dfns)
         spec = build_component_spec(dfn, root=Path("/fake"))
         all_imports = "\n".join(
             spec.imports.get("stdlib", [])
@@ -376,14 +373,12 @@ class TestSolutionTierComponentSpec:
 
 
 # Layer 2b: List-field expansion
-def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
+def test_lak_numeric_index_autodetects_cellid(dfns, dfn_path):
     """v1 DFN numeric_index=True on ifno/iconn auto-sets cellid; is_cellid stored as object."""
-    if "gwf-lak" not in all_dfns:
+    if "gwf-lak" not in dfns:
         pytest.skip("gwf-lak not in DFN set")
-    v1_dfns = load_flat(dfn_path)
-    spec = build_component_spec(
-        all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
-    )
+    v1_dfns = Dfn.load_all(dfn_path)
+    spec = build_component_spec(dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak"))
     field_map = {f.py_name: f for f in spec.fields}
 
     # Feature ordinals — block-prefixed due to collision across packagedata/connectiondata/tables.
@@ -407,11 +402,11 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
     )
 
 
-def test_mvr_list_fields_expanded_and_optional(all_dfns):
+def test_mvr_list_fields_expanded_and_optional(dfns):
     """gwf-mvr list sub-tables should expand into per-column FieldSpecs, all Optional."""
-    if "gwf-mvr" not in all_dfns:
+    if "gwf-mvr" not in dfns:
         pytest.skip("gwf-mvr not in DFN set")
-    spec = build_component_spec(all_dfns["gwf-mvr"], root=Path("/fake"))
+    spec = build_component_spec(dfns["gwf-mvr"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
     # Period block columns (from perioddata list field)
@@ -436,12 +431,12 @@ class TestBlockPropertySpec:
     """Verify BlockPropertySpec population in build_component_spec."""
 
     @pytest.fixture
-    def lak_spec(self, all_dfns, dfn_path):
-        if "gwf-lak" not in all_dfns:
+    def lak_spec(self, dfns, dfn_path):
+        if "gwf-lak" not in dfns:
             pytest.skip("gwf-lak not in DFN set")
-        v1_dfns = load_flat(dfn_path)
+        v1_dfns = Dfn.load_all(dfn_path)
         return build_component_spec(
-            all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
+            dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
         )
 
     def test_lak_block_count(self, lak_spec):
@@ -507,48 +502,48 @@ class TestBlockPropertySpec:
         assert "tab6" not in bp.attr_name_map
         assert "filein" not in bp.attr_name_map
 
-    def test_no_block_properties_without_v1(self, all_dfns):
-        if "gwf-lak" not in all_dfns:
+    def test_no_block_properties_without_v1(self, dfns):
+        if "gwf-lak" not in dfns:
             pytest.skip("gwf-lak not in DFN set")
-        spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
+        spec = build_component_spec(dfns["gwf-lak"], root=Path("/fake"))
         assert spec.block_properties == []
 
 
 # Layer 2c: Compound record expansion
-def test_can_expand_record_all_keywords(all_dfns):
+def test_can_expand_record_all_keywords(dfns):
     """A record whose children are all keyword type (like cvoptions) is expandable."""
-    if "gwf-npf" not in all_dfns:
+    if "gwf-npf" not in dfns:
         pytest.skip("gwf-npf not in DFN set")
-    cvoptions = all_dfns["gwf-npf"].blocks["options"]["cvoptions"]
+    cvoptions = dfns["gwf-npf"].blocks["options"]["cvoptions"]
     assert can_expand_record(cvoptions)
 
 
-def test_can_expand_record_with_positional_required_data(all_dfns):
+def test_can_expand_record_with_positional_required_data(dfns):
     """A record with required scalar+keyword children (rewet_record) generates an inner class."""
-    if "gwf-npf" not in all_dfns:
+    if "gwf-npf" not in dfns:
         pytest.skip("gwf-npf not in DFN set")
     from flopy4.mf6.utils.codegen.filters import can_generate_record_class
 
-    rewet_record = all_dfns["gwf-npf"].blocks["options"]["rewet_record"]
+    rewet_record = dfns["gwf-npf"].blocks["options"]["rewet_record"]
     assert not can_expand_record(rewet_record)
     assert can_generate_record_class(rewet_record)
 
 
-def test_rcloserecord_generates_inner_class(all_dfns):
+def test_rcloserecord_generates_inner_class(dfns):
     """rcloserecord has a tagged scalar first child (not keyword): generates an inner class."""
-    if "sln-ims" not in all_dfns:
+    if "sln-ims" not in dfns:
         pytest.skip("sln-ims not in DFN set")
     from flopy4.mf6.utils.codegen.filters import can_generate_record_class
 
-    rcloserecord = all_dfns["sln-ims"].blocks["linear"]["rcloserecord"]
+    rcloserecord = dfns["sln-ims"].blocks["linear"]["rcloserecord"]
     assert can_generate_record_class(rcloserecord)
 
 
-def test_ims_compound_records_expanded(all_dfns):
+def test_ims_compound_records_expanded(dfns):
     """sln-ims: rcloserecord and no_ptcrecord both become inner classes."""
-    if "sln-ims" not in all_dfns:
+    if "sln-ims" not in dfns:
         pytest.skip("sln-ims not in DFN set")
-    spec = build_component_spec(all_dfns["sln-ims"], root=Path("/fake"))
+    spec = build_component_spec(dfns["sln-ims"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
     # rcloserecord dfn → rclose field (record suffix stripped), Rclose inner class
@@ -572,11 +567,11 @@ def test_ims_compound_records_expanded(all_dfns):
     assert "no_ptcrecord" not in todo_names
 
 
-def test_npf_compound_records_expanded(all_dfns):
+def test_npf_compound_records_expanded(dfns):
     """gwf-npf: cvoptions/xt3doptions/rewet_record all become inner classes."""
-    if "gwf-npf" not in all_dfns:
+    if "gwf-npf" not in dfns:
         pytest.skip("gwf-npf not in DFN set")
-    spec = build_component_spec(all_dfns["gwf-npf"], root=Path("/fake"))
+    spec = build_component_spec(dfns["gwf-npf"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
     class_names = {r.class_name for r in spec.inner_classes}
 
@@ -605,17 +600,17 @@ def test_npf_compound_records_expanded(all_dfns):
 
 
 # Layer 3: End-to-end generation
-def test_simple_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+def test_simple_tier_generates_importable_files(dfn_dir, tmp_path, dfns):
     """Run make_all() and verify each simple-tier file is importable with the right class."""
     (tmp_path / "gwf").mkdir()
 
-    skip = {n for n in load_flat(v2_dfn_dir) if n not in SIMPLE_TIER}
-    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+    skip = {n for n in Dfn.load_all(dfn_dir) if n not in SIMPLE_TIER}
+    specs = make_all(dfndir=dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
 
     generated = {s.dfn_name: s for s in specs}
 
     for dfn_name, (expected_class, _) in SIMPLE_TIER.items():
-        if dfn_name not in all_dfns:
+        if dfn_name not in dfns:
             continue  # not in this DFN set, skip gracefully
         if dfn_name not in generated:
             pytest.fail(f"{dfn_name} was expected but not generated")
@@ -643,17 +638,17 @@ def test_simple_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
 
 
-def test_solution_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+def test_solution_tier_generates_importable_files(dfn_dir, tmp_path, dfns):
     """Run make_all() and verify each solution-tier file is importable with Solution base."""
     from flopy4.mf6.solution import Solution
 
-    skip = {n for n in load_flat(v2_dfn_dir) if n not in SOLUTION_TIER}
-    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+    skip = {n for n in Dfn.load_all(dfn_dir) if n not in SOLUTION_TIER}
+    specs = make_all(dfndir=dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
 
     generated = {s.dfn_name: s for s in specs}
 
     for dfn_name, (expected_class, _, expected_slntype) in SOLUTION_TIER.items():
-        if dfn_name not in all_dfns:
+        if dfn_name not in dfns:
             continue
         if dfn_name not in generated:
             pytest.fail(f"{dfn_name} was expected but not generated")
@@ -700,20 +695,20 @@ def _load_class_from_spec(spec, mod_name: str, expected_class: str):
             del sys.modules[key]
 
 
-def test_transport_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+def test_transport_tier_generates_importable_files(dfn_dir, tmp_path, dfns):
     """gwt-disv, gwt-ist, gwe-disv generate importable Package subclasses."""
     for subdir in ("gwt", "gwe"):
         (tmp_path / subdir).mkdir()
 
-    target = {n for n in TRANSPORT_TIER if n in all_dfns}
-    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
-    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+    target = {n for n in TRANSPORT_TIER if n in dfns}
+    skip = {n for n in Dfn.load_all(dfn_dir) if n not in target}
+    specs = make_all(dfndir=dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
 
     for dfn_name, (expected_class, _, subdir) in TRANSPORT_TIER.items():
-        if dfn_name not in all_dfns:
+        if dfn_name not in dfns:
             continue
         assert dfn_name in generated, f"{dfn_name} was not generated"
         spec = generated[dfn_name]
@@ -722,20 +717,20 @@ def test_transport_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfn
         assert issubclass(cls, Package)
 
 
-def test_oc_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+def test_oc_tier_generates_importable_files(dfn_dir, tmp_path, dfns):
     """gwt-oc, gwe-oc, prt-oc generate importable Package subclasses with OC period fields."""
     for subdir in ("gwt", "gwe", "prt"):
         (tmp_path / subdir).mkdir()
 
-    target = {n for n in OC_TIER if n in all_dfns}
-    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
-    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
+    target = {n for n in OC_TIER if n in dfns}
+    skip = {n for n in Dfn.load_all(dfn_dir) if n not in target}
+    specs = make_all(dfndir=dfn_dir, outdir=tmp_path, fmt=False, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
 
     for dfn_name, (expected_class, _, subdir) in OC_TIER.items():
-        if dfn_name not in all_dfns:
+        if dfn_name not in dfns:
             continue
         assert dfn_name in generated, f"{dfn_name} was not generated"
         spec = generated[dfn_name]
@@ -747,19 +742,19 @@ def test_oc_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
         assert oc_fields, f"{dfn_name} should have save_/print_ period fields"
 
 
-def test_utl_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+def test_utl_tier_generates_importable_files(dfn_dir, tmp_path, dfns):
     """utl-* packages generate importable Package subclasses (including utl-tas inner classes)."""
     (tmp_path / "utl").mkdir()
 
-    target = {n for n in UTL_TIER if n in all_dfns}
-    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
-    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
+    target = {n for n in UTL_TIER if n in dfns}
+    skip = {n for n in Dfn.load_all(dfn_dir) if n not in target}
+    specs = make_all(dfndir=dfn_dir, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
 
     for dfn_name, (expected_class, _) in UTL_TIER.items():
-        if dfn_name not in all_dfns:
+        if dfn_name not in dfns:
             continue
         assert dfn_name in generated, f"{dfn_name} was not generated"
         spec = generated[dfn_name]
@@ -768,19 +763,19 @@ def test_utl_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
         assert issubclass(cls, Package)
 
 
-def test_exg_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns):
+def test_exg_tier_generates_importable_files(dfn_dir, tmp_path, dfns):
     """exg-* packages generate importable Package subclasses (including 0-field pass-only)."""
     (tmp_path / "exg").mkdir()
 
-    target = {n for n in EXG_TIER if n in all_dfns}
-    skip = {n for n in load_flat(v2_dfn_dir) if n not in target}
-    specs = make_all(dfndir=v2_dfn_dir, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
+    target = {n for n in EXG_TIER if n in dfns}
+    skip = {n for n in Dfn.load_all(dfn_dir) if n not in target}
+    specs = make_all(dfndir=dfn_dir, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
 
     for dfn_name, (expected_class, _) in EXG_TIER.items():
-        if dfn_name not in all_dfns:
+        if dfn_name not in dfns:
             continue
         assert dfn_name in generated, f"{dfn_name} was not generated"
         spec = generated[dfn_name]

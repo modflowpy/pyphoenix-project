@@ -7,7 +7,6 @@ import attrs
 import numpy as np
 import xarray as xr
 import xattree
-from modflow_devtools.dfn.schema import block_sort_key
 from xattree import XatSpec
 
 from flopy4.mf6.binding import Binding
@@ -126,6 +125,20 @@ def _hack_structured_grid_dims(
         coords=coords,
         name=value.name,
     )
+
+
+def _block_sort_key(item) -> int:
+    k, _ = item
+    if k == "options":
+        return 0
+    elif k == "dimensions":
+        return 1
+    elif k == "griddata":
+        return 2
+    elif "period" in k:
+        return 4
+    else:
+        return 3
 
 
 _OC_SETTING_KEYWORDS = frozenset({"all", "first", "last", "steps", "frequency"})
@@ -516,7 +529,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                     if first_dim and all(da.dims and da.dims[0] == first_dim for da in das):
                         blocks[block_name] = {block_name: xr.Dataset(current_block)}
 
-    blocks = dict(sorted(blocks.items(), key=block_sort_key))
+    blocks = dict(sorted(blocks.items(), key=_block_sort_key))
 
     # total temporary hack! manually set solutiongroup 1.
     # TODO still need to support multiple..

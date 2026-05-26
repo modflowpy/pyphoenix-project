@@ -804,7 +804,7 @@ class StructuredGrid(LegacyStructuredGrid):
                 topo["node_y"],
                 FILL_INT64,
                 topo["face_nodes"],
-                projected=True,
+                is_projected=True,
                 crs=self.crs,
                 start_index=1,
             )
@@ -1326,7 +1326,7 @@ class VertexGrid(LegacyVertexGrid):
                 topo["node_y"],
                 FILL_INT64,
                 topo["face_nodes"],
-                projected=True,
+                is_projected=True,
                 crs=self.crs,
                 start_index=1,
             )

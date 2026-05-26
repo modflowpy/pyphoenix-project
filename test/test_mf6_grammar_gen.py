@@ -1,6 +1,5 @@
 import pytest
-from modflow_devtools.dfns import Dfn
-from modflow_devtools.dfns.schema.v2 import FieldV2
+from modflow_devtools.dfn import Dfn, Field
 from packaging.version import Version
 
 from flopy4.mf6.codec.reader.grammar import make_all_grammars, make_grammar
@@ -14,7 +13,7 @@ def minimal_dfn():
         name="test-component",
         blocks={
             "options": {
-                "test_field": FieldV2(
+                "test_field": Field(
                     name="test_field",
                     type="keyword",
                     block="options",
@@ -32,14 +31,14 @@ def simple_dfn():
         name="gwf-test",
         blocks={
             "options": {
-                "export_ascii": FieldV2(
+                "export_ascii": Field(
                     name="export_array_ascii",
                     type="keyword",
                     block="options",
                 )
             },
             "griddata": {
-                "strt": FieldV2(
+                "strt": Field(
                     name="strt",
                     type="double",
                     block="griddata",
@@ -147,20 +146,20 @@ def test_make_grammar_with_period_block(tmp_path):
         name="gwf-test",
         blocks={
             "options": {
-                "print_input": FieldV2(
+                "print_input": Field(
                     name="print_input",
                     type="keyword",
                     block="options",
                 )
             },
             "period": {
-                "q": FieldV2(
+                "q": Field(
                     name="q",
                     type="double",
                     block="period",
                     shape="(nper, nnodes)",
                 ),
-                "aux": FieldV2(
+                "aux": Field(
                     name="aux",
                     type="double",
                     block="period",
@@ -196,7 +195,7 @@ def test_make_grammar_with_named_subfields(tmp_path):
         name="gwf-rch",
         blocks={
             "period": {
-                "recharge": FieldV2(
+                "recharge": Field(
                     name="recharge",
                     type="double",
                     block="period",
@@ -226,21 +225,21 @@ def test_make_grammar_with_oc_style_records(tmp_path):
         name="gwf-oc",
         blocks={
             "period": {
-                "saverecord": FieldV2(
+                "saverecord": Field(
                     name="saverecord",
                     type="record",
                     block="period",
                     children={
-                        "save": FieldV2(name="save", type="keyword", block="period"),
-                        "rtype": FieldV2(name="rtype", type="string", block="period"),
-                        "ocsetting": FieldV2(
+                        "save": Field(name="save", type="keyword", block="period"),
+                        "rtype": Field(name="rtype", type="string", block="period"),
+                        "ocsetting": Field(
                             name="ocsetting",
                             type="union",
                             block="period",
                             children={
-                                "all": FieldV2(name="all", type="keyword", block="period"),
-                                "first": FieldV2(name="first", type="keyword", block="period"),
-                                "last": FieldV2(name="last", type="keyword", block="period"),
+                                "all": Field(name="all", type="keyword", block="period"),
+                                "first": Field(name="first", type="keyword", block="period"),
+                                "last": Field(name="last", type="keyword", block="period"),
                             },
                         ),
                     },

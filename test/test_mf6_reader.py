@@ -7,7 +7,8 @@ import numpy as np
 import pytest
 import xarray as xr
 from lark import Lark
-from modflow_devtools.dfns import Dfn, MapV1To2, load_flat
+from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfn2toml import convert
 from modflow_devtools.download import download_and_unzip
 from packaging.version import Version
 
@@ -239,24 +240,22 @@ INTERNAL FACTOR 2.0
 
 
 def test_transform_full_component():
-    dfn = Dfn.from_dict(
-        {
-            "name": "test_transform",
-            "schema_version": Version("2"),
-            "blocks": {
-                "options": {
-                    "r2d2": {"name": "r2d2", "type": "keyword"},
-                    "b": {"name": "b", "type": "string"},
-                    "c": {"name": "c", "type": "integer"},
-                    "p": {"name": "p", "type": "double"},
-                },
-                "arrays": {
-                    "x": {"name": "x", "type": "double", "shape": None},
-                    "y": {"name": "y", "type": "array", "shape": None},
-                    "z": {"name": "z", "type": "array", "shape": None},
-                },
+    dfn = Dfn(
+        name="test_transform",
+        schema_version=Version("2"),
+        blocks={
+            "options": {
+                "r2d2": {"name": "r2d2", "type": "keyword"},
+                "b": {"name": "b", "type": "string"},
+                "c": {"name": "c", "type": "integer"},
+                "p": {"name": "p", "type": "double"},
             },
-        }
+            "arrays": {
+                "x": {"name": "x", "type": "double", "shape": None},
+                "y": {"name": "y", "type": "array", "shape": None},
+                "z": {"name": "z", "type": "array", "shape": None},
+            },
+        },
     )
     grammar = """
 start: block*
@@ -399,15 +398,14 @@ def test_parse_gwf_wel_file(model_workspace):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_ic_file(model_workspace, dfn_path):
+def test_transform_gwf_ic_file(model_workspace, dfn_path, tmp_path):
     """Test transforming a parsed GWF IC file into structured data."""
 
-    # Load the DFN for IC and convert to V2
-    from modflow_devtools.dfns import MapV1To2
-
-    v1_dfns = load_flat(dfn_path)
-    mapper = MapV1To2()
-    ic_dfn = mapper.map(v1_dfns["gwf-ic"])
+    toml_path = tmp_path / "toml"
+    toml_path.mkdir()
+    convert(dfn_path, toml_path)
+    dfns = Dfn.load_all(toml_path)
+    ic_dfn = dfns["gwf-ic"]
 
     # Find the IC file
     ic_files = list(model_workspace.rglob("*.ic"))
@@ -441,15 +439,14 @@ def test_transform_gwf_ic_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
-def test_transform_gwf_wel_file(model_workspace, dfn_path):
+def test_transform_gwf_wel_file(model_workspace, dfn_path, tmp_path):
     """Test transforming a parsed GWF WEL file into structured data."""
 
-    # Load the DFN for WEL and convert to V2
-    from modflow_devtools.dfns import MapV1To2
-
-    v1_dfns = load_flat(dfn_path)
-    mapper = MapV1To2()
-    wel_dfn = mapper.map(v1_dfns["gwf-wel"])
+    toml_path = tmp_path / "toml"
+    toml_path.mkdir()
+    convert(dfn_path, toml_path)
+    dfns = Dfn.load_all(toml_path)
+    wel_dfn = dfns["gwf-wel"]
 
     # Find the WEL file
     wel_files = list(model_workspace.rglob("*.wel"))
@@ -529,15 +526,14 @@ def test_parse_gwf_oc_file(model_workspace):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
-def test_transform_gwf_oc_file(model_workspace, dfn_path):
+def test_transform_gwf_oc_file(model_workspace, dfn_path, tmp_path):
     """Test transforming a parsed GWF OC file into structured data."""
 
-    # Load the DFN for OC and convert to V2
-    from modflow_devtools.dfns import MapV1To2
-
-    v1_dfns = load_flat(dfn_path)
-    mapper = MapV1To2()
-    oc_dfn = mapper.map(v1_dfns["gwf-oc"])
+    toml_path = tmp_path / "toml"
+    toml_path.mkdir()
+    convert(dfn_path, toml_path)
+    dfns = Dfn.load_all(toml_path)
+    oc_dfn = dfns["gwf-oc"]
 
     # Find the OC file
     oc_files = list(model_workspace.rglob("*.oc"))
@@ -589,13 +585,14 @@ def test_transform_gwf_oc_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_dis_file(model_workspace, dfn_path):
+def test_transform_gwf_dis_file(model_workspace, dfn_path, tmp_path):
     """Test transforming a parsed GWF DIS file into structured data."""
 
-    # Load the DFN for DIS and convert to V2
-    v1_dfns = load_flat(dfn_path)
-    mapper = MapV1To2()
-    dis_dfn = mapper.map(v1_dfns["gwf-dis"])
+    toml_path = tmp_path / "toml"
+    toml_path.mkdir()
+    convert(dfn_path, toml_path)
+    dfns = Dfn.load_all(toml_path)
+    dis_dfn = dfns["gwf-dis"]
 
     # Find the DIS file
     dis_files = list(model_workspace.rglob("*.dis"))
@@ -638,13 +635,14 @@ def test_transform_gwf_dis_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_npf_file(model_workspace, dfn_path):
+def test_transform_gwf_npf_file(model_workspace, dfn_path, tmp_path):
     """Test transforming a parsed GWF NPF file into structured data."""
 
-    # Load the DFN for NPF and convert to V2
-    v1_dfns = load_flat(dfn_path)
-    mapper = MapV1To2()
-    npf_dfn = mapper.map(v1_dfns["gwf-npf"])
+    toml_path = tmp_path / "toml"
+    toml_path.mkdir()
+    convert(dfn_path, toml_path)
+    dfns = Dfn.load_all(toml_path)
+    npf_dfn = dfns["gwf-npf"]
 
     # Find the NPF file
     npf_files = list(model_workspace.rglob("*.npf"))
@@ -688,13 +686,14 @@ def test_transform_gwf_npf_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_sto_file(model_workspace, dfn_path):
+def test_transform_gwf_sto_file(model_workspace, dfn_path, tmp_path):
     """Test transforming a parsed GWF STO file into structured data."""
 
-    # Load the DFN for STO and convert to V2
-    v1_dfns = load_flat(dfn_path)
-    mapper = MapV1To2()
-    sto_dfn = mapper.map(v1_dfns["gwf-sto"])
+    toml_path = tmp_path / "toml"
+    toml_path.mkdir()
+    convert(dfn_path, toml_path)
+    dfns = Dfn.load_all(toml_path)
+    sto_dfn = dfns["gwf-sto"]
 
     # Find the STO file
     sto_files = list(model_workspace.rglob("*.sto"))

@@ -14,8 +14,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from modflow_devtools.dfn import get_dfns
-from modflow_devtools.dfns.dfn2toml import convert as dfn2toml
+from modflow_devtools.dfn import fetch_dfns
+from modflow_devtools.dfn2toml import convert
 
 from .make import make_all
 
@@ -108,7 +108,7 @@ def generate_classes(
             logger.info(f"Using local DFNs from {src}")
         else:
             logger.info(f"Fetching DFNs from {owner}/{repo}@{ref}")
-            get_dfns(
+            fetch_dfns(
                 owner=owner,
                 repo=repo,
                 ref=ref,
@@ -116,8 +116,8 @@ def generate_classes(
                 verbose=logger.isEnabledFor(logging.INFO),
             )
 
-        logger.info("Converting v1 DFNs to v2 TOML")
-        dfn2toml(v1dir, v2dir)
+        logger.info("Converting v1 DFNs to v1.1")
+        convert(v1dir, v2dir)
 
         outdir = Path(outdir).expanduser().resolve()
         generated = make_all(

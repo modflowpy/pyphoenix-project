@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfn import Dfn, get_fields
 
 
 def _parse_number(value: str) -> int | float:
@@ -75,8 +75,9 @@ class TypedTransformer(Transformer):
     def __init__(self, visit_tokens=False, dfn: Dfn = None):
         super().__init__(visit_tokens)
         self.dfn = dfn
-        self.blocks = dfn.blocks if dfn else None
-        self.fields = dfn.fields if dfn else None
+        self.blocks = dfn.get("blocks") if dfn else None
+        fields = get_fields(dfn)
+        self.fields = fields or None
         # Create a flattened fields dict that includes nested fields
         self._flat_fields = self._flatten_fields(self.fields) if self.fields else None
 
@@ -92,14 +93,13 @@ class TypedTransformer(Transformer):
         """Recursively flatten fields dict to include children of records and unions."""
         flat = dict(fields)  # Start with top-level fields
         for field in fields.values():
-            if hasattr(field, "children") and field.children:
-                # Add children fields
-                for child_name, child_field in field.children.items():
+            children = field.get("children")
+            if children:
+                for child_name, child_field in children.items():
                     flat[child_name] = child_field
-                    # Recursively flatten nested children
-                    if hasattr(child_field, "children") and child_field.children:
-                        nested_flat = self._flatten_fields(child_field.children)
-                        flat.update(nested_flat)
+                    nested = child_field.get("children")
+                    if nested:
+                        flat.update(self._flatten_fields(nested))
         return flat
 
     def start(self, items: list[Any]) -> dict:
