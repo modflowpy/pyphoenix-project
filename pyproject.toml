@@ -55,7 +55,6 @@ optional = [
     "sparse>=0.17.0",
     "dask[array]>=2025.10.0,<2026",
     "pyproj>=3.7.2,<4",
-    # "netcdf4>=1.7.3,<2",
     "networkx>=3.5,<4",
     "pyshp>=3.0.2.post1,<4",
 ]
