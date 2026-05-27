@@ -514,8 +514,26 @@ class StructuredGrid(LegacyStructuredGrid):
         finally:
             self.legacy = False
 
+    def _coord_units(self) -> str | None:
+        """Return CF-valid coordinate units string, or None to omit the attribute.
+
+        Priority: explicit lenuni → CRS linear unit → omit (never write "unknown").
+        """
+        _lenunits = {1: "ft", 2: "m", 3: "cm"}
+        if self.lenuni in _lenunits:
+            return _lenunits[self.lenuni]
+        if self.crs is not None:
+            try:
+                from pyproj import CRS as ProjCRS
+
+                unit = ProjCRS.from_user_input(self.crs).axis_info[0].unit_name.lower()
+                return {"metre": "m", "meter": "m", "foot": "ft", "feet": "ft"}.get(unit, unit)
+            except Exception:
+                pass
+        return None
+
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
+        _units = self._coord_units()
 
         # All topology arrays computed once; self.legacy is already True here.
         topo = self._topology()
@@ -556,11 +574,13 @@ class StructuredGrid(LegacyStructuredGrid):
             "mesh_node_y": (["nmesh_node"], topo["node_y"]),
         }
         ds = ds.assign(var_d)
-        ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_node_x"].attrs["units"] = _units
         ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["mesh_node_x"].attrs["long_name"] = "Easting"
         ds["mesh_node_x"].encoding["_FillValue"] = None
-        ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_node_y"].attrs["units"] = _units
         ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_node_y"].attrs["long_name"] = "Northing"
         ds["mesh_node_y"].encoding["_FillValue"] = None
@@ -573,12 +593,14 @@ class StructuredGrid(LegacyStructuredGrid):
             "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
         }
         ds = ds.assign(var_d)
-        ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_face_x"].attrs["units"] = _units
         ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["mesh_face_x"].attrs["long_name"] = "Easting"
         ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
         ds["mesh_face_x"].encoding["_FillValue"] = None
-        ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_face_y"].attrs["units"] = _units
         ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
@@ -625,7 +647,7 @@ class StructuredGrid(LegacyStructuredGrid):
     def _structured_dataset(self, ds, modeltime=None, configuration=None):
         # Produces a conventional CF structured dataset (x/y dimension coords,
         # no UGRID mesh variable).
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
+        _units = self._coord_units()
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
@@ -671,12 +693,14 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
         ds["time"].encoding["_FillValue"] = None
-        ds["y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["y"].attrs["units"] = _units
         ds["y"].attrs["axis"] = "Y"
         ds["y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["y"].attrs["long_name"] = "Northing"
         ds["y"].attrs["bounds"] = "y_bnds"
-        ds["x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["x"].attrs["units"] = _units
         ds["x"].attrs["axis"] = "X"
         ds["x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["x"].attrs["long_name"] = "Easting"
@@ -1129,6 +1153,24 @@ class VertexGrid(LegacyVertexGrid):
             # z is 3D, not 1D, so don't set as index
         )
 
+    def _coord_units(self) -> str | None:
+        """Return CF-valid coordinate units string, or None to omit the attribute.
+
+        Priority: explicit lenuni → CRS linear unit → omit (never write "unknown").
+        """
+        _lenunits = {1: "ft", 2: "m", 3: "cm"}
+        if self.lenuni in _lenunits:
+            return _lenunits[self.lenuni]
+        if self.crs is not None:
+            try:
+                from pyproj import CRS as ProjCRS
+
+                unit = ProjCRS.from_user_input(self.crs).axis_info[0].unit_name.lower()
+                return {"metre": "m", "meter": "m", "foot": "ft", "feet": "ft"}.get(unit, unit)
+            except Exception:
+                pass
+        return None
+
     def to_xarray(
         self,
         modeltime=None,
@@ -1147,7 +1189,7 @@ class VertexGrid(LegacyVertexGrid):
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")
 
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
+        _units = self._coord_units()
 
         self.legacy = True
         try:
@@ -1194,11 +1236,13 @@ class VertexGrid(LegacyVertexGrid):
                 "mesh_node_y": (["nmesh_node"], topo["node_y"]),
             }
             ds = ds.assign(var_d)
-            ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_node_x"].attrs["units"] = _units
             ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
             ds["mesh_node_x"].attrs["long_name"] = "Easting"
             ds["mesh_node_x"].encoding["_FillValue"] = None
-            ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_node_y"].attrs["units"] = _units
             ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
             ds["mesh_node_y"].attrs["long_name"] = "Northing"
             ds["mesh_node_y"].encoding["_FillValue"] = None
@@ -1211,12 +1255,14 @@ class VertexGrid(LegacyVertexGrid):
                 "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
             }
             ds = ds.assign(var_d)
-            ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_face_x"].attrs["units"] = _units
             ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
             ds["mesh_face_x"].attrs["long_name"] = "Easting"
             ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
             ds["mesh_face_x"].encoding["_FillValue"] = None
-            ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_face_y"].attrs["units"] = _units
             ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
