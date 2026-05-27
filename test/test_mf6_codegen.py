@@ -224,9 +224,9 @@ class TestFilters:
         """Period arrays get Optional even when DFN marks them required."""
         f = FieldV2(name="x", type=ftype, block="period", shape=shape, optional=False)
         result = py_type(f)
-        assert result.startswith("Optional["), (
-            f"Expected Optional for period {ftype} array but got {result!r}"
-        )
+        assert result.startswith(
+            "Optional["
+        ), f"Expected Optional for period {ftype} array but got {result!r}"
 
     @pytest.mark.parametrize(
         "ftype, shape, generatable",
@@ -391,20 +391,20 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
     for py_name in ("packagedata_ifno", "connectiondata_ifno", "iconn", "tables_ifno"):
         assert py_name in field_map, f"{py_name!r} not in generated fields"
         sc = field_map[py_name].spec_call
-        assert "cellid=True" in sc, (
-            f"{py_name!r} spec_call should contain cellid=True (via numeric_index), got: {sc!r}"
-        )
+        assert (
+            "cellid=True" in sc
+        ), f"{py_name!r} spec_call should contain cellid=True (via numeric_index), got: {sc!r}"
 
     # Spatial cellid column — is_cellid=True in v1 DFN (shape=(ncelldim)); stored as object dtype.
     assert "cellid" in field_map, "'cellid' not in generated fields"
     cellid_sc = field_map["cellid"].spec_call
-    assert "cellid=True" in cellid_sc, (
-        f"'cellid' spec_call should contain cellid=True (via is_cellid), got: {cellid_sc!r}"
-    )
+    assert (
+        "cellid=True" in cellid_sc
+    ), f"'cellid' spec_call should contain cellid=True (via is_cellid), got: {cellid_sc!r}"
     cellid_ann = field_map["cellid"].type_annotation
-    assert "np.object_" in cellid_ann, (
-        f"'cellid' type_annotation should use np.object_, got: {cellid_ann!r}"
-    )
+    assert (
+        "np.object_" in cellid_ann
+    ), f"'cellid' type_annotation should use np.object_, got: {cellid_ann!r}"
 
 
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
@@ -419,9 +419,9 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     for col in period_cols:
         assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
         ann = field_map[col].type_annotation
-        assert ann.startswith("Optional["), (
-            f"Expanded list column '{col}' should be Optional but got {ann!r}"
-        )
+        assert ann.startswith(
+            "Optional["
+        ), f"Expanded list column '{col}' should be Optional but got {ann!r}"
         assert field_map[col].generatable, f"Expanded column '{col}' should be generatable"
 
     # Packages block columns (from packages list field)
@@ -475,9 +475,9 @@ class TestBlockPropertySpec:
         # ifno appears in packagedata, connectiondata, and tables — all get block-prefixed attrs
         for block in ("packagedata", "connectiondata", "tables"):
             bp = next(b for b in lak_spec.block_properties if b.block_name == block)
-            assert bp.attr_name_map.get("ifno") == f"{block}_ifno", (
-                f"ifno in {block} should be prefixed as {block}_ifno"
-            )
+            assert (
+                bp.attr_name_map.get("ifno") == f"{block}_ifno"
+            ), f"ifno in {block} should be prefixed as {block}_ifno"
 
     def test_lak_outlets_period_collision_prefixed(self, lak_spec):
         # invert/width/slope/rough appear as both outlets packagedata columns and
@@ -491,9 +491,9 @@ class TestBlockPropertySpec:
             )
         # outletno, lakein, lakeout, couttype are not period field names — bare names
         for col_name in ("outletno", "lakein", "lakeout", "couttype"):
-            assert bp.attr_name_map.get(col_name) == col_name, (
-                f"outlets.{col_name} should use bare name (no period field conflict)"
-            )
+            assert (
+                bp.attr_name_map.get(col_name) == col_name
+            ), f"outlets.{col_name} should use bare name (no period field conflict)"
 
     def test_lak_connectiondata_cellid(self, lak_spec):
         bp = next(b for b in lak_spec.block_properties if b.block_name == "connectiondata")
@@ -678,9 +678,9 @@ def test_solution_tier_generates_importable_files(v2_dfn_dir, tmp_path, all_dfns
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
         cls = getattr(mod, expected_class)
         assert issubclass(cls, Solution), f"{expected_class} should subclass Solution"
-        assert cls.slntype == expected_slntype, (
-            f"{expected_class}.slntype expected {expected_slntype!r}, got {cls.slntype!r}"
-        )
+        assert (
+            cls.slntype == expected_slntype
+        ), f"{expected_class}.slntype expected {expected_slntype!r}, got {cls.slntype!r}"
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):
