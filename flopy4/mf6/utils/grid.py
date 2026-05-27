@@ -15,6 +15,26 @@ from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 
 
+def _coord_units(lenuni: int, crs) -> str | None:
+    """Return a CF-valid coordinate units string, or None to omit the attribute.
+
+    Priority: explicit lenuni → CRS linear unit via pyproj → omit.
+    Never writes "unknown".
+    """
+    _lenunits = {1: "ft", 2: "m", 3: "cm"}
+    if lenuni in _lenunits:
+        return _lenunits[lenuni]
+    if crs is not None:
+        try:
+            from pyproj import CRS as ProjCRS
+
+            unit = ProjCRS.from_user_input(crs).axis_info[0].unit_name.lower()
+            return {"metre": "m", "meter": "m", "foot": "ft", "feet": "ft"}.get(unit, unit)
+        except Exception:
+            pass
+    return None
+
+
 class StructuredGrid(LegacyStructuredGrid):
     """
     Extend flopy3's StructuredGrid with xarray coordinate support.
@@ -514,26 +534,8 @@ class StructuredGrid(LegacyStructuredGrid):
         finally:
             self.legacy = False
 
-    def _coord_units(self) -> str | None:
-        """Return CF-valid coordinate units string, or None to omit the attribute.
-
-        Priority: explicit lenuni → CRS linear unit → omit (never write "unknown").
-        """
-        _lenunits = {1: "ft", 2: "m", 3: "cm"}
-        if self.lenuni in _lenunits:
-            return _lenunits[self.lenuni]
-        if self.crs is not None:
-            try:
-                from pyproj import CRS as ProjCRS
-
-                unit = ProjCRS.from_user_input(self.crs).axis_info[0].unit_name.lower()
-                return {"metre": "m", "meter": "m", "foot": "ft", "feet": "ft"}.get(unit, unit)
-            except Exception:
-                pass
-        return None
-
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
-        _units = self._coord_units()
+        _units = _coord_units(self.lenuni, self.crs)
 
         # All topology arrays computed once; self.legacy is already True here.
         topo = self._topology()
@@ -647,7 +649,7 @@ class StructuredGrid(LegacyStructuredGrid):
     def _structured_dataset(self, ds, modeltime=None, configuration=None):
         # Produces a conventional CF structured dataset (x/y dimension coords,
         # no UGRID mesh variable).
-        _units = self._coord_units()
+        _units = _coord_units(self.lenuni, self.crs)
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
@@ -1153,24 +1155,6 @@ class VertexGrid(LegacyVertexGrid):
             # z is 3D, not 1D, so don't set as index
         )
 
-    def _coord_units(self) -> str | None:
-        """Return CF-valid coordinate units string, or None to omit the attribute.
-
-        Priority: explicit lenuni → CRS linear unit → omit (never write "unknown").
-        """
-        _lenunits = {1: "ft", 2: "m", 3: "cm"}
-        if self.lenuni in _lenunits:
-            return _lenunits[self.lenuni]
-        if self.crs is not None:
-            try:
-                from pyproj import CRS as ProjCRS
-
-                unit = ProjCRS.from_user_input(self.crs).axis_info[0].unit_name.lower()
-                return {"metre": "m", "meter": "m", "foot": "ft", "feet": "ft"}.get(unit, unit)
-            except Exception:
-                pass
-        return None
-
     def to_xarray(
         self,
         modeltime=None,
@@ -1189,7 +1173,7 @@ class VertexGrid(LegacyVertexGrid):
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")
 
-        _units = self._coord_units()
+        _units = _coord_units(self.lenuni, self.crs)
 
         self.legacy = True
         try:
