@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+import xugrid
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
@@ -1114,7 +1115,9 @@ def test_ugrid_from_dis_factory():
     botm_near_x15 = grid.botm.sel(x=15.0, method="nearest")
     assert botm_near_x15.shape == (2, 5)
 
-    ugrid = grid.ugrid
+    uds = grid.to_xarray(netcdf_format=NetCDFFormat.LAYERED_MESH)
+    assert isinstance(uds, xugrid.UgridDataset)
+    ugrid = uds.grids[0]
     assert ugrid.n_face == nrow * ncol
     assert ugrid.n_node == (nrow + 1) * (ncol + 1)
 
@@ -1217,30 +1220,26 @@ def test_ugrid_from_disv_factory():
     np.testing.assert_allclose(grid.dataset.coords["z"].values[1], np.full((ncpl), -15.0))
     np.testing.assert_allclose(grid.dataset.coords["z"].values[2], np.full((ncpl), -25.0))
 
-    ugrid = grid.ugrid
+    uds = grid.to_xarray()
+    assert isinstance(uds, xugrid.UgridDataset)
+    ugrid = uds.grids[0]
     assert ugrid.n_face == ncpl
     assert ugrid.n_node == nvert
 
     udata = xugrid.UgridDataArray(dis.top, grid=ugrid)
 
     udataset = xugrid.UgridDataset(dis.data.dataset, grids=ugrid)
-
-    # udata.to_netcdf("./udata.nc")
-    # drop global attributes, or filter?
-    uds = udataset.drop_attrs()
-    # drop objects that need serialization
-    uds = uds.drop_vars(["cell2ddata"])
-    # uds.to_netcdf("./udataset.nc")
+    udataset = udataset.drop_attrs()
+    udataset = udataset.drop_vars(["cell2ddata"])
 
 
 def test_ugrid_from_dis_uniform():
-    """StructuredGrid.uniform().ugrid should have the correct face/node counts."""
-    import xugrid
-
+    """StructuredGrid.uniform().to_xarray() should return an UgridDataset."""
     nrow, ncol = 4, 6
     grid = StructuredGrid.uniform(nlay=2, nrow=nrow, ncol=ncol, delr=50.0, delc=50.0)
-    ugrid = grid.ugrid
-    assert isinstance(ugrid, xugrid.Ugrid2d)
+    uds = grid.to_xarray(netcdf_format=NetCDFFormat.LAYERED_MESH)
+    assert isinstance(uds, xugrid.UgridDataset)
+    ugrid = uds.grids[0]
     assert ugrid.n_face == nrow * ncol
     assert ugrid.n_node == (nrow + 1) * (ncol + 1)
 

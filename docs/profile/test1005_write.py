@@ -73,7 +73,7 @@ def main():
     nper = len(perioddata)
 
     wel_total = sum(len(v) for v in wel_dicts.values())
-    print(f"Model: {nlay}L × {nrow}R × {ncol}C = {nlay*nrow*ncol:,} cells, {nper} periods")
+    print(f"Model: {nlay}L × {nrow}R × {ncol}C = {nlay * nrow * ncol:,} cells, {nper} periods")
     print(f"  WEL: {wel_total:,} total entries  CHD: {len(chd_dict):,} cells")
 
     # ── shared flopy4 helpers ────────────────────────────────────────────────
@@ -167,9 +167,9 @@ def main():
     ws_root = OUT / "test1005"
     sections = []
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Scenario: WEL+CHD+RCHA  n={N}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     results = []
 
     # flopy4 list

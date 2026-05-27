@@ -491,134 +491,87 @@ class StructuredGrid(LegacyStructuredGrid):
         modeltime=None,
         netcdf_format: NetCDFFormat = NetCDFFormat.STRUCTURED,
         configuration=None,
-    ):
-        """
-        modeltime    : FloPy ModelTime object
-        netcdf_format: NetCDFFormat.LAYERED_MESH or NetCDFFormat.STRUCTURED
-        configuration: configuration dictionary
-        """
-        if modeltime is None:
-            raise ValueError("modeltime required for dataset timeseries")
-
+    ) -> "xr.Dataset | xu.UgridDataset":
         self.legacy = True
         try:
+            if netcdf_format == NetCDFFormat.LAYERED_MESH:
+                return self._layered_mesh_dataset(modeltime, configuration)
+            if modeltime is None:
+                raise ValueError("modeltime required for structured dataset timeseries")
             ds = xr.Dataset()
             ds.attrs["modflow_grid"] = "STRUCTURED"
-
-            if netcdf_format == NetCDFFormat.LAYERED_MESH:
-                ds = self._layered_mesh_dataset(ds, modeltime, configuration)
-            else:
-                ds = self._structured_dataset(ds, modeltime, configuration)
-
-            return ds
+            return self._structured_dataset(ds, modeltime, configuration)
         finally:
             self.legacy = False
 
-    def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
-
-        # All topology arrays computed once; self.legacy is already True here.
+    def _layered_mesh_dataset(self, modeltime=None, configuration=None) -> xu.UgridDataset:
         topo = self._topology()
+        ugrid2d = xu.Ugrid2d(
+            topo["node_x"],
+            topo["node_y"],
+            FILL_INT64,
+            topo["face_nodes"],
+            name="mesh",
+            projected=True,
+            start_index=1,
+        )
 
-        # create dataset coordinate vars
-        # Use cumulative per-period time (one value per stress period)
-        var_d = {
-            "time": (["time"], np.cumsum(modeltime.perlen)),
-        }
-        ds = ds.assign(var_d)
-        ds["time"].attrs["calendar"] = "standard"
-        _tunits = modeltime.time_units if modeltime.time_units not in (None, "unknown") else "days"
-        ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
-        ds["time"].attrs["axis"] = "T"
-        ds["time"].attrs["standard_name"] = "time"
-        ds["time"].attrs["long_name"] = "time"
-        ds["time"].encoding["_FillValue"] = None
-        ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
-        ds["layer"].attrs["long_name"] = "model layer"
-        ds["layer"].attrs["units"] = "1"
-        ds["layer"].attrs["positive"] = "down"
-        ds["layer"].attrs["axis"] = "Z"
-        ds["layer"].encoding["_FillValue"] = None
+        ds = xr.Dataset()
+        ds.attrs["modflow_grid"] = "STRUCTURED"
 
-        # mesh container variable
-        ds = ds.assign({"mesh": ([], np.int64(1))})
-        ds["mesh"].attrs["cf_role"] = "mesh_topology"
-        ds["mesh"].attrs["long_name"] = "2D mesh topology"
-        ds["mesh"].attrs["topology_dimension"] = np.int64(2)
-        ds["mesh"].attrs["face_dimension"] = "nmesh_face"
-        ds["mesh"].attrs["node_coordinates"] = "mesh_node_x mesh_node_y"
-        ds["mesh"].attrs["face_coordinates"] = "mesh_face_x mesh_face_y"
-        ds["mesh"].attrs["face_node_connectivity"] = "mesh_face_nodes"
+        ds = ds.assign(
+            {
+                "mesh_face_xbnds": xr.DataArray(
+                    topo["x_bnds"], dims=["nmesh_face", "max_nmesh_face_nodes"]
+                ),
+                "mesh_face_ybnds": xr.DataArray(
+                    topo["y_bnds"], dims=["nmesh_face", "max_nmesh_face_nodes"]
+                ),
+            }
+        )
+        ds["mesh_face_xbnds"].attrs["long_name"] = "x bounds of mesh faces"
+        ds["mesh_face_ybnds"].attrs["long_name"] = "y bounds of mesh faces"
+        ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+        ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
-        # mesh node x and y
-        var_d = {
-            "mesh_node_x": (["nmesh_node"], topo["node_x"]),
-            "mesh_node_y": (["nmesh_node"], topo["node_y"]),
-        }
-        ds = ds.assign(var_d)
-        ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-        ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
-        ds["mesh_node_x"].attrs["long_name"] = "Easting"
-        ds["mesh_node_x"].encoding["_FillValue"] = None
-        ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-        ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
-        ds["mesh_node_y"].attrs["long_name"] = "Northing"
-        ds["mesh_node_y"].encoding["_FillValue"] = None
-
-        # mesh face x, y and bounds
-        var_d = {
-            "mesh_face_x": (["nmesh_face"], topo["face_x"]),
-            "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["x_bnds"]),
-            "mesh_face_y": (["nmesh_face"], topo["face_y"]),
-            "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
-        }
-        ds = ds.assign(var_d)
-        ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-        ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
-        ds["mesh_face_x"].attrs["long_name"] = "Easting"
-        ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
-        ds["mesh_face_x"].encoding["_FillValue"] = None
-        ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-        ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
-        ds["mesh_face_y"].attrs["long_name"] = "Northing"
-        ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
-        ds["mesh_face_y"].encoding["_FillValue"] = None
-
-        # mesh face nodes
-        var_d = {
-            "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], topo["face_nodes"]),
-        }
-        ds = ds.assign(var_d)
-        ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
-        ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
-        ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
-        ds["mesh_face_nodes"].encoding["_FillValue"] = FILL_INT64
+        if modeltime is not None:
+            _tunits = (
+                modeltime.time_units if modeltime.time_units not in (None, "unknown") else "days"
+            )
+            ds = ds.assign({"time": (["time"], np.cumsum(modeltime.perlen))})
+            ds["time"].attrs["calendar"] = "standard"
+            ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
+            ds["time"].attrs["axis"] = "T"
+            ds["time"].attrs["standard_name"] = "time"
+            ds["time"].attrs["long_name"] = "time"
+            ds["time"].encoding["_FillValue"] = None
+            ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
+            ds["layer"].attrs["long_name"] = "model layer"
+            ds["layer"].attrs["units"] = "1"
+            ds["layer"].attrs["positive"] = "down"
+            ds["layer"].attrs["axis"] = "Z"
+            ds["layer"].encoding["_FillValue"] = None
 
         wkt_configured = (
             configuration is not None
             and "wkt" in configuration
             and configuration["wkt"] is not None
         )
-
         if wkt_configured or self.crs is not None:
-            ds["mesh_node_x"].attrs["grid_mapping"] = "projection"
-            ds["mesh_node_y"].attrs["grid_mapping"] = "projection"
-            ds["mesh_face_x"].attrs["grid_mapping"] = "projection"
-            ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
-            ds = ds.assign({"projection": ([], np.int64(1))})
             from pyproj import CRS as ProjCRS
             from pyproj.enums import WktVersion
 
             _crs = ProjCRS.from_wkt(configuration["wkt"]) if wkt_configured else self.crs
             _wkt1 = _crs.to_wkt(WktVersion.WKT1_GDAL)
             _wkt2 = _crs.to_wkt(WktVersion.WKT2_2019)
+            ds = ds.assign({"projection": ([], np.int64(1))})
             ds["projection"].attrs["wkt"] = _wkt1
             ds["projection"].attrs["crs_wkt"] = _wkt2
             _gmn = _crs.to_cf().get("grid_mapping_name")
             if _gmn:
                 ds["projection"].attrs["grid_mapping_name"] = _gmn
 
-        return ds
+        return xu.UgridDataset(ds, grids=ugrid2d)
 
     def _structured_dataset(self, ds, modeltime=None, configuration=None):
         # Produces a conventional CF structured dataset (x/y dimension coords,
@@ -784,32 +737,6 @@ class StructuredGrid(LegacyStructuredGrid):
             "x_bnds": x_bnds,
             "y_bnds": y_bnds,
         }
-
-    @property
-    def ugrid(self) -> xu.Ugrid2d:
-        """
-        Build a :class:`xugrid.Ugrid2d` mesh from this structured grid.
-
-        Returns
-        -------
-        xu.Ugrid2d
-            A 2-D unstructured grid object whose faces correspond to the
-            structured grid cells in row-major order.
-        """
-        self.legacy = True
-        try:
-            topo = self._topology()
-            return xu.Ugrid2d(
-                topo["node_x"],
-                topo["node_y"],
-                FILL_INT64,
-                topo["face_nodes"],
-                projected=True,
-                crs=self.crs,
-                start_index=1,
-            )
-        finally:
-            self.legacy = False
 
 
 class VertexGrid(LegacyVertexGrid):
@@ -1132,129 +1059,78 @@ class VertexGrid(LegacyVertexGrid):
         modeltime=None,
         netcdf_format: NetCDFFormat = NetCDFFormat.LAYERED_MESH,
         configuration=None,
-    ):
-        """
-        modeltime    : FloPy ModelTime object
-        netcdf_format: must be NetCDFFormat.LAYERED_MESH; VertexGrid only
-                       supports UGRID layered-mesh output
-        configuration: configuration dictionary
-        """
+    ) -> xu.UgridDataset:
         if netcdf_format != NetCDFFormat.LAYERED_MESH:
             raise ValueError("VertexGrid only supports NetCDFFormat.LAYERED_MESH output")
 
-        if modeltime is None:
-            raise ValueError("modeltime required for dataset timeseries")
-
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
-
         self.legacy = True
         try:
-            # All topology arrays computed once from cell2d/verts.
             topo = self._topology()
+            ugrid2d = xu.Ugrid2d(
+                topo["node_x"],
+                topo["node_y"],
+                FILL_INT64,
+                topo["face_nodes"],
+                name="mesh",
+                projected=True,
+                start_index=1,
+            )
 
             ds = xr.Dataset()
             ds.attrs["modflow_grid"] = "VERTEX"
 
-            # create dataset coordinate vars
-            # Use cumulative per-period time (one value per stress period)
-            var_d = {
-                "time": (["time"], np.cumsum(modeltime.perlen)),
-            }
-            ds = ds.assign(var_d)
-            ds["time"].attrs["calendar"] = "standard"
-            _tu = modeltime.time_units
-            _tunits = _tu if _tu not in (None, "unknown") else "days"
-            ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
-            ds["time"].attrs["axis"] = "T"
-            ds["time"].attrs["standard_name"] = "time"
-            ds["time"].attrs["long_name"] = "time"
-            ds["time"].encoding["_FillValue"] = None
-            ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
-            ds["layer"].attrs["long_name"] = "model layer"
-            ds["layer"].attrs["units"] = "1"
-            ds["layer"].attrs["positive"] = "down"
-            ds["layer"].attrs["axis"] = "Z"
-            ds["layer"].encoding["_FillValue"] = None
+            ds = ds.assign(
+                {
+                    "mesh_face_xbnds": xr.DataArray(
+                        topo["x_bnds"], dims=["nmesh_face", "max_nmesh_face_nodes"]
+                    ),
+                    "mesh_face_ybnds": xr.DataArray(
+                        topo["y_bnds"], dims=["nmesh_face", "max_nmesh_face_nodes"]
+                    ),
+                }
+            )
+            ds["mesh_face_xbnds"].attrs["long_name"] = "x bounds of mesh faces"
+            ds["mesh_face_ybnds"].attrs["long_name"] = "y bounds of mesh faces"
+            ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_INT64
+            ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_INT64
 
-            # mesh container variable
-            ds = ds.assign({"mesh": ([], np.int64(1))})
-            ds["mesh"].attrs["cf_role"] = "mesh_topology"
-            ds["mesh"].attrs["long_name"] = "2D mesh topology"
-            ds["mesh"].attrs["topology_dimension"] = np.int64(2)
-            ds["mesh"].attrs["face_dimension"] = "nmesh_face"
-            ds["mesh"].attrs["node_coordinates"] = "mesh_node_x mesh_node_y"
-            ds["mesh"].attrs["face_coordinates"] = "mesh_face_x mesh_face_y"
-            ds["mesh"].attrs["face_node_connectivity"] = "mesh_face_nodes"
-
-            # mesh node x and y
-            var_d = {
-                "mesh_node_x": (["nmesh_node"], topo["node_x"]),
-                "mesh_node_y": (["nmesh_node"], topo["node_y"]),
-            }
-            ds = ds.assign(var_d)
-            ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-            ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
-            ds["mesh_node_x"].attrs["long_name"] = "Easting"
-            ds["mesh_node_x"].encoding["_FillValue"] = None
-            ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-            ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
-            ds["mesh_node_y"].attrs["long_name"] = "Northing"
-            ds["mesh_node_y"].encoding["_FillValue"] = None
-
-            # mesh face x, y and bounds
-            var_d = {
-                "mesh_face_x": (["nmesh_face"], topo["face_x"]),
-                "mesh_face_xbnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["x_bnds"]),
-                "mesh_face_y": (["nmesh_face"], topo["face_y"]),
-                "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
-            }
-            ds = ds.assign(var_d)
-            ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-            ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
-            ds["mesh_face_x"].attrs["long_name"] = "Easting"
-            ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
-            ds["mesh_face_x"].encoding["_FillValue"] = None
-            ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
-            ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
-            ds["mesh_face_y"].attrs["long_name"] = "Northing"
-            ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
-            ds["mesh_face_y"].encoding["_FillValue"] = None
-
-            # mesh face nodes
-            var_d = {
-                "mesh_face_nodes": (["nmesh_face", "max_nmesh_face_nodes"], topo["face_nodes"]),
-            }
-            ds = ds.assign(var_d)
-            ds["mesh_face_nodes"].attrs["cf_role"] = "face_node_connectivity"
-            ds["mesh_face_nodes"].attrs["long_name"] = "Vertices bounding cell (counterclockwise)"
-            ds["mesh_face_nodes"].attrs["start_index"] = np.int64(1)
-            ds["mesh_face_nodes"].encoding["_FillValue"] = FILL_INT64
+            if modeltime is not None:
+                _tu = modeltime.time_units
+                _tunits = _tu if _tu not in (None, "unknown") else "days"
+                ds = ds.assign({"time": (["time"], np.cumsum(modeltime.perlen))})
+                ds["time"].attrs["calendar"] = "standard"
+                ds["time"].attrs["units"] = f"{_tunits} since {modeltime.start_datetime}"
+                ds["time"].attrs["axis"] = "T"
+                ds["time"].attrs["standard_name"] = "time"
+                ds["time"].attrs["long_name"] = "time"
+                ds["time"].encoding["_FillValue"] = None
+                ds = ds.assign_coords({"layer": ("layer", np.arange(1, self.nlay + 1))})
+                ds["layer"].attrs["long_name"] = "model layer"
+                ds["layer"].attrs["units"] = "1"
+                ds["layer"].attrs["positive"] = "down"
+                ds["layer"].attrs["axis"] = "Z"
+                ds["layer"].encoding["_FillValue"] = None
 
             wkt_configured = (
                 configuration is not None
                 and "wkt" in configuration
                 and configuration["wkt"] is not None
             )
-
             if wkt_configured or self.crs is not None:
-                ds["mesh_node_x"].attrs["grid_mapping"] = "projection"
-                ds["mesh_node_y"].attrs["grid_mapping"] = "projection"
-                ds["mesh_face_x"].attrs["grid_mapping"] = "projection"
-                ds["mesh_face_y"].attrs["grid_mapping"] = "projection"
-                ds = ds.assign({"projection": ([], np.int64(1))})
                 from pyproj import CRS as ProjCRS
                 from pyproj.enums import WktVersion
 
                 _crs = ProjCRS.from_wkt(configuration["wkt"]) if wkt_configured else self.crs
                 _wkt1 = _crs.to_wkt(WktVersion.WKT1_GDAL)
                 _wkt2 = _crs.to_wkt(WktVersion.WKT2_2019)
+                ds = ds.assign({"projection": ([], np.int64(1))})
                 ds["projection"].attrs["wkt"] = _wkt1
                 ds["projection"].attrs["crs_wkt"] = _wkt2
                 _gmn = _crs.to_cf().get("grid_mapping_name")
                 if _gmn:
                     ds["projection"].attrs["grid_mapping_name"] = _gmn
 
-            return ds
+            return xu.UgridDataset(ds, grids=ugrid2d)
         finally:
             self.legacy = False
 
@@ -1306,32 +1182,6 @@ class VertexGrid(LegacyVertexGrid):
             "x_bnds": x_bnds,
             "y_bnds": y_bnds,
         }
-
-    @property
-    def ugrid(self) -> xu.Ugrid2d:
-        """
-        Build a :class:`xugrid.Ugrid2d` mesh from this vertex grid.
-
-        Returns
-        -------
-        xu.Ugrid2d
-            A 2-D unstructured grid object whose faces correspond to the
-            vertex grid cells.
-        """
-        self.legacy = True
-        try:
-            topo = self._topology()
-            return xu.Ugrid2d(
-                topo["node_x"],
-                topo["node_y"],
-                FILL_INT64,
-                topo["face_nodes"],
-                projected=True,
-                crs=self.crs,
-                start_index=1,
-            )
-        finally:
-            self.legacy = False
 
 
 def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
