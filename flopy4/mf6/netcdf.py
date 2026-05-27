@@ -3,6 +3,7 @@ from os import PathLike
 
 import numpy as np
 import xarray as xr
+import xugrid as xu
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -102,7 +103,7 @@ class NetCDFInput(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def to_xarray(self) -> xr.Dataset:
+    def to_xarray(self) -> "xr.Dataset | xu.UgridDataset":
         """create xarray dataset."""
         pass
 
@@ -228,11 +229,11 @@ class NetCDFModel(BaseModel, NetCDFInput):
             nc_model.time = time
         return nc_model
 
-    def to_xarray(self) -> xr.Dataset:
+    def to_xarray(self) -> "xr.Dataset | xu.UgridDataset":
         import datetime
 
-        dss = []
         meta = self.model_dump(by_alias=True)
+        grid_result = None
 
         if self._grid is not None and self._time is not None:  # type: ignore
             conventions = "CF-1.11"  # type: ignore
@@ -243,14 +244,20 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 if meta["attrs"]["mesh"] is not None
                 else NetCDFFormat.STRUCTURED
             )
-            dss.append(self._grid.to_xarray(netcdf_format=_fmt, modeltime=self._time))
+            grid_result = self._grid.to_xarray(netcdf_format=_fmt, modeltime=self._time)
             meta["attrs"]["Conventions"] = conventions
 
+        pkg_dss = []
         for p in self.packages:
             p._context["grid"] = self.grid
-            dss.append(p.to_xarray())
+            pkg_dss.append(p.to_xarray())
 
-        ds = xr.merge(dss)
+        if isinstance(grid_result, xu.UgridDataset):
+            merged = xr.merge([grid_result.obj, *pkg_dss])
+            ds = xu.UgridDataset(merged, grids=grid_result.grids)
+        else:
+            all_dss = ([grid_result] if grid_result is not None else []) + pkg_dss
+            ds = xr.merge(all_dss) if all_dss else xr.Dataset()
 
         dt = datetime.datetime.now()
         timestamp = dt.strftime("%m/%d/%Y %H:%M:%S")
@@ -263,7 +270,31 @@ class NetCDFModel(BaseModel, NetCDFInput):
         return ds
 
     def to_netcdf(self, path: str | PathLike) -> None:
-        self.to_xarray().to_netcdf(path)
+        result = self.to_xarray()
+        if isinstance(result, xu.UgridDataset):
+            grid = result.grids[0]
+            topo = grid.assign_face_coords(grid.to_dataset())
+            # Rename xugrid's generated dimension names to MF6's UGRID convention
+            # so input files are consistent with MODFLOW 6 output files.
+            _dim_rename = {
+                k: v
+                for k, v in {
+                    "mesh_nFaces": "nmesh_face",
+                    "mesh_nNodes": "nmesh_node",
+                    "mesh_nMax_face_nodes": "max_nmesh_face_nodes",
+                }.items()
+                if k in topo.dims
+            }
+            if _dim_rename:
+                topo = topo.rename(_dim_rename)
+                for attr in ("face_dimension", "node_dimension", "max_face_nodes_dimension"):
+                    if topo["mesh"].attrs.get(attr) in _dim_rename:
+                        topo["mesh"].attrs[attr] = _dim_rename[topo["mesh"].attrs[attr]]
+            merged = topo.merge(result.obj)
+            merged.attrs = result.obj.attrs
+            merged.to_netcdf(path)
+        else:
+            result.to_netcdf(path)
 
     @property
     def meta(self):
