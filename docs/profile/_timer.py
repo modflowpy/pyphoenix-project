@@ -64,7 +64,7 @@ def time_writes(fn, n: int, label: str, include_slow: bool = False):
     if elapsed > SLOW_THRESHOLD and not include_slow:
         print(
             f"  {'[SLOW]':<6} {label:<38}  {elapsed:.1f}s  "
-            f"(skipping remaining {n - 1} runs — use --include-slow to override)"
+            f"(skipping remaining {n-1} runs — use --include-slow to override)"
         )
         return times
 

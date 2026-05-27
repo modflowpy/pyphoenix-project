@@ -204,8 +204,8 @@ def load_arrays(nlay: int, nrow: int, ncol: int):
     ss = np.zeros((nlay, nrow, ncol))
     for l in range(nlay):
         pad = "000" if l < 9 else "00"
-        k[l] = np.loadtxt(DATA_ROOT / f"Array.MF-HydK_{pad}{l + 1}.txt")
-        ss[l] = np.loadtxt(DATA_ROOT / f"Array.MF-HydS_{pad}{l + 1}.txt")
+        k[l] = np.loadtxt(DATA_ROOT / f"Array.MF-HydK_{pad}{l+1}.txt")
+        ss[l] = np.loadtxt(DATA_ROOT / f"Array.MF-HydS_{pad}{l+1}.txt")
     return k, k * 0.1, ss  # k, k33, ss
 
 
@@ -307,7 +307,7 @@ def main():
     gwf, ims, tdis, grid, dims, time_data, nlay, nrow, ncol, nper = build_flopy4_base(k, k33, ss)
     NODATA = flopy4.mf6.constants.FILL_DNODATA
 
-    print(f"\n{'=' * 60}\nfrenchman-flat  (10L×87R×87C = 75K cells, 33 periods)  n={N}\n{'=' * 60}")
+    print(f"\n{'='*60}\nfrenchman-flat  (10L×87R×87C = 75K cells, 33 periods)  n={N}\n{'='*60}")
     results = []
 
     # ── flopy4 list ──────────────────────────────────────────────────────────

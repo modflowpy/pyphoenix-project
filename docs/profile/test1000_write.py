@@ -192,9 +192,9 @@ def main():
 
     # ── Scenario 1: Sparse ───────────────────────────────────────────────────
     if 1 in scenarios:
-        print(f"\n{'=' * 60}")
+        print(f"\n{'='*60}")
         print(f"Scenario 1: Sparse  (WEL 1 cell + CHD 1550 cells)  n={N}")
-        print(f"{'=' * 60}")
+        print(f"{'='*60}")
         results = []
 
         # flopy4 list
@@ -307,9 +307,9 @@ def main():
 
     # ── Scenario 2: Dense uniform RCH ───────────────────────────────────────
     if 2 in scenarios:
-        print(f"\n{'=' * 60}")
+        print(f"\n{'='*60}")
         print(f"Scenario 2: Dense uniform RCH  ({ncpl:,} cells)  n={N}")
-        print(f"{'=' * 60}")
+        print(f"{'='*60}")
         results = []
 
         # Build the list dict here to avoid unnecessary overhead when scenario is skipped
@@ -424,9 +424,9 @@ def main():
 
     # ── Scenario 3: Dense heterogeneous RCH ─────────────────────────────────
     if 3 in scenarios:
-        print(f"\n{'=' * 60}")
+        print(f"\n{'='*60}")
         print(f"Scenario 3: Dense heterogeneous RCH  ({ncpl:,} cells)  n={N}")
-        print(f"{'=' * 60}")
+        print(f"{'='*60}")
         results = []
 
         # Build the list dict here to avoid unnecessary overhead when scenario is skipped
