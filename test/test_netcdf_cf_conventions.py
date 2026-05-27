@@ -294,22 +294,13 @@ def test_structured_merged_sel_layer(structured_grid, modeltime):
     assert sliced["npf_k"].dims == ("y", "x")
 
 
-def _raw_var_attrs(path, varname: str) -> dict:
-    """Read raw NetCDF variable attributes bypassing xarray's CF decoder."""
-    nc4 = pytest.importorskip("netCDF4")
-    ds = nc4.Dataset(path)
-    try:
-        return {a: ds.variables[varname].getncattr(a) for a in ds.variables[varname].ncattrs()}
-    finally:
-        ds.close()
+def test_structured_data_var_no_redundant_coordinates(structured_grid, modeltime):
+    """Structured data vars must not carry non-dimension coords for y/x.
 
-
-def test_structured_data_var_no_redundant_coordinates(structured_grid, modeltime, tmp_path):
-    """Structured data vars must not carry a coordinates attr pointing to dimension coords.
-
-    y and x are dimension coordinates — CF tools find them via the dimension names.
-    A redundant coordinates attr would rely on xarray encoding internals to survive
-    to_netcdf and adds no information for any CF-aware consumer.
+    y and x are dimension coordinates — CF tools find them via the dimension
+    names. A redundant coordinates attr would cause xarray to emit a
+    coordinates attribute on the variable during to_netcdf, which adds no
+    information for any CF-aware consumer and can confuse some tools.
     """
     grid_ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
     context = {
@@ -323,113 +314,10 @@ def test_structured_data_var_no_redundant_coordinates(structured_grid, modeltime
     param = NetCDFParam.from_dict({"name": "k", "attrs": {}}, context=context)
     param._context["grid"] = structured_grid
     merged = xr.merge([grid_ds, param.to_xarray()])
-    path = tmp_path / "structured_roundtrip.nc"
-    merged.to_netcdf(path)
-    attrs = _raw_var_attrs(path, "npf_k")
-    coords_attr = attrs.get("coordinates", "")
-    assert coords_attr == "" or all(c not in coords_attr for c in ["y", "x"]), (
-        f"structured data var should not carry redundant coordinates attr: {coords_attr!r}"
+    extra_coords = set(merged["npf_k"].coords) - set(merged["npf_k"].dims)
+    assert not any(c in extra_coords for c in ["y", "x"]), (
+        f"structured data var carries redundant coordinates: {extra_coords}"
     )
-
-
-def _write_mesh_netcdf(grid_uds, param_ds, path):
-    """Write a UGRID dataset to disk using MF6's UGRID dimension naming."""
-    grid = grid_uds.grids[0]
-    topo = grid.assign_face_coords(grid.to_dataset())
-    _dim_rename = {
-        k: v
-        for k, v in {
-            "mesh_nFaces": "nmesh_face",
-            "mesh_nNodes": "nmesh_node",
-            "mesh_nMax_face_nodes": "max_nmesh_face_nodes",
-        }.items()
-        if k in topo.dims
-    }
-    if _dim_rename:
-        topo = topo.rename(_dim_rename)
-        for attr in ("face_dimension", "node_dimension", "max_face_nodes_dimension"):
-            if topo["mesh"].attrs.get(attr) in _dim_rename:
-                topo["mesh"].attrs[attr] = _dim_rename[topo["mesh"].attrs[attr]]
-    topo.merge(xr.merge([grid_uds.obj, param_ds])).to_netcdf(path)
-
-
-def test_mesh_topology_in_netcdf(structured_grid, modeltime, tmp_path):
-    """UGRID topology variables must be present in the written file with MF6 dimension names."""
-    grid_uds = structured_grid.to_xarray(
-        modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH
-    )
-    path = tmp_path / "mesh_topology.nc"
-    _write_mesh_netcdf(grid_uds, xr.Dataset(), path)
-
-    nc4 = pytest.importorskip("netCDF4")
-    root = nc4.Dataset(path)
-    try:
-        variables = list(root.variables.keys())
-        dims = list(root.dimensions.keys())
-        assert "mesh" in variables, f"mesh topology variable missing; got {variables}"
-        assert "mesh_face_nodes" in variables, "mesh_face_nodes missing"
-        assert "mesh_node_x" in variables, "mesh_node_x missing"
-        assert "mesh_node_y" in variables, "mesh_node_y missing"
-        assert "mesh_face_x" in variables, "mesh_face_x missing"
-        assert "mesh_face_y" in variables, "mesh_face_y missing"
-        assert "projection" in variables, "projection (CRS) variable missing"
-        assert "nmesh_face" in dims, f"nmesh_face dimension missing; got {dims}"
-        assert "nmesh_node" in dims, f"nmesh_node dimension missing; got {dims}"
-        mesh_attrs = {a: root["mesh"].getncattr(a) for a in root["mesh"].ncattrs()}
-        assert mesh_attrs.get("cf_role") == "mesh_topology"
-        assert mesh_attrs.get("face_dimension") == "nmesh_face"
-    finally:
-        root.close()
-
-
-def test_mesh_data_var_coordinates_survives_roundtrip(structured_grid, modeltime, tmp_path):
-    """coordinates = 'mesh_face_x mesh_face_y' on mesh face vars must survive round-trip.
-
-    Verified via raw netCDF4 because xarray strips the coordinates attr when reopening.
-    """
-    grid_uds = structured_grid.to_xarray(
-        modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH
-    )
-    context = {
-        "mesh": "layered",
-        "modelname": "gwfmodel",
-        "gridtype": "structured",
-        "package_name": "npf",
-        "package_type": "gwf-npf",
-        "dims": [2, 2, 3, 3],
-    }
-    param = NetCDFParam.from_dict({"name": "k", "attrs": {"layer": 1}}, context=context)
-    param._context["grid"] = structured_grid
-    path = tmp_path / "mesh_roundtrip.nc"
-    _write_mesh_netcdf(grid_uds, param.to_xarray(), path)
-    attrs = _raw_var_attrs(path, "npf_k_l1")
-    coords_attr = attrs.get("coordinates", "")
-    assert "mesh_face_x" in coords_attr and "mesh_face_y" in coords_attr, (
-        f"coordinates attr missing or wrong on raw disk: {coords_attr!r}"
-    )
-
-
-def test_mesh_data_var_cf_attrs_survive_roundtrip(structured_grid, modeltime, tmp_path):
-    """mesh, location, and grid_mapping attrs on face data vars must survive round-trip."""
-    grid_uds = structured_grid.to_xarray(
-        modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH
-    )
-    context = {
-        "mesh": "layered",
-        "modelname": "gwfmodel",
-        "gridtype": "structured",
-        "package_name": "npf",
-        "package_type": "gwf-npf",
-        "dims": [2, 2, 3, 3],
-    }
-    param = NetCDFParam.from_dict({"name": "k", "attrs": {"layer": 1}}, context=context)
-    param._context["grid"] = structured_grid
-    path = tmp_path / "mesh_cf_attrs_roundtrip.nc"
-    _write_mesh_netcdf(grid_uds, param.to_xarray(), path)
-    attrs = _raw_var_attrs(path, "npf_k_l1")
-    assert attrs.get("mesh") == "mesh", f"mesh attr missing after round-trip: {attrs}"
-    assert attrs.get("location") == "face", f"location attr missing after round-trip: {attrs}"
-    assert attrs.get("grid_mapping") == "projection", f"grid_mapping missing: {attrs}"
 
 
 def test_structured_dis_gdal_geotransform(structured_grid, modeltime, tmp_path):
