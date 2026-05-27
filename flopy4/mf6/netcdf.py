@@ -290,7 +290,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 for attr in ("face_dimension", "node_dimension", "max_face_nodes_dimension"):
                     if topo["mesh"].attrs.get(attr) in _dim_rename:
                         topo["mesh"].attrs[attr] = _dim_rename[topo["mesh"].attrs[attr]]
-            topo.merge(result.obj).to_netcdf(path)
+            merged = topo.merge(result.obj)
+            merged.attrs = result.obj.attrs
+            merged.to_netcdf(path)
         else:
             result.to_netcdf(path)
 
