@@ -79,7 +79,7 @@ def plot_head_ugrid(head, cbc, grid, workspace):
     import xarray as xr
     import xugrid as xu
 
-    ugrid = grid.ugrid
+    ugrid = grid.to_xarray(netcdf_format=NetCDFFormat.LAYERED_MESH).grids[0]
     facedim = ugrid.face_dimension
 
     # Select first timestep and first layer; flatten (y, x) -> face dimension
@@ -113,7 +113,7 @@ def plot_head_ugrid(head, cbc, grid, workspace):
     ds = ds.ugrid.assign_face_coords()
 
     fig, ax = plt.subplots(figsize=(10, 8))
-    ds.plot.quiver(x="mesh2d_face_x", y="mesh2d_face_y", u="u", v="v", color="black", scale=100)
+    ds.plot.quiver(x="mesh_face_x", y="mesh_face_y", u="u", v="v", color="black", scale=100)
     xu.plot.line(ugrid, ax=ax, color="black", linewidth=0.2)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
     ax.set_title("Frenchman Flat flow vectors overlaid on Mesh")

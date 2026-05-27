@@ -118,9 +118,9 @@ disv = flopy4.mf6.gwf.disv.Disv(
 )
 
 # Build the xugrid Ugrid2d mesh from the Disv package.
-# `disv.to_grid()` returns a `VertexGrid`; `.ugrid` converts it to an
-# `xu.Ugrid2d` object suitable for xugrid operations.
-grid = disv.to_grid().ugrid
+# `disv.to_grid()` returns a `VertexGrid`; `.to_xarray()` returns an
+# `xu.UgridDataset`; `.grids[0]` extracts the `xu.Ugrid2d` mesh object.
+grid = disv.to_grid().to_xarray().grids[0]
 
 # `dims` captures array shapes needed by packages that pre-allocate xarray storage.
 dims = {"nper": nper, "nlay": nlay, "ncpl": ncpl, "nvert": len(vertices), "nodes": nlay * ncpl}

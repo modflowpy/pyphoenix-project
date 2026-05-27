@@ -133,6 +133,8 @@ def test_mesh_dis_topology_variable(structured_grid, modeltime):
     assert isinstance(uds, xu.UgridDataset), "expected UgridDataset for layered-mesh format"
     assert len(uds.grids) == 1, "expected exactly one UGRID grid"
     assert isinstance(uds.grids[0], xu.Ugrid2d)
+    assert uds.grids[0].name == "mesh", "mesh topology variable missing"
+    assert uds.grids[0].to_dataset()["mesh"].attrs.get("cf_role") == "mesh_topology"
 
 
 def test_mesh_dis_projection_crs_attrs(structured_grid, modeltime):
@@ -171,6 +173,8 @@ def test_mesh_disv_topology_variable(vertex_grid, modeltime):
     assert isinstance(uds, xu.UgridDataset), "expected UgridDataset for vertex grid"
     assert len(uds.grids) == 1, "expected exactly one UGRID grid"
     assert isinstance(uds.grids[0], xu.Ugrid2d)
+    assert uds.grids[0].name == "mesh"
+    assert uds.grids[0].to_dataset()["mesh"].attrs.get("cf_role") == "mesh_topology"
 
 
 def test_mesh_disv_projection_crs_attrs(vertex_grid, modeltime):

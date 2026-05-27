@@ -191,8 +191,7 @@ def _expand_record_field(
                 spec_call="",
                 generatable=False,
                 skip_reason=(
-                    f"positional sub-fields not yet supported: "
-                    f"{', '.join(unexpandable_optional)}"
+                    f"positional sub-fields not yet supported: {', '.join(unexpandable_optional)}"
                 ),
             )
         )
