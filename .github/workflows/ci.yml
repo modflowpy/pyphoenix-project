@@ -23,7 +23,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0.9.6
         with:
-          pixi-version: v0.64.0
+          pixi-version: v0.69.0
           environments: dev
           activate-environment: true
 
@@ -50,7 +50,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0.9.6
         with:
-          pixi-version: v0.64.0
+          pixi-version: v0.69.0
           environments: dev
           activate-environment: true
 
@@ -90,7 +90,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0.9.6
         with:
-          pixi-version: v0.64.0
+          pixi-version: v0.69.0
           environments: test${{ matrix.python }}
           activate-environment: true
 
