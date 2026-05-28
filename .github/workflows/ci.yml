@@ -27,13 +27,16 @@ jobs:
           environments: dev
           activate-environment: true
 
-      - name: Run ruff
-        run: pixi run lint
+      - name: Lint check
+        run: pixi run ruff check
 
-      - name: Run mypy
+      - name: Format check
+        run: pixi run ruff format --check
+
+      - name: Type check
         run: pixi run mypy flopy4
 
-      - name: Run codespell
+      - name: Spell check
         run: pixi run codespell
 
   build:

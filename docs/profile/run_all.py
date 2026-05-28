@@ -129,9 +129,9 @@ def main():
         if not script.exists():
             print(f"  [SKIP] {fname} not found")
             continue
-        print(f"\n{'#'*60}")
+        print(f"\n{'#' * 60}")
         print(f"# {label}")
-        print(f"{'#'*60}")
+        print(f"{'#' * 60}")
         json_out = tmp_dir / f"{script.stem}.json"
         data = run_script(
             script, args.runs, args.include_slow, json_out, args.models_root, args.flopy4_only
@@ -160,9 +160,9 @@ def main():
         print(f"Markdown report written to {args.report}")
 
     # Always print a compact summary table to stdout
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"{'SUMMARY':^70}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     for data in all_data:
         print(f"\n{data.get('script', '?')}  (commit {data.get('git_commit', '?')})")
         for section in data.get("sections", []):
