@@ -7,7 +7,7 @@ from modflow_devtools.dfn import Dfn
 from flopy4.mf6.codec.reader.grammar import filters
 
 
-def _get_template_env():
+def _get_env():
     loader = jinja2.PackageLoader("flopy4", "mf6/codec/reader/grammar/templates/")
     env = jinja2.Environment(
         loader=loader,
@@ -56,7 +56,7 @@ def _get_template_data(blocks) -> tuple[list[dict], dict[str, object]]:
 def make_grammar(dfn: Dfn, outdir: PathLike):
     """Generate a Lark grammar file for a single component."""
     outdir = Path(outdir).expanduser().resolve().absolute()
-    env = _get_template_env()
+    env = _get_env()
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{dfn.name}.lark"
     blocks, fields = _get_template_data(dfn.blocks)
@@ -65,7 +65,7 @@ def make_grammar(dfn: Dfn, outdir: PathLike):
         f.write(template.render(name=name, blocks=blocks, fields=fields))
 
 
-def make_all_grammars(dfns: dict[str, Dfn], outdir: PathLike):
+def make_grammars(dfns: dict[str, Dfn], outdir: PathLike):
     """Generate grammars for all components."""
     outdir = Path(outdir).expanduser().resolve().absolute()
     outdir.mkdir(parents=True, exist_ok=True)
