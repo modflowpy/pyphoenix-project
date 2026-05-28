@@ -23,6 +23,7 @@ Usage::
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from typing import Union
 
@@ -199,3 +200,54 @@ def postprocess_structured_nc(
     ds.to_netcdf(out, encoding=encoding)
     ds.close()
     return out
+
+
+def _detect_mode(path: Path) -> str:
+    with xr.open_dataset(path, mask_and_scale=False) as ds:
+        conventions = ds.attrs.get("Conventions", "")
+        has_ugrid = "UGRID" in conventions or "mesh_face_nodes" in ds
+    return "mesh" if has_ugrid else "structured"
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="ncfix",
+        description=(
+            "Post-process an MF6 output NetCDF file to add missing CF-1.11 / GDAL "
+            "attributes to the projection variable."
+        ),
+    )
+    parser.add_argument("path", type=Path, help="MF6 output .nc file to fix")
+    parser.add_argument(
+        "-o",
+        "--out",
+        type=Path,
+        default=None,
+        help="Output path (default: overwrite input file in-place)",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["structured", "mesh", "auto"],
+        default="auto",
+        help="Grid type to assume (default: auto-detect from file contents)",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true")
+    args = parser.parse_args()
+
+    mode = args.mode
+    if mode == "auto":
+        mode = _detect_mode(args.path)
+        if args.verbose:
+            print(f"detected mode: {mode}")
+
+    if mode == "mesh":
+        out = postprocess_mesh_nc(args.path, out=args.out)
+    else:
+        out = postprocess_structured_nc(args.path, out=args.out)
+
+    if args.verbose:
+        print(f"wrote: {out}")
+
+
+if __name__ == "__main__":
+    main()

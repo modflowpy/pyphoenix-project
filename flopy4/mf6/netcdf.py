@@ -348,7 +348,7 @@ class NetCDFModelAttrs(BaseModel):
         if v is not None:
             if v.lower() != "layered":
                 raise ValueError("only LAYERED mesh supported")
-            v = "LAYERED"  # normalize to uppercase to match MODFLOW 6 NC output convention
+            v = "layered"
             info.context["mesh"] = v  # type: ignore
         return v
 

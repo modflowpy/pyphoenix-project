@@ -220,7 +220,7 @@ def test_model_mesh():
 
     assert ds.attrs["modflow_grid"] == "structured"
     assert ds.attrs["modflow_model"] == "gwf6: gwfmodel"
-    assert ds.attrs["mesh"] == "LAYERED"
+    assert ds.attrs["mesh"] == "layered"
     assert "dis_delr" in ds
     assert "dis_delc" in ds
     assert "rcha_0_recharge" in ds

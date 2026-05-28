@@ -11,8 +11,28 @@ from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
 from xattree import Scalar
 
-from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
+from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
+
+
+def _coord_units(lenuni: int, crs) -> str | None:
+    """Return a CF-valid coordinate units string, or None to omit the attribute.
+
+    Priority: explicit lenuni → CRS linear unit via pyproj → omit.
+    Never writes "unknown".
+    """
+    _lenunits = {1: "ft", 2: "m", 3: "cm"}
+    if lenuni in _lenunits:
+        return _lenunits[lenuni]
+    if crs is not None:
+        try:
+            from pyproj import CRS as ProjCRS
+
+            unit = ProjCRS.from_user_input(crs).axis_info[0].unit_name.lower()
+            return {"metre": "m", "meter": "m", "foot": "ft", "feet": "ft"}.get(unit, unit)
+        except Exception:
+            pass
+    return None
 
 
 class StructuredGrid(LegacyStructuredGrid):
@@ -503,7 +523,7 @@ class StructuredGrid(LegacyStructuredGrid):
         self.legacy = True
         try:
             ds = xr.Dataset()
-            ds.attrs["modflow_grid"] = "STRUCTURED"
+            ds.attrs["modflow_grid"] = "structured"
 
             if netcdf_format == NetCDFFormat.LAYERED_MESH:
                 ds = self._layered_mesh_dataset(ds, modeltime, configuration)
@@ -515,7 +535,7 @@ class StructuredGrid(LegacyStructuredGrid):
             self.legacy = False
 
     def _layered_mesh_dataset(self, ds, modeltime=None, configuration=None):
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
+        _units = _coord_units(self.lenuni, self.crs)
 
         # All topology arrays computed once; self.legacy is already True here.
         topo = self._topology()
@@ -556,11 +576,13 @@ class StructuredGrid(LegacyStructuredGrid):
             "mesh_node_y": (["nmesh_node"], topo["node_y"]),
         }
         ds = ds.assign(var_d)
-        ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_node_x"].attrs["units"] = _units
         ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["mesh_node_x"].attrs["long_name"] = "Easting"
         ds["mesh_node_x"].encoding["_FillValue"] = None
-        ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_node_y"].attrs["units"] = _units
         ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_node_y"].attrs["long_name"] = "Northing"
         ds["mesh_node_y"].encoding["_FillValue"] = None
@@ -573,16 +595,20 @@ class StructuredGrid(LegacyStructuredGrid):
             "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
         }
         ds = ds.assign(var_d)
-        ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_face_x"].attrs["units"] = _units
         ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["mesh_face_x"].attrs["long_name"] = "Easting"
         ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
         ds["mesh_face_x"].encoding["_FillValue"] = None
-        ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["mesh_face_y"].attrs["units"] = _units
         ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
         ds["mesh_face_y"].encoding["_FillValue"] = None
+        ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
+        ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
 
         # mesh face nodes
         var_d = {
@@ -623,7 +649,7 @@ class StructuredGrid(LegacyStructuredGrid):
     def _structured_dataset(self, ds, modeltime=None, configuration=None):
         # Produces a conventional CF structured dataset (x/y dimension coords,
         # no UGRID mesh variable).
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
+        _units = _coord_units(self.lenuni, self.crs)
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
@@ -669,12 +695,14 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
         ds["time"].encoding["_FillValue"] = None
-        ds["y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["y"].attrs["units"] = _units
         ds["y"].attrs["axis"] = "Y"
         ds["y"].attrs["standard_name"] = "projection_y_coordinate"
         ds["y"].attrs["long_name"] = "Northing"
         ds["y"].attrs["bounds"] = "y_bnds"
-        ds["x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+        if _units is not None:
+            ds["x"].attrs["units"] = _units
         ds["x"].attrs["axis"] = "X"
         ds["x"].attrs["standard_name"] = "projection_x_coordinate"
         ds["x"].attrs["long_name"] = "Easting"
@@ -1145,7 +1173,7 @@ class VertexGrid(LegacyVertexGrid):
         if modeltime is None:
             raise ValueError("modeltime required for dataset timeseries")
 
-        lenunits = {0: "unknown", 1: "ft", 2: "m", 3: "cm"}
+        _units = _coord_units(self.lenuni, self.crs)
 
         self.legacy = True
         try:
@@ -1153,7 +1181,7 @@ class VertexGrid(LegacyVertexGrid):
             topo = self._topology()
 
             ds = xr.Dataset()
-            ds.attrs["modflow_grid"] = "VERTEX"
+            ds.attrs["modflow_grid"] = "vertex"
 
             # create dataset coordinate vars
             # Use cumulative per-period time (one value per stress period)
@@ -1192,11 +1220,13 @@ class VertexGrid(LegacyVertexGrid):
                 "mesh_node_y": (["nmesh_node"], topo["node_y"]),
             }
             ds = ds.assign(var_d)
-            ds["mesh_node_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_node_x"].attrs["units"] = _units
             ds["mesh_node_x"].attrs["standard_name"] = "projection_x_coordinate"
             ds["mesh_node_x"].attrs["long_name"] = "Easting"
             ds["mesh_node_x"].encoding["_FillValue"] = None
-            ds["mesh_node_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_node_y"].attrs["units"] = _units
             ds["mesh_node_y"].attrs["standard_name"] = "projection_y_coordinate"
             ds["mesh_node_y"].attrs["long_name"] = "Northing"
             ds["mesh_node_y"].encoding["_FillValue"] = None
@@ -1209,16 +1239,20 @@ class VertexGrid(LegacyVertexGrid):
                 "mesh_face_ybnds": (["nmesh_face", "max_nmesh_face_nodes"], topo["y_bnds"]),
             }
             ds = ds.assign(var_d)
-            ds["mesh_face_x"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_face_x"].attrs["units"] = _units
             ds["mesh_face_x"].attrs["standard_name"] = "projection_x_coordinate"
             ds["mesh_face_x"].attrs["long_name"] = "Easting"
             ds["mesh_face_x"].attrs["bounds"] = "mesh_face_xbnds"
             ds["mesh_face_x"].encoding["_FillValue"] = None
-            ds["mesh_face_y"].attrs["units"] = lenunits.get(self.lenuni, "unknown")
+            if _units is not None:
+                ds["mesh_face_y"].attrs["units"] = _units
             ds["mesh_face_y"].attrs["standard_name"] = "projection_y_coordinate"
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
             ds["mesh_face_y"].encoding["_FillValue"] = None
+            ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
+            ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
 
             # mesh face nodes
             var_d = {
@@ -1294,8 +1328,8 @@ class VertexGrid(LegacyVertexGrid):
         idx = np.where(mask, 0, face_nodes - 1)
         x_bnds = node_x[idx].copy()
         y_bnds = node_y[idx].copy()
-        x_bnds[mask] = FILL_INT64
-        y_bnds[mask] = FILL_INT64
+        x_bnds[mask] = FILL_FLOAT64
+        y_bnds[mask] = FILL_FLOAT64
 
         return {
             "node_x": node_x,
