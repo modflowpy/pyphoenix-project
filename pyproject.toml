@@ -175,7 +175,6 @@ description = "Generate MF6 classes into /tmp/mf6-preview (safe preview)"
 test = { cmd = "pytest -v -n auto", env = { MPLBACKEND = "Agg" } }
 
 [tool.pixi.feature.lint.tasks]
-lint = { cmd = "ruff check ." }
 install = { cmd = "pre-commit install --install-hooks" }
 
 [tool.mypy]

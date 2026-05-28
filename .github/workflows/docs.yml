@@ -24,9 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.9.6
         with:
-          pixi-version: v0.64.0
+          pixi-version: v0.69.0
           environments: docs
           activate-environment: true
       - run: pixi run build-docs

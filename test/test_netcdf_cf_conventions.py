@@ -311,9 +311,9 @@ def test_structured_data_var_no_redundant_coordinates(structured_grid, modeltime
     merged.to_netcdf(path)
     attrs = _raw_var_attrs(path, "npf_k")
     coords_attr = attrs.get("coordinates", "")
-    assert coords_attr == "" or all(
-        c not in coords_attr for c in ["y", "x"]
-    ), f"structured data var should not carry redundant coordinates attr: {coords_attr!r}"
+    assert coords_attr == "" or all(c not in coords_attr for c in ["y", "x"]), (
+        f"structured data var should not carry redundant coordinates attr: {coords_attr!r}"
+    )
 
 
 def test_mesh_data_var_coordinates_survives_roundtrip(structured_grid, modeltime, tmp_path):
@@ -339,9 +339,9 @@ def test_mesh_data_var_coordinates_survives_roundtrip(structured_grid, modeltime
     merged.to_netcdf(path)
     attrs = _raw_var_attrs(path, "npf_k_l1")
     coords_attr = attrs.get("coordinates", "")
-    assert (
-        "mesh_face_x" in coords_attr and "mesh_face_y" in coords_attr
-    ), f"coordinates attr missing or wrong on raw disk: {coords_attr!r}"
+    assert "mesh_face_x" in coords_attr and "mesh_face_y" in coords_attr, (
+        f"coordinates attr missing or wrong on raw disk: {coords_attr!r}"
+    )
 
 
 def test_mesh_data_var_cf_attrs_survive_roundtrip(structured_grid, modeltime, tmp_path):
@@ -575,9 +575,9 @@ def test_structured_time_coord_attrs(structured_grid, modeltime):
     assert t.attrs.get("calendar") == "standard"
     assert t.attrs.get("axis") == "T"
     assert t.attrs.get("standard_name") == "time"
-    assert str(t.attrs.get("units", "")).startswith(
-        "days since"
-    ), f"time units must be a CF datetime offset, got {t.attrs.get('units')!r}"
+    assert str(t.attrs.get("units", "")).startswith("days since"), (
+        f"time units must be a CF datetime offset, got {t.attrs.get('units')!r}"
+    )
 
 
 def test_mesh_dis_time_coord_attrs(structured_grid, modeltime):
@@ -695,9 +695,9 @@ def test_structured_projection_gdal_attrs(structured_grid, modeltime):
     proj = ds["projection"]
     assert "GeoTransform" in proj.attrs, "GeoTransform missing from structured projection variable"
     gt_parts = str(proj.attrs["GeoTransform"]).split()
-    assert (
-        len(gt_parts) == 6
-    ), f"GeoTransform must have 6 values, got: {proj.attrs['GeoTransform']!r}"
+    assert len(gt_parts) == 6, (
+        f"GeoTransform must have 6 values, got: {proj.attrs['GeoTransform']!r}"
+    )
     assert "spatial_ref" in proj.attrs, "spatial_ref missing from structured projection variable"
     assert proj.attrs["spatial_ref"].startswith("PROJCS["), "spatial_ref must be WKT1"
 
@@ -889,9 +889,9 @@ def test_mesh_geometry_fill_value_suppressed(structured_grid, modeltime):
     """mesh_node_x/y and mesh_face_x/y _FillValue must be suppressed — no missing geometry."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
     for var in ("mesh_node_x", "mesh_node_y", "mesh_face_x", "mesh_face_y"):
-        assert (
-            ds[var].encoding.get("_FillValue") is None
-        ), f"{var} _FillValue should be suppressed in encoding"
+        assert ds[var].encoding.get("_FillValue") is None, (
+            f"{var} _FillValue should be suppressed in encoding"
+        )
 
 
 def test_mesh_face_nodes_attrs(structured_grid, modeltime):
