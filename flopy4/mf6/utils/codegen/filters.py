@@ -320,12 +320,11 @@ def is_generatable(f: Field) -> bool:
 def _is_expandable_child(child: dict) -> bool:
     """True if a record child dict can be generated as a standalone field.
 
-    Keywords are safe regardless of tagged — they're self-naming tokens.
-    Scalar data fields require tagged=True so they carry their own keyword prefix.
+    Only keyword-type children are expandable: they're self-naming tokens that
+    map cleanly to individual bool fields.  Scalar data fields (even tagged ones)
+    are positional components of a compound construct and must stay grouped.
     """
-    return child["type"] == "keyword" or (
-        child["type"] in _SCALAR_TYPES and child.get("tagged", False)
-    )
+    return child["type"] == "keyword"
 
 
 _RECORD_CLASS_SCALAR_TYPES = frozenset({"integer", "double precision", "double", "string"})
