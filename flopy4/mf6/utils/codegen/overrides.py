@@ -18,11 +18,10 @@ Usage::
     patched_field = apply("gwf-ic", field)
 """
 
-import dataclasses
 import tomllib
 from pathlib import Path
 
-from modflow_devtools.dfns.schema.field import Field
+from modflow_devtools.dfn import Field
 
 _OVERRIDES_PATH = Path(__file__).parent / "dfn_overrides.toml"
 
@@ -53,12 +52,12 @@ def apply(dfn_name: str, f: Field) -> Field:
         The original field if no overrides exist, otherwise a new
         dataclass instance with the patched attributes.
     """
-    patches = _OVERRIDES.get(dfn_name, {}).get(f.name, {})
+    patches = _OVERRIDES.get(dfn_name, {}).get(f["name"], {})
     # extra_children is consumed by extra_record_children(), not a Field attribute
     patches = {k: v for k, v in patches.items() if k != "extra_children"}
     if not patches:
         return f
-    return dataclasses.replace(f, **patches)
+    return {**f, **patches}
 
 
 def extra_list_blocks(dfn_name: str) -> list[dict]:

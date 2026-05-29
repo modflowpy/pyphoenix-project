@@ -7,14 +7,13 @@ import attrs
 import numpy as np
 import xarray as xr
 import xattree
-from modflow_devtools.dfns.schema.block import block_sort_key
 from xattree import XatSpec
 
 from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
-from flopy4.mf6.spec import FileInOut, blocks_dict
+from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict
 
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:

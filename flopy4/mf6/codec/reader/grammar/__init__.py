@@ -58,10 +58,10 @@ def make_grammar(dfn: Dfn, outdir: PathLike):
     outdir = Path(outdir).expanduser().resolve().absolute()
     env = _get_env()
     template = env.get_template("component.lark.jinja")
-    target_path = outdir / f"{dfn.name}.lark"
-    blocks, fields = _get_template_data(dfn.blocks)
+    target_path = outdir / f"{dfn['name']}.lark"
+    blocks, fields = _get_template_data(dfn["blocks"])
     with open(target_path, "w") as f:
-        name = dfn.name
+        name = dfn["name"]
         f.write(template.render(name=name, blocks=blocks, fields=fields))
 
 
