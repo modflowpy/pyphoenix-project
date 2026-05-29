@@ -6,67 +6,7 @@ import xarray as xr
 from lark import Token, Transformer
 from modflow_devtools.dfn import Dfn
 
-
-def _parse_number(value: str) -> int | float:
-    """Parse a string into int or float based on its content."""
-    try:
-        if "." in value or "e" in value.lower():
-            return float(value)
-        else:
-            return int(value)
-    except ValueError:
-        return float(value)
-
-
-class BasicTransformer(Transformer):
-    """
-    Basic transformer for MF6 input files. Works only with the basic
-    grammar. Yields blocks simply as collections of lines of tokens.
-    """
-
-    def __getattr__(self, name):
-        """Handle typed__ prefixed methods by delegating to the unprefixed version."""
-        if name.startswith("typed__"):
-            unprefixed = name[7:]  # Remove "typed__" prefix
-            if hasattr(self, unprefixed):
-                return getattr(self, unprefixed)
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-
-    def start(self, items: list[Any]) -> dict[str, Any]:
-        blocks = {}
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            block_name = next(iter(item.keys()))
-            blocks[block_name] = next(iter(item.values()))
-        return blocks
-
-    def block(self, items: list[Any]) -> dict[str, Any]:
-        return {items[0]: items[1 : (len(items) - 1)]}
-
-    def block_name(self, items: list[Any]) -> str:
-        return " ".join([str(item) for item in items if item is not None])
-
-    def _list(self, items: list[Any]) -> list[Any]:
-        return items[0] if items else []
-
-    def line(self, items: list[Any]) -> list[Any]:
-        return items[1:]
-
-    def item(self, items: list[Any]) -> str | float | int:
-        return items[0]
-
-    def word(self, items: list[Token]) -> str:
-        return str(items[0])
-
-    def NUMBER(self, token: Token) -> int | float:
-        return _parse_number(str(token))
-
-    def CNAME(self, token: Token) -> str:
-        return str(token)
-
-    def INT(self, token: Token) -> int:
-        return int(token)
+from flopy4.utils import parse_number
 
 
 class TypedTransformer(Transformer):
@@ -221,7 +161,7 @@ class TypedTransformer(Transformer):
 
     def number(self, items: list[Any]) -> int | float:
         """Handle generic number (could be int or float)."""
-        return _parse_number(str(items[0]))
+        return parse_number(str(items[0]))
 
     def data(self, items: list[Any]) -> np.ndarray:
         return np.array(items)

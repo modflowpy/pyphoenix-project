@@ -3,7 +3,7 @@ from modflow_devtools.dfns import Dfn
 from modflow_devtools.dfns.schema.v2 import FieldV2
 from packaging.version import Version
 
-from flopy4.mf6.codec.reader.grammar import make_all_grammars, make_grammar
+from flopy4.mf6.codec.reader.grammar import make_grammar, make_grammars
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def test_make_all_grammars(tmp_path):
         )
     }
 
-    make_all_grammars(dfns, outdir)
+    make_grammars(dfns, outdir)
     assert outdir.exists()
     assert outdir.is_dir()
 
@@ -115,7 +115,7 @@ def test_make_all_grammars(tmp_path):
         ),
     }
 
-    make_all_grammars(dfns, tmp_path)
+    make_grammars(dfns, tmp_path)
 
     assert (tmp_path / "comp1.lark").exists()
     assert (tmp_path / "comp2.lark").exists()
@@ -123,7 +123,7 @@ def test_make_all_grammars(tmp_path):
 
 
 def test_make_all_grammars_empty_dict(tmp_path):
-    make_all_grammars({}, tmp_path)
+    make_grammars({}, tmp_path)
 
     assert tmp_path.exists()  # create directory
     assert len(list(tmp_path.glob("*.lark"))) == 0
