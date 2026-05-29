@@ -202,22 +202,30 @@ class Disv(DisBase):
     @classmethod
     def from_grid(cls, grid: VertexGrid) -> "Disv":
         """Create a discretization from a `VertexGrid`."""
-        return Disv(
-            xorigin=grid.xoffset,
-            yorigin=grid.yoffset,
-            nlay=grid.nlay,
-            ncpl=grid.ncpl,
-            nvert=grid.nvert,
-            top=grid.top,
-            botm=grid.botm,
-            idomain=np.asarray(grid.idomain).reshape(grid.nlay, grid.ncpl)
+        _lenunits = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
+        kwargs = {
+            "xorigin": grid.xoffset,
+            "yorigin": grid.yoffset,
+            "nlay": grid.nlay,
+            "ncpl": grid.ncpl,
+            "nvert": grid.nvert,
+            "top": grid.top,
+            "botm": grid.botm,
+            "idomain": np.asarray(grid.idomain).reshape(grid.nlay, grid.ncpl)
             if grid.idomain is not None
             else None,
-            iv=np.array([v[0] for v in grid._vertices], dtype=int),
-            xv=grid.verts[:, 0].ravel(),
-            yv=grid.verts[:, 1].ravel(),
-            cell2ddata=Disv.grid_to_disv_cell2d(grid.cell2d),
-        )
+            "iv": np.array([v[0] for v in grid._vertices], dtype=int),
+            "xv": grid.verts[:, 0].ravel(),
+            "yv": grid.verts[:, 1].ravel(),
+            "cell2ddata": Disv.grid_to_disv_cell2d(grid.cell2d),
+        }
+        if grid.lenuni in _lenunits:
+            kwargs["length_units"] = _lenunits[grid.lenuni]
+        if grid.angrot:
+            kwargs["angrot"] = grid.angrot
+        if grid.crs is not None:
+            kwargs["crs"] = f"EPSG:{grid.crs.to_epsg()}"
+        return Disv(**kwargs)
 
     @staticmethod
     def disv_to_grid_cell2d(cell2ddata) -> list:

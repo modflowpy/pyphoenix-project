@@ -151,6 +151,7 @@ class Dis(DisBase):
     @classmethod
     def from_grid(cls, grid: StructuredGrid) -> "Dis":
         """Create a discretization from a `StructuredGrid`."""
+        _lenunits = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
         kwargs = {
             "xorigin": grid.xoffset,
             "yorigin": grid.yoffset,
@@ -163,6 +164,10 @@ class Dis(DisBase):
             "botm": grid.botm,
             "idomain": grid.idomain,
         }
+        if grid.lenuni in _lenunits:
+            kwargs["length_units"] = _lenunits[grid.lenuni]
+        if grid.angrot:
+            kwargs["angrot"] = grid.angrot
         if grid.crs is not None:
             kwargs["crs"] = f"EPSG:{grid.crs.to_epsg()}"
         return Dis(**kwargs)
