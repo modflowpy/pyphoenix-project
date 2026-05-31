@@ -81,7 +81,7 @@ def output_path(dfn_name: str, root: Path) -> Path:
 
 def has_period_block(dfn: Dfn) -> bool:
     """True if the DFN defines a period block (stress package)."""
-    return "period" in (dfn["blocks"] or {})
+    return "period" in (dfn.get("blocks") or {})
 
 
 def has_dimensions_block(dfn: Dfn) -> bool:
@@ -289,7 +289,7 @@ def list_col_dim(f: Field, dfn: Dfn) -> str | None:
     Falls back to the single entry in the DFN's dimensions block.
     Returns None when the dimension cannot be determined unambiguously.
     """
-    dim_block = (dfn["blocks"] or {}).get("dimensions", {})
+    dim_block = (dfn.get("blocks") or {}).get("dimensions", {})
     if shape := f.get("shape", None):
         inner = shape.strip().strip("()")
         parts = [p.strip() for p in inner.split(",") if p.strip()]
@@ -787,7 +787,7 @@ def block_schema(v1_dfn: Dfn, block_name: str) -> list[ColumnSpec]:
     its nested children (built by the v2.0.0.dev1 migration). Returns one
     ColumnSpec per column in DFN order.
     """
-    v1_block = (v1_dfn["blocks"] or {}).get(block_name) or {}
+    v1_block = (v1_dfn.get("blocks") or {}).get(block_name) or {}
     list_field = next((f for f in v1_block.values() if f.get("type") == "list"), None)
     if list_field is None:
         return []
@@ -832,7 +832,7 @@ def v1_list_block_names(v1_dfn: Dfn) -> list[str]:
     """
     seen: set[str] = set()
     result = []
-    for block_name, block in (v1_dfn["blocks"] or {}).items():
+    for block_name, block in (v1_dfn.get("blocks") or {}).items():
         if block_name in seen:
             continue
         if any(

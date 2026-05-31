@@ -405,8 +405,8 @@ def _build_block_property_specs(
     block property API for each recarray block.  Returns (specs, block_names)
     where block_names is used as a skip-set in the main field loop.
     """
-    dfn_dims = set((dfn["blocks"] or {}).get("dimensions", {}).keys())
-    dfn_dims_ordered = list((dfn["blocks"] or {}).get("dimensions", {}).keys())
+    dfn_dims = set((dfn.get("blocks") or {}).get("dimensions", {}).keys())
+    dfn_dims_ordered = list((dfn.get("blocks") or {}).get("dimensions", {}).keys())
 
     # Collect v2 list blocks, excluding those handled by TOML overrides.
     list_fields_map: dict[str, Field | None] = {
@@ -832,7 +832,13 @@ def build_component_spec(
                 )
                 break
 
-    field_specs = prefix_specs + extra_specs + data_specs + period_specs
+    _seen_py_names: set[str] = set()
+    _deduped: list[FieldSpec] = []
+    for _fs in prefix_specs + extra_specs + data_specs + period_specs:
+        if _fs.py_name not in _seen_py_names:
+            _seen_py_names.add(_fs.py_name)
+            _deduped.append(_fs)
+    field_specs = _deduped
 
     # Build period_col_map: value columns in the period block (cellid/aux/boundname excluded).
     # Only packages with a standard stress-period list format produce a non-empty map.
