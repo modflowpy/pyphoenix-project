@@ -5,7 +5,10 @@ import logging
 import shutil
 import sys
 import warnings
+from pathlib import Path
 
+_PROJ_ROOT = Path(__file__).parents[1].expanduser().resolve()
+_MF6_ROOT = _PROJ_ROOT / "flopy4" / "mf6"
 _DFN_SCHEMA_VERSION = "2.0.0.dev1"
 
 
@@ -135,15 +138,16 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         _populate_remote_cache(registry, release_id, force=args.force or is_branch)
 
     make(
-        dfndir=registry.cache_path,
-        outdir=args.outdir,
+        dfndir=registry.cache_path if isinstance(registry, RemoteDfnRegistry) else registry.path,
+        outdir=_MF6_ROOT,
         existing_only=not args.all_packages,
         makedirs=args.all_packages,
         fmt=not args.no_format,
     )
-    _write_contract(args.outdir, effective_version)
+    _write_contract(_MF6_ROOT, effective_version)
 
-    print(f"Synced flopy4.mf6 to MF6 {effective_version}.")
+    if effective_version != "unknown":
+        print(f"Synced flopy4.mf6 to MF6 version: {effective_version}")
 
 
 def _cmd_status(args: argparse.Namespace) -> None:
