@@ -130,7 +130,7 @@ def generate_classes(
     makedirs: bool = False,
     existing_only: bool = False,
     force: bool = False,
-) -> None:
+) -> str:
     """Generate Python classes for MODFLOW 6 packages.
 
     Fetches (or reads) DFN files via the registry, generates a Python source
