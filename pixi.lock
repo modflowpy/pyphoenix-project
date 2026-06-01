@@ -9623,8 +9623,8 @@ packages:
   - pydantic
   - xugrid==0.14.3
   - scipy>=1.16.2,<2
+  - sparse>=0.17.0
   - xarray[io,parallel]>=2025.10.1,<2026 ; extra == 'optional'
-  - sparse>=0.17.0 ; extra == 'optional'
   - dask[array]>=2025.10.0,<2026 ; extra == 'optional'
   - pyproj>=3.7.2,<4 ; extra == 'optional'
   - networkx>=3.5,<4 ; extra == 'optional'

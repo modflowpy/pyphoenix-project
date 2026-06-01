@@ -46,13 +46,13 @@ dependencies = [
     "pydantic",
     "xugrid==0.14.3",
     "scipy>=1.16.2,<2",
+    "sparse>=0.17.0",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 optional = [
     "xarray[parallel,io]>=2025.10.1,<2026",
-    "sparse>=0.17.0",
     "dask[array]>=2025.10.0,<2026",
     "pyproj>=3.7.2,<4",
     "networkx>=3.5,<4",
