@@ -162,15 +162,16 @@ def _cmd_status(args: argparse.Namespace) -> None:
     exe = shutil.which("mf6") or shutil.which("mf6.exe")
     binary_version = _query_mf6_version(exe) if exe else None
 
-    synced = binary_version is not None and binary_version == MF6_VERSION
-    status = "(✓ in sync)" if synced else "(! mismatch)" if binary_version else "(not found)"
-
     print(f"flopy4.mf6 synced to : {MF6_VERSION}")
     print(f"DFN schema version   : {DFN_SCHEMA_VERSION}")
-    if exe:
-        print(f"Discovered binary    : {binary_version}  [{exe}]  {status}")
+    if not exe:
+        print("Discovered binary    : (not found on PATH)")
+    elif binary_version is None:
+        print(f"Discovered binary    : {exe}  (version unknown)")
     else:
-        print("Discovered binary    : none  (not found on PATH)")
+        synced = binary_version == MF6_VERSION and MF6_VERSION != "unknown"
+        status = "(✓ in sync)" if synced else "(! mismatch)"
+        print(f"Discovered binary    : {binary_version}  [{exe}]  {status}")
 
 
 def main() -> None:
