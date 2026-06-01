@@ -51,28 +51,28 @@ def _cmd_sync(args: argparse.Namespace) -> None:
     # For remote release IDs, install the matching binary unless --no-install.
     from pathlib import Path
 
-    is_local = Path(release_id).expanduser().is_dir()
-    if not is_local and not args.no_install:
-        _, tag = release_id.split("@", 1)
-        if tag not in ("latest",):
-            version_arg = tag
-        else:
-            version_arg = None  # let install_program resolve latest
-        if args.verbose:
-            label = version_arg or "latest"
-            print(f"Installing mf6 {label} ...")
-        try:
-            installed = install_program(
-                "mf6",
-                version=version_arg,
-                force=args.force,
-                verbose=args.verbose,
-            )
-            if args.verbose and installed:
-                print(f"Installed: {', '.join(str(p) for p in installed)}")
-        except Exception as exc:
-            print(f"Warning: binary installation failed: {exc}", file=sys.stderr)
-            print("Continuing with class generation only.", file=sys.stderr)
+    # is_local = Path(release_id).expanduser().is_dir()
+    # if not is_local and not args.no_install:
+    #     _, tag = release_id.split("@", 1)
+    #     if tag not in ("latest",):
+    #         version_arg = tag
+    #     else:
+    #         version_arg = None  # let install_program resolve latest
+    #     if args.verbose:
+    #         label = version_arg or "latest"
+    #         print(f"Installing mf6 {label} ...")
+    #     try:
+    #         installed = install_program(
+    #             "mf6",
+    #             version=version_arg,
+    #             force=args.force,
+    #             verbose=args.verbose,
+    #         )
+    #         if args.verbose and installed:
+    #             print(f"Installed: {', '.join(str(p) for p in installed)}")
+    #     except Exception as exc:
+    #         print(f"Warning: binary installation failed: {exc}", file=sys.stderr)
+    #         print("Continuing with class generation only.", file=sys.stderr)
 
     if args.verbose:
         print(f"Generating flopy4.mf6 from {release_id} ...")
