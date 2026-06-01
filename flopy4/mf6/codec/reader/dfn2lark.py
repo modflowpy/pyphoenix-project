@@ -1,10 +1,10 @@
-"""Convert (TOML/v2) DFNs to Lark grammars."""
+"""Generate Lark grammars from DFN files."""
 
 import argparse
 from os import PathLike
 from pathlib import Path
 
-from modflow_devtools.dfn import load_flat, map
+import modflow_devtools.dfn as dfn
 
 from flopy4.mf6.codec.reader.grammar import make_grammars
 
@@ -17,9 +17,8 @@ def make(dfndir: str | PathLike, outdir: str | PathLike):
     dfndir = Path(dfndir).expanduser().absolute()
     outdir = Path(outdir).expanduser().absolute()
     outdir.mkdir(exist_ok=True, parents=True)
-    dfns_v1 = load_flat(dfndir)
-    dfns_v2 = {name: map(dfn, schema_version=2) for name, dfn in dfns_v1.items()}
-    make_grammars(dfns_v2, outdir)
+    dfns = dfn.Dfn.load_all(dfndir, schema_version="2.0.0.dev1")
+    make_grammars(dfns, outdir)
 
 
 def main():

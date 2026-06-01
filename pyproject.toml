@@ -117,8 +117,7 @@ ignore = [
 ]
 
 [project.scripts]
-dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
-generate-mf6-classes = "flopy4.mf6.utils.codegen.generate_classes:cli_main"
+flopy4 = "flopy4.cli:main"
 
 [project.entry-points.flopy4]
 plot = "flopy4.singledispatch.plot_int"
@@ -164,12 +163,20 @@ update-ghpages = { cmd = "python scripts/update_ghpages.py", description = "Sync
 build = { cmd = "python -m build" }
 
 [tool.pixi.tasks.generate-classes]
-cmd = "generate-mf6-classes --ref develop --existing-only --verbose"
-description = "Regenerate existing MF6 classes in flopy4/mf6/ from upstream DFNs"
+cmd = "generate-mf6-classes MODFLOW-ORG/modflow6@latest --existing-only --verbose"
+description = "Regenerate existing MF6 classes in flopy4/mf6/ from the latest release DFNs"
 
 [tool.pixi.tasks.generate-classes-preview]
-cmd = "generate-mf6-classes --ref develop --outdir ./tmp/mf6-preview --makedirs --verbose"
-description = "Generate MF6 classes into /tmp/mf6-preview (safe preview)"
+cmd = "generate-mf6-classes MODFLOW-ORG/modflow6@latest --outdir ./tmp/mf6-preview --makedirs --verbose"
+description = "Generate MF6 classes into ./tmp/mf6-preview (safe preview)"
+
+[tool.pixi.tasks.sync]
+cmd = "flopy4 mf6 sync --verbose"
+description = "Sync flopy4.mf6 to the discovered or latest MF6 release"
+
+[tool.pixi.tasks.sync-status]
+cmd = "flopy4 mf6 status"
+description = "Show flopy4.mf6 sync status vs. discovered MF6 binary"
 
 [tool.pixi.feature.test.tasks]
 test = { cmd = "pytest -v -n auto", env = { MPLBACKEND = "Agg" } }

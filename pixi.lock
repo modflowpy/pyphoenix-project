@@ -88,7 +88,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.13-8_cp313.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/f8/41db9de19d7987d6b04715a02b3b40aea467000275d9d758ffaa31af7d50/pydantic_core-2.46.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -229,7 +229,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-h7142dee_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/88/a8952b6d5c21e74cbf158515b779666f692846502623e9e3c39d8e8ba25f/llvmlite-0.47.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -378,7 +378,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/90/67bd7260b4ea9b8b20b4f58afef6c223ecb3abf368eb4ec5bc2cdef81b49/pyproj-3.7.2.tar.gz
@@ -523,7 +523,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_37.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/73/c4abe620b841b6b791f2edc248f556900667a5a1cf023a6646967ae98335/markupsafe-3.0.3-cp313-cp313-win_amd64.whl
@@ -687,7 +687,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.11-8_cp311.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -957,7 +957,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-h7142dee_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/88/a8952b6d5c21e74cbf158515b779666f692846502623e9e3c39d8e8ba25f/llvmlite-0.47.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -1233,7 +1233,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -1505,7 +1505,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_37.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -1796,7 +1796,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.11-8_cp311.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/bf/6f506a37c7f8ecc4576caf9486e303c7af249f6d70447bb51dde9d78cb99/sphinx_book_theme-1.2.0-py3-none-any.whl
@@ -2055,7 +2055,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-h7142dee_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/88/a8952b6d5c21e74cbf158515b779666f692846502623e9e3c39d8e8ba25f/llvmlite-0.47.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -2323,7 +2323,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/bf/6f506a37c7f8ecc4576caf9486e303c7af249f6d70447bb51dde9d78cb99/sphinx_book_theme-1.2.0-py3-none-any.whl
@@ -2586,7 +2586,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_37.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/bf/6f506a37c7f8ecc4576caf9486e303c7af249f6d70447bb51dde9d78cb99/sphinx_book_theme-1.2.0-py3-none-any.whl
@@ -2868,7 +2868,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.11-8_cp311.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -3105,7 +3105,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-h7142dee_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/88/a8952b6d5c21e74cbf158515b779666f692846502623e9e3c39d8e8ba25f/llvmlite-0.47.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -3351,7 +3351,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -3593,7 +3593,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_37.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -3853,7 +3853,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.12-8_cp312.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/8e/1e35281b8ab6d5d72ebe9911edcdffa3f36b04ed9d51dec6dd140396e220/scipy-1.17.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -4087,7 +4087,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-h7142dee_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/88/a8952b6d5c21e74cbf158515b779666f692846502623e9e3c39d8e8ba25f/llvmlite-0.47.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -4330,7 +4330,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -4569,7 +4569,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_37.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -4825,7 +4825,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.13-8_cp313.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -5061,7 +5061,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-h7142dee_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/01/88/a8952b6d5c21e74cbf158515b779666f692846502623e9e3c39d8e8ba25f/llvmlite-0.47.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
@@ -5306,7 +5306,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -5547,7 +5547,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36231-h1b9f54f_37.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: .
-      - pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+      - pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
       - pypi: git+https://github.com/wpbonelli/xattree#82942ffb8237d56c97451765ac3e2b16d6cb0d2c
       - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -9648,7 +9648,7 @@ packages:
   - build ; extra == 'build'
   - twine ; extra == 'build'
   requires_python: '>=3.11,<3.14'
-- pypi: git+https://github.com/modflow-org/modflow-devtools#5fde75e2b737b698795c30d993340f956350dbda
+- pypi: git+https://github.com/modflow-org/modflow-devtools#abec244c96a3595f7774b279dea5d10ab64663d7
   name: modflow-devtools
   version: 1.10.0.dev1
   requires_dist:
