@@ -118,8 +118,6 @@ ignore = [
 
 [project.scripts]
 flopy4 = "flopy4.cli:main"
-dfn2lark = "flopy4.mf6.codec.reader.dfn2lark:main"
-generate-mf6-classes = "flopy4.mf6.utils.codegen.generate_classes:cli_main"
 
 [project.entry-points.flopy4]
 plot = "flopy4.singledispatch.plot_int"

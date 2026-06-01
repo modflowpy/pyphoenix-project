@@ -929,13 +929,13 @@ def _format(path: Path) -> None:
     )
 
 
-def make_component(
+def make_module(
     spec: ComponentSpec,
     env: jinja2.Environment,
     *,
     fmt: bool = True,
 ) -> None:
-    """Render and write a single component file."""
+    """Generate a single component module."""
     template = env.get_template(spec.template)
     rendered = template.render(spec=spec)
     spec.outpath.write_text(rendered, newline="\n")
@@ -947,7 +947,7 @@ def make_component(
             logger.warning(f"Failed to format {spec.outpath}: {e.stderr.decode().strip()}")
 
 
-def make_all(
+def make_modules(
     *,
     dfns: dict[str, "Dfn"] | None = None,
     dfndir: PathLike | None = None,
@@ -958,7 +958,7 @@ def make_all(
     makedirs: bool = False,
     existing_only: bool = False,
 ) -> list[ComponentSpec]:
-    """Generate Python source files for all DFNs.
+    """Generate Python modules for all components.
 
     Parameters
     ----------
@@ -1002,6 +1002,6 @@ def make_all(
             continue
         if makedirs:
             spec.outpath.parent.mkdir(parents=True, exist_ok=True)
-        make_component(spec, env, fmt=fmt)
+        make_module(spec, env, fmt=fmt)
         specs.append(spec)
     return specs

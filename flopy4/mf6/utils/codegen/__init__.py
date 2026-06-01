@@ -1,3 +1,3 @@
-from .generate_classes import generate_classes
+from flopy4.mf6.utils.codegen.dfn2py import make
 
-__all__ = ["generate_classes"]
+__all__ = ["make"]
