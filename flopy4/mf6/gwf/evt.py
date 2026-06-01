@@ -48,7 +48,7 @@ class Evt(Package):
     surf_rate_specified: bool = field(
         block="options",
         default=False,
-        longname="specify proportion of evapotranspiration rate at et surface",
+        longname="specify proportion of evapotranspiration rate at ET surface",
     )
     maxbound: Optional[int] = field(
         block="dimensions",
@@ -57,7 +57,7 @@ class Evt(Package):
         longname="maximum number of evapotranspiration cells",
     )
     nseg: Optional[int] = dim(
-        block="dimensions", coord=False, default=None, longname="number of et segments"
+        block="dimensions", coord=False, default=None, longname="number of ET segments"
     )
     naux: Optional[int] = dim(block="__dim__", coord=False, default=None)
     surface: Optional[NDArray[np.float64]] = array(
@@ -66,7 +66,7 @@ class Evt(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
-        longname="et surface",
+        longname="ET surface",
     )
     rate: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -74,7 +74,7 @@ class Evt(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
-        longname="maximum et rate",
+        longname="maximum ET rate",
     )
     depth: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -82,7 +82,7 @@ class Evt(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
-        longname="et extinction depth",
+        longname="ET extinction depth",
     )
     pxdp: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -90,7 +90,7 @@ class Evt(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
-        longname="proportion of et extinction depth",
+        longname="proportion of ET extinction depth",
     )
     petm: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -98,7 +98,7 @@ class Evt(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
-        longname="proportion of maximum et rate",
+        longname="proportion of maximum ET rate",
     )
     petm0: Optional[NDArray[np.float64]] = array(
         block="period",
@@ -106,7 +106,7 @@ class Evt(Package):
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
-        longname="proportion of maximum et rate at et surface",
+        longname="proportion of maximum ET rate at ET surface",
     )
     aux: Optional[NDArray[np.float64]] = array(
         block="period",

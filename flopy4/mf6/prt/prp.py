@@ -38,7 +38,7 @@ class Prp(Package):
         block="options", default=None, longname="exit solve method"
     )
     exit_solve_tolerance: Optional[float] = field(
-        block="options", default=None, longname="exit solve tolerance"
+        block="options", default="1e-5", longname="exit solve tolerance"
     )
     local_z: bool = field(
         block="options", default=False, longname="whether to use local z coordinates"
@@ -76,7 +76,7 @@ class Prp(Package):
         block="options", default=None, longname="release time frequency"
     )
     coordinate_check_method: Optional[str] = field(
-        block="options", default=None, longname="coordinate checking method"
+        block="options", default="eager", longname="coordinate checking method"
     )
     dev_cycle_detection_window: Optional[int] = field(
         block="options", default=None, longname="cycle detection window size"

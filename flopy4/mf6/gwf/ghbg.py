@@ -35,7 +35,7 @@ class Ghbg(Package):
         block="options", default=False, longname="print calculated flows to listing file"
     )
     save_flows: bool = field(
-        block="options", default=False, longname="save ghbg flows to budget file"
+        block="options", default=False, longname="save GHBG flows to budget file"
     )
     obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
@@ -54,7 +54,7 @@ class Ghbg(Package):
     bhead: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
-        default=None,
+        default="3.e30",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,
@@ -63,7 +63,7 @@ class Ghbg(Package):
     cond: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
-        default=None,
+        default="3.e30",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,

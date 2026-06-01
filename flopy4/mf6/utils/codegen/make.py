@@ -14,8 +14,7 @@ from os import PathLike
 from pathlib import Path
 
 import jinja2
-from modflow_devtools.dfns import Dfn, load_flat
-from modflow_devtools.dfns.schema.field import Field as DfnField
+from modflow_devtools.dfn import Dfn, Field
 
 from . import filters
 from .filters import ColumnSpec
@@ -109,18 +108,18 @@ class ComponentSpec:
 # Context builders
 
 
-def _build_field_spec(f: DfnField, *, has_maxbound: bool = False) -> FieldSpec:
+def _build_field_spec(f: Field, *, has_maxbound: bool = False) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
     # Compound records get the same treatment via _strip_record_words in
     # build_component_spec; this keeps the two paths consistent.
     if filters.is_file_record(f):
-        py_name = filters.safe_name("_".join(_strip_record_words(f.name)))
+        py_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
     else:
-        py_name = filters.safe_name(f.name)
+        py_name = filters.safe_name(f["name"])
     return FieldSpec(
-        dfn_name=f.name,
+        dfn_name=f["name"],
         py_name=py_name,
         type_annotation=filters.py_type(f) if generatable else "Any",
         spec_call=filters.spec_call(f, has_maxbound=has_maxbound) if generatable else "",
@@ -148,14 +147,14 @@ _FIELD_KNOWN_KEYS = frozenset(
 )
 
 
-def _child_to_field(child_dict: dict) -> DfnField:
+def _child_to_field(child_dict: dict) -> Field:
     """Convert a record child dict to a Field object."""
-    return DfnField(**{k: v for k, v in child_dict.items() if k in _FIELD_KNOWN_KEYS})
+    return Field(**{k: v for k, v in child_dict.items() if k in _FIELD_KNOWN_KEYS})
 
 
 def _expand_record_field(
-    f: DfnField, *, has_maxbound: bool = False
-) -> tuple[list[FieldSpec], list[DfnField]]:
+    f: Field, *, has_maxbound: bool = False
+) -> tuple[list[FieldSpec], list[Field]]:
     """Expand a compound record into FieldSpecs for its generatable children.
 
     Returns (field_specs, generatable_child_fields).  field_specs contains one
@@ -163,8 +162,8 @@ def _expand_record_field(
     children that can't be generated standalone.  generatable_child_fields is
     the corresponding list of Field objects used for import computation.
     """
-    children = f.children or {}
-    expandable: list[DfnField] = []
+    children = f.get("children", None) or {}
+    expandable: list[Field] = []
     unexpandable_optional: list[str] = []
 
     for child_dict in children.values():
@@ -175,7 +174,7 @@ def _expand_record_field(
         # required unexpandable children were already blocked by can_expand_record
 
     specs: list[FieldSpec] = []
-    gen_fields: list[DfnField] = []
+    gen_fields: list[Field] = []
     for child_field in expandable:
         spec = _build_field_spec(child_field, has_maxbound=has_maxbound)
         specs.append(spec)
@@ -185,8 +184,8 @@ def _expand_record_field(
     if unexpandable_optional:
         specs.append(
             FieldSpec(
-                dfn_name=f.name,
-                py_name=filters.safe_name(f.name),
+                dfn_name=f["name"],
+                py_name=filters.safe_name(f["name"]),
                 type_annotation="Any",
                 spec_call="",
                 generatable=False,
@@ -199,7 +198,7 @@ def _expand_record_field(
     return specs, gen_fields
 
 
-def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
+def _expand_list_field(f: Field, dfn: Dfn) -> list[FieldSpec]:
     """Expand a list-type sub-table field into one FieldSpec per column.
 
     Each column becomes an array() field with the list block's block name
@@ -211,8 +210,8 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
     if not cols or dim is None:
         return [
             FieldSpec(
-                dfn_name=f.name,
-                py_name=filters.safe_name(f.name),
+                dfn_name=f["name"],
+                py_name=filters.safe_name(f["name"]),
                 type_annotation="Any",
                 spec_call="",
                 generatable=False,
@@ -222,15 +221,16 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
 
     specs = []
     for col in cols:
-        col = apply_to_child(dfn.name, col)
+        col = apply_to_child(dfn["name"], col)
         col_name = col["name"]
         col_type = col.get("type", "string")
         col_longname = col.get("longname", "")
         dtype = filters.ARRAY_NUMPY_DTYPES.get(col_type, "np.object_")
         base = f"NDArray[{dtype}]"
         annotation = f"Optional[{base}]"  # expanded columns always default to None
+        block = f["block"]
         args = [
-            f'block="{f.block}"',
+            f'block="{block}"',
             f'dims=("{dim}",)',
             "default=None",
             "converter=Converter(structure_array, takes_self=True, takes_field=True)",
@@ -249,7 +249,7 @@ def _expand_list_field(f: DfnField, dfn: Dfn) -> list[FieldSpec]:
     return specs
 
 
-def _expand_oc_record_field(f: DfnField, dfn_name: str) -> list[FieldSpec]:
+def _expand_oc_record_field(f: Field, dfn_name: str) -> list[FieldSpec]:
     """Expand saverecord/printrecord into per-rtype NDArray[np.str_] fields.
 
     Generates one array field per rtype (e.g. save_concentration, save_budget)
@@ -257,7 +257,7 @@ def _expand_oc_record_field(f: DfnField, dfn_name: str) -> list[FieldSpec]:
     by splitting on ``_`` → replacing with space.
     """
     rtypes = filters._OC_RTYPES.get(dfn_name, [])
-    action = "save" if f.name == "saverecord" else "print"
+    action = "save" if f["name"] == "saverecord" else "print"
     specs: list[FieldSpec] = []
     for rtype in rtypes:
         py_name = f"{action}_{rtype}"
@@ -271,7 +271,7 @@ def _expand_oc_record_field(f: DfnField, dfn_name: str) -> list[FieldSpec]:
         )
         specs.append(
             FieldSpec(
-                dfn_name=f"{f.name}_{rtype}",
+                dfn_name=f"{f['name']}_{rtype}",
                 py_name=py_name,
                 type_annotation="Optional[NDArray[np.str_]]",
                 spec_call=spec_call,
@@ -308,7 +308,7 @@ _SCALAR_PY_TYPES_INNER: dict[str, str] = {
 }
 
 
-def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
+def _build_inner_class_spec(f: Field, dfn_name: str) -> InnerClassSpec:
     """Build an InnerClassSpec for a mixed-type compound record field.
 
     When the first child is a keyword type it becomes the trigger token
@@ -324,7 +324,7 @@ def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
     sub-records lost in v2 TOML conversion) are appended after the direct
     children.  All fields are sorted required-first to satisfy attrs.
     """
-    children = list((f.children or {}).values())
+    children = list((f.get("children", None) or {}).values())
     first = children[0]
     if first.get("type") == "keyword":
         keyword = first["name"]
@@ -372,13 +372,13 @@ def _build_inner_class_spec(f: DfnField, dfn_name: str) -> InnerClassSpec:
     for child_dict in data_children:
         _process_child(child_dict)
 
-    for child_dict in extra_record_children(dfn_name, f.name):
+    for child_dict in extra_record_children(dfn_name, f["name"]):
         _process_child(child_dict)
 
     # attrs requires fields with defaults to follow fields without defaults.
-    inner_fields.sort(key=lambda field: field.optional)
+    inner_fields.sort(key=lambda field: str(field.optional))
 
-    words = _strip_record_words(f.name)
+    words = _strip_record_words(f["name"])
     class_name = "".join(w.capitalize() for w in words)
     extra_tokens_repr = (
         "(" + ", ".join(f'"{t}"' for t in extra_tokens) + ",)" if extra_tokens else ""
@@ -405,17 +405,17 @@ def _build_block_property_specs(
     block property API for each recarray block.  Returns (specs, block_names)
     where block_names is used as a skip-set in the main field loop.
     """
-    dfn_dims = set((dfn.blocks or {}).get("dimensions", {}).keys())
-    dfn_dims_ordered = list((dfn.blocks or {}).get("dimensions", {}).keys())
+    dfn_dims = set((dfn.get("blocks") or {}).get("dimensions", {}).keys())
+    dfn_dims_ordered = list((dfn.get("blocks") or {}).get("dimensions", {}).keys())
 
     # Collect v2 list blocks, excluding those handled by TOML overrides.
-    list_fields_map: dict[str, DfnField | None] = {
-        f.block: f
+    list_fields_map: dict[str, Field | None] = {
+        f["block"]: f
         for f in filters.flat_fields(dfn)
         if filters.is_list_field(f)
-        and f.block not in extra_blocks
-        and f.block not in replace_blocks
-        and "period" not in f.block
+        and f["block"] not in extra_blocks
+        and f["block"] not in replace_blocks
+        and "period" not in f["block"]
     }
     # Add recarray blocks present in v1 DFN but dropped by dfn2toml (e.g. SSM sources/fileinput).
     for v1_block in filters.v1_list_block_names(v1_dfn):
@@ -426,7 +426,7 @@ def _build_block_property_specs(
     v1_schemas = {block: filters.block_schema(v1_dfn, block) for block in list_fields_map}
     # Period field bare names: static columns sharing a name with a period field
     # must take the block-prefixed attr name so the period field keeps the bare name.
-    bare_period_names = frozenset(pf["keyword"].lower() for pf in extra_period_fields(dfn.name))
+    bare_period_names = frozenset(pf["keyword"].lower() for pf in extra_period_fields(dfn["name"]))
     collisions = filters.collision_names(v1_schemas, reserved=bare_period_names)
 
     # Resolve which DFN dimension scalar each block maps to.
@@ -442,10 +442,10 @@ def _build_block_property_specs(
         if dfn_dim and dfn_dim in dfn_dims:
             dim_resolutions[block_name] = (dfn_dim, True)
             claimed_dims.add(dfn_dim)
-        elif lf.shape and "maxbound" in str(lf.shape) and dfn_dims:
+        elif lf.get("shape", None) and "maxbound" in str(lf.get("shape", None)) and dfn_dims:
             maxbound_blocks.append(block_name)
         else:
-            override = block_dim_override(dfn.name, block_name)
+            override = block_dim_override(dfn["name"], block_name)
             dim_resolutions[block_name] = (override or f"n{block_name}", False)
 
     unclaimed = [d for d in dfn_dims_ordered if d not in claimed_dims]
@@ -486,15 +486,15 @@ _SLN_PREFIX = "sln"
 
 def _base_class(dfn: Dfn) -> str:
     """Determine the Python base class for a component."""
-    if dfn.name.split("-")[0] == _SLN_PREFIX:
+    if dfn["name"].split("-")[0] == _SLN_PREFIX:
         return "Solution"
     return "Package"
 
 
 def _slntype(dfn: Dfn) -> str | None:
     """Return the slntype string for solution DFNs, or None."""
-    if dfn.name.split("-")[0] == _SLN_PREFIX:
-        return dfn.name.split("-")[1]
+    if dfn["name"].split("-")[0] == _SLN_PREFIX:
+        return dfn["name"].split("-")[1]
     return None
 
 
@@ -529,9 +529,9 @@ def build_component_spec(
     period_specs: list[FieldSpec] = []
 
     inner_class_specs: list[InnerClassSpec] = []
-    generatable_field_objects: list[DfnField] = []
-    _replace_blocks = replace_list_blocks(dfn.name)
-    _extra_blocks = {lb["block"] for lb in extra_list_blocks(dfn.name)}
+    generatable_field_objects: list[Field] = []
+    _replace_blocks = replace_list_blocks(dfn["name"])
+    _extra_blocks = {lb["block"] for lb in extra_list_blocks(dfn["name"])}
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
@@ -548,16 +548,16 @@ def build_component_spec(
     has_list_cols = False
     has_oc_fields = False
     for f in all_fields:
-        if filters.is_list_field(f) and f.block in (_replace_blocks | _extra_blocks):
+        if filters.is_list_field(f) and f["block"] in (_replace_blocks | _extra_blocks):
             # List field replaced by explicit path fields or injected via extra_list_blocks.
             continue
-        if filters.is_list_field(f) and f.block in _bp_block_names:
+        if filters.is_list_field(f) and f["block"] in _bp_block_names:
             # List field covered by BlockPropertySpec; column attrs generated below.
             continue
 
-        if f.block in ("options", "dimensions"):
+        if f["block"] in ("options", "dimensions"):
             target = prefix_specs
-        elif "period" in f.block:
+        elif "period" in f["block"]:
             target = period_specs
         else:
             target = data_specs
@@ -566,20 +566,21 @@ def build_component_spec(
             expanded = _expand_list_field(f, dfn)
             target.extend(expanded)
             has_list_cols = has_list_cols or any(fs.generatable for fs in expanded)
-        elif filters.is_oc_record(f, dfn.name):
-            expanded = _expand_oc_record_field(f, dfn.name)
+        elif filters.is_oc_record(f, dfn["name"]):
+            expanded = _expand_oc_record_field(f, dfn["name"])
             target.extend(expanded)
             has_oc_fields = has_oc_fields or any(fs.generatable for fs in expanded)
         elif filters.can_generate_record_class(f):
-            record_spec = _build_inner_class_spec(f, dfn.name)
+            record_spec = _build_inner_class_spec(f, dfn["name"])
             inner_class_specs.append(record_spec)
-            clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
+            clean_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
+            block = f["block"]
             target.append(
                 FieldSpec(
-                    dfn_name=f.name,
+                    dfn_name=f["name"],
                     py_name=clean_name,
                     type_annotation=f"Optional[{record_spec.class_name}]",
-                    spec_call=f'field(block="{f.block}", default=None)',
+                    spec_call=f'field(block="{block}", default=None)',
                     generatable=True,
                 )
             )
@@ -597,7 +598,7 @@ def build_component_spec(
     # Inject path fields that replace heterogeneous list blocks (e.g. prt-fmi packagedata).
     # Each injected entry becomes an Optional[Path] field using the path() spec.
     has_injected_paths = False
-    for entry in replace_list_fields(dfn.name):
+    for entry in replace_list_fields(dfn["name"]):
         has_injected_paths = True
         ln = entry.get("longname", "")
         args = [
@@ -625,8 +626,8 @@ def build_component_spec(
     # Entries must be listed in dfn_overrides.toml in v1 DFN block order so that
     # stable sort on key 3 in block_sort_key produces the correct write sequence.
     has_extra_dims = False
-    _dfn_dim_names = set((dfn.blocks or {}).get("dimensions", {}).keys())
-    for lb in extra_list_blocks(dfn.name):
+    _dfn_dim_names = set((dfn.get("blocks", {}) or {}).get("dimensions", {}).keys())
+    for lb in extra_list_blocks(dfn["name"]):
         block_name = lb["block"]
         dim_name = lb["dim"]
         # Only add the dim field when it is not already declared in the DFN's
@@ -642,7 +643,7 @@ def build_component_spec(
                     generatable=True,
                 )
             )
-        v1_block = (v1_dfn.blocks or {}).get(block_name, {}) if v1_dfn else {}
+        v1_block = (v1_dfn.get("blocks", {}) or {}).get(block_name, {}) if v1_dfn else {}
         for col in lb.get("columns", []):
             col_name = col["name"]
             col_py_name = filters.safe_name(col.get("py_name", col_name))
@@ -688,7 +689,7 @@ def build_component_spec(
     # Period fields always use the bare keyword name. Static block columns that
     # share a name with a period field take the block-prefixed attr name instead
     # (see _bare_period_names + collision_names(reserved=...)).
-    for pf in extra_period_fields(dfn.name):
+    for pf in extra_period_fields(dfn["name"]):
         kw = pf["keyword"]
         feat_dim = pf["feature_dim"]
         py_name = filters.safe_name(kw.lower())
@@ -813,10 +814,10 @@ def build_component_spec(
     if not _naux_emitted:
         for _f in all_fields:
             if (
-                _f.block == "period"
+                _f["block"] == "period"
                 and filters.is_array(_f)
-                and _f.shape
-                and ("naux" in _f.shape or _f.name == "aux")
+                and _f.get("shape", None)
+                and ("naux" in _f.get("shape", None) or _f["name"] == "aux")
             ):
                 _naux_emitted = True
                 has_extra_dims = True
@@ -831,7 +832,13 @@ def build_component_spec(
                 )
                 break
 
-    field_specs = prefix_specs + extra_specs + data_specs + period_specs
+    _seen_py_names: set[str] = set()
+    _deduped: list[FieldSpec] = []
+    for _fs in prefix_specs + extra_specs + data_specs + period_specs:
+        if _fs.py_name not in _seen_py_names:
+            _seen_py_names.add(_fs.py_name)
+            _deduped.append(_fs)
+    field_specs = _deduped
 
     # Build period_col_map: value columns in the period block (cellid/aux/boundname excluded).
     # Only packages with a standard stress-period list format produce a non-empty map.
@@ -841,19 +848,21 @@ def build_component_spec(
     for _f in all_fields:
         # Only node-based floating/integer list columns: excludes keyword period arrays
         # (STO steady-state/transient flags) and non-list period blocks.
-        if not (_f.block == "period" and filters.is_array(_f)):
+        if not (_f["block"] == "period" and filters.is_array(_f)):
             continue
-        if _f.name in ("boundname", "aux"):
+        if _f["name"] in ("boundname", "aux"):
             continue
-        if _f.shape and "naux" in _f.shape:
+        if _f.get("shape", None) and "naux" in _f.get("shape", None):
             continue
         # Require node dimension (nnodes/nodes in shape) — excludes OC and period-level scalars
-        if not _f.shape or ("nnodes" not in _f.shape and "nodes" not in _f.shape):
+        if not _f.get("shape", None) or (
+            "nnodes" not in _f.get("shape", None) and "nodes" not in _f.get("shape", None)
+        ):
             continue
-        period_col_map[_f.name] = filters.safe_name(_f.name)
+        period_col_map[_f["name"]] = filters.safe_name(_f["name"])
 
     base = _base_class(dfn)
-    multi = bool(dfn.multi)
+    multi = bool(dfn.get("multi", False))
     slntype = _slntype(dfn)
     has_inner_classes = bool(inner_class_specs)
 
@@ -874,15 +883,15 @@ def build_component_spec(
     )
 
     return ComponentSpec(
-        dfn_name=dfn.name,
-        class_name=filters.class_name(dfn.name),
+        dfn_name=dfn["name"],
+        class_name=filters.class_name(dfn["name"]),
         base_class=base,
         multi=multi,
         slntype=slntype,
         imports=imports,
         fields=field_specs,
         inner_classes=inner_class_specs,
-        outpath=filters.output_path(dfn.name, root),
+        outpath=filters.output_path(dfn["name"], root),
         block_properties=block_properties,
         has_aux=_naux_emitted,
         period_col_map=period_col_map,
@@ -982,8 +991,8 @@ def make_all(
     outdir = Path(outdir)
     skip = skip or set()
     env = _get_env()
-    dfns = load_flat(dfndir)
-    v1_dfns = load_flat(v1dfndir) if v1dfndir else {}
+    dfns = Dfn.load_all(dfndir, schema_version="2.0.0.dev1")
+    v1_dfns = Dfn.load_all(v1dfndir, schema_version="2.0.0.dev1") if v1dfndir else {}
     specs = []
     for name, dfn in dfns.items():
         if name in skip:

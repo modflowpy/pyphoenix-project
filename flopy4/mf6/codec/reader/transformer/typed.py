@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfn import Dfn
+from modflow_devtools.dfn import Dfn, get_fields
 
 from flopy4.utils import parse_number
 
@@ -15,8 +15,8 @@ class TypedTransformer(Transformer):
     def __init__(self, visit_tokens=False, dfn: Dfn = None):
         super().__init__(visit_tokens)
         self.dfn = dfn
-        self.blocks = dfn.blocks if dfn else None
-        self.fields = dfn.fields if dfn else None
+        self.blocks = dfn["blocks"] if dfn else None
+        self.fields = get_fields(dfn) if dfn else None
         # Create a flattened fields dict that includes nested fields
         self._flat_fields = self._flatten_fields(self.fields) if self.fields else None
 
@@ -32,13 +32,13 @@ class TypedTransformer(Transformer):
         """Recursively flatten fields dict to include children of records and unions."""
         flat = dict(fields)  # Start with top-level fields
         for field in fields.values():
-            if hasattr(field, "children") and field.children:
+            if "children" in field and field["children"]:
                 # Add children fields
-                for child_name, child_field in field.children.items():
+                for child_name, child_field in field["children"].items():
                     flat[child_name] = child_field
                     # Recursively flatten nested children
-                    if hasattr(child_field, "children") and child_field.children:
-                        nested_flat = self._flatten_fields(child_field.children)
+                    if "children" in child_field and child_field["children"]:
+                        nested_flat = self._flatten_fields(child_field["children"])
                         flat.update(nested_flat)
         return flat
 
@@ -143,7 +143,7 @@ class TypedTransformer(Transformer):
             return value.strip("\"'")
         else:
             # It's a tree, extract the token value
-            return str(value.children[0]) if hasattr(value, "children") else str(value)
+            return str(value["children"][0]) if hasattr(value, "children") else str(value)
 
     def simple_string(self, items: list[Any]) -> str:
         """Handle simple string (unquoted word or escaped string)."""
@@ -197,7 +197,7 @@ class TypedTransformer(Transformer):
                 token_child = item.children[0]
                 if hasattr(token_child, "children") and len(token_child.children) > 0:
                     # This is a number tree, get the actual value
-                    values.append(token_child.children[0])
+                    values.append(token_child["children"][0])
                 else:
                     # This is a direct value (string)
                     values.append(token_child)
@@ -270,14 +270,14 @@ class TypedTransformer(Transformer):
             field_name, alternative_name = parts
             if (parent_field := self._flat_fields.get(field_name, None)) is not None:
                 if (
-                    parent_field.type == "union"
-                    and hasattr(parent_field, "children")
-                    and parent_field.children
-                    and alternative_name in parent_field.children
+                    parent_field["type"] == "union"
+                    and "children" in parent_field
+                    and parent_field["children"]
+                    and alternative_name in parent_field["children"]
                 ):
                     # This is a union alternative
-                    alt_field = parent_field.children[alternative_name]
-                    if alt_field.type == "keyword":
+                    alt_field = parent_field["children"][alternative_name]
+                    if alt_field["type"] == "keyword":
                         # Keyword alternatives return just the alternative name
                         return alternative_name
                     else:
@@ -289,17 +289,17 @@ class TypedTransformer(Transformer):
             # Try with hyphens instead of underscores (reverse of to_rule_name)
             field = self._flat_fields.get(data.replace("_", "-"), None)
         if field is not None:
-            if field.type == "keyword":
+            if field["type"] == "keyword":
                 return data, True
-            elif field.type == "record" and hasattr(field, "children") and field.children:
+            elif field["type"] == "record" and "children" in field and field["children"]:
                 # Transform record fields into dicts with child field names as keys
                 # Keyword children are literals in the grammar and don't appear in children list
                 # Only non-keyword children appear in the children list
                 record_dict = {}
                 non_keyword_children = [
                     (name, child)
-                    for name, child in field.children.items()
-                    if child.type != "keyword"
+                    for name, child in field["children"].items()
+                    if child["type"] != "keyword"
                 ]
                 for i, (child_name, child_field) in enumerate(non_keyword_children):
                     if i < len(children):
@@ -309,7 +309,7 @@ class TypedTransformer(Transformer):
                         else:
                             record_dict[child_name] = children[i]
                 return data, record_dict
-            elif field.type == "union" and hasattr(field, "children") and field.children:
+            elif field["type"] == "union" and "children" in field and field["children"]:
                 # For union fields, return the transformed child
                 # The parser will have selected one alternative
                 return data, children[0] if len(children) == 1 else children

@@ -17,7 +17,7 @@ from flopy4.utils import to_path
 
 @xattree(kw_only=True)
 class Vsc(Package):
-    viscref: Optional[float] = field(block="options", default=None, longname="reference viscosity")
+    viscref: Optional[float] = field(block="options", default="1.0", longname="reference viscosity")
     temperature_species_name: Optional[str] = field(
         block="options", default=None, longname="auxspeciesname that corresponds to temperature"
     )
@@ -27,13 +27,17 @@ class Vsc(Package):
         longname="keyword to specify viscosity formulation for the temperature species",
     )
     thermal_a2: Optional[float] = field(
-        block="options", default=None, longname="coefficient used in nonlinear viscosity function"
+        block="options", default="10.", longname="coefficient used in nonlinear viscosity function"
     )
     thermal_a3: Optional[float] = field(
-        block="options", default=None, longname="coefficient used in nonlinear viscosity function"
+        block="options",
+        default="248.37",
+        longname="coefficient used in nonlinear viscosity function",
     )
     thermal_a4: Optional[float] = field(
-        block="options", default=None, longname="coefficient used in nonlinear viscosity function"
+        block="options",
+        default="133.15",
+        longname="coefficient used in nonlinear viscosity function",
     )
     viscosity_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="fileout"

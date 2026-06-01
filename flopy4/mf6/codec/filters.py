@@ -3,15 +3,12 @@
 from typing import Any
 
 import xarray as xr
-from modflow_devtools.dfns.schema.field import Field
-from modflow_devtools.dfns.schema.v2 import FieldType
+from modflow_devtools.dfn.schema import FieldType
 
 
 def field_type(value: Any) -> FieldType:
     """Get a value's type according to the MF6 specification."""
 
-    if isinstance(value, Field):
-        return value.type
     if isinstance(value, bool):
         return "keyword"
     if isinstance(value, int):
@@ -20,7 +17,11 @@ def field_type(value: Any) -> FieldType:
         return "double"
     if isinstance(value, str):
         return "string"
-    if isinstance(value, (dict, tuple)):
+    if isinstance(value, tuple):
+        return "record"
+    if isinstance(value, dict):
+        if type_ := value.get("type", None):
+            return type_
         return "record"
     if isinstance(value, xr.DataArray):
         if value.dtype == "object":

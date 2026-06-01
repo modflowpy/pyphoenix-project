@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 
 from modflow_devtools.dfn import get_dfns
-from modflow_devtools.dfns.dfn2toml import convert as dfn2toml
+from modflow_devtools.dfn2toml import convert as dfn2toml
 
 from .make import make_all
 

@@ -60,7 +60,7 @@ class Rcha(Package):
     recharge: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "ncpl"),
-        default=None,
+        default="1.e-3",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="recharge rate",

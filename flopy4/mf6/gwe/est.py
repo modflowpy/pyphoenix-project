@@ -24,13 +24,13 @@ class Est(Package):
         block="options", default=False, longname="activate zero-order decay in solid phase"
     )
     density_water: Optional[float] = field(
-        block="options", default=None, longname="density of water"
+        block="options", default="1000.0", longname="density of water"
     )
     heat_capacity_water: Optional[float] = field(
-        block="options", default=None, longname="heat capacity of water"
+        block="options", default="4184.0", longname="heat capacity of water"
     )
     latent_heat_vaporization: Optional[float] = field(
-        block="options", default=None, longname="latent heat of vaporization"
+        block="options", default="2453500.0", longname="latent heat of vaporization"
     )
     porosity: NDArray[np.float64] = array(
         block="griddata",

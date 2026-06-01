@@ -63,7 +63,7 @@ class Welg(Package):
     q: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
-        default=None,
+        default="3.e30",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,

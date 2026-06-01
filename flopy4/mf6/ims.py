@@ -56,7 +56,7 @@ class Ims(Solution):
     under_relaxation_gamma: Optional[float] = field(
         block="nonlinear",
         default=None,
-        longname="relaxation factor for simple or the history or memory term factor for the cooley and delta-bar-delta algorithms",
+        longname="relaxation factor for SIMPLE or the history or memory term factor for the Cooley and delta-bar-delta algorithms",
     )
     under_relaxation_theta: Optional[float] = field(
         block="nonlinear", default=None, longname="under relaxation reduction factor"
@@ -95,10 +95,10 @@ class Ims(Solution):
     rclose: Optional[Rclose] = field(block="linear", default=None)
     linear_acceleration: str = field(block="linear", longname="linear acceleration method")
     relaxation_factor: Optional[float] = field(
-        block="linear", default=None, longname="relaxation factor used by ilu factorization"
+        block="linear", default=None, longname="relaxation factor used by ILU factorization"
     )
     preconditioner_levels: Optional[int] = field(
-        block="linear", default=None, longname="level of fill for ilu decomposition"
+        block="linear", default=None, longname="level of fill for ILU decomposition"
     )
     preconditioner_drop_tolerance: Optional[float] = field(
         block="linear", default=None, longname="drop tolerance used to drop preconditioner terms"

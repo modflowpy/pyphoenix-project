@@ -5,19 +5,13 @@ These include field decorators and introspection functions.
 
 import builtins
 import types
-import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, Union, get_args, get_origin
 
 import numpy as np
 from attrs import NOTHING, Attribute
-
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
-    from modflow_devtools.dfns.schema.block import block_sort_key
-from modflow_devtools.dfns.schema.v2 import Field as FieldV2
-from modflow_devtools.dfns.schema.v2 import FieldType
+from modflow_devtools.dfn.schema import Field, FieldType
 
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
@@ -352,7 +346,7 @@ def get_field_type(attribute: Attribute) -> FieldType:
     raise ValueError(f"Could not map {attribute.name} to a valid MF6 type.")
 
 
-def to_field(attribute: Attribute) -> FieldV2:
+def to_field(attribute: Attribute) -> Field:
     """
     Convert a `xattree` field specification to a field as defined by the
     MODFLOW 6 input definition language:
@@ -360,7 +354,7 @@ def to_field(attribute: Attribute) -> FieldV2:
     """
     if (xatmeta := attribute.metadata.get("xattree", None)) is None:
         raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no xattree metadata.")
-    return FieldV2(
+    return Field(
         name=attribute.name,
         type=get_field_type(attribute),
         shape=xatmeta.get("dims", None),
@@ -371,3 +365,19 @@ def to_field(attribute: Attribute) -> FieldV2:
         if attribute.metadata.get("kind", None) == "child"  # type: ignore
         else None,  # type: ignore
     )
+
+
+def block_sort_key(item) -> int:
+    # TODO: remove when no longer needed, block order should
+    # be as appears in the definition
+    k, _ = item
+    if k == "options":
+        return 0
+    elif k == "dimensions":
+        return 1
+    elif k == "griddata":
+        return 2
+    elif "period" in k:
+        return 4
+    else:
+        return 3

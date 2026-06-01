@@ -56,7 +56,7 @@ class Lak(Package):
         block="options", default=None, longname="surface depression depth"
     )
     maximum_iterations: Optional[int] = field(
-        block="options", default=None, longname="lak newton-raphson iterations"
+        block="options", default=None, longname="LAK Newton-Raphson iterations"
     )
     maximum_stage_change: Optional[float] = field(
         block="options", default=None, longname="stage closure tolerance"
@@ -259,6 +259,14 @@ class Lak(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="bed slope",
     )
+    number: Optional[NDArray[np.int64]] = array(
+        block="period",
+        dims=("nper",),
+        default=None,
+        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        longname="lake or outlet number for this entry",
+    )
+    # TODO: laksetting — type 'union' not yet supported
     status: Optional[NDArray[np.object_]] = embedded_keystring(
         "STATUS",
         "nlakes",

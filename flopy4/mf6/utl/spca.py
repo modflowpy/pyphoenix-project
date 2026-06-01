@@ -18,7 +18,7 @@ from flopy4.utils import to_path
 class Spca(Package):
     multi_package: ClassVar[bool] = True
 
-    readasarrays: bool = field(block="options", default=False, longname="use array-based input")
+    readasarrays: bool = field(block="options", default=True, longname="use array-based input")
     print_input: bool = field(
         block="options", default=False, longname="print input to listing file"
     )
