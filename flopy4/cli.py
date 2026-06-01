@@ -42,7 +42,7 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         warnings.filterwarnings("ignore", message=".*modflow_devtools.programs.*experimental.*")
         warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
         from modflow_devtools.dfns import LocalDfnRegistry, RemoteDfnRegistry
-        from modflow_devtools.programs import install_program
+        # from modflow_devtools.programs import install_program
 
     from flopy4.mf6.utils.codegen.dfn2py import make
 
