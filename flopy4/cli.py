@@ -1,0 +1,173 @@
+"""Top-level CLI entry point for flopy4."""
+
+import argparse
+import logging
+import shutil
+import sys
+import warnings
+
+
+def _resolve_release_id(release_id: str | None, verbose: bool = False) -> str:
+    """Resolve a release_id, falling back to the discovered binary's version
+    or the latest release if no release_id is given.
+    """
+    if release_id is not None:
+        return release_id
+
+    # Try to read the version from a binary on PATH.
+    from flopy4.mf6._compat import _query_mf6_version
+
+    for name in ("mf6", "mf6.exe"):
+        exe = shutil.which(name)
+        if exe:
+            version = _query_mf6_version(exe)
+            if version:
+                if verbose:
+                    print(f"Detected MF6 {version} at {exe}")
+                return f"MODFLOW-ORG/modflow6@{version}"
+
+    # Fall back to @latest.
+    if verbose:
+        print("No MF6 binary found on PATH; resolving to latest release.")
+    return "MODFLOW-ORG/modflow6@latest"
+
+
+def _cmd_sync(args: argparse.Namespace) -> None:
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*modflow_devtools.programs.*experimental.*")
+        from modflow_devtools.programs import install_program
+
+    from flopy4.mf6.utils.codegen.generate_classes import generate_classes
+
+    release_id = _resolve_release_id(args.release_id, verbose=args.verbose)
+
+    # For remote release IDs, install the matching binary unless --no-install.
+    from pathlib import Path
+
+    is_local = Path(release_id).expanduser().is_dir()
+    if not is_local and not args.no_install:
+        _, tag = release_id.split("@", 1)
+        if tag not in ("latest",):
+            version_arg = tag
+        else:
+            version_arg = None  # let install_program resolve latest
+        if args.verbose:
+            label = version_arg or "latest"
+            print(f"Installing mf6 {label} ...")
+        try:
+            installed = install_program(
+                "mf6",
+                version=version_arg,
+                force=args.force,
+                verbose=args.verbose,
+            )
+            if args.verbose and installed:
+                print(f"Installed: {', '.join(str(p) for p in installed)}")
+        except Exception as exc:
+            print(f"Warning: binary installation failed: {exc}", file=sys.stderr)
+            print("Continuing with class generation only.", file=sys.stderr)
+
+    if args.verbose:
+        print(f"Generating flopy4.mf6 from {release_id} ...")
+
+    synced_version = generate_classes(
+        release_id=release_id,
+        mf6_version=args.mf6_version,
+        existing_only=not args.all_packages,
+        makedirs=args.all_packages,
+        fmt=not args.no_format,
+        force=args.force,
+    )
+
+    print(f"Synced flopy4.mf6 to MF6 {synced_version}.")
+
+
+def _cmd_status(args: argparse.Namespace) -> None:
+    try:
+        from flopy4.mf6._contract import DFN_SCHEMA_VERSION, MF6_VERSION
+    except ImportError:
+        MF6_VERSION = "unknown"
+        DFN_SCHEMA_VERSION = "unknown"
+
+    from flopy4.mf6._compat import _query_mf6_version
+
+    exe = shutil.which("mf6") or shutil.which("mf6.exe")
+    binary_version = _query_mf6_version(exe) if exe else None
+
+    synced = binary_version is not None and binary_version == MF6_VERSION
+    status = "(✓ in sync)" if synced else "(! mismatch)" if binary_version else "(not found)"
+
+    print(f"flopy4.mf6 synced to : {MF6_VERSION}")
+    print(f"DFN schema version   : {DFN_SCHEMA_VERSION}")
+    if exe:
+        print(f"Discovered binary    : {binary_version}  [{exe}]  {status}")
+    else:
+        print("Discovered binary    : none  (not found on PATH)")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="flopy4")
+    sub = parser.add_subparsers(dest="command")
+
+    mf6_p = sub.add_parser("mf6", help="MF6 sync and status commands.")
+    mf6_sub = mf6_p.add_subparsers(dest="subcommand")
+
+    # flopy4 mf6 sync
+    sync_p = mf6_sub.add_parser(
+        "sync",
+        help="Sync flopy4.mf6 to an MF6 release: install binary and regenerate classes.",
+    )
+    sync_p.add_argument(
+        "release_id",
+        nargs="?",
+        default=None,
+        help="Remote release ID (owner/repo@tag) or local path to .dfn files. "
+        "Defaults to the discovered binary's version, or latest if no binary found.",
+    )
+    sync_p.add_argument(
+        "--mf6-version",
+        default=None,
+        dest="mf6_version",
+        help="Override MF6 version in _contract.py (useful with local DFN paths).",
+    )
+    sync_p.add_argument(
+        "--no-install",
+        action="store_true",
+        help="Skip binary installation; regenerate classes only.",
+    )
+    sync_p.add_argument(
+        "--all-packages",
+        action="store_true",
+        dest="all_packages",
+        help="Generate all packages, including ones not yet on disk. "
+        "By default sync only updates already-generated files.",
+    )
+    sync_p.add_argument(
+        "--no-format",
+        action="store_true",
+        help="Skip ruff formatting of generated files.",
+    )
+    sync_p.add_argument("--force", action="store_true", help="Force binary reinstallation.")
+    sync_p.add_argument("--verbose", action="store_true")
+    sync_p.set_defaults(func=_cmd_sync)
+
+    # flopy4 mf6 status
+    status_p = mf6_sub.add_parser(
+        "status",
+        help="Show current sync state: synced version vs. discovered binary.",
+    )
+    status_p.set_defaults(func=_cmd_status)
+
+    args = parser.parse_args()
+    if not hasattr(args, "func"):
+        parser.print_help()
+        sys.exit(1)
+
+    if getattr(args, "verbose", False):
+        logging.basicConfig(level=logging.INFO)
+
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

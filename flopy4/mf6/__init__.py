@@ -5,8 +5,15 @@ from pathlib import Path
 from tomli import load as load_toml
 from tomli_w import dump as dump_toml
 
+try:
+    from flopy4.mf6._contract import DFN_SCHEMA_VERSION, MF6_VERSION
+except ImportError:
+    DFN_SCHEMA_VERSION = "unknown"
+    MF6_VERSION = "unknown"
+
 # Import submodules to make them accessible via flopy4.mf6.*
 from flopy4.mf6 import gwe, gwf, gwt, prt, simulation, solution, utils
+from flopy4.mf6._compat import check_mf6_compatibility
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
@@ -36,6 +43,8 @@ __all__ = [
     "NetCDFModel",
     "Tdis",
     "Simulation",
+    "MF6_VERSION",
+    "DFN_SCHEMA_VERSION",
 ]
 
 
@@ -98,3 +107,5 @@ DEFAULT_REGISTRY.register_loader(Component, "toml", _load_toml)
 DEFAULT_REGISTRY.register_writer(Component, "mf6", _write_mf6)
 DEFAULT_REGISTRY.register_writer(Component, "json", _write_json)
 DEFAULT_REGISTRY.register_writer(Component, "toml", _write_toml)
+
+check_mf6_compatibility()

@@ -949,21 +949,24 @@ def make_component(
 
 def make_all(
     *,
-    dfndir: PathLike,
+    dfns: dict[str, "Dfn"] | None = None,
+    dfndir: PathLike | None = None,
     outdir: PathLike,
     developmode: bool = False,
     fmt: bool = True,
     skip: set[str] | None = None,
     makedirs: bool = False,
     existing_only: bool = False,
-    v1dfndir: PathLike | None = None,
 ) -> list[ComponentSpec]:
-    """Generate Python source files for all DFNs in dfndir.
+    """Generate Python source files for all DFNs.
 
     Parameters
     ----------
+    dfns :
+        Pre-loaded DFN dict from a registry's spec() call. Takes precedence
+        over dfndir when both are provided.
     dfndir :
-        Directory containing v2 TOML DFN files.
+        Directory containing DFN files. Used only when dfns is not provided.
     outdir :
         Root output directory for generated Python files.
     developmode :
@@ -976,30 +979,24 @@ def make_all(
         If True, create output subdirectories as needed.
     existing_only :
         If True, only (re)generate files that already exist on disk.
-    v1dfndir :
-        Optional directory containing v1 DFN files (.dfn). When provided,
-        numeric_index is read from the v1 DFN to auto-detect cellid columns
-        in extra_list_blocks without requiring explicit ``cellid=true`` in
-        dfn_overrides.toml.
 
     Returns
     -------
     list[ComponentSpec]
         Specs for all components that were generated.
     """
-    dfndir = Path(dfndir)
+    if dfns is None:
+        if dfndir is None:
+            raise ValueError("Provide either 'dfns' or 'dfndir'.")
+        dfns = Dfn.load_all(Path(dfndir), schema_version="2.0.0.dev1")
     outdir = Path(outdir)
     skip = skip or set()
     env = _get_env()
-    dfns = Dfn.load_all(dfndir, schema_version="2.0.0.dev1")
-    v1_dfns = Dfn.load_all(v1dfndir, schema_version="2.0.0.dev1") if v1dfndir else {}
     specs = []
     for name, dfn in dfns.items():
         if name in skip:
             continue
-        spec = build_component_spec(
-            dfn, root=outdir, developmode=developmode, v1_dfn=v1_dfns.get(name)
-        )
+        spec = build_component_spec(dfn, root=outdir, developmode=developmode, v1_dfn=dfn)
         if existing_only and not spec.outpath.exists():
             logger.info(f"{spec.outpath} does not exist — skipping {name} (existing_only)")
             continue
