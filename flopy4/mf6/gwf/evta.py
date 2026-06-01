@@ -60,7 +60,7 @@ class Evta(Package):
     surface: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "ncpl"),
-        default=None,
+        default="0.",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="evapotranspiration surface",
@@ -68,7 +68,7 @@ class Evta(Package):
     rate: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "ncpl"),
-        default=None,
+        default="1.e-3",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="evapotranspiration rate",
@@ -76,7 +76,7 @@ class Evta(Package):
     depth: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "ncpl"),
-        default=None,
+        default="1.0",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="extinction depth",

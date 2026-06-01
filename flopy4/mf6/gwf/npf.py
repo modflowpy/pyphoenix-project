@@ -35,26 +35,26 @@ class Npf(Package):
         _keyword: ClassVar[str] = "xt3d"
         rhs: Optional[bool] = attrs.field(default=None)
 
-    save_flows: bool = field(block="options", default=False, longname="keyword to save npf flows")
+    save_flows: bool = field(block="options", default=False, longname="keyword to save NPF flows")
     print_flows: bool = field(
-        block="options", default=False, longname="keyword to print npf flows to listing file"
+        block="options", default=False, longname="keyword to print NPF flows to listing file"
     )
     alternative_cell_averaging: Optional[str] = field(
         block="options", default=None, longname="conductance weighting option"
     )
     thickstrt: bool = field(
-        block="options", default=False, longname="keyword to activate thickstrt option"
+        block="options", default=False, longname="keyword to activate THICKSTRT option"
     )
     cvoptions: Optional[Cvoptions] = field(block="options", default=None)
     perched: bool = field(
-        block="options", default=False, longname="keyword to activate perched option"
+        block="options", default=False, longname="keyword to activate PERCHED option"
     )
     rewet: Optional[Rewet] = field(block="options", default=None)
     xt3doptions: Optional[Xt3doptions] = field(block="options", default=None)
     highest_cell_saturation: bool = field(
         block="options",
         default=False,
-        longname="keyword to activate highest_cell_saturation option",
+        longname="keyword to activate HIGHEST_CELL_SATURATION option",
     )
     save_specific_discharge: bool = field(
         block="options", default=False, longname="keyword to save specific discharge"
@@ -63,10 +63,10 @@ class Npf(Package):
         block="options", default=False, longname="keyword to save saturation"
     )
     k22overk: bool = field(
-        block="options", default=False, longname="keyword to indicate that specified k22 is a ratio"
+        block="options", default=False, longname="keyword to indicate that specified K22 is a ratio"
     )
     k33overk: bool = field(
-        block="options", default=False, longname="keyword to indicate that specified k33 is a ratio"
+        block="options", default=False, longname="keyword to indicate that specified K33 is a ratio"
     )
     tvk_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
@@ -78,7 +78,7 @@ class Npf(Package):
         block="options", default=False, longname="export array variables to netcdf output files."
     )
     dev_no_newton: bool = field(
-        block="options", default=False, longname="turn off newton for unconfined cells"
+        block="options", default=False, longname="turn off Newton for unconfined cells"
     )
     dev_omega: Optional[float] = field(
         block="options", default=None, longname="set saturation omega value"
@@ -97,7 +97,7 @@ class Npf(Package):
         default=1.0,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="hydraulic conductivity (l/t)",
+        longname="hydraulic conductivity (L/T)",
     )
     k22: Optional[NDArray[np.float64]] = array(
         block="griddata",
@@ -113,7 +113,7 @@ class Npf(Package):
         default=None,
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="hydraulic conductivity of third ellipsoid axis (l/t)",
+        longname="hydraulic conductivity of third ellipsoid axis (L/T)",
     )
     angle1: Optional[NDArray[np.float64]] = array(
         block="griddata",

@@ -21,10 +21,12 @@ class Csub(Package):
     print_input: bool = field(
         block="options", default=False, longname="print input to listing file"
     )
-    save_flows: bool = field(block="options", default=False, longname="keyword to save csub flows")
-    gammaw: Optional[float] = field(block="options", default=None, longname="unit weight of water")
+    save_flows: bool = field(block="options", default=False, longname="keyword to save CSUB flows")
+    gammaw: Optional[float] = field(
+        block="options", default="9806.65", longname="unit weight of water"
+    )
     beta: Optional[float] = field(
-        block="options", default=None, longname="compressibility of water"
+        block="options", default="4.6512e-10", longname="compressibility of water"
     )
     head_based: bool = field(
         block="options",
@@ -42,7 +44,7 @@ class Csub(Package):
     compression_indices: bool = field(
         block="options",
         default=False,
-        longname="keyword to indicate cr and cc are read instead of sse and ssv",
+        longname="keyword to indicate CR and CC are read instead of SSE and SSV",
     )
     update_material_properties: bool = field(
         block="options",
@@ -106,7 +108,7 @@ class Csub(Package):
         block="options", default=None, converter=to_path, inout="filein"
     )
     ninterbeds: Optional[int] = dim(
-        block="dimensions", coord=False, default=None, longname="number of csub interbed systems"
+        block="dimensions", coord=False, default=None, longname="number of CSUB interbed systems"
     )
     maxsig0: Optional[int] = dim(
         block="dimensions",
@@ -199,12 +201,12 @@ class Csub(Package):
         dims=("ninterbeds",),
         default=None,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="well name",
+        longname="interbed name",
     )
     cg_ske_cr: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=None,
+        default="1e-5",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="elastic coarse specific storage",
@@ -212,7 +214,7 @@ class Csub(Package):
     cg_theta: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=None,
+        default="0.2",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="initial coarse-grained material porosity",

@@ -21,7 +21,7 @@ class Ic(Package):
     strt: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=None,
+        default="0.0",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="starting temperature",

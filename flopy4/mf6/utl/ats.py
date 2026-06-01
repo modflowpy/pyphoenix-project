@@ -15,7 +15,7 @@ from flopy4.mf6.spec import array, dim
 @xattree(kw_only=True)
 class Ats(Package):
     maxats: Optional[int] = dim(
-        block="dimensions", coord=False, default=None, longname="number of ats periods"
+        block="dimensions", coord=False, default="1", longname="number of ATS periods"
     )
     iperats: Optional[NDArray[np.int64]] = array(
         block="perioddata",

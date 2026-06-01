@@ -16,11 +16,11 @@ from flopy4.utils import to_path
 
 @xattree(kw_only=True)
 class Sto(Package):
-    save_flows: bool = field(block="options", default=False, longname="keyword to save npf flows")
+    save_flows: bool = field(block="options", default=False, longname="keyword to save NPF flows")
     storagecoefficient: bool = field(
         block="options",
         default=False,
-        longname="keyword to indicate ss is read as storage coefficient",
+        longname="keyword to indicate SS is read as storage coefficient",
     )
     ss_confined_only: bool = field(
         block="options",
@@ -55,7 +55,7 @@ class Sto(Package):
     ss: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=None,
+        default="1.e-5",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="specific storage",
@@ -63,7 +63,7 @@ class Sto(Package):
     sy: NDArray[np.float64] = array(
         block="griddata",
         dims=("nodes",),
-        default=None,
+        default="0.15",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="specific yield",

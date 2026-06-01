@@ -32,10 +32,10 @@ class Chdg(Package):
         block="options", default=False, longname="print input to listing file"
     )
     print_flows: bool = field(
-        block="options", default=False, longname="print chd flows to listing file"
+        block="options", default=False, longname="print CHD flows to listing file"
     )
     save_flows: bool = field(
-        block="options", default=False, longname="save chd flows to budget file"
+        block="options", default=False, longname="save CHD flows to budget file"
     )
     obs_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
@@ -44,7 +44,7 @@ class Chdg(Package):
         block="options", default=False, longname="export array variables to netcdf output files."
     )
     dev_no_newton: bool = field(
-        block="options", default=False, longname="turn off newton for unconfined cells"
+        block="options", default=False, longname="turn off Newton for unconfined cells"
     )
     maxbound: Optional[int] = field(
         block="dimensions",
@@ -56,7 +56,7 @@ class Chdg(Package):
     head: Optional[NDArray[np.float64]] = array(
         block="period",
         dims=("nper", "nodes"),
-        default=None,
+        default="3.e30",
         netcdf=True,
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         on_setattr=update_maxbound,

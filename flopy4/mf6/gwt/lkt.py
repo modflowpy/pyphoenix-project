@@ -90,6 +90,7 @@ class Lkt(Package):
         converter=Converter(structure_array, takes_self=True, takes_field=True),
         longname="lake name",
     )
+    # TODO: laksetting — type 'union' not yet supported
     status: Optional[NDArray[np.object_]] = embedded_keystring(
         "STATUS",
         "nlakes",
