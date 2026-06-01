@@ -1003,7 +1003,7 @@ def structure_array(
                     coords,
                     list(coords_dict.values()),
                     shape=shape,
-                    fill_value=field.default or FILL_DNODATA,
+                    fill_value=FILL_DNODATA,
                 )
             else:
                 # Empty dict - return empty sparse array
@@ -1011,7 +1011,7 @@ def structure_array(
                     np.empty((len(shape), 0), dtype=int),
                     [],
                     shape=shape,
-                    fill_value=field.default or FILL_DNODATA,
+                    fill_value=FILL_DNODATA,
                 )
         else:
             # Dense approach
@@ -1085,10 +1085,6 @@ def structure_array(
                         else:
                             # For multi-dimensional arrays with object dtype, store the object
                             result[kper] = val
-
-            # Apply fill value replacement (skip for object dtypes)
-            if field.dtype != np.object_:
-                result[result == FILL_DNODATA] = field.default or FILL_DNODATA
 
     elif isinstance(value, list):
         # List format
