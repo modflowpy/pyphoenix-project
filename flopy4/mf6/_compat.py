@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import warnings
 
-_VERSION_RE = re.compile(r"version\s+([\d]+\.[\d]+\.[\d]+(?:\.\S+)?)", re.I)
+_VERSION_RE = re.compile(r"(?:version\s+|mf6:\s+)([\d]+\.[\d]+\.[\d]+(?:\.\S+)?)", re.I)
 
 
 def _query_mf6_version(exe: str) -> str | None:
