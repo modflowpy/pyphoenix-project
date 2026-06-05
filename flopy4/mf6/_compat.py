@@ -27,13 +27,16 @@ def check_mf6_compatibility(exe: str | None = None) -> None:
         Path to an MF6 executable. If None, searches PATH for ``mf6``
         or ``mf6.exe``. Does nothing if no binary is found.
     """
-    try:
-        from flopy4.mf6._contract import MF6_VERSION
-    except ImportError:
-        return
+    from flopy4.mf6._contract import MF6_VERSION
 
     # Skip if version is unknown or a branch name rather than a semver tag.
-    if not MF6_VERSION or not MF6_VERSION[0].isdigit():
+    if not MF6_VERSION or MF6_VERSION == "unknown":
+        warnings.warn(
+            f"flopy4.mf6 is synced to an unknown MF6 version. "
+            "Run `flopy4 mf6 sync` to re-sync.",
+            UserWarning,
+            stacklevel=3,
+        )
         return
 
     if exe is None:
