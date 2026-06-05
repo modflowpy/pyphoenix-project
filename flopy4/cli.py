@@ -17,6 +17,8 @@ def _resolve_release_id(release_id: str | None, verbose: bool = False) -> str:
     or the latest release if no release_id is given.
     """
     if release_id is not None:
+        if "@" not in release_id:
+            return f"MODFLOW-ORG/modflow6@{release_id}"
         return release_id
 
     # Try to read the version from a binary on PATH.
@@ -142,7 +144,6 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         outdir=_MF6_ROOT,
         existing_only=not args.all_packages,
         makedirs=args.all_packages,
-        fmt=not args.no_format,
     )
     _write_contract(_MF6_ROOT, effective_version)
 
@@ -210,11 +211,6 @@ def main() -> None:
         dest="all_packages",
         help="Generate all packages, including ones not yet on disk. "
         "By default sync only updates already-generated files.",
-    )
-    sync_p.add_argument(
-        "--no-format",
-        action="store_true",
-        help="Skip ruff formatting of generated files.",
     )
     sync_p.add_argument("--force", action="store_true", help="Force binary reinstallation.")
     sync_p.add_argument("--verbose", action="store_true")

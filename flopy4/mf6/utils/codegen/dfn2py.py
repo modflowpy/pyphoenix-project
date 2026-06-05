@@ -44,7 +44,6 @@ def make(
     dfndir: str | PathLike,
     outdir: str | PathLike = _MF6_ROOT,
     developmode: bool = False,
-    fmt: bool = True,
     makedirs: bool = False,
     existing_only: bool = False,
 ):
@@ -57,7 +56,6 @@ def make(
         dfns=dfns,
         outdir=outdir,
         developmode=developmode,
-        fmt=fmt,
         skip=_SKIP,
         makedirs=makedirs,
         existing_only=existing_only,
@@ -94,11 +92,6 @@ def cli_main() -> None:
         help="Include developmode fields.",
     )
     parser.add_argument(
-        "--no-format",
-        action="store_true",
-        help="Skip ruff formatting.",
-    )
-    parser.add_argument(
         "--makedirs",
         action="store_true",
         help="Create missing output subdirectories (useful for preview paths).",
@@ -116,7 +109,6 @@ def cli_main() -> None:
             dfndir=args.dfndir,
             outdir=args.outdir,
             developmode=args.developmode,
-            fmt=not args.no_format,
             makedirs=args.makedirs,
             existing_only=args.existing_only,
         )
