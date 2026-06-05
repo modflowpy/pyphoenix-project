@@ -10,7 +10,9 @@ def _query_mf6_version(exe: str) -> str | None:
     try:
         out = subprocess.check_output([exe, "-v"], text=True, stderr=subprocess.STDOUT)
         m = _VERSION_RE.search(out)
-        return m.group(1) if m else None
+        v = m.group(1) if m else None
+        v = v.rpartition("+")[0]  # TODO how to handle vcs tag section?
+        return v
     except Exception:
         return None
 
