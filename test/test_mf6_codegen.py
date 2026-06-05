@@ -600,7 +600,7 @@ def test_simple_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
     (tmp_path / "gwf").mkdir()
 
     skip = {n for n in all_dfns if n not in SIMPLE_TIER}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, fmt=False, skip=skip)
+    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
 
     generated = {s.dfn_name: s for s in specs}
 
@@ -638,7 +638,7 @@ def test_solution_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
     from flopy4.mf6.solution import Solution
 
     skip = {n for n in all_dfns if n not in SOLUTION_TIER}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, fmt=False, skip=skip)
+    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
 
     generated = {s.dfn_name: s for s in specs}
 
@@ -697,7 +697,7 @@ def test_transport_tier_generates_importable_files(dfn_path, tmp_path, all_dfns)
 
     target = {n for n in TRANSPORT_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, fmt=False, skip=skip)
+    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
@@ -719,7 +719,7 @@ def test_oc_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
 
     target = {n for n in OC_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, fmt=False, skip=skip)
+    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
@@ -743,7 +743,7 @@ def test_utl_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
 
     target = {n for n in UTL_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
+    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
@@ -764,7 +764,7 @@ def test_exg_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
 
     target = {n for n in EXG_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, fmt=False, makedirs=True, skip=skip)
+    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
