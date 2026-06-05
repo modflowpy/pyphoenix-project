@@ -32,8 +32,7 @@ def check_mf6_compatibility(exe: str | None = None) -> None:
     # Skip if version is unknown or a branch name rather than a semver tag.
     if not MF6_VERSION or MF6_VERSION == "unknown":
         warnings.warn(
-            f"flopy4.mf6 is synced to an unknown MF6 version. "
-            "Run `flopy4 mf6 sync` to re-sync.",
+            "flopy4.mf6 is synced to an unknown MF6 version. Run `flopy4 mf6 sync` to re-sync.",
             UserWarning,
             stacklevel=3,
         )

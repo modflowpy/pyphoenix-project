@@ -5,9 +5,6 @@ All template context is pre-computed in Python (see filters.py) so that
 Jinja templates stay thin and logic is easy to test and debug.
 """
 
-import logging
-import subprocess
-import sys
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from os import PathLike
@@ -27,11 +24,6 @@ from .overrides import (
     replace_list_blocks,
     replace_list_fields,
 )
-
-logger = logging.getLogger(__name__)
-
-_RUFF_CONFIG = Path(__file__).parents[4] / "pyproject.toml"
-
 
 # Pre-computed context dataclasses
 
@@ -912,39 +904,13 @@ def _get_env() -> jinja2.Environment:
     )
 
 
-# File generation
-
-
-def _format(path: Path) -> None:
-    config = ["--config", str(_RUFF_CONFIG)] if _RUFF_CONFIG.exists() else []
-    subprocess.run(
-        [sys.executable, "-m", "ruff", "format", *config, str(path)],
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        [sys.executable, "-m", "ruff", "check", "--fix", *config, str(path)],
-        check=True,
-        capture_output=True,
-    )
-
-
-def make_module(
-    spec: ComponentSpec,
-    env: jinja2.Environment,
-    *,
-    fmt: bool = True,
-) -> None:
+def make_module(spec: ComponentSpec, env: jinja2.Environment, verbose: bool = False) -> None:
     """Generate a single component module."""
     template = env.get_template(spec.template)
     rendered = template.render(spec=spec)
     spec.outpath.write_text(rendered, newline="\n")
-    logger.info(f"Wrote {spec.outpath}")
-    if fmt:
-        try:
-            _format(spec.outpath)
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Failed to format {spec.outpath}: {e.stderr.decode().strip()}")
+    if verbose:
+        print(f"Wrote {spec.outpath}")
 
 
 def make_modules(
@@ -953,10 +919,10 @@ def make_modules(
     dfndir: PathLike | None = None,
     outdir: PathLike,
     developmode: bool = False,
-    fmt: bool = True,
     skip: set[str] | None = None,
     makedirs: bool = False,
     existing_only: bool = False,
+    verbose: bool = False,
 ) -> list[ComponentSpec]:
     """Generate Python modules for all components.
 
@@ -971,14 +937,14 @@ def make_modules(
         Root output directory for generated Python files.
     developmode :
         If True, include developmode fields.
-    fmt :
-        If True, run ruff format/check on generated files.
     skip :
         Set of DFN names to skip.
     makedirs :
         If True, create output subdirectories as needed.
     existing_only :
         If True, only (re)generate files that already exist on disk.
+    verbose :
+        Whether to show verbose output
 
     Returns
     -------
@@ -998,10 +964,11 @@ def make_modules(
             continue
         spec = build_component_spec(dfn, root=outdir, developmode=developmode, v1_dfn=dfn)
         if existing_only and not spec.outpath.exists():
-            logger.info(f"{spec.outpath} does not exist — skipping {name} (existing_only)")
+            if verbose:
+                print(f"{spec.outpath} does not exist — skipping {name} (existing_only)")
             continue
         if makedirs:
             spec.outpath.parent.mkdir(parents=True, exist_ok=True)
-        make_module(spec, env, fmt=fmt)
+        make_module(spec, env)
         specs.append(spec)
     return specs
