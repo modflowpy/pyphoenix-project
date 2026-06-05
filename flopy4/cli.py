@@ -48,11 +48,6 @@ def _cmd_sync(args: argparse.Namespace) -> None:
 
     from flopy4.mf6.utils.codegen.dfn2py import make
 
-    release_id = _resolve_release_id(args.release_id, verbose=args.verbose)
-
-    # For remote release IDs, install the matching binary unless --no-install.
-    from pathlib import Path
-
     # is_local = Path(release_id).expanduser().is_dir()
     # if not is_local and not args.no_install:
     #     _, tag = release_id.split("@", 1)
@@ -75,9 +70,6 @@ def _cmd_sync(args: argparse.Namespace) -> None:
     #     except Exception as exc:
     #         print(f"Warning: binary installation failed: {exc}", file=sys.stderr)
     #         print("Continuing with class generation only.", file=sys.stderr)
-
-    if args.verbose:
-        print(f"Generating flopy4.mf6 from {release_id} ...")
 
     def _populate_remote_cache(
         registry: RemoteDfnRegistry, release_id: str, force: bool = False
@@ -115,11 +107,20 @@ def _cmd_sync(args: argparse.Namespace) -> None:
             f'DFN_SCHEMA_VERSION = "{_DFN_SCHEMA_VERSION}"\n'
         )
 
-    path = Path(release_id).expanduser()
+    path = Path(args.release_id).expanduser()
     if path.exists() and path.is_dir():
+        if args.verbose:
+            print(f"Generating flopy4.mf6 from local DFNs: {path}")
+
         registry = LocalDfnRegistry(path=path)
-        effective_version = "unknown"
+        if "modflow6" in path.parts:
+            effective_version = (path.parents[3] / "version.txt").read_text()
+        else:
+            effective_version = "unknown"
     else:
+        release_id = _resolve_release_id(args.release_id, verbose=args.verbose)
+        if args.verbose:
+            print(f"Generating flopy4.mf6 from remote release: {release_id}")
         if "@" not in release_id or "/" not in release_id.split("@")[0]:
             raise ValueError(
                 f"release_id must be 'owner/repo@tag' or a local path; got: {release_id!r}"
@@ -153,10 +154,9 @@ def _cmd_sync(args: argparse.Namespace) -> None:
 
 def _cmd_status(args: argparse.Namespace) -> None:
     try:
-        from flopy4.mf6._contract import DFN_SCHEMA_VERSION, MF6_VERSION
+        from flopy4.mf6._contract import MF6_VERSION
     except ImportError:
         MF6_VERSION = "unknown"
-        DFN_SCHEMA_VERSION = "unknown"
 
     from flopy4.mf6._compat import _query_mf6_version
 
@@ -164,7 +164,6 @@ def _cmd_status(args: argparse.Namespace) -> None:
     binary_version = _query_mf6_version(exe) if exe else None
 
     print(f"flopy4.mf6 synced to : {MF6_VERSION}")
-    print(f"DFN schema version   : {DFN_SCHEMA_VERSION}")
     if not exe:
         print("Discovered binary    : (not found on PATH)")
     elif binary_version is None:
