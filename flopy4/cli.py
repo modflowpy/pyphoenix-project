@@ -107,11 +107,11 @@ def _cmd_sync(args: argparse.Namespace) -> None:
             f'DFN_SCHEMA_VERSION = "{_DFN_SCHEMA_VERSION}"\n'
         )
 
-    if args.verbose:
-        print(f"Generating flopy4.mf6 from {release_id} ...")
-
     path = Path(args.release_id).expanduser()
     if path.exists() and path.is_dir():
+        if args.verbose:
+            print(f"Generating flopy4.mf6 from local DFNs: {path}")
+
         registry = LocalDfnRegistry(path=path)
         if "modflow6" in path.parts:
             effective_version = (path.parents[3] / "version.txt").read_text()
@@ -119,6 +119,8 @@ def _cmd_sync(args: argparse.Namespace) -> None:
             effective_version = "unknown"
     else:
         release_id = _resolve_release_id(args.release_id, verbose=args.verbose)
+        if args.verbose:
+            print(f"Generating flopy4.mf6 from remote release: {release_id}")
         if "@" not in release_id or "/" not in release_id.split("@")[0]:
             raise ValueError(
                 f"release_id must be 'owner/repo@tag' or a local path; got: {release_id!r}"
