@@ -138,6 +138,14 @@ class Oc(Package):
             "optional": True,
         },
     )
+    scratch_buffer: bool = attrs.field(
+        default=False,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "keyword",
+            "optional": True,
+        },
+    )
     ntracktimes: Optional[int] = attrs.field(
         default=None,
         metadata={
@@ -182,72 +190,3 @@ class Oc(Package):
 
     tracktimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-
-    _DTYPE_MAP: ClassVar[dict] = {
-        "integer": np.int64,
-        "double": np.float64,
-        "double precision": np.float64,
-        "string": np.object_,
-        "keyword": np.object_,
-        "object": np.object_,
-    }
-
-    def __attrs_post_init__(self) -> None:
-        _aux_tmp = getattr(self, "auxiliary", None)
-        naux = len(_aux_tmp) if _aux_tmp is not None else 0
-        ncelldim = self._compute_ncelldim()
-        _tracktimes_f: list[tuple] = []
-        for _col in self.__tracktimes_schema__:
-            _role = _col.get("role", "value")
-            _dt = _col.get("dtype")
-            _dt = (
-                eval(_dt)
-                if _dt
-                else self._DTYPE_MAP.get(_col.get("dfn_type", "string"), np.object_)
-            )
-            if _role == "cellid":
-                _tracktimes_f.append((_col["name"], np.int64, (ncelldim,)))
-            elif _role == "feature_id":
-                _tracktimes_f.append((_col["name"], np.int64))
-            elif _role == "boundname":
-                if getattr(self, "boundnames", False):
-                    _tracktimes_f.append((_col["name"], np.object_))
-            else:
-                _tracktimes_f.append((_col["name"], _dt))
-        if "tracktimes" == "packagedata":
-            for _i in range(naux):
-                _tracktimes_f.append((f"aux{_i}", np.object_))
-        self.tracktimes_dtype = np.dtype(_tracktimes_f)
-        _raw_tracktimes = getattr(self, "tracktimes", None)
-        if _raw_tracktimes is not None:
-            self.tracktimes = self._coerce_to_recarray(_raw_tracktimes, self.tracktimes_dtype)
-        if getattr(self, "tracktimes", None) is not None and getattr(self, "ntracktimess", 0) == 0:
-            object.__setattr__(self, "ntracktimess", len(getattr(self, "tracktimes")))
-        super().__attrs_post_init__()
-
-    @property  # type: ignore[override]
-    def stress_period_data(self) -> "Optional[dict[int, np.recarray]]":
-        return self._stress_period_data
-
-    @stress_period_data.setter
-    def stress_period_data(self, value) -> None:
-        self._stress_period_data = value
-
-    def to_dataframe(self) -> "pandas.DataFrame":  # type: ignore[name-defined]
-        """Return stress period data as a tidy pd.DataFrame. Zero cost if not called."""
-        import pandas as pd
-
-        _spd = self._stress_period_data
-        if not _spd:
-            return pd.DataFrame()
-        frames = []
-        for kper in sorted(_spd):
-            arr = _spd[kper]
-            rows = {}
-            for nm in arr.dtype.names or ():
-                col = arr[nm]
-                rows[nm] = [tuple(v) for v in col] if col.ndim > 1 else col.tolist()
-            df = pd.DataFrame(rows)
-            df.insert(0, "kper", kper)
-            frames.append(df)
-        return pd.concat(frames, ignore_index=True)

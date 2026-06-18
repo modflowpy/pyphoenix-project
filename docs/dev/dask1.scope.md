@@ -338,13 +338,23 @@ The long-term path is:
 - 1 skipped in `test_mf6_adapters.py` (marked refactor)
 - `docs/profile/ff_read.py` requires pre-built binary output files; its test in `test_profile_scripts.py` skips gracefully if they are absent but the chunk-sweep variants have not been exercised against real data
 
-### 9.3 Dead code and template cleanup
+### 9.3 ~~Dead code and template cleanup~~ (done)
 
-- **Dead template branch.** The Jinja template contains a second `__attrs_post_init__` block (template line ~247) guarded by `not spec.use_new_codegen`. Since all packages are now new-codegen, this branch never fires. It can be removed along with the `__block_col_maps__` and `__period_col_maps__` ClassVar blocks that accompany it.
-- **`_DTYPE_MAP` duplication.** This ClassVar is identical across all 64 generated files. Moving it to `Package` would eliminate ~64 × 5 lines of identical boilerplate.
-- **`__attrs_post_init__`, `to_dataframe()`, `stress_period_data` property/setter.** The generated versions are structurally identical across all ~32 list-input packages. The schema-specific dtype-construction loop (`for _col in self.__period_schema__`) is the only part that varies by package and could be driven by the ClassVar at runtime rather than generated verbatim per file. Moving these to `Package` is estimated to eliminate 900–2,500 lines.
-- **~~`to_dataarray()` / `to_xarray()`.~~ (done)** Moved to `Package` base class with a `super()` fall-through: tries `"griddata"` fields, then `"period"` fields, then calls `super()`. Template block removed. All 19 affected generated files regenerated.
-- **Tautology in aux-column injection.** The template emits `if "packagedata" == "packagedata":` (always True) and `if "connectiondata" == "packagedata":` (always False) inside the block-schema loop. This is a template logic bug: the aux injection should be conditional on `block_name == "packagedata"` evaluated at template render time, not emitted as a runtime string comparison.
+All items in this section have been completed:
+
+- **~~Dead template branch.~~** Removed. Old `not spec.use_new_codegen` blocks (`__period_col_maps__`, `__block_col_maps__`, old `__attrs_post_init__`) deleted from template.
+- **~~`_DTYPE_MAP` duplication.~~** ClassVar declaration removed from template; all 64 generated files now inherit from `Package._DTYPE_MAP` via MRO.
+- **~~`__attrs_post_init__`, `to_dataframe()`, `stress_period_data` property/setter.~~** All moved to `Package` base class. `__attrs_post_init__` consolidated into `_init_schemas()` / `_init_block_dtype()` / `_init_period_dtype()` / `_broadcast_griddata()`. Template no longer emits any of these. ~3,200 lines eliminated across generated files.
+- **~~`to_dataarray()` / `to_xarray()`.~~ (done previously)** Already on `Package` base class.
+- **~~Tautology in aux-column injection.~~** Fixed: Jinja-time `{% if block_name == "packagedata" %}` conditional replaces the runtime string comparison.
+- **Dead ingress code.** Removed `_list_block_col_info()`, `_parse_list_block_rows()`, `_parse_period_rows()` and dead list-block/period-block passes from `structure_component()` in `structure.py` (-246 lines).
+- **Legacy xattree dispatch in Package.** Removed `_get_block()`, `_set_block()`, massive legacy `stress_period_data` getter (FILL_DNODATA iteration), legacy setter (`get_xatspec`/`structure_array`). `package.py` reduced from ~750 to 378 lines.
+
+Template: 236 → 81 lines. Total generated code: ~9,700 → ~8,300 lines.
+
+### 9.6 Dis/Disv/DisBase xattree decoupling (in progress)
+
+Migrate gwf-dis, gwf-disv, and DisBase from `@xattree` to `@attrs.define(kw_only=True, slots=False)`. Replace `field()`/`dim()`/`array()`/`path()` descriptors with `attrs.field(metadata={"dfn_block": ...})`. Keep hand-managed methods (`get_dims()`, `to_grid()`, `from_grid()`, `write()` override). See `docs/dev/checkpoint6.md` for detailed plan.
 
 ### 9.4 Profiling enhancements for dask
 
@@ -365,3 +375,107 @@ Packages with `has_readarray_period=True` (Rcha, Chdg, Drng, Evta, Ghbg, Rivg, W
 - Update the egress path to write period blocks chunk-by-chunk (FILL_DNODATA skipping must be preserved)
 
 This is a more complex change than griddata chunking because of the period-keyed data structure and FILL_DNODATA semantics. Defer to a follow-on branch.
+
+---
+
+## 10. Developer context
+
+### 10.1 Project layout
+
+```
+flopy4/mf6/
+├── package.py              # Package base class (codegen v2 packages inherit from this)
+├── component.py            # Component base (xattree-decorated, provides write/to_xarray)
+├── context.py              # Context (model-level, to_xarray override)
+├── dimensions.py           # DimensionResolverMixin, DimensionProvider protocol
+├── record.py               # Record base for inner-class records (from_tokens/to_tokens)
+├── converter/
+│   ├── ingress/structure.py   # Reads MF6 text → Python objects (structure_component, _structure_codegen_v2)
+│   └── egress/unstructure.py  # Python objects → MF6 block dicts (unstructure_component, _unstructure_codegen_v2)
+├── codec/
+│   ├── reader.py           # Lark grammar parser (loads MF6 text → raw token dicts)
+│   └── writer.py           # Block dicts → MF6 text (dumps)
+├── utils/codegen/
+│   ├── make.py             # build_component_spec, make_module — drives generation
+│   ├── filters.py          # Jinja filters (field_call, py_type, python_repr)
+│   ├── templates/package.py.jinja  # The template (81 lines)
+│   └── dfn2py.py           # CLI entry, _SKIP set
+├── gwf/, gwt/, gwe/, prt/, utl/, exg/  # Generated + hand-managed packages
+└── spec.py                 # field(), dim(), array(), path() helpers (xattree-era, used by hand-managed files)
+```
+
+### 10.2 Codegen
+
+- **Regenerate:** `.pixi/envs/dev/bin/python -m flopy4.cli mf6 sync MODFLOW-ORG/modflow6@develop --no-install --verbose`
+- Or: `pixi run generate-classes`
+- This downloads DFN files from modflow6 develop branch, regenerates all 64 packages that are (a) already on the filesystem and (b) not in the `_SKIP` set.
+- `_SKIP` set (in `dfn2py.py`): `gwf-dis`, `gwf-disv`, `gwt-dis`, `gwe-dis`, `prt-dis`, `sim-tdis`, `utl-ncf`
+- Generated files have `# autogenerated file, do not modify` as first line — codegen checks for this.
+- **Do not manually edit generated files.** Change the template or `make.py`, then regenerate.
+
+### 10.3 Running tests
+
+```bash
+# Full suite (excluding known-excluded old-API test):
+pytest test -k "not test_init_big_sim"
+
+# For NetCDF tests in examples (requires extended MF6 binary):
+MF6_EXTENDED=1 pytest test
+
+# MF6 binary location (already in PATH):
+/home/mjreno/.clone/usgs/modflow6/bin/mf6
+```
+
+Baseline: 621 passed, 36 skipped, 0 failed.
+
+### 10.4 DFN system and block patterns
+
+DFN files define MODFLOW 6 component input structure. Key reference docs:
+- https://github.com/mjreno/modflow-devtools/blob/develop/docs/md/dfnspec.md
+- https://github.com/mjreno/modflow-devtools/blob/develop/docs/md/dfns.md
+
+**Block patterns** (impact codegen and user API):
+
+| Pattern | Example | Storage | Notes |
+|---|---|---|---|
+| Scalar (options/dimensions) | IC options, NPF options | `attrs.field(metadata={"dfn_block": "options"})` | Key-value pairs |
+| Gridded array | NPF `k`, IC `strt` | `NDArray` field, `dfn_block="griddata"` | Shape from dims, layered |
+| List (static recarray) | SSM `sources`, LAK `packagedata` | `np.recarray` field + `__*_schema__` ClassVar | Non-repeating block |
+| Repeating list (stress) | CHD/WEL/DRN period | `dict[int, np.recarray]` via `_stress_period_data` | `maxbound` dimension, fill-forward |
+| Repeating gridded array (G/A) | RCHA/CHDG period | Full-grid array per period | READARRAY format |
+| Keystring union | LAK/LKT/LKE period | `role: "keystring"` in schema, `object_` dtype | Union of setting types per feature |
+| Advanced partial-update | LAK/SFR/UZF/MAW | No `maxbound`, `shape: []` list | Period replaces per-feature, not full block |
+
+**Package subtypes** (from DFN spec):
+- `"stress"`: has `maxbound`, period block replaces all stresses per period
+- `"advanced"`: no `maxbound`, partial-update period semantics, has internal continuity equation
+- `"utility"`: cross-cutting (ts, obs, ncf)
+- `null`: default (OC, etc.)
+
+### 10.5 Architecture (two-tier)
+
+```
+Simulation / Model / Exchange     ← @xattree, tree management, DataTree integration
+    └── Package subclasses        ← @attrs.define, recarray-first, codec-driven I/O
+```
+
+Codegen v2 packages inherit from `Package` (which is still `@xattree`-decorated for tree compatibility). The `@attrs.define` on the subclass takes MRO precedence and suppresses xattree's `__setattr__` hook.
+
+### 10.6 Key design principles
+
+1. **No new xattree dependencies.** Decouple progressively; don't add coupling.
+2. **Schema-driven.** `__period_schema__` / `__*_schema__` ClassVars are the single source of truth for dtype construction, ingress parsing, and egress column ordering.
+3. **Recarray-first.** Period data is `dict[int, np.recarray]`; pandas/xarray are on-demand views.
+4. **Constructable in isolation.** Packages don't need a parent model to instantiate or load.
+5. **Dask-compatible.** Griddata fields can hold dask arrays; `_wrap_array` computes at write time.
+
+### 10.7 Linting and type checking
+
+```bash
+# Ruff (hand-written files only — .jinja is not Python):
+ruff check flopy4/mf6/package.py flopy4/mf6/converter/ingress/structure.py flopy4/mf6/converter/egress/unstructure.py
+
+# Mypy:
+mypy flopy4 test
+# 0 errors expected (3 pre-existing errors in flopy4/mf6/utils/tmp/ scratch files are ignored)
+```

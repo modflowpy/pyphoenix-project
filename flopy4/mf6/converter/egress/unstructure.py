@@ -720,7 +720,7 @@ _SKIP_IF_EMPTY = frozenset({"dimensions", "fileinput", "tables", "outlets", "tra
 # into an xr.Dataset for row-per-record output.  griddata-style blocks must
 # NOT be in this set — their fields are written individually with
 # INTERNAL/CONSTANT/NETCDF format.
-# Extend when adding a new recarray block; keep in sync with __block_col_maps__
+# Extend when adding a new recarray block.
 # on generated Package classes.
 # "sources" is the SSM sources block (pname/srctype/auxname per-row tabular input).
 _LIST_BLOCK_NAMES = frozenset(
