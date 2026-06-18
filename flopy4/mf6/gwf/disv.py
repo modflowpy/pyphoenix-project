@@ -1,21 +1,17 @@
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
-from attrs import Converter
 from numpy.typing import NDArray
-from xattree import xattree
 
-from flopy4.mf6.converter import structure_array
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.spec import array, dim, field, path
 from flopy4.mf6.utils.grid import VertexGrid
 from flopy4.mf6.utl.ncf import Ncf
 from flopy4.utils import to_path
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Disv(DisBase):
     @attrs.define(slots=False)
     class Cell2dRecord:
@@ -25,134 +21,165 @@ class Disv(DisBase):
         ncvert: int = attrs.field()
         icvert: tuple[int, ...] = attrs.field()
 
-    length_units: str = field(
-        block="options",
+    __vertices_schema__: ClassVar[list] = [
+        {"name": "iv", "dfn_type": "integer", "role": "value"},
+        {"name": "xv", "dfn_type": "double", "role": "value"},
+        {"name": "yv", "dfn_type": "double", "role": "value"},
+    ]
+
+    length_units: Optional[str] = attrs.field(
         default=None,
-        longname="model length units",
+        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
     )
-    nogrb: bool = field(block="options", default=None, longname="do not write binary grid file")
-    xorigin: float = field(
-        block="options", default=None, longname="x-position of the model grid origin"
+    nogrb: bool = attrs.field(
+        default=False,
+        metadata={"dfn_block": "options", "dfn_type": "keyword", "optional": True},
     )
-    yorigin: float = field(
-        block="options", default=None, longname="y-position of the model grid origin"
-    )
-    angrot: float = field(block="options", default=None, longname="rotation angle")
-    export_array_netcdf: bool = field(
-        block="options",
+    xorigin: Optional[float] = attrs.field(
         default=None,
-        longname="export array variables to netcdf output files.",
+        metadata={"dfn_block": "options", "dfn_type": "double", "optional": True},
     )
-    crs: str = field(
-        block="options",
+    yorigin: Optional[float] = attrs.field(
         default=None,
-        longname="CRS user input string",
+        metadata={"dfn_block": "options", "dfn_type": "double", "optional": True},
     )
-    # NCF subpackage reference — writes "NCF6 FILEIN <file>" in DISV OPTIONS.
-    # TODO: should be emitted by codegen from ncf_filerecord in gwf-disv.dfn.
-    ncf6_filerecord: Optional[Path] = path(
-        block="options", default=None, converter=to_path, inout="filein"
+    angrot: Optional[float] = attrs.field(
+        default=None,
+        metadata={"dfn_block": "options", "dfn_type": "double", "optional": True},
     )
-    # Attached Ncf subpackage; set filename then call sim.write() to auto-write.
-    # DisBase.write() syncs ncf6_filerecord and calls ncf.write() if set.
+    export_array_netcdf: bool = attrs.field(
+        default=False,
+        metadata={"dfn_block": "options", "dfn_type": "keyword", "optional": True},
+    )
+    crs: Optional[str] = attrs.field(
+        default=None,
+        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
+    )
+    ncf6_filerecord: Optional[Path] = attrs.field(
+        default=None,
+        converter=lambda v: None if v is None else to_path(v),
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "record",
+            "optional": True,
+            "inout": "filein",
+        },
+    )
     ncf: Optional[Ncf] = attrs.field(default=None)
-    nlay: int = dim(
-        block="dimensions",
-        coord="lay",
-        scope="gwf",
+    nlay: int = attrs.field(
         default=0,
-        longname="number of layers",
+        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
     )
-    ncpl: int = dim(
-        block="dimensions",
-        coord="icpl",
-        scope="gwf",
+    ncpl: int = attrs.field(
         default=0,
-        longname="number of cells per layer",
+        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
     )
-    nvert: int = dim(
-        block="dimensions",
-        coord="vert",
-        scope="gwf",
+    nvert: int = attrs.field(
         default=0,
-        longname="number of vertices",
+        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
     )
-    nodes: int = dim(
-        coord="node",
-        scope="gwf",
-        default=0,
+    top: NDArray[np.float64] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "griddata",
+            "dfn_type": "double",
+            "shape": ("ncpl",),
+            "layered": False,
+        },
+    )  # type: ignore[assignment]
+    botm: NDArray[np.float64] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "griddata",
+            "dfn_type": "double",
+            "shape": ("nodes",),
+            "layered": True,
+        },
+    )  # type: ignore[assignment]
+    idomain: Optional[NDArray[np.int64]] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "griddata",
+            "dfn_type": "integer",
+            "shape": ("nodes",),
+            "layered": True,
+        },
+    )  # type: ignore[assignment]
+    # User-facing parallel arrays for vertices.
+    iv: Optional[NDArray[np.int64]] = attrs.field(default=None)  # type: ignore[assignment]
+    xv: Optional[NDArray[np.float64]] = attrs.field(default=None)  # type: ignore[assignment]
+    yv: Optional[NDArray[np.float64]] = attrs.field(default=None)  # type: ignore[assignment]
+    # Combined vertices recarray for the codec (built in __attrs_post_init__).
+    vertices: Optional[np.recarray] = attrs.field(
+        default=None,
+        metadata={"dfn_block": "vertices", "schema": "__vertices_schema__"},
+    )  # type: ignore[assignment]
+    # Cell2d data — list of Cell2dRecord objects (user-facing).
+    cell2ddata: Optional[list] = attrs.field(default=None)
+    # Pre-formatted cell2d rows for the codec (built in __attrs_post_init__).
+    cell2d: Optional[list] = attrs.field(
+        default=None,
         init=False,
-    )
-    top: NDArray[np.float64] = array(
-        block="griddata",
-        default=None,
-        netcdf=True,
-        dims=("ncpl",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="cell top elevation",
-    )
-    botm: NDArray[np.float64] = array(
-        block="griddata",
-        default=None,
-        netcdf=True,
-        dims=("nlay", "ncpl"),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="cell bottom elevation",
-    )
-    idomain: Optional[NDArray[np.int64]] = array(
-        block="griddata",
-        default=None,
-        netcdf=True,
-        dims=("nlay", "ncpl"),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="idomain existence array",
-    )
-    iv: NDArray[np.int64] = array(
-        block="vertices",
-        dims=("nvert",),
-        default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="vertex number",
-    )
-    xv: NDArray[np.float64] = array(
-        block="vertices",
-        dims=("nvert",),
-        default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="x-coordinate for vertex",
-    )
-    yv: NDArray[np.float64] = array(
-        block="vertices",
-        dims=("nvert",),
-        default=None,
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-        longname="y-coordinate for vertex",
-    )
-    cell2ddata: Optional[NDArray[np.object_]] = array(
-        dtype=Cell2dRecord,
-        block="cell2d",
-        default=None,
-        dims=("ncpl",),
-        converter=attrs.Converter(structure_array, takes_self=True, takes_field=True),
+        metadata={"dfn_block": "cell2d"},
     )
 
     def __attrs_post_init__(self):
+        # Coerce list inputs to numpy arrays for vertices.
+        if self.iv is not None and not isinstance(self.iv, np.ndarray):
+            object.__setattr__(self, "iv", np.asarray(self.iv, dtype=np.int64))
+        if self.xv is not None and not isinstance(self.xv, np.ndarray):
+            object.__setattr__(self, "xv", np.asarray(self.xv, dtype=np.float64))
+        if self.yv is not None and not isinstance(self.yv, np.ndarray):
+            object.__setattr__(self, "yv", np.asarray(self.yv, dtype=np.float64))
+        # Build combined vertices recarray for the codec.
+        if self.iv is not None and self.xv is not None and self.yv is not None:
+            dtype = np.dtype([("iv", np.int64), ("xv", np.float64), ("yv", np.float64)])
+            n = len(self.iv)
+            arr = np.zeros(n, dtype=dtype)
+            arr["iv"] = self.iv + 1  # MF6 uses 1-based vertex IDs
+            arr["xv"] = self.xv
+            arr["yv"] = self.yv
+            object.__setattr__(self, "vertices", arr.view(np.recarray))
+        # Build cell2d list of tuples for the codec.
+        if self.cell2ddata is not None:
+            rows = []
+            for rec in self.cell2ddata:
+                row = (rec.icell2d + 1, rec.xc, rec.yc, rec.ncvert) + tuple(
+                    v + 1 for v in rec.icvert
+                )
+                rows.append(row)
+            object.__setattr__(self, "cell2d", rows)
+        # Set derived dimensions on DisBase.
         self.nodes = self.ncpl * self.nlay
-        self.ncol = 0
         self.nrow = 0
+        self.ncol = 0
+        # Coerce list/tuple griddata values to ndarray, then broadcast scalars.
+        import attrs as _attrs
+
+        fields = _attrs.fields(type(self))
+        dims = self.get_dims()
+        ncpl = dims.get("ncpl", 0)
+        nlay = dims.get("nlay", 1)
+        for f in fields:
+            if f.metadata.get("dfn_block") != "griddata":
+                continue
+            val = self.__dict__.get(f.name)
+            if val is None:
+                continue
+            dtype = self._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+            if isinstance(val, (list, tuple)):
+                val = np.asarray(val, dtype=dtype)
+                self.__dict__[f.name] = val
+            if isinstance(val, np.ndarray):
+                if f.metadata.get("layered") and val.size == nlay and nlay > 0 and ncpl > 0:
+                    self.__dict__[f.name] = np.repeat(val, ncpl).astype(dtype)
+                elif val.ndim > 1:
+                    self.__dict__[f.name] = val.ravel()
+        self._broadcast_griddata(fields, dims)
         super().__attrs_post_init__()
 
     def get_dims(self) -> dict[str, int]:
-        """Get all dimensions.
-
-        Returns both explicit dimensions (nlay, ncpl, nvert) and computed
-        dimensions (nodes).
-
-        Returns
-        -------
-        dict[str, int]
-            Mapping of dimension names to their integer sizes.
-        """
+        """Get all dimensions."""
         return {
             "nlay": self.nlay,
             "ncpl": self.ncpl,
@@ -161,21 +188,21 @@ class Disv(DisBase):
         }
 
     def to_grid(self) -> VertexGrid:
-        """
-        Convert the discretization to a `VertexGrid`.
-
-        Returns
-        -------
-        VertexGrid
-            A `VertexGrid` with the same dimensions and data as the `Disv`.
-        """
+        """Convert the discretization to a `VertexGrid`."""
         vertices = []
-        for i in range(len(self.iv.values)):  # type: ignore
-            vert = []
-            vert.append(self.iv.values[i])  # type: ignore
-            vert.append(self.xv.values[i])  # type: ignore
-            vert.append(self.yv.values[i])  # type: ignore
-            vertices.append(vert)
+        for i in range(len(self.iv)):  # type: ignore[arg-type]
+            vertices.append([self.iv[i], self.xv[i], self.yv[i]])  # type: ignore[index]
+        # VertexGrid expects top as 1D (ncpl,) and botm as 2D (nlay, ncpl).
+        botm = (
+            self.botm.reshape(self.nlay, self.ncpl)
+            if isinstance(self.botm, np.ndarray)
+            else self.botm
+        )
+        idomain = (
+            self.idomain.reshape(self.nlay, self.ncpl)
+            if isinstance(self.idomain, np.ndarray) and self.idomain is not None
+            else self.idomain
+        )
         return VertexGrid(
             length_units=self.length_units,
             xoff=self.xorigin,
@@ -183,27 +210,15 @@ class Disv(DisBase):
             crs=self.crs,
             nlay=self.nlay,
             top=self.top,
-            botm=self.botm,
-            idomain=self.idomain,
+            botm=botm,
+            idomain=idomain,
             vertices=vertices,
             cell2d=Disv.disv_to_grid_cell2d(self.cell2ddata),
         )
 
     @classmethod
     def from_grid(cls, grid: VertexGrid) -> "Disv":
-        """
-        Create a discretization from a `VertexGrid`.
-
-        Parameters
-        ----------
-        grid : VertexGrid
-            A structured grid.
-
-        Returns
-        -------
-        Disv
-            A discretization with the same dimensions and data as the grid.
-        """
+        """Create a discretization from a `VertexGrid`."""
         return Disv(
             xorigin=grid.xoffset,
             yorigin=grid.yoffset,
@@ -227,7 +242,7 @@ class Disv(DisBase):
         iverts = []
         xcenters = []
         ycenters = []
-        for rec in cell2ddata.values:  # type: ignore
+        for rec in cell2ddata:
             iverts.append(list(rec.icvert))
             xcenters.append(rec.xc)
             ycenters.append(rec.yc)
@@ -251,7 +266,7 @@ class Disv(DisBase):
                 cell[0],
                 cell[1],
                 cell[2],
-                len(verts),  # ncvert includes the closing (repeated) vertex
+                len(verts),
                 tuple(verts),
             )
             cell2ddata.append(rec)

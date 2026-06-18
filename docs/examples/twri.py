@@ -351,7 +351,7 @@ gwf.netcdf_input_file = nc_fpth
 # and time arguments.  This generates a data only file (no coordinate or
 # mesh variables), which is sufficient as an `mf6` input but not for
 # visualization in QGIS.
-nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf)
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, time=time)
 nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):
@@ -383,7 +383,9 @@ nc_fpth = workspace / "twri.input.nc"
 gwf.netcdf_input_file = nc_fpth
 
 # Again, no grid or time arguments defined
-nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH)
+nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
+    gwf, netcdf_format=NetCDFFormat.LAYERED_MESH, time=time
+)
 nc_model.to_netcdf(nc_fpth)
 
 with flopy4.mf6.write_context.WriteContext(use_netcdf=True):

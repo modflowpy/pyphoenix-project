@@ -170,7 +170,7 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
 def test_dumps_dis_with_layered_arrays(dis_with_constant_arrays):
     dis = dis_with_constant_arrays
     dis.delr[0] = 101.0
-    dis.botm[0, 0, 0] = -1.0  # 3d array will force layered output
+    dis.botm[0] = -1.0  # modify first cell of layer 0 to force layered output
     dumped = dumps(COMPONENT_CONVERTER.unstructure(dis))
     print("DIS dump:")
     print(dumped)
@@ -225,7 +225,7 @@ def test_dumps_disv_with_constant_arrays(disv_with_constant_arrays):
 def test_dumps_disv_with_layered_arrays(disv_with_constant_arrays):
     disv = disv_with_constant_arrays
     disv.top[0] = 30.0
-    disv.botm[0, 0] = 20.0  # TODO 3d array will force layered output
+    disv.botm[0] = 20.0  # modify first cell to force layered output
     dumped = dumps(COMPONENT_CONVERTER.unstructure(disv))
     print("DISV dump:")
     print(dumped)

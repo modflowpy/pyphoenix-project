@@ -703,11 +703,11 @@ def test_quickstart_netcdf(function_tmpdir):
     assert ("npf_icelltype") in ds
     assert ("npf_k") in ds
 
-    assert np.allclose(ds["dis_delr"].values, dis.delr)
-    assert np.allclose(ds["dis_delc"].values, dis.delc)
-    assert np.allclose(ds["dis_top"].values, dis.top)
-    assert np.allclose(ds["dis_botm"].values, dis.botm)
-    assert np.allclose(ds["dis_idomain"].values, dis.idomain)
+    assert np.allclose(ds["dis_delr"].values.ravel(), np.asarray(dis.delr).ravel())
+    assert np.allclose(ds["dis_delc"].values.ravel(), np.asarray(dis.delc).ravel())
+    assert np.allclose(ds["dis_top"].values.ravel(), np.asarray(dis.top).ravel())
+    assert np.allclose(ds["dis_botm"].values.ravel(), np.asarray(dis.botm).ravel())
+    assert np.allclose(ds["dis_idomain"].values.ravel(), np.asarray(dis.idomain).ravel())
     assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
     assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
     assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
@@ -808,9 +808,9 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
 
     assert np.allclose(ds["dis_delr"].values, dis.delr)
     assert np.allclose(ds["dis_delc"].values, dis.delc)
-    assert np.allclose(ds["dis_top"].values, dis.top.values.ravel())
-    assert np.allclose(ds["dis_botm_l1"].values, dis.botm.values.ravel())
-    assert np.allclose(ds["dis_idomain_l1"].values, dis.idomain.values.ravel())
+    assert np.allclose(ds["dis_top"].values, np.asarray(dis.top).ravel())
+    assert np.allclose(ds["dis_botm_l1"].values, np.asarray(dis.botm).ravel())
+    assert np.allclose(ds["dis_idomain_l1"].values, np.asarray(dis.idomain).ravel())
     assert np.allclose(ds["ic_strt_l1"].values.ravel(), np.asarray(ic.strt).ravel())
     assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), np.asarray(npf.icelltype).ravel())
     assert np.allclose(ds["npf_k_l1"].values.ravel(), np.asarray(npf.k).ravel())

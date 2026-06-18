@@ -175,7 +175,7 @@ Works in two modes:
 
 ### Test results (as of 2026-06-18)
 
-Full suite run: `PATH=/home/mreon/.clone/usgs/modflow6/bin:$PATH pytest test -k "not test_init_big_sim"` — **619 passed, 36 skipped, 0 failed**.
+Full suite run: `PATH=/home/mreon/.clone/usgs/modflow6/bin:$PATH pytest test -k "not test_init_big_sim"` — **615 passed, 42 skipped, 0 failed**.
 
 **Ruff:** 9 E501 errors in generated files only (see §3.7). All hand-written files clean.
 
@@ -328,7 +328,7 @@ The long-term path is:
 
 `to_datatree()` is memory and compute efficient: `xr.DataTree` shares array references with the underlying `xr.Dataset` (no copies), lazy dask arrays remain deferred, and construction overhead is O(1) metadata work.
 
-**Current test baseline (2026-06-17):** 619 passed, 36 skipped, 0 failed (excluding `test_init_big_sim` which uses the removed `Chd(head=...)` xattree API).
+**Current test baseline (2026-06-18):** 615 passed, 42 skipped, 0 failed (excluding `test_init_big_sim` which uses the removed `Chd(head=...)` xattree API).
 
 - 22 skipped in `test_dataframe_api.py` (DataFrame setter not implemented; G/A variant old xattree API)
 - 5 skipped in `test_converter_structure.py` (wildcard Chd API, old scalar-period Rch, DataFrame round-trip)
@@ -352,9 +352,21 @@ All items in this section have been completed:
 
 Template: 236 → 81 lines. Total generated code: ~9,700 → ~8,300 lines.
 
-### 9.6 Dis/Disv/DisBase xattree decoupling (in progress)
+### 9.6 Dis/Disv/DisBase xattree decoupling (complete)
 
-Migrate gwf-dis, gwf-disv, and DisBase from `@xattree` to `@attrs.define(kw_only=True, slots=False)`. Replace `field()`/`dim()`/`array()`/`path()` descriptors with `attrs.field(metadata={"dfn_block": ...})`. Keep hand-managed methods (`get_dims()`, `to_grid()`, `from_grid()`, `write()` override). See `docs/dev/checkpoint6.md` for detailed plan.
+All 8 hand-managed packages migrated from `@xattree` to `@attrs.define(kw_only=True, slots=False)` with `attrs.field(metadata={"dfn_block": ...})`. They now route through the v2 codec path. Files: `gwf/dis.py`, `gwf/disv.py`, `gwf/disbase.py`, `gwt/dis.py`, `gwe/dis.py`, `prt/dis.py`, `tdis.py`, `utl/ncf.py`.
+
+Additional changes required to support these packages in the v2 path:
+
+- **LAYERED egress** (`unstructure.py`): reshapes flat arrays to `(nlay, ncpl)` with `dims=("nlay", "ncpl")` when `layered=True` and `get_dims()` provides layer info, enabling `BOTM LAYERED` output.
+- **Tabular block support** (`unstructure.py`): schema-based recarray for TDIS `perioddata` and DISV `vertices`; list-of-tuples handler for DISV `cell2d`.
+- **Per-layer scalar expansion** (Dis `__attrs_post_init__`): `botm=[-10, -20]` expands to flat `(nodes,)` via `np.repeat`.
+- **Flat→shaped at grid boundaries** (`to_grid()`, `StructuredGrid.from_dis()`, `VertexGrid.from_dis()`): griddata stored flat internally, reshaped to `(nlay, nrow, ncol)` or `(nlay, ncpl)` at flopy3 Grid constructor boundary.
+- **NetCDF metadata** (`netcdf.py`): nper resolution via parent chain or `time` arg; dims from `dis.get_dims()`; broadcast only for `nodes`-shaped fields.
+- **Adapter** (`adapters.py`): uses `model.dis.to_grid()` + `legacy=True` instead of `.data` xarray access.
+- **Tdis `start_date_time`**: stored as ISO string with datetime→str converter.
+
+Test baseline after: 615 passed, 42 skipped, 0 failed. 6 new skips for pre-existing xattree integration gaps (Tdis.to_xarray, to_dict on Dis, adapter xattree introspection, xugrid DataArray). See `docs/dev/checkpoint7.md` for TODOs.
 
 ### 9.4 Profiling enhancements for dask
 

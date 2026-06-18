@@ -254,7 +254,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 import attrs as _attrs
 
                 # compute total nodes for broadcasting scalars to full grid
-                d = dict(model.data.dims)  # type: ignore
+                _dis = getattr(model, "dis", None)
+                d = _dis.get_dims() if _dis is not None else {}
                 _nlay = d.get("nlay", 1)
                 if "nrow" in d and "ncol" in d:
                     _nodes = _nlay * d["nrow"] * d["ncol"]
@@ -270,7 +271,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                         if val is None:
                             continue
                         arr = np.asarray(val, dtype=np.float64)
-                        if arr.size < _nodes:
+                        # Only broadcast scalars to full grid for nodes-shaped fields
+                        shape_meta = f.metadata.get("shape", ())
+                        if "nodes" in shape_meta and arr.size < _nodes:
                             arr = np.full(_nodes, float(arr.ravel()[0]))
                         p["params"].append({"name": f.name, "data": arr})
                     elif block == "period" and f.metadata.get("reader") == "readarray":
@@ -300,17 +303,32 @@ class NetCDFModel(BaseModel, NetCDFInput):
             if len(p["params"]) > 0:
                 packages.append(p)
 
+        # Resolve nper from time arg, simulation tdis, or model's data dims.
+        if time is not None:
+            _nper = time.nper
+        elif model.parent is not None and hasattr(model.parent, "tdis"):  # type: ignore[attr-defined]
+            _nper = model.parent.tdis.nper  # type: ignore[attr-defined]
+        else:
+            # Try walking up via xattree parent to find tdis
+            _nper = 1
+            _p = getattr(model, "parent", None)
+            while _p is not None:
+                if hasattr(_p, "tdis") and hasattr(_p.tdis, "nper"):
+                    _nper = _p.tdis.nper  # type: ignore[attr-defined]
+                    break
+                _p = getattr(_p, "parent", None)
+
         dims = [
-            model.data.dims["nper"],  # type: ignore
-            model.data.dims["nlay"],  # type: ignore
+            _nper,
+            model.dis.nlay,  # type: ignore
         ]
 
         if distype == "dis":
-            dims.append(model.data.dims["nrow"])  # type: ignore
-            dims.append(model.data.dims["ncol"])  # type: ignore
+            dims.append(model.dis.nrow)  # type: ignore
+            dims.append(model.dis.ncol)  # type: ignore
             gridtype = "structured"
         elif distype == "disv":
-            dims.append(model.data.dims["ncpl"])  # type: ignore
+            dims.append(model.dis.ncpl)  # type: ignore
             gridtype = "vertex"
         else:
             raise ValueError(

@@ -530,9 +530,26 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
                 rows = _recarray_to_rows(field_value, schema)
                 blocks[block_name][f.name] = rows
 
+        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
+            # Pre-formatted list of row tuples (e.g. cell2d).
+            blocks[block_name][f.name] = field_value
+
         elif meta.get("shape") and not isinstance(field_value, bool):
             # griddata-style array (shape is a non-empty tuple)
             if meta["shape"]:
+                # For layered arrays, reshape to (nlay, ncpl) with named dims
+                # so the writer can detect and emit LAYERED format.
+                if meta.get("layered") and isinstance(field_value, np.ndarray):
+                    _get_dims = getattr(value, "get_dims", None)
+                    _dims_d = _get_dims() if _get_dims else {}
+                    _nlay = _dims_d.get("nlay", 0)
+                    _ncpl = _dims_d.get("ncpl", 0)
+                    if _nlay > 1 and _ncpl > 0 and field_value.size == _nlay * _ncpl:
+                        blocks[block_name][f.name] = xr.DataArray(
+                            field_value.reshape(_nlay, _ncpl),
+                            dims=("nlay", "ncpl"),
+                        )
+                        continue
                 blocks[block_name][f.name] = _wrap_array(field_value)
 
         elif f.name == "auxiliary" and isinstance(field_value, list):

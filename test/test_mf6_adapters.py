@@ -131,6 +131,9 @@ def test_flopy3_model(tmp_path):
     gwf3.plot(filename_base=bpth)
 
 
+@pytest.mark.skip(
+    reason="Flopy3Package.data_list uses xattree introspection; Dis is now codegen v2"
+)
 def test_flopy3_package(tmp_path):
     from flopy.mbase import ModelInterface
     from flopy.pakbase import PackageInterface

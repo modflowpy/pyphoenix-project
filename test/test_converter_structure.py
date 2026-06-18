@@ -203,10 +203,7 @@ class TestDisvComponent:
 
         assert disv.top.shape == (100,)
         assert np.all(disv.top == 1.0)
-        assert disv.botm.shape == (
-            1,
-            100,
-        )
+        assert disv.botm.shape == (100,)
         assert np.all(disv.botm == -1.0)
 
     def test_disv_with_numpy_array(self):
