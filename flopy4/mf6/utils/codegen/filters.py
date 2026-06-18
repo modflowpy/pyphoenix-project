@@ -712,7 +712,14 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
         type_ignore = "  # type: ignore[assignment]"
     meta_lines = ["        metadata={"]
     for k, v in meta.items():
-        meta_lines.append(f"            {k!r}: {v!r},")
+        if isinstance(v, str):
+            meta_lines.append(f'            "{k}": "{v}",')
+        elif isinstance(v, tuple):
+            inner = ", ".join(f'"{s}"' for s in v)
+            trailing = "," if len(v) == 1 else ""
+            meta_lines.append(f'            "{k}": ({inner}{trailing}),')
+        else:
+            meta_lines.append(f'            "{k}": {v!r},')
     meta_lines.append("        },")
     converter_line = ""
     if is_file_record(f):

@@ -399,7 +399,7 @@ def _ml_field(
     if metadata is not None:
         lines.append("        metadata={")
         for k, v in metadata.items():
-            lines.append(f"            {k!r}: {v!r},")
+            lines.append(f'            "{k}": {_dq(v)},')
         lines.append("        },")
     suffix = f"  {type_ignore}" if type_ignore else ""
     lines.append(f"    ){suffix}")
@@ -856,7 +856,7 @@ def build_component_spec(
             clean_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
             block = f["block"]
             if use_new_codegen:
-                inner_spec_call = f"attrs.field(default=None, metadata={{'dfn_block': '{block}'}})"
+                inner_spec_call = f'attrs.field(default=None, metadata={{"dfn_block": "{block}"}})'
             else:
                 inner_spec_call = f'field(block="{block}", default=None)'
             target.append(
@@ -1303,6 +1303,17 @@ def build_component_spec(
 # Template environment
 
 
+def _dq(v) -> str:
+    """Format a scalar value as a Python literal using double-quoted strings."""
+    if isinstance(v, str):
+        return f'"{v}"'
+    if isinstance(v, tuple):
+        inner = ", ".join(f'"{s}"' if isinstance(s, str) else repr(s) for s in v)
+        trailing = "," if len(v) == 1 else ""
+        return f"({inner}{trailing})"
+    return repr(v)
+
+
 def _python_repr(v) -> str:
     """Format a list[dict] schema as multi-line Python for class-body assignment.
 
@@ -1316,10 +1327,10 @@ def _python_repr(v) -> str:
         if isinstance(item, dict):
             lines.append("        {")
             for k, val in item.items():
-                lines.append(f"            {k!r}: {val!r},")
+                lines.append(f'            "{k}": {_dq(val)},')
             lines.append("        },")
         else:
-            lines.append(f"        {item!r},")
+            lines.append(f"        {_dq(item)},")
     lines.append("    ]")
     return "\n".join(lines)
 
@@ -1339,9 +1350,15 @@ def _get_env() -> jinja2.Environment:
 
 def make_module(spec: ComponentSpec, env: jinja2.Environment, verbose: bool = False) -> None:
     """Generate a single component module."""
+    import shutil
+    import subprocess
+
     template = env.get_template(spec.template)
     rendered = template.render(spec=spec)
     spec.outpath.write_text(rendered, newline="\n")
+    ruff = shutil.which("ruff")
+    if ruff:
+        subprocess.run([ruff, "format", str(spec.outpath)], check=False, capture_output=True)
     if verbose:
         print(f"Wrote {spec.outpath}")
 
