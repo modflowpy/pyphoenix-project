@@ -40,6 +40,15 @@ def test_ff_write_basic():
     assert_ok(run("ff_write.py", ["--runs", "1"]))
 
 
+def test_ff_read_basic():
+    """ff_read.py exits 0 whether or not binary output files are present."""
+    assert_ok(run("ff_read.py", ["--runs", "1"]))
+
+
+def test_ff_read_memory():
+    assert_ok(run("ff_read.py", ["--runs", "1", "--memory"]))
+
+
 def test_ff_write_flopy4_only():
     assert_ok(run("ff_write.py", ["--runs", "1", "--flopy4-only"]))
 

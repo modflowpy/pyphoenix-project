@@ -5,7 +5,7 @@ import sys
 
 import numpy as np
 import pytest
-from conftest import EXAMPLES_PATH
+from conftest import EXAMPLES_PATH, PROJ_ROOT_PATH
 from modflow_devtools.misc import run_cmd
 
 EXCLUDE = ["quickstart_expanded"]
@@ -89,6 +89,10 @@ def compare(example_script):
 def test_scripts(example_script):
     env = os.environ.copy()
     env["MPLBACKEND"] = "Agg"
+    # Inject sibling modflow6/bin into PATH if mf6 is not already on PATH
+    _sibling_bin = PROJ_ROOT_PATH.parent / "modflow6" / "bin"
+    if _sibling_bin.exists() and str(_sibling_bin) not in env.get("PATH", ""):
+        env["PATH"] = f"{_sibling_bin}:{env.get('PATH', '')}"
     args = [sys.executable, example_script]
     stdout, stderr, retcode = run_cmd(*args, verbose=True, env=env)
     assert not retcode, stdout + stderr

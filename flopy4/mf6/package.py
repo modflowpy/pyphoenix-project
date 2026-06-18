@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import Optional
+from pathlib import Path
+from typing import ClassVar, Optional
 
 import numpy as np
 import pandas as pd
@@ -12,55 +13,207 @@ from flopy4.mf6.constants import FILL_DNODATA
 
 @xattree
 class Package(Component, ABC):
+    _DTYPE_MAP: ClassVar[dict] = {
+        "integer": np.int64,
+        "double": np.float64,
+        "double precision": np.float64,
+        "string": np.object_,
+        "keyword": np.object_,
+        "object": np.object_,
+    }
+
+    def __attrs_post_init__(self) -> None:
+        """Broadcast scalar/structured griddata values to their DFN shape.
+
+        Runs for codegen v2 packages that don't define their own
+        __attrs_post_init__ (e.g. IC, NPF). When dims={"nodes": N} is supplied
+        at construction, scalar strt/k/etc. are expanded to np.full((N,), val).
+        Called by xattree's post_init chain before _init_tree clears __dict__.
+        """
+        import attrs as _attrs
+
+        # Detect codegen v2 by presence of 'dfn_block' in any field metadata.
+        # Inlining avoids a circular import with converter.egress.unstructure.
+        try:
+            fields = _attrs.fields(type(self))  # type: ignore[arg-type]
+        except _attrs.exceptions.NotAnAttrsClassError:
+            return
+        if not any(f.metadata.get("dfn_block") is not None for f in fields):
+            return
+
+        # xattree's name field defaults to the base class name ('package') rather
+        # than the concrete subclass name ('ic', 'npf', etc.), so the child
+        # registers under the wrong key in the parent DataTree. Fix it here,
+        # before _init_tree pops 'name' from __dict__.
+        if self.__dict__.get("name") == "package":
+            self.__dict__["name"] = type(self).__name__.lower()
+
+        dims: dict = self.__dict__.get("dims") or {}
+        if not dims:
+            return
+
+        _par_data = getattr(self, "_par_data", None)
+        _is_vertex = (
+            _par_data is not None
+            and "ncpl" in _par_data.dims
+            and _par_data.dims.get("nrow", 0) == 0
+        ) or ("ncpl" in dims and "nrow" not in dims)
+
+        for f in fields:
+            if f.metadata.get("dfn_block") != "griddata":
+                continue
+            shape_meta = f.metadata.get("shape")
+            if not shape_meta:
+                continue
+            val = self.__dict__.get(f.name)
+            if val is None:
+                continue
+            _gd_dtype = self._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+            try:
+                # Substitute ncelldim with the appropriate value for the grid type
+                resolved = []
+                for d in shape_meta:
+                    if d == "ncelldim":
+                        resolved.append(2 if _is_vertex else 3)
+                    else:
+                        resolved.append(dims[d])
+                shape = tuple(resolved)
+            except KeyError:
+                continue
+            if isinstance(val, (int, float)):
+                self.__dict__[f.name] = np.full(shape, val, dtype=_gd_dtype)
+            elif isinstance(val, np.ndarray) and val.shape != shape:
+                try:
+                    self.__dict__[f.name] = val.reshape(shape)
+                except ValueError:
+                    pass
+            elif isinstance(val, dict) and not val:
+                default = f.default if isinstance(f.default, (int, float)) else 0
+                self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
+
+    def _compute_ncelldim(self) -> int:
+        """Return 2 for vertex grids, 3 for structured grids.
+
+        Checks dims first; falls back to the parent's .dis type if dims is absent.
+        Must be called from __attrs_post_init__ before xattree pops __dict__.
+        """
+        _dims = self.__dict__.get("dims") or {}
+        if "ncpl" in _dims and "nrow" not in _dims:
+            return 2
+        if _dims:
+            return 3
+        _parent = self.__dict__.get("parent")
+        if _parent is not None:
+            _dis = getattr(_parent, "dis", None)
+            if _dis is not None and type(_dis).__name__ == "Disv":
+                return 2
+        return 3
+
+    @classmethod
+    def load(  # type: ignore[override]
+        cls,
+        path: Path,
+        dims: "dict[str, int] | None" = None,
+        chunks: "int | str | None" = None,
+    ):
+        """Load from an MF6 text input file.
+
+        Parameters
+        ----------
+        path :
+            Path to the package input file.
+        dims :
+            Grid dimension values required to resolve array shapes,
+            e.g. ``{"nlay": 3, "nodes": 900}``.  Required for griddata
+            packages (NPF, IC, STO, etc.); may be omitted for list-input
+            packages (WEL, DRN, etc.).
+        chunks :
+            None   → eager numpy arrays.
+            "auto" → one dask chunk per layer (griddata packages only).
+            int    → approximate chunk size in elements.
+        """
+        from flopy4.mf6.codec.reader import load as _codec_load
+        from flopy4.mf6.converter.ingress.structure import structure_component
+
+        with open(path) as _f:
+            _raw = _codec_load(_f)
+        _pkg = structure_component(_raw, cls, dims=dims)
+
+        # Pre-populate dimension cache so to_xarray()/to_dataarray() work
+        # on standalone packages (not attached to a parent model).
+        if dims:
+            _pkg._dimension_cache.update(dims)
+
+        if chunks is not None:
+            try:
+                import dask.array as _da
+            except ImportError:
+                raise ImportError(
+                    "dask is required for chunked loading; "
+                    "install with 'pip install dask[array]'"
+                ) from None
+            import attrs as _attrs
+
+            _nlay = (dims or {}).get("nlay", 1)
+            _nodes = (dims or {}).get("nodes", _nlay)
+            _ncpl = _nodes // _nlay if _nlay > 1 else _nodes
+            _chunk_shape = (1, _ncpl) if chunks == "auto" else (max(1, int(chunks) // _ncpl), _ncpl)
+            for _fld in _attrs.fields(cls):  # type: ignore[arg-type]
+                if _fld.metadata.get("dfn_block") != "griddata":
+                    continue
+                _arr = getattr(_pkg, _fld.name)
+                if _arr is None or not isinstance(_arr, np.ndarray):
+                    continue
+                setattr(
+                    _pkg,
+                    _fld.name,
+                    _da.from_array(_arr.reshape(_nlay, _ncpl), chunks=_chunk_shape).reshape(-1),
+                )
+
+        return _pkg
+
     def default_filename(self) -> str:
         name = self.parent.name if self.parent else self.name  # type: ignore
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
+    def to_dataframe(self) -> pd.DataFrame:
+        """Return stress period data as a tidy DataFrame. Zero cost if not called."""
+        _spd = self.__dict__.get("_stress_period_data")
+        if not _spd:
+            return pd.DataFrame()
+        frames = []
+        for kper in sorted(_spd):
+            arr = _spd[kper]
+            rows = {}
+            for nm in arr.dtype.names or ():
+                col = arr[nm]
+                rows[nm] = [tuple(v) for v in col] if col.ndim > 1 else col.tolist()
+            df = pd.DataFrame(rows)
+            df.insert(0, "kper", kper)
+            frames.append(df)
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
     @property
-    def stress_period_data(self) -> pd.DataFrame:
+    def stress_period_data(self):
+        """Stress period data.
+
+        For codegen v2 packages: returns ``dict[int, np.recarray]`` keyed by 0-based kper.
+        For legacy xattree packages: returns a ``pd.DataFrame`` of all period fields.
         """
-        Get combined stress period data for all period data fields.
+        import attrs as _attrs
 
-        Returns a DataFrame with columns: 'kper' (stress period), spatial
-        coordinates, and all period data field values (e.g., 'head', 'elev', 'cond').
+        # Codegen v2: _stress_period_data is an attrs field on the subclass.
+        try:
+            _is_v2 = any(
+                f.name == "_stress_period_data"
+                for f in _attrs.fields(type(self))  # type: ignore[arg-type]
+            )
+        except _attrs.exceptions.NotAnAttrsClassError:
+            _is_v2 = False
+        if _is_v2:
+            return self.__dict__.get("_stress_period_data")
 
-        Spatial coordinates are automatically determined based on grid type:
-        - Structured grids: 'layer', 'row', 'col' columns
-        - Unstructured grids: 'node' column
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame with stress period data for all fields.
-
-        Examples
-        --------
-        >>> # Structured grid - uses layer/row/col
-        >>> chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
-        >>> df = chd.stress_period_data
-        >>> print(df)
-           kper  layer  row  col  head
-        0     0      0    0    0   1.0
-        1     0      0    9    9   0.0
-
-        >>> # Multi-field package
-        >>> drn = Drn(parent=gwf, elev={0: {(0, 7, 5): 10.0}}, cond={0: {(0, 7, 5): 1.0}})
-        >>> df = drn.stress_period_data
-        >>> print(df)
-           kper  layer  row  col  elev  cond
-        0     0      0    7    5  10.0   1.0
-
-        Notes
-        -----
-        This property is read-only. Setting stress period data via the
-        initializer or attribute assignment will be supported after PR #266.
-
-        The coordinate format depends on grid information from the parent model:
-        - If structured grid dimensions (nlay, nrow, ncol) are available from the
-          parent, the DataFrame will use layer/row/col columns
-        - Otherwise, it will use node indices
-        """
         from attrs import fields
 
         # Find all period block fields
@@ -346,34 +499,22 @@ class Package(Component, ABC):
             setattr(self, attr_name, val)
 
     @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
-    def stress_period_data(self, value: pd.DataFrame) -> None:
-        """
-        Set stress period data from a DataFrame.
+    def stress_period_data(self, value) -> None:
+        import attrs as _attrs
 
-        Parameters
-        ----------
-        value : pd.DataFrame
-            DataFrame with columns: 'kper' (stress period), spatial coordinates
-            (either 'layer'/'row'/'col' or 'node'), and field value columns.
+        # Codegen v2: delegate directly to the backing field.
+        try:
+            _is_v2 = any(
+                f.name == "_stress_period_data"
+                for f in _attrs.fields(type(self))  # type: ignore[arg-type]
+            )
+        except _attrs.exceptions.NotAnAttrsClassError:
+            _is_v2 = False
+        if _is_v2:
+            self.__dict__["_stress_period_data"] = value
+            return
 
-        Examples
-        --------
-        >>> # Modify existing package data
-        >>> chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0}})
-        >>> df = chd.stress_period_data
-        >>> df['head'] = df['head'] * 2  # Double all values
-        >>> chd.stress_period_data = df  # Apply changes
-
-        >>> # Create new data from scratch
-        >>> df = pd.DataFrame({
-        ...     'kper': [0, 0, 1],
-        ...     'layer': [0, 0, 0],
-        ...     'row': [0, 5, 0],
-        ...     'col': [0, 5, 5],
-        ...     'head': [10.0, 8.0, 9.0]
-        ... })
-        >>> chd.stress_period_data = df
-        """
+        # Legacy xattree path: convert DataFrame to per-column arrays.
         import xarray as xr
         from xattree import get_xatspec
 
@@ -476,3 +617,76 @@ class Package(Component, ABC):
 
             # Set the attribute, which will trigger on_setattr hooks (e.g., update_maxbound)
             setattr(self, field_name, converted_value)
+
+    @staticmethod
+    def _coerce_to_recarray(data, dtype: np.dtype) -> np.recarray:
+        """Convert user-supplied list/dict data to a structured recarray.
+
+        Accepts:
+          - np.ndarray / np.recarray  → returned as-is
+          - list of tuples/lists      → row-oriented, positional matching dtype.names
+          - list of dicts             → row-oriented, named columns
+          - dict of lists             → column-oriented {col_name: [values]}
+        """
+        if isinstance(data, np.ndarray):
+            return data.view(np.recarray)
+        if isinstance(data, dict):
+            n = len(next(iter(data.values())))
+            arr = np.zeros(n, dtype=dtype)
+            for name, vals in data.items():
+                arr[name] = vals
+            return arr.view(np.recarray)
+        rows = list(data)
+        n = len(rows)
+        arr = np.zeros(n, dtype=dtype)
+        for i, row in enumerate(rows):
+            if isinstance(row, dict):
+                for name, val in row.items():
+                    arr[name][i] = val
+            else:
+                for j, name in enumerate(dtype.names or ()):  # type: ignore[arg-type]
+                    arr[name][i] = row[j]
+        return arr.view(np.recarray)
+
+    def to_dataarray(self, field_name: str) -> "xr.DataArray":
+        """Single griddata field as xr.DataArray. Stays lazy if dask-backed."""
+        arr = getattr(self, field_name)
+        if arr is None:
+            raise ValueError(f"{field_name!r} is not set")
+        _d = self.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
+        _nlay = _d.get("nlay", 1)
+        _nrow = _d.get("nrow")
+        _ncol = _d.get("ncol")
+        _ncpl = _d.get("ncpl")
+        if _ncpl is None and "nodes" in _d and _nlay > 0:
+            _ncpl = _d["nodes"] // _nlay
+        if _nrow is not None and _ncol is not None:
+            arr = arr.reshape(_nlay, _nrow, _ncol)
+            dims: tuple[str, ...] = ("layer", "y", "x")
+        elif _ncpl is not None:
+            arr = arr.reshape(_nlay, _ncpl)
+            dims = ("layer", "face")
+        else:
+            dims = ("node",)
+        return xr.DataArray(arr, dims=dims, name=field_name)
+
+    def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
+        """All set griddata (or period-array) fields as xr.Dataset.
+
+        Stays lazy if dask-backed. For packages with no array fields this
+        falls through to ``Component.to_xarray()`` which returns the xattree
+        DataTree dataset (empty for codegen v2 packages — see §9.2 of
+        dask1.scope.md).
+        """
+        import attrs as _attrs
+
+        fields = _attrs.fields(type(self))  # type: ignore[arg-type]
+        for _block in ("griddata", "period"):
+            data_vars = {
+                a.name: self.to_dataarray(a.name)
+                for a in fields
+                if a.metadata.get("dfn_block") == _block and getattr(self, a.name) is not None
+            }
+            if data_vars:
+                return xr.Dataset(data_vars)
+        return super().to_xarray()  # type: ignore[return-value]

@@ -1,5 +1,5 @@
 """
-Run all write-time profile scripts and optionally write a formatted report.
+Run all profile scripts and optionally write a formatted report.
 
 Usage
 -----
@@ -10,9 +10,11 @@ Usage
     python run_all.py --include-slow          # don't skip slow variants
     python run_all.py --models-root /path/to/modflow6-largetestmodels
     python run_all.py --flopy4-only           # skip flopy3 variants in all scripts
+    python run_all.py --memory                # add peak-memory measurements
 
 Scripts run (in order):
-    ff_write.py        frenchman-flat  (~12 variants)
+    ff_write.py        frenchman-flat writes  (~12 variants)
+    ff_read.py         frenchman-flat reads   (lazy/eager/chunk-sweep)
     test1000_write.py  test1000_751x751  3 scenarios
     test1005_write.py  test1005_secp     1 scenario
 """
@@ -26,7 +28,8 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SCRIPTS = [
-    ("ff_write.py", "frenchman-flat", False),
+    ("ff_write.py", "frenchman-flat writes", False),
+    ("ff_read.py", "frenchman-flat reads", False),
     ("test1000_write.py", "test1000_751x751", True),
     ("test1005_write.py", "test1005_secp", True),
 ]
@@ -39,6 +42,7 @@ def run_script(
     json_out: Path,
     models_root: Path | None,
     flopy4_only: bool = False,
+    memory: bool = False,
 ) -> dict | None:
     cmd = [sys.executable, str(script), "--runs", str(runs), "--output", str(json_out)]
     if include_slow:
@@ -47,6 +51,8 @@ def run_script(
         cmd += ["--models-root", str(models_root)]
     if flopy4_only:
         cmd.append("--flopy4-only")
+    if memory:
+        cmd.append("--memory")
     result = subprocess.run(cmd, capture_output=False)
     if result.returncode != 0:
         print(f"  [ERROR] {script.name} exited with code {result.returncode}")
@@ -64,17 +70,20 @@ def markdown_table(all_data: list[dict]) -> str:
         ts = data.get("timestamp", "?")[:19].replace("T", " ")
         lines.append(f"\n## {script}  (commit {commit}, {ts})")
         lines.append("")
-        lines.append("| Variant | min (s) | mean (s) | runs |")
-        lines.append("|---------|--------:|---------:|-----:|")
+        lines.append("| Variant | min (s) | mean (s) | runs | peak (MiB) |")
+        lines.append("|---------|--------:|---------:|-----:|-----------:|")
         for section in data.get("sections", []):
-            lines.append(f"| **{section['name']}** | | | |")
+            lines.append(f"| **{section['name']}** | | | | |")
             for r in section.get("results", []):
-                skipped = r["runs"] == 1 and r["min"] > 30
-                suffix = " ⚠ slow" if skipped else ""
-                lines.append(
-                    f"| &nbsp;&nbsp;{r['label']}{suffix} "
-                    f"| {r['min']:.3f} | {r['mean']:.3f} | {r['runs']} |"
-                )
+                if "peak_mib" in r:
+                    lines.append(f"| &nbsp;&nbsp;{r['label']} | | | | {r['peak_mib']:.1f} |")
+                else:
+                    skipped = r.get("runs") == 1 and r.get("min", 0) > 30
+                    suffix = " ⚠ slow" if skipped else ""
+                    lines.append(
+                        f"| &nbsp;&nbsp;{r['label']}{suffix} "
+                        f"| {r['min']:.3f} | {r['mean']:.3f} | {r['runs']} | |"
+                    )
     return "\n".join(lines)
 
 
@@ -113,6 +122,11 @@ def main():
         action="store_true",
         help="skip all flopy3 variants in every sub-script",
     )
+    p.add_argument(
+        "--memory",
+        action="store_true",
+        help="pass --memory to every sub-script to add peak-memory measurements",
+    )
     args = p.parse_args()
 
     tmp_dir = HERE / "results" / "_tmp"
@@ -134,7 +148,13 @@ def main():
         print(f"{'#' * 60}")
         json_out = tmp_dir / f"{script.stem}.json"
         data = run_script(
-            script, args.runs, args.include_slow, json_out, args.models_root, args.flopy4_only
+            script,
+            args.runs,
+            args.include_slow,
+            json_out,
+            args.models_root,
+            args.flopy4_only,
+            args.memory,
         )
         if data:
             all_data.append(data)

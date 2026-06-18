@@ -1448,3 +1448,23 @@ def update_maxbound(instance, attribute, new_value):
         instance.maxbound = max(maxbound_values)
 
     return new_value
+
+
+def dims_from_grb(grb_path) -> dict:
+    """Extract grid dimension dict from a binary grid file (.grb).
+
+    Returns a dict suitable for ``Package.load(dims=...)``:
+    - DIS grids:  ``{"nlay", "nrow", "ncol", "nodes"}``
+    - DISV grids: ``{"nlay", "ncpl", "nodes"}``
+    """
+    from flopy4.adapters import read_binary_grid_file
+
+    grb_info = read_binary_grid_file(grb_path)
+    grid = grb_info["grid"]
+    nlay = grid.nlay
+    if grb_info["grid_type"] == "DIS":
+        nrow, ncol = grid.nrow, grid.ncol
+        return {"nlay": nlay, "nrow": nrow, "ncol": ncol, "nodes": nlay * nrow * ncol}
+    else:
+        ncpl = grb_info["ncells_per_layer"]
+        return {"nlay": nlay, "ncpl": ncpl, "nodes": nlay * ncpl}

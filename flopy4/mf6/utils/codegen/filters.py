@@ -448,7 +448,7 @@ ARRAY_NUMPY_DTYPES: dict[str, str] = {
 }
 
 
-def py_type(f: Field) -> str:
+def py_type(f: Field, *, use_new_codegen: bool = False) -> str:
     """Return the Python type annotation string for a field."""
     if is_aux_list_field(f):
         return "Optional[list[str]]"
@@ -459,8 +459,11 @@ def py_type(f: Field) -> str:
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
     elif is_array(f):
-        dtype = ARRAY_NUMPY_DTYPES.get(f["type"], "np.object_")
-        base = f"NDArray[{dtype}]"
+        if use_new_codegen and f.get("block") == "griddata":
+            base = "ArrayLike"
+        else:
+            dtype = ARRAY_NUMPY_DTYPES.get(f["type"], "np.object_")
+            base = f"NDArray[{dtype}]"
     elif is_dimensions_scalar(f):
         # dimensions fields are computed (init=False) and always nullable
         base = _SCALAR_PY_TYPES.get(f["type"], "Any")
@@ -517,6 +520,15 @@ def _dims_tuple(shape: str, *, keep: frozenset[str] | None = None) -> str:
     quoted = ", ".join(f'"{p}"' for p in parts)
     suffix = "," if len(parts) == 1 else ""
     return f"({quoted}{suffix})"
+
+
+def _dims_tuple_val(shape: str, *, keep: frozenset[str] | None = None) -> tuple:
+    """Like _dims_tuple but returns an actual tuple instead of a string literal."""
+    resolved = _resolve_alt_grid(shape)
+    inner = resolved.strip().strip("()")
+    raw = [_DIM_ALIASES.get(p.strip(), p.strip()) for p in inner.split(",") if p.strip()]
+    drop = _DROP_DIMS - (keep or frozenset())
+    return tuple(p for p in raw if p not in drop)
 
 
 def _longname_repr(longname: str | None) -> str | None:
@@ -643,6 +655,75 @@ def spec_call(f: Field, *, has_maxbound: bool = False) -> str:
     if ln := _longname_repr(f.get("longname", None)):
         args.append(f"longname={ln}")
     return f"field({', '.join(args)})"
+
+
+# New-codegen field call strings
+
+
+def field_metadata(f: Field, *, has_maxbound: bool = False) -> dict:
+    """Build the metadata dict for an attrs.field() call (new codegen path).
+
+    Replaces the xattree spec call (array(), field(), dim(), path()) with a
+    passive dict read by the codec and conversion methods at call time.
+    """
+    meta: dict = {"dfn_block": f["block"], "dfn_type": f["type"]}
+    if shape := f.get("shape"):
+        meta["shape"] = _dims_tuple_val(shape)
+    if f.get("layered"):
+        meta["layered"] = True
+        meta["chunk_axis"] = "nlay"
+    if f.get("netcdf"):
+        meta["netcdf"] = True
+    if f.get("time_series"):
+        meta["time_series"] = True
+    if is_period_array(f):
+        meta["period_data"] = True
+    if f.get("optional"):
+        meta["optional"] = True
+    if f["block"] == "dimensions" and f["name"] == "maxbound" and has_maxbound:
+        meta["auto_from"] = "stress_period_data"
+    if is_file_record(f):
+        inout = "filein" if _has_file_child_of(f, "filein") else "fileout"
+        meta["inout"] = inout
+    return meta
+
+
+def field_call(f: Field, *, has_maxbound: bool = False) -> str:
+    """Return the attrs.field() call string for a field (new codegen path).
+
+    Replaces spec_call() for packages with use_new_codegen=True.
+    Emits a multi-line call to comply with the 100-char line-length limit.
+    Continuation lines are pre-indented for class body (8-space args,
+    12-space dict keys, 4-space closing paren).
+    """
+    meta = field_metadata(f, has_maxbound=has_maxbound)
+    # maxbound is auto-computed from stress_period_data at write time; default 0.
+    if f["block"] == "dimensions" and f["name"] == "maxbound":
+        default = "0"
+    else:
+        default = _default_repr(f)
+    # String-encoded numeric defaults (e.g. '1.e-5', '1000.') are valid at
+    # runtime but mypy can't verify they satisfy Optional[float/int].
+    # Scalar defaults (int, float, str) on ArrayLike fields have the same issue.
+    _str_default = default.startswith("'")
+    _numeric_field = f.get("type", "") in ("double", "double precision", "integer")
+    type_ignore = ""
+    if (is_array(f) and default != "None") or (_str_default and _numeric_field):
+        type_ignore = "  # type: ignore[assignment]"
+    meta_lines = ["        metadata={"]
+    for k, v in meta.items():
+        meta_lines.append(f"            {k!r}: {v!r},")
+    meta_lines.append("        },")
+    converter_line = ""
+    if is_file_record(f):
+        converter_line = "        converter=lambda v: None if v is None else to_path(v),\n"
+    return (
+        f"attrs.field(\n"
+        f"        default={default},\n"
+        + converter_line
+        + "\n".join(meta_lines)
+        + f"\n    ){type_ignore}"
+    )
 
 
 # Import computation

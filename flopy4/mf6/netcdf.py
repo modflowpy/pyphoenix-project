@@ -10,7 +10,7 @@ from pydantic import (
     ValidationInfo,
     field_validator,
 )
-from xattree import XatSpec, asdict, get_xatspec
+from xattree import asdict, get_xatspec
 
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
@@ -51,6 +51,15 @@ def metadata(attribute, key: str):
     return None
 
 
+def _is_codegen_v2(package_cls) -> bool:
+    """True if this package was generated with codegen v2 (attrs + dfn_block metadata)."""
+    import attrs as _attrs
+
+    if not _attrs.has(package_cls):
+        return False
+    return any("dfn_block" in f.metadata for f in _attrs.fields(package_cls))
+
+
 def _pkgclass(package_name: str) -> Package:
     import flopy4
 
@@ -71,8 +80,76 @@ def multi_package(package_name: str) -> bool:
     return False
 
 
-def get_spec(package_name: str) -> XatSpec:
-    return get_xatspec(_pkgclass(package_name))  # type: ignore
+def get_spec(package_name: str):
+    """Return an xatspec-compatible object for a package (old or codegen v2)."""
+    cls = _pkgclass(package_name)
+    if _is_codegen_v2(cls):
+        return _CodegenV2Spec(cls)
+    return get_xatspec(cls)  # type: ignore
+
+
+class _CodegenV2Spec:
+    """XatSpec-compatible adapter for codegen v2 packages (attrs + dfn_block metadata)."""
+
+    _DTYPE_MAP = {
+        "double": np.float64,
+        "double precision": np.float64,
+        "integer": np.int64,
+        "string": np.object_,
+        "keyword": np.object_,
+    }
+
+    def __init__(self, cls):
+        import attrs as _attrs
+
+        class _ArrayInfo:
+            def __init__(self, f):
+                is_ra_period = (
+                    f.metadata.get("dfn_block") == "period"
+                    and f.metadata.get("reader") == "readarray"
+                )
+                # Non-layered READARRAY period fields (e.g. RCHA recharge) have shape
+                # (nper, nrow, ncol), so use "ncpl" so _structured_shape maps to
+                # ["y", "x"] rather than ["layer", "y", "x"].
+                is_layered = f.metadata.get("layered", True)
+                default_spatial = "nodes" if (not is_ra_period or is_layered) else "ncpl"
+                raw_shape = f.metadata.get("shape") or (default_spatial,)
+                # normalize ncpl → nodes for layered fields only
+                if is_layered:
+                    normalized = tuple("nodes" if d == "ncpl" else d for d in raw_shape)
+                else:
+                    normalized = raw_shape
+                if is_ra_period and "nper" not in normalized:
+                    normalized = ("nper",) + normalized
+
+                self.dtype = np.dtype(
+                    _CodegenV2Spec._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+                )
+                self.dims = normalized
+                self.metadata = {
+                    "longname": f.name,
+                    "block": f.metadata.get("dfn_block", ""),
+                    "netcdf": True,
+                }
+
+        def _include(f) -> bool:
+            block = f.metadata.get("dfn_block", "")
+            if block == "griddata" and f.metadata.get("netcdf"):
+                return True
+            if block == "period" and f.metadata.get("reader") == "readarray":
+                return True
+            return False
+
+        self.arrays = {f.name: _ArrayInfo(f) for f in _attrs.fields(cls) if _include(f)}
+
+
+def _field_shape(package_name: str, field_name: str) -> tuple | None:
+    """Return shape tuple for a field, supporting both xattree and codegen v2."""
+    spec = get_spec(package_name)
+    arr = spec.arrays.get(field_name)
+    if arr is None:
+        return None
+    return getattr(arr, "dims", None)
 
 
 def dimmap(gridtype: str, dims: list[int]) -> dict:
@@ -172,24 +249,53 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 "package_type": f"{modeltype}-{packagetype}",
                 "params": [],
             }
-            xatspec = get_xatspec(type(package))
-            multi = package.multi_package if hasattr(package, "multi_package") else False
-            data = asdict(package)
 
-            for block_name, block in blocks_dict(type(package)).items():
-                if block_name != "griddata" and block_name != "period":
-                    continue
-                for field_name in block.keys():
-                    if (
-                        data[field_name] is None
-                        or field_name not in xatspec.arrays
-                        or not hasattr(xatspec.arrays[field_name], "metadata")
-                        or "netcdf" not in xatspec.arrays[field_name].metadata  # type: ignore
-                        or not xatspec.arrays[field_name].metadata["netcdf"]  # type: ignore
-                    ):
+            if _is_codegen_v2(type(package)):
+                import attrs as _attrs
+
+                # compute total nodes for broadcasting scalars to full grid
+                d = dict(model.data.dims)  # type: ignore
+                _nlay = d.get("nlay", 1)
+                if "nrow" in d and "ncol" in d:
+                    _nodes = _nlay * d["nrow"] * d["ncol"]
+                elif "ncpl" in d:
+                    _nodes = _nlay * d["ncpl"]
+                else:
+                    _nodes = d.get("nodes", _nlay)
+
+                for f in _attrs.fields(type(package)):
+                    block = f.metadata.get("dfn_block")
+                    if block == "griddata" and f.metadata.get("netcdf"):
+                        val = getattr(package, f.name)
+                        if val is None:
+                            continue
+                        arr = np.asarray(val, dtype=np.float64)
+                        if arr.size < _nodes:
+                            arr = np.full(_nodes, float(arr.ravel()[0]))
+                        p["params"].append({"name": f.name, "data": arr})
+                    elif block == "period" and f.metadata.get("reader") == "readarray":
+                        val = getattr(package, f.name)
+                        if val is None:
+                            continue
+                        p["params"].append(
+                            {"name": f.name, "data": np.asarray(val, dtype=np.float64)}
+                        )
+            else:
+                xatspec = get_xatspec(type(package))
+                data = asdict(package)
+                for block_name, block in blocks_dict(type(package)).items():
+                    if block_name != "griddata" and block_name != "period":
                         continue
-
-                    p["params"].append({"name": field_name, "data": data[field_name].values})
+                    for field_name in block.keys():
+                        if (
+                            data[field_name] is None
+                            or field_name not in xatspec.arrays
+                            or not hasattr(xatspec.arrays[field_name], "metadata")
+                            or "netcdf" not in xatspec.arrays[field_name].metadata  # type: ignore
+                            or not xatspec.arrays[field_name].metadata["netcdf"]  # type: ignore
+                        ):
+                            continue
+                        p["params"].append({"name": field_name, "data": data[field_name].values})
 
             if len(p["params"]) > 0:
                 packages.append(p)
@@ -481,7 +587,7 @@ class NetCDFPackage(BaseModel, NetCDFInput):
         if auxiliary is not None:
             paramctx["auxiliary"] = auxiliary
 
-        spec = get_spec(paramctx["package_type"].lower())
+        pkg_type = paramctx["package_type"].lower()
 
         dims = context.get("dims", None)
         mesh = context.get("mesh", None)
@@ -501,8 +607,8 @@ class NetCDFPackage(BaseModel, NetCDFInput):
             if p["name"].lower() == "aux" and (auxiliary is None or len(auxiliary) == 0):
                 raise ValueError("AUX parameter requires auxiliary list input.")
 
-            shape = spec.arrays[p["name"]].dims
-            assert shape is not None
+            shape = _field_shape(pkg_type, p["name"])
+            assert shape is not None, f"no shape for field {p['name']!r} in {pkg_type}"
             gridded = "nodes" in shape or "nlay" in shape
 
             if not gridded or mesh is None:

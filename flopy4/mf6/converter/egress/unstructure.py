@@ -16,6 +16,17 @@ from flopy4.mf6.context import Context
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict
 
 
+def is_codegen_v2(cls: type) -> bool:
+    """True if cls is a codegen v2 package (has attrs fields with 'dfn_block' metadata).
+
+    Old xattree-based packages use 'block' as the metadata key; codegen v2 uses 'dfn_block'.
+    This distinguishes Ic/Chd/Npf (codegen v2) from Dis/Gwf/Package (xattree).
+    """
+    if not attrs.has(cls):
+        return False
+    return any("dfn_block" in f.metadata for f in attrs.fields(cls))
+
+
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
     for suffix in ("_input_file", "_filerecord", "_file"):
         if name.endswith(suffix):
@@ -321,7 +332,316 @@ def _unstructure_block_param(
             blocks[block_name][field_name] = field_value
 
 
+def _recarray_to_rows(arr: np.recarray, schema: list[dict]) -> list[tuple]:
+    """Convert a recarray to MF6 record tuples (cellids converted to 1-based).
+
+    MF6 column order: required cols, aux cols, boundname.  Boundname is deferred
+    past aux so that aux values land in the correct file positions.
+    """
+    rows = []
+    schema_names = {col["name"] for col in schema}
+    for i in range(len(arr)):
+        row: list[Any] = []
+        pending_boundname: Any = None
+        for col in schema:
+            role = col.get("role", "value")
+            name = col["name"]
+            if name not in (arr.dtype.names or ()):  # type: ignore[operator]
+                continue
+            val = arr[name][i]
+            if role == "cellid":
+                row.extend(int(c) + 1 for c in val)
+            elif role == "feature_id":
+                row.append(int(val) + 1)
+            elif role == "boundname":
+                # Deferred past aux so MF6 column order is: cols, aux, boundname.
+                if val is not None and val != "":
+                    pending_boundname = val
+            elif role == "inline_keyword":
+                # Trailing optional keyword token (e.g. MIXED in SSM fileinput).
+                # Emit the column name uppercased only when value is truthy.
+                if val:
+                    row.append(name.upper())
+            else:
+                # Emit fixed prefix token(s) before the value when requested.
+                prefix = col.get("prefix")
+                if prefix:
+                    row.extend(prefix.split())
+                row.append(val)
+        # aux columns not in schema (named aux0, aux1, ...) come after required cols
+        for name in arr.dtype.names or ():  # type: ignore[union-attr]
+            if name not in schema_names:
+                row.append(arr[name][i])
+        # boundname is always last per MF6 convention
+        if pending_boundname is not None:
+            row.append(pending_boundname)
+        rows.append(tuple(row))
+    return rows
+
+
+def _wrap_array(value: Any) -> xr.DataArray:
+    """Wrap a numpy array, scalar, or string default as an xr.DataArray.
+
+    Dask arrays are computed eagerly so the writer can inspect values and
+    choose CONSTANT vs INTERNAL without needing an external binary file.
+    """
+    if isinstance(value, xr.DataArray):
+        return value
+    if isinstance(value, np.ndarray):
+        return xr.DataArray(value)
+    # Compute dask arrays to numpy before wrapping — the text writer needs
+    # concrete values to pick CONSTANT vs INTERNAL format.
+    try:
+        import dask.array as _da
+
+        if isinstance(value, _da.Array):
+            return xr.DataArray(value.compute())
+    except ImportError:
+        pass
+    if isinstance(value, str):
+        try:
+            return xr.DataArray(float(value))
+        except (ValueError, TypeError):
+            return xr.DataArray(value)
+    if isinstance(value, bool):
+        return xr.DataArray(int(value))
+    if isinstance(value, int):
+        return xr.DataArray(value)
+    if isinstance(value, float):
+        return xr.DataArray(value)
+    return xr.DataArray(value)
+
+
+def _normalize_kper(kper: Any) -> int | None:
+    """Normalize a period key to a 0-based int; '*' wildcard → 0; invalid → None."""
+    if str(kper) == "*":
+        return 0
+    try:
+        return int(kper)
+    except (ValueError, TypeError):
+        return None
+
+
+def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
+    """Unstructure a codegen v2 (attrs-based, non-xattree) Package."""
+    cls = type(value)
+    blocks: dict[str, dict[str, Any]] = {}
+    # Block names that must appear in output even when empty (e.g. SSM SOURCES).
+    always_emit_set: set[str] = set()
+    # OC-style period fields: {field_key: {kper: setting}} (including "" stop sentinels)
+    oc_per_field: dict[str, dict[int, str]] = {}
+    # Stress-period recarray fields: {kper: [(cellid, val, ...), ...]}
+    spd_period: dict[int, list[tuple]] = {}
+    # READARRAY period fields (G/A variants): {kper: {field_name: xr.DataArray}}
+    readarray_period: dict[int, dict[str, Any]] = {}
+
+    for f in attrs.fields(cls):
+        meta = f.metadata
+        block_name = meta.get("dfn_block")
+        if not block_name:
+            continue
+
+        if meta.get("always_emit"):
+            always_emit_set.add(block_name)
+            blocks.setdefault(block_name, {})
+
+        # Private alias fields (e.g. _stress_period_data) → access via public name
+        attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
+        field_value = getattr(value, attr_name, None)
+        if field_value is None:
+            continue
+
+        dfn_type = meta.get("dfn_type", "")
+
+        # ── PERIOD block ────────────────────────────────────────────────────────
+        if block_name == "period":
+            # READARRAY period field (G/A variants): ndarray shaped (nper, ...)
+            if meta.get("reader") == "readarray" and isinstance(field_value, np.ndarray):
+                is_layered = meta.get("layered", False)
+                nper = field_value.shape[0]
+                # Aux field: shape (nper, ncpl, naux) → emit one named block per
+                # aux variable so MF6 reads e.g. "TRACER" not "AUX".
+                if f.name == "aux" and field_value.ndim == 3:
+                    aux_names: list[str] = list(getattr(value, "auxiliary", None) or [])
+                    naux = field_value.shape[2]
+                    for kper in range(nper):
+                        for i in range(naux):
+                            col = field_value[kper, :, i]
+                            aux_key = aux_names[i] if i < len(aux_names) else f"aux{i}"
+                            readarray_period.setdefault(kper, {})[aux_key] = xr.DataArray(col)
+                    continue
+                for kper in range(nper):
+                    layer_slice = field_value[kper]
+                    if is_layered and layer_slice.ndim >= 2:
+                        extra_dims = tuple(f"x{i}" for i in range(layer_slice.ndim - 1))
+                        da = xr.DataArray(layer_slice, dims=("nlay",) + extra_dims)
+                    else:
+                        da = xr.DataArray(layer_slice)
+                    readarray_period.setdefault(kper, {})[f.name] = da
+                continue
+            if isinstance(field_value, (list, tuple)) and meta.get("oc_action"):
+                field_value = {0: field_value}
+            if not isinstance(field_value, dict):
+                continue
+            if meta.get("oc_action"):
+                # OC-style: collect per-field settings (including "" stop sentinels).
+                # Processing is deferred to after all fields are collected so that
+                # fill-forward state can be computed correctly when stop sentinels
+                # cancel one field but other fields should continue.
+                action = meta["oc_action"].lower()
+                rtype = meta["oc_rtype"].lower()
+                field_key = f"{action} {rtype}"
+                for kper_raw, setting in field_value.items():
+                    kper_int = _normalize_kper(kper_raw)
+                    if kper_int is None:
+                        continue
+                    if isinstance(setting, (list, tuple)):
+                        setting = " ".join(str(s) for s in setting)
+                    oc_per_field.setdefault(field_key, {})[kper_int] = setting
+            else:
+                # Stress-period recarray: dict[int, recarray]
+                schema_name = meta.get("schema")
+                schema = getattr(cls, schema_name, []) if schema_name else []
+                for kper, arr in field_value.items():
+                    kper_int = _normalize_kper(kper)
+                    if kper_int is None:
+                        continue
+                    rows = _recarray_to_rows(arr, schema) if isinstance(arr, np.recarray) else []
+                    spd_period.setdefault(kper_int, []).extend(rows)
+            continue
+
+        # ── Non-period blocks ───────────────────────────────────────────────────
+        if block_name not in blocks:
+            blocks[block_name] = {}
+
+        if dfn_type == "keyword":
+            if field_value:
+                blocks[block_name][f.name] = field_value
+
+        elif dfn_type == "record" and isinstance(field_value, Path):
+            t = _path_to_tuple(f.name, field_value, meta.get("inout", "fileout"))
+            blocks[block_name][t[0].lower()] = t
+
+        elif meta.get("schema"):
+            # packagedata / connectiondata / perioddata recarray block
+            schema_name = meta["schema"]
+            schema = getattr(cls, schema_name, [])
+            if isinstance(field_value, np.recarray) and len(field_value):
+                rows = _recarray_to_rows(field_value, schema)
+                blocks[block_name][f.name] = rows
+
+        elif meta.get("shape") and not isinstance(field_value, bool):
+            # griddata-style array (shape is a non-empty tuple)
+            if meta["shape"]:
+                blocks[block_name][f.name] = _wrap_array(field_value)
+
+        elif f.name == "auxiliary" and isinstance(field_value, list):
+            blocks[block_name][f.name] = ("AUXILIARY",) + tuple(field_value)
+
+        elif attrs.has(type(field_value)) and "_keyword" in vars(type(field_value)):
+            # Inner-class record (e.g. Oc.Headprint)
+            inner_cls = type(field_value)
+            keyword: str = vars(inner_cls)["_keyword"]
+            tokens: list[Any] = [keyword.upper()] if keyword else []
+            for tok in vars(inner_cls).get("_extra_tokens", ()):
+                tokens.append(tok)
+            all_inner = attrs.fields(inner_cls)
+            tagged = [a for a in all_inner if a.metadata.get("tagged")]
+            untagged = [a for a in all_inner if not a.metadata.get("tagged")]
+            for a in tagged + untagged:
+                v = getattr(field_value, a.name)
+                if v is None:
+                    continue
+                if a.metadata.get("tagged"):
+                    tokens.extend([a.name.upper(), v])
+                elif isinstance(v, bool):
+                    if v:
+                        tokens.append(a.name.upper())
+                else:
+                    tokens.append(v)
+            blocks[block_name][f.name] = tuple(tokens)
+
+        elif dfn_type in ("integer", "double", "double precision"):
+            if field_value == 0 and meta.get("auto_from"):
+                continue
+            blocks[block_name][f.name] = field_value
+
+        elif dfn_type == "string" and field_value:
+            blocks[block_name][f.name] = field_value
+
+    # All kpers where any OC field has an explicit setting (including "" stop sentinels).
+    oc_explicit_kpers: set[int] = set()
+    for fk_settings in oc_per_field.values():
+        oc_explicit_kpers.update(fk_settings.keys())
+
+    # Build oc_period: for each explicit kper include fields with an explicit
+    # non-empty setting. "" is a stop sentinel that cancels that field's
+    # fill-forward. When a kper has any stop sentinel we must emit a PERIOD
+    # block; include fill-forward values for still-active non-stopped fields so
+    # the emitted block doesn't silently reset them in MF6.
+    oc_period: dict[int, dict[str, str]] = {}
+    oc_is_stop: set[int] = set()  # kpers that have at least one stop sentinel
+    ff_state: dict[str, str] = {}  # currently active fill-forward values
+    for kper in sorted(oc_explicit_kpers):
+        block_oc: dict[str, str] = {}
+        stopped_fields: set[str] = set()
+        for field_key, fk_settings in oc_per_field.items():
+            if kper not in fk_settings:
+                continue
+            v = fk_settings[kper]
+            if not v:
+                oc_is_stop.add(kper)
+                stopped_fields.add(field_key)
+            else:
+                block_oc[field_key] = v
+                ff_state[field_key] = v
+        if kper in oc_is_stop:
+            # Include fill-forward values for fields that are still active so
+            # the required PERIOD block doesn't reset them in MF6.
+            for field_key, ff_val in list(ff_state.items()):
+                if field_key not in stopped_fields and field_key not in block_oc:
+                    block_oc[field_key] = ff_val
+            for field_key in stopped_fields:
+                ff_state.pop(field_key, None)
+        oc_period[kper] = block_oc
+
+    # Assemble period blocks: OC scalar fields + recarray rows, in kper order
+    all_kpers = set(oc_period.keys()) | set(spd_period.keys())
+    for kper in sorted(all_kpers):
+        key = f"period {kper + 1}"
+        block: dict[str, Any] = {}
+        if kper in oc_period:
+            block.update(oc_period[kper])
+        if kper in spd_period:
+            block["period"] = spd_period[kper]
+        if block or kper in oc_is_stop:
+            blocks[key] = block
+            if kper in oc_is_stop and not block:
+                always_emit_set.add(key)
+
+    # READARRAY period blocks (G/A variants): each kper gets its own period block.
+    # Fields where every value is FILL_DNODATA are skipped; if no fields remain
+    # for a period, the block is omitted entirely so MF6 fill-forwards from the
+    # previous period instead of treating 3e30 as a real array value.
+    for kper in sorted(readarray_period.keys()):
+        key = f"period {kper + 1}"
+        ra_block = blocks.get(key, {})
+        for field_name, da in readarray_period[kper].items():
+            if not np.all(da.values == FILL_DNODATA):
+                ra_block[field_name] = da
+        if ra_block:
+            blocks[key] = ra_block
+
+    return {
+        name: block
+        for name, block in sorted(blocks.items(), key=block_sort_key)
+        if block or name in always_emit_set
+    }
+
+
 def unstructure_component(value: Component) -> dict[str, Any]:
+    if is_codegen_v2(type(value)):
+        return _unstructure_codegen_v2(value)
     xatspec = xattree.get_xatspec(type(value))
     if "readarraygrid" in xatspec.attrs or "readasarrays" in xatspec.attrs:
         return _unstructure_array_component(value)

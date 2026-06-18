@@ -53,7 +53,7 @@ def plot_head(head, workspace):
 
 # ### Timing
 
-# Four daily stress periods; the first is steady-state, the rest transient.
+# Four steady-state time steps; storage is disabled (STEADY-STATE throughout).
 time = flopy4.mf6.utils.time.Time.from_timestamps(
     ["2000-01-01", "2000-01-02", "2000-01-03", "2000-01-04"]
 )
@@ -87,7 +87,7 @@ dis = flopy4.mf6.gwf.Dis.from_grid(grid=grid)
 # Constant head boundary on the left: pins head to 0 m on the left column,
 # creating the hydraulic gradient that drives flow through the domain.
 chd = flopy4.mf6.gwf.Chd(
-    head={"*": {(k, i, 0): 0.0 for k in range(nlay - 1) for i in range(nrow)}},
+    stress_period_data={0: [((k, i, 0), 0.0) for k in range(nlay - 1) for i in range(nrow)]},
     print_input=True,
     print_flows=True,
     save_flows=True,
@@ -99,8 +99,7 @@ chd = flopy4.mf6.gwf.Chd(
 elevation = [0.0, 0.0, 10.0, 20.0, 30.0, 50.0, 70.0, 90.0, 100.0]
 conductance = 1.0
 drn = flopy4.mf6.gwf.Drn(
-    elev={"*": {(0, 7, j + 1): elevation[j] for j in range(9)}},
-    cond={"*": {(0, 7, j + 1): conductance for j in range(9)}},
+    stress_period_data={0: [((0, 7, j + 1), elevation[j], conductance) for j in range(9)]},
     print_input=True,
     print_flows=True,
     save_flows=True,
@@ -130,7 +129,7 @@ sto = flopy4.mf6.gwf.Sto(
     storagecoefficient=False,
     ss=1.0e-5,
     sy=0.15,
-    steady_state=[True, False, False],
+    stress_period_data={0: [("STEADY-STATE",)]},
     iconvert=0,
     dims=dims,
 )
@@ -140,7 +139,10 @@ sto = flopy4.mf6.gwf.Sto(
 rch_rate = np.full((nlay, nrow, ncol), flopy4.mf6.constants.FILL_DNODATA)
 rate = np.repeat(np.expand_dims(rch_rate, axis=0), repeats=nper, axis=0)
 rate[0, 0, ...] = 3.0e-8
-rch = flopy4.mf6.gwf.Rch(recharge=rate, dims=dims)
+rch = flopy4.mf6.gwf.Rch(
+    stress_period_data={0: [((0, i, j), 3.0e-8) for i in range(nrow) for j in range(ncol)]},
+    dims=dims,
+)
 
 # Output control: save heads and budget at the start of the simulation.
 oc = flopy4.mf6.gwf.Oc(
@@ -171,7 +173,7 @@ wel_nodes = [
     [0, 12, 13],
 ]
 wel = flopy4.mf6.gwf.Wel(
-    q={"*": {(layer, row, col): wel_q for layer, row, col in wel_nodes}},
+    stress_period_data={0: [((layer, row, col), wel_q) for layer, row, col in wel_nodes]},
     dims=dims,
 )
 

@@ -69,4 +69,44 @@ class Context(Component, ABC):
             super().write(format=format, context=context)
 
     def to_xarray(self):
-        return self.data  # type: ignore
+        """DataTree for this context, with codegen v2 child packages populated.
+
+        The raw xattree DataTree has empty dataset nodes for codegen v2 packages
+        (those decorated with @attrs.define rather than @xattree) because they
+        bypass xattree's __setattr__ hook.  This override walks the context's
+        children, finds any codegen v2 packages that have griddata fields, calls
+        their generated to_xarray(), and merges the result into the corresponding
+        node in a deep copy of the tree so that gwf.to_xarray()["npf"]["k"]
+        returns the expected DataArray.
+        """
+        import attrs as _attrs
+
+        tree = self.data  # type: ignore
+        patches: dict = {}
+        try:
+            for name, child in (self.children or {}).items():  # type: ignore
+                try:
+                    _fields = _attrs.fields(type(child))
+                except _attrs.exceptions.NotAnAttrsClassError:
+                    continue
+                if not any(f.metadata.get("dfn_block") == "griddata" for f in _fields):
+                    continue
+                try:
+                    ds = child.to_xarray()
+                    if ds is not None and hasattr(ds, "data_vars") and ds.data_vars:
+                        patches[name] = ds
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if not patches:
+            return tree
+
+        result = tree.copy(deep=True)
+        for name, ds in patches.items():
+            try:
+                result[name].update(ds)
+            except Exception:
+                pass
+        return result

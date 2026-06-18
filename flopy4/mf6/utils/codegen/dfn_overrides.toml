@@ -200,6 +200,15 @@ extra_children = [
 # Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
 # Each entry defines a list block with its dimension name and column definitions.
 
+[_package_extras."gwt-ssm"]
+# SOURCES block must always be present in SSM input even when empty.
+# MF6 raises an error if the block is absent entirely.
+always_emit_blocks = ["sources"]
+
+[_package_extras."gwe-ssm"]
+# same requirement as gwt-ssm
+always_emit_blocks = ["sources"]
+
 [_package_extras."prt-fmi"]
 # prt-fmi PACKAGEDATA has heterogeneous rows (GWFHEAD/GWFBUDGET/GWFSPDIS filein fname).
 # Replacing the columnar list expansion with three individual Optional[Path] fields

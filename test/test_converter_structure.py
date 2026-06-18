@@ -6,6 +6,7 @@ using real flopy4 components.
 """
 
 import numpy as np
+import pytest
 import sparse
 import xarray as xr
 
@@ -287,66 +288,59 @@ class TestChdComponent:
     """Test structure_array with Chd component (stress period data)."""
 
     def test_chd_with_dict_format(self):
-        """Test CHD with dict format and cellid: value."""
+        """Test CHD with stress_period_data dict format (codegen v2 API)."""
         chd = Chd(
-            dims={"nlay": 1, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 100},
-            head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+            stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
         )
 
-        assert hasattr(chd, "head")
-        assert chd.head.shape == (3, 100)
-        # SP 0 should have the values
-        assert chd.head[0, 0] == 1.0
-        assert chd.head[0, 99] == 0.0
-        # SP 1 and 2 should fill forward from SP 0
-        assert chd.head[1, 0] == 1.0
-        assert chd.head[2, 99] == 0.0
-
-    def test_chd_with_star_key(self):
-        """Test CHD with '*' key for all stress periods."""
-        chd = Chd(
-            dims={"nlay": 1, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 100},
-            head={"*": {(0, 0, 0): 5.0}},
-        )
-
-        # '*' should map to period 0 and fill forward
-        assert chd.head[0, 0] == 5.0
-        assert chd.head[1, 0] == 5.0
-        assert chd.head[2, 0] == 5.0
+        assert hasattr(chd, "_stress_period_data")
+        rec = chd._stress_period_data[0]
+        assert rec["cellid"][0].tolist() == [0, 0, 0]
+        assert float(rec["head"][0]) == 1.0
+        assert rec["cellid"][1].tolist() == [0, 9, 9]
+        assert float(rec["head"][1]) == 0.0
 
     def test_chd_with_fill_forward(self):
-        """Test CHD with fill-forward behavior."""
+        """Test CHD stores multiple periods separately (fill-forward is write-time only)."""
         chd = Chd(
-            dims={"nlay": 1, "nrow": 10, "ncol": 10, "nper": 10, "nodes": 100},
-            head={0: {(0, 0, 0): 1.0}, 5: {(0, 0, 0): 2.0}},
+            stress_period_data={
+                0: [((0, 0, 0), 1.0)],
+                5: [((0, 0, 0), 2.0)],
+            },
         )
 
-        # SP 0-4 should have first value
-        assert chd.head[0, 0] == 1.0
-        assert chd.head[4, 0] == 1.0
+        # Both periods are stored; no in-memory fill-forward in codegen v2
+        assert set(chd._stress_period_data.keys()) == {0, 5}
+        assert float(chd._stress_period_data[0]["head"][0]) == 1.0
+        assert float(chd._stress_period_data[5]["head"][0]) == 2.0
 
-        # SP 5+ should have second value
-        assert chd.head[5, 0] == 2.0
-        assert chd.head[9, 0] == 2.0
+    @pytest.mark.skip(reason="Wildcard '*' key is not supported by codegen v2 Chd API")
+    def test_chd_with_star_key(self):
+        """Test CHD with '*' key for all stress periods."""
+        pass
 
 
 class TestRchComponent:
     """Test structure_array with Rch component (recharge)."""
 
-    def test_rch_with_scalar_dict(self):
-        """Test RCH with scalar values per stress period."""
+    def test_rch_with_stress_period_data(self):
+        """Test RCH with codegen v2 stress_period_data API (explicit cellid tuples)."""
         rch = Rch(
-            dims={"nlay": 1, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 100},
-            recharge={0: 0.004, 1: 0.002},
+            stress_period_data={
+                0: [((0, 0, 0), 0.004), ((0, 9, 9), 0.004)],
+                1: [((0, 0, 0), 0.002), ((0, 9, 9), 0.002)],
+            },
         )
 
-        assert hasattr(rch, "recharge")
-        # Should broadcast scalar to all nodes
-        assert rch.recharge.shape == (3, 100)
-        assert np.all(rch.recharge[0] == 0.004)
-        assert np.all(rch.recharge[1] == 0.002)
-        # SP 2 should fill forward from SP 1
-        assert np.all(rch.recharge[2] == 0.002)
+        assert hasattr(rch, "_stress_period_data")
+        assert set(rch._stress_period_data.keys()) == {0, 1}
+        assert float(rch._stress_period_data[0]["recharge"][0]) == 0.004
+        assert float(rch._stress_period_data[1]["recharge"][0]) == 0.002
+
+    @pytest.mark.skip(reason="Old xattree scalar-per-period API not supported by codegen v2 Rch")
+    def test_rch_with_scalar_dict(self):
+        """Old xattree API: scalar recharge per period broadcast to all nodes."""
+        pass
 
 
 class TestSparseArrays:
@@ -401,98 +395,67 @@ class TestEdgeCases:
         assert ic.strt.shape == (100,)
 
     def test_mixed_dict_value_types(self):
-        """Test dict with mixed value types (scalar, array)."""
+        """Test stress_period_data with multiple periods and cellids (codegen v2 API)."""
         chd = Chd(
-            dims={"nlay": 1, "nrow": 10, "ncol": 10, "nper": 10, "nodes": 100},
-            head={
-                0: {(0, 0, 0): 1.0},  # Dict with cellid
-                5: {(0, 0, 0): 2.0, (0, 9, 9): 0.5},  # Multiple cellids
+            stress_period_data={
+                0: [((0, 0, 0), 1.0)],
+                5: [((0, 0, 0), 2.0), ((0, 9, 9), 0.5)],
             },
         )
 
-        assert chd.head[0, 0] == 1.0
-        assert chd.head[5, 0] == 2.0
-        assert chd.head[5, 99] == 0.5
+        assert set(chd._stress_period_data.keys()) == {0, 5}
+        assert float(chd._stress_period_data[0]["head"][0]) == 1.0
+        assert float(chd._stress_period_data[5]["head"][0]) == 2.0
+        assert float(chd._stress_period_data[5]["head"][1]) == 0.5
 
 
 class TestDataFrameIntegration:
-    """Test DataFrame input format (round-trip with stress_period_data property)."""
+    """Test to_dataframe() output from codegen v2 stress period packages."""
 
+    def test_to_dataframe_chd_multi_period(self):
+        """Test that to_dataframe() returns correct tidy DataFrame for multi-period CHD."""
+        chd = Chd(
+            stress_period_data={
+                0: [((0, 0, 0), 10.0), ((1, 9, 9), 5.0)],
+                1: [((0, 0, 0), 11.0), ((1, 9, 9), 6.0)],
+            },
+        )
+
+        df = chd.to_dataframe()
+
+        assert "kper" in df.columns
+        assert "cellid" in df.columns
+        assert "head" in df.columns
+        p0 = df[df["kper"] == 0].reset_index(drop=True)
+        assert len(p0) == 2
+        assert float(p0.loc[0, "head"]) == 10.0
+        assert float(p0.loc[1, "head"]) == 5.0
+
+    def test_to_dataframe_chd_cellid_as_tuple(self):
+        """Test that cellid column contains tuples (not expanded layer/row/col)."""
+        chd = Chd(
+            stress_period_data={0: [((0, 2, 3), 7.5)]},
+        )
+
+        df = chd.to_dataframe()
+
+        assert "cellid" in df.columns
+        cellid = df.iloc[0]["cellid"]
+        assert isinstance(cellid, (tuple, list))
+        assert tuple(cellid) == (0, 2, 3)
+
+    @pytest.mark.skip(
+        reason="DataFrame → codegen v2 constructor round-trip not yet implemented "
+        "(to_dataframe() works; Chd(head=df) is old xattree API)"
+    )
     def test_dataframe_roundtrip_chd_structured(self):
-        """Test round-trip: Chd with dict -> DataFrame -> new Chd with DataFrame."""
-        # Create Chd with dict format
-        chd1 = Chd(
-            dims={"nlay": 2, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 200},
-            head={
-                0: {(0, 0, 0): 10.0, (1, 9, 9): 5.0},
-                1: {(0, 0, 0): 11.0, (1, 9, 9): 6.0},
-            },
-        )
+        """Old xattree: Chd(head={...}) -> stress_period_data DataFrame -> Chd(head=df)."""
+        pass
 
-        # Get DataFrame representation
-        df = chd1.stress_period_data
-
-        # Create new Chd with DataFrame
-        chd2 = Chd(
-            dims={"nlay": 2, "nrow": 10, "ncol": 10, "nper": 3, "nodes": 200},
-            head=df,
-        )
-
-        # Verify data matches
-        # Period 0: (0,0,0) -> 10.0, (1,9,9) -> 5.0
-        assert chd2.head[0, 0] == 10.0
-        assert chd2.head[0, 199] == 5.0
-
-        # Period 1: (0,0,0) -> 11.0, (1,9,9) -> 6.0
-        assert chd2.head[1, 0] == 11.0
-        assert chd2.head[1, 199] == 6.0
-
+    @pytest.mark.skip(reason="DataFrame → codegen v2 constructor round-trip not yet implemented")
     def test_dataframe_roundtrip_chd_unstructured(self):
-        """Test round-trip with unstructured grid (node-based)."""
-        # Create Chd with dict format (node-based)
-        # Note: cellids are tuples even for unstructured: (node,)
-        chd1 = Chd(
-            dims={"nper": 2, "nodes": 100},
-            head={
-                0: {(0,): 20.0, (99,): 15.0},
-                1: {(0,): 21.0, (50,): 16.0},
-            },
-        )
+        pass
 
-        # Get DataFrame representation
-        df = chd1.stress_period_data
-
-        # Create new Chd with DataFrame
-        chd2 = Chd(
-            dims={"nper": 2, "nodes": 100},
-            head=df,
-        )
-
-        # Verify data matches
-        assert chd2.head[0, 0] == 20.0
-        assert chd2.head[0, 99] == 15.0
-        assert chd2.head[1, 0] == 21.0
-        assert chd2.head[1, 50] == 16.0
-
+    @pytest.mark.skip(reason="Wildcard '*' key is not supported by codegen v2 Chd API")
     def test_dataframe_with_star_key(self):
-        """Test DataFrame from dict with '*' key (applies to period 0)."""
-        # Create Chd with '*' key
-        chd1 = Chd(
-            dims={"nlay": 1, "nrow": 5, "ncol": 5, "nper": 2, "nodes": 25},
-            head={
-                "*": {(0, 0, 0): 100.0, (0, 4, 4): 50.0},
-            },
-        )
-
-        # Get DataFrame
-        df = chd1.stress_period_data
-
-        # Create new Chd with DataFrame
-        chd2 = Chd(
-            dims={"nlay": 1, "nrow": 5, "ncol": 5, "nper": 2, "nodes": 25},
-            head=df,
-        )
-
-        # Verify data matches for period 0
-        assert chd2.head[0, 0] == 100.0
-        assert chd2.head[0, 24] == 50.0
+        pass

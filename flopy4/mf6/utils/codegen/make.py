@@ -16,6 +16,7 @@ from modflow_devtools.dfn import Dfn, Field
 from . import filters
 from .filters import ColumnSpec
 from .overrides import (
+    always_emit_blocks,
     apply_to_child,
     block_dim_override,
     extra_list_blocks,
@@ -95,12 +96,22 @@ class ComponentSpec:
     template: str = "package.py.jinja"
     has_aux: bool = False
     period_col_map: dict[str, str] = dc_field(default_factory=dict)
+    # New-codegen fields (use_new_codegen=True only)
+    period_schema: list[dict] = dc_field(default_factory=list)
+    block_schemas: dict[str, list[dict]] = dc_field(default_factory=dict)
+    has_maxbound: bool = False
+    has_keystring_period: bool = False
+    use_new_codegen: bool = False
+    has_griddata: bool = False
+    has_readarray_period: bool = False
 
 
 # Context builders
 
 
-def _build_field_spec(f: Field, *, has_maxbound: bool = False) -> FieldSpec:
+def _build_field_spec(
+    f: Field, *, has_maxbound: bool = False, use_new_codegen: bool = False
+) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -110,11 +121,20 @@ def _build_field_spec(f: Field, *, has_maxbound: bool = False) -> FieldSpec:
         py_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
     else:
         py_name = filters.safe_name(f["name"])
+    if generatable:
+        if use_new_codegen:
+            spec_call_str = filters.field_call(f, has_maxbound=has_maxbound)
+        else:
+            spec_call_str = filters.spec_call(f, has_maxbound=has_maxbound)
+    else:
+        spec_call_str = ""
     return FieldSpec(
         dfn_name=f["name"],
         py_name=py_name,
-        type_annotation=filters.py_type(f) if generatable else "Any",
-        spec_call=filters.spec_call(f, has_maxbound=has_maxbound) if generatable else "",
+        type_annotation=(
+            filters.py_type(f, use_new_codegen=use_new_codegen) if generatable else "Any"
+        ),
+        spec_call=spec_call_str,
         generatable=generatable,
         skip_reason=filters.skip_reason(f),
     )
@@ -145,7 +165,7 @@ def _child_to_field(child_dict: dict) -> Field:
 
 
 def _expand_record_field(
-    f: Field, *, has_maxbound: bool = False
+    f: Field, *, has_maxbound: bool = False, use_new_codegen: bool = False
 ) -> tuple[list[FieldSpec], list[Field]]:
     """Expand a compound record into FieldSpecs for its generatable children.
 
@@ -168,7 +188,9 @@ def _expand_record_field(
     specs: list[FieldSpec] = []
     gen_fields: list[Field] = []
     for child_field in expandable:
-        spec = _build_field_spec(child_field, has_maxbound=has_maxbound)
+        spec = _build_field_spec(
+            child_field, has_maxbound=has_maxbound, use_new_codegen=use_new_codegen
+        )
         specs.append(spec)
         if spec.generatable:
             gen_fields.append(child_field)
@@ -241,31 +263,187 @@ def _expand_list_field(f: Field, dfn: Dfn) -> list[FieldSpec]:
     return specs
 
 
-def _expand_oc_record_field(f: Field, dfn_name: str) -> list[FieldSpec]:
-    """Expand saverecord/printrecord into per-rtype NDArray[np.str_] fields.
+def _build_period_schema_from_array_fields(fields: list[Field]) -> list[dict]:
+    """Build __period_schema__ from individual period array fields (v1-style DFNs).
 
-    Generates one array field per rtype (e.g. save_concentration, save_budget)
-    using StringDType so the egress writer can produce ``SAVE CONCENTRATION all``
-    by splitting on ``_`` → replacing with space.
+    Standard stress packages (DRN, WEL, CHD, etc.) store period data as
+    individual array fields in the DFN rather than a list-type field. The
+    cellid column is always first (implicit — not a top-level DFN field);
+    aux columns are skipped here and appended dynamically in __attrs_post_init__.
+
+    Keyword-only period blocks (e.g. STO TRANSIENT/STEADY-STATE) have no
+    cellid and use a single keystring column to hold the state token.
+    """
+    # Keyword-only period block: all fields are keyword type with no associated value.
+    if fields and all(f["type"] == "keyword" for f in fields):
+        return [{"name": "storagestate", "dfn_type": "keyword", "role": "keystring"}]
+
+    schema: list[dict] = [
+        {
+            "name": "cellid",
+            "dfn_type": "integer",
+            "role": "cellid",
+            "shape": "ncelldim",
+            "optional": False,
+        }
+    ]
+    for f in fields:
+        name = f["name"]
+        if name == "aux":
+            continue  # appended dynamically in __attrs_post_init__
+        entry = {
+            "name": name,
+            "dfn_type": f["type"],
+            "optional": bool(f.get("optional", False)),
+        }
+        if name == "boundname":
+            entry["role"] = "boundname"
+            entry["dtype"] = "np.object_"
+        else:
+            entry["role"] = "value"
+            if f.get("time_series"):
+                entry["time_series"] = True
+                entry["dtype"] = "np.object_"
+        schema.append(entry)
+    return schema
+
+
+def _build_schema_from_list_field(f: Field) -> list[dict]:
+    """Build a block schema list from a list-type Field (e.g. TDIS perioddata).
+
+    Used by the new codegen path to convert list fields to recarray block
+    schemas instead of per-column array() expansions.
+    """
+    schema = []
+    for col in filters.list_columns(f):
+        col_type = col.get("type", "string")
+        entry: dict = {"name": col.get("name", ""), "dfn_type": col_type}
+        if col.get("cellid", False) or col.get("numeric_index", False):
+            entry["role"] = "feature_id"
+        elif col.get("name") == "boundname":
+            entry["role"] = "boundname"
+        elif col_type == "string":
+            entry["role"] = "value"
+            entry["dtype"] = "np.object_"
+        else:
+            entry["role"] = "value"
+        schema.append(entry)
+    return schema
+
+
+def _build_block_schema(bp: BlockPropertySpec) -> list[dict]:
+    """Build __*_schema__ for a static (non-period) list block.
+
+    Parallels _build_period_schema_from_array_fields but reads from
+    BlockPropertySpec column descriptors rather than raw Field objects.
+    aux columns are excluded — they are appended dynamically in __attrs_post_init__.
+
+    is_prefix columns (non-optional tagged keywords, e.g. FILEIN, SPC6) are
+    accumulated and attached as a 'prefix' key on the next value column so the
+    codec can emit the fixed token(s) before the value.
+
+    is_row_keyword columns (optional keywords, e.g. MIXED) get role
+    'inline_keyword' so the codec knows to emit/parse them conditionally.
+    """
+    schema = []
+    pending_prefix: list[str] = []
+    for col in bp.columns:
+        if col.is_prefix:
+            pending_prefix.append(col.name.upper())
+            continue
+        if col.name == "aux":
+            pending_prefix = []
+            continue
+        entry: dict = {"name": col.name, "dfn_type": col.type}
+        if col.is_cellid:
+            entry["role"] = "cellid"
+        elif col.numeric_index:
+            entry["role"] = "feature_id"
+        elif col.name == "boundname":
+            entry["role"] = "boundname"
+        elif col.is_row_keyword:
+            entry["role"] = "inline_keyword"
+            entry["optional"] = True
+        elif col.type == "string":
+            entry["role"] = "value"
+            entry["dtype"] = "np.object_"
+        else:
+            entry["role"] = "value"
+        if pending_prefix:
+            entry["prefix"] = " ".join(pending_prefix)
+            pending_prefix = []
+        schema.append(entry)
+    return schema
+
+
+def _ml_field(
+    default: str = "None",
+    metadata: dict | None = None,
+    *,
+    alias: str | None = None,
+    repr_: bool = True,
+    type_ignore: str | None = None,
+) -> str:
+    """Multi-line attrs.field() string for class-body spec_calls (4-space indent).
+
+    Produces continuation lines pre-indented at 8 spaces (args), 12 spaces
+    (dict keys), and 4 spaces (closing paren) so the Jinja template can render
+    it verbatim after ``    {name}: {type} = ``.
+    """
+    lines = ["attrs.field("]
+    if alias is not None:
+        lines.append(f'        alias="{alias}",')
+    lines.append(f"        default={default},")
+    if not repr_:
+        lines.append("        repr=False,")
+    if metadata is not None:
+        lines.append("        metadata={")
+        for k, v in metadata.items():
+            lines.append(f"            {k!r}: {v!r},")
+        lines.append("        },")
+    suffix = f"  {type_ignore}" if type_ignore else ""
+    lines.append(f"    ){suffix}")
+    return "\n".join(lines)
+
+
+def _expand_oc_record_field(
+    f: Field, dfn_name: str, use_new_codegen: bool = False
+) -> list[FieldSpec]:
+    """Expand saverecord/printrecord into per-rtype period fields.
+
+    New codegen: emits ``Optional[dict[int, list[str]]]`` attrs fields.
+    Old codegen: emits ``keystring(...)`` NDArray fields for xattree.
     """
     rtypes = filters._OC_RTYPES.get(dfn_name, [])
     action = "save" if f["name"] == "saverecord" else "print"
     specs: list[FieldSpec] = []
     for rtype in rtypes:
         py_name = f"{action}_{rtype}"
-        spec_call = (
-            "keystring("
-            'block="period", '
-            'dims=("nper",), '
-            "default=None, "
-            "converter=Converter(structure_array, takes_self=True, takes_field=True)"
-            ")"
-        )
+        if use_new_codegen:
+            spec_call = _ml_field(
+                metadata={
+                    "dfn_block": "period",
+                    "dfn_type": "string",
+                    "oc_action": action,
+                    "oc_rtype": rtype,
+                }
+            )
+            type_annotation = "Optional[dict[int, list[str]]]"
+        else:
+            spec_call = (
+                "keystring("
+                'block="period", '
+                'dims=("nper",), '
+                "default=None, "
+                "converter=Converter(structure_array, takes_self=True, takes_field=True)"
+                ")"
+            )
+            type_annotation = "Optional[NDArray[np.str_]]"
         specs.append(
             FieldSpec(
                 dfn_name=f"{f['name']}_{rtype}",
                 py_name=py_name,
-                type_annotation="Optional[NDArray[np.str_]]",
+                type_annotation=type_annotation,
                 spec_call=spec_call,
                 generatable=True,
             )
@@ -473,6 +651,83 @@ def _build_block_property_specs(
     return specs, block_names
 
 
+def _new_codegen_imports(
+    generatable_fields: list[Field],
+    *,
+    base_class: str = "Package",
+    multi: bool = False,
+    slntype: bool = False,
+    has_inner_classes: bool = False,
+    has_period_schema: bool = False,
+    has_path: bool = False,
+    has_griddata: bool = False,
+    has_readarray_period: bool = False,
+    has_injected_paths: bool = False,
+) -> dict[str, list[str]]:
+    """Compute import lines for new-codegen packages (no xattree, no spec calls)."""
+    has_array = any(
+        (filters.is_array(f) or filters.is_keyword_array(f))
+        and f.get("block") != "griddata"  # griddata fields → ArrayLike, not NDArray[np.xxx]
+        for f in generatable_fields
+    )
+    has_arraylike = has_griddata or has_readarray_period
+    has_file_records = any(filters.is_file_record(f) for f in generatable_fields)
+    has_optional = (
+        any(
+            (f.get("optional") and f.get("type") != "keyword") or filters.is_period_array(f)
+            for f in generatable_fields
+        )
+        or has_inner_classes
+        or has_period_schema
+        or has_readarray_period
+        or has_injected_paths  # injected path fields are always Optional[Path]
+    )
+    has_classvar = multi or slntype or has_inner_classes or has_period_schema
+
+    stdlib: list[str] = []
+    if has_path or has_injected_paths or has_file_records:
+        stdlib.append("from pathlib import Path")
+    typing_parts: list[str] = []
+    if has_classvar:
+        typing_parts.append("ClassVar")
+    if has_optional:
+        typing_parts.append("Optional")
+    if has_arraylike:
+        typing_parts.append("TypeAlias")
+        typing_parts.append("Union")
+    if typing_parts:
+        stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
+
+    third_party: list[str] = ["import attrs"]
+    if has_array or has_period_schema:
+        third_party.append("import numpy as np")
+    if has_array or has_arraylike:
+        third_party.append("from numpy.typing import NDArray")
+
+    _base_imports = {
+        "Package": "from flopy4.mf6.package import Package",
+        "Solution": "from flopy4.mf6.solution import Solution",
+        "Context": "from flopy4.mf6.context import Context",
+    }
+    flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
+    if has_inner_classes:
+        flopy4.append("from flopy4.mf6.record import Record")
+    if has_file_records:
+        flopy4.append("from flopy4.utils import to_path")
+    flopy4.sort()
+
+    result: dict[str, list[str]] = {"stdlib": stdlib, "third_party": third_party, "flopy4": flopy4}
+    if has_arraylike:
+        result["post_imports"] = [
+            "try:",
+            "    import dask.array as da",
+            "    ArrayLike: TypeAlias = Union[NDArray, da.Array]",
+            "except ImportError:",
+            "    ArrayLike: TypeAlias = NDArray  # type: ignore[misc, no-redef]  # dask optional",
+        ]
+    return result
+
+
 _SLN_PREFIX = "sln"
 
 
@@ -496,6 +751,7 @@ def build_component_spec(
     root: Path,
     developmode: bool = False,
     v1_dfn: Dfn | None = None,
+    use_new_codegen: bool = False,
 ) -> ComponentSpec:
     """Build all template context for a DFN component."""
     all_fields = filters.flat_fields(dfn, developmode=developmode)
@@ -522,6 +778,7 @@ def build_component_spec(
 
     inner_class_specs: list[InnerClassSpec] = []
     generatable_field_objects: list[Field] = []
+    block_schemas: dict[str, list[dict]] = {}
     _replace_blocks = replace_list_blocks(dfn["name"])
     _extra_blocks = {lb["block"] for lb in extra_list_blocks(dfn["name"])}
 
@@ -539,12 +796,26 @@ def build_component_spec(
 
     has_list_cols = False
     has_oc_fields = False
+    period_schema: list[dict] = []
+    _period_array_fields: list[Field] = []  # list-based period fields (CHD, DRN, WEL …)
+    _readarray_period_fields: list[Field] = []  # READARRAY period fields (CHDG, DRNG …)
     for f in all_fields:
         if filters.is_list_field(f) and f["block"] in (_replace_blocks | _extra_blocks):
             # List field replaced by explicit path fields or injected via extra_list_blocks.
             continue
         if filters.is_list_field(f) and f["block"] in _bp_block_names:
             # List field covered by BlockPropertySpec; column attrs generated below.
+            continue
+
+        # New codegen: collect period array fields.
+        # G-variant packages (CHDG, DRNG, WELG, RCHA …) use reader=readarray →
+        # individual Optional[ArrayLike] fields.
+        # Standard stress packages (DRN, WEL, CHD …) use list-based recarray.
+        if use_new_codegen and "period" in f["block"] and filters.is_period_array(f):
+            if f.get("reader") == "readarray":
+                _readarray_period_fields.append(f)
+            else:
+                _period_array_fields.append(f)
             continue
 
         if f["block"] in ("options", "dimensions"):
@@ -555,11 +826,28 @@ def build_component_spec(
             target = data_specs
 
         if filters.is_list_field(f):
-            expanded = _expand_list_field(f, dfn)
-            target.extend(expanded)
-            has_list_cols = has_list_cols or any(fs.generatable for fs in expanded)
+            if use_new_codegen:
+                block_name = f["block"]
+                schema = _build_schema_from_list_field(f)
+                if schema:
+                    block_schemas[block_name] = schema
+                    meta = {"dfn_block": block_name, "schema": f"__{block_name}_schema__"}
+                    target.append(
+                        FieldSpec(
+                            dfn_name=f["name"],
+                            py_name=filters.safe_name(block_name),
+                            type_annotation="Optional[np.recarray]",
+                            spec_call=f"attrs.field(default=None, metadata={meta!r})",
+                            generatable=True,
+                        )
+                    )
+                    has_maxbound = has_maxbound  # no change
+            else:
+                expanded = _expand_list_field(f, dfn)
+                target.extend(expanded)
+                has_list_cols = has_list_cols or any(fs.generatable for fs in expanded)
         elif filters.is_oc_record(f, dfn["name"]):
-            expanded = _expand_oc_record_field(f, dfn["name"])
+            expanded = _expand_oc_record_field(f, dfn["name"], use_new_codegen=use_new_codegen)
             target.extend(expanded)
             has_oc_fields = has_oc_fields or any(fs.generatable for fs in expanded)
         elif filters.can_generate_record_class(f):
@@ -567,46 +855,63 @@ def build_component_spec(
             inner_class_specs.append(record_spec)
             clean_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
             block = f["block"]
+            if use_new_codegen:
+                inner_spec_call = f"attrs.field(default=None, metadata={{'dfn_block': '{block}'}})"
+            else:
+                inner_spec_call = f'field(block="{block}", default=None)'
             target.append(
                 FieldSpec(
                     dfn_name=f["name"],
                     py_name=clean_name,
                     type_annotation=f"Optional[{record_spec.class_name}]",
-                    spec_call=f'field(block="{block}", default=None)',
+                    spec_call=inner_spec_call,
                     generatable=True,
                 )
             )
             generatable_field_objects.append(f)
         elif filters.can_expand_record(f):
-            specs, gen_fields = _expand_record_field(f, has_maxbound=has_maxbound)
+            specs, gen_fields = _expand_record_field(
+                f, has_maxbound=has_maxbound, use_new_codegen=use_new_codegen
+            )
             target.extend(specs)
             generatable_field_objects.extend(gen_fields)
         else:
-            spec = _build_field_spec(f, has_maxbound=has_maxbound)
+            spec = _build_field_spec(f, has_maxbound=has_maxbound, use_new_codegen=use_new_codegen)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append(f)
 
     # Inject path fields that replace heterogeneous list blocks (e.g. prt-fmi packagedata).
-    # Each injected entry becomes an Optional[Path] field using the path() spec.
     has_injected_paths = False
     for entry in replace_list_fields(dfn["name"]):
         has_injected_paths = True
         ln = entry.get("longname", "")
-        args = [
-            f'block="{entry["block"]}"',
-            "default=None",
-            "converter=to_path",
-            f'inout="{entry["inout"]}"',
-        ]
-        if ln:
-            args.append(f"longname={repr(ln)}")
+        block = entry["block"]
+        inout = entry["inout"]
+        if use_new_codegen:
+            _path_meta: dict = {
+                "dfn_block": block,
+                "dfn_type": "record",
+                "optional": True,
+                "inout": inout,
+            }
+            spec_call_str = _ml_field(metadata=_path_meta)
+        else:
+            args = [
+                f'block="{block}"',
+                "default=None",
+                "converter=to_path",
+                f'inout="{inout}"',
+            ]
+            if ln:
+                args.append(f"longname={repr(ln)}")
+            spec_call_str = f"path({', '.join(args)})"
         extra_specs.append(
             FieldSpec(
                 dfn_name=entry["name"],
                 py_name=filters.safe_name(entry["name"]),
                 type_annotation="Optional[Path]",
-                spec_call=f"path({', '.join(args)})",
+                spec_call=spec_call_str,
                 generatable=True,
             )
         )
@@ -682,6 +987,11 @@ def build_component_spec(
     # share a name with a period field take the block-prefixed attr name instead
     # (see _bare_period_names + collision_names(reserved=...)).
     for pf in extra_period_fields(dfn["name"]):
+        if use_new_codegen:
+            # New codegen consolidates keystring period entries into a single
+            # (number, keyword, value) recarray; skip per-keyword field emission.
+            has_period_keystring = True
+            continue
         kw = pf["keyword"]
         feat_dim = pf["feature_dim"]
         py_name = filters.safe_name(kw.lower())
@@ -710,100 +1020,178 @@ def build_component_spec(
         )
         has_period_keystring = True
 
-    # BlockPropertySpec-driven column fields.
-    # Each block gets: private init-only dict field, optional synthetic dim, column arrays.
-    # _bp_emitted_dims prevents emitting the same synthetic dim twice when two blocks
-    # share a dimension (e.g. connectiondata and tables both using nconnectiondata).
+    # BlockPropertySpec-driven fields: old codegen expands per column; new codegen
+    # emits one Optional[np.recarray] field per block plus a __*_schema__ ClassVar.
     _bp_emitted_dims: set[str] = set()
-    _naux_emitted = False  # emit naux dim at most once per package
+    _naux_emitted = False
+    _always_emit_set = set(always_emit_blocks(dfn["name"]))
     for bp in block_properties:
         if not bp.columns:
             continue
-        extra_specs.append(
+        if use_new_codegen:
+            schema = _build_block_schema(bp)
+            block_schemas[bp.block_name] = schema
+            _meta: dict = {
+                "dfn_block": bp.block_name,
+                "schema": f"__{bp.block_name}_schema__",
+            }
+            if bp.dim_is_dfn_declared:
+                _meta["auto_from"] = bp.block_name
+            if bp.block_name in _always_emit_set:
+                _meta["always_emit"] = True
+            extra_specs.append(
+                FieldSpec(
+                    dfn_name=bp.block_name,
+                    py_name=bp.block_name,
+                    type_annotation="Optional[np.recarray]",
+                    spec_call=_ml_field(metadata=_meta),
+                    generatable=True,
+                )
+            )
+        else:
+            extra_specs.append(
+                FieldSpec(
+                    dfn_name=f"_{bp.block_name}",
+                    py_name=f"_{bp.block_name}",
+                    type_annotation="Optional[dict]",
+                    spec_call=f'attrs.field(alias="{bp.block_name}", default=None, repr=False)',
+                    generatable=True,
+                )
+            )
+            if not bp.dim_is_dfn_declared and bp.dim_attr not in _bp_emitted_dims:
+                has_extra_dims = True
+                _bp_emitted_dims.add(bp.dim_attr)
+                extra_specs.append(
+                    FieldSpec(
+                        dfn_name=bp.dim_attr,
+                        py_name=bp.dim_attr,
+                        type_annotation="Optional[int]",
+                        spec_call='dim(block="__dim__", coord=False, default=None)',
+                        generatable=True,
+                    )
+                )
+            _bp_has_aux = "aux" in bp.attr_name_map
+            if _bp_has_aux and not _naux_emitted:
+                _naux_emitted = True
+                has_extra_dims = True
+                extra_specs.append(
+                    FieldSpec(
+                        dfn_name="naux",
+                        py_name="naux",
+                        type_annotation="Optional[int]",
+                        spec_call='dim(block="__dim__", coord=False, default=None)',
+                        generatable=True,
+                    )
+                )
+            _pending_prefixes: list[str] = []
+            for col in bp.columns:
+                if col.is_prefix:
+                    _pending_prefixes.append(col.name.upper())
+                    continue
+                attr_name = bp.attr_name_map[col.name]
+                dtype = (
+                    "np.object_"
+                    if col.is_cellid
+                    else filters.ARRAY_NUMPY_DTYPES.get(col.type, "np.object_")
+                )
+                args = [
+                    f'block="{bp.block_name}"',
+                    (
+                        f'dims=("{bp.dim_attr}", "naux")'
+                        if col.name == "aux"
+                        else f'dims=("{bp.dim_attr}",)'
+                    ),
+                    "default=None",
+                ]
+                if not col.is_row_keyword:
+                    args.append(
+                        "converter=Converter(structure_array, takes_self=True, takes_field=True)"
+                    )
+                if col.longname:
+                    args.append(f"longname={repr(col.longname)}")
+                if _pending_prefixes:
+                    args.append(f"prefix={tuple(_pending_prefixes)!r}")
+                    _pending_prefixes = []
+                if col.is_row_keyword:
+                    args.append(f"row_keyword={col.name.upper()!r}")
+                if col.is_cellid or col.numeric_index:
+                    args.append("cellid=True")
+                extra_specs.append(
+                    FieldSpec(
+                        dfn_name=col.name,
+                        py_name=attr_name,
+                        type_annotation=f"Optional[NDArray[{dtype}]]",
+                        spec_call=f"array({', '.join(args)})",
+                        generatable=True,
+                    )
+                )
+        has_list_cols = True
+
+    # New codegen: consolidate period fields into one stress_period_data field.
+    # Keystring packages (LAK, SFR, MAW, UZF) use a fixed (number, keyword, value)
+    # schema; standard stress packages (DRN, WEL, CHD) use per-column schema.
+    if use_new_codegen and has_period_keystring:
+        # Keystring period: schema is always (number, keyword, value).
+        # _period_array_fields contains the leading index column (e.g. "number").
+        # feature_id role: user passes 0-based Python index; codec emits 1-based for MF6.
+        period_schema = [
+            {
+                "name": f["name"] if _period_array_fields else "number",
+                "dfn_type": "integer",
+                "role": "feature_id",
+            }
+            for f in (_period_array_fields or [{"name": "number"}])
+        ] + [
+            {"name": "keyword", "dfn_type": "string", "role": "keystring"},
+            {"name": "value", "dfn_type": "object", "role": "keystring_value"},
+        ]
+    if use_new_codegen and (has_period_keystring or _period_array_fields):
+        if not has_period_keystring:
+            period_schema = _build_period_schema_from_array_fields(_period_array_fields)
+        _spd_meta = {
+            "dfn_block": "period",
+            "schema": "__period_schema__",
+            "fill_forward": True,
+        }
+        period_specs.append(
             FieldSpec(
-                dfn_name=f"_{bp.block_name}",
-                py_name=f"_{bp.block_name}",
-                type_annotation="Optional[dict]",
-                spec_call=f'attrs.field(alias="{bp.block_name}", default=None, repr=False)',
+                dfn_name="_stress_period_data",
+                py_name="_stress_period_data",
+                type_annotation="Optional[dict[int, np.recarray]]",
+                spec_call=_ml_field(
+                    alias="stress_period_data",
+                    repr_=False,
+                    metadata=_spd_meta,
+                ),
                 generatable=True,
             )
         )
-        if not bp.dim_is_dfn_declared and bp.dim_attr not in _bp_emitted_dims:
-            has_extra_dims = True
-            _bp_emitted_dims.add(bp.dim_attr)
-            extra_specs.append(
-                FieldSpec(
-                    dfn_name=bp.dim_attr,
-                    py_name=bp.dim_attr,
-                    type_annotation="Optional[int]",
-                    spec_call='dim(block="__dim__", coord=False, default=None)',
-                    generatable=True,
-                )
-            )
-        # Emit naux synthetic dim once when this block carries an aux column
-        _bp_has_aux = "aux" in bp.attr_name_map
-        if _bp_has_aux and not _naux_emitted:
-            _naux_emitted = True
-            has_extra_dims = True
-            extra_specs.append(
-                FieldSpec(
-                    dfn_name="naux",
-                    py_name="naux",
-                    type_annotation="Optional[int]",
-                    spec_call='dim(block="__dim__", coord=False, default=None)',
-                    generatable=True,
-                )
-            )
-        _pending_prefixes: list[str] = []
-        for col in bp.columns:
-            if col.is_prefix:
-                _pending_prefixes.append(col.name.upper())
-                continue
-            attr_name = bp.attr_name_map[col.name]
-            dtype = (
-                "np.object_"
-                if col.is_cellid
-                else filters.ARRAY_NUMPY_DTYPES.get(col.type, "np.object_")
-            )
-            args = [
-                f'block="{bp.block_name}"',
-                # aux carries a second dimension for the number of auxiliary variables
-                (
-                    f'dims=("{bp.dim_attr}", "naux")'
-                    if col.name == "aux"
-                    else f'dims=("{bp.dim_attr}",)'
-                ),
-                "default=None",
-            ]
-            if not col.is_row_keyword:
-                args.append(
-                    "converter=Converter(structure_array, takes_self=True, takes_field=True)"
-                )
-            if col.longname:
-                args.append(f"longname={repr(col.longname)}")
-            if _pending_prefixes:
-                args.append(f"prefix={tuple(_pending_prefixes)!r}")
-                _pending_prefixes = []
-            if col.is_row_keyword:
-                args.append(f"row_keyword={col.name.upper()!r}")
-            if col.is_cellid or col.numeric_index:
-                args.append("cellid=True")
-            extra_specs.append(
-                FieldSpec(
-                    dfn_name=col.name,
-                    py_name=attr_name,
-                    type_annotation=f"Optional[NDArray[{dtype}]]",
-                    spec_call=f"array({', '.join(args)})",
-                    generatable=True,
-                )
-            )
-        has_list_cols = True
 
-    # Emit naux synthetic dim when any period field carries aux.
-    # List-based packages (CHD/WEL/etc.) have "naux" in the DFN shape.
-    # G/A variants (CHDG/WELG/RCHA/EVTA) use per-variable readarray blocks so
-    # naux is absent from the DFN shape; detect them by field name instead.
-    if not _naux_emitted:
+    # New codegen: READARRAY period fields → individual Optional[ArrayLike] attrs fields.
+    # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period array
+    # separately with reader=readarray.  Each field is a full-grid array passed
+    # directly by the user; the egress dispatches to _unstructure_readarray_period.
+    if use_new_codegen and _readarray_period_fields:
+        for _ra_f in _readarray_period_fields:
+            _ra_meta = {
+                "dfn_block": "period",
+                "reader": "readarray",
+                "dfn_type": _ra_f.get("type", "double"),
+                "layered": _ra_f.get("layered", False),
+            }
+            period_specs.append(
+                FieldSpec(
+                    dfn_name=_ra_f["name"],
+                    py_name=filters.safe_name(_ra_f["name"]),
+                    type_annotation="Optional[ArrayLike]",
+                    spec_call=_ml_field(metadata=_ra_meta),
+                    generatable=True,
+                )
+            )
+
+    # Emit naux synthetic dim when any period field carries aux (old codegen only).
+    # New codegen computes naux dynamically in __attrs_post_init__ from self.auxiliary.
+    if not use_new_codegen and not _naux_emitted:
         for _f in all_fields:
             if (
                 _f["block"] == "period"
@@ -832,47 +1220,62 @@ def build_component_spec(
             _deduped.append(_fs)
     field_specs = _deduped
 
-    # Build period_col_map: value columns in the period block (cellid/aux/boundname excluded).
-    # Only packages with a standard stress-period list format produce a non-empty map.
-    # Advanced packages (LAK/MAW/UZF) use embedded_keystring rows and will have no
-    # is_period_array fields with scalar type, so their map stays empty.
+    # Build period_col_map (old codegen only — new codegen emits __period_schema__ instead).
     period_col_map: dict[str, str] = {}
-    for _f in all_fields:
-        # Only node-based floating/integer list columns: excludes keyword period arrays
-        # (STO steady-state/transient flags) and non-list period blocks.
-        if not (_f["block"] == "period" and filters.is_array(_f)):
-            continue
-        if _f["name"] in ("boundname", "aux"):
-            continue
-        if _f.get("shape", None) and "naux" in _f.get("shape", None):
-            continue
-        # Require node dimension (nnodes/nodes in shape) — excludes OC and period-level scalars
-        if not _f.get("shape", None) or (
-            "nnodes" not in _f.get("shape", None) and "nodes" not in _f.get("shape", None)
-        ):
-            continue
-        period_col_map[_f["name"]] = filters.safe_name(_f["name"])
+    if not use_new_codegen:
+        for _f in all_fields:
+            if not (_f["block"] == "period" and filters.is_array(_f)):
+                continue
+            if _f["name"] in ("boundname", "aux"):
+                continue
+            if _f.get("shape", None) and "naux" in _f.get("shape", None):
+                continue
+            if not _f.get("shape", None) or (
+                "nnodes" not in _f.get("shape", None) and "nodes" not in _f.get("shape", None)
+            ):
+                continue
+            period_col_map[_f["name"]] = filters.safe_name(_f["name"])
 
     base = _base_class(dfn)
     multi = bool(dfn.get("multi", False))
     slntype = _slntype(dfn)
     has_inner_classes = bool(inner_class_specs)
 
-    imports = filters.needed_imports(
-        generatable_field_objects,
-        base_class=base,
-        multi=multi,
-        slntype=slntype is not None,
-        has_maxbound=has_maxbound,
-        has_list_cols=has_list_cols or has_period_keystring,
-        has_inner_classes=has_inner_classes,
-        has_oc_fields=has_oc_fields,
-        has_extra_dims=has_extra_dims,
-        has_injected_paths=has_injected_paths,
-        has_period_keystring=has_period_keystring,
-        has_block_properties=bool(block_properties),
-        has_period_col_map=bool(period_col_map),
-    )
+    if use_new_codegen:
+        _has_griddata = any(
+            f.get("block") == "griddata" and filters.is_array(f) for f in generatable_field_objects
+        )
+        imports = _new_codegen_imports(
+            generatable_field_objects,
+            base_class=base,
+            multi=multi,
+            slntype=slntype is not None,
+            has_inner_classes=has_inner_classes,
+            has_period_schema=bool(period_schema) or bool(block_schemas),
+            has_path=(
+                any(filters.is_file_record(f) for f in generatable_field_objects)
+                or has_injected_paths
+            ),
+            has_griddata=_has_griddata,
+            has_injected_paths=has_injected_paths,
+            has_readarray_period=bool(_readarray_period_fields),
+        )
+    else:
+        imports = filters.needed_imports(
+            generatable_field_objects,
+            base_class=base,
+            multi=multi,
+            slntype=slntype is not None,
+            has_maxbound=has_maxbound,
+            has_list_cols=has_list_cols or has_period_keystring,
+            has_inner_classes=has_inner_classes,
+            has_oc_fields=has_oc_fields,
+            has_extra_dims=has_extra_dims,
+            has_injected_paths=has_injected_paths,
+            has_period_keystring=has_period_keystring,
+            has_block_properties=bool(block_properties),
+            has_period_col_map=bool(period_col_map),
+        )
 
     return ComponentSpec(
         dfn_name=dfn["name"],
@@ -887,21 +1290,51 @@ def build_component_spec(
         block_properties=block_properties,
         has_aux=_naux_emitted,
         period_col_map=period_col_map,
+        period_schema=period_schema,
+        block_schemas=block_schemas,
+        has_maxbound=has_maxbound,
+        has_keystring_period=has_period_keystring,
+        use_new_codegen=use_new_codegen,
+        has_griddata=_has_griddata if use_new_codegen else False,
+        has_readarray_period=bool(_readarray_period_fields) if use_new_codegen else False,
     )
 
 
 # Template environment
 
 
+def _python_repr(v) -> str:
+    """Format a list[dict] schema as multi-line Python for class-body assignment.
+
+    Produces 8-space item indent, 12-space key indent, 4-space closing bracket
+    so the result renders correctly after ``    __name__: ClassVar[...] = ``.
+    """
+    if not isinstance(v, list):
+        return repr(v)
+    lines = ["["]
+    for item in v:
+        if isinstance(item, dict):
+            lines.append("        {")
+            for k, val in item.items():
+                lines.append(f"            {k!r}: {val!r},")
+            lines.append("        },")
+        else:
+            lines.append(f"        {item!r},")
+    lines.append("    ]")
+    return "\n".join(lines)
+
+
 def _get_env() -> jinja2.Environment:
     loader = jinja2.PackageLoader("flopy4", "mf6/utils/codegen/templates")
-    return jinja2.Environment(
+    env = jinja2.Environment(
         loader=loader,
         trim_blocks=True,
         lstrip_blocks=True,
         keep_trailing_newline=True,
         undefined=jinja2.StrictUndefined,
     )
+    env.filters["python_repr"] = _python_repr
+    return env
 
 
 def make_module(spec: ComponentSpec, env: jinja2.Environment, verbose: bool = False) -> None:
@@ -920,6 +1353,7 @@ def make_modules(
     outdir: PathLike,
     developmode: bool = False,
     skip: set[str] | None = None,
+    new_codegen_packages: set[str] | None = None,
     makedirs: bool = False,
     existing_only: bool = False,
     verbose: bool = False,
@@ -939,6 +1373,11 @@ def make_modules(
         If True, include developmode fields.
     skip :
         Set of DFN names to skip.
+    new_codegen_packages :
+        DFN names to generate with the new attrs-based codegen path.
+        ``None`` (default) generates all packages with the new path.
+        Pass an explicit set to restrict to specific packages (useful for
+        targeted testing); pass an empty set to force the old xattree path.
     makedirs :
         If True, create output subdirectories as needed.
     existing_only :
@@ -962,11 +1401,24 @@ def make_modules(
     for name, dfn in dfns.items():
         if name in skip:
             continue
-        spec = build_component_spec(dfn, root=outdir, developmode=developmode, v1_dfn=dfn)
-        if existing_only and not spec.outpath.exists():
-            if verbose:
-                print(f"{spec.outpath} does not exist — skipping {name} (existing_only)")
-            continue
+        use_new = new_codegen_packages is None or name in new_codegen_packages
+        spec = build_component_spec(
+            dfn,
+            root=outdir,
+            developmode=developmode,
+            v1_dfn=dfn,
+            use_new_codegen=use_new,
+        )
+        if existing_only:
+            if not spec.outpath.exists():
+                if verbose:
+                    print(f"{spec.outpath} does not exist — skipping {name}")
+                continue
+            first_line = spec.outpath.read_text().split("\n", 1)[0]
+            if "autogenerated" not in first_line:
+                if verbose:
+                    print(f"{spec.outpath} is not autogenerated — skipping {name}")
+                continue
         if makedirs:
             spec.outpath.parent.mkdir(parents=True, exist_ok=True)
         make_module(spec, env)

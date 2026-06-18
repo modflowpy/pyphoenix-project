@@ -100,20 +100,19 @@ class DimensionResolverMixin:
         Cache of resolved dimensions (stored as instance variable, not attrs field)
     """
 
-    _dimension_cache: dict[str, int]
+    @property
+    def _dimension_cache(self) -> dict:
+        # Lazily initialize in __dict__ directly to bypass xattree's __setattr__.
+        # __attrs_post_init__ is not reliably called via super() for xattree classes,
+        # so eager init in post_init is not guaranteed.
+        if "_dimension_cache" not in self.__dict__:
+            self.__dict__["_dimension_cache"] = {}
+        return self.__dict__["_dimension_cache"]
 
     def __attrs_post_init__(self) -> None:
-        """Set parent references on all children after construction.
-
-        This hook is called by attrs after __init__ completes. It chains to any
-        parent class __attrs_post_init__ and then sets parent references on children.
-        """
+        """Set parent references on all children after construction."""
         if hasattr(super(), "__attrs_post_init__"):
             super().__attrs_post_init__()  # type: ignore[misc]
-        # Initialize dimension cache as instance variable (not attrs field)
-        # to keep the mixin backend-agnostic
-        if not hasattr(self, "_dimension_cache"):
-            object.__setattr__(self, "_dimension_cache", {})
         self._set_child_parents()
 
     def _set_child_parents(self) -> None:

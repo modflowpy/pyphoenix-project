@@ -199,4 +199,47 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             }
 
     def to_xarray(self):
-        return self.data.dataset  # type: ignore
+        """Flat xr.Dataset merging this component's DataTree dataset with any
+        codegen v2 child packages that have griddata fields.
+
+        For codegen v2 packages (``@attrs.define``), ``self.data.dataset`` is
+        empty because griddata fields are stored in attrs ``__dict__``, not in
+        xattree's DataTree.  Use ``package.to_xarray()`` directly for a clean
+        xarray view of an individual package's griddata fields.
+        ``package.data`` returns the raw (empty) xattree DataTree node and is
+        not enriched for codegen v2 packages; see §9.2 of dask1.scope.md.
+        """
+        import attrs as _attrs
+        import xarray as _xr
+
+        base = self.data.dataset  # type: ignore
+
+        # Codegen v2 packages store fields in attrs (not the DataTree), so
+        # self.data.dataset is empty for them.  Walk children and merge any
+        # that have dfn_block=="griddata" fields via their own to_xarray().
+        extra: list = []
+        try:
+            for _child in self.values():  # type: ignore
+                try:
+                    _fields = _attrs.fields(type(_child))
+                except _attrs.exceptions.NotAnAttrsClassError:
+                    continue
+                if not any(f.metadata.get("dfn_block") == "griddata" for f in _fields):
+                    continue
+                try:
+                    _ds = _child.to_xarray()
+                    if _ds is not None and len(_ds.data_vars) > 0:
+                        extra.append(_ds)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if not extra:
+            return base
+        try:
+            merged = _xr.merge([base] + extra, join="outer")
+            merged.attrs.update(base.attrs)
+            return merged
+        except Exception:
+            return base

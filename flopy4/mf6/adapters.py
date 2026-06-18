@@ -123,9 +123,9 @@ class Flopy3Model(ModelInterface):
         """
         Layering type.
         """
-        if "npf" in self._model.data:
-            return self._model.data["npf"].icelltype
-
+        npf = getattr(self._model, "npf", None)
+        if npf is not None:
+            return npf.icelltype
         return None
 
     @property
@@ -181,6 +181,7 @@ class Flopy3Package(PackageInterface):
         modeltime: Optional[ModelTime] = None,
     ):
         self._model = model
+        self._package = package
         if hasattr(package, "data"):
             self._data = package.data
         else:
@@ -264,7 +265,21 @@ class Flopy3Package(PackageInterface):
 
     @property
     def has_stress_period_data(self):
-        # TODO oc returns true? is stress package?
+        # Codegen v2: stress-period recarray packages (CHD, DRN, etc.)
+        if getattr(self._package, "_stress_period_data", None) is not None:
+            return True
+        # Codegen v2: OC-style period fields (save_head, save_budget, etc.)
+        import attrs as _attrs
+
+        try:
+            for f in _attrs.fields(type(self._package)):
+                if f.metadata.get("dfn_block") == "period":
+                    attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
+                    if getattr(self._package, attr_name, None) is not None:
+                        return True
+        except _attrs.exceptions.NotAnAttrsClassError:
+            pass
+        # Legacy xattree: nper in dims
         return "nper" in self._data.dims
 
     def check(self, f=None, verbose=True, level=1, checktype=None):
