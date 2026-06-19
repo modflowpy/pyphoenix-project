@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import numpy as np
-import pytest
 import xarray as xr
 
 from flopy4.mf6 import Ems, GwfGwe, GwfGwt
@@ -1022,14 +1021,12 @@ def test_gwf_rch(function_tmpdir):
     assert Path(function_tmpdir, f"{gwf_name}.rch").is_file()
 
 
-@pytest.mark.skip(
-    reason="RCHA is a READASARRAYS grid-based package; array-period write path not yet implemented"
-)
 def test_gwf_rcha(function_tmpdir):
     """1-layer, 1-row, 10-col model with uniform recharge (array-based form)."""
     sim_name = "gwf_rcha"
     gwf_name = "gwf_rcha"
     nrow, ncol = 1, 10
+    ncpl = nrow * ncol
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
 
     ims = Ims(
@@ -1067,9 +1064,11 @@ def test_gwf_rcha(function_tmpdir):
         stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
         name="chd-1",
     )
+    # RCHA uses READARRAY period arrays: shape (nper, ncpl)
+    recharge = np.full((1, ncpl), 1e-3)
     rcha = Rcha(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, i), 1e-3] for i in range(ncol)]},
+        recharge=recharge,
         name="rcha-1",
     )
 
@@ -1139,9 +1138,6 @@ def test_gwf_evt(function_tmpdir):
     assert Path(function_tmpdir, f"{gwf_name}.evt").is_file()
 
 
-@pytest.mark.skip(
-    reason="EVTA is a READASARRAYS grid-based package; array-period write path not yet implemented"
-)
 def test_gwf_evta(function_tmpdir):
     """1-layer, 1-row, 10-col model with ET (array-based form)."""
     sim_name = "gwf_evta"
@@ -1185,9 +1181,12 @@ def test_gwf_evta(function_tmpdir):
         stress_period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
         name="chd-1",
     )
+    # EVTA uses READARRAY period arrays: shape (nper, ncpl)
     evta = Evta(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, i), 10.0, 1e-3, 4.0] for i in range(ncol)]},
+        surface=np.full((1, ncpl), 10.0),
+        rate=np.full((1, ncpl), 1e-3),
+        depth=np.full((1, ncpl), 4.0),
         name="evta-1",
     )
 

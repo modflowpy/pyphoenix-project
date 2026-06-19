@@ -1645,6 +1645,79 @@ def test_lkt_packagedata_double_aux_roundtrip():
     assert list(pd["boundname"]) == ["mylake"]
 
 
+def test_lak_keystring_period_roundtrip():
+    """LAK keystring period data round-trips through dump→load→structure."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.lak import Lak
+
+    lak = Lak(
+        nlakes=2,
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (0, "RAINFALL", 0.1),
+                (1, "STATUS", "CONSTANT"),
+                (1, "STAGE", 5.0),
+            ],
+            1: [
+                (0, "STATUS", "INACTIVE"),
+            ],
+            2: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "WITHDRAWAL", 100.0),
+            ],
+        },
+    )
+
+    text = dumps(unstructure_component(lak))
+    # Verify dump contains expected period content
+    assert "BEGIN PERIOD 1" in text
+    assert "BEGIN PERIOD 2" in text
+    assert "BEGIN PERIOD 3" in text
+
+    raw = loads(text)
+    lak2 = structure_component(raw, Lak)
+
+    spd = lak2.stress_period_data
+    assert spd is not None
+    assert set(spd.keys()) == {0, 1, 2}
+
+    # Period 0: 4 rows
+    p0 = spd[0]
+    assert len(p0) == 4
+    assert p0["number"][0] == 0  # 0-based feature id
+    assert p0["keyword"][0] == "STATUS"
+    assert p0["value"][0] == "ACTIVE"
+    assert p0["number"][1] == 0
+    assert p0["keyword"][1] == "RAINFALL"
+    assert float(p0["value"][1]) == pytest.approx(0.1)
+    assert p0["number"][2] == 1
+    assert p0["keyword"][2] == "STATUS"
+    assert p0["value"][2] == "CONSTANT"
+    assert p0["number"][3] == 1
+    assert p0["keyword"][3] == "STAGE"
+    assert float(p0["value"][3]) == pytest.approx(5.0)
+
+    # Period 1: 1 row
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert p1["number"][0] == 0
+    assert p1["keyword"][0] == "STATUS"
+    assert p1["value"][0] == "INACTIVE"
+
+    # Period 2: 2 rows
+    p2 = spd[2]
+    assert len(p2) == 2
+    assert p2["number"][0] == 0
+    assert p2["keyword"][0] == "STATUS"
+    assert p2["value"][0] == "ACTIVE"
+    assert p2["number"][1] == 1
+    assert p2["keyword"][1] == "WITHDRAWAL"
+    assert float(p2["value"][1]) == pytest.approx(100.0)
+
+
 # ---------------------------------------------------------------------------
 # GWT/GWE FMI — packagedata block with prefix=("FILEIN",) on fname column
 # ---------------------------------------------------------------------------

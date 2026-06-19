@@ -11,6 +11,7 @@ DataFrame setter, structured-parent integration, or G/A variant array
 packages are individually skipped with a TODO note.
 """
 
+import pandas as pd
 import pytest
 
 from flopy4.mf6.gwf import Chd, Drn, Wel
@@ -114,145 +115,107 @@ def test_empty_stress_period_data_to_dataframe():
 
 
 # ---------------------------------------------------------------------------
-# Skipped: old xattree stress_period_data getter API (DataFrame with node/l/r/c)
+# DataFrame setter (from_dataframe)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason="Old xattree stress_period_data getter returned DataFrame with 'node' column; "
-    "codegen v2 uses to_dataframe() returning 'cellid' tuple column"
-)
-def test_chd_stress_period_data():
-    pass
-
-
-@pytest.mark.skip(reason="Old xattree API; use test_wel_to_dataframe instead")
-def test_wel_stress_period_data():
-    pass
-
-
-@pytest.mark.skip(reason="Old xattree API; use test_drn_to_dataframe_multifield instead")
-def test_drn_stress_period_data_multifield():
-    pass
-
-
-@pytest.mark.skip(reason="Old xattree API; use test_multi_period_to_dataframe instead")
-def test_multi_period_stress_period_data():
-    pass
-
-
-@pytest.mark.skip(reason="Old xattree API; use test_multiple_cells_to_dataframe instead")
-def test_stress_period_data_multiple_cells():
-    pass
-
-
-@pytest.mark.skip(reason="Old xattree API; use test_empty_stress_period_data_to_dataframe instead")
-def test_empty_stress_period_data():
-    pass
-
-
-@pytest.mark.skip(
-    reason="Codegen v2 period schema requires all value columns (elev AND cond) per row; "
-    "partial-cell multi-field data not supported in this format"
-)
-def test_stress_period_data_different_cells_per_field():
-    pass
-
-
-@pytest.mark.skip(
-    reason="aux/boundname kwargs not in codegen v2 constructor; "
-    "aux naming in to_dataframe() uses 'aux0', 'aux1', … not 'aux'"
-)
-def test_stress_period_data_with_aux_and_boundname():
-    pass
-
-
-@pytest.mark.skip(
-    reason="Requires structured-parent integration (Gwf → Chd with nrow/ncol/nlay); "
-    "deferred until parent-aware cellid expansion is implemented"
-)
-def test_stress_period_data_with_structured_grid_parent():
-    pass
-
-
-# ---------------------------------------------------------------------------
-# Skipped: DataFrame setter (not implemented for codegen v2)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.skip(
-    reason="DataFrame setter not implemented for codegen v2 packages; "
-    "codegen v2 stress_period_data setter just stores the raw dict"
-)
 def test_stress_period_data_setter_single_field():
-    pass
+    """Set CHD stress_period_data from a DataFrame with one value column."""
+    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]]})
+    df = chd.to_dataframe()
+    chd.from_dataframe(df)
+    spd = chd.stress_period_data
+    assert tuple(spd[0]["cellid"][0]) == (0, 0, 0)
+    assert spd[0]["head"][0] == 1.0
+    assert spd[0]["head"][1] == 2.0
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_multifield():
-    pass
+    """Set DRN stress_period_data from a DataFrame with multiple value columns."""
+    drn = Drn(stress_period_data={0: [[(0, 0, 0), 5.0, 0.01], [(0, 1, 0), 4.0, 0.02]]})
+    df = drn.to_dataframe()
+    drn.from_dataframe(df)
+    spd = drn.stress_period_data
+    assert spd[0]["elev"][0] == pytest.approx(5.0)
+    assert spd[0]["cond"][1] == pytest.approx(0.02)
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_modify_existing():
-    pass
+    """Modify a value in the DataFrame then set back."""
+    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    df = chd.to_dataframe()
+    df.loc[0, "head"] = 99.0
+    chd.from_dataframe(df)
+    assert chd.stress_period_data[0]["head"][0] == pytest.approx(99.0)
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_node_format():
-    pass
+    """CHD with DISV (2D cellid) round-trips through DataFrame."""
+    chd = Chd(
+        dims={"ncpl": 10, "nlay": 1, "nodes": 10},
+        stress_period_data={0: [[(0, 5), 1.0], [(0, 9), 2.0]]},
+    )
+    df = chd.to_dataframe()
+    chd.from_dataframe(df)
+    spd = chd.stress_period_data
+    assert tuple(spd[0]["cellid"][0]) == (0, 5)
+    assert spd[0]["head"][1] == pytest.approx(2.0)
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_partial_fields():
-    pass
+    """Setting from a DataFrame with fewer rows than original replaces SPD."""
+    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]]})
+    df = chd.to_dataframe()
+    # Keep only first row
+    df = df.iloc[:1]
+    chd.from_dataframe(df)
+    assert len(chd.stress_period_data[0]) == 1
 
 
-@pytest.mark.skip(
-    reason="Requires structured-parent integration; DataFrame setter not implemented for codegen v2"
-)
 def test_stress_period_data_setter_structured_grid():
-    pass
+    """CHD with multiple stress periods round-trips correctly."""
+    chd = Chd(
+        stress_period_data={
+            0: [[(0, 0, 0), 1.0], [(0, 0, 1), 2.0]],
+            1: [[(0, 0, 0), 3.0]],
+        }
+    )
+    df = chd.to_dataframe()
+    chd.from_dataframe(df)
+    spd = chd.stress_period_data
+    assert set(spd.keys()) == {0, 1}
+    assert spd[1]["head"][0] == pytest.approx(3.0)
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_errors():
-    pass
+    """from_dataframe raises on missing kper column."""
+    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})
+    df = pd.DataFrame({"cellid": [(0, 0, 0)], "head": [1.0]})
+    with pytest.raises(ValueError, match="kper"):
+        chd.from_dataframe(df)
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_with_named_aux_column():
-    pass
+    """WEL with one aux column round-trips through DataFrame."""
+    wel = Wel(
+        auxiliary=["concentration"],
+        stress_period_data={0: [[(0, 0, 0), -100.0, 35.0]]},
+    )
+    df = wel.to_dataframe()
+    wel.from_dataframe(df)
+    spd = wel.stress_period_data
+    assert spd[0]["q"][0] == pytest.approx(-100.0)
+    assert float(spd[0]["aux0"][0]) == pytest.approx(35.0)
 
 
-@pytest.mark.skip(reason="DataFrame setter not implemented for codegen v2")
 def test_stress_period_data_setter_with_two_named_aux_columns():
-    pass
-
-
-# ---------------------------------------------------------------------------
-# Skipped: G/A variant packages (Rcha, Chdg) — old xattree array API
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.skip(
-    reason="Rcha is an xattree G/A variant package; stress_period_data getter/setter "
-    "uses old array API (recharge=ndarray, parent=gwf); not compatible with codegen v2"
-)
-def test_rcha_stress_period_data_no_aux():
-    pass
-
-
-@pytest.mark.skip(reason="Rcha old xattree G/A array API")
-def test_rcha_stress_period_data_getter_with_aux():
-    pass
-
-
-@pytest.mark.skip(reason="Rcha old xattree G/A array API")
-def test_rcha_stress_period_data_setter_with_aux():
-    pass
-
-
-@pytest.mark.skip(reason="Chdg old xattree G/A array API")
-def test_chdg_stress_period_data_getter_and_setter_with_aux():
-    pass
+    """WEL with two aux columns round-trips through DataFrame."""
+    wel = Wel(
+        auxiliary=["concentration", "density"],
+        stress_period_data={0: [[(0, 0, 0), -100.0, 35.0, 1025.0]]},
+    )
+    df = wel.to_dataframe()
+    wel.from_dataframe(df)
+    spd = wel.stress_period_data
+    assert float(spd[0]["aux0"][0]) == pytest.approx(35.0)
+    assert float(spd[0]["aux1"][0]) == pytest.approx(1025.0)

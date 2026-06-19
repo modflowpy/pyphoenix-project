@@ -269,6 +269,43 @@ class Package(Component, ABC):
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
+    def to_dict(self, blocks: bool = False, strict: bool = False) -> dict:
+        """Convert to a dictionary of field values.
+
+        Parameters
+        ----------
+        blocks : bool
+            If True, return nested dict keyed by DFN block name.
+        strict : bool
+            If True, only include fields with ``dfn_block`` metadata.
+        """
+        import attrs as _attrs
+
+        try:
+            all_fields = _attrs.fields(type(self))  # type: ignore[arg-type]
+        except _attrs.exceptions.NotAnAttrsClassError:
+            return super().to_dict(blocks=blocks, strict=strict)
+
+        # Check if this is a codegen v2 class
+        if not any(f.metadata.get("dfn_block") for f in all_fields):
+            return super().to_dict(blocks=blocks, strict=strict)
+
+        _exclude = {"name", "parent", "dims", "filename", "workspace", "strict"}
+        result: dict = {}
+        for f in all_fields:
+            if f.name in _exclude or f.init is False:
+                continue
+            block = f.metadata.get("dfn_block")
+            if not block:
+                continue
+            key = f.alias if (f.alias and f.name.startswith("_")) else f.name
+            val = getattr(self, key, None)
+            if blocks:
+                result.setdefault(block, {})[key] = val
+            else:
+                result[key] = val
+        return result
+
     def to_dataframe(self) -> pd.DataFrame:
         """Return stress period data as a tidy DataFrame. Zero cost if not called."""
         _spd = self.__dict__.get("_stress_period_data")
@@ -285,6 +322,35 @@ class Package(Component, ABC):
             df.insert(0, "kper", kper)
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    def from_dataframe(self, df: "pd.DataFrame") -> None:
+        """Set stress_period_data from a tidy DataFrame.
+
+        The DataFrame must have a ``kper`` column and data columns matching
+        the period schema (as produced by ``to_dataframe()``).
+        """
+        if df.empty:
+            self.__dict__["_stress_period_data"] = {}
+            return
+        if "kper" not in df.columns:
+            raise ValueError("DataFrame must have a 'kper' column")
+        dtype = self.period_dtype
+        spd: dict[int, np.recarray] = {}
+        for kper, group in df.groupby("kper"):
+            group = group.drop(columns=["kper"])
+            n = len(group)
+            arr = np.zeros(n, dtype=dtype)
+            for col_name in dtype.names or ():
+                if col_name in group.columns:
+                    col_data = group[col_name].values
+                    if dtype[col_name].shape:
+                        # Multi-dim field (cellid) — stored as tuples in DataFrame
+                        for i, val in enumerate(col_data):
+                            arr[col_name][i] = val
+                    else:
+                        arr[col_name] = col_data
+            spd[int(kper)] = arr.view(np.recarray)
+        self.__dict__["_stress_period_data"] = spd
 
     @property
     def stress_period_data(self):  # type: ignore[override]

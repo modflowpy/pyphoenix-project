@@ -107,6 +107,26 @@ class Tdis(Package):
             tsmult=time.tsmult,
         )
 
+    def to_xarray(self):
+        """Return Tdis data as an xr.Dataset with kper coordinate."""
+        import pandas as _pd
+        import xarray as _xr
+
+        kper = np.arange(self.nper)
+        ds = _xr.Dataset(
+            {
+                "perlen": ("kper", self.perlen),
+                "nstp": ("kper", self.nstp),
+                "tsmult": ("kper", self.tsmult),
+            },
+            coords={"kper": kper},
+        )
+        if self.start_date_time:
+            ds.attrs["start_date_time"] = _pd.Timestamp(self.start_date_time)
+        if self.time_units:
+            ds.attrs["time_units"] = self.time_units
+        return ds
+
     @classmethod
     def from_timestamps(
         cls,

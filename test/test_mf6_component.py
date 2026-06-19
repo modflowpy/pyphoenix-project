@@ -366,7 +366,6 @@ def test_write_ascii(function_tmpdir):
     assert f"{gwf_name}.chd" in file_names
 
 
-@pytest.mark.skip(reason="to_dict() uses xattree_asdict; misses attrs fields for codegen v2")
 def test_to_dict_fields():
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
@@ -378,12 +377,13 @@ def test_to_dict_fields():
         "nodes": grid.nnodes,
     }
 
-    chd = Chd(dims=dims, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+    chd = Chd(dims=dims, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
     result = chd.to_dict()
 
-    assert "head" in result
-    assert result["head"][0, 0] == 1.0
-    assert result["head"][0, 99] == 0.0
+    assert "stress_period_data" in result
+    assert 0 in result["stress_period_data"]
+    assert result["stress_period_data"][0]["head"][0] == 1.0
+    assert result["stress_period_data"][0]["head"][1] == 0.0
 
     npf = Npf(dims=dims, k=5.0)
     result = npf.to_dict()
@@ -395,7 +395,6 @@ def test_to_dict_fields():
     assert np.array_equal(result["k"], np.full(100, 5.0))
 
 
-@pytest.mark.skip(reason="to_dict() uses xattree_asdict; misses attrs fields for codegen v2")
 def test_to_dict_blocks():
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10, ncol=10)
@@ -410,7 +409,7 @@ def test_to_dict_blocks():
     chd = Chd(
         dims=dims,
         print_flows=True,
-        head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
     )
     result = chd.to_dict(blocks=True)
 
@@ -418,9 +417,9 @@ def test_to_dict_blocks():
     assert "period" in result
     assert "print_flows" in result["options"]
     assert result["options"]["print_flows"] is True
-    assert "head" in result["period"]
-    assert result["period"]["head"][0, 0] == 1.0
-    assert result["period"]["head"][0, 99] == 0.0
+    assert "stress_period_data" in result["period"]
+    assert result["period"]["stress_period_data"][0]["head"][0] == 1.0
+    assert result["period"]["stress_period_data"][0]["head"][1] == 0.0
 
     npf = Npf(dims=dims, save_flows=True, k=2.0)
     result = npf.to_dict(blocks=True)
@@ -433,7 +432,6 @@ def test_to_dict_blocks():
     assert np.array_equal(result["griddata"]["k"], np.full(100, 2.0))
 
 
-@pytest.mark.skip(reason="to_dict() uses xattree_asdict; misses attrs fields for v2 Dis packages")
 def test_to_dict_on_component():
     dims = {
         "nper": 1,
@@ -468,7 +466,6 @@ def test_to_dict_on_context():
     assert "tdis" in result
 
 
-@pytest.mark.skip(reason="to_dict() uses xattree_asdict; misses attrs fields for v2 Dis packages")
 def test_to_dict_with_strict_excludes_fields_without_block_metadata():
     dims = {
         "nper": 1,
@@ -497,7 +494,6 @@ def test_tdis_from_timestamps():
     np.testing.assert_array_equal(tdis.tsmult, [1.2, 1.2])
 
 
-@pytest.mark.skip(reason="Tdis.to_xarray() via xattree DataTree not available after v2 migration")
 def test_to_xarray_on_component():
     tdis = Tdis.from_timestamps(["2020-01-01", "2020-01-05", "2020-01-15"], nstp=5, tsmult=1.2)
     ds = tdis.to_xarray()
@@ -507,7 +503,6 @@ def test_to_xarray_on_component():
     assert ds.attrs["start_date_time"] == pd.Timestamp("2020-01-01")
 
 
-@pytest.mark.skip(reason="Tdis.to_xarray() via xattree DataTree not available after v2 migration")
 def test_to_xarray_on_context(function_tmpdir):
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     ims = Ims(
@@ -1108,7 +1103,6 @@ def test_ugrid_from_dis_factory():
     assert ugrid.n_node == (nrow + 1) * (ncol + 1)
 
 
-@pytest.mark.skip(reason="xugrid expects xr.DataArray; Disv now stores raw numpy arrays")
 def test_ugrid_from_disv_factory():
     """Test the from_dis() factory method."""
     import xugrid
@@ -1211,15 +1205,13 @@ def test_ugrid_from_disv_factory():
     assert ugrid.n_face == ncpl
     assert ugrid.n_node == nvert
 
-    udata = xugrid.UgridDataArray(dis.top, grid=ugrid)
+    udata = xugrid.UgridDataArray(xr.DataArray(dis.top, dims=(ugrid.face_dimension,)), grid=ugrid)
 
-    udataset = xugrid.UgridDataset(dis.data.dataset, grids=ugrid)
+    face_ds = xr.Dataset({"top": (ugrid.face_dimension, dis.top)})
+    udataset = xugrid.UgridDataset(face_ds, grids=ugrid)
 
-    # udata.to_netcdf("./udata.nc")
     # drop global attributes, or filter?
     uds = udataset.drop_attrs()
-    # drop objects that need serialization
-    uds = uds.drop_vars(["cell2ddata"])
     # uds.to_netcdf("./udataset.nc")
 
 

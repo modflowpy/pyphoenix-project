@@ -51,6 +51,17 @@ class Simulation(Context):
         """Return a `Time` object describing the simulation's time discretization."""
         return self.tdis.to_time()
 
+    def to_xarray(self):
+        """DataTree with Tdis data merged into root dataset."""
+        tree = super().to_xarray()
+        try:
+            tdis_ds = self.tdis.to_xarray()
+            result = tree.copy(deep=True)
+            result.update(tdis_ds)
+            return result
+        except Exception:
+            return tree
+
     def run(self, exe: str | PathLike = "mf6", verbose: bool = False) -> None:
         """Run the simulation using the given executable."""
         with cd(self.workspace):

@@ -6,7 +6,6 @@ using real flopy4 components.
 """
 
 import numpy as np
-import pytest
 import sparse
 import xarray as xr
 
@@ -311,11 +310,6 @@ class TestChdComponent:
         assert float(chd._stress_period_data[0]["head"][0]) == 1.0
         assert float(chd._stress_period_data[5]["head"][0]) == 2.0
 
-    @pytest.mark.skip(reason="Wildcard '*' key is not supported by codegen v2 Chd API")
-    def test_chd_with_star_key(self):
-        """Test CHD with '*' key for all stress periods."""
-        pass
-
 
 class TestRchComponent:
     """Test structure_array with Rch component (recharge)."""
@@ -333,11 +327,6 @@ class TestRchComponent:
         assert set(rch._stress_period_data.keys()) == {0, 1}
         assert float(rch._stress_period_data[0]["recharge"][0]) == 0.004
         assert float(rch._stress_period_data[1]["recharge"][0]) == 0.002
-
-    @pytest.mark.skip(reason="Old xattree scalar-per-period API not supported by codegen v2 Rch")
-    def test_rch_with_scalar_dict(self):
-        """Old xattree API: scalar recharge per period broadcast to all nodes."""
-        pass
 
 
 class TestSparseArrays:
@@ -440,19 +429,3 @@ class TestDataFrameIntegration:
         cellid = df.iloc[0]["cellid"]
         assert isinstance(cellid, (tuple, list))
         assert tuple(cellid) == (0, 2, 3)
-
-    @pytest.mark.skip(
-        reason="DataFrame → codegen v2 constructor round-trip not yet implemented "
-        "(to_dataframe() works; Chd(head=df) is old xattree API)"
-    )
-    def test_dataframe_roundtrip_chd_structured(self):
-        """Old xattree: Chd(head={...}) -> stress_period_data DataFrame -> Chd(head=df)."""
-        pass
-
-    @pytest.mark.skip(reason="DataFrame → codegen v2 constructor round-trip not yet implemented")
-    def test_dataframe_roundtrip_chd_unstructured(self):
-        pass
-
-    @pytest.mark.skip(reason="Wildcard '*' key is not supported by codegen v2 Chd API")
-    def test_dataframe_with_star_key(self):
-        pass
