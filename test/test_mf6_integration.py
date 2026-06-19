@@ -1550,9 +1550,9 @@ def test_gwf_buy(function_tmpdir):
     assert gwt_name in content
     assert "conc" in content
     # Verify row format: all five columns on one line (irhospec drhodc crhoref modelname auxspeciesname)  # noqa: E501
-    assert any(
-        gwt_name in line and "conc" in line for line in content.splitlines()
-    ), "PACKAGEDATA row should have all columns on one line"
+    assert any(gwt_name in line and "conc" in line for line in content.splitlines()), (
+        "PACKAGEDATA row should have all columns on one line"
+    )
 
 
 def test_gwf_vsc(function_tmpdir):
@@ -1645,9 +1645,9 @@ def test_gwf_vsc(function_tmpdir):
     assert gwe_name in content
     assert "temperature" in content
     # Verify row format: all five columns on one line (iviscspec dviscdc cviscref modelname auxspeciesname)  # noqa: E501
-    assert any(
-        gwe_name in line and "temperature" in line for line in content.splitlines()
-    ), "PACKAGEDATA row should have all columns on one line"
+    assert any(gwe_name in line and "temperature" in line for line in content.splitlines()), (
+        "PACKAGEDATA row should have all columns on one line"
+    )
     assert Path(function_tmpdir, f"{gwe_name}.ctp").is_file()
 
 

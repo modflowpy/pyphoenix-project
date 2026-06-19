@@ -241,8 +241,7 @@ class Package(Component, ABC):
                 import dask.array as _da
             except ImportError:
                 raise ImportError(
-                    "dask is required for chunked loading; "
-                    "install with 'pip install dask[array]'"
+                    "dask is required for chunked loading; install with 'pip install dask[array]'"
                 ) from None
             import attrs as _attrs
 

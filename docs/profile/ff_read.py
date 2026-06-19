@@ -100,7 +100,7 @@ def main():
     print(f"{'─' * 60}")
 
     sweep_results = sweep_chunks(
-        fn_factory=lambda cs: (lambda: open_hds(HDS, GRB, time_chunks=cs).compute()),
+        fn_factory=lambda cs: lambda: open_hds(HDS, GRB, time_chunks=cs).compute(),
         chunk_sizes=chunk_sizes,
         label_prefix="hds  full compute",
         n=max(N, 3),
