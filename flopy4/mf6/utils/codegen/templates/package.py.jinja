@@ -12,12 +12,6 @@
 {% for line in spec.imports.flopy4 %}
 {{ line }}
 {% endfor %}
-{% if spec.imports.get("post_imports") %}
-
-{% for line in spec.imports.get("post_imports") %}
-{{ line }}
-{% endfor %}
-{% endif %}
 
 
 {% if spec.use_new_codegen %}

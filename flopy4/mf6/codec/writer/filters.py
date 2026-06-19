@@ -19,15 +19,20 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     """
     Determine how an array should be represented in MF6 input.
     Options are "constant", "internal", or "external". If the
-    array dask-backed, assumed it's big and return "external".
-    Otherwise there is no materialization cost to check if all
-    values are the same, so return "constant" or "internal" as
-    appropriate.
+    array is dask-backed, skip the constant check (would trigger
+    compute) and route to internal — the writer streams it
+    chunk-by-chunk via array2chunks without full materialization.
+    For numpy arrays there is no materialization cost to check if
+    all values are the same, so return "constant" or "internal"
+    as appropriate.
     """
     if netcdf:
         return "netcdf"
     if hasattr(value.data, "blocks"):
-        return "external"
+        # Dask-backed: stream as internal, never materialize to check constant.
+        if "nlay" in value.dims:
+            return "layered internal"
+        return "internal"
     if value.max() == value.min():
         return "constant"
     if "nlay" in value.dims:

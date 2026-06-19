@@ -266,6 +266,11 @@ def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
                     v = int(vrow[1]) if is_int else float(vrow[1])
                     layers.append(np.full(ncpl, v))
                 else:
+                    if vrow and str(vrow[0]).upper() == "INTERNAL":
+                        if i >= len(rows):
+                            break
+                        vrow = rows[i]
+                        i += 1
                     layers.append(np.array(vrow, dtype=np.int64 if is_int else np.float64))
             result[f.name] = np.concatenate(layers).astype(np.int64 if is_int else np.float64)
         else:
@@ -277,6 +282,11 @@ def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
                 v = int(vrow[1]) if is_int else float(vrow[1])
                 result[f.name] = np.full(nodes, v, dtype=np.int64 if is_int else np.float64)
             else:
+                if vrow and str(vrow[0]).upper() == "INTERNAL":
+                    if i >= len(rows):
+                        break
+                    vrow = rows[i]
+                    i += 1
                 result[f.name] = np.array(vrow, dtype=np.int64 if is_int else np.float64)
 
     return result

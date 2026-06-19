@@ -287,3 +287,234 @@ def test_npf_chunked_roundtrip_write(npf_file, tmp_path):
     assert np.allclose(npf2.k, 2.5)
     assert np.allclose(npf2.k33, 0.25)
     assert np.all(npf2.icelltype == 0)
+
+
+# ---------------------------------------------------------------------------
+# INTERNAL (non-CONSTANT) arrays through dask round-trip
+# ---------------------------------------------------------------------------
+
+DIMS_3L_25 = {"nlay": 3, "nodes": 75}
+
+
+@pytest.fixture()
+def npf_internal_file(tmp_path) -> Path:
+    """NPF with INTERNAL array data (real per-cell values, not CONSTANT)."""
+    k_vals = " ".join(str(float(i + 1)) for i in range(75))
+    content = textwrap.dedent(f"""\
+        BEGIN OPTIONS
+        END OPTIONS
+        BEGIN GRIDDATA
+         K
+          INTERNAL
+            {k_vals}
+         ICELLTYPE
+          CONSTANT 1
+        END GRIDDATA
+    """)
+    p = tmp_path / "npf_internal.npf"
+    p.write_text(content)
+    return p
+
+
+def test_load_internal_array_chunked(npf_internal_file):
+    """INTERNAL arrays (non-constant) load correctly as dask arrays."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.npf import Npf
+
+    npf = Npf.load(npf_internal_file, dims=DIMS_3L_25, chunks="auto")
+    assert isinstance(npf.k, da.Array)
+    assert npf.k.shape == (75,)
+    k = npf.k.compute()
+    assert k[0] == 1.0
+    assert k[74] == 75.0
+    assert npf.k.npartitions == 3
+
+
+def test_internal_array_chunked_roundtrip_write(npf_internal_file):
+    """INTERNAL dask arrays write correctly (values preserved through compute)."""
+    pytest.importorskip("dask.array")
+    from flopy4.mf6.codec import dumps
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter import COMPONENT_CONVERTER
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.npf import Npf
+
+    npf = Npf.load(npf_internal_file, dims=DIMS_3L_25, chunks="auto")
+    text = dumps(COMPONENT_CONVERTER.unstructure(npf))
+    assert "INTERNAL" in text
+
+    raw2 = loads(text)
+    npf2 = structure_component(raw2, Npf, dims=DIMS_3L_25)
+    assert npf2.k[0] == 1.0
+    assert npf2.k[74] == 75.0
+
+
+# ---------------------------------------------------------------------------
+# to_dataarray() and to_xarray() laziness with dask
+# ---------------------------------------------------------------------------
+
+
+def test_to_dataarray_preserves_dask(npf_internal_file):
+    """to_dataarray() wraps a dask array without computing."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.npf import Npf
+
+    npf = Npf.load(npf_internal_file, dims=DIMS_3L_25, chunks="auto")
+    xda = npf.to_dataarray("k")
+    assert isinstance(xda.data, da.Array), "DataArray should wrap a dask array"
+    assert xda.dims == ("layer", "face")
+    assert xda.shape == (3, 25)
+
+
+def test_to_xarray_preserves_dask(npf_internal_file):
+    """to_xarray() returns a Dataset of lazy dask-backed DataArrays."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.npf import Npf
+
+    npf = Npf.load(npf_internal_file, dims=DIMS_3L_25, chunks="auto")
+    ds = npf.to_xarray()
+    assert "k" in ds
+    assert isinstance(ds["k"].data, da.Array)
+    assert "icelltype" in ds
+    assert isinstance(ds["icelltype"].data, da.Array)
+
+
+# ---------------------------------------------------------------------------
+# chunks=int
+# ---------------------------------------------------------------------------
+
+
+def test_chunks_int_splits_correctly(npf_internal_file):
+    """chunks=int produces approximate element-count chunks."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.npf import Npf
+
+    # 75 nodes, 3 layers, ncpl=25. chunks=30 → chunk_shape=(1, 25) since
+    # max(1, 30//25)=1 → same as auto for this grid.
+    npf = Npf.load(npf_internal_file, dims=DIMS_3L_25, chunks=30)
+    assert isinstance(npf.k, da.Array)
+    assert npf.k.shape == (75,)
+    assert np.allclose(npf.k.compute(), np.arange(1, 76, dtype=np.float64))
+
+
+# ---------------------------------------------------------------------------
+# IC package — single griddata field
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def ic_file(tmp_path) -> Path:
+    """IC file with INTERNAL strt data for 3-layer 25-cell grid."""
+    strt_vals = " ".join(str(100.0 - i * 0.1) for i in range(75))
+    content = textwrap.dedent(f"""\
+        BEGIN OPTIONS
+        END OPTIONS
+        BEGIN GRIDDATA
+         STRT
+          INTERNAL
+            {strt_vals}
+        END GRIDDATA
+    """)
+    p = tmp_path / "model.ic"
+    p.write_text(content)
+    return p
+
+
+def test_ic_chunked_load(ic_file):
+    """IC.load(chunks='auto') produces dask array for strt."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.ic import Ic
+
+    ic = Ic.load(ic_file, dims=DIMS_3L_25, chunks="auto")
+    assert isinstance(ic.strt, da.Array)
+    assert ic.strt.shape == (75,)
+    assert ic.strt.npartitions == 3
+    assert np.isclose(ic.strt.compute()[0], 100.0)
+
+
+# ---------------------------------------------------------------------------
+# STO — mixed int + float dtypes
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def sto_file(tmp_path) -> Path:
+    """STO file with mixed int (iconvert) and float (ss, sy) griddata."""
+    content = textwrap.dedent("""\
+        BEGIN OPTIONS
+          STORAGECOEFFICIENT
+        END OPTIONS
+        BEGIN GRIDDATA
+         ICONVERT
+          CONSTANT 1
+         SS
+          CONSTANT 1.0e-5
+         SY
+          CONSTANT 0.15
+        END GRIDDATA
+    """)
+    p = tmp_path / "model.sto"
+    p.write_text(content)
+    return p
+
+
+def test_sto_chunked_mixed_dtypes(sto_file):
+    """STO chunked load handles both int and float griddata fields."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.sto import Sto
+
+    sto = Sto.load(sto_file, dims=DIMS_3L_25, chunks="auto")
+    assert isinstance(sto.iconvert, da.Array)
+    assert isinstance(sto.ss, da.Array)
+    assert isinstance(sto.sy, da.Array)
+    assert sto.iconvert.dtype == np.int64
+    assert sto.ss.dtype == np.float64
+    assert np.all(sto.iconvert.compute() == 1)
+    assert np.allclose(sto.ss.compute(), 1.0e-5)
+    assert np.allclose(sto.sy.compute(), 0.15)
+
+
+# ---------------------------------------------------------------------------
+# G/A period fields: chunks= correctly ignored
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def rcha_file(tmp_path) -> Path:
+    """Minimal RCHA file with 2 periods of READARRAY data."""
+    rch_vals = " ".join(str(0.001) for _ in range(25))
+    content = textwrap.dedent(f"""\
+        BEGIN OPTIONS
+          READASARRAYS
+        END OPTIONS
+        BEGIN PERIOD 1
+         RECHARGE
+          INTERNAL
+            {rch_vals}
+        END PERIOD
+        BEGIN PERIOD 2
+         RECHARGE
+          INTERNAL
+            {rch_vals}
+        END PERIOD
+    """)
+    p = tmp_path / "model.rcha"
+    p.write_text(content)
+    return p
+
+
+def test_rcha_chunks_ignored_for_period_fields(rcha_file):
+    """chunks= is accepted but period READARRAY fields are not loaded via Package.load().
+
+    G/A period ingress via Package.load() is not yet implemented (see §9.5 of
+    dask1.scope.md). This test verifies the call doesn't crash and that the
+    chunks parameter doesn't cause errors on packages with period-only data.
+    """
+    pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    # Should not raise — chunks= is accepted even though no griddata to chunk
+    rcha = Rcha.load(rcha_file, dims={"nlay": 1, "nodes": 25}, chunks="auto")
+    assert isinstance(rcha, Rcha)
+    # Period READARRAY fields are not populated by Package.load() (deferred)
+    assert rcha.recharge is None

@@ -30,6 +30,7 @@ HERE = Path(__file__).parent
 SCRIPTS = [
     ("ff_write.py", "frenchman-flat writes", False),
     ("ff_read.py", "frenchman-flat reads", False),
+    ("chunked_profile.py", "chunked dask streaming write", False),
     ("test1000_write.py", "test1000_751x751", True),
     ("test1005_write.py", "test1005_secp", True),
 ]

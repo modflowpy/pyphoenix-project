@@ -5,8 +5,8 @@ from typing import ClassVar, Optional
 import attrs
 import numpy as np
 
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.utils import to_path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -64,7 +64,7 @@ class Ghb(Package):
     )
     ts_file: Optional[Path] = attrs.field(
         default=None,
-        converter=lambda v: None if v is None else to_path(v),
+        converter=_optional_path,
         metadata={
             "dfn_block": "options",
             "dfn_type": "record",
@@ -74,7 +74,7 @@ class Ghb(Package):
     )
     obs_file: Optional[Path] = attrs.field(
         default=None,
-        converter=lambda v: None if v is None else to_path(v),
+        converter=_optional_path,
         metadata={
             "dfn_block": "options",
             "dfn_type": "record",

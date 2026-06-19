@@ -49,6 +49,14 @@ def test_ff_read_memory():
     assert_ok(run("ff_read.py", ["--runs", "1", "--memory"]))
 
 
+def test_chunked_profile_basic():
+    assert_ok(run("chunked_profile.py", ["--runs", "1", "--small"]))
+
+
+def test_chunked_profile_memory():
+    assert_ok(run("chunked_profile.py", ["--runs", "1", "--small", "--memory"]))
+
+
 def test_ff_write_flopy4_only():
     assert_ok(run("ff_write.py", ["--runs", "1", "--flopy4-only"]))
 

@@ -372,6 +372,7 @@ def _ml_field(
     metadata: dict | None = None,
     *,
     alias: str | None = None,
+    converter: str | None = None,
     repr_: bool = True,
     type_ignore: str | None = None,
 ) -> str:
@@ -385,6 +386,8 @@ def _ml_field(
     if alias is not None:
         lines.append(f'        alias="{alias}",')
     lines.append(f"        default={default},")
+    if converter is not None:
+        lines.append(f"        converter={converter},")
     if not repr_:
         lines.append("        repr=False,")
     if metadata is not None:
@@ -666,16 +669,13 @@ def _new_codegen_imports(
         typing_parts.append("ClassVar")
     if has_optional:
         typing_parts.append("Optional")
-    if has_arraylike:
-        typing_parts.append("TypeAlias")
-        typing_parts.append("Union")
     if typing_parts:
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
     third_party: list[str] = ["import attrs"]
     if has_array or has_period_schema:
         third_party.append("import numpy as np")
-    if has_array or has_arraylike:
+    if has_array:
         third_party.append("from numpy.typing import NDArray")
 
     _base_imports = {
@@ -686,20 +686,16 @@ def _new_codegen_imports(
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
-    if has_file_records:
-        flopy4.append("from flopy4.utils import to_path")
+    _types_parts: list[str] = []
+    if has_arraylike:
+        _types_parts.append("ArrayLike")
+    if has_file_records or has_injected_paths:
+        _types_parts.append("_optional_path")
+    if _types_parts:
+        flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
     flopy4.sort()
 
-    result: dict[str, list[str]] = {"stdlib": stdlib, "third_party": third_party, "flopy4": flopy4}
-    if has_arraylike:
-        result["post_imports"] = [
-            "try:",
-            "    import dask.array as da",
-            "    ArrayLike: TypeAlias = Union[NDArray, da.Array]",
-            "except ImportError:",
-            "    ArrayLike: TypeAlias = NDArray  # type: ignore[misc, no-redef]  # dask optional",
-        ]
-    return result
+    return {"stdlib": stdlib, "third_party": third_party, "flopy4": flopy4}
 
 
 _SLN_PREFIX = "sln"
@@ -856,7 +852,7 @@ def build_component_spec(
             "optional": True,
             "inout": inout,
         }
-        spec_call_str = _ml_field(metadata=_path_meta)
+        spec_call_str = _ml_field(metadata=_path_meta, converter="_optional_path")
         extra_specs.append(
             FieldSpec(
                 dfn_name=entry["name"],

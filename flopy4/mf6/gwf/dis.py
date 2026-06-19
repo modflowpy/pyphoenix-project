@@ -5,10 +5,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.utils.grid import StructuredGrid
 from flopy4.mf6.utl.ncf import Ncf
-from flopy4.utils import to_path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -43,7 +43,7 @@ class Dis(DisBase):
     )
     ncf6_filerecord: Optional[Path] = attrs.field(
         default=None,
-        converter=lambda v: None if v is None else to_path(v),
+        converter=_optional_path,
         metadata={
             "dfn_block": "options",
             "dfn_type": "record",

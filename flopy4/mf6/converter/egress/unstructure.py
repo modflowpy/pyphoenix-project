@@ -121,20 +121,19 @@ def _recarray_to_rows(arr: np.recarray, schema: list[dict]) -> list[tuple]:
 def _wrap_array(value: Any) -> xr.DataArray:
     """Wrap a numpy array, scalar, or string default as an xr.DataArray.
 
-    Dask arrays are computed eagerly so the writer can inspect values and
-    choose CONSTANT vs INTERNAL without needing an external binary file.
+    Dask arrays are preserved as-is so the codec writer can stream them
+    chunk-by-chunk via array2chunks without materializing the full array.
     """
     if isinstance(value, xr.DataArray):
         return value
     if isinstance(value, np.ndarray):
         return xr.DataArray(value)
-    # Compute dask arrays to numpy before wrapping — the text writer needs
-    # concrete values to pick CONSTANT vs INTERNAL format.
+    # Preserve dask arrays — the writer streams them via array2chunks.
     try:
         import dask.array as _da
 
         if isinstance(value, _da.Array):
-            return xr.DataArray(value.compute())
+            return xr.DataArray(value)
     except ImportError:
         pass
     if isinstance(value, str):
@@ -278,7 +277,11 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
             if meta["shape"]:
                 # For layered arrays, reshape to (nlay, ncpl) with named dims
                 # so the writer can detect and emit LAYERED format.
-                if meta.get("layered") and isinstance(field_value, np.ndarray):
+                if (
+                    meta.get("layered")
+                    and hasattr(field_value, "reshape")
+                    and not isinstance(field_value, xr.DataArray)
+                ):
                     _get_dims = getattr(value, "get_dims", None)
                     _dims_d = _get_dims() if _get_dims else {}
                     _nlay = _dims_d.get("nlay", 0)

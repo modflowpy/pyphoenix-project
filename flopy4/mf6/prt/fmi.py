@@ -4,6 +4,7 @@ from typing import Optional
 
 import attrs
 
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 
 
@@ -19,6 +20,7 @@ class Fmi(Package):
     )
     gwfhead: Optional[Path] = attrs.field(
         default=None,
+        converter=_optional_path,
         metadata={
             "dfn_block": "packagedata",
             "dfn_type": "record",
@@ -28,6 +30,7 @@ class Fmi(Package):
     )
     gwfbudget: Optional[Path] = attrs.field(
         default=None,
+        converter=_optional_path,
         metadata={
             "dfn_block": "packagedata",
             "dfn_type": "record",
@@ -37,6 +40,7 @@ class Fmi(Package):
     )
     gwfspdis: Optional[Path] = attrs.field(
         default=None,
+        converter=_optional_path,
         metadata={
             "dfn_block": "packagedata",
             "dfn_type": "record",

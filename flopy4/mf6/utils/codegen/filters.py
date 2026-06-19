@@ -581,7 +581,7 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
     meta_lines.append("        },")
     converter_line = ""
     if is_file_record(f):
-        converter_line = "        converter=lambda v: None if v is None else to_path(v),\n"
+        converter_line = "        converter=_optional_path,\n"
     return (
         f"attrs.field(\n"
         f"        default={default},\n"
