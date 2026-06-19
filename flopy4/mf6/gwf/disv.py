@@ -85,6 +85,7 @@ class Disv(DisBase):
             "dfn_type": "double",
             "shape": ("ncpl",),
             "layered": False,
+            "netcdf": True,
         },
     )  # type: ignore[assignment]
     botm: NDArray[np.float64] = attrs.field(
@@ -94,6 +95,7 @@ class Disv(DisBase):
             "dfn_type": "double",
             "shape": ("nodes",),
             "layered": True,
+            "netcdf": True,
         },
     )  # type: ignore[assignment]
     idomain: Optional[NDArray[np.int64]] = attrs.field(
@@ -103,6 +105,7 @@ class Disv(DisBase):
             "dfn_type": "integer",
             "shape": ("nodes",),
             "layered": True,
+            "netcdf": True,
         },
     )  # type: ignore[assignment]
     # User-facing parallel arrays for vertices.
@@ -149,33 +152,11 @@ class Disv(DisBase):
                 )
                 rows.append(row)
             object.__setattr__(self, "cell2d", rows)
-        # Set derived dimensions on DisBase.
+        # Set derived dimensions.
         self.nodes = self.ncpl * self.nlay
         self.nrow = 0
         self.ncol = 0
-        # Coerce list/tuple griddata values to ndarray, then broadcast scalars.
-        import attrs as _attrs
-
-        fields = _attrs.fields(type(self))
-        dims = self.get_dims()
-        ncpl = dims.get("ncpl", 0)
-        nlay = dims.get("nlay", 1)
-        for f in fields:
-            if f.metadata.get("dfn_block") != "griddata":
-                continue
-            val = self.__dict__.get(f.name)
-            if val is None:
-                continue
-            dtype = self._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
-            if isinstance(val, (list, tuple)):
-                val = np.asarray(val, dtype=dtype)
-                self.__dict__[f.name] = val
-            if isinstance(val, np.ndarray):
-                if f.metadata.get("layered") and val.size == nlay and nlay > 0 and ncpl > 0:
-                    self.__dict__[f.name] = np.repeat(val, ncpl).astype(dtype)
-                elif val.ndim > 1:
-                    self.__dict__[f.name] = val.ravel()
-        self._broadcast_griddata(fields, dims)
+        self._coerce_griddata()
         super().__attrs_post_init__()
 
     def get_dims(self) -> dict[str, int]:

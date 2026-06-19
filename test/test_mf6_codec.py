@@ -288,6 +288,50 @@ def test_dumps_chd():
     pprint(loaded)
 
 
+@pytest.mark.parametrize(
+    "style",
+    ["list_of_tuples", "recarray", "dict_of_columns", "list_of_dicts"],
+)
+def test_chd_spd_input_styles(style):
+    """All SPD input styles produce identical MF6 output."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.chd import Chd
+
+    # Build SPD in each style for the same 2-cell boundary
+    if style == "list_of_tuples":
+        spd = {0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]}
+    elif style == "recarray":
+        dtype = np.dtype([("cellid", np.int64, (3,)), ("head", "O")])
+        arr = np.zeros(2, dtype=dtype)
+        arr["cellid"][0] = (0, 0, 0)
+        arr["cellid"][1] = (0, 9, 9)
+        arr["head"][0] = 1.0
+        arr["head"][1] = 0.0
+        spd = {0: arr.view(np.recarray)}
+    elif style == "dict_of_columns":
+        spd = {0: {"cellid": [(0, 0, 0), (0, 9, 9)], "head": [1.0, 0.0]}}
+    elif style == "list_of_dicts":
+        spd = {0: [{"cellid": (0, 0, 0), "head": 1.0}, {"cellid": (0, 9, 9), "head": 0.0}]}
+
+    chd = Chd(stress_period_data=spd)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+
+    # All styles must produce the same period block
+    assert "BEGIN PERIOD 1" in dumped
+    assert "1 1 1 1.0" in dumped
+    assert "1 10 10 0.0" in dumped
+
+    # Round-trip: reload and verify recarray contents
+    loaded = loads(dumped)
+    chd2 = structure_component(loaded, Chd)
+    rec = chd2.stress_period_data[0]
+    assert len(rec) == 2
+    assert tuple(rec["cellid"][0]) == (0, 0, 0)
+    assert float(rec["head"][0]) == 1.0
+    assert tuple(rec["cellid"][1]) == (0, 9, 9)
+    assert float(rec["head"][1]) == 0.0
+
+
 def test_dumps_chdg():
     """Chdg (G-variant CHD) uses READARRAY period arrays (head per stress period)."""
     from flopy4.mf6.gwf import Chdg

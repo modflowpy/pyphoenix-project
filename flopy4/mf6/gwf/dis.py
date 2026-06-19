@@ -119,30 +119,7 @@ class Dis(DisBase):
         self.nodes = self.ncol * self.nrow * self.nlay
         self.ncpl = self.ncol * self.nrow
         self.nvert = (self.ncol + 1) * (self.nrow + 1)
-        # Coerce list/tuple griddata values to ndarray, then broadcast scalars.
-        import attrs as _attrs
-
-        fields = _attrs.fields(type(self))
-        dims = self.get_dims()
-        ncpl = dims.get("ncpl", 0)
-        nlay = dims.get("nlay", 1)
-        for f in fields:
-            if f.metadata.get("dfn_block") != "griddata":
-                continue
-            val = self.__dict__.get(f.name)
-            if val is None:
-                continue
-            dtype = self._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
-            if isinstance(val, (list, tuple)):
-                val = np.asarray(val, dtype=dtype)
-                self.__dict__[f.name] = val
-            if isinstance(val, np.ndarray):
-                # Per-layer scalars: e.g. botm=[-10, -20] for 2 layers → expand
-                if f.metadata.get("layered") and val.size == nlay and nlay > 0 and ncpl > 0:
-                    self.__dict__[f.name] = np.repeat(val, ncpl).astype(dtype)
-                elif val.ndim > 1:
-                    self.__dict__[f.name] = val.ravel()
-        self._broadcast_griddata(fields, dims)
+        self._coerce_griddata()
         super().__attrs_post_init__()
 
     def get_dims(self) -> dict[str, int]:

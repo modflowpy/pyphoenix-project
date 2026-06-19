@@ -9,7 +9,6 @@ import xarray as xr
 from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
@@ -282,7 +281,7 @@ def test_init_sim_explicit_dims():
 
 
 def test_init_big_sim():
-    # if size over threshold, arrays should be sparse
+    # Large grid: verify tree attachment and that recarray SPD doesn't allocate full grid
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
     grid = StructuredGrid(nlay=1, nrow=10000, ncol=10000)
     sim = Simulation(tdis=time)
@@ -290,7 +289,10 @@ def test_init_big_sim():
     ic = Ic(parent=gwf)
     oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, head={"*": {(0, 0, 0): 1.0, (0, 9999, 9999): 0.0}})
+    chd = Chd(
+        parent=gwf,
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9999, 9999), 0.0]]},
+    )
 
     assert sim.models["gwf"] is gwf
     assert isinstance(sim.data, DataTree)
@@ -299,19 +301,17 @@ def test_init_big_sim():
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(100000000))
-    assert np.array_equal(sim.models["gwf"].npf.data.k, np.ones(100000000))
-    assert chd.head[0, 0].item() == 1.0
-    assert chd.head[0, 99999999].item() == 0.0
-    assert np.array_equal(
-        chd.head[0, 1:99999999].data.todense(), np.full((99999998,), FILL_DNODATA)
-    )
-    assert np.array_equal(chd.head.data.todense(), chd.data.head.data.todense())
-    assert np.array_equal(
-        chd.head.data.todense(),
-        sim.models["gwf"].chd[0].data.head.data.todense(),
-        equal_nan=True,
-    )
+
+    # Without explicit dims, griddata scalars stay compact (no 100M allocation)
+    assert sim.models["gwf"].npf.k == 1.0
+
+    # SPD is a recarray with only 2 rows — no full-grid allocation
+    spd = chd.stress_period_data[0]
+    assert len(spd) == 2
+    assert tuple(spd["cellid"][0]) == (0, 0, 0)
+    assert float(spd["head"][0]) == 1.0
+    assert tuple(spd["cellid"][1]) == (0, 9999, 9999)
+    assert float(spd["head"][1]) == 0.0
 
     # test dictionary access/deletion
     assert gwf["npf"] is npf

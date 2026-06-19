@@ -173,22 +173,24 @@ Works in two modes:
 
 ## 4. Current state
 
-### Test results (as of 2026-06-18)
+### Test results (as of 2026-06-19)
 
-Full suite run: `PATH=/home/mreon/.clone/usgs/modflow6/bin:$PATH pytest test -k "not test_init_big_sim"` — **615 passed, 42 skipped, 0 failed**.
+Full suite run: `PATH=/home/mjreno/.clone/usgs/modflow6/bin:$PATH pytest test` — **620 passed, 42 skipped, 0 failed**.
+
+`MF6_EXTENDED=1 pytest test -k circle` — **passes** (NetCDF input round-trip on DISV mesh).
 
 **Ruff:** 9 E501 errors in generated files only (see §3.7). All hand-written files clean.
 
-**Mypy:** 0 errors in `flopy4` and `test` (132 source files + 23 test files checked).
+**Mypy:** 0 errors in `flopy4` and `test` (155 source files checked).
 
 | Test file | Passed | Skipped | Notes |
 |---|---|---|---|
-| `test/test_mf6_codec.py` | 93 | 0 | All fixed as of 2026-06-17 |
+| `test/test_mf6_codec.py` | 97 | 0 | +4 parametrized SPD input style tests |
 | `test/test_mf6_integration.py` | ~90 | 2 | RCHA, EVTA readarray-period write path |
-| `test/test_mf6_component.py` | varies | 4 | 2 unrelated TODOs; 2 for `to_dict()` (xattree_asdict misses attrs fields) |
+| `test/test_mf6_component.py` | varies | 4 | 2 unrelated TODOs; 2 for `to_dict()` (xattree_asdict misses attrs fields); `test_init_big_sim` fixed |
 | `test/test_converter_structure.py` | 30 | 5 | Wildcard Chd, old scalar-period Rch, DataFrame round-trip |
 | `test/test_dataframe_api.py` | 6 | 22 | DataFrame setter not implemented; G/A old API |
-| `test/test_examples.py` | 4 | 0 | circle, quickstart, frenchman-flat, twri; NetCDF sections guarded by `MF6_EXTENDED` env var |
+| `test/test_examples.py` | 4 | 0 | circle, quickstart, frenchman-flat, twri; NetCDF input passes with `MF6_EXTENDED=1` |
 | `test/test_mf6_adapters.py` | varies | 0 | laytyp and has_stress_period_data fixed for codegen v2 |
 | `test/test_netcdf_cf_conventions.py` | varies | 2 | osgeo.gdal not in env |
 | `test/test_chunked.py` | 17 | 0 | eager + chunked load, Package.load() classmethod, dims_from_grb, round-trip write |
@@ -328,7 +330,7 @@ The long-term path is:
 
 `to_datatree()` is memory and compute efficient: `xr.DataTree` shares array references with the underlying `xr.Dataset` (no copies), lazy dask arrays remain deferred, and construction overhead is O(1) metadata work.
 
-**Current test baseline (2026-06-18):** 615 passed, 42 skipped, 0 failed (excluding `test_init_big_sim` which uses the removed `Chd(head=...)` xattree API).
+**Current test baseline (2026-06-19):** 620 passed, 42 skipped, 0 failed.
 
 - 22 skipped in `test_dataframe_api.py` (DataFrame setter not implemented; G/A variant old xattree API)
 - 5 skipped in `test_converter_structure.py` (wildcard Chd API, old scalar-period Rch, DataFrame round-trip)
@@ -336,7 +338,26 @@ The long-term path is:
 - 2 skipped in `test_mf6_integration.py` (RCHA/EVTA array-period write path not yet implemented)
 - 2 skipped in `test_netcdf_cf_conventions.py` (missing `osgeo.gdal`)
 - 1 skipped in `test_mf6_adapters.py` (marked refactor)
-- `docs/profile/ff_read.py` requires pre-built binary output files; its test in `test_profile_scripts.py` skips gracefully if they are absent but the chunk-sweep variants have not been exercised against real data
+- `test_init_big_sim` now passes (updated for codegen v2 API)
+- `docs/profile/ff_read.py` requires pre-built binary output files; its test in `test_profile_scripts.py` skips gracefully if they are absent
+
+### 9.7 Checkpoint 7: Dead code removal + cleanup (complete, 2026-06-19)
+
+Removed dead xattree package code paths from the converter, codec, and utilities.
+
+**Removed from `unstructure.py`:** `_hack_structured_grid_dims`, `_OC_SETTING_KEYWORDS`, `_is_emb_fill`, `_accumulate_embedded_keystring`, `_unstructure_period_keystring`, `_unstructure_period_bool`, `_hack_period_non_numeric`, `_unstructure_block_param`, `_unstructure_array_component`, `_LIST_BLOCK_NAMES`, `_SKIP_IF_EMPTY`, `XatSpec` import. Rewrote `_unstructure_component` as a slim model-level handler.
+
+**Removed from `structure.py`:** `structure_keyword`, unused `xatspec` variable.
+
+**Removed from `converter/__init__.py`:** `structure_array` / `unstructure_array` / `structure_keyword` exports; `xattree.has` factory hook; `is_codegen_v2` factory hook. Simplified to single `register_unstructure_hook(Component, unstructure_component)`.
+
+**Removed from `netcdf.py`:** `_is_codegen_v2`; `get_xatspec` fallback in `get_spec()`; non-v2 else branch in `from_model()`; dead imports.
+
+**Additional fixes:**
+- Added `"netcdf": True` to Disv/gwt-Dis/gwe-Dis/prt-Dis griddata fields (fixes NetCDF input for DISV).
+- Updated `test_init_big_sim` for codegen v2 API.
+- Added parametrized `test_chd_spd_input_styles` covering all 4 SPD input formats.
+- Refactored Dis griddata coercion into `DisBase._coerce_griddata()`, eliminating ~80 lines of duplication across 5 files.
 
 ### 9.3 ~~Dead code and template cleanup~~ (done)
 

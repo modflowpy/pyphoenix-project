@@ -10,13 +10,11 @@ from pydantic import (
     ValidationInfo,
     field_validator,
 )
-from xattree import asdict, get_xatspec
 
 from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import blocks_dict
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
@@ -51,15 +49,6 @@ def metadata(attribute, key: str):
     return None
 
 
-def _is_codegen_v2(package_cls) -> bool:
-    """True if this package was generated with codegen v2 (attrs + dfn_block metadata)."""
-    import attrs as _attrs
-
-    if not _attrs.has(package_cls):
-        return False
-    return any("dfn_block" in f.metadata for f in _attrs.fields(package_cls))
-
-
 def _pkgclass(package_name: str) -> Package:
     import flopy4
 
@@ -81,11 +70,9 @@ def multi_package(package_name: str) -> bool:
 
 
 def get_spec(package_name: str):
-    """Return an xatspec-compatible object for a package (old or codegen v2)."""
+    """Return an xatspec-compatible object for a codegen v2 package."""
     cls = _pkgclass(package_name)
-    if _is_codegen_v2(cls):
-        return _CodegenV2Spec(cls)
-    return get_xatspec(cls)  # type: ignore
+    return _CodegenV2Spec(cls)
 
 
 class _CodegenV2Spec:
@@ -250,55 +237,36 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 "params": [],
             }
 
-            if _is_codegen_v2(type(package)):
-                import attrs as _attrs
+            import attrs as _attrs
 
-                # compute total nodes for broadcasting scalars to full grid
-                _dis = getattr(model, "dis", None)
-                d = _dis.get_dims() if _dis is not None else {}
-                _nlay = d.get("nlay", 1)
-                if "nrow" in d and "ncol" in d:
-                    _nodes = _nlay * d["nrow"] * d["ncol"]
-                elif "ncpl" in d:
-                    _nodes = _nlay * d["ncpl"]
-                else:
-                    _nodes = d.get("nodes", _nlay)
-
-                for f in _attrs.fields(type(package)):
-                    block = f.metadata.get("dfn_block")
-                    if block == "griddata" and f.metadata.get("netcdf"):
-                        val = getattr(package, f.name)
-                        if val is None:
-                            continue
-                        arr = np.asarray(val, dtype=np.float64)
-                        # Only broadcast scalars to full grid for nodes-shaped fields
-                        shape_meta = f.metadata.get("shape", ())
-                        if "nodes" in shape_meta and arr.size < _nodes:
-                            arr = np.full(_nodes, float(arr.ravel()[0]))
-                        p["params"].append({"name": f.name, "data": arr})
-                    elif block == "period" and f.metadata.get("reader") == "readarray":
-                        val = getattr(package, f.name)
-                        if val is None:
-                            continue
-                        p["params"].append(
-                            {"name": f.name, "data": np.asarray(val, dtype=np.float64)}
-                        )
+            # compute total nodes for broadcasting scalars to full grid
+            _dis = getattr(model, "dis", None)
+            d = _dis.get_dims() if _dis is not None else {}
+            _nlay = d.get("nlay", 1)
+            if "nrow" in d and "ncol" in d:
+                _nodes = _nlay * d["nrow"] * d["ncol"]
+            elif "ncpl" in d:
+                _nodes = _nlay * d["ncpl"]
             else:
-                xatspec = get_xatspec(type(package))
-                data = asdict(package)
-                for block_name, block in blocks_dict(type(package)).items():
-                    if block_name != "griddata" and block_name != "period":
+                _nodes = d.get("nodes", _nlay)
+
+            for f in _attrs.fields(type(package)):
+                block = f.metadata.get("dfn_block")
+                if block == "griddata" and f.metadata.get("netcdf"):
+                    val = getattr(package, f.name)
+                    if val is None:
                         continue
-                    for field_name in block.keys():
-                        if (
-                            data[field_name] is None
-                            or field_name not in xatspec.arrays
-                            or not hasattr(xatspec.arrays[field_name], "metadata")
-                            or "netcdf" not in xatspec.arrays[field_name].metadata  # type: ignore
-                            or not xatspec.arrays[field_name].metadata["netcdf"]  # type: ignore
-                        ):
-                            continue
-                        p["params"].append({"name": field_name, "data": data[field_name].values})
+                    arr = np.asarray(val, dtype=np.float64)
+                    # Only broadcast scalars to full grid for nodes-shaped fields
+                    shape_meta = f.metadata.get("shape", ())
+                    if "nodes" in shape_meta and arr.size < _nodes:
+                        arr = np.full(_nodes, float(arr.ravel()[0]))
+                    p["params"].append({"name": f.name, "data": arr})
+                elif block == "period" and f.metadata.get("reader") == "readarray":
+                    val = getattr(package, f.name)
+                    if val is None:
+                        continue
+                    p["params"].append({"name": f.name, "data": np.asarray(val, dtype=np.float64)})
 
             if len(p["params"]) > 0:
                 packages.append(p)

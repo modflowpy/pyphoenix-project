@@ -14,10 +14,6 @@ from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.dimensions import DimensionResolver
 
 
-def structure_keyword(value, field) -> str | None:
-    return field.name if value else None
-
-
 def _inner_class_type(field_type) -> type | None:
     """If field_type is Optional[C] where C is an attrs inner-record class, return C."""
     args = get_args(field_type)
@@ -496,7 +492,6 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
         return _structure_codegen_v2(raw, cls, dims=dims)
 
     raw_lower = {k.lower(): v for k, v in raw.items()}
-    xatspec = get_xatspec(cls)
 
     # Build (name → attrs.Attribute) for init-eligibility checks
     all_attrs = {f.name: f for f in attrs.fields(cls)}
