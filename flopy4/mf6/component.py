@@ -80,6 +80,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         (like CHD, DRN, etc.) will have it automatically computed at
         initialization and updated when period arrays change.
         """
+        # Codegen v2 packages compute maxbound in Package.__attrs_post_init__
+        # via _init_period_dtype; skip the xattree metadata scan.
+        from flopy4.mf6.converter.egress.unstructure import has_dfn_metadata
+
+        if has_dfn_metadata(type(self)):
+            return
+
         # Check if component has a maxbound field and period block arrays
         component_fields = fields(self.__class__)
         has_maxbound = any(f.name == "maxbound" for f in component_fields)
@@ -201,40 +208,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     def to_xarray(self):
         """Flat xr.Dataset merging this component's DataTree dataset with any
         codegen v2 child packages that have griddata fields.
-
-        For codegen v2 packages (``@attrs.define``), ``self.data.dataset`` is
-        empty because griddata fields are stored in attrs ``__dict__``, not in
-        xattree's DataTree.  Use ``package.to_xarray()`` directly for a clean
-        xarray view of an individual package's griddata fields.
-        ``package.data`` returns the raw (empty) xattree DataTree node and is
-        not enriched for codegen v2 packages; see §9.2 of dask1.scope.md.
         """
-        import attrs as _attrs
         import xarray as _xr
 
         base = self.data.dataset  # type: ignore
-
-        # Codegen v2 packages store fields in attrs (not the DataTree), so
-        # self.data.dataset is empty for them.  Walk children and merge any
-        # that have dfn_block=="griddata" fields via their own to_xarray().
-        extra: list = []
-        try:
-            for _child in self.values():  # type: ignore
-                try:
-                    _fields = _attrs.fields(type(_child))
-                except _attrs.exceptions.NotAnAttrsClassError:
-                    continue
-                if not any(f.metadata.get("dfn_block") == "griddata" for f in _fields):
-                    continue
-                try:
-                    _ds = _child.to_xarray()
-                    if _ds is not None and len(_ds.data_vars) > 0:
-                        extra.append(_ds)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
+        extra = list(self._collect_child_griddata_datasets().values())
         if not extra:
             return base
         try:
@@ -243,3 +221,26 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             return merged
         except Exception:
             return base
+
+    def _collect_child_griddata_datasets(self) -> dict:
+        """Walk children and return {name: xr.Dataset} for v2 packages with griddata."""
+        import attrs as _attrs
+
+        result: dict = {}
+        try:
+            for name, child in (getattr(self, "children", None) or {}).items():
+                try:
+                    _fields = _attrs.fields(type(child))
+                except _attrs.exceptions.NotAnAttrsClassError:
+                    continue
+                if not any(f.metadata.get("dfn_block") == "griddata" for f in _fields):
+                    continue
+                try:
+                    ds = child.to_xarray()
+                    if ds is not None and hasattr(ds, "data_vars") and ds.data_vars:
+                        result[name] = ds
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return result

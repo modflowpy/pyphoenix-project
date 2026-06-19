@@ -30,7 +30,6 @@ from flopy4.mf6.utils.codegen.filters import (
     output_path,
     py_type,
     safe_name,
-    spec_call,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 
@@ -245,30 +244,6 @@ class TestFilters:
         )
         assert is_generatable(f)
 
-    @pytest.mark.parametrize(
-        "ftype, shape, check",
-        [
-            ("keyword", None, lambda s: s.startswith("field(")),
-            ("double", "(nodes)", lambda s: s.startswith("array(")),
-            ("integer", "(nper)", lambda s: s.startswith("array(")),
-        ],
-    )
-    def test_spec_call_prefix(self, ftype, shape, check):
-        f = Field(name="x", type=ftype, block="options", shape=shape)
-        assert check(spec_call(f))
-
-    def test_spec_call_file_record(self):
-        child = Field(name="fileout", type="keyword", block="options")
-        f = Field(
-            name="budget_filerecord",
-            type="record",
-            block="options",
-            children={"fileout": child},
-        )
-        call = spec_call(f)
-        assert 'inout="fileout"' in call
-        assert "to_path" in call
-
 
 # Layer 2: ComponentSpec tests against real DFNs
 @pytest.mark.parametrize(
@@ -306,7 +281,7 @@ class TestSimpleTierComponentSpec:
             + spec.imports.get("third_party", [])
             + spec.imports.get("flopy4", [])
         )
-        assert "xattree" in all_imports
+        assert "attrs" in all_imports
         assert "Package" in all_imports
 
     def test_outpath(self, dfn_name, expected_class, expected_base, all_dfns):
@@ -360,14 +335,14 @@ class TestSolutionTierComponentSpec:
             + spec.imports.get("third_party", [])
             + spec.imports.get("flopy4", [])
         )
-        assert "xattree" in all_imports
+        assert "attrs" in all_imports
         assert "Solution" in all_imports
         assert "ClassVar" in all_imports
 
 
 # Layer 2b: List-field expansion
 def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
-    """v1 DFN numeric_index=True on ifno/iconn auto-sets cellid; is_cellid stored as object."""
+    """LAK packagedata/connectiondata are emitted as recarray fields with schemas."""
     if "gwf-lak" not in all_dfns:
         pytest.skip("gwf-lak not in DFN set")
     v1_dfns = Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
@@ -376,49 +351,30 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
     )
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Feature ordinals — block-prefixed due to collision across packagedata/connectiondata/tables.
-    # v1 DFN has numeric_index=True; auto-detected as cellid.
-    for py_name in ("packagedata_ifno", "connectiondata_ifno", "iconn", "tables_ifno"):
-        assert py_name in field_map, f"{py_name!r} not in generated fields"
-        sc = field_map[py_name].spec_call
-        assert "cellid=True" in sc, (
-            f"{py_name!r} spec_call should contain cellid=True (via numeric_index), got: {sc!r}"
-        )
-
-    # Spatial cellid column — is_cellid=True in v1 DFN (shape=(ncelldim)); stored as object dtype.
-    assert "cellid" in field_map, "'cellid' not in generated fields"
-    cellid_sc = field_map["cellid"].spec_call
-    assert "cellid=True" in cellid_sc, (
-        f"'cellid' spec_call should contain cellid=True (via is_cellid), got: {cellid_sc!r}"
-    )
-    cellid_ann = field_map["cellid"].type_annotation
-    assert "np.object_" in cellid_ann, (
-        f"'cellid' type_annotation should use np.object_, got: {cellid_ann!r}"
-    )
+    # New codegen: block schemas exist for list blocks (single recarray field each)
+    assert "packagedata" in spec.block_schemas
+    assert "connectiondata" in spec.block_schemas
+    assert "packagedata" in field_map
+    assert "connectiondata" in field_map
+    # Schemas contain feature_id roles (advanced package, no spatial cellid in packagedata)
+    pd_schema = spec.block_schemas["packagedata"]
+    assert any(col.get("role") == "feature_id" for col in pd_schema)
 
 
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
-    """gwf-mvr list sub-tables should expand into per-column FieldSpecs, all Optional."""
+    """gwf-mvr period data is emitted as a single stress_period_data recarray field."""
     if "gwf-mvr" not in all_dfns:
         pytest.skip("gwf-mvr not in DFN set")
     spec = build_component_spec(all_dfns["gwf-mvr"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Period block columns (from perioddata list field)
-    period_cols = ["pname1", "id1", "pname2", "id2", "mvrtype", "value"]
-    for col in period_cols:
-        assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
-        ann = field_map[col].type_annotation
-        assert ann.startswith("Optional["), (
-            f"Expanded list column '{col}' should be Optional but got {ann!r}"
-        )
-        assert field_map[col].generatable, f"Expanded column '{col}' should be generatable"
-
-    # Packages block columns (from packages list field)
-    pkg_cols = ["pname", "mname"]
-    for col in pkg_cols:
-        assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
-        assert field_map[col].type_annotation.startswith("Optional[")
+    # New codegen: period data → single _stress_period_data field with period schema
+    assert spec.period_schema, "MVR should have a period_schema"
+    assert "_stress_period_data" in field_map
+    spd_field = field_map["_stress_period_data"]
+    assert spd_field.type_annotation == "Optional[dict[int, np.recarray]]"
+    # Packages block → single recarray field
+    assert "packages" in field_map or "packages" in spec.block_schemas
 
 
 # Layer 2d: BlockPropertySpec (Phase 2)

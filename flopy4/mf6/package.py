@@ -19,6 +19,9 @@ class Package(Component, ABC):
         "string": np.object_,
         "keyword": np.object_,
         "object": np.object_,
+        "np.object_": np.object_,
+        "np.int64": np.int64,
+        "np.float64": np.float64,
     }
 
     def __attrs_post_init__(self) -> None:
@@ -83,7 +86,10 @@ class Package(Component, ABC):
         for col in schema:
             role = col.get("role", "value")
             dt = col.get("dtype")
-            dt = eval(dt) if dt else self._DTYPE_MAP.get(col.get("dfn_type", "string"), np.object_)
+            if dt:
+                dt = self._DTYPE_MAP.get(dt, np.object_)
+            else:
+                dt = self._DTYPE_MAP.get(col.get("dfn_type", "string"), np.object_)
             if role == "cellid":
                 dtype_fields.append((col["name"], np.int64, (ncelldim,)))
             elif role == "feature_id":
@@ -119,7 +125,7 @@ class Package(Component, ABC):
             elif not col.get("optional", False):
                 dt = col.get("dtype")
                 col_dt = (
-                    eval(dt)
+                    self._DTYPE_MAP.get(dt, np.float64)
                     if dt
                     else self._DTYPE_MAP.get(col.get("dfn_type", "double"), np.float64)
                 )

@@ -110,41 +110,8 @@ class DimensionResolverMixin:
         return self.__dict__["_dimension_cache"]
 
     def __attrs_post_init__(self) -> None:
-        """Set parent references on all children after construction."""
         if hasattr(super(), "__attrs_post_init__"):
             super().__attrs_post_init__()  # type: ignore[misc]
-        self._set_child_parents()
-
-    def _set_child_parents(self) -> None:
-        """Walk all fields and set parent references on children.
-
-        NOTE: During Phases 1-2 (xattree coexistence), this is a no-op since
-        xattree already sets parent references. This method will be enabled
-        in Phase 3 when we migrate parent management.
-
-        When enabled, this will handle:
-        - Direct children (single component fields)
-        - Collections (dict/list of components)
-        """
-        # TODO Phase 3: Enable this when we remove @xattree
-        # For now, xattree handles parent setting
-        pass
-
-        # Implementation to enable in Phase 3:
-        # for field_obj in attrs.fields(type(self)):
-        #     value = getattr(self, field_obj.name, None)
-        #     if value is None:
-        #         continue
-        #     if hasattr(value, 'parent'):
-        #         value.parent = self
-        #     elif isinstance(value, dict):
-        #         for child in value.values():
-        #             if hasattr(child, 'parent'):
-        #                 child.parent = self
-        #     elif isinstance(value, list):
-        #         for child in value:
-        #             if hasattr(child, 'parent'):
-        #                 child.parent = self
 
     def resolve_dims(self, *dims: str) -> dict[str, int]:
         """
@@ -216,63 +183,34 @@ class DimensionResolverMixin:
         return result_dict
 
     def _find_dimension_in_children(self, dim_name: str) -> int | None:
-        """Walk fields and check dimension providers for the requested dimension.
+        """Walk fields and check dimension providers for the requested dimension."""
+        for _source, provider_dims in self._walk_providers():
+            if dim_name in provider_dims:
+                return provider_dims[dim_name]
+        return None
 
-        Parameters
-        ----------
-        dim_name : str
-            Name of the dimension to find.
-
-        Returns
-        -------
-        int | None
-            The dimension value if found in any child, None otherwise.
-        """
+    def _walk_providers(self):
+        """Yield (source_label, dims_dict) for each DimensionProvider in child fields."""
         for field_obj in attrs.fields(type(self)):  # type: ignore[arg-type]
             if (value := getattr(self, field_obj.name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
-                provider_dims = value.get_dims()
-                if dim_name in provider_dims:
-                    return provider_dims[dim_name]
+                yield field_obj.name, value.get_dims()
             elif isinstance(value, dict):
-                for child in value.values():
+                for child_key, child in value.items():
                     if isinstance(child, DimensionProvider):
-                        provider_dims = child.get_dims()
-                        if dim_name in provider_dims:
-                            return provider_dims[dim_name]
+                        yield f"{field_obj.name}[{child_key}]", child.get_dims()
             elif isinstance(value, list):
-                for child in value:
+                for idx, child in enumerate(value):
                     if isinstance(child, DimensionProvider):
-                        provider_dims = child.get_dims()
-                        if dim_name in provider_dims:
-                            return provider_dims[dim_name]
-
-        return None
+                        yield f"{field_obj.name}[{idx}]", child.get_dims()
 
     def _get_all_dimensions(self) -> dict[str, int]:
-        """
-        Get all dimensions available to this component.
-
-        This includes dimensions from both children (dimension providers) and
-        the parent chain. Dimensions from children take precedence over parent
-        dimensions.
-
-        Raises
-        ------
-        ValueError
-            If multiple providers declare the same dimensions (conflict detected)
-
-        Returns
-        -------
-        dict[str, int]
-            Mapping of all dimensions
-        """
+        """Get all dimensions from children and parent. Children take precedence."""
         resolved_dims = {}
-        # Track which field provides which dimensions for conflict detection
         dim_sources: dict[str, str] = {}
 
-        # First get dimensions from parent (lower priority)
+        # Parent dims (lower priority)
         if hasattr(self, "parent") and self.parent is not None:
             if hasattr(self.parent, "resolve_dims"):
                 parent_dims = self.parent.resolve_dims()
@@ -280,79 +218,24 @@ class DimensionResolverMixin:
                 for dim_name in parent_dims:
                     dim_sources[dim_name] = "parent"
 
-        # Track dimensions from children separately to detect conflicts
+        # Child dims (override parent, conflict with each other)
         child_dims: dict[str, int] = {}
-
-        for field_obj in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if (value := getattr(self, field_obj.name, None)) is None:
-                continue
-            if isinstance(value, DimensionProvider):
-                provider_dims = value.get_dims()
-                # Check for conflicts with other children
-                # (not with parent - that's an override)
-                conflicts = set(provider_dims.keys()) & set(child_dims.keys())
-                if conflicts:
-                    conflict_sources = {
-                        dim: dim_sources[dim] for dim in conflicts if dim_sources[dim] != "parent"
-                    }
-                    raise ValueError(
-                        f"{type(self).__name__} has multiple providers "
-                        f"for dimensions: {conflicts}.\n"
-                        f"Field '{field_obj.name}' provides {set(provider_dims.keys())}, "
-                        f"already provided by {conflict_sources}"
-                    )
-                child_dims.update(provider_dims)
-                resolved_dims.update(provider_dims)  # Override parent dims if present
-                for dim_name in provider_dims:
-                    dim_sources[dim_name] = field_obj.name
-            elif isinstance(value, dict):
-                for child_key, child in value.items():
-                    if isinstance(child, DimensionProvider):
-                        provider_dims = child.get_dims()
-                        # Check for conflicts with other children
-                        # (not with parent - that's an override)
-                        conflicts = set(provider_dims.keys()) & set(child_dims.keys())
-                        if conflicts:
-                            conflict_sources = {
-                                dim: dim_sources[dim]
-                                for dim in conflicts
-                                if dim_sources[dim] != "parent"
-                            }
-                            raise ValueError(
-                                f"{type(self).__name__} has multiple providers "
-                                f"for dimensions: {conflicts}.\n"
-                                f"Dict field '{field_obj.name}[{child_key}]' provides "
-                                f"{set(provider_dims.keys())}, "
-                                f"already provided by {conflict_sources}"
-                            )
-                        child_dims.update(provider_dims)
-                        resolved_dims.update(provider_dims)  # Override parent dims if present
-                        for dim_name in provider_dims:
-                            dim_sources[dim_name] = f"{field_obj.name}[{child_key}]"
-            elif isinstance(value, list):
-                for idx, child in enumerate(value):
-                    if isinstance(child, DimensionProvider):
-                        provider_dims = child.get_dims()
-                        # Check for conflicts with other children
-                        # (not with parent - that's an override)
-                        conflicts = set(provider_dims.keys()) & set(child_dims.keys())
-                        if conflicts:
-                            conflict_sources = {
-                                dim: dim_sources[dim]
-                                for dim in conflicts
-                                if dim_sources[dim] != "parent"
-                            }
-                            raise ValueError(
-                                f"{type(self).__name__} has multiple providers "
-                                f"for dimensions: {conflicts}.\n"
-                                f"List field '{field_obj.name}[{idx}]' provides "
-                                f"{set(provider_dims.keys())}, "
-                                f"already provided by {conflict_sources}"
-                            )
-                        child_dims.update(provider_dims)
-                        resolved_dims.update(provider_dims)  # Override parent dims if present
-                        for dim_name in provider_dims:
-                            dim_sources[dim_name] = f"{field_obj.name}[{idx}]"
+        for source, provider_dims in self._walk_providers():
+            conflicts = set(provider_dims.keys()) & set(child_dims.keys())
+            if conflicts:
+                conflict_sources = {
+                    dim: dim_sources[dim] for dim in conflicts if dim_sources[dim] != "parent"
+                }
+                raise ValueError(
+                    f"{type(self).__name__} has multiple providers "
+                    f"for dimensions: {conflicts}.\n"
+                    f"'{source}' provides {set(provider_dims.keys())}, "
+                    f"already provided by {conflict_sources}"
+                )
+            child_dims.update(provider_dims)
+            resolved_dims.update(provider_dims)
+            for dim_name in provider_dims:
+                dim_sources[dim_name] = source
 
         return resolved_dims
 

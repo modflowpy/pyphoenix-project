@@ -78,13 +78,7 @@ def get_spec(package_name: str):
 class _CodegenV2Spec:
     """XatSpec-compatible adapter for codegen v2 packages (attrs + dfn_block metadata)."""
 
-    _DTYPE_MAP = {
-        "double": np.float64,
-        "double precision": np.float64,
-        "integer": np.int64,
-        "string": np.object_,
-        "keyword": np.object_,
-    }
+    _DTYPE_MAP = Package._DTYPE_MAP
 
     def __init__(self, cls):
         import attrs as _attrs

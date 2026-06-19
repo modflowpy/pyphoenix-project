@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import attrs
 import numpy as np
@@ -15,7 +15,7 @@ from flopy4.mf6.context import Context
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict
 
 
-def is_codegen_v2(cls: type) -> bool:
+def has_dfn_metadata(cls: type) -> bool:
     """True if cls is a codegen v2 package (has attrs fields with 'dfn_block' metadata).
 
     Old xattree-based packages use 'block' as the metadata key; codegen v2 uses 'dfn_block'.
@@ -296,26 +296,7 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
 
         elif attrs.has(type(field_value)) and "_keyword" in vars(type(field_value)):
             # Inner-class record (e.g. Oc.Headprint)
-            inner_cls = type(field_value)
-            keyword: str = vars(inner_cls)["_keyword"]
-            tokens: list[Any] = [keyword.upper()] if keyword else []
-            for tok in vars(inner_cls).get("_extra_tokens", ()):
-                tokens.append(tok)
-            all_inner = attrs.fields(inner_cls)
-            tagged = [a for a in all_inner if a.metadata.get("tagged")]
-            untagged = [a for a in all_inner if not a.metadata.get("tagged")]
-            for a in tagged + untagged:
-                v = getattr(field_value, a.name)
-                if v is None:
-                    continue
-                if a.metadata.get("tagged"):
-                    tokens.extend([a.name.upper(), v])
-                elif isinstance(v, bool):
-                    if v:
-                        tokens.append(a.name.upper())
-                else:
-                    tokens.append(v)
-            blocks[block_name][f.name] = tuple(tokens)
+            blocks[block_name][f.name] = field_value.to_tokens()
 
         elif dfn_type in ("integer", "double", "double precision"):
             if field_value == 0 and meta.get("auto_from"):
@@ -396,7 +377,7 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    if is_codegen_v2(type(value)):
+    if has_dfn_metadata(type(value)):
         return _unstructure_codegen_v2(value)
     return _unstructure_component(value)
 
@@ -427,34 +408,12 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                     if child_spec.metadata["block"] == block_name:  # type: ignore
                         continue
 
-            # Check for inner-class record on the raw attribute
             raw_value = getattr(value, field_name, None)
+            if raw_value is None:
+                continue
             cls = type(raw_value)
             if attrs.has(cls) and "_keyword" in vars(cls):
-                keyword: str = vars(cls)["_keyword"]
-                tokens: list[Any] = [keyword.upper()] if keyword else []
-                for tok in vars(cls).get("_extra_tokens", ()):
-                    tokens.append(tok)
-                all_fields = attrs.fields(cast(type[attrs.AttrsInstance], cls))
-                tagged_fields = [a for a in all_fields if a.metadata.get("tagged", False)]
-                untagged_fields = [a for a in all_fields if not a.metadata.get("tagged", False)]
-                for a in tagged_fields + untagged_fields:
-                    val = getattr(raw_value, a.name)
-                    if val is None:
-                        continue
-                    if a.metadata.get("tagged", False):
-                        if isinstance(val, bool):
-                            if val:
-                                tokens.append(a.name.upper())
-                        else:
-                            tokens.append(a.name.upper())
-                            tokens.append(val)
-                    elif isinstance(val, bool):
-                        if val:
-                            tokens.append(a.name.upper())
-                    else:
-                        tokens.append(val)
-                blocks[block_name][field_name] = tuple(tokens)
+                blocks[block_name][field_name] = raw_value.to_tokens()
                 continue
 
             # Dispatch on field value type
