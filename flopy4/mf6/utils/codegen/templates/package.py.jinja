@@ -14,11 +14,7 @@
 {% endfor %}
 
 
-{% if spec.use_new_codegen %}
 @attrs.define(kw_only=True, slots=False)
-{% else %}
-@xattree(kw_only=True)
-{% endif %}
 class {{ spec.class_name }}({{ spec.base_class }}):
 {% if spec.multi %}
     multi_package: ClassVar[bool] = True
@@ -58,7 +54,7 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields %}
     pass
 {% endif %}
-{% if spec.use_new_codegen and (spec.period_schema or spec.block_schemas) %}
+{% if spec.period_schema or spec.block_schemas %}
 {% for block_name, schema in spec.block_schemas.items() %}
     __{{ block_name }}_schema__: ClassVar[list[dict]] = {{ schema | python_repr }}
 

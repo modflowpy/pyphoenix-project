@@ -506,8 +506,8 @@ def rcha_file(tmp_path) -> Path:
 def test_rcha_chunks_ignored_for_period_fields(rcha_file):
     """chunks= is accepted but period READARRAY fields are not loaded via Package.load().
 
-    G/A period ingress via Package.load() is not yet implemented (see §9.5 of
-    dask1.scope.md). This test verifies the call doesn't crash and that the
+    G/A period ingress via Package.load() is not yet implemented. This test
+    verifies the call doesn't crash and that the
     chunks parameter doesn't cause errors on packages with period-only data.
     """
     pytest.importorskip("dask.array")

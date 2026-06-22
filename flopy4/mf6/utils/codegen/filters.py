@@ -383,7 +383,7 @@ def skip_reason(f: Field) -> str | None:
     if is_generatable(f):
         return None
     if is_list_field(f):
-        return None  # handled by _expand_list_field in make.py
+        return None  # handled as recarray block in build_component_spec
     if can_expand_record(f):
         return None  # handled by _expand_record_field in make.py
     if _has_complex_shape(f):
@@ -546,10 +546,24 @@ def field_metadata(f: Field, *, has_maxbound: bool = False) -> dict:
     return meta
 
 
-def field_call(f: Field, *, has_maxbound: bool = False) -> str:
-    """Return the attrs.field() call string for a field (new codegen path).
+def _dq(v) -> str:
+    """Format a scalar value as a Python literal using double-quoted strings.
 
-    Replaces spec_call() for packages with use_new_codegen=True.
+    Used when emitting metadata dicts and schema ClassVars into generated source
+    so all string literals use double quotes for consistency with ruff output.
+    """
+    if isinstance(v, str):
+        return f'"{v}"'
+    if isinstance(v, tuple):
+        inner = ", ".join(f'"{s}"' if isinstance(s, str) else repr(s) for s in v)
+        trailing = "," if len(v) == 1 else ""
+        return f"({inner}{trailing})"
+    return repr(v)
+
+
+def field_call(f: Field, *, has_maxbound: bool = False) -> str:
+    """Return the attrs.field() call string for a field.
+
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     12-space dict keys, 4-space closing paren).
@@ -570,14 +584,7 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
         type_ignore = "  # type: ignore[assignment]"
     meta_lines = ["        metadata={"]
     for k, v in meta.items():
-        if isinstance(v, str):
-            meta_lines.append(f'            "{k}": "{v}",')
-        elif isinstance(v, tuple):
-            inner = ", ".join(f'"{s}"' for s in v)
-            trailing = "," if len(v) == 1 else ""
-            meta_lines.append(f'            "{k}": ({inner}{trailing}),')
-        else:
-            meta_lines.append(f'            "{k}": {v!r},')
+        meta_lines.append(f'            "{k}": {_dq(v)},')
     meta_lines.append("        },")
     converter_line = ""
     if is_file_record(f):
@@ -589,6 +596,28 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
         + "\n".join(meta_lines)
         + f"\n    ){type_ignore}"
     )
+
+
+def python_repr(v) -> str:
+    """Format a list[dict] schema as multi-line Python for class-body assignment.
+
+    Registered as the ``python_repr`` Jinja filter.  Produces 8-space item
+    indent, 12-space key indent, 4-space closing bracket so the result renders
+    correctly after ``    __name__: ClassVar[...] = ``.
+    """
+    if not isinstance(v, list):
+        return repr(v)
+    lines = ["["]
+    for item in v:
+        if isinstance(item, dict):
+            lines.append("        {")
+            for k, val in item.items():
+                lines.append(f'            "{k}": {_dq(val)},')
+            lines.append("        },")
+        else:
+            lines.append(f"        {_dq(item)},")
+    lines.append("    ]")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

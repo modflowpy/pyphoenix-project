@@ -20,6 +20,7 @@ from flopy4.mf6.gwe import Ssm as GweSsm
 from flopy4.mf6.gwf import (
     Buy,
     Chd,
+    Chdg,
     Dis,
     Disv,
     Drn,
@@ -604,9 +605,14 @@ def test_quickstart_grid(function_tmpdir):
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
-    chd = Chd(
+    # Chdg
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    chd = Chdg(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+        head=head.reshape(1, -1),
     )
 
     sim.write()
@@ -658,9 +664,14 @@ def test_quickstart_netcdf(function_tmpdir):
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
-    chd = Chd(
+    # Chdg
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    chd = Chdg(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+        head=head.reshape(1, -1),
     )
 
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
@@ -691,6 +702,9 @@ def test_quickstart_netcdf(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
+        lines = fh.readlines()
+        assert " HEAD NETCDF\n" in lines
 
     ds = xr.load_dataset(nc_fpth, mask_and_scale=False)
     assert ("dis_delr") in ds
@@ -701,6 +715,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert ("ic_strt") in ds
     assert ("npf_icelltype") in ds
     assert ("npf_k") in ds
+    assert ("chdg0_head") in ds
 
     assert np.allclose(ds["dis_delr"].values.ravel(), np.asarray(dis.delr).ravel())
     assert np.allclose(ds["dis_delc"].values.ravel(), np.asarray(dis.delc).ravel())
@@ -710,6 +725,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
     assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
     assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
+    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.head.ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -761,9 +777,14 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
 
-    chd = Chd(
+    # Chdg
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    chd = Chdg(
         parent=gwf,
-        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+        head=head.reshape(1, -1),
     )
 
     nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
@@ -794,6 +815,9 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.ic", "r") as fh:
         lines = fh.readlines()
         assert " STRT NETCDF\n" in lines
+    with open(function_tmpdir / f"{gwf_name}.chdg", "r") as fh:
+        lines = fh.readlines()
+        assert " HEAD NETCDF\n" in lines
 
     ds = xr.load_dataset(nc_fpth, mask_and_scale=False)
     assert ("dis_delr") in ds
@@ -804,6 +828,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert ("ic_strt_l1") in ds
     assert ("npf_icelltype_l1") in ds
     assert ("npf_k_l1") in ds
+    assert ("chdg0_head_l1") in ds
 
     assert np.allclose(ds["dis_delr"].values, dis.delr)
     assert np.allclose(ds["dis_delc"].values, dis.delc)
@@ -813,6 +838,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert np.allclose(ds["ic_strt_l1"].values.ravel(), np.asarray(ic.strt).ravel())
     assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), np.asarray(npf.icelltype).ravel())
     assert np.allclose(ds["npf_k_l1"].values.ravel(), np.asarray(npf.k).ravel())
+    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.head.ravel())
 
     # requires mf6 extended to run
     # sim.run()

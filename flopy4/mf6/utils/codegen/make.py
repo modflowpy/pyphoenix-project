@@ -14,7 +14,7 @@ import jinja2
 from modflow_devtools.dfn import Dfn, Field
 
 from . import filters
-from .filters import ColumnSpec
+from .filters import ColumnSpec, _dq, python_repr
 from .overrides import (
     always_emit_blocks,
     apply_to_child,
@@ -66,10 +66,8 @@ class InnerClassSpec:
 class BlockPropertySpec:
     """Pre-computed schema for one list (recarray) block property.
 
-    Produced by build_component_spec from v1 DFN data. Stored on
-    ComponentSpec.block_properties for use by the Phase 3 template.
-    The template is currently unchanged — this field is computed but
-    not yet emitted.
+    Produced by build_component_spec from v1 DFN data. Drives block_schemas
+    and the Optional[np.recarray] FieldSpec emitted per block in extra_specs.
     """
 
     block_name: str
@@ -93,15 +91,10 @@ class ComponentSpec:
     inner_classes: list[InnerClassSpec]
     outpath: Path
     block_properties: list[BlockPropertySpec] = dc_field(default_factory=list)
-    template: str = "package.py.jinja"
-    has_aux: bool = False
-    period_col_map: dict[str, str] = dc_field(default_factory=dict)
-    # New-codegen fields (use_new_codegen=True only)
     period_schema: list[dict] = dc_field(default_factory=list)
     block_schemas: dict[str, list[dict]] = dc_field(default_factory=dict)
     has_maxbound: bool = False
     has_keystring_period: bool = False
-    use_new_codegen: bool = False
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -201,57 +194,6 @@ def _expand_record_field(
         )
 
     return specs, gen_fields
-
-
-def _expand_list_field(f: Field, dfn: Dfn) -> list[FieldSpec]:
-    """Expand a list-type sub-table field into one FieldSpec per column.
-
-    Each column becomes an array() field with the list block's block name
-    and the list field's dimension.  Matches the hand-written Tdis pattern
-    of exploding perioddata columns into separate named arrays.
-    """
-    cols = filters.list_columns(f)
-    dim = filters.list_col_dim(f, dfn)
-    if not cols or dim is None:
-        return [
-            FieldSpec(
-                dfn_name=f["name"],
-                py_name=filters.safe_name(f["name"]),
-                type_annotation="Any",
-                spec_call="",
-                generatable=False,
-                skip_reason="could not determine list column dimension",
-            )
-        ]
-
-    specs = []
-    for col in cols:
-        col = apply_to_child(dfn["name"], col)
-        col_name = col["name"]
-        col_type = col.get("type", "string")
-        col_longname = col.get("longname", "")
-        dtype = filters.ARRAY_NUMPY_DTYPES.get(col_type, "np.object_")
-        base = f"NDArray[{dtype}]"
-        annotation = f"Optional[{base}]"  # expanded columns always default to None
-        block = f["block"]
-        args = [
-            f'block="{block}"',
-            f'dims=("{dim}",)',
-            "default=None",
-            "converter=Converter(structure_array, takes_self=True, takes_field=True)",
-        ]
-        if col_longname:
-            args.append(f"longname={repr(col_longname)}")
-        specs.append(
-            FieldSpec(
-                dfn_name=col_name,
-                py_name=filters.safe_name(col_name),
-                type_annotation=annotation,
-                spec_call=f"array({', '.join(args)})",
-                generatable=True,
-            )
-        )
-    return specs
 
 
 def _build_period_schema_from_array_fields(fields: list[Field]) -> list[dict]:
@@ -446,15 +388,6 @@ def _strip_record_words(name: str) -> list[str]:
     return [w for w in words if w]
 
 
-_SCALAR_PY_TYPES_INNER: dict[str, str] = {
-    "keyword": "bool",
-    "integer": "int",
-    "double precision": "float",
-    "double": "float",
-    "string": "str",
-}
-
-
 def _build_inner_class_spec(f: Field, dfn_name: str) -> InnerClassSpec:
     """Build an InnerClassSpec for a mixed-type compound record field.
 
@@ -505,7 +438,7 @@ def _build_inner_class_spec(f: Field, dfn_name: str) -> InnerClassSpec:
                     )
                 )
         else:
-            base_type = _SCALAR_PY_TYPES_INNER.get(child_type, "Any")
+            base_type = filters._SCALAR_PY_TYPES.get(child_type, "Any")
             type_annotation = f"Optional[{base_type}]" if is_optional else base_type
             inner_fields.append(
                 InnerClassFieldSpec(
@@ -763,8 +696,6 @@ def build_component_spec(
             replace_blocks=_replace_blocks,
         )
 
-    has_list_cols = False
-    has_oc_fields = False
     period_schema: list[dict] = []
     _period_array_fields: list[Field] = []  # list-based period fields (CHD, DRN, WEL …)
     _readarray_period_fields: list[Field] = []  # READARRAY period fields (CHDG, DRNG …)
@@ -812,7 +743,6 @@ def build_component_spec(
         elif filters.is_oc_record(f, dfn["name"]):
             expanded = _expand_oc_record_field(f, dfn["name"])
             target.extend(expanded)
-            has_oc_fields = has_oc_fields or any(fs.generatable for fs in expanded)
         elif filters.can_generate_record_class(f):
             record_spec = _build_inner_class_spec(f, dfn["name"])
             inner_class_specs.append(record_spec)
@@ -869,7 +799,6 @@ def build_component_spec(
     # and one array() field per column (in the declared block).
     # Entries must be listed in dfn_overrides.toml in v1 DFN block order so that
     # stable sort on key 3 in block_sort_key produces the correct write sequence.
-    has_extra_dims = False
     _dfn_dim_names = set((dfn.get("blocks", {}) or {}).get("dimensions", {}).keys())
     for lb in extra_list_blocks(dfn["name"]):
         block_name = lb["block"]
@@ -877,7 +806,6 @@ def build_component_spec(
         # Only add the dim field when it is not already declared in the DFN's
         # dimensions block (e.g. ntables for LAK is already there; nconn is not).
         if dim_name not in _dfn_dim_names:
-            has_extra_dims = True
             extra_specs.append(
                 FieldSpec(
                     dfn_name=dim_name,
@@ -924,7 +852,6 @@ def build_component_spec(
                     generatable=True,
                 )
             )
-        has_list_cols = True
 
     # Inject embedded-keystring period fields (e.g. LAK STATUS/STAGE/RAINFALL).
     # These use embedded_keystring() rather than array(), as the period block for
@@ -938,10 +865,8 @@ def build_component_spec(
         # (number, keyword, value) recarray; skip per-keyword field emission.
         has_period_keystring = True
 
-    # BlockPropertySpec-driven fields: old codegen expands per column; new codegen
-    # emits one Optional[np.recarray] field per block plus a __*_schema__ ClassVar.
-    _bp_emitted_dims: set[str] = set()
-    _naux_emitted = False
+    # BlockPropertySpec-driven fields: one Optional[np.recarray] per block plus
+    # a __*_schema__ ClassVar.
     _always_emit_set = set(always_emit_blocks(dfn["name"]))
     for bp in block_properties:
         if not bp.columns:
@@ -965,9 +890,8 @@ def build_component_spec(
                 generatable=True,
             )
         )
-        has_list_cols = True
 
-    # New codegen: consolidate period fields into one stress_period_data field.
+    # Consolidate period fields into one stress_period_data field.
     # Keystring packages (LAK, SFR, MAW, UZF) use a fixed (number, keyword, value)
     # schema; standard stress packages (DRN, WEL, CHD) use per-column schema.
     if has_period_keystring:
@@ -1071,12 +995,10 @@ def build_component_spec(
         inner_classes=inner_class_specs,
         outpath=filters.output_path(dfn["name"], root),
         block_properties=block_properties,
-        has_aux=_naux_emitted,
         period_schema=period_schema,
         block_schemas=block_schemas,
         has_maxbound=has_maxbound,
         has_keystring_period=has_period_keystring,
-        use_new_codegen=True,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )
@@ -1084,37 +1006,7 @@ def build_component_spec(
 
 # Template environment
 
-
-def _dq(v) -> str:
-    """Format a scalar value as a Python literal using double-quoted strings."""
-    if isinstance(v, str):
-        return f'"{v}"'
-    if isinstance(v, tuple):
-        inner = ", ".join(f'"{s}"' if isinstance(s, str) else repr(s) for s in v)
-        trailing = "," if len(v) == 1 else ""
-        return f"({inner}{trailing})"
-    return repr(v)
-
-
-def _python_repr(v) -> str:
-    """Format a list[dict] schema as multi-line Python for class-body assignment.
-
-    Produces 8-space item indent, 12-space key indent, 4-space closing bracket
-    so the result renders correctly after ``    __name__: ClassVar[...] = ``.
-    """
-    if not isinstance(v, list):
-        return repr(v)
-    lines = ["["]
-    for item in v:
-        if isinstance(item, dict):
-            lines.append("        {")
-            for k, val in item.items():
-                lines.append(f'            "{k}": {_dq(val)},')
-            lines.append("        },")
-        else:
-            lines.append(f"        {_dq(item)},")
-    lines.append("    ]")
-    return "\n".join(lines)
+_TEMPLATE_NAME = "package.py.jinja"
 
 
 def _get_env() -> jinja2.Environment:
@@ -1126,7 +1018,7 @@ def _get_env() -> jinja2.Environment:
         keep_trailing_newline=True,
         undefined=jinja2.StrictUndefined,
     )
-    env.filters["python_repr"] = _python_repr
+    env.filters["python_repr"] = python_repr
     return env
 
 
@@ -1135,7 +1027,7 @@ def make_module(spec: ComponentSpec, env: jinja2.Environment, verbose: bool = Fa
     import shutil
     import subprocess
 
-    template = env.get_template(spec.template)
+    template = env.get_template(_TEMPLATE_NAME)
     rendered = template.render(spec=spec)
     spec.outpath.write_text(rendered, newline="\n")
     ruff = shutil.which("ruff")

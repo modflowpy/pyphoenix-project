@@ -1466,7 +1466,7 @@ def test_ncf_from_grid_wkt_version2(function_tmpdir):
 
 
 # ---------------------------------------------------------------------------
-# to_xarray / to_dataarray on codegen v2 packages (Phase 4 / dask1 branch)
+# to_xarray / to_dataarray on codegen v2 packages (Phase 4)
 # ---------------------------------------------------------------------------
 
 
