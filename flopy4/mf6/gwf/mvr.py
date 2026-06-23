@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -87,78 +88,25 @@ class Mvr(Package):
             "fill_forward": True,
         },
     )
-    __packages_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "mname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "pname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-    ]
 
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-            "shape": "ncelldim",
-            "optional": False,
-        },
-        {
-            "name": "mname1",
-            "dfn_type": "string",
-            "optional": True,
-            "role": "value",
-        },
-        {
-            "name": "pname1",
-            "dfn_type": "string",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "id1",
-            "dfn_type": "integer",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "mname2",
-            "dfn_type": "string",
-            "optional": True,
-            "role": "value",
-        },
-        {
-            "name": "pname2",
-            "dfn_type": "string",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "id2",
-            "dfn_type": "integer",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "mvrtype",
-            "dfn_type": "string",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "value",
-            "dfn_type": "double",
-            "optional": False,
-            "role": "value",
-        },
-    ]
+    class _PackagesSchema(Schema):
+        mname = Column("mname", role="value", dfn_type="string", dtype="np.object_")
+        pname = Column("pname", role="value", dfn_type="string", dtype="np.object_")
+
+    __packages_schema__: ClassVar[type[Schema]] = _PackagesSchema
+
+    class _PeriodSchema(Schema):
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
+        mname1 = Column("mname1", role="value", dfn_type="string", optional=True)
+        pname1 = Column("pname1", role="value", dfn_type="string")
+        id1 = Column("id1", role="value", dfn_type="integer")
+        mname2 = Column("mname2", role="value", dfn_type="string", optional=True)
+        pname2 = Column("pname2", role="value", dfn_type="string")
+        id2 = Column("id2", role="value", dfn_type="integer")
+        mvrtype = Column("mvrtype", role="value", dfn_type="string")
+        value = Column("value", role="value", dfn_type="double")
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     packages_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

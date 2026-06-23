@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -100,29 +101,24 @@ class Cnc(Package):
             "fill_forward": True,
         },
     )
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-            "shape": "ncelldim",
-            "optional": False,
-        },
-        {
-            "name": "conc",
-            "dfn_type": "double",
-            "optional": False,
-            "role": "value",
-            "time_series": True,
-            "dtype": "np.object_",
-        },
-        {
-            "name": "boundname",
-            "dfn_type": "string",
-            "optional": True,
-            "role": "boundname",
-            "dtype": "np.object_",
-        },
-    ]
+
+    class _PeriodSchema(Schema):
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
+        conc = Column(
+            "conc",
+            role="value",
+            dfn_type="double",
+            time_series=True,
+            dtype="np.object_",
+        )
+        boundname = Column(
+            "boundname",
+            role="boundname",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

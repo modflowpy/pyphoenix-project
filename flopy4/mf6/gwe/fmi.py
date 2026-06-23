@@ -5,6 +5,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -32,21 +33,18 @@ class Fmi(Package):
             "schema": "__packagedata_schema__",
         },
     )
-    __packagedata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "flowtype",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "fname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-            "prefix": "FILEIN",
-        },
-    ]
+
+    class _PackagedataSchema(Schema):
+        flowtype = Column("flowtype", role="value", dfn_type="string", dtype="np.object_")
+        fname = Column(
+            "fname",
+            role="value",
+            dfn_type="string",
+            dtype="np.object_",
+            prefix="FILEIN",
+        )
+
+    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import ArrayLike, _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -120,12 +121,10 @@ class Sto(Package):
             "fill_forward": True,
         },
     )
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "storagestate",
-            "dfn_type": "keyword",
-            "role": "keystring",
-        },
-    ]
+
+    class _PeriodSchema(Schema):
+        storagestate = Column("storagestate", role="keystring", dfn_type="keyword")
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

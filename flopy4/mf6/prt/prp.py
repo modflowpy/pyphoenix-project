@@ -8,6 +8,7 @@ import numpy as np
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -225,92 +226,32 @@ class Prp(Package):
             "fill_forward": True,
         },
     )
-    __packagedata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "irptno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-        },
-        {
-            "name": "xrpt",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "yrpt",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "zrpt",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "boundname",
-            "dfn_type": "string",
-            "role": "boundname",
-        },
-    ]
 
-    __releasetimes_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "time",
-            "dfn_type": "double",
-            "role": "value",
-        },
-    ]
+    class _PackagedataSchema(Schema):
+        irptno = Column("irptno", role="feature_id", dfn_type="integer")
+        cellid = Column("cellid", role="cellid", dfn_type="integer")
+        xrpt = Column("xrpt", role="value", dfn_type="double")
+        yrpt = Column("yrpt", role="value", dfn_type="double")
+        zrpt = Column("zrpt", role="value", dfn_type="double")
+        boundname = Column("boundname", role="boundname", dfn_type="string")
 
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-            "shape": "ncelldim",
-            "optional": False,
-        },
-        {
-            "name": "all",
-            "dfn_type": "keyword",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "first",
-            "dfn_type": "keyword",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "last",
-            "dfn_type": "keyword",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "frequency",
-            "dfn_type": "integer",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "steps",
-            "dfn_type": "integer",
-            "optional": False,
-            "role": "value",
-        },
-        {
-            "name": "fraction",
-            "dfn_type": "double",
-            "optional": True,
-            "role": "value",
-        },
-    ]
+    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
+
+    class _ReleasetimesSchema(Schema):
+        time = Column("time", role="value", dfn_type="double")
+
+    __releasetimes_schema__: ClassVar[type[Schema]] = _ReleasetimesSchema
+
+    class _PeriodSchema(Schema):
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
+        all = Column("all", role="value", dfn_type="keyword")
+        first = Column("first", role="value", dfn_type="keyword")
+        last = Column("last", role="value", dfn_type="keyword")
+        frequency = Column("frequency", role="value", dfn_type="integer")
+        steps = Column("steps", role="value", dfn_type="integer")
+        fraction = Column("fraction", role="value", dfn_type="double", optional=True)
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     releasetimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

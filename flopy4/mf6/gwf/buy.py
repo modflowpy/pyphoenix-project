@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -60,35 +61,20 @@ class Buy(Package):
             "auto_from": "packagedata",
         },
     )
-    __packagedata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "irhospec",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "drhodc",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "crhoref",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "modelname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "auxspeciesname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-    ]
+
+    class _PackagedataSchema(Schema):
+        irhospec = Column("irhospec", role="feature_id", dfn_type="integer")
+        drhodc = Column("drhodc", role="value", dfn_type="double")
+        crhoref = Column("crhoref", role="value", dfn_type="double")
+        modelname = Column("modelname", role="value", dfn_type="string", dtype="np.object_")
+        auxspeciesname = Column(
+            "auxspeciesname",
+            role="value",
+            dfn_type="string",
+            dtype="np.object_",
+        )
+
+    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

@@ -30,6 +30,7 @@ from flopy4.mf6.utils.codegen.filters import (
     output_path,
     py_type,
     safe_name,
+    schema_class,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 
@@ -243,6 +244,70 @@ class TestFilters:
             children={"filein": child_in},
         )
         assert is_generatable(f)
+
+    def test_schema_class_empty_returns_empty_string(self):
+        assert schema_class([], "_Empty") == ""
+
+    def test_schema_class_basic_structure(self):
+        schema = [
+            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
+            {"name": "head", "role": "value", "dfn_type": "double"},
+        ]
+        result = schema_class(schema, "_PeriodSchema")
+        assert "    class _PeriodSchema(Schema):" in result
+        assert 'Column("cellid"' in result
+        assert 'role="cellid"' in result
+        assert 'dfn_type="integer"' in result
+        assert 'Column("head"' in result
+        assert 'role="value"' in result
+
+    def test_schema_class_column_name_alignment(self):
+        schema = [
+            {"name": "ab", "role": "value", "dfn_type": "double"},
+            {"name": "abcdef", "role": "cellid", "dfn_type": "integer"},
+        ]
+        result = schema_class(schema, "_Schema")
+        col_lines = [ln for ln in result.splitlines() if "= Column(" in ln]
+        assert len(col_lines) == 2
+        # The '= Column(' should start at the same position in both lines.
+        positions = [ln.index("= Column(") for ln in col_lines]
+        assert positions[0] == positions[1]
+
+    def test_schema_class_long_line_wraps(self):
+        # A column with many optional args whose single-line form exceeds 100 chars.
+        schema = [
+            {
+                "name": "very_long_column_name_xyz",
+                "role": "value",
+                "dfn_type": "double",
+                "time_series": True,
+                "dtype": "np.object_",
+                "shape": "(ncelldim)",
+            },
+        ]
+        result = schema_class(schema, "_Schema")
+        for line in result.splitlines():
+            assert len(line) <= 100, f"Line exceeds 100 chars: {line!r}"
+
+    def test_schema_class_optional_args_emitted(self):
+        schema = [
+            {
+                "name": "col",
+                "role": "value",
+                "dfn_type": "double",
+                "optional": True,
+                "time_series": True,
+                "dtype": "np.float64",
+                "prefix": "pfx",
+                "shape": "(n)",
+            },
+        ]
+        result = schema_class(schema, "_Schema")
+        assert "optional=True" in result
+        assert "time_series=True" in result
+        assert 'dtype="np.float64"' in result
+        assert 'prefix="pfx"' in result
+        assert 'shape="(n)"' in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs

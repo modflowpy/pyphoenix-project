@@ -14,7 +14,7 @@ import jinja2
 from modflow_devtools.dfn import Dfn, Field
 
 from . import filters
-from .filters import ColumnSpec, _dq, python_repr
+from .filters import ColumnSpec, _dq, python_repr, schema_class
 from .overrides import (
     always_emit_blocks,
     apply_to_child,
@@ -619,6 +619,8 @@ def _new_codegen_imports(
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
+    if has_period_schema:
+        flopy4.append("from flopy4.mf6.schema import Column, Schema")
     _types_parts: list[str] = []
     if has_arraylike:
         _types_parts.append("ArrayLike")
@@ -1019,6 +1021,7 @@ def _get_env() -> jinja2.Environment:
         undefined=jinja2.StrictUndefined,
     )
     env.filters["python_repr"] = python_repr
+    env.filters["schema_class"] = schema_class
     return env
 
 

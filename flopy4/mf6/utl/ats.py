@@ -5,6 +5,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,38 +20,16 @@ class Ats(Package):
     perioddata: Optional[np.recarray] = attrs.field(
         default=None, metadata={"dfn_block": "perioddata", "schema": "__perioddata_schema__"}
     )
-    __perioddata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "iperats",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "dt0",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "dtmin",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "dtmax",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "dtadj",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "dtfailadj",
-            "dfn_type": "double",
-            "role": "value",
-        },
-    ]
+
+    class _PerioddataSchema(Schema):
+        iperats = Column("iperats", role="feature_id", dfn_type="integer")
+        dt0 = Column("dt0", role="value", dfn_type="double")
+        dtmin = Column("dtmin", role="value", dfn_type="double")
+        dtmax = Column("dtmax", role="value", dfn_type="double")
+        dtadj = Column("dtadj", role="value", dfn_type="double")
+        dtfailadj = Column("dtfailadj", role="value", dfn_type="double")
+
+    __perioddata_schema__: ClassVar[type[Schema]] = _PerioddataSchema
 
     perioddata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

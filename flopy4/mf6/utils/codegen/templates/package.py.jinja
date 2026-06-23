@@ -56,11 +56,13 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endif %}
 {% if spec.period_schema or spec.block_schemas %}
 {% for block_name, schema in spec.block_schemas.items() %}
-    __{{ block_name }}_schema__: ClassVar[list[dict]] = {{ schema | python_repr }}
+{{ schema | schema_class("_" + block_name | capitalize + "Schema") }}
+    __{{ block_name }}_schema__: ClassVar[type[Schema]] = _{{ block_name | capitalize }}Schema
 
 {% endfor %}
 {% if spec.period_schema %}
-    __period_schema__: ClassVar[list[dict]] = {{ spec.period_schema | python_repr }}
+{{ spec.period_schema | schema_class("_PeriodSchema") }}
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
 {% endif %}
 {% for block_name in spec.block_schemas %}

@@ -71,41 +71,40 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
     return blocks
 
 
-def _recarray_to_rows(arr: np.recarray, schema: list[dict]) -> list[tuple]:
+def _recarray_to_rows(arr: np.recarray, schema: "type[Schema]") -> list[tuple]:  # type: ignore[name-defined]
     """Convert a recarray to MF6 record tuples (cellids converted to 1-based).
 
     MF6 column order: required cols, aux cols, boundname.  Boundname is deferred
     past aux so that aux values land in the correct file positions.
     """
+    cols = schema.columns()
+    schema_names = {col.name for col in cols}
     rows = []
-    schema_names = {col["name"] for col in schema}
     for i in range(len(arr)):
         row: list[Any] = []
         pending_boundname: Any = None
-        for col in schema:
-            role = col.get("role", "value")
-            name = col["name"]
+        for col in cols:
+            name = col.name
             if name not in (arr.dtype.names or ()):  # type: ignore[operator]
                 continue
             val = arr[name][i]
-            if role == "cellid":
+            if col.role == "cellid":
                 row.extend(int(c) + 1 for c in val)
-            elif role == "feature_id":
+            elif col.role == "feature_id":
                 row.append(int(val) + 1)
-            elif role == "boundname":
+            elif col.role == "boundname":
                 # Deferred past aux so MF6 column order is: cols, aux, boundname.
                 if val is not None and val != "":
                     pending_boundname = val
-            elif role == "inline_keyword":
+            elif col.role == "inline_keyword":
                 # Trailing optional keyword token (e.g. MIXED in SSM fileinput).
                 # Emit the column name uppercased only when value is truthy.
                 if val:
                     row.append(name.upper())
             else:
                 # Emit fixed prefix token(s) before the value when requested.
-                prefix = col.get("prefix")
-                if prefix:
-                    row.extend(prefix.split())
+                if col.prefix:
+                    row.extend(col.prefix.split())
                 row.append(val)
         # aux columns not in schema (named aux0, aux1, ...) come after required cols
         for name in arr.dtype.names or ():  # type: ignore[union-attr]
@@ -172,6 +171,10 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
     spd_period: dict[int, list[tuple]] = {}
     # READARRAY period fields (G/A variants): {kper: {field_name: xr.DataArray}}
     readarray_period: dict[int, dict[str, Any]] = {}
+    try:
+        from dask.array import Array as _DaskArray
+    except ImportError:
+        _DaskArray = type(None)  # type: ignore[misc,assignment]
 
     for f in attrs.fields(cls):
         meta = f.metadata
@@ -194,7 +197,8 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
         # ── PERIOD block ────────────────────────────────────────────────────────
         if block_name == "period":
             # READARRAY period field (G/A variants): ndarray shaped (nper, ...)
-            if meta.get("reader") == "readarray" and isinstance(field_value, np.ndarray):
+            is_readarray = meta.get("reader") == "readarray"
+            if is_readarray and isinstance(field_value, (np.ndarray, _DaskArray)):
                 is_layered = meta.get("layered", False)
                 nper = field_value.shape[0]
                 # Aux field: shape (nper, ncpl, naux) → emit one named block per
@@ -239,12 +243,16 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
             else:
                 # Stress-period recarray: dict[int, recarray]
                 schema_name = meta.get("schema")
-                schema = getattr(cls, schema_name, []) if schema_name else []
+                schema = getattr(cls, schema_name, None) if schema_name else None
                 for kper, arr in field_value.items():
                     kper_int = _normalize_kper(kper)
                     if kper_int is None:
                         continue
-                    rows = _recarray_to_rows(arr, schema) if isinstance(arr, np.recarray) else []
+                    rows = (
+                        _recarray_to_rows(arr, schema)
+                        if isinstance(arr, np.recarray) and schema is not None
+                        else []
+                    )
                     spd_period.setdefault(kper_int, []).extend(rows)
             continue
 
@@ -263,8 +271,8 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
         elif meta.get("schema"):
             # packagedata / connectiondata / perioddata recarray block
             schema_name = meta["schema"]
-            schema = getattr(cls, schema_name, [])
-            if isinstance(field_value, np.recarray) and len(field_value):
+            schema = getattr(cls, schema_name, None)
+            if schema is not None and isinstance(field_value, np.recarray) and len(field_value):
                 rows = _recarray_to_rows(field_value, schema)
                 blocks[block_name][f.name] = rows
 

@@ -5,6 +5,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -33,28 +34,14 @@ class Laktab(Package):
             "auto_from": "table",
         },
     )
-    __table_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "stage",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "volume",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "sarea",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "barea",
-            "dfn_type": "double",
-            "role": "value",
-        },
-    ]
+
+    class _TableSchema(Schema):
+        stage = Column("stage", role="value", dfn_type="double")
+        volume = Column("volume", role="value", dfn_type="double")
+        sarea = Column("sarea", role="value", dfn_type="double")
+        barea = Column("barea", role="value", dfn_type="double")
+
+    __table_schema__: ClassVar[type[Schema]] = _TableSchema
 
     table_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

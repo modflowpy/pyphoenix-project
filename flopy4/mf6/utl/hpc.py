@@ -5,6 +5,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -32,19 +33,12 @@ class Hpc(Package):
             "schema": "__partitions_schema__",
         },
     )
-    __partitions_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "mname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "mrank",
-            "dfn_type": "integer",
-            "role": "value",
-        },
-    ]
+
+    class _PartitionsSchema(Schema):
+        mname = Column("mname", role="value", dfn_type="string", dtype="np.object_")
+        mrank = Column("mrank", role="value", dfn_type="integer")
+
+    __partitions_schema__: ClassVar[type[Schema]] = _PartitionsSchema
 
     partitions_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

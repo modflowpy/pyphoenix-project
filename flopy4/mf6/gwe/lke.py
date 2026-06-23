@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -146,51 +147,22 @@ class Lke(Package):
             "fill_forward": True,
         },
     )
-    __packagedata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "lakeno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "strt",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "ktf",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "rbthcnd",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "boundname",
-            "dfn_type": "string",
-            "role": "boundname",
-        },
-    ]
 
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "lakeno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "keyword",
-            "dfn_type": "string",
-            "role": "keystring",
-        },
-        {
-            "name": "value",
-            "dfn_type": "object",
-            "role": "keystring_value",
-        },
-    ]
+    class _PackagedataSchema(Schema):
+        lakeno = Column("lakeno", role="feature_id", dfn_type="integer")
+        strt = Column("strt", role="value", dfn_type="double")
+        ktf = Column("ktf", role="value", dfn_type="double")
+        rbthcnd = Column("rbthcnd", role="value", dfn_type="double")
+        boundname = Column("boundname", role="boundname", dfn_type="string")
+
+    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
+
+    class _PeriodSchema(Schema):
+        lakeno = Column("lakeno", role="feature_id", dfn_type="integer")
+        keyword = Column("keyword", role="keystring", dfn_type="string")
+        value = Column("value", role="keystring_value", dfn_type="object")
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

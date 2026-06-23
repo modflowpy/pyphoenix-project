@@ -475,13 +475,16 @@ def test_sto_chunked_mixed_dtypes(sto_file):
 
 
 # ---------------------------------------------------------------------------
-# G/A period fields: chunks= correctly ignored
+# G/A period fields: READARRAY ingress + chunked loading
 # ---------------------------------------------------------------------------
+
+DIMS_1L_5X5 = {"nlay": 1, "nodes": 25}
+DIMS_2L_9 = {"nlay": 2, "nodes": 18}  # 2 layers, 9 cells/layer
 
 
 @pytest.fixture()
 def rcha_file(tmp_path) -> Path:
-    """Minimal RCHA file with 2 periods of READARRAY data."""
+    """Minimal RCHA file with 2 periods of READARRAY data (1 layer, 25 cells)."""
     rch_vals = " ".join(str(0.001) for _ in range(25))
     content = textwrap.dedent(f"""\
         BEGIN OPTIONS
@@ -491,30 +494,125 @@ def rcha_file(tmp_path) -> Path:
          RECHARGE
           INTERNAL
             {rch_vals}
-        END PERIOD
+        END PERIOD 1
         BEGIN PERIOD 2
          RECHARGE
-          INTERNAL
-            {rch_vals}
-        END PERIOD
+          CONSTANT 0.002
+        END PERIOD 2
     """)
     p = tmp_path / "model.rcha"
     p.write_text(content)
     return p
 
 
-def test_rcha_chunks_ignored_for_period_fields(rcha_file):
-    """chunks= is accepted but period READARRAY fields are not loaded via Package.load().
+@pytest.fixture()
+def chdg_file(tmp_path) -> Path:
+    """CHDG file with 2 periods of layered READARRAY head data (2 layers, 9 cells)."""
+    FILL = 3.0e30
+    l1 = " ".join(["1.0" if i == 0 else "0.0" if i == 8 else str(FILL) for i in range(9)])
+    l2 = " ".join([str(FILL)] * 9)
+    content = textwrap.dedent(f"""\
+        BEGIN OPTIONS
+          READARRAYGRID
+        END OPTIONS
+        BEGIN PERIOD 1
+         HEAD LAYERED
+          INTERNAL
+            {l1}
+          INTERNAL
+            {l2}
+        END PERIOD 1
+        BEGIN PERIOD 2
+         HEAD LAYERED
+          CONSTANT {FILL}
+          CONSTANT {FILL}
+        END PERIOD 2
+    """)
+    p = tmp_path / "model.chdg"
+    p.write_text(content)
+    return p
 
-    G/A period ingress via Package.load() is not yet implemented. This test
-    verifies the call doesn't crash and that the
-    chunks parameter doesn't cause errors on packages with period-only data.
-    """
-    pytest.importorskip("dask.array")
+
+def test_rcha_period_ingress_eager(rcha_file):
+    """RCHA period READARRAY fields are populated by Package.load()."""
     from flopy4.mf6.gwf.rcha import Rcha
 
-    # Should not raise — chunks= is accepted even though no griddata to chunk
-    rcha = Rcha.load(rcha_file, dims={"nlay": 1, "nodes": 25}, chunks="auto")
+    rcha = Rcha.load(rcha_file, dims=DIMS_1L_5X5)
     assert isinstance(rcha, Rcha)
-    # Period READARRAY fields are not populated by Package.load() (deferred)
-    assert rcha.recharge is None
+    assert isinstance(rcha.recharge, np.ndarray)
+    assert rcha.recharge.shape == (2, 25)
+    assert np.allclose(rcha.recharge[0], 0.001)  # period 0: INTERNAL
+    assert np.allclose(rcha.recharge[1], 0.002)  # period 1: CONSTANT
+
+
+def test_rcha_period_ingress_chunked(rcha_file):
+    """chunks='auto' wraps READARRAY period arrays in dask (1 period per chunk)."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    rcha = Rcha.load(rcha_file, dims=DIMS_1L_5X5, chunks="auto")
+    assert isinstance(rcha.recharge, da.Array)
+    assert rcha.recharge.shape == (2, 25)
+    assert rcha.recharge.npartitions == 2
+    computed = rcha.recharge.compute()
+    assert np.allclose(computed[0], 0.001)
+    assert np.allclose(computed[1], 0.002)
+
+
+def test_rcha_period_ingress_lazy(rcha_file, monkeypatch):
+    """Package.load() with chunks= must not trigger compute() on period arrays."""
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    computed = []
+    original = da.Array.compute
+
+    def spy(self, **kw):
+        computed.append(self.name)
+        return original(self, **kw)
+
+    monkeypatch.setattr(da.Array, "compute", spy)
+    Rcha.load(rcha_file, dims=DIMS_1L_5X5, chunks="auto")
+    assert not computed, f"compute() called during load: {computed}"
+
+
+def test_rcha_period_roundtrip(rcha_file, tmp_path):
+    """Load RCHA (chunked) → unstructure → dumps → reload → values match."""
+    pytest.importorskip("dask.array")
+    from flopy4.mf6.codec import dumps
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter import COMPONENT_CONVERTER
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    rcha = Rcha.load(rcha_file, dims=DIMS_1L_5X5, chunks="auto")
+
+    text = dumps(COMPONENT_CONVERTER.unstructure(rcha))
+    assert "BEGIN PERIOD 1" in text
+    assert "RECHARGE" in text
+
+    raw2 = loads(text)
+    rcha2 = structure_component(raw2, Rcha, dims=DIMS_1L_5X5)
+
+    assert isinstance(rcha2.recharge, np.ndarray)
+    assert rcha2.recharge.shape == (2, 25)
+    assert np.allclose(rcha2.recharge[0], 0.001)
+    assert np.allclose(rcha2.recharge[1], 0.002)
+
+
+def test_chdg_period_ingress_layered(chdg_file):
+    """CHDG layered READARRAY period ingress produces (nper, nlay, ncpl) head array."""
+    from flopy4.mf6.gwf.chdg import Chdg
+
+    chd = Chdg.load(chdg_file, dims=DIMS_2L_9)
+    assert isinstance(chd, Chdg)
+    assert isinstance(chd.head, np.ndarray)
+    assert chd.head.shape == (2, 2, 9)
+    # period 0, layer 0: cell 0 = 1.0, cell 8 = 0.0, rest = FILL_DNODATA
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    assert chd.head[0, 0, 0] == pytest.approx(1.0)
+    assert chd.head[0, 0, 8] == pytest.approx(0.0)
+    assert np.all(chd.head[0, 1] == FILL_DNODATA)
+    # period 1: all FILL_DNODATA (CONSTANT fill)
+    assert np.all(chd.head[1] == FILL_DNODATA)

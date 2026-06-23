@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.schema import Column, Schema
 from flopy4.mf6.utils.grid import VertexGrid
 from flopy4.mf6.utl.ncf import Ncf
 
@@ -21,11 +22,12 @@ class Disv(DisBase):
         ncvert: int = attrs.field()
         icvert: tuple[int, ...] = attrs.field()
 
-    __vertices_schema__: ClassVar[list] = [
-        {"name": "iv", "dfn_type": "integer", "role": "value"},
-        {"name": "xv", "dfn_type": "double", "role": "value"},
-        {"name": "yv", "dfn_type": "double", "role": "value"},
-    ]
+    class _VerticesSchema(Schema):
+        iv = Column("iv", role="value", dfn_type="integer")
+        xv = Column("xv", role="value", dfn_type="double")
+        yv = Column("yv", role="value", dfn_type="double")
+
+    __vertices_schema__: ClassVar[type[Schema]] = _VerticesSchema
 
     length_units: Optional[str] = attrs.field(
         default=None,

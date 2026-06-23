@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -170,6 +171,46 @@ class Lak(Package):
             "optional": True,
         },
     )
+    dev_groundwater_head_conductance: bool = attrs.field(
+        default=False,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "keyword",
+            "optional": True,
+        },
+    )
+    dev_no_final_check: bool = attrs.field(
+        default=False,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "keyword",
+            "optional": True,
+        },
+    )
+    dev_no_final_residual_check: bool = attrs.field(
+        default=False,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "keyword",
+            "optional": True,
+        },
+    )
+    dev_maximum_outlet_depth: Optional[float] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "double",
+            "optional": True,
+        },
+    )
+    dev_maximum_percent_difference: Optional[float] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "double",
+            "optional": True,
+        },
+    )
     nlakes: Optional[int] = attrs.field(
         default=None,
         metadata={
@@ -233,155 +274,58 @@ class Lak(Package):
             "fill_forward": True,
         },
     )
-    __packagedata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "ifno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "strt",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "nlakeconn",
-            "dfn_type": "integer",
-            "role": "value",
-        },
-        {
-            "name": "boundname",
-            "dfn_type": "string",
-            "role": "boundname",
-        },
-    ]
 
-    __connectiondata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "ifno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "iconn",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-        },
-        {
-            "name": "claktype",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "bedleak",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "belev",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "telev",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "connlen",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "connwidth",
-            "dfn_type": "double",
-            "role": "value",
-        },
-    ]
+    class _PackagedataSchema(Schema):
+        ifno = Column("ifno", role="feature_id", dfn_type="integer")
+        strt = Column("strt", role="value", dfn_type="double")
+        nlakeconn = Column("nlakeconn", role="value", dfn_type="integer")
+        boundname = Column("boundname", role="boundname", dfn_type="string")
 
-    __tables_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "ifno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "tab6_filename",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-            "prefix": "TAB6 FILEIN",
-        },
-    ]
+    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
-    __outlets_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "outletno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "lakein",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "lakeout",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "couttype",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "invert",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "width",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "rough",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "slope",
-            "dfn_type": "double",
-            "role": "value",
-        },
-    ]
+    class _ConnectiondataSchema(Schema):
+        ifno = Column("ifno", role="feature_id", dfn_type="integer")
+        iconn = Column("iconn", role="feature_id", dfn_type="integer")
+        cellid = Column("cellid", role="cellid", dfn_type="integer")
+        claktype = Column("claktype", role="value", dfn_type="string", dtype="np.object_")
+        bedleak = Column("bedleak", role="value", dfn_type="string", dtype="np.object_")
+        belev = Column("belev", role="value", dfn_type="double")
+        telev = Column("telev", role="value", dfn_type="double")
+        connlen = Column("connlen", role="value", dfn_type="double")
+        connwidth = Column("connwidth", role="value", dfn_type="double")
 
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "number",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "keyword",
-            "dfn_type": "string",
-            "role": "keystring",
-        },
-        {
-            "name": "value",
-            "dfn_type": "object",
-            "role": "keystring_value",
-        },
-    ]
+    __connectiondata_schema__: ClassVar[type[Schema]] = _ConnectiondataSchema
+
+    class _TablesSchema(Schema):
+        ifno = Column("ifno", role="feature_id", dfn_type="integer")
+        tab6_filename = Column(
+            "tab6_filename",
+            role="value",
+            dfn_type="string",
+            dtype="np.object_",
+            prefix="TAB6 FILEIN",
+        )
+
+    __tables_schema__: ClassVar[type[Schema]] = _TablesSchema
+
+    class _OutletsSchema(Schema):
+        outletno = Column("outletno", role="feature_id", dfn_type="integer")
+        lakein = Column("lakein", role="feature_id", dfn_type="integer")
+        lakeout = Column("lakeout", role="feature_id", dfn_type="integer")
+        couttype = Column("couttype", role="value", dfn_type="string", dtype="np.object_")
+        invert = Column("invert", role="value", dfn_type="double")
+        width = Column("width", role="value", dfn_type="double")
+        rough = Column("rough", role="value", dfn_type="double")
+        slope = Column("slope", role="value", dfn_type="double")
+
+    __outlets_schema__: ClassVar[type[Schema]] = _OutletsSchema
+
+    class _PeriodSchema(Schema):
+        number = Column("number", role="feature_id", dfn_type="integer")
+        keyword = Column("keyword", role="keystring", dfn_type="string")
+        value = Column("value", role="keystring_value", dfn_type="object")
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     connectiondata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

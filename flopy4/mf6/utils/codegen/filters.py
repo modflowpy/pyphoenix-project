@@ -620,6 +620,48 @@ def python_repr(v) -> str:
     return "\n".join(lines)
 
 
+def schema_class(schema_list: list[dict], class_name: str) -> str:
+    """Render a Schema subclass body for a list[dict] column schema.
+
+    Registered as the ``schema_class`` Jinja filter.  Called as::
+
+        {{ spec.period_schema | schema_class("_PeriodSchema") }}
+
+    Produces a 4-space-indented class definition (suitable for class-body
+    emission in generated files) with one Column(...) attribute per column,
+    padded so all ``=`` signs align.  Long Column() calls are wrapped to
+    keep lines under the 100-character ruff limit.
+    """
+    if not schema_list:
+        return ""
+    max_name = max(len(col["name"]) for col in schema_list)
+    lines = [f"    class {class_name}(Schema):"]
+    for col in schema_list:
+        name = col["name"]
+        pad = " " * (max_name - len(name))
+        args = [f'"{name}"', f'role="{col["role"]}"', f'dfn_type="{col.get("dfn_type", "double")}"']
+        if col.get("shape"):
+            args.append(f'shape="{col["shape"]}"')
+        if col.get("optional"):
+            args.append("optional=True")
+        if col.get("time_series"):
+            args.append("time_series=True")
+        if col.get("dtype"):
+            args.append(f'dtype="{col["dtype"]}"')
+        if col.get("prefix"):
+            args.append(f'prefix="{col["prefix"]}"')
+        single = f"        {name}{pad} = Column({', '.join(args)})"
+        if len(single) <= 100:
+            lines.append(single)
+        else:
+            # Wrap: each arg on its own line at 12-space indent.
+            lines.append(f"        {name}{pad} = Column(")
+            for arg in args:
+                lines.append(f"            {arg},")
+            lines.append("        )")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # v1 DFN block schema utilities
 # ---------------------------------------------------------------------------

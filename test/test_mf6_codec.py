@@ -258,6 +258,44 @@ def test_dumps_tdis():
     pprint(loaded)
 
 
+def test_tdis_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.tdis import Tdis
+
+    tdis = Tdis(nper=2, perlen=[1.0, 2.0], nstp=[1, 2], tsmult=[1.0, 1.5])
+    text = dumps(unstructure_component(tdis))
+    raw = loads(text)
+    tdis2 = structure_component(raw, Tdis)
+    assert tdis2.nper == 2
+    assert float(tdis2.perlen[0]) == pytest.approx(1.0)
+    assert float(tdis2.perlen[1]) == pytest.approx(2.0)
+    assert int(tdis2.nstp[0]) == 1
+    assert int(tdis2.nstp[1]) == 2
+    assert float(tdis2.tsmult[0]) == pytest.approx(1.0)
+    assert float(tdis2.tsmult[1]) == pytest.approx(1.5)
+
+
+def test_disv_vertices_roundtrip(disv_with_constant_arrays):
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(disv_with_constant_arrays))
+    assert "BEGIN VERTICES" in dumped
+    assert "END VERTICES" in dumped
+
+    loaded = loads(dumped)
+    vertices = loaded["VERTICES"]
+    assert len(vertices) == 4
+    # iv values are 1-based in the MF6 file
+    assert vertices[0][0] == 1
+    assert vertices[1][0] == 2
+    assert vertices[2][0] == 3
+    assert vertices[3][0] == 4
+    # xv, yv values match the fixture: xv=[0,0,1,1], yv=[0,1,1,0]
+    assert vertices[0][1] == pytest.approx(0.0)
+    assert vertices[0][2] == pytest.approx(0.0)
+    assert vertices[2][1] == pytest.approx(1.0)
+    assert vertices[2][2] == pytest.approx(1.0)
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 
@@ -765,6 +803,38 @@ def test_dumps_prt_prp_release_setting():
     assert "FIRST" in dumped
     assert "LAST" in dumped
     assert "ALL_" not in dumped
+
+
+def test_prt_prp_period_roundtrip():
+    """PRT-PRP release settings survive a dump→load→structure_component cycle."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.prt.prp import Prp
+
+    prp = Prp(
+        dims={"nper": 2},
+        stress_period_data={
+            0: [{"cellid": (0, 0, 0), "all": "ALL"}],
+            1: [{"cellid": (0, 0, 0), "first": "FIRST"}],
+        },
+    )
+    text = dumps(unstructure_component(prp))
+    raw = loads(text)
+    prp2 = structure_component(raw, Prp)
+
+    spd = prp2.stress_period_data
+    assert spd is not None
+    assert 0 in spd and 1 in spd
+
+    p0 = spd[0]
+    assert len(p0) == 1
+    assert tuple(p0["cellid"][0]) == (0, 0, 0)
+    assert p0["all"][0] == "ALL"
+
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert tuple(p1["cellid"][0]) == (0, 0, 0)
+    assert p1["first"][0] == "FIRST"
 
 
 # ---------------------------------------------------------------------------
@@ -1882,6 +1952,51 @@ def test_lkt_period_dumps():
     assert not any("CONCENTRATION" in line and "2 " in line for line in text.splitlines())
 
 
+def test_lkt_period_roundtrip():
+    """LKT keystring period data round-trips through dump→load→structure."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.lkt import Lkt
+
+    lkt = Lkt(
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "CONCENTRATION", 10.0),
+            ],
+            1: [
+                (0, "STATUS", "INACTIVE"),
+            ],
+        }
+    )
+    text = dumps(unstructure_component(lkt))
+    raw = loads(text)
+    lkt2 = structure_component(raw, Lkt)
+
+    spd = lkt2.stress_period_data
+    assert spd is not None
+    assert set(spd.keys()) == {0, 1}
+
+    p0 = spd[0]
+    assert len(p0) == 3
+    assert p0["ifno"][0] == 0
+    assert p0["keyword"][0] == "STATUS"
+    assert p0["value"][0] == "ACTIVE"
+    assert p0["ifno"][1] == 1
+    assert p0["keyword"][1] == "STATUS"
+    assert p0["value"][1] == "CONSTANT"
+    assert p0["ifno"][2] == 0
+    assert p0["keyword"][2] == "CONCENTRATION"
+    assert float(p0["value"][2]) == pytest.approx(10.0)
+
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert p1["ifno"][0] == 0
+    assert p1["keyword"][0] == "STATUS"
+    assert p1["value"][0] == "INACTIVE"
+
+
 def test_lkt_packagedata_roundtrip():
     """LKT packagedata survives a dump→load→structure_component cycle."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
@@ -1950,6 +2065,51 @@ def test_lke_period_dumps():
     text = dumps(unstructure_component(lke))
     assert "BEGIN PERIOD 1" in text
     assert "1 TEMPERATURE 18.5" in text
+
+
+def test_lke_period_roundtrip():
+    """LKE keystring period data round-trips through dump→load→structure."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwe.lke import Lke
+
+    lke = Lke(
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "TEMPERATURE", 18.5),
+            ],
+            1: [
+                (0, "STATUS", "INACTIVE"),
+            ],
+        }
+    )
+    text = dumps(unstructure_component(lke))
+    raw = loads(text)
+    lke2 = structure_component(raw, Lke)
+
+    spd = lke2.stress_period_data
+    assert spd is not None
+    assert set(spd.keys()) == {0, 1}
+
+    p0 = spd[0]
+    assert len(p0) == 3
+    assert p0["lakeno"][0] == 0
+    assert p0["keyword"][0] == "STATUS"
+    assert p0["value"][0] == "ACTIVE"
+    assert p0["lakeno"][1] == 1
+    assert p0["keyword"][1] == "STATUS"
+    assert p0["value"][1] == "CONSTANT"
+    assert p0["lakeno"][2] == 0
+    assert p0["keyword"][2] == "TEMPERATURE"
+    assert float(p0["value"][2]) == pytest.approx(18.5)
+
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert p1["lakeno"][0] == 0
+    assert p1["keyword"][0] == "STATUS"
+    assert p1["value"][0] == "INACTIVE"
 
 
 def test_lke_packagedata_roundtrip():

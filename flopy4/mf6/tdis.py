@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 from flopy4.mf6.utils.time import Time
 
 
@@ -17,11 +18,12 @@ class Tdis(Package):
         nstp: int
         tsmult: float
 
-    __perioddata_schema__: list = [
-        {"name": "perlen", "dfn_type": "double", "role": "value"},
-        {"name": "nstp", "dfn_type": "integer", "role": "value"},
-        {"name": "tsmult", "dfn_type": "double", "role": "value"},
-    ]
+    class _PeriodDataSchema(Schema):
+        perlen = Column("perlen", role="value", dfn_type="double")
+        nstp = Column("nstp", role="value", dfn_type="integer")
+        tsmult = Column("tsmult", role="value", dfn_type="double")
+
+    __perioddata_schema__: ClassVar[type[Schema]] = _PeriodDataSchema
 
     time_units: Optional[str] = attrs.field(
         default=None,
@@ -57,6 +59,16 @@ class Tdis(Package):
     )  # type: ignore[assignment]
 
     def __attrs_post_init__(self):
+        # When structure_component provides perioddata directly (ingress round-trip),
+        # decompose it back to perlen/nstp/tsmult rather than overwriting with defaults.
+        if isinstance(self.perioddata, np.recarray):
+            pd = self.perioddata
+            object.__setattr__(self, "perlen", pd["perlen"].copy())
+            object.__setattr__(self, "nstp", pd["nstp"].copy())
+            object.__setattr__(self, "tsmult", pd["tsmult"].copy())
+            super().__attrs_post_init__()
+            return
+
         # Coerce scalar defaults to arrays of length nper.
         nper = self.nper
         if isinstance(self.perlen, (int, float)):

@@ -5,6 +5,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -40,48 +41,26 @@ class Ssm(Package):
             "schema": "__fileinput_schema__",
         },
     )
-    __sources_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "pname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "srctype",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "auxname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-    ]
 
-    __fileinput_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "pname",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "spc6_filename",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-            "prefix": "SPC6 FILEIN",
-        },
-        {
-            "name": "mixed",
-            "dfn_type": "keyword",
-            "role": "inline_keyword",
-            "optional": True,
-        },
-    ]
+    class _SourcesSchema(Schema):
+        pname = Column("pname", role="value", dfn_type="string", dtype="np.object_")
+        srctype = Column("srctype", role="value", dfn_type="string", dtype="np.object_")
+        auxname = Column("auxname", role="value", dfn_type="string", dtype="np.object_")
+
+    __sources_schema__: ClassVar[type[Schema]] = _SourcesSchema
+
+    class _FileinputSchema(Schema):
+        pname = Column("pname", role="value", dfn_type="string", dtype="np.object_")
+        spc6_filename = Column(
+            "spc6_filename",
+            role="value",
+            dfn_type="string",
+            dtype="np.object_",
+            prefix="SPC6 FILEIN",
+        )
+        mixed = Column("mixed", role="inline_keyword", dfn_type="keyword", optional=True)
+
+    __fileinput_schema__: ClassVar[type[Schema]] = _FileinputSchema
 
     sources_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     fileinput_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

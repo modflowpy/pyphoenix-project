@@ -8,6 +8,7 @@ import numpy as np
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -138,14 +139,6 @@ class Oc(Package):
             "optional": True,
         },
     )
-    scratch_buffer: bool = attrs.field(
-        default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
-    )
     ntracktimes: Optional[int] = attrs.field(
         default=None,
         metadata={
@@ -180,13 +173,11 @@ class Oc(Package):
             "oc_rtype": "budget",
         },
     )
-    __tracktimes_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "time",
-            "dfn_type": "double",
-            "role": "value",
-        },
-    ]
+
+    class _TracktimesSchema(Schema):
+        time = Column("time", role="value", dfn_type="double")
+
+    __tracktimes_schema__: ClassVar[type[Schema]] = _TracktimesSchema
 
     tracktimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))

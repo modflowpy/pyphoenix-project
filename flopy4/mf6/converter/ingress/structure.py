@@ -3,7 +3,9 @@ from typing import Any, get_args
 import attrs
 import numpy as np
 
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Schema
 
 
 def _inner_class_type(field_type) -> type | None:
@@ -59,7 +61,7 @@ _DTYPE_MAP = Package._DTYPE_MAP
 
 def _parse_rows_to_recarray(
     rows: list,
-    schema: list[dict],
+    schema: "type[Schema]",  # type: ignore[name-defined]
     *,
     naux: int = 0,
     boundnames: bool = False,
@@ -77,19 +79,18 @@ def _parse_rows_to_recarray(
     if not rows:
         return None
 
-    cellid_col = next((c for c in schema if c.get("role") == "cellid"), None)
-    feature_id_cols = [c for c in schema if c.get("role") == "feature_id"]
-    value_cols = [c for c in schema if c.get("role") == "value"]
-    boundname_col = next((c for c in schema if c.get("role") == "boundname"), None)
-    keystring_cols = [c for c in schema if c.get("role") in ("keystring", "keystring_value")]
-    inline_kw_cols = [c for c in schema if c.get("role") == "inline_keyword"]
+    cols = schema.columns()
+    cellid_col = next((c for c in cols if c.role == "cellid"), None)
+    feature_id_cols = [c for c in cols if c.role == "feature_id"]
+    value_cols = [c for c in cols if c.role == "value"]
+    boundname_col = next((c for c in cols if c.role == "boundname"), None)
+    keystring_cols = [c for c in cols if c.role in ("keystring", "keystring_value")]
+    inline_kw_cols = [c for c in cols if c.role == "inline_keyword"]
     # Count only value columns that are actually emitted in each row for ncelldim
     # inference.  Columns that are optional AND not time_series are excluded from
     # the recarray dtype by __attrs_post_init__ and therefore absent from emitted
     # rows; counting them inflates n_fixed and under-counts ncelldim.
-    required_value_cols = [
-        c for c in value_cols if not c.get("optional", False) or c.get("time_series")
-    ]
+    required_value_cols = [c for c in value_cols if not c.optional or c.time_series]
     n_fixed = len(required_value_cols) + len(keystring_cols) + len(feature_id_cols)
 
     # Infer ncelldim from the first row that has tokens
@@ -103,25 +104,23 @@ def _parse_rows_to_recarray(
 
     # Build dtype in schema order so field names align with token parse order
     dtype_fields: list = []
-    for col in schema:
-        role = col.get("role")
-        if role == "cellid":
+    for col in cols:
+        if col.role == "cellid":
             dtype_fields.append(("cellid", np.int64, (ncelldim,)))
-        elif role == "feature_id":
-            dtype_fields.append((col["name"], np.int64))
-        elif role == "value":
-            raw_dt = col.get("dtype")
-            if raw_dt:
-                dt = _DTYPE_MAP.get(raw_dt, np.object_)
-            elif col.get("time_series"):
+        elif col.role == "feature_id":
+            dtype_fields.append((col.name, np.int64))
+        elif col.role == "value":
+            if col.dtype:
+                dt = _DTYPE_MAP.get(col.dtype, np.object_)
+            elif col.time_series:
                 dt = np.object_
             else:
-                dt = _DTYPE_MAP.get(col.get("dfn_type", "double"), np.float64)
-            dtype_fields.append((col["name"], dt))
-        elif role in ("keystring", "keystring_value"):
-            dtype_fields.append((col["name"], np.object_))
-        elif role == "inline_keyword":
-            dtype_fields.append((col["name"], np.object_))
+                dt = _DTYPE_MAP.get(col.dfn_type, np.float64)
+            dtype_fields.append((col.name, dt))
+        elif col.role in ("keystring", "keystring_value"):
+            dtype_fields.append((col.name, np.object_))
+        elif col.role == "inline_keyword":
+            dtype_fields.append((col.name, np.object_))
         # boundname role is appended after aux below
     for i in range(naux):
         dtype_fields.append((f"aux{i}", np.object_))
@@ -138,9 +137,8 @@ def _parse_rows_to_recarray(
         tok_idx = 0
         record: list = []
 
-        for col in schema:
-            role = col.get("role")
-            if role == "cellid":
+        for col in cols:
+            if col.role == "cellid":
                 last = row[-1]
                 row_has_bn = isinstance(last, str) and not _token_fits(last, np.float64)
                 this_ncd = max(1, len(row) - n_fixed - naux - (1 if row_has_bn else 0))
@@ -152,38 +150,36 @@ def _parse_rows_to_recarray(
                     cellid = cellid[:ncelldim]
                 record.append(cellid)
                 tok_idx += this_ncd
-            elif role == "feature_id":
+            elif col.role == "feature_id":
                 record.append(int(float(str(row[tok_idx]))) - 1)
                 tok_idx += 1
-            elif role == "value":
+            elif col.role == "value":
                 if tok_idx >= len(row):
                     record.append(None)
                     continue
-                prefix = col.get("prefix")
-                if prefix:
-                    tok_idx += len(prefix.split())
+                if col.prefix:
+                    tok_idx += len(col.prefix.split())
                 if tok_idx >= len(row):
                     record.append(None)
                     continue
                 tok = row[tok_idx]
-                raw_dt = col.get("dtype")
-                if raw_dt or col.get("time_series"):
+                if col.dtype or col.time_series:
                     try:
                         record.append(float(tok))
                     except (ValueError, TypeError):
                         record.append(str(tok))
                 else:
-                    col_dtype = _DTYPE_MAP.get(col.get("dfn_type", "double"), np.float64)
+                    col_dtype = _DTYPE_MAP.get(col.dfn_type, np.float64)
                     record.append(_coerce_token(tok, col_dtype))
                 tok_idx += 1
-            elif role in ("keystring", "keystring_value"):
+            elif col.role in ("keystring", "keystring_value"):
                 if tok_idx >= len(row):
                     record.append(None)
                 else:
                     record.append(str(row[tok_idx]))
                     tok_idx += 1
-            elif role == "inline_keyword":
-                kw = col["name"].upper()
+            elif col.role == "inline_keyword":
+                kw = col.name.upper()
                 if tok_idx < len(row) and str(row[tok_idx]).upper() == kw:
                     record.append(str(row[tok_idx]))
                     tok_idx += 1
@@ -288,6 +284,74 @@ def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
                     vrow = rows[i]
                     i += 1
                 result[f.name] = np.array(vrow, dtype=np.int64 if is_int else np.float64)
+
+    return result
+
+
+def _parse_readarray_period_block(
+    rows: list, ra_fields: dict, dims: dict
+) -> "dict[str, np.ndarray]":
+    """Parse one READARRAY period block (rows from a BEGIN PERIOD N block).
+
+    Returns {field_name: ndarray} shaped (ncpl,) for non-layered fields
+    or (nlay, ncpl) for layered fields.
+    """
+    nlay = dims.get("nlay", 1)
+    nodes = dims.get("nodes", 1)
+    ncpl = nodes // nlay if nlay > 1 else nodes
+
+    result: dict[str, np.ndarray] = {}
+    i = 0
+    while i < len(rows):
+        row = rows[i]
+        if not row:
+            i += 1
+            continue
+        key = str(row[0]).lower()
+        f = ra_fields.get(key)
+        if f is None:
+            i += 1
+            continue
+        is_int = f.metadata.get("dfn_type") in ("integer",)
+        is_layered = f.metadata.get("layered", False) or any(
+            str(t).upper() == "LAYERED" for t in row[1:]
+        )
+        i += 1
+        dtype = np.int64 if is_int else np.float64
+
+        if is_layered:
+            layers = []
+            for _ in range(nlay):
+                if i >= len(rows):
+                    break
+                vrow = rows[i]
+                i += 1
+                if vrow and str(vrow[0]).upper() == "CONSTANT":
+                    v = int(vrow[1]) if is_int else float(vrow[1])
+                    layers.append(np.full(ncpl, v, dtype=dtype))
+                else:
+                    if vrow and str(vrow[0]).upper() == "INTERNAL":
+                        if i >= len(rows):
+                            break
+                        vrow = rows[i]
+                        i += 1
+                    layers.append(np.array(vrow, dtype=dtype))
+            result[f.name] = np.stack(layers)  # (nlay, ncpl)
+        else:
+            if i >= len(rows):
+                break
+            vrow = rows[i]
+            i += 1
+            if vrow and str(vrow[0]).upper() == "CONSTANT":
+                v = int(vrow[1]) if is_int else float(vrow[1])
+                result[f.name] = np.full(ncpl, v, dtype=dtype)
+            else:
+                if vrow and str(vrow[0]).upper() == "INTERNAL":
+                    if i >= len(rows):
+                        break
+                    vrow = rows[i]
+                    i += 1
+                result[f.name] = np.array(vrow, dtype=dtype)
 
     return result
 
@@ -451,6 +515,36 @@ def _structure_codegen_v2(raw: dict, cls: type, dims: dict | None = None) -> Any
                     # Use the alias (stress_period_data) as the init kwarg
                     init_key = period_field.alias if period_field.alias else period_field.name
                     kwargs[init_key] = spd
+
+        else:
+            # ── Pass 3b: READARRAY period fields (G/A variants) ─────────────
+            # Packages like Rcha/Chdg store full-grid arrays per stress period.
+            # Each field has dfn_block="period" + reader="readarray".
+            ra_fields = {
+                f.name: f
+                for f in attrs.fields(cls)
+                if f.metadata.get("dfn_block") == "period"
+                and f.metadata.get("reader") == "readarray"
+                and f.init is not False
+            }
+            if ra_fields and dims:
+                nper = max(kper_rows.keys()) + 1
+                nlay = dims.get("nlay", 1)
+                nodes = dims.get("nodes", 1)
+                ncpl = nodes // nlay if nlay > 1 else nodes
+                # Pre-fill with FILL_DNODATA; periods absent from file use MF6
+                # fill-forward semantics (egress skips all-FILL_DNODATA periods).
+                accum: dict[str, np.ndarray] = {}
+                for fname, f in ra_fields.items():
+                    shape = (nper, nlay, ncpl) if f.metadata.get("layered", False) else (nper, ncpl)
+                    accum[fname] = np.full(shape, FILL_DNODATA)
+                for kper, rows in sorted(kper_rows.items()):
+                    if not rows:
+                        continue
+                    parsed = _parse_readarray_period_block(rows, ra_fields, dims)
+                    for fname, arr in parsed.items():
+                        accum[fname][kper] = arr
+                kwargs.update(accum)
 
     # ── Pass 4: griddata block ────────────────────────────────────────────────
     if dims:

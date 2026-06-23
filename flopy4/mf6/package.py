@@ -8,6 +8,7 @@ import xarray as xr
 from xattree import xattree
 
 from flopy4.mf6.component import Component
+from flopy4.mf6.schema import Schema
 
 
 @xattree
@@ -71,7 +72,7 @@ class Package(Component, ABC):
                 continue
             block_name = attr_name[2:-9]  # strip __ and _schema__
             schema = getattr(cls, attr_name)
-            if not isinstance(schema, list):
+            if not (isinstance(schema, type) and issubclass(schema, Schema)):
                 continue
             self._init_block_dtype(block_name, schema, naux, ncelldim)
 
@@ -80,25 +81,26 @@ class Package(Component, ABC):
         if period_schema is not None:
             self._init_period_dtype(period_schema, naux, ncelldim)
 
-    def _init_block_dtype(self, block_name: str, schema: list, naux: int, ncelldim: int) -> None:
+    def _init_block_dtype(
+        self, block_name: str, schema: type[Schema], naux: int, ncelldim: int
+    ) -> None:
         """Build dtype for a static block (packagedata, connectiondata, etc.)."""
         dtype_fields: list[tuple] = []
-        for col in schema:
-            role = col.get("role", "value")
-            dt = col.get("dtype")
-            if dt:
-                dt = self._DTYPE_MAP.get(dt, np.object_)
-            else:
-                dt = self._DTYPE_MAP.get(col.get("dfn_type", "string"), np.object_)
-            if role == "cellid":
-                dtype_fields.append((col["name"], np.int64, (ncelldim,)))
-            elif role == "feature_id":
-                dtype_fields.append((col["name"], np.int64))
-            elif role == "boundname":
+        for col in schema.columns():
+            dt = (
+                self._DTYPE_MAP.get(col.dtype, np.object_)
+                if col.dtype
+                else self._DTYPE_MAP.get(col.dfn_type, np.object_)
+            )
+            if col.role == "cellid":
+                dtype_fields.append((col.name, np.int64, (ncelldim,)))
+            elif col.role == "feature_id":
+                dtype_fields.append((col.name, np.int64))
+            elif col.role == "boundname":
                 if getattr(self, "boundnames", False):
-                    dtype_fields.append((col["name"], np.object_))
+                    dtype_fields.append((col.name, np.object_))
             else:
-                dtype_fields.append((col["name"], dt))
+                dtype_fields.append((col.name, dt))
         if block_name == "packagedata":
             for i in range(naux):
                 dtype_fields.append((f"aux{i}", np.object_))
@@ -110,26 +112,25 @@ class Package(Component, ABC):
         if getattr(self, block_name, None) is not None and getattr(self, f"n{block_name}s", 0) == 0:
             object.__setattr__(self, f"n{block_name}s", len(getattr(self, block_name)))
 
-    def _init_period_dtype(self, schema: list, naux: int, ncelldim: int) -> None:
+    def _init_period_dtype(self, schema: type[Schema], naux: int, ncelldim: int) -> None:
         """Build period dtype; coerce SPD to recarrays; auto-set maxbound."""
-        has_keystring = any(col.get("role") in ("keystring", "keystring_value") for col in schema)
+        cols = schema.columns()
+        has_keystring = any(col.role in ("keystring", "keystring_value") for col in cols)
         dtype_fields: list[tuple] = []
-        for col in schema:
-            role = col.get("role", "value")
-            if role == "cellid":
-                dtype_fields.append((col["name"], np.int64, (ncelldim,)))
-            elif role in ("keystring", "keystring_value"):
-                dtype_fields.append((col["name"], np.object_))
-            elif col.get("time_series"):
-                dtype_fields.append((col["name"], np.object_))
-            elif not col.get("optional", False):
-                dt = col.get("dtype")
+        for col in cols:
+            if col.role == "cellid":
+                dtype_fields.append((col.name, np.int64, (ncelldim,)))
+            elif col.role in ("keystring", "keystring_value"):
+                dtype_fields.append((col.name, np.object_))
+            elif col.time_series:
+                dtype_fields.append((col.name, np.object_))
+            elif not col.optional:
                 col_dt = (
-                    self._DTYPE_MAP.get(dt, np.float64)
-                    if dt
-                    else self._DTYPE_MAP.get(col.get("dfn_type", "double"), np.float64)
+                    self._DTYPE_MAP.get(col.dtype, np.float64)
+                    if col.dtype
+                    else self._DTYPE_MAP.get(col.dfn_type, np.float64)
                 )
-                dtype_fields.append((col["name"], col_dt))
+                dtype_fields.append((col.name, col_dt))
         if not has_keystring:
             for i in range(naux):
                 dtype_fields.append((f"aux{i}", np.object_))
@@ -266,6 +267,19 @@ class Package(Component, ABC):
                     _fld.name,
                     _da.from_array(_arr.reshape(_nlay, _ncpl), chunks=_chunk_shape).reshape(-1),
                 )
+
+            # READARRAY period fields (G/A variants: Rcha, Chdg, etc.)
+            # Shape is (nper, ncpl) for non-layered or (nper, nlay, ncpl) for layered.
+            # Chunk 1 period at a time along the first axis.
+            for _fld in _attrs.fields(cls):  # type: ignore[arg-type]
+                if _fld.metadata.get("dfn_block") != "period":
+                    continue
+                if _fld.metadata.get("reader") != "readarray":
+                    continue
+                _arr = getattr(_pkg, _fld.name)
+                if _arr is None or not isinstance(_arr, np.ndarray):
+                    continue
+                setattr(_pkg, _fld.name, _da.from_array(_arr, chunks=(1,) + _arr.shape[1:]))
 
         return _pkg
 

@@ -7,6 +7,7 @@ import numpy as np
 
 from flopy4.mf6._types import ArrayLike, _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.schema import Column, Schema
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -320,87 +321,34 @@ class Csub(Package):
             "fill_forward": True,
         },
     )
-    __packagedata_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "icsubno",
-            "dfn_type": "integer",
-            "role": "feature_id",
-        },
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-        },
-        {
-            "name": "cdelay",
-            "dfn_type": "string",
-            "role": "value",
-            "dtype": "np.object_",
-        },
-        {
-            "name": "pcs0",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "thick_frac",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "rnb",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "ssv_cc",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "sse_cr",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "theta",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "kv",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "h0",
-            "dfn_type": "double",
-            "role": "value",
-        },
-        {
-            "name": "boundname",
-            "dfn_type": "string",
-            "role": "boundname",
-        },
-    ]
 
-    __period_schema__: ClassVar[list[dict]] = [
-        {
-            "name": "cellid",
-            "dfn_type": "integer",
-            "role": "cellid",
-            "shape": "ncelldim",
-            "optional": False,
-        },
-        {
-            "name": "sig0",
-            "dfn_type": "double",
-            "optional": False,
-            "role": "value",
-            "time_series": True,
-            "dtype": "np.object_",
-        },
-    ]
+    class _PackagedataSchema(Schema):
+        icsubno = Column("icsubno", role="feature_id", dfn_type="integer")
+        cellid = Column("cellid", role="cellid", dfn_type="integer")
+        cdelay = Column("cdelay", role="value", dfn_type="string", dtype="np.object_")
+        pcs0 = Column("pcs0", role="value", dfn_type="double")
+        thick_frac = Column("thick_frac", role="value", dfn_type="double")
+        rnb = Column("rnb", role="value", dfn_type="double")
+        ssv_cc = Column("ssv_cc", role="value", dfn_type="double")
+        sse_cr = Column("sse_cr", role="value", dfn_type="double")
+        theta = Column("theta", role="value", dfn_type="double")
+        kv = Column("kv", role="value", dfn_type="double")
+        h0 = Column("h0", role="value", dfn_type="double")
+        boundname = Column("boundname", role="boundname", dfn_type="string")
+
+    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
+
+    class _PeriodSchema(Schema):
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
+        sig0 = Column(
+            "sig0",
+            role="value",
+            dfn_type="double",
+            time_series=True,
+            dtype="np.object_",
+        )
+
+    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
