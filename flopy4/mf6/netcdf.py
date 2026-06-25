@@ -721,6 +721,8 @@ class NetCDFParam(BaseModel, NetCDFInput):
 
         # add long_name to parameter attributes
         _meta["attrs"]["long_name"] = metadata(spec.arrays[param], "longname")
+        if multi_package(context["package_type"]):
+            _meta["attrs"]["long_name"] = f"{context['package_name']} {_meta['attrs']['long_name']}"
         if "layer" in _meta["attrs"]:
             _meta["attrs"]["long_name"] = (
                 f"{_meta['attrs']['long_name']} layer {_meta['attrs']['layer']}"
