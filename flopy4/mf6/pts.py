@@ -64,7 +64,12 @@ class Pts(Solution):
             "inout": "fileout",
         },
     )
-    no_ptc: Optional[NoPtc] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    no_ptc: Optional[NoPtc] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     ats_outer_maximum_fraction: Optional[float] = attrs.field(
         default=None,
         metadata={

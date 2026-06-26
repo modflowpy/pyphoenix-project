@@ -406,6 +406,8 @@ class Package(Component, ABC):
                 for name, val in row.items():
                     arr[name][i] = val
             else:
+                if not hasattr(row, "__getitem__"):
+                    row = list(row)
                 for j, name in enumerate(dtype.names or ()):  # type: ignore[arg-type]
                     arr[name][i] = row[j]
         return arr.view(np.recarray)

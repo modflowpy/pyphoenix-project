@@ -60,7 +60,12 @@ class Npf(Package):
             "optional": True,
         },
     )
-    cvoptions: Optional[Cvoptions] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    cvoptions: Optional[Cvoptions] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     perched: bool = attrs.field(
         default=False,
         metadata={
@@ -69,9 +74,17 @@ class Npf(Package):
             "optional": True,
         },
     )
-    rewet: Optional[Rewet] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    rewet: Optional[Rewet] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     xt3doptions: Optional[Xt3doptions] = attrs.field(
-        default=None, metadata={"dfn_block": "options"}
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
     )
     highest_cell_saturation: bool = attrs.field(
         default=False,

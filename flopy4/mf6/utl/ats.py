@@ -11,14 +11,18 @@ from flopy4.mf6.schema import Column, Schema
 @attrs.define(kw_only=True, slots=False)
 class Ats(Package):
     maxats: Optional[int] = attrs.field(
-        default="1",
+        default=1,
         metadata={
             "dfn_block": "dimensions",
             "dfn_type": "integer",
         },
-    )  # type: ignore[assignment]
+    )
     perioddata: Optional[np.recarray] = attrs.field(
-        default=None, metadata={"dfn_block": "perioddata", "schema": "__perioddata_schema__"}
+        default=None,
+        metadata={
+            "dfn_block": "perioddata",
+            "schema": "__perioddata_schema__",
+        },
     )
 
     class _PerioddataSchema(Schema):
@@ -31,5 +35,25 @@ class Ats(Package):
 
     __perioddata_schema__: ClassVar[type[Schema]] = _PerioddataSchema
 
+    @attrs.define
+    class PerioddataRow:
+        iperats: int
+        dt0: float
+        dtmin: float
+        dtmax: float
+        dtadj: float
+        dtfailadj: float
+
+        def __iter__(self):
+            yield self.iperats
+            yield self.dt0
+            yield self.dtmin
+            yield self.dtmax
+            yield self.dtadj
+            yield self.dtfailadj
+
     perioddata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+AtsPerioddataRow = Ats.PerioddataRow

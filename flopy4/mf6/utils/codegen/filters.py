@@ -511,7 +511,18 @@ def _default_repr(f: Field) -> str:
             return "False"
         return "None"
     if isinstance(default, str):
-        return repr(default)
+        dfn_type = f.get("type", "")
+        if dfn_type == "integer":
+            try:
+                return repr(int(default))
+            except (ValueError, TypeError):
+                pass
+        elif dfn_type in ("double", "double precision"):
+            try:
+                return repr(float(default))
+            except (ValueError, TypeError):
+                pass
+        return _dq(default)
     return repr(default)
 
 
@@ -620,6 +631,89 @@ def python_repr(v) -> str:
     return "\n".join(lines)
 
 
+def row_class(schema_list: list[dict], class_name: str, is_period: bool = False) -> str:
+    """Render an @attrs.define Row nested class for list block construction.
+
+    Called as::
+
+        {{ spec.period_schema | row_class("Row", True) }}
+        {{ block_schema | row_class("PackagedataRow") }}
+
+    Produces a 4-space-indented ``@attrs.define`` class with typed fields and
+    an ``__iter__`` method that yields column values in schema column order.
+    Row instances can be passed anywhere nested lists are accepted — they are
+    coerced to np.recarray in ``__attrs_post_init__`` exactly like nested lists.
+
+    Required fields (no default) are declared before optional fields to
+    satisfy attrs ordering constraints.  ``__iter__`` follows schema column
+    order so coercion produces the correct recarray layout.
+
+    ``is_period=True`` injects ``aux: tuple = ()`` between required value
+    columns and optional columns, for packages that accept positional AUXILIARY
+    columns in their stress period recarray.  Static list blocks (packagedata,
+    connectiondata, etc.) have fixed DFN schemas and never carry dynamic aux
+    columns, so ``is_period`` should be False (the default) for those.
+    """
+    if not schema_list:
+        return ""
+
+    _DFN_PY: dict[str, str] = {
+        "double": "float",
+        "double precision": "float",
+        "integer": "int",
+        "string": "str",
+        "keyword": "str",
+        "object": "object",
+    }
+
+    def _py_type(col: dict) -> str:
+        role = col["role"]
+        if role == "cellid":
+            return "tuple"
+        if role == "feature_id":
+            return "int"
+        if role in ("keystring", "inline_keyword"):
+            return "str"
+        if role == "keystring_value":
+            return "object"
+        if role == "boundname":
+            return "str"
+        if col.get("time_series") or col.get("dtype") == "np.object_":
+            return "Union[float, str]"
+        return _DFN_PY.get(col.get("dfn_type", "double"), "float")
+
+    def _is_optional(col: dict) -> bool:
+        return bool(col.get("optional")) or col["role"] in ("boundname", "inline_keyword")
+
+    required = [col for col in schema_list if not _is_optional(col)]
+    optional = [col for col in schema_list if _is_optional(col)]
+    # Aux injection: only for period blocks.  Standard stress packages (CHD,
+    # WEL, DRN, …) carry aux as positional trailing columns in the recarray
+    # whose count equals len(package.auxiliary).  Keystring period packages
+    # (LAK, SFR) embed AUXILIARY as a named keyword record — no positional aux.
+    # Static list blocks (packagedata, connectiondata, etc.) have fixed schemas
+    # and never carry dynamic aux columns regardless of package options.
+    has_positional_aux = is_period and not any(col["role"] == "keystring" for col in schema_list)
+
+    lines = ["    @attrs.define"]
+    lines.append(f"    class {class_name}:")
+    for col in required:
+        lines.append(f"        {col['name']}: {_py_type(col)}")
+    if has_positional_aux:
+        lines.append("        aux: tuple = ()")
+    for col in optional:
+        lines.append(f"        {col['name']}: Optional[{_py_type(col)}] = None")
+    lines.append("")
+    lines.append("        def __iter__(self):")
+    for col in required:
+        lines.append(f"            yield self.{col['name']}")
+    if has_positional_aux:
+        lines.append("            yield from self.aux")
+    for col in optional:
+        lines.append(f"            yield self.{col['name']}")
+    return "\n".join(lines)
+
+
 def schema_class(schema_list: list[dict], class_name: str) -> str:
     """Render a Schema subclass body for a list[dict] column schema.
 
@@ -628,17 +722,15 @@ def schema_class(schema_list: list[dict], class_name: str) -> str:
         {{ spec.period_schema | schema_class("_PeriodSchema") }}
 
     Produces a 4-space-indented class definition (suitable for class-body
-    emission in generated files) with one Column(...) attribute per column,
-    padded so all ``=`` signs align.  Long Column() calls are wrapped to
-    keep lines under the 100-character ruff limit.
+    emission in generated files) with one Column(...) attribute per column.
+    Long Column() calls are wrapped to keep lines under the 100-character
+    ruff limit.
     """
     if not schema_list:
         return ""
-    max_name = max(len(col["name"]) for col in schema_list)
     lines = [f"    class {class_name}(Schema):"]
     for col in schema_list:
         name = col["name"]
-        pad = " " * (max_name - len(name))
         args = [f'"{name}"', f'role="{col["role"]}"', f'dfn_type="{col.get("dfn_type", "double")}"']
         if col.get("shape"):
             args.append(f'shape="{col["shape"]}"')
@@ -650,12 +742,12 @@ def schema_class(schema_list: list[dict], class_name: str) -> str:
             args.append(f'dtype="{col["dtype"]}"')
         if col.get("prefix"):
             args.append(f'prefix="{col["prefix"]}"')
-        single = f"        {name}{pad} = Column({', '.join(args)})"
+        single = f"        {name} = Column({', '.join(args)})"
         if len(single) <= 100:
             lines.append(single)
         else:
             # Wrap: each arg on its own line at 12-space indent.
-            lines.append(f"        {name}{pad} = Column(")
+            lines.append(f"        {name} = Column(")
             for arg in args:
                 lines.append(f"            {arg},")
             lines.append("        )")

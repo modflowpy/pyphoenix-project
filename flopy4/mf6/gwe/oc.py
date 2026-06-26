@@ -47,7 +47,10 @@ class Oc(Package):
         },
     )
     temperatureprint: Optional[Temperatureprint] = attrs.field(
-        default=None, metadata={"dfn_block": "options"}
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
     )
     save_temperature: Optional[dict[int, list[str]]] = attrs.field(
         default=None,

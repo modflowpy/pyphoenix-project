@@ -14,7 +14,7 @@ import jinja2
 from modflow_devtools.dfn import Dfn, Field
 
 from . import filters
-from .filters import ColumnSpec, _dq, python_repr, schema_class
+from .filters import ColumnSpec, _dq, python_repr, row_class, schema_class
 from .overrides import (
     always_emit_blocks,
     apply_to_child,
@@ -573,6 +573,8 @@ def _new_codegen_imports(
     has_griddata: bool = False,
     has_readarray_period: bool = False,
     has_injected_paths: bool = False,
+    period_schema: list[dict] | None = None,
+    block_schemas: dict[str, list[dict]] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for new-codegen packages (no xattree, no spec calls)."""
     has_array = any(
@@ -593,6 +595,16 @@ def _new_codegen_imports(
         or has_injected_paths  # injected path fields are always Optional[Path]
     )
     has_classvar = multi or slntype or has_inner_classes or has_period_schema
+    # Union[float, str] is used by row_class() for time_series and np.object_ columns.
+    # Check both the period schema and all static block schemas.
+    _all_schema_cols = list(period_schema or []) + [
+        col for cols in (block_schemas or {}).values() for col in cols
+    ]
+    has_union = any(
+        col.get("time_series") or col.get("dtype") == "np.object_"
+        for col in _all_schema_cols
+        if col.get("role") not in ("keystring_value", "boundname")
+    )
 
     stdlib: list[str] = []
     if has_path or has_injected_paths or has_file_records:
@@ -602,6 +614,8 @@ def _new_codegen_imports(
         typing_parts.append("ClassVar")
     if has_optional:
         typing_parts.append("Optional")
+    if has_union:
+        typing_parts.append("Union")
     if typing_parts:
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
@@ -738,7 +752,7 @@ def build_component_spec(
                         dfn_name=f["name"],
                         py_name=filters.safe_name(block_name),
                         type_annotation="Optional[np.recarray]",
-                        spec_call=f"attrs.field(default=None, metadata={meta!r})",
+                        spec_call=_ml_field(metadata=meta),
                         generatable=True,
                     )
                 )
@@ -750,7 +764,7 @@ def build_component_spec(
             inner_class_specs.append(record_spec)
             clean_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
             block = f["block"]
-            inner_spec_call = f'attrs.field(default=None, metadata={{"dfn_block": "{block}"}})'
+            inner_spec_call = _ml_field(metadata={"dfn_block": block})
             target.append(
                 FieldSpec(
                     dfn_name=f["name"],
@@ -897,7 +911,19 @@ def build_component_spec(
     # Keystring packages (LAK, SFR, MAW, UZF) use a fixed (number, keyword, value)
     # schema; standard stress packages (DRN, WEL, CHD) use per-column schema.
     if has_period_keystring:
-        # Keystring period: schema is always (number, keyword, value).
+        # Keystring period: schema is approximated as (number, keyword, value).
+        # The DFN defines a discriminated union (laksetting/sfrsetting/mawsetting)
+        # where the keyword determines the value type and arity.  A proper typed
+        # representation requires a sealed class hierarchy or tagged variant type
+        # and is deferred pending upstream devtools schema work.  Current limitations:
+        # (1) Single-value keywords (STAGE, RAINFALL, STATUS, etc.) work correctly.
+        # (2) AUXILIARY (two values: auxname + auxval) must be passed as a tuple in
+        #     the value field: Row(number=0, keyword="AUXILIARY", value=("conc", 5.0)).
+        #     There is no typed Row.aux field for keystring packages (unlike standard
+        #     stress packages) because the value arity is determined by the keyword.
+        # (3) Compound sub-records (diversionrecord, flowing_wellrecord, etc.) are
+        #     not representable in the current schema.
+        # See docs/dev/dask1.gaps.md G3 (keystring aux) and G5 (union type).
         # _period_array_fields contains the leading index column (e.g. "number").
         # feature_id role: user passes 0-based Python index; codec emits 1-based for MF6.
         period_schema = [
@@ -984,6 +1010,8 @@ def build_component_spec(
         has_griddata=_has_griddata,
         has_injected_paths=has_injected_paths,
         has_readarray_period=bool(_readarray_period_fields),
+        period_schema=period_schema,
+        block_schemas=block_schemas,
     )
 
     return ComponentSpec(
@@ -1021,6 +1049,7 @@ def _get_env() -> jinja2.Environment:
         undefined=jinja2.StrictUndefined,
     )
     env.filters["python_repr"] = python_repr
+    env.filters["row_class"] = row_class
     env.filters["schema_class"] = schema_class
     return env
 
@@ -1031,7 +1060,7 @@ def make_module(spec: ComponentSpec, env: jinja2.Environment, verbose: bool = Fa
     import subprocess
 
     template = env.get_template(_TEMPLATE_NAME)
-    rendered = template.render(spec=spec)
+    rendered = template.render(spec=spec).rstrip() + "\n"
     spec.outpath.write_text(rendered, newline="\n")
     ruff = shutil.which("ruff")
     if ruff:

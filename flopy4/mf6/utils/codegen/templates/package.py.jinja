@@ -55,13 +55,20 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     pass
 {% endif %}
 {% if spec.period_schema or spec.block_schemas %}
+
 {% for block_name, schema in spec.block_schemas.items() %}
 {{ schema | schema_class("_" + block_name | capitalize + "Schema") }}
+
     __{{ block_name }}_schema__: ClassVar[type[Schema]] = _{{ block_name | capitalize }}Schema
+
+{{ schema | row_class(block_name | capitalize + "Row") }}
 
 {% endfor %}
 {% if spec.period_schema %}
+{{ spec.period_schema | row_class("Row", True) }}
+
 {{ spec.period_schema | schema_class("_PeriodSchema") }}
+
     __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
 {% endif %}
@@ -70,4 +77,13 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endfor %}
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
+{% endif %}
+{% if spec.period_schema or spec.block_schemas %}
+
+{% if spec.period_schema %}
+{{ spec.class_name }}Row = {{ spec.class_name }}.Row
+{% endif %}
+{% for block_name in spec.block_schemas %}
+{{ spec.class_name }}{{ block_name | capitalize }}Row = {{ spec.class_name }}.{{ block_name | capitalize }}Row
+{% endfor %}
 {% endif %}

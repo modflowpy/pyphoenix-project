@@ -34,29 +34,29 @@ class Est(Package):
         },
     )
     density_water: Optional[float] = attrs.field(
-        default="1000.0",
+        default=1000.0,
         metadata={
             "dfn_block": "options",
             "dfn_type": "double",
             "optional": True,
         },
-    )  # type: ignore[assignment]
+    )
     heat_capacity_water: Optional[float] = attrs.field(
-        default="4184.0",
+        default=4184.0,
         metadata={
             "dfn_block": "options",
             "dfn_type": "double",
             "optional": True,
         },
-    )  # type: ignore[assignment]
+    )
     latent_heat_vaporization: Optional[float] = attrs.field(
-        default="2453500.0",
+        default=2453500.0,
         metadata={
             "dfn_block": "options",
             "dfn_type": "double",
             "optional": True,
         },
-    )  # type: ignore[assignment]
+    )
     porosity: ArrayLike = attrs.field(
         default=None,
         metadata={

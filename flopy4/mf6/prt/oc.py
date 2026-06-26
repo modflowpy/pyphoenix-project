@@ -127,11 +127,27 @@ class Oc(Package):
             "optional": True,
         },
     )
-    track_times: Optional[TrackTimes] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    track_times: Optional[TrackTimes] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     track_timesfile: Optional[TrackTimesfile] = attrs.field(
-        default=None, metadata={"dfn_block": "options"}
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
     )
     dev_dump_event_trace: bool = attrs.field(
+        default=False,
+        metadata={
+            "dfn_block": "options",
+            "dfn_type": "keyword",
+            "optional": True,
+        },
+    )
+    scratch_buffer: bool = attrs.field(
         default=False,
         metadata={
             "dfn_block": "options",
@@ -179,5 +195,15 @@ class Oc(Package):
 
     __tracktimes_schema__: ClassVar[type[Schema]] = _TracktimesSchema
 
+    @attrs.define
+    class TracktimesRow:
+        time: float
+
+        def __iter__(self):
+            yield self.time
+
     tracktimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+OcTracktimesRow = Oc.TracktimesRow

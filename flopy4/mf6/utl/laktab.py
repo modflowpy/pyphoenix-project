@@ -43,5 +43,21 @@ class Laktab(Package):
 
     __table_schema__: ClassVar[type[Schema]] = _TableSchema
 
+    @attrs.define
+    class TableRow:
+        stage: float
+        volume: float
+        sarea: float
+        barea: float
+
+        def __iter__(self):
+            yield self.stage
+            yield self.volume
+            yield self.sarea
+            yield self.barea
+
     table_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+LaktabTableRow = Laktab.TableRow

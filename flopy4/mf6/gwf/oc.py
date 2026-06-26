@@ -50,7 +50,12 @@ class Oc(Package):
             "inout": "fileout",
         },
     )
-    headprint: Optional[Headprint] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    headprint: Optional[Headprint] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     save_head: Optional[dict[int, list[str]]] = attrs.field(
         default=None,
         metadata={

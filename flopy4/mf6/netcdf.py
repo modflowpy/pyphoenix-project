@@ -848,10 +848,9 @@ class NetCDFParam(BaseModel, NetCDFInput):
                 FILL_DNODATA if metadata(spec.arrays[param], "block") == "period" else FILL_FLOAT64
             )
         elif np.issubdtype(spec.arrays[param].dtype, np.integer):
-            _meta["encodings"]["_FillValue"] = (
-                # FILL_DNODATA  # TODO: FILL_INODATA
-                FILL_INT64
-            )
+            # MF6 defines DNODATA (3e30) for reals but has no parallel integer
+            # no-data constant; FILL_INT64 (NF90_FILL_INT) is the correct choice.
+            _meta["encodings"]["_FillValue"] = FILL_INT64
 
         # modflow_input internal attribute
         ptype = context["package_type"].split("-")[1].strip()

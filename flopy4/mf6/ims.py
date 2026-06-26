@@ -70,7 +70,12 @@ class Ims(Solution):
             "inout": "fileout",
         },
     )
-    no_ptc: Optional[NoPtc] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    no_ptc: Optional[NoPtc] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     ats_outer_maximum_fraction: Optional[float] = attrs.field(
         default=None,
         metadata={
@@ -203,7 +208,12 @@ class Ims(Solution):
             "dfn_type": "double",
         },
     )
-    rclose: Optional[Rclose] = attrs.field(default=None, metadata={"dfn_block": "linear"})
+    rclose: Optional[Rclose] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "linear",
+        },
+    )
     linear_acceleration: str = attrs.field(
         default=None,
         metadata={

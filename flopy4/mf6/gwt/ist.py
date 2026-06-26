@@ -80,7 +80,12 @@ class Ist(Package):
             "inout": "fileout",
         },
     )
-    cimprint: Optional[Cimprint] = attrs.field(default=None, metadata={"dfn_block": "options"})
+    cimprint: Optional[Cimprint] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
+    )
     sorbate_file: Optional[Path] = attrs.field(
         default=None,
         converter=_optional_path,

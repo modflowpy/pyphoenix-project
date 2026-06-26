@@ -90,7 +90,7 @@ class Sto(Package):
         },
     )  # type: ignore[assignment]
     ss: ArrayLike = attrs.field(
-        default="1.e-5",
+        default=1e-05,
         metadata={
             "dfn_block": "griddata",
             "dfn_type": "double",
@@ -101,7 +101,7 @@ class Sto(Package):
         },
     )  # type: ignore[assignment]
     sy: ArrayLike = attrs.field(
-        default="0.15",
+        default=0.15,
         metadata={
             "dfn_block": "griddata",
             "dfn_type": "double",
@@ -122,9 +122,19 @@ class Sto(Package):
         },
     )
 
+    @attrs.define
+    class Row:
+        storagestate: str
+
+        def __iter__(self):
+            yield self.storagestate
+
     class _PeriodSchema(Schema):
         storagestate = Column("storagestate", role="keystring", dfn_type="keyword")
 
     __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+StoRow = Sto.Row

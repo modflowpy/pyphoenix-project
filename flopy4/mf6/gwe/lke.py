@@ -157,6 +157,32 @@ class Lke(Package):
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
+    @attrs.define
+    class PackagedataRow:
+        lakeno: int
+        strt: float
+        ktf: float
+        rbthcnd: float
+        boundname: Optional[str] = None
+
+        def __iter__(self):
+            yield self.lakeno
+            yield self.strt
+            yield self.ktf
+            yield self.rbthcnd
+            yield self.boundname
+
+    @attrs.define
+    class Row:
+        lakeno: int
+        keyword: str
+        value: object
+
+        def __iter__(self):
+            yield self.lakeno
+            yield self.keyword
+            yield self.value
+
     class _PeriodSchema(Schema):
         lakeno = Column("lakeno", role="feature_id", dfn_type="integer")
         keyword = Column("keyword", role="keystring", dfn_type="string")
@@ -166,3 +192,7 @@ class Lke(Package):
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+LkeRow = Lke.Row
+LkePackagedataRow = Lke.PackagedataRow

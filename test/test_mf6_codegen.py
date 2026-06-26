@@ -29,6 +29,7 @@ from flopy4.mf6.utils.codegen.filters import (
     module_name,
     output_path,
     py_type,
+    row_class,
     safe_name,
     schema_class,
 )
@@ -261,7 +262,7 @@ class TestFilters:
         assert 'Column("head"' in result
         assert 'role="value"' in result
 
-    def test_schema_class_column_name_alignment(self):
+    def test_schema_class_no_column_name_alignment(self):
         schema = [
             {"name": "ab", "role": "value", "dfn_type": "double"},
             {"name": "abcdef", "role": "cellid", "dfn_type": "integer"},
@@ -269,9 +270,9 @@ class TestFilters:
         result = schema_class(schema, "_Schema")
         col_lines = [ln for ln in result.splitlines() if "= Column(" in ln]
         assert len(col_lines) == 2
-        # The '= Column(' should start at the same position in both lines.
-        positions = [ln.index("= Column(") for ln in col_lines]
-        assert positions[0] == positions[1]
+        # Each name is followed immediately by ' = Column(' — no padding spaces.
+        assert "        ab = Column(" in col_lines[0]
+        assert "        abcdef = Column(" in col_lines[1]
 
     def test_schema_class_long_line_wraps(self):
         # A column with many optional args whose single-line form exceeds 100 chars.
@@ -308,6 +309,73 @@ class TestFilters:
         assert 'dtype="np.float64"' in result
         assert 'prefix="pfx"' in result
         assert 'shape="(n)"' in result
+
+    def test_row_class_empty_returns_empty_string(self):
+        assert row_class([], "Row") == ""
+
+    def test_row_class_static_block_no_aux(self):
+        # Static block Row (is_period=False default): no aux field.
+        schema = [
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "strt", "role": "value", "dfn_type": "double"},
+            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+        ]
+        result = row_class(schema, "PackagedataRow")
+        assert "@attrs.define" in result
+        assert "class PackagedataRow:" in result
+        assert "ifno: int" in result
+        assert "strt: float" in result
+        assert "boundname: Optional[str] = None" in result
+        assert "aux" not in result
+
+    def test_row_class_period_has_aux_for_standard_stress(self):
+        # Period Row (is_period=True) with no keystring: aux field present.
+        schema = [
+            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
+            {"name": "head", "role": "value", "dfn_type": "double"},
+            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+        ]
+        result = row_class(schema, "Row", is_period=True)
+        assert "aux: tuple = ()" in result
+        assert "yield from self.aux" in result
+
+    def test_row_class_period_keystring_no_aux(self):
+        # Period Row with keystring role: no aux even with is_period=True.
+        schema = [
+            {"name": "number", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "keyword", "role": "keystring", "dfn_type": "string"},
+            {"name": "value", "role": "keystring_value", "dfn_type": "object"},
+        ]
+        result = row_class(schema, "Row", is_period=True)
+        assert "aux" not in result
+
+    def test_row_class_iter_order_matches_schema(self):
+        # __iter__ yields required first, then optional (boundname last).
+        schema = [
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "strt", "role": "value", "dfn_type": "double"},
+            {"name": "nlakeconn", "role": "value", "dfn_type": "integer"},
+            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+        ]
+        result = row_class(schema, "PackagedataRow")
+        lines = result.splitlines()
+        iter_lines = [ln.strip() for ln in lines if ln.strip().startswith("yield")]
+        assert iter_lines == [
+            "yield self.ifno",
+            "yield self.strt",
+            "yield self.nlakeconn",
+            "yield self.boundname",
+        ]
+
+    def test_row_class_inline_keyword_optional(self):
+        # inline_keyword role → Optional[str] in Row.
+        schema = [
+            {"name": "pname", "role": "value", "dfn_type": "string", "dtype": "np.object_"},
+            {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
+        ]
+        result = row_class(schema, "FileinputRow")
+        assert "mixed: Optional[str] = None" in result
+        assert "yield self.mixed" in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs

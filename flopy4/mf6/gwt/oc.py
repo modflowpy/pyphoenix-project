@@ -47,7 +47,10 @@ class Oc(Package):
         },
     )
     concentrationprint: Optional[Concentrationprint] = attrs.field(
-        default=None, metadata={"dfn_block": "options"}
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
     )
     save_concentration: Optional[dict[int, list[str]]] = attrs.field(
         default=None,

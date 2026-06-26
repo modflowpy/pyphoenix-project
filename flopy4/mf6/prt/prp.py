@@ -50,13 +50,13 @@ class Prp(Package):
         },
     )
     exit_solve_tolerance: Optional[float] = attrs.field(
-        default="1e-5",
+        default=1e-05,
         metadata={
             "dfn_block": "options",
             "dfn_type": "double",
             "optional": True,
         },
-    )  # type: ignore[assignment]
+    )
     local_z: bool = attrs.field(
         default=False,
         metadata={
@@ -134,10 +134,16 @@ class Prp(Package):
         },
     )
     release_times: Optional[ReleaseTimes] = attrs.field(
-        default=None, metadata={"dfn_block": "options"}
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
     )
     release_timesfile: Optional[ReleaseTimesfile] = attrs.field(
-        default=None, metadata={"dfn_block": "options"}
+        default=None,
+        metadata={
+            "dfn_block": "options",
+        },
     )
     dry_tracking_method: Optional[str] = attrs.field(
         default=None,
@@ -237,10 +243,55 @@ class Prp(Package):
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
+    @attrs.define
+    class PackagedataRow:
+        irptno: int
+        cellid: tuple
+        xrpt: float
+        yrpt: float
+        zrpt: float
+        boundname: Optional[str] = None
+
+        def __iter__(self):
+            yield self.irptno
+            yield self.cellid
+            yield self.xrpt
+            yield self.yrpt
+            yield self.zrpt
+            yield self.boundname
+
     class _ReleasetimesSchema(Schema):
         time = Column("time", role="value", dfn_type="double")
 
     __releasetimes_schema__: ClassVar[type[Schema]] = _ReleasetimesSchema
+
+    @attrs.define
+    class ReleasetimesRow:
+        time: float
+
+        def __iter__(self):
+            yield self.time
+
+    @attrs.define
+    class Row:
+        cellid: tuple
+        all: str
+        first: str
+        last: str
+        frequency: int
+        steps: int
+        aux: tuple = ()
+        fraction: Optional[float] = None
+
+        def __iter__(self):
+            yield self.cellid
+            yield self.all
+            yield self.first
+            yield self.last
+            yield self.frequency
+            yield self.steps
+            yield from self.aux
+            yield self.fraction
 
     class _PeriodSchema(Schema):
         cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
@@ -256,3 +307,8 @@ class Prp(Package):
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     releasetimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+PrpRow = Prp.Row
+PrpPackagedataRow = Prp.PackagedataRow
+PrpReleasetimesRow = Prp.ReleasetimesRow

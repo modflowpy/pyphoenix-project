@@ -24,7 +24,7 @@ class Ic(Package):
         },
     )
     strt: ArrayLike = attrs.field(
-        default="0.0",
+        default=0.0,
         metadata={
             "dfn_block": "griddata",
             "dfn_type": "double",

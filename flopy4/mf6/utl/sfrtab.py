@@ -42,5 +42,19 @@ class Sfrtab(Package):
 
     __table_schema__: ClassVar[type[Schema]] = _TableSchema
 
+    @attrs.define
+    class TableRow:
+        xfraction: float
+        height: float
+        manfraction: float
+
+        def __iter__(self):
+            yield self.xfraction
+            yield self.height
+            yield self.manfraction
+
     table_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+SfrtabTableRow = Sfrtab.TableRow

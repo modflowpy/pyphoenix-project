@@ -155,6 +155,28 @@ class Lkt(Package):
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
+    @attrs.define
+    class PackagedataRow:
+        ifno: int
+        strt: float
+        boundname: Optional[str] = None
+
+        def __iter__(self):
+            yield self.ifno
+            yield self.strt
+            yield self.boundname
+
+    @attrs.define
+    class Row:
+        ifno: int
+        keyword: str
+        value: object
+
+        def __iter__(self):
+            yield self.ifno
+            yield self.keyword
+            yield self.value
+
     class _PeriodSchema(Schema):
         ifno = Column("ifno", role="feature_id", dfn_type="integer")
         keyword = Column("keyword", role="keystring", dfn_type="string")
@@ -164,3 +186,7 @@ class Lkt(Package):
 
     packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
     period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+
+
+LktRow = Lkt.Row
+LktPackagedataRow = Lkt.PackagedataRow

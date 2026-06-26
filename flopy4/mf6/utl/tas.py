@@ -29,12 +29,23 @@ class Tas(Package):
         sfacval: float = attrs.field()
 
     time_series_name: Optional[TimeSeriesName] = attrs.field(
-        default=None, metadata={"dfn_block": "attributes"}
+        default=None,
+        metadata={
+            "dfn_block": "attributes",
+        },
     )
     interpolation_method: Optional[InterpolationMethod] = attrs.field(
-        default=None, metadata={"dfn_block": "attributes"}
+        default=None,
+        metadata={
+            "dfn_block": "attributes",
+        },
     )
-    sfac: Optional[Sfac] = attrs.field(default=None, metadata={"dfn_block": "attributes"})
+    sfac: Optional[Sfac] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "attributes",
+        },
+    )
     tas_array: NDArray[np.float64] = attrs.field(
         default=None,
         metadata={
