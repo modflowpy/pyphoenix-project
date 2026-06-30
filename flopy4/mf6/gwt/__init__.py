@@ -1,8 +1,11 @@
 from pathlib import Path
 from typing import Optional
 
+from flopy.discretization.structuredgrid import StructuredGrid
+from flopy.discretization.vertexgrid import VertexGrid
 from xattree import xattree
 
+from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwt.adv import Adv
 from flopy4.mf6.gwt.api import Api
 from flopy4.mf6.gwt.cnc import Cnc
@@ -19,6 +22,17 @@ from flopy4.mf6.gwt.ssm import Ssm
 from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field, path
 from flopy4.utils import to_path
+
+
+def convert_grid(value):
+    if isinstance(value, StructuredGrid):
+        return Dis.from_grid(value)
+    if isinstance(value, VertexGrid):
+        return Disv.from_grid(value)
+    if isinstance(value, (Dis, Disv)) or value is None:
+        return value
+    raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
+
 
 __all__ = [
     "Gwt",
@@ -54,7 +68,7 @@ class Gwt(Model):
     netcdf_input_file: Optional[Path] = path(
         block="options", default=None, converter=to_path, inout="filein"
     )
-    dis: Dis | None = field(block="packages", default=None)
+    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)
@@ -66,3 +80,8 @@ class Gwt(Model):
     ssm: Ssm | None = field(block="packages", default=None)
     mvt: Mvt | None = field(block="packages", default=None)
     api: Api | None = field(block="packages", default=None)
+
+    @property
+    def grid(self):
+        if self.dis is not None:
+            return self.dis.to_grid()
