@@ -1537,3 +1537,144 @@ def test_npf_to_xarray_via_parent_chain():
     assert "strt" in ic_ds
     assert ic_ds.strt.shape == (1, 2, 2)
     assert np.allclose(ic_ds.strt.values, 10.0)
+
+
+# ---------------------------------------------------------------------------
+# Dis/Disv class identity across models
+# ---------------------------------------------------------------------------
+
+
+def test_dis_class_identity():
+    """Each model's Dis is a distinct class, not a re-export of gwf.Dis."""
+    from flopy4.mf6 import gwe, gwf, gwt, prt
+
+    assert gwt.Dis is not gwf.Dis
+    assert gwe.Dis is not gwf.Dis
+    assert prt.Dis is not gwf.Dis
+    assert gwt.Dis.__module__ == "flopy4.mf6.gwt.dis"
+    assert gwe.Dis.__module__ == "flopy4.mf6.gwe.dis"
+    assert prt.Dis.__module__ == "flopy4.mf6.prt.dis"
+
+
+def test_disv_class_identity():
+    """Each model's Disv is a distinct class, not a re-export of gwf.Disv."""
+    from flopy4.mf6 import gwe, gwf, gwt, prt
+
+    assert gwt.Disv is not gwf.Disv
+    assert gwe.Disv is not gwf.Disv
+    assert prt.Disv is not gwf.Disv
+    assert gwt.Disv.__module__ == "flopy4.mf6.gwt.disv"
+    assert gwe.Disv.__module__ == "flopy4.mf6.gwe.disv"
+    assert prt.Disv.__module__ == "flopy4.mf6.prt.disv"
+
+
+def test_prt_dis_no_ncf():
+    """prt.Dis and prt.Disv must not expose NCF fields."""
+    import attrs
+
+    from flopy4.mf6 import prt
+
+    dis_field_names = {f.name for f in attrs.fields(prt.Dis)}
+    assert "ncf6_filerecord" not in dis_field_names
+    assert "ncf" not in dis_field_names
+
+    disv_field_names = {f.name for f in attrs.fields(prt.Disv)}
+    assert "ncf6_filerecord" not in disv_field_names
+    assert "ncf" not in disv_field_names
+
+
+def test_gwt_gwe_disv_instantiate():
+    """gwt.Disv and gwe.Disv can be instantiated with basic grid dims."""
+    from flopy4.mf6 import gwe, gwt
+
+    for cls in (gwt.Disv, gwe.Disv):
+        d = cls(nlay=1, ncpl=4)
+        assert d.nlay == 1
+        assert d.ncpl == 4
+        assert hasattr(d, "ncf6_filerecord")
+
+
+# ---------------------------------------------------------------------------
+# convert_grid and grid property for gwt, gwe, prt
+# ---------------------------------------------------------------------------
+
+
+def test_gwt_convert_grid_structured():
+    from flopy4.mf6.gwt import Dis as GwtDis
+    from flopy4.mf6.gwt import Gwt
+
+    grid = StructuredGrid.uniform(nlay=1, nrow=5, ncol=5)
+    gwt = Gwt(dis=grid)
+    assert isinstance(gwt.dis, GwtDis)
+    assert gwt.dis.nrow == 5
+    assert isinstance(gwt.grid, StructuredGrid)
+
+
+def test_gwt_convert_grid_vertex(vgrid):
+    from flopy4.mf6.gwt import Disv as GwtDisv
+    from flopy4.mf6.gwt import Gwt
+
+    grid = VertexGrid(
+        nlay=vgrid["nlay"],
+        ncpl=vgrid["ncpl"],
+        vertices=vgrid["vertices"],
+        cell2d=vgrid["cell2d"],
+    )
+    gwt = Gwt(dis=grid)
+    assert isinstance(gwt.dis, GwtDisv)
+    assert gwt.dis.ncpl == vgrid["ncpl"]
+    assert isinstance(gwt.grid, VertexGrid)
+
+
+def test_gwe_convert_grid_structured():
+    from flopy4.mf6.gwe import Dis as GweDis
+    from flopy4.mf6.gwe import Gwe
+
+    grid = StructuredGrid.uniform(nlay=1, nrow=5, ncol=5)
+    gwe = Gwe(dis=grid)
+    assert isinstance(gwe.dis, GweDis)
+    assert gwe.dis.nrow == 5
+    assert isinstance(gwe.grid, StructuredGrid)
+
+
+def test_gwe_convert_grid_vertex(vgrid):
+    from flopy4.mf6.gwe import Disv as GweDisv
+    from flopy4.mf6.gwe import Gwe
+
+    grid = VertexGrid(
+        nlay=vgrid["nlay"],
+        ncpl=vgrid["ncpl"],
+        vertices=vgrid["vertices"],
+        cell2d=vgrid["cell2d"],
+    )
+    gwe = Gwe(dis=grid)
+    assert isinstance(gwe.dis, GweDisv)
+    assert gwe.dis.ncpl == vgrid["ncpl"]
+    assert isinstance(gwe.grid, VertexGrid)
+
+
+def test_prt_convert_grid_structured():
+    from flopy4.mf6.prt import Dis as PrtDis
+    from flopy4.mf6.prt import Prt
+
+    grid = StructuredGrid.uniform(nlay=1, nrow=5, ncol=5)
+    prt = Prt(dis=grid)
+    assert isinstance(prt.dis, PrtDis)
+    assert prt.dis.nrow == 5
+    assert isinstance(prt.grid, StructuredGrid)
+
+
+def test_prt_convert_grid_vertex(vgrid):
+    from flopy4.mf6.prt import Disv as PrtDisv
+    from flopy4.mf6.prt import Prt
+
+    grid = VertexGrid(
+        nlay=vgrid["nlay"],
+        ncpl=vgrid["ncpl"],
+        vertices=vgrid["vertices"],
+        cell2d=vgrid["cell2d"],
+    )
+    prt = Prt(dis=grid)
+    assert isinstance(prt.dis, PrtDisv)
+    assert prt.dis.ncpl == vgrid["ncpl"]
+    assert isinstance(prt.grid, VertexGrid)

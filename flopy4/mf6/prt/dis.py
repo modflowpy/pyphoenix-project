@@ -57,7 +57,7 @@ class Dis(DisBase):
             "dfn_type": "double",
             "shape": ("ncol",),
             "layered": False,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     delc: NDArray[np.float64] = attrs.field(
@@ -67,7 +67,7 @@ class Dis(DisBase):
             "dfn_type": "double",
             "shape": ("nrow",),
             "layered": False,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     top: NDArray[np.float64] = attrs.field(
@@ -77,7 +77,7 @@ class Dis(DisBase):
             "dfn_type": "double",
             "shape": ("ncpl",),
             "layered": False,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     botm: NDArray[np.float64] = attrs.field(
@@ -87,7 +87,7 @@ class Dis(DisBase):
             "dfn_type": "double",
             "shape": ("nodes",),
             "layered": True,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     idomain: Optional[NDArray[np.int64]] = attrs.field(
@@ -97,7 +97,7 @@ class Dis(DisBase):
             "dfn_type": "integer",
             "shape": ("nodes",),
             "layered": True,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
 
@@ -120,18 +120,12 @@ class Dis(DisBase):
 
     def to_grid(self) -> StructuredGrid:
         """Convert the discretization to a `StructuredGrid`."""
-        top = (
-            self.top.reshape(self.nrow, self.ncol) if isinstance(self.top, np.ndarray) else self.top
-        )
-        botm = (
-            self.botm.reshape(self.nlay, self.nrow, self.ncol)
-            if isinstance(self.botm, np.ndarray)
-            else self.botm
-        )
+        top = np.asarray(self.top).reshape(self.nrow, self.ncol)
+        botm = np.asarray(self.botm).reshape(self.nlay, self.nrow, self.ncol)
         idomain = (
-            self.idomain.reshape(self.nlay, self.nrow, self.ncol)
-            if isinstance(self.idomain, np.ndarray)
-            else self.idomain
+            np.asarray(self.idomain).reshape(self.nlay, self.nrow, self.ncol)
+            if self.idomain is not None
+            else None
         )
         return StructuredGrid(
             length_units=self.length_units,
@@ -140,17 +134,19 @@ class Dis(DisBase):
             nlay=self.nlay,
             nrow=self.nrow,
             ncol=self.ncol,
-            delr=self.delr,
-            delc=self.delc,
+            delr=np.asarray(self.delr),
+            delc=np.asarray(self.delc),
             top=top,
             botm=botm,
             idomain=idomain,
+            angrot=self.angrot,
             crs=self.crs,
         )
 
     @classmethod
     def from_grid(cls, grid: StructuredGrid) -> "Dis":
         """Create a discretization from a `StructuredGrid`."""
+        _lenunits = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
         kwargs = {
             "xorigin": grid.xoffset,
             "yorigin": grid.yoffset,
@@ -163,6 +159,10 @@ class Dis(DisBase):
             "botm": grid.botm,
             "idomain": grid.idomain,
         }
+        if grid.lenuni in _lenunits:
+            kwargs["length_units"] = _lenunits[grid.lenuni]
+        if grid.angrot:
+            kwargs["angrot"] = grid.angrot
         if grid.crs is not None:
             kwargs["crs"] = f"EPSG:{grid.crs.to_epsg()}"
         return Dis(**kwargs)

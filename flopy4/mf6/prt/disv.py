@@ -1,15 +1,12 @@
-from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.schema import Column, Schema
 from flopy4.mf6.utils.grid import VertexGrid
-from flopy4.mf6.utl.ncf import Ncf
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -57,17 +54,6 @@ class Disv(DisBase):
         default=None,
         metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
     )
-    ncf6_filerecord: Optional[Path] = attrs.field(
-        default=None,
-        converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
-    )
-    ncf: Optional[Ncf] = attrs.field(default=None)
     nlay: int = attrs.field(
         default=0,
         metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
@@ -87,7 +73,7 @@ class Disv(DisBase):
             "dfn_type": "double",
             "shape": ("ncpl",),
             "layered": False,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     botm: NDArray[np.float64] = attrs.field(
@@ -97,7 +83,7 @@ class Disv(DisBase):
             "dfn_type": "double",
             "shape": ("nodes",),
             "layered": True,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     idomain: Optional[NDArray[np.int64]] = attrs.field(
@@ -107,7 +93,7 @@ class Disv(DisBase):
             "dfn_type": "integer",
             "shape": ("nodes",),
             "layered": True,
-            "netcdf": True,
+            "netcdf": False,
         },
     )  # type: ignore[assignment]
     # User-facing parallel arrays for vertices.
@@ -175,7 +161,6 @@ class Disv(DisBase):
         vertices = []
         for i in range(len(self.iv)):  # type: ignore[arg-type]
             vertices.append([self.iv[i], self.xv[i], self.yv[i]])  # type: ignore[index]
-        # VertexGrid expects top as 1D (ncpl,) and botm as 2D (nlay, ncpl).
         botm = (
             self.botm.reshape(self.nlay, self.ncpl)
             if isinstance(self.botm, np.ndarray)
