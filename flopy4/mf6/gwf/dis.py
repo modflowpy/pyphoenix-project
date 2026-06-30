@@ -154,6 +154,7 @@ class Dis(DisBase):
             top=top,
             botm=botm,
             idomain=idomain,
+            angrot=self.angrot,
             crs=self.crs,
         )
 

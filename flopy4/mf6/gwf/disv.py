@@ -190,6 +190,7 @@ class Disv(DisBase):
             length_units=self.length_units,
             xoff=self.xorigin,
             yoff=self.yorigin,
+            angrot=self.angrot,
             crs=self.crs,
             nlay=self.nlay,
             top=self.top,
