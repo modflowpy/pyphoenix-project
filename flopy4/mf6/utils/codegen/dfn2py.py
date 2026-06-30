@@ -46,6 +46,7 @@ def make(
     developmode: bool = False,
     makedirs: bool = False,
     existing_only: bool = False,
+    verbose: bool = False,
 ):
     """Generate an MF6 module from DFNs."""
     dfndir = Path(dfndir).expanduser().resolve()
@@ -59,6 +60,7 @@ def make(
         skip=_SKIP,
         makedirs=makedirs,
         existing_only=existing_only,
+        verbose=verbose,
     )
     print(f"Generated {len(components)} component modules")
 
@@ -78,13 +80,6 @@ def cli_main() -> None:
         "--outdir",
         default=str(_MF6_ROOT),
         help="Root output directory (default: flopy4/mf6/ in the project).",
-    )
-    parser.add_argument(
-        "--mf6-version",
-        default=None,
-        dest="mf6_version",
-        help="MF6 version string to record in _contract.py. "
-        "Inferred from the release tag for remote IDs; defaults to 'unknown' for local paths.",
     )
     parser.add_argument(
         "--developmode",
@@ -111,6 +106,7 @@ def cli_main() -> None:
             developmode=args.developmode,
             makedirs=args.makedirs,
             existing_only=args.existing_only,
+            verbose=args.verbose,
         )
     except (EOFError, KeyboardInterrupt):
         sys.exit(f"Cancelled '{sys.argv[0]}'")

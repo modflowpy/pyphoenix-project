@@ -22,9 +22,41 @@ def _coerce(token: str, f: attrs.Attribute):
 class Record:
     """Mixin for generated inner-class record types.
 
-    Provides :meth:`from_tokens` so callers can construct a record from a raw
-    MF6 input string or pre-split token list without knowing field names.
+    Provides :meth:`from_tokens` and :meth:`to_tokens` for symmetric
+    parsing/serialization of inner-class records.
     """
+
+    def to_tokens(self) -> tuple:
+        """Serialize this record to an MF6 token tuple.
+
+        Emits ``_keyword`` (uppercased), ``_extra_tokens``, then field values
+        in declaration order (tagged fields emit ``NAME value``, untagged bools
+        emit ``NAME`` when True, untagged scalars emit the raw value).
+        """
+        inner_cls = type(self)
+        keyword: str = vars(inner_cls).get("_keyword", "")
+        tokens: list = [keyword.upper()] if keyword else []
+        for tok in vars(inner_cls).get("_extra_tokens", ()):
+            tokens.append(tok)
+        all_fields = attrs.fields(inner_cls)  # type: ignore[arg-type]
+        tagged = [a for a in all_fields if a.metadata.get("tagged")]
+        untagged = [a for a in all_fields if not a.metadata.get("tagged")]
+        for a in tagged + untagged:
+            v = getattr(self, a.name)
+            if v is None:
+                continue
+            if a.metadata.get("tagged"):
+                if isinstance(v, bool):
+                    if v:
+                        tokens.append(a.name.upper())
+                else:
+                    tokens.extend([a.name.upper(), v])
+            elif isinstance(v, bool):
+                if v:
+                    tokens.append(a.name.upper())
+            else:
+                tokens.append(v)
+        return tuple(tokens)
 
     @classmethod
     def from_tokens(cls, tokens: str | list[str]) -> "Record":

@@ -29,8 +29,9 @@ from flopy4.mf6.utils.codegen.filters import (
     module_name,
     output_path,
     py_type,
+    row_class,
     safe_name,
-    spec_call,
+    schema_class,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 
@@ -245,29 +246,136 @@ class TestFilters:
         )
         assert is_generatable(f)
 
-    @pytest.mark.parametrize(
-        "ftype, shape, check",
-        [
-            ("keyword", None, lambda s: s.startswith("field(")),
-            ("double", "(nodes)", lambda s: s.startswith("array(")),
-            ("integer", "(nper)", lambda s: s.startswith("array(")),
-        ],
-    )
-    def test_spec_call_prefix(self, ftype, shape, check):
-        f = Field(name="x", type=ftype, block="options", shape=shape)
-        assert check(spec_call(f))
+    def test_schema_class_empty_returns_empty_string(self):
+        assert schema_class([], "_Empty") == ""
 
-    def test_spec_call_file_record(self):
-        child = Field(name="fileout", type="keyword", block="options")
-        f = Field(
-            name="budget_filerecord",
-            type="record",
-            block="options",
-            children={"fileout": child},
-        )
-        call = spec_call(f)
-        assert 'inout="fileout"' in call
-        assert "to_path" in call
+    def test_schema_class_basic_structure(self):
+        schema = [
+            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
+            {"name": "head", "role": "value", "dfn_type": "double"},
+        ]
+        result = schema_class(schema, "_PeriodSchema")
+        assert "    class _PeriodSchema(Schema):" in result
+        assert 'Column("cellid"' in result
+        assert 'role="cellid"' in result
+        assert 'dfn_type="integer"' in result
+        assert 'Column("head"' in result
+        assert 'role="value"' in result
+
+    def test_schema_class_no_column_name_alignment(self):
+        schema = [
+            {"name": "ab", "role": "value", "dfn_type": "double"},
+            {"name": "abcdef", "role": "cellid", "dfn_type": "integer"},
+        ]
+        result = schema_class(schema, "_Schema")
+        col_lines = [ln for ln in result.splitlines() if "= Column(" in ln]
+        assert len(col_lines) == 2
+        # Each name is followed immediately by ' = Column(' — no padding spaces.
+        assert "        ab = Column(" in col_lines[0]
+        assert "        abcdef = Column(" in col_lines[1]
+
+    def test_schema_class_long_line_wraps(self):
+        # A column with many optional args whose single-line form exceeds 100 chars.
+        schema = [
+            {
+                "name": "very_long_column_name_xyz",
+                "role": "value",
+                "dfn_type": "double",
+                "time_series": True,
+                "dtype": "np.object_",
+                "shape": "(ncelldim)",
+            },
+        ]
+        result = schema_class(schema, "_Schema")
+        for line in result.splitlines():
+            assert len(line) <= 100, f"Line exceeds 100 chars: {line!r}"
+
+    def test_schema_class_optional_args_emitted(self):
+        schema = [
+            {
+                "name": "col",
+                "role": "value",
+                "dfn_type": "double",
+                "optional": True,
+                "time_series": True,
+                "dtype": "np.float64",
+                "prefix": "pfx",
+                "shape": "(n)",
+            },
+        ]
+        result = schema_class(schema, "_Schema")
+        assert "optional=True" in result
+        assert "time_series=True" in result
+        assert 'dtype="np.float64"' in result
+        assert 'prefix="pfx"' in result
+        assert 'shape="(n)"' in result
+
+    def test_row_class_empty_returns_empty_string(self):
+        assert row_class([], "Row") == ""
+
+    def test_row_class_static_block_no_aux(self):
+        # Static block Row (is_period=False default): no aux field.
+        schema = [
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "strt", "role": "value", "dfn_type": "double"},
+            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+        ]
+        result = row_class(schema, "PackagedataRow")
+        assert "@attrs.define" in result
+        assert "class PackagedataRow:" in result
+        assert "ifno: int" in result
+        assert "strt: float" in result
+        assert "boundname: Optional[str] = None" in result
+        assert "aux" not in result
+
+    def test_row_class_period_has_aux_for_standard_stress(self):
+        # Period Row (is_period=True) with no keystring: aux field present.
+        schema = [
+            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
+            {"name": "head", "role": "value", "dfn_type": "double"},
+            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+        ]
+        result = row_class(schema, "Row", is_period=True)
+        assert "aux: tuple = ()" in result
+        assert "yield from self.aux" in result
+
+    def test_row_class_period_keystring_no_aux(self):
+        # Period Row with keystring role: no aux even with is_period=True.
+        schema = [
+            {"name": "number", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "keyword", "role": "keystring", "dfn_type": "string"},
+            {"name": "value", "role": "keystring_value", "dfn_type": "object"},
+        ]
+        result = row_class(schema, "Row", is_period=True)
+        assert "aux" not in result
+
+    def test_row_class_iter_order_matches_schema(self):
+        # __iter__ yields required first, then optional (boundname last).
+        schema = [
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "strt", "role": "value", "dfn_type": "double"},
+            {"name": "nlakeconn", "role": "value", "dfn_type": "integer"},
+            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+        ]
+        result = row_class(schema, "PackagedataRow")
+        lines = result.splitlines()
+        iter_lines = [ln.strip() for ln in lines if ln.strip().startswith("yield")]
+        assert iter_lines == [
+            "yield self.ifno",
+            "yield self.strt",
+            "yield self.nlakeconn",
+            "yield self.boundname",
+        ]
+
+    def test_row_class_inline_keyword_optional(self):
+        # inline_keyword role → Optional[str] in Row.
+        schema = [
+            {"name": "pname", "role": "value", "dfn_type": "string", "dtype": "np.object_"},
+            {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
+        ]
+        result = row_class(schema, "FileinputRow")
+        assert "mixed: Optional[str] = None" in result
+        assert "yield self.mixed" in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs
@@ -306,7 +414,7 @@ class TestSimpleTierComponentSpec:
             + spec.imports.get("third_party", [])
             + spec.imports.get("flopy4", [])
         )
-        assert "xattree" in all_imports
+        assert "attrs" in all_imports
         assert "Package" in all_imports
 
     def test_outpath(self, dfn_name, expected_class, expected_base, all_dfns):
@@ -360,14 +468,14 @@ class TestSolutionTierComponentSpec:
             + spec.imports.get("third_party", [])
             + spec.imports.get("flopy4", [])
         )
-        assert "xattree" in all_imports
+        assert "attrs" in all_imports
         assert "Solution" in all_imports
         assert "ClassVar" in all_imports
 
 
 # Layer 2b: List-field expansion
 def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
-    """v1 DFN numeric_index=True on ifno/iconn auto-sets cellid; is_cellid stored as object."""
+    """LAK packagedata/connectiondata are emitted as recarray fields with schemas."""
     if "gwf-lak" not in all_dfns:
         pytest.skip("gwf-lak not in DFN set")
     v1_dfns = Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
@@ -376,49 +484,30 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
     )
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Feature ordinals — block-prefixed due to collision across packagedata/connectiondata/tables.
-    # v1 DFN has numeric_index=True; auto-detected as cellid.
-    for py_name in ("packagedata_ifno", "connectiondata_ifno", "iconn", "tables_ifno"):
-        assert py_name in field_map, f"{py_name!r} not in generated fields"
-        sc = field_map[py_name].spec_call
-        assert "cellid=True" in sc, (
-            f"{py_name!r} spec_call should contain cellid=True (via numeric_index), got: {sc!r}"
-        )
-
-    # Spatial cellid column — is_cellid=True in v1 DFN (shape=(ncelldim)); stored as object dtype.
-    assert "cellid" in field_map, "'cellid' not in generated fields"
-    cellid_sc = field_map["cellid"].spec_call
-    assert "cellid=True" in cellid_sc, (
-        f"'cellid' spec_call should contain cellid=True (via is_cellid), got: {cellid_sc!r}"
-    )
-    cellid_ann = field_map["cellid"].type_annotation
-    assert "np.object_" in cellid_ann, (
-        f"'cellid' type_annotation should use np.object_, got: {cellid_ann!r}"
-    )
+    # New codegen: block schemas exist for list blocks (single recarray field each)
+    assert "packagedata" in spec.block_schemas
+    assert "connectiondata" in spec.block_schemas
+    assert "packagedata" in field_map
+    assert "connectiondata" in field_map
+    # Schemas contain feature_id roles (advanced package, no spatial cellid in packagedata)
+    pd_schema = spec.block_schemas["packagedata"]
+    assert any(col.get("role") == "feature_id" for col in pd_schema)
 
 
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
-    """gwf-mvr list sub-tables should expand into per-column FieldSpecs, all Optional."""
+    """gwf-mvr period data is emitted as a single stress_period_data recarray field."""
     if "gwf-mvr" not in all_dfns:
         pytest.skip("gwf-mvr not in DFN set")
     spec = build_component_spec(all_dfns["gwf-mvr"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Period block columns (from perioddata list field)
-    period_cols = ["pname1", "id1", "pname2", "id2", "mvrtype", "value"]
-    for col in period_cols:
-        assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
-        ann = field_map[col].type_annotation
-        assert ann.startswith("Optional["), (
-            f"Expanded list column '{col}' should be Optional but got {ann!r}"
-        )
-        assert field_map[col].generatable, f"Expanded column '{col}' should be generatable"
-
-    # Packages block columns (from packages list field)
-    pkg_cols = ["pname", "mname"]
-    for col in pkg_cols:
-        assert col in field_map, f"Expected expanded column '{col}' in MVR fields"
-        assert field_map[col].type_annotation.startswith("Optional[")
+    # New codegen: period data → single _stress_period_data field with period schema
+    assert spec.period_schema, "MVR should have a period_schema"
+    assert "_stress_period_data" in field_map
+    spd_field = field_map["_stress_period_data"]
+    assert spd_field.type_annotation == "Optional[dict[int, np.recarray]]"
+    # Packages block → single recarray field
+    assert "packages" in field_map or "packages" in spec.block_schemas
 
 
 # Layer 2d: BlockPropertySpec (Phase 2)
@@ -676,11 +765,12 @@ def test_solution_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):
     """Generate, load, and return the class from a ComponentSpec. Cleans up module state."""
     mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
+    assert mod_spec is not None and mod_spec.loader is not None
     mod = importlib.util.module_from_spec(mod_spec)
     components_snapshot = dict(COMPONENTS)
     sys_modules_keys = set(sys.modules)
     try:
-        mod_spec.loader.exec_module(mod)
+        mod_spec.loader.exec_module(mod)  # type: ignore[union-attr]
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
         return getattr(mod, expected_class)
     finally:

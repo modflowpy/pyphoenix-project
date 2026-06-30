@@ -1,55 +1,99 @@
 from datetime import datetime
-from typing import Optional
+from typing import ClassVar, Optional
 
+import attrs
 import numpy as np
-from attrs import Converter, define
 from numpy.typing import ArrayLike, NDArray
-from xattree import ROOT, xattree
 
-from flopy4.mf6.converter import structure_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, dim, field
+from flopy4.mf6.schema import Column, Schema
 from flopy4.mf6.utils.time import Time
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Tdis(Package):
-    @define
+    @attrs.define
     class PeriodData:
         perlen: float
         nstp: int
         tsmult: float
 
-    time_units: Optional[str] = field(block="options", default=None)
-    start_date_time: Optional[datetime] = field(block="options", default=None)
-    nper: int = dim(block="dimensions", coord="kper", default=1, scope=ROOT)
-    perlen: NDArray[np.float64] = array(
-        block="perioddata",
-        default=1.0,
-        dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+    class _PeriodDataSchema(Schema):
+        perlen = Column("perlen", role="value", dfn_type="double")
+        nstp = Column("nstp", role="value", dfn_type="integer")
+        tsmult = Column("tsmult", role="value", dfn_type="double")
+
+    __perioddata_schema__: ClassVar[type[Schema]] = _PeriodDataSchema
+
+    time_units: Optional[str] = attrs.field(
+        default=None,
+        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
     )
-    nstp: NDArray[np.int64] = array(
-        block="perioddata",
+    start_date_time: Optional[str] = attrs.field(
+        default=None,
+        converter=lambda v: v.isoformat() if isinstance(v, datetime) else v,
+        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
+    )
+    nper: int = attrs.field(
         default=1,
-        dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
+        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
     )
-    tsmult: NDArray[np.float64] = array(
-        block="perioddata",
+    # Parallel arrays — user-facing API. Stored as ndarray of length nper.
+    perlen: NDArray[np.float64] = attrs.field(
         default=1.0,
-        dims=("nper",),
-        converter=Converter(structure_array, takes_self=True, takes_field=True),
-    )
+    )  # type: ignore[assignment]
+    nstp: NDArray[np.int64] = attrs.field(
+        default=1,
+    )  # type: ignore[assignment]
+    tsmult: NDArray[np.float64] = attrs.field(
+        default=1.0,
+    )  # type: ignore[assignment]
+    # The combined perioddata recarray written to the PERIODDATA block.
+    # Built automatically from perlen/nstp/tsmult in __attrs_post_init__.
+    perioddata: Optional[np.recarray] = attrs.field(
+        default=None,
+        metadata={
+            "dfn_block": "perioddata",
+            "schema": "__perioddata_schema__",
+        },
+    )  # type: ignore[assignment]
+
+    def __attrs_post_init__(self):
+        # When structure_component provides perioddata directly (ingress round-trip),
+        # decompose it back to perlen/nstp/tsmult rather than overwriting with defaults.
+        if isinstance(self.perioddata, np.recarray):
+            pd = self.perioddata
+            object.__setattr__(self, "perlen", pd["perlen"].copy())
+            object.__setattr__(self, "nstp", pd["nstp"].copy())
+            object.__setattr__(self, "tsmult", pd["tsmult"].copy())
+            super().__attrs_post_init__()
+            return
+
+        # Coerce scalar defaults to arrays of length nper.
+        nper = self.nper
+        if isinstance(self.perlen, (int, float)):
+            object.__setattr__(self, "perlen", np.full(nper, self.perlen, dtype=np.float64))
+        elif not isinstance(self.perlen, np.ndarray):
+            object.__setattr__(self, "perlen", np.asarray(self.perlen, dtype=np.float64))
+        if isinstance(self.nstp, (int, float)):
+            object.__setattr__(self, "nstp", np.full(nper, int(self.nstp), dtype=np.int64))
+        elif not isinstance(self.nstp, np.ndarray):
+            object.__setattr__(self, "nstp", np.asarray(self.nstp, dtype=np.int64))
+        if isinstance(self.tsmult, (int, float)):
+            object.__setattr__(self, "tsmult", np.full(nper, self.tsmult, dtype=np.float64))
+        elif not isinstance(self.tsmult, np.ndarray):
+            object.__setattr__(self, "tsmult", np.asarray(self.tsmult, dtype=np.float64))
+        # Build the combined perioddata recarray for the codec.
+        dtype = np.dtype([("perlen", np.float64), ("nstp", np.int64), ("tsmult", np.float64)])
+        arr = np.zeros(nper, dtype=dtype)
+        arr["perlen"] = self.perlen
+        arr["nstp"] = self.nstp
+        arr["tsmult"] = self.tsmult
+        object.__setattr__(self, "perioddata", arr.view(np.recarray))
+        super().__attrs_post_init__()
 
     def get_dims(self) -> dict[str, int]:
-        """Get all dimensions.
-
-        Returns
-        -------
-        dict[str, int]
-            Mapping of dimension names to their integer sizes.
-        """
+        """Get all dimensions."""
         return {"nper": self.nper}
 
     def to_time(self) -> Time:
@@ -75,6 +119,26 @@ class Tdis(Package):
             tsmult=time.tsmult,
         )
 
+    def to_xarray(self):
+        """Return Tdis data as an xr.Dataset with kper coordinate."""
+        import pandas as _pd
+        import xarray as _xr
+
+        kper = np.arange(self.nper)
+        ds = _xr.Dataset(
+            {
+                "perlen": ("kper", self.perlen),
+                "nstp": ("kper", self.nstp),
+                "tsmult": ("kper", self.tsmult),
+            },
+            coords={"kper": kper},
+        )
+        if self.start_date_time:
+            ds.attrs["start_date_time"] = _pd.Timestamp(self.start_date_time)
+        if self.time_units:
+            ds.attrs["time_units"] = self.time_units
+        return ds
+
     @classmethod
     def from_timestamps(
         cls,
@@ -82,8 +146,7 @@ class Tdis(Package):
         nstp: Optional[ArrayLike] = None,
         tsmult: Optional[ArrayLike] = None,
     ) -> "Tdis":
-        """
-        Create a time discretization from timestamps.
+        """Create a time discretization from timestamps.
 
         Parameters
         ----------
@@ -101,6 +164,5 @@ class Tdis(Package):
         Tdis
             Time discretization object
         """
-
         time = Time.from_timestamps(timestamps, nstp=nstp, tsmult=tsmult)
         return cls.from_time(time)

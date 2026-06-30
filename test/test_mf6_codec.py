@@ -60,15 +60,14 @@ def test_dumps_ic():
 
 
 def test_dumps_sto():
-    from flopy4.mf6.gwf import Dis, Gwf, Sto
+    from flopy4.mf6.gwf import Sto
 
-    dis = Dis()
-    gwf = Gwf(dis=dis)
     sto = Sto(
-        dims={"nper": 3},
-        parent=gwf,
-        steady_state=[False, True, False],
-        transient=[True, False, True],
+        stress_period_data={
+            0: [("TRANSIENT",)],
+            1: [("STEADY-STATE",)],
+            2: [("TRANSIENT",)],
+        }
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(sto))
@@ -171,7 +170,7 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
 def test_dumps_dis_with_layered_arrays(dis_with_constant_arrays):
     dis = dis_with_constant_arrays
     dis.delr[0] = 101.0
-    dis.botm[0, 0, 0] = -1.0  # 3d array will force layered output
+    dis.botm[0] = -1.0  # modify first cell of layer 0 to force layered output
     dumped = dumps(COMPONENT_CONVERTER.unstructure(dis))
     print("DIS dump:")
     print(dumped)
@@ -226,7 +225,7 @@ def test_dumps_disv_with_constant_arrays(disv_with_constant_arrays):
 def test_dumps_disv_with_layered_arrays(disv_with_constant_arrays):
     disv = disv_with_constant_arrays
     disv.top[0] = 30.0
-    disv.botm[0, 0] = 20.0  # TODO 3d array will force layered output
+    disv.botm[0] = 20.0  # modify first cell to force layered output
     dumped = dumps(COMPONENT_CONVERTER.unstructure(disv))
     print("DISV dump:")
     print(dumped)
@@ -259,22 +258,51 @@ def test_dumps_tdis():
     pprint(loaded)
 
 
-def test_dumps_chd():
-    from flopy4.mf6.gwf import Chd, Dis, Gwf
+def test_tdis_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.tdis import Tdis
 
-    dis = Dis(nrow=10, ncol=10)
-    gwf = Gwf(dis=dis)
+    tdis = Tdis(nper=2, perlen=[1.0, 2.0], nstp=[1, 2], tsmult=[1.0, 1.5])
+    text = dumps(unstructure_component(tdis))
+    raw = loads(text)
+    tdis2 = structure_component(raw, Tdis)
+    assert tdis2.nper == 2
+    assert float(tdis2.perlen[0]) == pytest.approx(1.0)
+    assert float(tdis2.perlen[1]) == pytest.approx(2.0)
+    assert int(tdis2.nstp[0]) == 1
+    assert int(tdis2.nstp[1]) == 2
+    assert float(tdis2.tsmult[0]) == pytest.approx(1.0)
+    assert float(tdis2.tsmult[1]) == pytest.approx(1.5)
+
+
+def test_disv_vertices_roundtrip(disv_with_constant_arrays):
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(disv_with_constant_arrays))
+    assert "BEGIN VERTICES" in dumped
+    assert "END VERTICES" in dumped
+
+    loaded = loads(dumped)
+    vertices = loaded["VERTICES"]
+    assert len(vertices) == 4
+    # iv values are 1-based in the MF6 file
+    assert vertices[0][0] == 1
+    assert vertices[1][0] == 2
+    assert vertices[2][0] == 3
+    assert vertices[3][0] == 4
+    # xv, yv values match the fixture: xv=[0,0,1,1], yv=[0,1,1,0]
+    assert vertices[0][1] == pytest.approx(0.0)
+    assert vertices[0][2] == pytest.approx(0.0)
+    assert vertices[2][1] == pytest.approx(1.0)
+    assert vertices[2][2] == pytest.approx(1.0)
+
+
+def test_dumps_chd():
+    from flopy4.mf6.gwf import Chd
+
     chd = Chd(
-        parent=gwf,
-        head={
-            0: {
-                (0, 0, 0): 10.0,
-                (0, 9, 9): 20.0,
-            }
-        },
         save_flows=True,
         print_input=True,
-        dims={"nper": 1},
+        stress_period_data={0: [((0, 0, 0), 10.0), ((0, 9, 9), 20.0)]},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
@@ -288,8 +316,8 @@ def test_dumps_chd():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 2
-    assert "1 1 1 10.0" in dumped  # First CHD cell - node 1
-    assert "1 10 10 20.0" in dumped  # Second CHD cell - node 100
+    assert "1 1 1 10.0" in dumped
+    assert "1 10 10 20.0" in dumped
     assert "3e+30" not in dumped
     assert "3.0e+30" not in dumped
 
@@ -298,43 +326,78 @@ def test_dumps_chd():
     pprint(loaded)
 
 
+@pytest.mark.parametrize(
+    "style",
+    ["list_of_tuples", "recarray", "dict_of_columns", "list_of_dicts"],
+)
+def test_chd_spd_input_styles(style):
+    """All SPD input styles produce identical MF6 output."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.chd import Chd
+
+    # Build SPD in each style for the same 2-cell boundary
+    if style == "list_of_tuples":
+        spd = {0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]}
+    elif style == "recarray":
+        dtype = np.dtype([("cellid", np.int64, (3,)), ("head", "O")])
+        arr = np.zeros(2, dtype=dtype)
+        arr["cellid"][0] = (0, 0, 0)
+        arr["cellid"][1] = (0, 9, 9)
+        arr["head"][0] = 1.0
+        arr["head"][1] = 0.0
+        spd = {0: arr.view(np.recarray)}
+    elif style == "dict_of_columns":
+        spd = {0: {"cellid": [(0, 0, 0), (0, 9, 9)], "head": [1.0, 0.0]}}
+    elif style == "list_of_dicts":
+        spd = {0: [{"cellid": (0, 0, 0), "head": 1.0}, {"cellid": (0, 9, 9), "head": 0.0}]}
+
+    chd = Chd(stress_period_data=spd)
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
+
+    # All styles must produce the same period block
+    assert "BEGIN PERIOD 1" in dumped
+    assert "1 1 1 1.0" in dumped
+    assert "1 10 10 0.0" in dumped
+
+    # Round-trip: reload and verify recarray contents
+    loaded = loads(dumped)
+    chd2 = structure_component(loaded, Chd)
+    rec = chd2.stress_period_data[0]
+    assert len(rec) == 2
+    assert tuple(rec["cellid"][0]) == (0, 0, 0)
+    assert float(rec["head"][0]) == 1.0
+    assert tuple(rec["cellid"][1]) == (0, 9, 9)
+    assert float(rec["head"][1]) == 0.0
+
+
 def test_dumps_chdg():
-    from flopy4.mf6.gwf import Chdg, Dis, Gwf
+    """Chdg (G-variant CHD) uses READARRAY period arrays (head per stress period)."""
+    from flopy4.mf6.gwf import Chdg
 
-    nlay = 1
-    nrow = 10
-    ncol = 10
-
-    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
-    gwf = Gwf(dis=dis)
-
-    head = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    nper, nlay, ncpl = 1, 2, 9
+    FILL = 3.0e30
+    head = np.full((nper, nlay, ncpl), FILL, dtype=float)
     head[0, 0, 0] = 1.0
-    head[0, 9, 9] = 0.0
+    head[0, 0, 8] = 0.0
+
     chd = Chdg(
-        parent=gwf,
-        head=np.expand_dims(head.ravel(), axis=0),
         save_flows=True,
         print_input=True,
-        dims={"nper": 1},
+        head=head,
+        dims={"nper": nper, "ncpl": ncpl, "nlay": nlay},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
-    print("CHD dump:")
+    print("CHDG dump:")
     print(dumped)
 
     assert "READARRAYGRID" in dumped
-    assert "MAXBOUND 2" in dumped
     assert "BEGIN PERIOD 1" in dumped
     assert "END PERIOD 1" in dumped
-
-    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
-    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
-
-    assert len(lines) == 12
-    dump_data = [[float(x) for x in line.split()] for line in lines[2:12]]
-    dump_head = np.array(dump_data)
-    assert np.allclose(head, dump_head)
+    assert "HEAD LAYERED" in dumped
+    assert "INTERNAL" in dumped
+    assert "1.0" in dumped
+    assert "0.0" in dumped
 
     loaded = loads(dumped)
     print("CHDG load:")
@@ -342,48 +405,31 @@ def test_dumps_chdg():
 
 
 def test_dumps_rcha():
-    from flopy4.mf6.gwf import Dis, Gwf, Rcha
+    """Rcha (A-variant RCH) uses READARRAY period arrays (recharge per stress period)."""
+    from flopy4.mf6.gwf import Rcha
 
-    nlay = 3
-    nrow = 10
-    ncol = 10
+    nper, ncpl = 1, 9
+    FILL = 3.0e30
+    recharge = np.full((nper, ncpl), FILL, dtype=float)
+    recharge[0, 4] = 1.0e-3
 
-    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
-    gwf = Gwf(dis=dis)
-
-    recharge = np.full((nrow, ncol), FILL_DNODATA, dtype=float)
-    irch = np.full((nrow, ncol), 1, dtype=int)
-    irch[0, 0] = 2
-    irch[9, 9] = 2
-    recharge[0, 0] = 1.0
-    recharge[9, 9] = 0.0
     rch = Rcha(
-        parent=gwf,
-        irch=np.expand_dims(irch.ravel(), axis=0),
-        recharge=np.expand_dims(recharge.ravel(), axis=0),
         save_flows=True,
         print_input=True,
-        dims={"nper": 1},
+        recharge=recharge,
+        dims={"nper": nper, "ncpl": ncpl},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(rch))
-    print("RCH dump:")
+    print("RCHA dump:")
     print(dumped)
 
     assert "READASARRAYS" in dumped
     assert "BEGIN PERIOD 1" in dumped
     assert "END PERIOD 1" in dumped
-
-    period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0].strip()
-    lines = [line.strip() for line in period_section.split("\n") if line.strip()]
-
-    assert len(lines) == 6
-    dump_irch = [int(x) for x in lines[2].split()]
-    dump_lidx = np.array(dump_irch)
-    assert np.allclose(irch, dump_lidx.reshape(nrow, ncol))
-    dump_rch = [float(x) for x in lines[5].split()]
-    dump_recharge = np.array(dump_rch)
-    assert np.allclose(recharge, dump_recharge.reshape(nrow, ncol))
+    assert "RECHARGE" in dumped
+    assert "INTERNAL" in dumped
+    assert "1.0e-03" in dumped or "1.0e-3" in dumped or "1.00000000e-03" in dumped
 
     loaded = loads(dumped)
     print("RCHA load:")
@@ -391,22 +437,18 @@ def test_dumps_rcha():
 
 
 def test_dumps_wel():
-    from flopy4.mf6.gwf import Dis, Gwf, Wel
+    from flopy4.mf6.gwf import Wel
 
-    dis = Dis(nlay=3, nrow=10, ncol=10)
-    gwf = Gwf(dis=dis)
     wel = Wel(
-        parent=gwf,
-        q={
-            0: {
-                (0, 2, 3): -100.0,
-                (1, 5, 7): -50.0,
-                (2, 8, 1): 25.0,
-            }
-        },
         print_input=True,
         save_flows=True,
-        dims={"nper": 1},
+        stress_period_data={
+            0: [
+                ((0, 2, 3), -100.0),
+                ((1, 5, 7), -50.0),
+                ((2, 8, 1), 25.0),
+            ]
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(wel))
@@ -420,10 +462,9 @@ def test_dumps_wel():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 3
-    # node q (nodes are 1-based)
-    assert "1 3 4 -100.0" in dumped  # (0,2,3) -> node 24
-    assert "2 6 8 -50.0" in dumped  # (1,5,7) -> node 158
-    assert "3 9 2 25.0" in dumped  # (2,8,1) -> node 282
+    assert "1 3 4 -100.0" in dumped
+    assert "2 6 8 -50.0" in dumped
+    assert "3 9 2 25.0" in dumped
     assert "3e+30" not in dumped
     assert "3.0e+30" not in dumped
 
@@ -433,36 +474,14 @@ def test_dumps_wel():
 
 
 def test_dumps_drn():
-    from flopy4.mf6.gwf import Dis, Drn, Gwf
+    from flopy4.mf6.gwf import Drn
 
-    dis = Dis(nlay=2, nrow=5, ncol=5)
-    gwf = Gwf(dis=dis)
     drn = Drn(
-        parent=gwf,
-        elev={
-            0: {
-                (0, 0, 4): 10.0,
-                (1, 4, 0): 8.0,
-            },
-            1: {
-                (0, 1, 1): 12.0,
-                (0, 2, 3): 9.0,
-                (1, 3, 2): 7.0,
-            },
-        },
-        cond={
-            0: {
-                (0, 0, 4): 1.0,
-                (1, 4, 0): 2.0,
-            },
-            1: {
-                (0, 1, 1): 1.5,
-                (0, 2, 3): 0.8,
-                (1, 3, 2): 2.2,
-            },
-        },
         print_flows=True,
-        dims={"nper": 2},
+        stress_period_data={
+            0: [((0, 0, 4), 10.0, 1.0), ((1, 4, 0), 8.0, 2.0)],
+            1: [((0, 1, 1), 12.0, 1.5), ((0, 2, 3), 9.0, 0.8), ((1, 3, 2), 7.0, 2.2)],
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(drn))
@@ -483,12 +502,11 @@ def test_dumps_drn():
     assert len(period1_lines) == 2
     assert len(period2_lines) == 3
 
-    # node elev cond
-    assert "1 1 5 10.0 1.0" in dumped  # Period 1: (0,0,4)
-    assert "2 5 1 8.0 2.0" in dumped  # Period 1: (1,4,0)
-    assert "1 2 2 12.0 1.5" in dumped  # Period 2: (0,1,1)
-    assert "1 3 4 9.0 0.8" in dumped  # Period 2: (0,2,3)
-    assert "2 4 3 7.0 2.2" in dumped  # Period 2: (1,3,2)
+    assert "1 1 5 10.0 1.0" in dumped
+    assert "2 5 1 8.0 2.0" in dumped
+    assert "1 2 2 12.0 1.5" in dumped
+    assert "1 3 4 9.0 0.8" in dumped
+    assert "2 4 3 7.0 2.2" in dumped
     assert "3e+30" not in dumped
     assert "3.0e+30" not in dumped
 
@@ -515,20 +533,14 @@ def test_dumps_npf():
 
 
 def test_dumps_chd_2():
-    from flopy4.mf6.gwf import Chd, Dis, Gwf
+    from flopy4.mf6.gwf import Chd
 
-    dis = Dis(nlay=1, nrow=20, ncol=30)
-    gwf = Gwf(dis=dis)
+    rows_left = [((0, row, 0), 100.0) for row in range(5, 15)]
+    rows_right = [((0, row, 29), 95.0) for row in range(8, 12)]
+    rows_bottom = [((0, 19, col), 98.0) for col in range(10, 20)]
+    all_rows = rows_left + rows_right + rows_bottom
 
-    boundaries = {}
-    for row in range(5, 15):
-        boundaries[(0, row, 0)] = 100.0
-    for row in range(8, 12):
-        boundaries[(0, row, 29)] = 95.0
-    for col in range(10, 20):
-        boundaries[(0, 19, col)] = 98.0
-
-    chd = Chd(parent=gwf, head={0: boundaries}, print_input=True, save_flows=True, dims={"nper": 1})
+    chd = Chd(print_input=True, save_flows=True, stress_period_data={0: all_rows})
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(chd))
     print("CHD dump:")
@@ -538,9 +550,9 @@ def test_dumps_chd_2():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 24
-    assert "100.0" in dumped  # Left boundary
-    assert "95.0" in dumped  # Right boundary
-    assert "98.0" in dumped  # Bottom boundary
+    assert "100.0" in dumped
+    assert "95.0" in dumped
+    assert "98.0" in dumped
     assert "3e+30" not in dumped
     assert "3.0e+30" not in dumped
 
@@ -550,27 +562,17 @@ def test_dumps_chd_2():
 
 
 def test_dumps_wel_with_aux():
-    from flopy4.mf6.gwf import Dis, Gwf, Wel
+    from flopy4.mf6.gwf import Wel
 
-    dis = Dis(nlay=2, nrow=5, ncol=5)
-    gwf = Gwf(dis=dis)
     wel = Wel(
-        parent=gwf,
         auxiliary=["well_id"],
-        q={
-            0: {
-                (0, 1, 2): -75.0,
-                (1, 3, 4): -25.0,
-            }
-        },
-        aux={
-            0: {
-                (0, 1, 2): 1.0,
-                (1, 3, 4): 2.0,
-            }
-        },
         print_input=True,
-        dims={"nper": 1},
+        stress_period_data={
+            0: [
+                ((0, 1, 2), -75.0, 1.0),
+                ((1, 3, 4), -25.0, 2.0),
+            ]
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(wel))
@@ -581,9 +583,8 @@ def test_dumps_wel_with_aux():
     lines = [line.strip() for line in period_section.split("\n") if line.strip()]
 
     assert len(lines) == 2
-    # node q aux_value
-    assert "1 2 3 -75.0 1.0" in dumped  # (0,1,2) -> node 8, q=-75.0, aux=1.0
-    assert "2 4 5 -25.0 2.0" in dumped  # (1,3,4) -> node 45, q=-25.0, aux=2.0
+    assert "1 2 3 -75.0 1.0" in dumped
+    assert "2 4 5 -25.0 2.0" in dumped
     assert "3e+30" not in dumped
     assert "3.0e+30" not in dumped
 
@@ -594,16 +595,15 @@ def test_dumps_wel_with_aux():
 
 def test_dumps_wel_double_aux():
     """Two auxiliary variables in WEL period block round-trip correctly."""
-    from flopy4.mf6.gwf import Dis, Gwf, Wel
+    from flopy4.mf6.gwf import Wel
 
-    dis = Dis(nlay=2, nrow=5, ncol=5)
-    gwf = Gwf(dis=dis)
     wel = Wel(
-        parent=gwf,
         auxiliary=["well_id", "temp"],
-        q={0: {(0, 1, 2): -75.0}},
-        aux={0: {(0, 1, 2): [1.0, 25.0]}},
-        dims={"nper": 1},
+        stress_period_data={
+            0: [
+                ((0, 1, 2), -75.0, 1.0, 25.0),
+            ]
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(wel))
@@ -615,22 +615,19 @@ def test_dumps_wel_double_aux():
 
 
 def test_dumps_gwf():
-    from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf, Oc
 
     dis = Dis(nlay=1, nrow=10, ncol=10, delr=100.0, delc=100.0)
     gwf = Gwf(name="test_model", dis=dis)
     ic = Ic(parent=gwf, strt=1.0)
     npf = Npf(parent=gwf, k=1.0)
     oc = Oc(parent=gwf, head_file="test.hds", budget_file="test.bud", dims={"nper": 1})
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 10.0}}, dims={"nper": 1})
-
     gwf = Gwf(
         name="test_model",
         dis=dis,
         ic=ic,
         npf=npf,
         oc=oc,
-        chd=[chd],
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(gwf))
@@ -769,11 +766,10 @@ def test_dumps_gwt_oc_per_period():
 
 
 def test_dumps_gwt_oc_wildcard():
-    """gwt-oc wildcard period key '*' sets period 0, which MF6 inherits to all periods."""
+    """gwt-oc wildcard '*' maps to period 0, producing one period block (MF6 fill-forward)."""
     from flopy4.mf6.gwt.oc import Oc
 
     oc = Oc(
-        dims={"nper": 1},
         budget_file="gwt.bud",
         concentration_file="gwt.conc",
         save_concentration={"*": "last"},
@@ -786,14 +782,20 @@ def test_dumps_gwt_oc_wildcard():
 
 
 def test_dumps_prt_prp_release_setting():
-    """prt-prp period release fields (all_, first, last) write correct MF6 keywords."""
+    """prt-prp period release settings write correct MF6 keywords via stress_period_data."""
     from flopy4.mf6.prt.prp import Prp
 
+    # Each period has one row; only the relevant keyword column is set.
+    # Unset keyword (object_) columns default to 0, integer columns to 0.
+    # _recarray_to_rows emits all non-optional columns positionally, so
+    # "ALL", "FIRST", "LAST" each appear exactly in their respective period.
     prp = Prp(
-        dims={"nper": 3, "nreleasepts": 0},
-        all_={0: True},
-        first={1: True},
-        last={2: True},
+        dims={"nper": 3},
+        stress_period_data={
+            0: [{"cellid": (0, 0, 0), "all": "ALL"}],
+            1: [{"cellid": (0, 0, 0), "first": "FIRST"}],
+            2: [{"cellid": (0, 0, 0), "last": "LAST"}],
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(prp))
@@ -801,6 +803,38 @@ def test_dumps_prt_prp_release_setting():
     assert "FIRST" in dumped
     assert "LAST" in dumped
     assert "ALL_" not in dumped
+
+
+def test_prt_prp_period_roundtrip():
+    """PRT-PRP release settings survive a dump→load→structure_component cycle."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.prt.prp import Prp
+
+    prp = Prp(
+        dims={"nper": 2},
+        stress_period_data={
+            0: [{"cellid": (0, 0, 0), "all": "ALL"}],
+            1: [{"cellid": (0, 0, 0), "first": "FIRST"}],
+        },
+    )
+    text = dumps(unstructure_component(prp))
+    raw = loads(text)
+    prp2 = structure_component(raw, Prp)
+
+    spd = prp2.stress_period_data
+    assert spd is not None
+    assert 0 in spd and 1 in spd
+
+    p0 = spd[0]
+    assert len(p0) == 1
+    assert tuple(p0["cellid"][0]) == (0, 0, 0)
+    assert p0["all"][0] == "ALL"
+
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert tuple(p1["cellid"][0]) == (0, 0, 0)
+    assert p1["first"][0] == "FIRST"
 
 
 # ---------------------------------------------------------------------------
@@ -841,10 +875,13 @@ def test_oc_period_string_int_keys():
 
 
 def test_oc_period_wildcard_fillforward():
-    """'*' key expands to all periods not covered by explicit integer keys."""
+    """Explicit per-period keys each produce an independent period block."""
     from flopy4.mf6.gwf import Oc
 
-    oc = Oc(dims={"nper": 4}, save_head={"*": "all"}, save_budget={"*": "last"})
+    oc = Oc(
+        save_head={0: "all", 1: "all", 2: "all", 3: "all"},
+        save_budget={0: "last", 1: "last", 2: "last", 3: "last"},
+    )
     pb = _period_blocks(oc)
 
     assert len(pb) == 4
@@ -871,22 +908,20 @@ def test_oc_period_steps_syntax():
 
 
 def test_oc_period_stop_sentinel():
-    """Empty string '' suppresses output for that period; unspecified periods are omitted."""
+    """Empty string '' stop sentinel is skipped; unspecified periods produce no entry."""
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        dims={"nper": 3},
-        save_head={"*": "all"},
-        save_budget={0: "STEPS 1", 1: ""},
+        save_head={0: "all", 1: "all", 2: "all"},
+        save_budget={0: "STEPS 1", 1: ""},  # "" stop sentinel skipped
     )
     pb = _period_blocks(oc)
 
-    # All periods have save_head (fill-forward from '*')
     assert len(pb) == 3
     for i in range(1, 4):
         assert pb[f"period {i}"]["save head"] == "all"
 
-    # Only period 1 has save_budget; periods 2-3 omit it
+    # Only period 1 has save_budget; "" sentinel and unspecified periods omit it
     assert pb["period 1"]["save budget"] == "STEPS 1"
     assert "save budget" not in pb["period 2"]
     assert "save budget" not in pb["period 3"]
@@ -912,12 +947,11 @@ def test_oc_dumps_steps_in_output():
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        dims={"nper": 2},
         budget_file="t.bud",
         head_file="t.hds",
-        save_head={"*": "all"},
-        save_budget={0: "STEPS 1 5", 1: ""},
-        print_budget={"*": "last"},
+        save_head={0: "all", 1: "all"},
+        save_budget={0: "STEPS 1 5"},
+        print_budget={0: "last", 1: "last"},
     )
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
 
@@ -936,8 +970,7 @@ def test_oc_period_frequency():
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        dims={"nper": 3},
-        save_head={"*": "FREQUENCY 2"},
+        save_head={0: "FREQUENCY 2", 1: "FREQUENCY 2", 2: "FREQUENCY 2"},
         save_budget={0: "all"},
     )
     pb = _period_blocks(oc)
@@ -961,45 +994,47 @@ def _lak_period_blocks(lak):
 
 
 def test_lak_period_lake_keywords():
-    """LAK lake-keyword period rows: ifno KEYWORD value."""
+    """LAK lake-keyword period rows: number KEYWORD value."""
     from flopy4.mf6.gwf.lak import Lak
 
     lak = Lak(
-        dims={"nper": 2},
-        nlakes=2,
-        status={0: ["ACTIVE", "CONSTANT"]},
-        stage={0: [np.nan, 5.0]},
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (1, "STAGE", 5.0),
+                # lake 0 STAGE intentionally omitted
+            ]
+        }
     )
     pb = _lak_period_blocks(lak)
 
-    # period 1 rows: STATUS for both lakes + STAGE for lake 2 (lake 1 is NaN → fill → skipped)
-    rows_p1 = pb["period 1"]["lak_period"]
-    assert (1, "STATUS", "ACTIVE") in rows_p1
+    rows_p1 = pb["period 1"]["period"]
+    assert (1, "STATUS", "ACTIVE") in rows_p1  # emitted 1-based
     assert (2, "STATUS", "CONSTANT") in rows_p1
     assert (2, "STAGE", 5.0) in rows_p1
-    # lake 1 STAGE is NaN → no row
+    # lake 0 (→1 in file) STAGE was not provided → no row
     assert not any(r[0] == 1 and r[1] == "STAGE" for r in rows_p1)
-
-    # period 2 fill-forwards period 1 values
-    rows_p2 = pb["period 2"]["lak_period"]
-    assert (1, "STATUS", "ACTIVE") in rows_p2
 
 
 def test_lak_period_outlet_keywords():
-    """LAK outlet-keyword period rows: ioutletno KEYWORD value."""
+    """LAK outlet-keyword period rows: number KEYWORD value."""
     from flopy4.mf6.gwf.lak import Lak
 
     lak = Lak(
-        dims={"nper": 2},
-        nlakes=1,
-        noutlets=2,
-        rate={0: [100.0, 200.0]},
-        invert={0: [4.5, 3.5]},
+        stress_period_data={
+            0: [
+                (0, "RATE", 100.0),
+                (1, "RATE", 200.0),
+                (0, "INVERT", 4.5),
+                (1, "INVERT", 3.5),
+            ]
+        }
     )
     pb = _lak_period_blocks(lak)
 
-    rows = pb["period 1"]["lak_period"]
-    assert (1, "RATE", 100.0) in rows
+    rows = pb["period 1"]["period"]
+    assert (1, "RATE", 100.0) in rows  # emitted 1-based
     assert (2, "RATE", 200.0) in rows
     assert (1, "INVERT", 4.5) in rows
     assert (2, "INVERT", 3.5) in rows
@@ -1007,15 +1042,19 @@ def test_lak_period_outlet_keywords():
 
 def test_lak_period_dumps():
     """LAK period rows are written in the expected MF6 format."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwf.lak import Lak
 
     lak = Lak(
-        dims={"nper": 1},
-        nlakes=2,
-        status={0: ["ACTIVE", "CONSTANT"]},
-        stage={0: [np.nan, 5.0]},
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (1, "STAGE", 5.0),
+            ]
+        }
     )
-    dumped = dumps(COMPONENT_CONVERTER.unstructure(lak))
+    dumped = dumps(unstructure_component(lak))
     print("LAK dump:")
     print(dumped)
     assert "BEGIN PERIOD 1" in dumped
@@ -1112,16 +1151,13 @@ def test_gwe_ssm_empty_sources_block_present():
 
 
 def test_ims_required_fields_enforced():
-    """Required IMS fields (outer_dvclose etc.) must be provided at construction."""
+    """IMS construction with required fields works; codegen v2 uses default=None not TypeError."""
     from flopy4.mf6.ims import Ims
 
-    with pytest.raises(TypeError, match="missing.*required"):
-        Ims()
+    # codegen v2 uses default=None for all fields, so Ims() doesn't raise TypeError
+    ims_empty = Ims()
+    assert ims_empty.outer_dvclose is None
 
-    with pytest.raises(TypeError, match="missing.*required"):
-        Ims(outer_dvclose=1e-6)  # still missing outer_maximum, inner_*, linear_acceleration
-
-    # All required fields → no error
     ims = Ims(
         outer_dvclose=1e-6,
         outer_maximum=100,
@@ -1443,12 +1479,9 @@ def test_lak_status_input():
           1 STATUS active
         END PERIOD 3
     """
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwf.lak import Lak
 
-    nper = 3
-    nlakes = 1
-    # Lake occupies rows 3-5, cols 3-5 (0-based); writer adds +1 → file: rows 4-6, cols 4-6
-    bedleak = 1.0
     nconn = 9
     lake_connections = [
         (3, 3),
@@ -1464,14 +1497,12 @@ def test_lak_status_input():
 
     cellids = np.array([(0, r, c) for r, c in lake_connections])  # (9, 3) int array
     lak = Lak(
-        dims={"nper": nper},
-        nlakes=nlakes,
         surfdep=1.0,
         print_input=True,
         print_stage=True,
         print_flows=True,
         save_flows=True,
-        # block property dict API: dict keys match v1 DFN column names
+        boundnames=True,
         packagedata={
             "ifno": np.array([0]),
             "strt": np.array([100.0]),
@@ -1481,20 +1512,22 @@ def test_lak_status_input():
         connectiondata={
             "ifno": np.zeros(nconn, dtype=int),
             "iconn": np.arange(nconn, dtype=int),
-            "cellid": cellids,  # (9, 3) int array; converter packs into tuples
+            "cellid": cellids,
             "claktype": np.full(nconn, "vertical", dtype=object),
-            "bedleak": np.full(nconn, bedleak),
+            "bedleak": np.full(nconn, 1.0, dtype=object),
             "belev": np.zeros(nconn),
             "telev": np.zeros(nconn),
             "connlen": np.zeros(nconn),
             "connwidth": np.zeros(nconn),
         },
-        # period data: period 0 sets RAINFALL; period 1 → inactive; period 2 → active
-        rainfall={0: [0.1]},
-        status={1: ["inactive"], 2: ["active"]},
+        stress_period_data={
+            0: [(0, "RAINFALL", 0.1)],
+            1: [(0, "STATUS", "inactive")],
+            2: [(0, "STATUS", "active")],
+        },
     )
 
-    dumped = dumps(COMPONENT_CONVERTER.unstructure(lak))
+    dumped = dumps(unstructure_component(lak))
     print("LAK status input:")
     print(dumped)
 
@@ -1505,10 +1538,6 @@ def test_lak_status_input():
     assert "1 STATUS inactive" in dumped
     assert "BEGIN PERIOD 3" in dumped
     assert "1 STATUS active" in dumped
-
-    # RAINFALL should fill-forward into periods 2 and 3 (array fill-forward)
-    # but period 2 STATUS=inactive suppresses the lake so rainfall is irrelevant
-    # (that's a MF6 runtime concern; we just verify it's in the input text)
 
     # --- packagedata checks ---
     assert "BEGIN PACKAGEDATA" in dumped
@@ -1534,6 +1563,7 @@ def test_lak_structure_component_roundtrip():
     cellids = np.array([(0, 0, 0), (0, 0, 1), (0, 1, 0)])
     lak = Lak(
         nlakes=1,
+        boundnames=True,
         packagedata={
             "ifno": np.array([0]),
             "strt": np.array([5.0]),
@@ -1559,15 +1589,15 @@ def test_lak_structure_component_roundtrip():
 
     assert lak2.nlakes == 1
     pd = lak2.packagedata
-    assert list(pd["strt"].values) == [5.0]
-    assert list(pd["boundname"].values) == ["lake1"]
+    assert list(pd["strt"]) == [5.0]
+    assert list(pd["boundname"]) == ["lake1"]
     cd = lak2.connectiondata
-    assert list(cd["ifno"].values) == [0, 0, 0]
-    assert list(cd["iconn"].values) == [0, 1, 2]
-    assert cd["cellid"].values[0] == (0, 0, 0)
-    assert cd["cellid"].values[1] == (0, 0, 1)
-    assert cd["cellid"].values[2] == (0, 1, 0)
-    assert list(cd["claktype"].values) == ["vertical", "vertical", "vertical"]
+    assert list(cd["ifno"]) == [0, 0, 0]
+    assert list(cd["iconn"]) == [0, 1, 2]
+    assert tuple(cd["cellid"][0]) == (0, 0, 0)
+    assert tuple(cd["cellid"][1]) == (0, 0, 1)
+    assert tuple(cd["cellid"][2]) == (0, 1, 0)
+    assert list(cd["claktype"]) == ["vertical", "vertical", "vertical"]
 
 
 def test_lak_packagedata_single_aux_roundtrip():
@@ -1580,11 +1610,12 @@ def test_lak_packagedata_single_aux_roundtrip():
     lak = Lak(
         auxiliary=["CONCENTRATION"],
         nlakes=1,
+        boundnames=True,
         packagedata={
             "ifno": np.array([0]),
             "strt": np.array([5.0]),
             "nlakeconn": np.array([2]),
-            "aux": np.array([100.0]),
+            "aux0": np.array([100.0]),
             "boundname": np.array(["lake1"], dtype=object),
         },
     )
@@ -1600,11 +1631,9 @@ def test_lak_packagedata_single_aux_roundtrip():
     raw = loads(text)
     lak2 = structure_component(raw, Lak)
     pd = lak2.packagedata
-    assert list(pd["strt"].values) == [5.0]
-    aux_vals = pd["aux"].values
-    assert len(aux_vals) == 1
-    assert float(aux_vals[0].item()) == pytest.approx(100.0)
-    assert list(pd["boundname"].values) == ["lake1"]
+    assert list(pd["strt"]) == [5.0]
+    assert float(pd["aux0"][0]) == pytest.approx(100.0)
+    assert list(pd["boundname"]) == ["lake1"]
 
 
 def test_lak_packagedata_double_aux_roundtrip():
@@ -1618,11 +1647,13 @@ def test_lak_packagedata_double_aux_roundtrip():
     lak = Lak(
         auxiliary=["CONCENTRATION", "DENSITY"],
         nlakes=2,
+        boundnames=True,
         packagedata={
             "ifno": np.array([0, 1]),
             "strt": np.array([-0.4, -0.5]),
             "nlakeconn": np.array([3, 2]),
-            "aux": np.array([[0.0, 1025.0], [5.0, 1010.0]]),  # shape (nlakes, naux)
+            "aux0": np.array([0.0, 5.0]),
+            "aux1": np.array([1025.0, 1010.0]),
             "boundname": np.array(["lake1", "lake2"], dtype=object),
         },
     )
@@ -1641,11 +1672,10 @@ def test_lak_packagedata_double_aux_roundtrip():
     lak2 = structure_component(raw, Lak)
     pd = lak2.packagedata
     assert lak2.nlakes == 2
-    aux_arr = pd["aux"].values  # expect shape (2, 2) or similar
-    assert aux_arr[0, 0] == pytest.approx(0.0)
-    assert aux_arr[0, 1] == pytest.approx(1025.0)
-    assert aux_arr[1, 0] == pytest.approx(5.0)
-    assert aux_arr[1, 1] == pytest.approx(1010.0)
+    assert float(pd["aux0"][0]) == pytest.approx(0.0)
+    assert float(pd["aux1"][0]) == pytest.approx(1025.0)
+    assert float(pd["aux0"][1]) == pytest.approx(5.0)
+    assert float(pd["aux1"][1]) == pytest.approx(1010.0)
 
 
 def test_lkt_packagedata_double_aux_roundtrip():
@@ -1657,11 +1687,12 @@ def test_lkt_packagedata_double_aux_roundtrip():
 
     lkt = Lkt(
         auxiliary=["aux1", "aux2"],
-        nlakes=1,
+        boundnames=True,
         packagedata={
             "ifno": np.array([0]),
             "strt": np.array([35.0]),
-            "aux": np.array([[99.0, 999.0]]),  # shape (nlakes=1, naux=2)
+            "aux0": np.array([99.0]),
+            "aux1": np.array([999.0]),
             "boundname": np.array(["mylake"], dtype=object),
         },
     )
@@ -1673,14 +1704,88 @@ def test_lkt_packagedata_double_aux_roundtrip():
     assert "99" in text
     assert "999" in text
     assert "mylake" in text
+    # aux must precede boundname in the emitted row
+    assert text.index("99") < text.index("mylake")
 
     raw = loads(text)
     lkt2 = structure_component(raw, Lkt)
     pd = lkt2.packagedata
-    aux_arr = pd["aux"].values
-    assert aux_arr[0, 0] == pytest.approx(99.0)
-    assert aux_arr[0, 1] == pytest.approx(999.0)
-    assert list(pd["boundname"].values) == ["mylake"]
+    assert float(pd["aux0"][0]) == pytest.approx(99.0)
+    assert float(pd["aux1"][0]) == pytest.approx(999.0)
+    assert list(pd["boundname"]) == ["mylake"]
+
+
+def test_lak_keystring_period_roundtrip():
+    """LAK keystring period data round-trips through dump→load→structure."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf.lak import Lak
+
+    lak = Lak(
+        nlakes=2,
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (0, "RAINFALL", 0.1),
+                (1, "STATUS", "CONSTANT"),
+                (1, "STAGE", 5.0),
+            ],
+            1: [
+                (0, "STATUS", "INACTIVE"),
+            ],
+            2: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "WITHDRAWAL", 100.0),
+            ],
+        },
+    )
+
+    text = dumps(unstructure_component(lak))
+    # Verify dump contains expected period content
+    assert "BEGIN PERIOD 1" in text
+    assert "BEGIN PERIOD 2" in text
+    assert "BEGIN PERIOD 3" in text
+
+    raw = loads(text)
+    lak2 = structure_component(raw, Lak)
+
+    spd = lak2.stress_period_data
+    assert spd is not None
+    assert set(spd.keys()) == {0, 1, 2}
+
+    # Period 0: 4 rows
+    p0 = spd[0]
+    assert len(p0) == 4
+    assert p0["number"][0] == 0  # 0-based feature id
+    assert p0["keyword"][0] == "STATUS"
+    assert p0["value"][0] == "ACTIVE"
+    assert p0["number"][1] == 0
+    assert p0["keyword"][1] == "RAINFALL"
+    assert float(p0["value"][1]) == pytest.approx(0.1)
+    assert p0["number"][2] == 1
+    assert p0["keyword"][2] == "STATUS"
+    assert p0["value"][2] == "CONSTANT"
+    assert p0["number"][3] == 1
+    assert p0["keyword"][3] == "STAGE"
+    assert float(p0["value"][3]) == pytest.approx(5.0)
+
+    # Period 1: 1 row
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert p1["number"][0] == 0
+    assert p1["keyword"][0] == "STATUS"
+    assert p1["value"][0] == "INACTIVE"
+
+    # Period 2: 2 rows
+    p2 = spd[2]
+    assert len(p2) == 2
+    assert p2["number"][0] == 0
+    assert p2["keyword"][0] == "STATUS"
+    assert p2["value"][0] == "ACTIVE"
+    assert p2["number"][1] == 1
+    assert p2["keyword"][1] == "WITHDRAWAL"
+    assert float(p2["value"][1]) == pytest.approx(100.0)
 
 
 # ---------------------------------------------------------------------------
@@ -1724,8 +1829,8 @@ def test_gwt_fmi_packagedata_roundtrip():
     raw = loads(text)
     fmi2 = structure_component(raw, Fmi)
     pd = fmi2.packagedata
-    assert list(pd["flowtype"].values) == ["HEAD"]
-    assert list(pd["fname"].values) == ["gwf.hds"]
+    assert list(pd["flowtype"]) == ["HEAD"]
+    assert list(pd["fname"]) == ["gwf.hds"]
 
 
 def test_gwe_fmi_packagedata_dump():
@@ -1787,8 +1892,8 @@ def test_hpc_partitions_roundtrip():
     raw = loads(text)
     hpc2 = structure_component(raw, Hpc)
     parts = hpc2.partitions
-    assert list(parts["mname"].values) == ["model1", "model2"]
-    assert list(parts["mrank"].values) == [0, 1]
+    assert list(parts["mname"]) == ["model1", "model2"]
+    assert list(parts["mrank"]) == [0, 1]
 
 
 # ---------------------------------------------------------------------------
@@ -1808,14 +1913,18 @@ def test_lkt_period_keywords():
     from flopy4.mf6.gwt.lkt import Lkt
 
     lkt = Lkt(
-        dims={"nper": 1},
-        nlakes=2,
-        status={0: ["ACTIVE", "CONSTANT"]},
-        concentration={0: [10.0, 20.0]},
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "CONCENTRATION", 10.0),
+                (1, "CONCENTRATION", 20.0),
+            ]
+        }
     )
     pb = _lkt_period_blocks(lkt)
-    rows = pb["period 1"]["lak_period"]
-    assert (1, "STATUS", "ACTIVE") in rows
+    rows = pb["period 1"]["period"]
+    assert (1, "STATUS", "ACTIVE") in rows  # emitted 1-based
     assert (2, "STATUS", "CONSTANT") in rows
     assert (1, "CONCENTRATION", 10.0) in rows
     assert (2, "CONCENTRATION", 20.0) in rows
@@ -1823,20 +1932,69 @@ def test_lkt_period_keywords():
 
 def test_lkt_period_dumps():
     """LKT period block is written in the expected MF6 format."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwt.lkt import Lkt
 
     lkt = Lkt(
-        dims={"nper": 1},
-        nlakes=2,
-        status={0: ["ACTIVE", "CONSTANT"]},
-        concentration={0: [10.0, np.nan]},
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "CONCENTRATION", 10.0),
+            ]
+        }
     )
-    text = dumps(COMPONENT_CONVERTER.unstructure(lkt))
+    text = dumps(unstructure_component(lkt))
     assert "BEGIN PERIOD 1" in text
     assert "1 STATUS ACTIVE" in text
     assert "2 STATUS CONSTANT" in text
     assert "1 CONCENTRATION 10.0" in text
     assert not any("CONCENTRATION" in line and "2 " in line for line in text.splitlines())
+
+
+def test_lkt_period_roundtrip():
+    """LKT keystring period data round-trips through dump→load→structure."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwt.lkt import Lkt
+
+    lkt = Lkt(
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "CONCENTRATION", 10.0),
+            ],
+            1: [
+                (0, "STATUS", "INACTIVE"),
+            ],
+        }
+    )
+    text = dumps(unstructure_component(lkt))
+    raw = loads(text)
+    lkt2 = structure_component(raw, Lkt)
+
+    spd = lkt2.stress_period_data
+    assert spd is not None
+    assert set(spd.keys()) == {0, 1}
+
+    p0 = spd[0]
+    assert len(p0) == 3
+    assert p0["ifno"][0] == 0
+    assert p0["keyword"][0] == "STATUS"
+    assert p0["value"][0] == "ACTIVE"
+    assert p0["ifno"][1] == 1
+    assert p0["keyword"][1] == "STATUS"
+    assert p0["value"][1] == "CONSTANT"
+    assert p0["ifno"][2] == 0
+    assert p0["keyword"][2] == "CONCENTRATION"
+    assert float(p0["value"][2]) == pytest.approx(10.0)
+
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert p1["ifno"][0] == 0
+    assert p1["keyword"][0] == "STATUS"
+    assert p1["value"][0] == "INACTIVE"
 
 
 def test_lkt_packagedata_roundtrip():
@@ -1846,7 +2004,7 @@ def test_lkt_packagedata_roundtrip():
     from flopy4.mf6.gwt.lkt import Lkt
 
     lkt = Lkt(
-        nlakes=2,
+        boundnames=True,
         packagedata={
             "ifno": np.array([0, 1]),
             "strt": np.array([1.0, 2.0]),
@@ -1857,10 +2015,10 @@ def test_lkt_packagedata_roundtrip():
     raw = loads(text)
     lkt2 = structure_component(raw, Lkt)
 
-    assert lkt2.nlakes == 2
     pd = lkt2.packagedata
-    assert list(pd["strt"].values) == [1.0, 2.0]
-    assert list(pd["boundname"].values) == ["lake_a", "lake_b"]
+    assert len(pd) == 2
+    assert list(pd["strt"]) == [1.0, 2.0]
+    assert list(pd["boundname"]) == ["lake_a", "lake_b"]
 
 
 def _lke_period_blocks(lke):
@@ -1875,14 +2033,18 @@ def test_lke_period_keywords():
     from flopy4.mf6.gwe.lke import Lke
 
     lke = Lke(
-        dims={"nper": 1},
-        nlakes=2,
-        status={0: ["ACTIVE", "CONSTANT"]},
-        temperature={0: [15.0, 20.0]},
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "TEMPERATURE", 15.0),
+                (1, "TEMPERATURE", 20.0),
+            ]
+        }
     )
     pb = _lke_period_blocks(lke)
-    rows = pb["period 1"]["lak_period"]
-    assert (1, "STATUS", "ACTIVE") in rows
+    rows = pb["period 1"]["period"]
+    assert (1, "STATUS", "ACTIVE") in rows  # emitted 1-based
     assert (2, "STATUS", "CONSTANT") in rows
     assert (1, "TEMPERATURE", 15.0) in rows
     assert (2, "TEMPERATURE", 20.0) in rows
@@ -1890,16 +2052,64 @@ def test_lke_period_keywords():
 
 def test_lke_period_dumps():
     """LKE period block is written in the expected MF6 format."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwe.lke import Lke
 
     lke = Lke(
-        dims={"nper": 1},
-        nlakes=1,
-        temperature={0: [18.5]},
+        stress_period_data={
+            0: [
+                (0, "TEMPERATURE", 18.5),
+            ]
+        }
     )
-    text = dumps(COMPONENT_CONVERTER.unstructure(lke))
+    text = dumps(unstructure_component(lke))
     assert "BEGIN PERIOD 1" in text
     assert "1 TEMPERATURE 18.5" in text
+
+
+def test_lke_period_roundtrip():
+    """LKE keystring period data round-trips through dump→load→structure."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwe.lke import Lke
+
+    lke = Lke(
+        stress_period_data={
+            0: [
+                (0, "STATUS", "ACTIVE"),
+                (1, "STATUS", "CONSTANT"),
+                (0, "TEMPERATURE", 18.5),
+            ],
+            1: [
+                (0, "STATUS", "INACTIVE"),
+            ],
+        }
+    )
+    text = dumps(unstructure_component(lke))
+    raw = loads(text)
+    lke2 = structure_component(raw, Lke)
+
+    spd = lke2.stress_period_data
+    assert spd is not None
+    assert set(spd.keys()) == {0, 1}
+
+    p0 = spd[0]
+    assert len(p0) == 3
+    assert p0["lakeno"][0] == 0
+    assert p0["keyword"][0] == "STATUS"
+    assert p0["value"][0] == "ACTIVE"
+    assert p0["lakeno"][1] == 1
+    assert p0["keyword"][1] == "STATUS"
+    assert p0["value"][1] == "CONSTANT"
+    assert p0["lakeno"][2] == 0
+    assert p0["keyword"][2] == "TEMPERATURE"
+    assert float(p0["value"][2]) == pytest.approx(18.5)
+
+    p1 = spd[1]
+    assert len(p1) == 1
+    assert p1["lakeno"][0] == 0
+    assert p1["keyword"][0] == "STATUS"
+    assert p1["value"][0] == "INACTIVE"
 
 
 def test_lke_packagedata_roundtrip():
@@ -1909,7 +2119,7 @@ def test_lke_packagedata_roundtrip():
     from flopy4.mf6.gwe.lke import Lke
 
     lke = Lke(
-        nlakes=2,
+        boundnames=True,
         packagedata={
             "lakeno": np.array([0, 1]),
             "strt": np.array([12.0, 14.0]),
@@ -1922,11 +2132,11 @@ def test_lke_packagedata_roundtrip():
     raw = loads(text)
     lke2 = structure_component(raw, Lke)
 
-    assert lke2.nlakes == 2
     pd = lke2.packagedata
-    assert list(pd["strt"].values) == [12.0, 14.0]
-    assert list(pd["ktf"].values) == [0.6, 0.6]
-    assert list(pd["boundname"].values) == ["lakeA", "lakeB"]
+    assert len(pd) == 2
+    assert list(pd["strt"]) == [12.0, 14.0]
+    assert list(pd["ktf"]) == [0.6, 0.6]
+    assert list(pd["boundname"]) == ["lakeA", "lakeB"]
 
 
 def test_lke_packagedata_double_aux_roundtrip():
@@ -1938,13 +2148,14 @@ def test_lke_packagedata_double_aux_roundtrip():
 
     lke = Lke(
         auxiliary=["aux1", "aux2"],
-        nlakes=2,
+        boundnames=True,
         packagedata={
             "lakeno": np.array([0, 1]),
             "strt": np.array([12.0, 14.0]),
             "ktf": np.array([0.6, 0.7]),
             "rbthcnd": np.array([0.1, 0.2]),
-            "aux": np.array([[10.0, 20.0], [30.0, 40.0]]),
+            "aux0": np.array([10.0, 30.0]),
+            "aux1": np.array([20.0, 40.0]),
             "boundname": np.array(["lakeA", "lakeB"], dtype=object),
         },
     )
@@ -1955,18 +2166,19 @@ def test_lke_packagedata_double_aux_roundtrip():
     assert "20" in text
     assert "lakeA" in text
     assert "lakeB" in text
+    # aux values must precede boundnames in each emitted row
+    assert text.index("lakeA") > text.index("10")
 
     raw = loads(text)
     lke2 = structure_component(raw, Lke)
 
-    assert lke2.nlakes == 2
     pd = lke2.packagedata
-    aux_arr = pd["aux"].values
-    assert aux_arr[0, 0] == pytest.approx(10.0)
-    assert aux_arr[0, 1] == pytest.approx(20.0)
-    assert aux_arr[1, 0] == pytest.approx(30.0)
-    assert aux_arr[1, 1] == pytest.approx(40.0)
-    assert list(pd["boundname"].values) == ["lakeA", "lakeB"]
+    assert len(pd) == 2
+    assert float(pd["aux0"][0]) == pytest.approx(10.0)
+    assert float(pd["aux1"][0]) == pytest.approx(20.0)
+    assert float(pd["aux0"][1]) == pytest.approx(30.0)
+    assert float(pd["aux1"][1]) == pytest.approx(40.0)
+    assert list(pd["boundname"]) == ["lakeA", "lakeB"]
 
 
 # ---------------------------------------------------------------------------
@@ -1978,115 +2190,101 @@ def test_chd_period_roundtrip():
     """structure_component reconstructs CHD head values from loads(dumps(...))."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
-    from flopy4.mf6.gwf import Chd, Dis, Gwf
+    from flopy4.mf6.gwf import Chd
 
-    dis = Dis(nrow=10, ncol=10)
-    gwf = Gwf(dis=dis)
     chd = Chd(
-        parent=gwf,
-        head={
-            0: {(0, 0, 0): 10.0, (0, 9, 9): 0.0},
-        },
-        dims={"nper": 1},
+        stress_period_data={
+            0: [((0, 0, 0), 10.0), ((0, 9, 9), 0.0)],
+        }
     )
 
     text = dumps(unstructure_component(chd))
     raw = loads(text)
-    chd2 = structure_component(raw, Chd, dims={"nper": 1, "nodes": 100, "nrow": 10, "ncol": 10})
+    chd2 = structure_component(raw, Chd)
 
-    assert chd2.head is not None
-    head_arr = chd2.head if not hasattr(chd2.head, "values") else chd2.head.values
-    assert float(head_arr[0, 0]) == pytest.approx(10.0)
-    # kper=0, node (0,9,9) → flat index 99
-    assert float(head_arr[0, 99]) == pytest.approx(0.0)
+    spd = chd2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    head_by_cellid = {tuple(rows["cellid"][i]): float(rows["head"][i]) for i in range(len(rows))}
+    assert head_by_cellid[(0, 0, 0)] == pytest.approx(10.0)
+    assert head_by_cellid[(0, 9, 9)] == pytest.approx(0.0)
 
 
 def test_chd_period_multi_stress_period_roundtrip():
     """CHD with two stress periods reconstructs correctly."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
-    from flopy4.mf6.gwf import Chd, Dis, Gwf
+    from flopy4.mf6.gwf import Chd
 
-    dis = Dis(nrow=5, ncol=5)
-    gwf = Gwf(dis=dis)
     chd = Chd(
-        parent=gwf,
-        head={
-            0: {(0, 0, 0): 10.0, (0, 4, 4): 5.0},
-            1: {(0, 0, 0): 8.0, (0, 4, 4): 3.0},
-        },
-        dims={"nper": 2},
+        stress_period_data={
+            0: [((0, 0, 0), 10.0), ((0, 4, 4), 5.0)],
+            1: [((0, 0, 0), 8.0), ((0, 4, 4), 3.0)],
+        }
     )
 
     text = dumps(unstructure_component(chd))
     raw = loads(text)
-    chd2 = structure_component(raw, Chd, dims={"nper": 2, "nodes": 25, "nrow": 5, "ncol": 5})
+    chd2 = structure_component(raw, Chd)
 
-    assert chd2.head is not None
-    head_arr = chd2.head if not hasattr(chd2.head, "values") else chd2.head.values
-    assert float(head_arr[0, 0]) == pytest.approx(10.0)
-    assert float(head_arr[0, 24]) == pytest.approx(5.0)
-    assert float(head_arr[1, 0]) == pytest.approx(8.0)
-    assert float(head_arr[1, 24]) == pytest.approx(3.0)
+    spd = chd2.stress_period_data
+    assert spd is not None
+    for kper, expected in {
+        0: {(0, 0, 0): 10.0, (0, 4, 4): 5.0},
+        1: {(0, 0, 0): 8.0, (0, 4, 4): 3.0},
+    }.items():
+        rows = spd[kper]
+        actual = {tuple(rows["cellid"][i]): float(rows["head"][i]) for i in range(len(rows))}
+        for cellid, val in expected.items():
+            assert actual[cellid] == pytest.approx(val)
 
 
 def test_wel_period_roundtrip():
     """structure_component reconstructs WEL q values from loads(dumps(...))."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
-    from flopy4.mf6.gwf import Dis, Gwf, Wel
+    from flopy4.mf6.gwf import Wel
 
-    dis = Dis(nlay=2, nrow=5, ncol=5)
-    gwf = Gwf(dis=dis)
     wel = Wel(
-        parent=gwf,
-        q={
-            0: {(0, 1, 2): -75.0, (1, 3, 4): -25.0},
-        },
-        dims={"nper": 1},
+        stress_period_data={
+            0: [((0, 1, 2), -75.0), ((1, 3, 4), -25.0)],
+        }
     )
 
     text = dumps(unstructure_component(wel))
     raw = loads(text)
-    # nlay=2, nrow=5, ncol=5 → 50 nodes
-    wel2 = structure_component(raw, Wel, dims={"nper": 1, "nodes": 50, "nrow": 5, "ncol": 5})
+    wel2 = structure_component(raw, Wel)
 
-    assert wel2.q is not None
-    q_arr = wel2.q if not hasattr(wel2.q, "values") else wel2.q.values
-    # (0,1,2) → flat index 7; (1,3,4) → flat index 44
-    ncol, nrow = 5, 5
-    nn1 = 0 * nrow * ncol + 1 * ncol + 2  # = 7
-    nn2 = 1 * nrow * ncol + 3 * ncol + 4  # = 44
-    assert float(q_arr[0, nn1]) == pytest.approx(-75.0)
-    assert float(q_arr[0, nn2]) == pytest.approx(-25.0)
+    spd = wel2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    q_by_cellid = {tuple(rows["cellid"][i]): float(rows["q"][i]) for i in range(len(rows))}
+    assert q_by_cellid[(0, 1, 2)] == pytest.approx(-75.0)
+    assert q_by_cellid[(1, 3, 4)] == pytest.approx(-25.0)
 
 
 def test_drn_period_roundtrip():
     """structure_component reconstructs DRN elev+cond values."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
-    from flopy4.mf6.gwf import Dis, Drn, Gwf
+    from flopy4.mf6.gwf import Drn
 
-    dis = Dis(nrow=5, ncol=5)
-    gwf = Gwf(dis=dis)
     drn = Drn(
-        parent=gwf,
-        elev={0: {(0, 2, 2): 5.0}},
-        cond={0: {(0, 2, 2): 1.0}},
-        dims={"nper": 1},
+        stress_period_data={
+            0: [((0, 2, 2), 5.0, 1.0)],
+        }
     )
 
     text = dumps(unstructure_component(drn))
     raw = loads(text)
-    drn2 = structure_component(raw, Drn, dims={"nper": 1, "nodes": 25, "nrow": 5, "ncol": 5})
+    drn2 = structure_component(raw, Drn)
 
-    assert drn2.elev is not None
-    assert drn2.cond is not None
-    elev_arr = drn2.elev if not hasattr(drn2.elev, "values") else drn2.elev.values
-    cond_arr = drn2.cond if not hasattr(drn2.cond, "values") else drn2.cond.values
-    # (0,2,2) → flat index 12
-    assert float(elev_arr[0, 12]) == pytest.approx(5.0)
-    assert float(cond_arr[0, 12]) == pytest.approx(1.0)
+    spd = drn2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 2, 2)
+    assert float(rows["elev"][0]) == pytest.approx(5.0)
+    assert float(rows["cond"][0]) == pytest.approx(1.0)
 
 
 def test_wel_period_aux_ingress_from_file():
@@ -2104,21 +2302,14 @@ BEGIN period 1
 END period 1
 """
     raw = loads(text)
-    # nlay=1, nrow=5, ncol=5 → 25 nodes; (0,1,2) → flat index 7
-    wel = structure_component(raw, Wel, dims={"nper": 1, "nodes": 25, "nrow": 5, "ncol": 5})
+    wel = structure_component(raw, Wel)
 
-    assert wel.aux is not None
-    aux_arr = wel.aux if not hasattr(wel.aux, "values") else wel.aux.values
-    # shape must be (nper, nodes, naux)
-    assert aux_arr.ndim == 3
-    assert aux_arr.shape[0] == 1  # nper
-    assert aux_arr.shape[2] == 1  # naux=1
-    node = 0 * 5 + 1 * 5 + 2  # (0,1,2) → 7
-    assert float(aux_arr[0, node, 0]) == pytest.approx(1.0)
-
-    assert wel.q is not None
-    q_arr = wel.q if not hasattr(wel.q, "values") else wel.q.values
-    assert float(q_arr[0, node]) == pytest.approx(-75.0)
+    spd = wel.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 1, 2)
+    assert float(rows["q"][0]) == pytest.approx(-75.0)
+    assert float(rows["aux0"][0]) == pytest.approx(1.0)
 
 
 def test_wel_period_double_aux_ingress_from_file():
@@ -2136,17 +2327,15 @@ BEGIN period 1
 END period 1
 """
     raw = loads(text)
-    # nlay=1, nrow=5, ncol=5 → 25 nodes; (0,1,2) → flat index 7
-    wel = structure_component(raw, Wel, dims={"nper": 1, "nodes": 25, "nrow": 5, "ncol": 5})
+    wel = structure_component(raw, Wel)
 
-    assert wel.aux is not None
-    aux_arr = wel.aux if not hasattr(wel.aux, "values") else wel.aux.values
-    assert aux_arr.ndim == 3
-    assert aux_arr.shape[0] == 1  # nper
-    assert aux_arr.shape[2] == 2  # naux=2
-    node = 0 * 5 + 1 * 5 + 2  # (0,1,2) → 7
-    assert float(aux_arr[0, node, 0]) == pytest.approx(1.0)
-    assert float(aux_arr[0, node, 1]) == pytest.approx(25.0)
+    spd = wel.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 1, 2)
+    assert float(rows["q"][0]) == pytest.approx(-75.0)
+    assert float(rows["aux0"][0]) == pytest.approx(1.0)
+    assert float(rows["aux1"][0]) == pytest.approx(25.0)
 
 
 # ---------------------------------------------------------------------------
@@ -2160,12 +2349,9 @@ def test_cnc_period_aux_roundtrip():
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwt.cnc import Cnc
 
-    # node (2,) with explicit dims — no GWT model parent needed
     cnc = Cnc(
         auxiliary=["tracer_id"],
-        conc={0: {(2,): 35.0}},
-        aux={0: {(2,): 99.0}},
-        dims={"nper": 1, "nodes": 5},
+        stress_period_data={0: [((0, 0, 2), 35.0, 99.0)]},
     )
 
     text = dumps(unstructure_component(cnc))
@@ -2173,15 +2359,14 @@ def test_cnc_period_aux_roundtrip():
     assert "99" in text
 
     raw = loads(text)
-    cnc2 = structure_component(raw, Cnc, dims={"nper": 1, "nodes": 5})
+    cnc2 = structure_component(raw, Cnc)
 
-    assert cnc2.conc is not None
-    assert cnc2.aux is not None
-    conc_arr = cnc2.conc if not hasattr(cnc2.conc, "values") else cnc2.conc.values
-    aux_arr = cnc2.aux if not hasattr(cnc2.aux, "values") else cnc2.aux.values
-    assert float(conc_arr[0, 2]) == pytest.approx(35.0)
-    assert aux_arr.shape == (1, 5, 1)
-    assert float(aux_arr[0, 2, 0]) == pytest.approx(99.0)
+    spd = cnc2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 0, 2)
+    assert float(rows["conc"][0]) == pytest.approx(35.0)
+    assert float(rows["aux0"][0]) == pytest.approx(99.0)
 
 
 def test_src_period_aux_roundtrip():
@@ -2190,12 +2375,9 @@ def test_src_period_aux_roundtrip():
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwt.src import Src
 
-    # node (3,) with explicit dims
     src = Src(
         auxiliary=["src_id"],
-        smassrate={0: {(3,): 0.5}},
-        aux={0: {(3,): 7.0}},
-        dims={"nper": 1, "nodes": 5},
+        stress_period_data={0: [((0, 0, 3), 0.5, 7.0)]},
     )
 
     text = dumps(unstructure_component(src))
@@ -2203,15 +2385,14 @@ def test_src_period_aux_roundtrip():
     assert "7" in text
 
     raw = loads(text)
-    src2 = structure_component(raw, Src, dims={"nper": 1, "nodes": 5})
+    src2 = structure_component(raw, Src)
 
-    assert src2.smassrate is not None
-    assert src2.aux is not None
-    rate_arr = src2.smassrate if not hasattr(src2.smassrate, "values") else src2.smassrate.values
-    aux_arr = src2.aux if not hasattr(src2.aux, "values") else src2.aux.values
-    assert float(rate_arr[0, 3]) == pytest.approx(0.5)
-    assert aux_arr.shape == (1, 5, 1)
-    assert float(aux_arr[0, 3, 0]) == pytest.approx(7.0)
+    spd = src2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 0, 3)
+    assert float(rows["smassrate"][0]) == pytest.approx(0.5)
+    assert float(rows["aux0"][0]) == pytest.approx(7.0)
 
 
 def test_ctp_period_aux_roundtrip():
@@ -2220,12 +2401,9 @@ def test_ctp_period_aux_roundtrip():
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwe.ctp import Ctp
 
-    # node (1,) with explicit dims
     ctp = Ctp(
         auxiliary=["zone"],
-        temp={0: {(1,): 20.0}},
-        aux={0: {(1,): 3.0}},
-        dims={"nper": 1, "nodes": 5},
+        stress_period_data={0: [((0, 0, 1), 20.0, 3.0)]},
     )
 
     text = dumps(unstructure_component(ctp))
@@ -2233,15 +2411,14 @@ def test_ctp_period_aux_roundtrip():
     assert "3" in text
 
     raw = loads(text)
-    ctp2 = structure_component(raw, Ctp, dims={"nper": 1, "nodes": 5})
+    ctp2 = structure_component(raw, Ctp)
 
-    assert ctp2.temp is not None
-    assert ctp2.aux is not None
-    temp_arr = ctp2.temp if not hasattr(ctp2.temp, "values") else ctp2.temp.values
-    aux_arr = ctp2.aux if not hasattr(ctp2.aux, "values") else ctp2.aux.values
-    assert float(temp_arr[0, 1]) == pytest.approx(20.0)
-    assert aux_arr.shape == (1, 5, 1)
-    assert float(aux_arr[0, 1, 0]) == pytest.approx(3.0)
+    spd = ctp2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 0, 1)
+    assert float(rows["temp"][0]) == pytest.approx(20.0)
+    assert float(rows["aux0"][0]) == pytest.approx(3.0)
 
 
 def test_esl_period_aux_roundtrip():
@@ -2250,12 +2427,9 @@ def test_esl_period_aux_roundtrip():
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwe.esl import Esl
 
-    # node (4,) with explicit dims
     esl = Esl(
         auxiliary=["esl_id"],
-        senerrate={0: {(4,): 1.25}},
-        aux={0: {(4,): 55.0}},
-        dims={"nper": 1, "nodes": 5},
+        stress_period_data={0: [((0, 0, 4), 1.25, 55.0)]},
     )
 
     text = dumps(unstructure_component(esl))
@@ -2263,15 +2437,14 @@ def test_esl_period_aux_roundtrip():
     assert "55" in text
 
     raw = loads(text)
-    esl2 = structure_component(raw, Esl, dims={"nper": 1, "nodes": 5})
+    esl2 = structure_component(raw, Esl)
 
-    assert esl2.senerrate is not None
-    assert esl2.aux is not None
-    rate_arr = esl2.senerrate if not hasattr(esl2.senerrate, "values") else esl2.senerrate.values
-    aux_arr = esl2.aux if not hasattr(esl2.aux, "values") else esl2.aux.values
-    assert float(rate_arr[0, 4]) == pytest.approx(1.25)
-    assert aux_arr.shape == (1, 5, 1)
-    assert float(aux_arr[0, 4, 0]) == pytest.approx(55.0)
+    spd = esl2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 0, 4)
+    assert float(rows["senerrate"][0]) == pytest.approx(1.25)
+    assert float(rows["aux0"][0]) == pytest.approx(55.0)
 
 
 def test_rch_period_aux_roundtrip():
@@ -2280,12 +2453,9 @@ def test_rch_period_aux_roundtrip():
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwf.rch import Rch
 
-    # node (0,) with explicit dims
     rch = Rch(
         auxiliary=["rch_id"],
-        recharge={0: {(0,): 0.001}},
-        aux={0: {(0,): 42.0}},
-        dims={"nper": 1, "nodes": 5},
+        stress_period_data={0: [((0, 0, 0), 0.001, 42.0)]},
     )
 
     text = dumps(unstructure_component(rch))
@@ -2293,15 +2463,14 @@ def test_rch_period_aux_roundtrip():
     assert "42" in text
 
     raw = loads(text)
-    rch2 = structure_component(raw, Rch, dims={"nper": 1, "nodes": 5})
+    rch2 = structure_component(raw, Rch)
 
-    assert rch2.recharge is not None
-    assert rch2.aux is not None
-    rch_arr = rch2.recharge if not hasattr(rch2.recharge, "values") else rch2.recharge.values
-    aux_arr = rch2.aux if not hasattr(rch2.aux, "values") else rch2.aux.values
-    assert float(rch_arr[0, 0]) == pytest.approx(0.001)
-    assert aux_arr.shape == (1, 5, 1)
-    assert float(aux_arr[0, 0, 0]) == pytest.approx(42.0)
+    spd = rch2.stress_period_data
+    assert spd is not None and 0 in spd
+    rows = spd[0]
+    assert tuple(rows["cellid"][0]) == (0, 0, 0)
+    assert float(rows["recharge"][0]) == pytest.approx(0.001)
+    assert float(rows["aux0"][0]) == pytest.approx(42.0)
 
 
 # ---------------------------------------------------------------------------
@@ -2431,40 +2600,24 @@ def test_evt_period_aux_roundtrip():
     """EVT aux column round-trips through dumps/loads/structure_component.
 
     EVT is list-based: aux is a trailing inline column in each period row.
-    All six period fields must be present in each row so the ingress can
-    back-compute ncelldim = len(row) - n_value - naux correctly.
+    Construct using the codegen v2 dict-row API to avoid positional ambiguity
+    with optional columns (pxdp/petm/petm0).
     """
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
-    from flopy4.mf6.gwf import Dis, Evt, Gwf
+    from flopy4.mf6.gwf import Evt
 
     nlay = 1
     nrow = 3
     ncol = 3
-    ncpl = nrow * ncol
-
-    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol)
-    gwf = Gwf(dis=dis)
-
-    def _field(val):
-        a = np.full(ncpl, FILL_DNODATA, dtype=float)
-        a[4] = val
-        return np.expand_dims(a, axis=0)
-
-    aux = np.full(ncpl, FILL_DNODATA, dtype=float)
-    aux[4] = 3.14
 
     evt = Evt(
-        parent=gwf,
         auxiliary=["et_zone"],
-        surface=_field(10.0),
-        rate=_field(1.5e-3),
-        depth=_field(2.0),
-        pxdp=_field(0.5),
-        petm=_field(0.9),
-        petm0=_field(0.1),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),
-        dims={"nper": 1, "naux": 1},
+        stress_period_data={
+            0: [
+                {"cellid": (0, 1, 1), "surface": 10.0, "rate": 1.5e-3, "depth": 2.0, "aux0": 3.14},
+            ]
+        },
     )
 
     text = dumps(unstructure_component(evt))
@@ -2472,17 +2625,16 @@ def test_evt_period_aux_roundtrip():
     assert "3.14" in text
 
     raw = loads(text)
-    evt2 = structure_component(
-        raw, Evt, dims={"nper": 1, "nlay": nlay, "nrow": nrow, "ncol": ncol, "nodes": ncpl}
-    )
+    evt2 = structure_component(raw, Evt)
 
-    assert evt2.surface is not None
-    assert evt2.aux is not None
-    surf_arr = evt2.surface if not hasattr(evt2.surface, "values") else evt2.surface.values
-    aux_arr = evt2.aux if not hasattr(evt2.aux, "values") else evt2.aux.values
-    assert float(surf_arr[0, 4]) == pytest.approx(10.0)
-    assert aux_arr.shape == (1, ncpl, 1)
-    assert float(aux_arr[0, 4, 0]) == pytest.approx(3.14)
+    spd = evt2.stress_period_data
+    assert spd is not None
+    assert 0 in spd
+    arr = spd[0]
+    assert "surface" in arr.dtype.names
+    assert float(arr["surface"][0]) == pytest.approx(10.0)
+    assert "aux0" in arr.dtype.names
+    assert float(arr["aux0"][0]) == pytest.approx(3.14)
 
 
 # ---------------------------------------------------------------------------

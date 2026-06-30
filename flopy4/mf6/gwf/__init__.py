@@ -105,7 +105,7 @@ class Gwf(Model):
             hds_fpth = None
             head_file = self.parent.oc.head_file if self.parent.oc is not None else None
             if head_file is not None:
-                fpth = path / head_file.name
+                fpth = path / Path(head_file).name
                 if fpth.exists():
                     hds_fpth = fpth
 
@@ -113,7 +113,7 @@ class Gwf(Model):
                 # Check for output NC file configured on the model
                 nc_fname = self.parent.netcdf_mesh2d_file or self.parent.netcdf_structured_file
                 if nc_fname is not None:
-                    fpth = path / nc_fname.name
+                    fpth = path / Path(nc_fname).name
                     if fpth.exists():
                         hds_fpth = fpth
 
@@ -133,7 +133,7 @@ class Gwf(Model):
             cbc_fpth = None
             cbc_file = self.parent.oc.budget_file if self.parent.oc is not None else None
             if cbc_file is not None:
-                fpth = path / cbc_file.name
+                fpth = path / Path(cbc_file).name
                 if fpth.exists():
                     cbc_fpth = fpth
 

@@ -4,7 +4,6 @@ from warnings import warn
 
 import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
-from flopy.discretization import StructuredGrid
 from flopy.discretization.grid import Grid
 from flopy.discretization.modeltime import ModelTime
 from flopy.export.utils import model_export, package_export
@@ -15,6 +14,13 @@ from xattree import Xattribute, get_xatspec
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+
+
+def _to_numpy(val):
+    """Extract numpy data from a value (handles xr.DataArray, ndarray, or scalar)."""
+    if hasattr(val, "data") and hasattr(val, "dims"):
+        return val.data  # xr.DataArray
+    return np.asarray(val) if val is not None else val
 
 
 class Flopy3Model(ModelInterface):
@@ -45,31 +51,16 @@ class Flopy3Model(ModelInterface):
         if self._grid is None:
             if hasattr(model, "dis"):
                 if model.dis.length_units:
-                    lenuni = model.dis.length_units.data
+                    lenuni = _to_numpy(model.dis.length_units)
                 if model.dis.xorigin:
-                    xoff = model.dis.xorigin.data
+                    xoff = _to_numpy(model.dis.xorigin)
                 if model.dis.yorigin:
-                    yoff = model.dis.yorigin.data
+                    yoff = _to_numpy(model.dis.yorigin)
                 if model.dis.angrot:
-                    yoff = model.dis.angrot.data
+                    yoff = _to_numpy(model.dis.angrot)
 
-                self._grid = StructuredGrid(
-                    delc=model.dis.delc.data,
-                    delr=model.dis.delr.data,
-                    top=model.dis.top.data,
-                    botm=model.dis.botm.data,
-                    idomain=model.dis.idomain.data,
-                    lenuni=lenuni,
-                    crs=crs,
-                    prjfile=None,
-                    xoff=xoff,
-                    yoff=yoff,
-                    angrot=angrot,
-                    nlay=model.dis.nlay,
-                    nrow=model.dis.nrow,
-                    ncol=model.dis.ncol,
-                    laycbd=None,
-                )
+                self._grid = model.dis.to_grid()
+                self._grid.legacy = True
 
         if hasattr(model, "children"):
             for c in model.children:
@@ -123,9 +114,9 @@ class Flopy3Model(ModelInterface):
         """
         Layering type.
         """
-        if "npf" in self._model.data:
-            return self._model.data["npf"].icelltype
-
+        npf = getattr(self._model, "npf", None)
+        if npf is not None:
+            return npf.icelltype
         return None
 
     @property
@@ -181,6 +172,7 @@ class Flopy3Package(PackageInterface):
         modeltime: Optional[ModelTime] = None,
     ):
         self._model = model
+        self._package = package
         if hasattr(package, "data"):
             self._data = package.data
         else:
@@ -264,7 +256,21 @@ class Flopy3Package(PackageInterface):
 
     @property
     def has_stress_period_data(self):
-        # TODO oc returns true? is stress package?
+        # Codegen v2: stress-period recarray packages (CHD, DRN, etc.)
+        if getattr(self._package, "_stress_period_data", None) is not None:
+            return True
+        # Codegen v2: OC-style period fields (save_head, save_budget, etc.)
+        import attrs as _attrs
+
+        try:
+            for f in _attrs.fields(type(self._package)):
+                if f.metadata.get("dfn_block") == "period":
+                    attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
+                    if getattr(self._package, attr_name, None) is not None:
+                        return True
+        except _attrs.exceptions.NotAnAttrsClassError:
+            pass
+        # Legacy xattree: nper in dims
         return "nper" in self._data.dims
 
     def check(self, f=None, verbose=True, level=1, checktype=None):

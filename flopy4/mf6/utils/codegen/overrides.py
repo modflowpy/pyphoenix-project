@@ -125,6 +125,17 @@ def block_dim_override(dfn_name: str, block_name: str) -> str | None:
     return _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get(key)
 
 
+def always_emit_blocks(dfn_name: str) -> list[str]:
+    """Return block names that must be emitted even when no data is set.
+
+    Used for blocks like SSM SOURCES that MF6 requires to be present in the
+    input file even when empty (otherwise MF6 raises an error on read).
+    """
+    return list(
+        _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("always_emit_blocks", [])
+    )
+
+
 def apply_to_child(dfn_name: str, child: dict) -> dict:
     """Return ``child`` dict with any registered overrides applied.
 

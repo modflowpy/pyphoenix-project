@@ -121,7 +121,7 @@ def test_component_write_with_context(function_tmpdir):
     gwf = Gwf(parent=sim, name="gwf", dis=dis)
     ic = Ic(parent=gwf, strt=1.0)
     npf = Npf(parent=gwf, k=1.0)
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0}})
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0]]})
     oc = Oc(parent=gwf, head_file="gwf.hds", budget_file="gwf.bud")
 
     # Write with custom context

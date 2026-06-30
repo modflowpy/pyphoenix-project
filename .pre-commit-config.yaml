@@ -13,7 +13,7 @@ repos:
       args: ['--maxkb=2048']
     - id: check-toml
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.8.2
+  rev: v0.15.14
   hooks:
     - id: ruff
       types_or: [python, pyi, jupyter]

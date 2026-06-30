@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any
 
 import cattr
-import xattree
 from cattr import Converter
 
 from flopy4.mf6.component import Component
@@ -11,25 +10,19 @@ from flopy4.mf6.converter.egress.unstructure import (
     unstructure_component,
 )
 from flopy4.mf6.converter.ingress.structure import (
-    structure_array,
     structure_component,
-    structure_keyword,
 )
 
 __all__ = [
     "structure",
     "unstructure",
-    "structure_array",
     "structure_component",
-    "unstructure_array",
-    "structure_keyword",
     "COMPONENT_CONVERTER",
 ]
 
 
 def _make_converter() -> Converter:
     converter = Converter(unstruct_strat=cattr.UnstructureStrategy.AS_TUPLE)
-    converter.register_unstructure_hook_factory(xattree.has, lambda _: xattree.asdict)
     converter.register_unstructure_hook(Component, unstructure_component)
     return converter
 

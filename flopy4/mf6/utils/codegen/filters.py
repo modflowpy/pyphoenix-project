@@ -123,10 +123,6 @@ _ALT_DIM_TOKENS: dict[str, str] = {
 # repeated columns per row like naux, not a separate array dimension.
 _DROP_DIMS: frozenset[str] = frozenset({"naux", "nseg-1"})
 
-# dtype expression for the boundname array field.  Used in both the Python type
-# annotation and the array() spec call so both stay in sync if LENBOUNDNAME changes.
-_BOUNDNAME_DTYPE = 'f"<U{LENBOUNDNAME}"'
-
 
 def _has_file_child(f: Field) -> bool:
     if f.get("children", None):
@@ -387,7 +383,7 @@ def skip_reason(f: Field) -> str | None:
     if is_generatable(f):
         return None
     if is_list_field(f):
-        return None  # handled by _expand_list_field in make.py
+        return None  # handled as recarray block in build_component_spec
     if can_expand_record(f):
         return None  # handled by _expand_record_field in make.py
     if _has_complex_shape(f):
@@ -459,8 +455,11 @@ def py_type(f: Field) -> str:
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
     elif is_array(f):
-        dtype = ARRAY_NUMPY_DTYPES.get(f["type"], "np.object_")
-        base = f"NDArray[{dtype}]"
+        if f.get("block") == "griddata":
+            base = "ArrayLike"
+        else:
+            dtype = ARRAY_NUMPY_DTYPES.get(f["type"], "np.object_")
+            base = f"NDArray[{dtype}]"
     elif is_dimensions_scalar(f):
         # dimensions fields are computed (init=False) and always nullable
         base = _SCALAR_PY_TYPES.get(f["type"], "Any")
@@ -493,36 +492,13 @@ def safe_name(name: str) -> str:
 # spec() call strings
 
 
-def _dims_tuple(shape: str, *, keep: frozenset[str] | None = None) -> str:
-    """Convert a DFN shape string to a Python dims tuple literal.
-
-    Applies _ALT_DIM_TOKENS, then _DIM_ALIASES to normalise dimension names.
-
-    Parameters
-    ----------
-    keep : frozenset[str], optional
-        Dimension names to preserve even if they are in _DROP_DIMS.
-
-    Examples
-    --------
-    "(ncol)"                    -> '("ncol",)'
-    "(nper, nnodes)"            -> '("nper", "nodes")'
-    "(nper, ncol*nrow; ncpl)"   -> '("nper", "ncpl")'
-    """
+def _dims_tuple_val(shape: str, *, keep: frozenset[str] | None = None) -> tuple:
+    """Like _dims_tuple but returns an actual tuple instead of a string literal."""
     resolved = _resolve_alt_grid(shape)
     inner = resolved.strip().strip("()")
     raw = [_DIM_ALIASES.get(p.strip(), p.strip()) for p in inner.split(",") if p.strip()]
     drop = _DROP_DIMS - (keep or frozenset())
-    parts = [p for p in raw if p not in drop]
-    quoted = ", ".join(f'"{p}"' for p in parts)
-    suffix = "," if len(parts) == 1 else ""
-    return f"({quoted}{suffix})"
-
-
-def _longname_repr(longname: str | None) -> str | None:
-    if not longname:
-        return None
-    return repr(longname)
+    return tuple(p for p in raw if p not in drop)
 
 
 def _default_repr(f: Field) -> str:
@@ -535,221 +511,247 @@ def _default_repr(f: Field) -> str:
             return "False"
         return "None"
     if isinstance(default, str):
-        return repr(default)
+        dfn_type = f.get("type", "")
+        if dfn_type == "integer":
+            try:
+                return repr(int(default))
+            except (ValueError, TypeError):
+                pass
+        elif dfn_type in ("double", "double precision"):
+            try:
+                return repr(float(default))
+            except (ValueError, TypeError):
+                pass
+        return _dq(default)
     return repr(default)
 
 
-def _array_args(f: Field, *, has_maxbound: bool = False) -> list[str]:
-    """Build the argument list for an array() spec call.
+# New-codegen field call strings
 
-    Shared by both is_array and is_keyword_array branches. The only
-    difference between them is that is_array prepends _BOUNDNAME_DTYPE for
-    the boundname field; everything else (dims, netcdf, converter,
-    on_setattr, longname) is identical.
+
+def field_metadata(f: Field, *, has_maxbound: bool = False) -> dict:
+    """Build the metadata dict for an attrs.field() call (new codegen path).
+
+    Replaces the xattree spec call (array(), field(), dim(), path()) with a
+    passive dict read by the codec and conversion methods at call time.
     """
-    shape = f.get("shape", None)
-    # G/A variant period aux: DFN shape omits naux (one readarray block per aux
-    # variable), but the array still needs a trailing naux dimension.
-    if f["name"] == "aux" and f["block"] == "period" and shape and "naux" not in shape:
-        shape = shape.rstrip(")").rstrip() + ", naux)"
-    _keep = frozenset({"naux"}) if shape and "naux" in shape else None
-    dims = _dims_tuple(shape, keep=_keep) if shape else '("nodes",)'
-    args = [
-        f'block="{f["block"]}"',
-        f"dims={dims}",
-        f"default={_default_repr(f)}",
-    ]
-    if f.get("netcdf", False):
-        args.append("netcdf=True")
-    args.append("converter=Converter(structure_array, takes_self=True, takes_field=True)")
-    if is_period_array(f) and has_maxbound:
-        args.append("on_setattr=update_maxbound")
-    if is_boundname_field(f):
-        args.insert(0, f"dtype={_BOUNDNAME_DTYPE}")
-    if ln := _longname_repr(f.get("longname", None)):
-        args.append(f"longname={ln}")
-    return args
-
-
-def spec_call(f: Field, *, has_maxbound: bool = False) -> str:
-    """Return the spec function call string for a field.
-
-    Parameters
-    ----------
-    f :
-        The DFN field.
-    has_maxbound :
-        True when the containing package has a dimensions block with maxbound.
-        Enables ``on_setattr=update_maxbound`` on period block arrays.
-
-    The call is intentionally kept as a single line so that ruff
-    can reformat it to the project's style.
-    """
-    if is_aux_list_field(f):
-        block = f["block"]
-        args = [f'block="{block}"', f"default={_default_repr(f)}"]
-        if ln := _longname_repr(f["longname"]):
-            args.append(f"longname={ln}")
-        return f"array({', '.join(args)})"
-
+    meta: dict = {"dfn_block": f["block"], "dfn_type": f["type"]}
+    if shape := f.get("shape"):
+        meta["shape"] = _dims_tuple_val(shape)
+    if f.get("layered"):
+        meta["layered"] = True
+        meta["chunk_axis"] = "nlay"
+    if f.get("netcdf"):
+        meta["netcdf"] = True
+    if f.get("time_series"):
+        meta["time_series"] = True
+    if is_period_array(f):
+        meta["period_data"] = True
+    if f.get("optional"):
+        meta["optional"] = True
+    if f["block"] == "dimensions" and f["name"] == "maxbound" and has_maxbound:
+        meta["auto_from"] = "stress_period_data"
     if is_file_record(f):
-        block = f["block"]
         inout = "filein" if _has_file_child_of(f, "filein") else "fileout"
-        args = [
-            f'block="{block}"',
-            f"default={_default_repr(f)}",
-            "converter=to_path",
-            f'inout="{inout}"',
-        ]
-        return f"path({', '.join(args)})"
-
-    if is_keyword_array(f) or is_array(f):
-        return f"array({', '.join(_array_args(f, has_maxbound=has_maxbound))})"
-
-    # scalar field
-    if is_dimensions_scalar(f):
-        block = f["block"]
-        if has_maxbound and f["name"] == "maxbound":
-            # Only maxbound itself is auto-computed from data, so init=False.
-            # Other dimension scalars in the same block (e.g. nseg in EVT) are
-            # user-specified and must remain in __init__.
-            args = [f'block="{block}"', f"default={_default_repr(f)}", "init=False"]
-            if f.get("longname", None):
-                args.append(f"longname={repr(f['longname'])}")
-            return f"field({', '.join(args)})"
-        else:
-            # User-specified dims (nseg, nrhospecies, maxmvr, maxpackages, …):
-            # use dim(coord=False) so xattree includes the value in its
-            # dimension resolution when expanding array fields.
-            block = f["block"]
-            args = [f'block="{block}"', "coord=False", f"default={_default_repr(f)}"]
-            if f.get("longname", None):
-                args.append(f"longname={repr(f['longname'])}")
-            return f"dim({', '.join(args)})"
-    # Required scalar with no DFN default: omit default= entirely so the field is
-    # positional-required at construction.  Matches MF6 semantics (the user MUST
-    # supply a value) and avoids the float/int annotation contradicting default=None.
-    if (
-        is_scalar(f)
-        and not f.get("optional", False)
-        and f.get("default", None) is None
-        and f["type"] != "keyword"
-    ):
-        args = [f'block="{f["block"]}"']
-        if ln := _longname_repr(f.get("longname", None)):
-            args.append(f"longname={ln}")
-        return f"field({', '.join(args)})"
-    args = [f'block="{f["block"]}"', f"default={_default_repr(f)}"]
-    if ln := _longname_repr(f.get("longname", None)):
-        args.append(f"longname={ln}")
-    return f"field({', '.join(args)})"
+        meta["inout"] = inout
+    return meta
 
 
-# Import computation
+def _dq(v) -> str:
+    """Format a scalar value as a Python literal using double-quoted strings.
 
-
-def needed_imports(
-    generatable_fields: list[Field],
-    *,
-    base_class: str = "Package",
-    multi: bool = False,
-    slntype: bool = False,
-    has_maxbound: bool = False,
-    has_list_cols: bool = False,
-    has_inner_classes: bool = False,
-    has_oc_fields: bool = False,
-    has_extra_dims: bool = False,
-    has_injected_paths: bool = False,
-    has_period_keystring: bool = False,
-    has_block_properties: bool = False,
-    has_period_col_map: bool = False,
-) -> dict[str, list[str]]:
-    """Compute the import lines needed for a generated module.
-
-    Returns a dict with keys 'stdlib', 'third_party', 'flopy4'.
+    Used when emitting metadata dicts and schema ClassVars into generated source
+    so all string literals use double quotes for consistency with ruff output.
     """
-    has_array = (
-        any(is_array(f) or is_keyword_array(f) for f in generatable_fields)
-        or has_list_cols
-        or has_oc_fields
+    if isinstance(v, str):
+        return f'"{v}"'
+    if isinstance(v, tuple):
+        inner = ", ".join(f'"{s}"' if isinstance(s, str) else repr(s) for s in v)
+        trailing = "," if len(v) == 1 else ""
+        return f"({inner}{trailing})"
+    return repr(v)
+
+
+def field_call(f: Field, *, has_maxbound: bool = False) -> str:
+    """Return the attrs.field() call string for a field.
+
+    Emits a multi-line call to comply with the 100-char line-length limit.
+    Continuation lines are pre-indented for class body (8-space args,
+    12-space dict keys, 4-space closing paren).
+    """
+    meta = field_metadata(f, has_maxbound=has_maxbound)
+    # maxbound is auto-computed from stress_period_data at write time; default 0.
+    if f["block"] == "dimensions" and f["name"] == "maxbound":
+        default = "0"
+    else:
+        default = _default_repr(f)
+    # String-encoded numeric defaults (e.g. '1.e-5', '1000.') are valid at
+    # runtime but mypy can't verify they satisfy Optional[float/int].
+    # Scalar defaults (int, float, str) on ArrayLike fields have the same issue.
+    _str_default = default.startswith("'")
+    _numeric_field = f.get("type", "") in ("double", "double precision", "integer")
+    type_ignore = ""
+    if (is_array(f) and default != "None") or (_str_default and _numeric_field):
+        type_ignore = "  # type: ignore[assignment]"
+    meta_lines = ["        metadata={"]
+    for k, v in meta.items():
+        meta_lines.append(f'            "{k}": {_dq(v)},')
+    meta_lines.append("        },")
+    converter_line = ""
+    if is_file_record(f):
+        converter_line = "        converter=_optional_path,\n"
+    return (
+        f"attrs.field(\n"
+        f"        default={default},\n"
+        + converter_line
+        + "\n".join(meta_lines)
+        + f"\n    ){type_ignore}"
     )
-    has_aux_list = any(is_aux_list_field(f) for f in generatable_fields)
-    has_path = any(is_file_record(f) for f in generatable_fields) or has_injected_paths
-    has_optional = any(
-        (f.get("optional", False) or is_period_array(f)) and f["type"] != "keyword"
-        for f in generatable_fields
-    )
-    has_dimensions = any(is_dimensions_scalar(f) for f in generatable_fields)
-    has_stress_arrays = any(is_period_array(f) for f in generatable_fields)
-    has_boundname = any(is_boundname_field(f) for f in generatable_fields)
-    has_classvar = (
-        multi or slntype or has_inner_classes or has_block_properties or has_period_col_map
-    )
 
-    # dimensions, aux list, list-expansion columns, inner class parents,
-    # and injected paths are always Optional
-    if has_dimensions or has_aux_list or has_list_cols or has_inner_classes or has_injected_paths:
-        has_optional = True
 
-    stdlib: list[str] = []
-    if has_path:
-        stdlib.append("from pathlib import Path")
-    typing_parts: list[str] = []
-    if has_classvar:
-        typing_parts.append("ClassVar")
-    if has_optional:
-        typing_parts.append("Optional")
-    if typing_parts:
-        stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
+def python_repr(v) -> str:
+    """Format a list[dict] schema as multi-line Python for class-body assignment.
 
-    third_party: list[str] = []
-    if has_inner_classes or has_block_properties:
-        third_party.append("import attrs")
-    if has_array:
-        third_party.append("import numpy as np")
-        third_party.append("from attrs import Converter")
-        third_party.append("from numpy.typing import NDArray")
-    third_party.append("from xattree import xattree")
+    Registered as the ``python_repr`` Jinja filter.  Produces 8-space item
+    indent, 12-space key indent, 4-space closing bracket so the result renders
+    correctly after ``    __name__: ClassVar[...] = ``.
+    """
+    if not isinstance(v, list):
+        return repr(v)
+    lines = ["["]
+    for item in v:
+        if isinstance(item, dict):
+            lines.append("        {")
+            for k, val in item.items():
+                lines.append(f'            "{k}": {_dq(val)},')
+            lines.append("        },")
+        else:
+            lines.append(f"        {_dq(item)},")
+    lines.append("    ]")
+    return "\n".join(lines)
 
-    _base_imports = {
-        "Package": "from flopy4.mf6.package import Package",
-        "Solution": "from flopy4.mf6.solution import Solution",
-        "Context": "from flopy4.mf6.context import Context",
+
+def row_class(schema_list: list[dict], class_name: str, is_period: bool = False) -> str:
+    """Render an @attrs.define Row nested class for list block construction.
+
+    Called as::
+
+        {{ spec.period_schema | row_class("Row", True) }}
+        {{ block_schema | row_class("PackagedataRow") }}
+
+    Produces a 4-space-indented ``@attrs.define`` class with typed fields and
+    an ``__iter__`` method that yields column values in schema column order.
+    Row instances can be passed anywhere nested lists are accepted — they are
+    coerced to np.recarray in ``__attrs_post_init__`` exactly like nested lists.
+
+    Required fields (no default) are declared before optional fields to
+    satisfy attrs ordering constraints.  ``__iter__`` follows schema column
+    order so coercion produces the correct recarray layout.
+
+    ``is_period=True`` injects ``aux: tuple = ()`` between required value
+    columns and optional columns, for packages that accept positional AUXILIARY
+    columns in their stress period recarray.  Static list blocks (packagedata,
+    connectiondata, etc.) have fixed DFN schemas and never carry dynamic aux
+    columns, so ``is_period`` should be False (the default) for those.
+    """
+    if not schema_list:
+        return ""
+
+    _DFN_PY: dict[str, str] = {
+        "double": "float",
+        "double precision": "float",
+        "integer": "int",
+        "string": "str",
+        "keyword": "str",
+        "object": "object",
     }
 
-    has_user_dims = (
-        any(is_dimensions_scalar(f) and f["name"] != "maxbound" for f in generatable_fields)
-        or has_extra_dims
-    )
+    def _py_type(col: dict) -> str:
+        role = col["role"]
+        if role == "cellid":
+            return "tuple"
+        if role == "feature_id":
+            return "int"
+        if role in ("keystring", "inline_keyword"):
+            return "str"
+        if role == "keystring_value":
+            return "object"
+        if role == "boundname":
+            return "str"
+        if col.get("time_series") or col.get("dtype") == "np.object_":
+            return "Union[float, str]"
+        return _DFN_PY.get(col.get("dfn_type", "double"), "float")
 
-    spec_funcs: list[str] = ["field"]
-    if has_array or has_aux_list:
-        spec_funcs.append("array")
-    if has_period_keystring:
-        spec_funcs.append("embedded_keystring")
-    if has_oc_fields:
-        spec_funcs.append("keystring")
-    if has_path:
-        spec_funcs.append("path")
-    if has_user_dims:
-        spec_funcs.append("dim")
-    spec_funcs = sorted(set(spec_funcs))
+    def _is_optional(col: dict) -> bool:
+        return bool(col.get("optional")) or col["role"] in ("boundname", "inline_keyword")
 
-    flopy4: list[str] = []
-    if has_boundname:
-        flopy4.append("from flopy4.mf6.constants import LENBOUNDNAME")
-    if has_array:
-        flopy4.append("from flopy4.mf6.converter import structure_array")
-    flopy4.append(_base_imports.get(base_class, _base_imports["Package"]))
-    if has_inner_classes:
-        flopy4.append("from flopy4.mf6.record import Record")
-    flopy4.append(f"from flopy4.mf6.spec import {', '.join(spec_funcs)}")
-    if has_path:
-        flopy4.append("from flopy4.utils import to_path")
-    if has_stress_arrays and has_maxbound:
-        flopy4.append("from flopy4.mf6.utils.grid import update_maxbound")
+    required = [col for col in schema_list if not _is_optional(col)]
+    optional = [col for col in schema_list if _is_optional(col)]
+    # Aux injection: only for period blocks.  Standard stress packages (CHD,
+    # WEL, DRN, …) carry aux as positional trailing columns in the recarray
+    # whose count equals len(package.auxiliary).  Keystring period packages
+    # (LAK, SFR) embed AUXILIARY as a named keyword record — no positional aux.
+    # Static list blocks (packagedata, connectiondata, etc.) have fixed schemas
+    # and never carry dynamic aux columns regardless of package options.
+    has_positional_aux = is_period and not any(col["role"] == "keystring" for col in schema_list)
 
-    return {"stdlib": stdlib, "third_party": third_party, "flopy4": flopy4}
+    lines = ["    @attrs.define"]
+    lines.append(f"    class {class_name}:")
+    for col in required:
+        lines.append(f"        {col['name']}: {_py_type(col)}")
+    if has_positional_aux:
+        lines.append("        aux: tuple = ()")
+    for col in optional:
+        lines.append(f"        {col['name']}: Optional[{_py_type(col)}] = None")
+    lines.append("")
+    lines.append("        def __iter__(self):")
+    for col in required:
+        lines.append(f"            yield self.{col['name']}")
+    if has_positional_aux:
+        lines.append("            yield from self.aux")
+    for col in optional:
+        lines.append(f"            yield self.{col['name']}")
+    return "\n".join(lines)
+
+
+def schema_class(schema_list: list[dict], class_name: str) -> str:
+    """Render a Schema subclass body for a list[dict] column schema.
+
+    Registered as the ``schema_class`` Jinja filter.  Called as::
+
+        {{ spec.period_schema | schema_class("_PeriodSchema") }}
+
+    Produces a 4-space-indented class definition (suitable for class-body
+    emission in generated files) with one Column(...) attribute per column.
+    Long Column() calls are wrapped to keep lines under the 100-character
+    ruff limit.
+    """
+    if not schema_list:
+        return ""
+    lines = [f"    class {class_name}(Schema):"]
+    for col in schema_list:
+        name = col["name"]
+        args = [f'"{name}"', f'role="{col["role"]}"', f'dfn_type="{col.get("dfn_type", "double")}"']
+        if col.get("shape"):
+            args.append(f'shape="{col["shape"]}"')
+        if col.get("optional"):
+            args.append("optional=True")
+        if col.get("time_series"):
+            args.append("time_series=True")
+        if col.get("dtype"):
+            args.append(f'dtype="{col["dtype"]}"')
+        if col.get("prefix"):
+            args.append(f'prefix="{col["prefix"]}"')
+        single = f"        {name} = Column({', '.join(args)})"
+        if len(single) <= 100:
+            lines.append(single)
+        else:
+            # Wrap: each arg on its own line at 12-space indent.
+            lines.append(f"        {name} = Column(")
+            for arg in args:
+                lines.append(f"            {arg},")
+            lines.append("        )")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

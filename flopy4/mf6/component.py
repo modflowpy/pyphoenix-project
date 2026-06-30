@@ -80,6 +80,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         (like CHD, DRN, etc.) will have it automatically computed at
         initialization and updated when period arrays change.
         """
+        # Codegen v2 packages compute maxbound in Package.__attrs_post_init__
+        # via _init_period_dtype; skip the xattree metadata scan.
+        from flopy4.mf6.converter.egress.unstructure import has_dfn_metadata
+
+        if has_dfn_metadata(type(self)):
+            return
+
         # Check if component has a maxbound field and period block arrays
         component_fields = fields(self.__class__)
         has_maxbound = any(f.name == "maxbound" for f in component_fields)
@@ -199,4 +206,41 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             }
 
     def to_xarray(self):
-        return self.data.dataset  # type: ignore
+        """Flat xr.Dataset merging this component's DataTree dataset with any
+        codegen v2 child packages that have griddata fields.
+        """
+        import xarray as _xr
+
+        base = self.data.dataset  # type: ignore
+        extra = list(self._collect_child_griddata_datasets().values())
+        if not extra:
+            return base
+        try:
+            merged = _xr.merge([base] + extra, join="outer")
+            merged.attrs.update(base.attrs)
+            return merged
+        except Exception:
+            return base
+
+    def _collect_child_griddata_datasets(self) -> dict:
+        """Walk children and return {name: xr.Dataset} for v2 packages with griddata."""
+        import attrs as _attrs
+
+        result: dict = {}
+        try:
+            for name, child in (getattr(self, "children", None) or {}).items():
+                try:
+                    _fields = _attrs.fields(type(child))
+                except _attrs.exceptions.NotAnAttrsClassError:
+                    continue
+                if not any(f.metadata.get("dfn_block") == "griddata" for f in _fields):
+                    continue
+                try:
+                    ds = child.to_xarray()
+                    if ds is not None and hasattr(ds, "data_vars") and ds.data_vars:
+                        result[name] = ds
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return result

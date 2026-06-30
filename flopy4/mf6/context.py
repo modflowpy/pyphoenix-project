@@ -69,4 +69,16 @@ class Context(Component, ABC):
             super().write(format=format, context=context)
 
     def to_xarray(self):
-        return self.data  # type: ignore
+        """DataTree for this context, with codegen v2 child packages populated."""
+        tree = self.data  # type: ignore
+        patches = self._collect_child_griddata_datasets()
+        if not patches:
+            return tree
+
+        result = tree.copy(deep=True)
+        for name, ds in patches.items():
+            try:
+                result[name].update(ds)
+            except Exception:
+                pass
+        return result

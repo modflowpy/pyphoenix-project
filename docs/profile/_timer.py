@@ -1,8 +1,9 @@
-"""Shared timing utilities for write-performance profile scripts."""
+"""Shared timing utilities for profile scripts (reads and writes)."""
 
 import argparse
 import json
 import time
+import tracemalloc
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,7 +16,7 @@ def make_parser(description: str) -> argparse.ArgumentParser:
         "--runs",
         type=int,
         default=5,
-        help="number of timed write repetitions per variant (default: 5)",
+        help="number of timed repetitions per variant (default: 5)",
     )
     p.add_argument(
         "--output",
@@ -46,6 +47,11 @@ def make_parser(description: str) -> argparse.ArgumentParser:
         action="store_true",
         help="run cProfile on the first flopy4 list variant and print top-20 cumulative stats",
     )
+    p.add_argument(
+        "--memory",
+        action="store_true",
+        help="measure peak heap memory via tracemalloc for each variant",
+    )
     return p
 
 
@@ -73,6 +79,49 @@ def time_writes(fn, n: int, label: str, include_slow: bool = False):
         fn()
         times.append(time.perf_counter() - t0)
     return times
+
+
+# Semantic alias: reads and writes share the same timing mechanics.
+time_reads = time_writes
+
+
+def profile_memory(fn, label: str) -> dict:
+    """Run fn() once and return peak heap allocation in MiB (via tracemalloc).
+
+    Note: tracemalloc tracks Python-managed allocations only. For a full
+    native-heap view (e.g. NumPy buffers allocated outside Python), use memray.
+    """
+    tracemalloc.start()
+    try:
+        fn()
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    peak_mib = peak / (1024**2)
+    print(f"  {label:<40}  peak={peak_mib:.1f} MiB")
+    return {"label": label, "peak_mib": round(peak_mib, 2)}
+
+
+def sweep_chunks(
+    fn_factory,
+    chunk_sizes: list[int],
+    label_prefix: str,
+    n: int = 3,
+    include_slow: bool = False,
+) -> list[dict]:
+    """Benchmark fn_factory(chunk_size)() across each chunk_size.
+
+    fn_factory(chunk_size) must return a zero-argument callable that exercises
+    the operation under test with that chunk size.  Returns a list of result
+    dicts in the same format as report().
+    """
+    results = []
+    for cs in chunk_sizes:
+        label = f"{label_prefix} [chunks={cs}]"
+        fn = fn_factory(cs)
+        times = time_writes(fn, n, label, include_slow)
+        results.append(report(label, times))
+    return results
 
 
 def profile_fn(fn, label: str, n_lines: int = 20) -> None:

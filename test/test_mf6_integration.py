@@ -120,7 +120,7 @@ def test_gwf_chd01(function_tmpdir):
     chd = Chd(
         parent=gwf,
         print_flows=True,
-        head={0: {(0, 0, 0): 1.0, (0, 0, 99): 0.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 99), 0.0]]},
         name="chd-1",
     )
 
@@ -235,7 +235,7 @@ def test_gwf_disv(function_tmpdir):
     chd = Chd(
         parent=gwf,
         print_flows=True,
-        head={0: {(0, 0): 1.0, (0, 8): 0.0}},
+        stress_period_data={0: [[(0, 0), 1.0], [(0, 8), 0.0]]},
     )
 
     sim.write()
@@ -453,10 +453,10 @@ def test_gwf_disv_uzf(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        save_head={0: "all"},
-        save_budget={0: "all"},
-        print_head={0: "all"},
-        print_budget={0: "all"},
+        save_head={0: ["all"]},
+        save_budget={0: ["all"]},
+        print_head={0: ["all"]},
+        print_budget={0: ["all"]},
     )
 
     npf = Npf(
@@ -473,7 +473,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         storagecoefficient=False,
         ss=1.00000000e-05,
         sy=0.2,
-        transient=[True, False, False, False, False],
+        stress_period_data={0: [["TRANSIENT"]]},
         iconvert=1,
     )
 
@@ -500,17 +500,10 @@ def test_gwf_disv_uzf(function_tmpdir):
         (4, 99),
     ]
 
-    bhead = {0: {}}
-    cond = {0: {}}
-    for c in ghb_cells:
-        bhead[0][c] = 1.40000000e01
-        cond[0][c] = 1.00000000e04
-
     ghb = Ghb(
         parent=gwf,
         print_flows=True,
-        bhead=bhead,
-        cond=cond,
+        stress_period_data={0: [[c, 14.0, 10000.0] for c in ghb_cells]},
         name="ghb-1",
     )
 
@@ -563,7 +556,7 @@ def test_quickstart(function_tmpdir):
         save_budget=["all"],
     )
     npf = Npf(parent=gwf, icelltype=0, k=1.0)
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 9, 9): 0.0}})
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]})
 
     sim.write()
     sim.run()
@@ -724,15 +717,15 @@ def test_quickstart_netcdf(function_tmpdir):
     assert ("npf_k") in ds
     assert ("chdg0_head") in ds
 
-    assert np.allclose(ds["dis_delr"].values, dis.delr)
-    assert np.allclose(ds["dis_delc"].values, dis.delc)
-    assert np.allclose(ds["dis_top"].values, dis.top)
-    assert np.allclose(ds["dis_botm"].values, dis.botm)
-    assert np.allclose(ds["dis_idomain"].values, dis.idomain)
+    assert np.allclose(ds["dis_delr"].values.ravel(), np.asarray(dis.delr).ravel())
+    assert np.allclose(ds["dis_delc"].values.ravel(), np.asarray(dis.delc).ravel())
+    assert np.allclose(ds["dis_top"].values.ravel(), np.asarray(dis.top).ravel())
+    assert np.allclose(ds["dis_botm"].values.ravel(), np.asarray(dis.botm).ravel())
+    assert np.allclose(ds["dis_idomain"].values.ravel(), np.asarray(dis.idomain).ravel())
     assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
     assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
     assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
-    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.head)
+    assert np.allclose(ds["chdg0_head"].values.ravel(), chd.head.ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -839,13 +832,13 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
 
     assert np.allclose(ds["dis_delr"].values, dis.delr)
     assert np.allclose(ds["dis_delc"].values, dis.delc)
-    assert np.allclose(ds["dis_top"].values, dis.top.values.ravel())
-    assert np.allclose(ds["dis_botm_l1"].values, dis.botm.values.ravel())
-    assert np.allclose(ds["dis_idomain_l1"].values, dis.idomain.values.ravel())
-    assert np.allclose(ds["ic_strt_l1"].values.ravel(), ic.strt.values.ravel())
-    assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), npf.icelltype.values.ravel())
-    assert np.allclose(ds["npf_k_l1"].values.ravel(), npf.k.values.ravel())
-    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.head.values.ravel())
+    assert np.allclose(ds["dis_top"].values, np.asarray(dis.top).ravel())
+    assert np.allclose(ds["dis_botm_l1"].values, np.asarray(dis.botm).ravel())
+    assert np.allclose(ds["dis_idomain_l1"].values, np.asarray(dis.idomain).ravel())
+    assert np.allclose(ds["ic_strt_l1"].values.ravel(), np.asarray(ic.strt).ravel())
+    assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), np.asarray(npf.icelltype).ravel())
+    assert np.allclose(ds["npf_k_l1"].values.ravel(), np.asarray(npf.k).ravel())
+    assert np.allclose(ds["chdg0_head_l1"].values.ravel(), chd.head.ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -887,8 +880,10 @@ def test_gwf_wel(function_tmpdir):
         save_head=["last"],
         save_budget=["last"],
     )
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 5.0, (0, 0, 9): 5.0}}, name="chd-1")
-    wel = Wel(parent=gwf, q={0: {(0, 0, 4): -1.0}}, name="wel-1")
+    chd = Chd(
+        parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]}, name="chd-1"
+    )
+    wel = Wel(parent=gwf, stress_period_data={0: [[(0, 0, 4), -1.0]]}, name="wel-1")
 
     sim.write()
     sim.run()
@@ -932,11 +927,10 @@ def test_gwf_drn(function_tmpdir):
         save_head=["last"],
         save_budget=["last"],
     )
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 5.0}}, name="chd-1")
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0]]}, name="chd-1")
     drn = Drn(
         parent=gwf,
-        elev={0: {(0, 0, 9): 4.0}},
-        cond={0: {(0, 0, 9): 100.0}},
+        stress_period_data={0: [[(0, 0, 9), 4.0, 100.0]]},
         name="drn-1",
     )
 
@@ -982,12 +976,10 @@ def test_gwf_riv(function_tmpdir):
         save_head=["last"],
         save_budget=["last"],
     )
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 3.0}}, name="chd-1")
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 3.0]]}, name="chd-1")
     riv = Riv(
         parent=gwf,
-        stage={0: {(0, 0, 9): 5.0}},
-        cond={0: {(0, 0, 9): 100.0}},
-        rbot={0: {(0, 0, 9): 2.0}},
+        stress_period_data={0: [[(0, 0, 9), 5.0, 100.0, 2.0]]},
         name="riv-1",
     )
 
@@ -1035,12 +1027,17 @@ def test_gwf_rch(function_tmpdir):
     )
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 1.0, (0, 0, 9): 1.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
         name="chd-1",
     )
     rch = Rch(
         parent=gwf,
-        recharge={0: {(0, 0, i): 1e-3 for i in range(10)}},
+        stress_period_data={
+            0: {
+                "cellid": [(0, 0, i) for i in range(10)],
+                "recharge": [1e-3] * 10,
+            }
+        },
         name="rch-1",
     )
 
@@ -1055,6 +1052,7 @@ def test_gwf_rcha(function_tmpdir):
     sim_name = "gwf_rcha"
     gwf_name = "gwf_rcha"
     nrow, ncol = 1, 10
+    ncpl = nrow * ncol
     time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="days")
 
     ims = Ims(
@@ -1089,12 +1087,14 @@ def test_gwf_rcha(function_tmpdir):
     )
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 1.0, (0, 0, 9): 1.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 9), 1.0]]},
         name="chd-1",
     )
+    # RCHA uses READARRAY period arrays: shape (nper, ncpl)
+    recharge = np.full((1, ncpl), 1e-3)
     rcha = Rcha(
         parent=gwf,
-        recharge=np.full((1, nrow * ncol), 1e-3),
+        recharge=recharge,
         name="rcha-1",
     )
 
@@ -1142,14 +1142,19 @@ def test_gwf_evt(function_tmpdir):
     )
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 8.0, (0, 0, 9): 8.0}},
+        stress_period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
         name="chd-1",
     )
     evt = Evt(
         parent=gwf,
-        surface={0: {(0, 0, i): 10.0 for i in range(10)}},
-        rate={0: {(0, 0, i): 1e-3 for i in range(10)}},
-        depth={0: {(0, 0, i): 4.0 for i in range(10)}},
+        stress_period_data={
+            0: {
+                "cellid": [(0, 0, i) for i in range(10)],
+                "surface": [10.0] * 10,
+                "rate": [1e-3] * 10,
+                "depth": [4.0] * 10,
+            }
+        },
         name="evt-1",
     )
 
@@ -1199,9 +1204,10 @@ def test_gwf_evta(function_tmpdir):
     )
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 8.0, (0, 0, 9): 8.0}},
+        stress_period_data={0: [[(0, 0, 0), 8.0], [(0, 0, 9), 8.0]]},
         name="chd-1",
     )
+    # EVTA uses READARRAY period arrays: shape (nper, ncpl)
     evta = Evta(
         parent=gwf,
         surface=np.full((1, ncpl), 10.0),
@@ -1264,14 +1270,13 @@ def test_gwf_mvr(function_tmpdir):
     )
     # xattree appends the 0-based index for list-typed children, so Chd/Wel/Drn
     # get auto-names chd0/wel0/drn0. Explicit name= would be mangled (e.g. "wel-1" -> "wel-10").
-    chd = Chd(parent=gwf, head={0: {(0, 0, 0): 5.0, (0, 0, 9): 5.0}})
+    chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]})
     # mover=True writes MOVER keyword to OPTIONS block so MF6 allocates IMOVER
-    wel = Wel(parent=gwf, mover=True, q={0: {(0, 0, 4): -1.0}})
+    wel = Wel(parent=gwf, mover=True, stress_period_data={0: [[(0, 0, 4), -1.0]]})
     drn = Drn(
         parent=gwf,
         mover=True,
-        elev={0: {(0, 0, 4): 4.0}},
-        cond={0: {(0, 0, 4): 100.0}},
+        stress_period_data={0: [[(0, 0, 4), 4.0, 100.0]]},
     )
 
     # MVR PACKAGES block lists participating packages by auto-assigned xattree name.
@@ -1281,13 +1286,17 @@ def test_gwf_mvr(function_tmpdir):
         parent=gwf,
         maxpackages=2,
         maxmvr=1,
-        pname=np.array(["wel0", "drn0"]),
-        pname1=np.array(["wel0"]),
-        id1=np.array([1], dtype=np.int64),
-        pname2=np.array(["drn0"]),
-        id2=np.array([1], dtype=np.int64),
-        mvrtype=np.array(["FACTOR"]),
-        value=np.array([0.5]),
+        packages={"pname": np.array(["wel0", "drn0"], dtype=object)},
+        stress_period_data={
+            0: {
+                "pname1": np.array(["wel0"], dtype=object),
+                "id1": np.array([1], dtype=np.int64),
+                "pname2": np.array(["drn0"], dtype=object),
+                "id2": np.array([1], dtype=np.int64),
+                "mvrtype": np.array(["FACTOR"], dtype=object),
+                "value": np.array([0.5]),
+            }
+        },
         name="mvr",
     )
 
@@ -1363,7 +1372,11 @@ def test_gwt_basic(function_tmpdir):
         save_head=["last"],
         save_budget=["last"],
     )
-    Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}}, name="chd-1")
+    Chd(
+        parent=gwf,
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, ncol - 1), 0.0]]},
+        name="chd-1",
+    )
 
     # GWF-GWT exchange
     GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
@@ -1376,8 +1389,8 @@ def test_gwt_basic(function_tmpdir):
     GwtAdv(parent=gwt, scheme="upstream")
     GwtMst(parent=gwt, porosity=0.3)
     GwtDsp(parent=gwt, xt3d_off=True, diffc=0.0, alh=0.1, alv=0.1, ath1=0.0)
-    GwtCnc(parent=gwt, conc={0: {(0, 0, 0): 1.0}}, name="cnc-1")
-    GwtSrc(parent=gwt, smassrate={0: {(0, 0, 5): 1e-4}}, name="src-1")
+    GwtCnc(parent=gwt, stress_period_data={0: [[(0, 0, 0), 1.0]]}, name="cnc-1")
+    GwtSrc(parent=gwt, stress_period_data={0: [[(0, 0, 5), 1e-4]]}, name="src-1")
 
     sim.write()
     sim.run()
@@ -1445,7 +1458,11 @@ def test_gwe_basic(function_tmpdir):
         save_head=["last"],
         save_budget=["last"],
     )
-    Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}}, name="chd-1")
+    Chd(
+        parent=gwf,
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, ncol - 1), 0.0]]},
+        name="chd-1",
+    )
 
     # GWF-GWE exchange
     GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
@@ -1458,8 +1475,8 @@ def test_gwe_basic(function_tmpdir):
     GweAdv(parent=gwe, scheme="upstream")
     GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
     GweCnd(parent=gwe, ktw=0.58, kts=3.0)
-    GweCtp(parent=gwe, temp={0: {(0, 0, 0): 1.0}}, name="ctp-1")
-    GweEsl(parent=gwe, senerrate={0: {(0, 0, 5): 1e-4}}, name="esl-1")
+    GweCtp(parent=gwe, stress_period_data={0: [[(0, 0, 0), 1.0]]}, name="ctp-1")
+    GweEsl(parent=gwe, stress_period_data={0: [[(0, 0, 5), 1e-4]]}, name="esl-1")
 
     sim.write()
     sim.run()
@@ -1531,18 +1548,13 @@ def test_gwf_buy(function_tmpdir):
     Chd(
         parent=gwf,
         auxiliary=["conc"],
-        head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
-        aux={0: {(0, 0, 0): 0.0, (0, 0, ncol - 1): 0.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 0.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
         name="chd-1",
     )
     Buy(
         parent=gwf,
         nrhospecies=1,
-        irhospec=np.array([1], dtype=np.int64),
-        drhodc=np.array([0.7143]),
-        crhoref=np.array([0.0]),
-        modelname=np.array([gwt_name], dtype=object),
-        auxspeciesname=np.array(["conc"], dtype=object),
+        packagedata=[(0, 0.7143, 0.0, gwt_name, "conc")],
     )
 
     GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
@@ -1553,7 +1565,7 @@ def test_gwf_buy(function_tmpdir):
     GwtSsm(parent=gwt)
     GwtAdv(parent=gwt, scheme="upstream")
     GwtMst(parent=gwt, porosity=0.3)
-    GwtCnc(parent=gwt, conc={0: {(0, 0, 0): 1.0}}, name="cnc-1")
+    GwtCnc(parent=gwt, stress_period_data={0: [[(0, 0, 0), 1.0]]}, name="cnc-1")
 
     sim.write()
 
@@ -1627,8 +1639,7 @@ def test_gwf_vsc(function_tmpdir):
     Chd(
         parent=gwf,
         auxiliary=["temperature"],
-        head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
-        aux={0: {(0, 0, 0): 20.0, (0, 0, ncol - 1): 20.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 20.0], [(0, 0, ncol - 1), 0.0, 20.0]]},
         name="chd-1",
     )
     Vsc(
@@ -1637,11 +1648,7 @@ def test_gwf_vsc(function_tmpdir):
         thermal_formulation="nonlinear",
         temperature_species_name="temperature",
         nviscspecies=1,
-        iviscspec=np.array([1], dtype=np.int64),
-        dviscdc=np.array([0.0]),
-        cviscref=np.array([20.0]),
-        modelname=np.array([gwe_name], dtype=object),
-        auxspeciesname=np.array(["temperature"], dtype=object),
+        packagedata=[(0, 0.0, 20.0, gwe_name, "temperature")],
     )
 
     GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
@@ -1653,7 +1660,7 @@ def test_gwf_vsc(function_tmpdir):
     GweAdv(parent=gwe, scheme="upstream")
     GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
     GweCnd(parent=gwe, ktw=0.58, kts=3.0)
-    GweCtp(parent=gwe, temp={0: {(0, 0, 0): 40.0}}, name="ctp-1")
+    GweCtp(parent=gwe, stress_period_data={0: [[(0, 0, 0), 40.0]]}, name="ctp-1")
 
     sim.write()
 
@@ -1728,7 +1735,7 @@ def test_prt_basic(function_tmpdir):
         save_head=["last"],
         save_budget=["last"],
     )
-    Chd(parent=gwf, head={0: {(0, 0, 0): 5.0, (0, 0, 4): 3.0}})
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 4), 3.0]]})
     gwf_sim.write()
     gwf_sim.run()
 
@@ -1806,7 +1813,7 @@ def test_gwf_oc_period_variations(function_tmpdir):
     gwf = Gwf(parent=sim, save_flows=True, dis=dis, name=gwf_name)
     Ic(parent=gwf, strt=1.0)
     Npf(parent=gwf, k=1.0, icelltype=0)
-    Chd(parent=gwf, head={0: {(0, 0, 0): 1.0, (0, 0, 2): 0.0}}, name="chd-1")
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 0, 2), 0.0]]}, name="chd-1")
     Oc(
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
@@ -1893,8 +1900,7 @@ def test_gwt_ssm_sources(function_tmpdir):
     chd = Chd(
         parent=gwf,
         auxiliary=["conc"],
-        head={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
-        aux={0: {(0, 0, 0): 1.0, (0, 0, ncol - 1): 0.0}},
+        stress_period_data={0: [[(0, 0, 0), 1.0, 1.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
         name="chd-1",
     )
     # xattree appends a zero-based counter to the name; use chd.name to get the
@@ -2008,20 +2014,20 @@ def test_gwf_lak_status(function_tmpdir):
         ss=0.0,
         sy=0.1,
         iconvert=1,
-        steady_state=np.array([True, False, False]),
+        stress_period_data={0: [["STEADY-STATE"]], 1: [["TRANSIENT"]]},
     )
     oc = Oc(
         parent=gwf,
         head_file=f"{gwf_name}.hds",
         budget_file=f"{gwf_name}.cbc",
-        save_head={0: "all"},
-        save_budget={0: "all"},
-        print_head={0: "all"},
-        print_budget={0: "all"},
+        save_head={0: ["all"]},
+        save_budget={0: ["all"]},
+        print_head={0: ["all"]},
+        print_budget={0: ["all"]},
     )
     chd = Chd(
         parent=gwf,
-        head={0: {(0, 0, 0): 100.0, (0, nrow - 1, ncol - 1): 95.0}},
+        stress_period_data={0: [[(0, 0, 0), 100.0], [(0, nrow - 1, ncol - 1), 95.0]]},
         name="chd-1",
     )
 
@@ -2052,25 +2058,16 @@ def test_gwf_lak_status(function_tmpdir):
         stage_file=f"{gwf_name}.lak.stage",
         budget_file=f"{gwf_name}.lak.bud",
         nlakes=1,
-        packagedata={
-            "ifno": np.array([0]),
-            "strt": np.array([100.0]),
-            "nlakeconn": np.array([nconn]),
-            "boundname": np.array(["lake1"], dtype=object),
+        packagedata=[(0, 100.0, nconn, "lake1")],
+        connectiondata=[
+            (0, i, (0, r, c), "vertical", 1.0, 0.0, 0.0, 0.0, 0.0)
+            for i, (r, c) in enumerate(lake_connections)
+        ],
+        stress_period_data={
+            0: [[0, "RAINFALL", 0.1]],
+            1: [[0, "STATUS", "inactive"]],
+            2: [[0, "STATUS", "active"]],
         },
-        connectiondata={
-            "ifno": np.zeros(nconn, dtype=int),
-            "iconn": np.arange(nconn, dtype=int),
-            "cellid": np.array([(0, r, c) for r, c in lake_connections]),
-            "claktype": np.full(nconn, "vertical", dtype=object),
-            "bedleak": np.full(nconn, 1.0),
-            "belev": np.zeros(nconn),
-            "telev": np.zeros(nconn),
-            "connlen": np.zeros(nconn),
-            "connwidth": np.zeros(nconn),
-        },
-        rainfall={0: [0.1]},
-        status={1: ["inactive"], 2: ["active"]},
         name="lak-1",
     )
 
@@ -2132,8 +2129,6 @@ def test_gwt_lkt01(function_tmpdir):
       - Center cell (0,0,2) has higher concentration than edge cells
     """
     from flopy.utils import HeadFile
-
-    from flopy4.mf6.constants import FILL_DNODATA
 
     sim_name = "gwt_lkt01"
     gwf_name = "gwf_lkt01"
@@ -2200,10 +2195,14 @@ def test_gwt_lkt01(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        save_head={0: "ALL"},
-        save_budget={0: "ALL"},
+        save_head={0: ["ALL"]},
+        save_budget={0: ["ALL"]},
     )
-    Chd(parent=gwf, head={0: {(0, 0, 0): -0.5, (0, 0, ncol - 1): -0.5}}, name="CHD-1")
+    Chd(
+        parent=gwf,
+        stress_period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
+        name="CHD-1",
+    )
 
     # Lake: 3 connections — horizontal to cols 1 and 3, vertical below col 2
     connlen = connwidth = delr / 2.0
@@ -2218,42 +2217,27 @@ def test_gwt_lkt01(function_tmpdir):
         budget_file=f"{gwf_name}.lak.bud",
         nlakes=1,
         noutlets=1,
-        packagedata={
-            "ifno": np.array([0]),
-            "strt": np.array([-0.4]),
-            "nlakeconn": np.array([nconn]),
-            "boundname": np.array(["mylake"], dtype=object),
-        },
-        connectiondata={
-            "ifno": np.zeros(nconn, dtype=np.int64),
-            "iconn": np.arange(nconn, dtype=np.int64),
-            "cellid": np.array([(0, 0, 1), (0, 0, 3), (0, 0, 2)]),
-            "claktype": np.array(["HORIZONTAL", "HORIZONTAL", "VERTICAL"], dtype=object),
-            "bedleak": np.full(nconn, FILL_DNODATA),
-            "belev": np.full(nconn, 10.0),
-            "telev": np.full(nconn, 10.0),
-            "connlen": np.full(nconn, connlen),
-            "connwidth": np.full(nconn, connwidth),
-        },
+        boundnames=True,
+        packagedata=[(0, -0.4, nconn, "mylake")],
+        connectiondata=[
+            (0, 0, (0, 0, 1), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+            (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+            (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+        ],
         # lakeout=-1 is the Python/0-based external-drain sentinel; the codec writes
         # it as 0 in the file (MF6's 1-based convention for "no downstream lake").
-        outlets={
-            "outletno": np.array([0], dtype=np.int64),
-            "lakein": np.array([0], dtype=np.int64),
-            "lakeout": np.array([-1], dtype=np.int64),
-            "couttype": np.array(["SPECIFIED"], dtype=object),
-            "invert": np.array([999.0]),
-            "width": np.array([999.0]),
-            "rough": np.array([999.0]),
-            "slope": np.array([999.0]),
+        outlets=[(0, 0, -1, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
+        stress_period_data={
+            0: [
+                [0, "STATUS", "CONSTANT"],
+                [0, "STAGE", -0.4],
+                [0, "RAINFALL", 0.1],
+                [0, "EVAPORATION", 0.2],
+                [0, "RUNOFF", 0.1 * delr * delc],
+                [0, "WITHDRAWAL", 0.1],
+                [0, "RATE", -0.1],
+            ]
         },
-        status={0: ["CONSTANT"]},
-        stage={0: [-0.4]},
-        rainfall={0: [0.1]},
-        evaporation={0: [0.2]},
-        runoff={0: [0.1 * delr * delc]},
-        withdrawal={0: [0.1]},
-        rate={0: [-0.1]},
         name="LAK-1",
     )
     # xattree renames list-kind children: "LAK-1" + index 0 = "LAK-10".
@@ -2289,17 +2273,16 @@ def test_gwt_lkt01(function_tmpdir):
         concentration_file=f"{gwt_name}.lkt.bin",
         budget_file=f"{gwt_name}.lkt.bud",
         flow_package_name=lak.name,
-        nlakes=1,
-        packagedata={
-            "ifno": np.array([0]),
-            "strt": np.array([35.0]),
-            "boundname": np.array(["mylake"], dtype=object),
+        packagedata=[(0, 35.0, "mylake")],
+        stress_period_data={
+            0: [
+                [0, "STATUS", "CONSTANT"],
+                [0, "CONCENTRATION", 100.0],
+                [0, "RAINFALL", 25.0],
+                [0, "EVAPORATION", 25.0],
+                [0, "RUNOFF", 25.0],
+            ]
         },
-        status={0: ["CONSTANT"]},
-        concentration={0: [100.0]},
-        rainfall={0: [25.0]},
-        evaporation={0: [25.0]},
-        runoff={0: [25.0]},
         name="LKT-1",
     )
 
@@ -2307,9 +2290,9 @@ def test_gwt_lkt01(function_tmpdir):
         parent=gwt,
         budget_file=f"{gwt_name}.cbc",
         concentration_file=f"{gwt_name}.ucn",
-        save_concentration={0: "ALL"},
-        print_concentration={0: "ALL"},
-        print_budget={0: "ALL"},
+        save_concentration={0: ["ALL"]},
+        print_concentration={0: ["ALL"]},
+        print_budget={0: ["ALL"]},
     )
 
     sim.write()
@@ -2353,8 +2336,6 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
       - Center cell has higher concentration than edge cells
     """
     from flopy.utils import HeadFile
-
-    from flopy4.mf6.constants import FILL_DNODATA
 
     sim_name = "gwt_lkt_aux"
     gwf_name = "gwf_lkt_aux"
@@ -2420,10 +2401,14 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        save_head={0: "ALL"},
-        save_budget={0: "ALL"},
+        save_head={0: ["ALL"]},
+        save_budget={0: ["ALL"]},
     )
-    Chd(parent=gwf, head={0: {(0, 0, 0): -0.5, (0, 0, ncol - 1): -0.5}}, name="CHD-1")
+    Chd(
+        parent=gwf,
+        stress_period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
+        name="CHD-1",
+    )
 
     connlen = connwidth = delr / 2.0
     nconn = 3
@@ -2441,41 +2426,25 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         budget_file=f"{gwf_name}.lak.bud",
         nlakes=1,
         noutlets=1,
-        packagedata={
-            "ifno": np.array([0]),
-            "strt": np.array([-0.4]),
-            "nlakeconn": np.array([nconn]),
-            "aux": np.array([[100.0]]),
-            "boundname": np.array(["mylake"], dtype=object),
+        boundnames=True,
+        packagedata=[(0, -0.4, nconn, "mylake", 100.0)],
+        connectiondata=[
+            (0, 0, (0, 0, 1), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+            (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+            (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+        ],
+        outlets=[(0, 0, -1, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
+        stress_period_data={
+            0: [
+                [0, "STATUS", "CONSTANT"],
+                [0, "STAGE", -0.4],
+                [0, "RAINFALL", 0.1],
+                [0, "EVAPORATION", 0.2],
+                [0, "RUNOFF", 0.1 * delr * delc],
+                [0, "WITHDRAWAL", 0.1],
+                [0, "RATE", -0.1],
+            ]
         },
-        connectiondata={
-            "ifno": np.zeros(nconn, dtype=np.int64),
-            "iconn": np.arange(nconn, dtype=np.int64),
-            "cellid": np.array([(0, 0, 1), (0, 0, 3), (0, 0, 2)]),
-            "claktype": np.array(["HORIZONTAL", "HORIZONTAL", "VERTICAL"], dtype=object),
-            "bedleak": np.full(nconn, FILL_DNODATA),
-            "belev": np.full(nconn, 10.0),
-            "telev": np.full(nconn, 10.0),
-            "connlen": np.full(nconn, connlen),
-            "connwidth": np.full(nconn, connwidth),
-        },
-        outlets={
-            "outletno": np.array([0], dtype=np.int64),
-            "lakein": np.array([0], dtype=np.int64),
-            "lakeout": np.array([-1], dtype=np.int64),
-            "couttype": np.array(["SPECIFIED"], dtype=object),
-            "invert": np.array([999.0]),
-            "width": np.array([999.0]),
-            "rough": np.array([999.0]),
-            "slope": np.array([999.0]),
-        },
-        status={0: ["CONSTANT"]},
-        stage={0: [-0.4]},
-        rainfall={0: [0.1]},
-        evaporation={0: [0.2]},
-        runoff={0: [0.1 * delr * delc]},
-        withdrawal={0: [0.1]},
-        rate={0: [-0.1]},
         name="LAK-1",
     )
 
@@ -2509,17 +2478,16 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         budget_file=f"{gwt_name}.lkt.bud",
         flow_package_name=lak.name,
         flow_package_auxiliary_name="CONCENTRATION",
-        nlakes=1,
-        packagedata={
-            "ifno": np.array([0]),
-            "strt": np.array([35.0]),
-            "boundname": np.array(["mylake"], dtype=object),
+        packagedata=[(0, 35.0, "mylake")],
+        stress_period_data={
+            0: [
+                [0, "STATUS", "CONSTANT"],
+                [0, "CONCENTRATION", 100.0],
+                [0, "RAINFALL", 25.0],
+                [0, "EVAPORATION", 25.0],
+                [0, "RUNOFF", 25.0],
+            ]
         },
-        status={0: ["CONSTANT"]},
-        concentration={0: [100.0]},
-        rainfall={0: [25.0]},
-        evaporation={0: [25.0]},
-        runoff={0: [25.0]},
         name="LKT-1",
     )
 
@@ -2527,9 +2495,9 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         parent=gwt,
         budget_file=f"{gwt_name}.cbc",
         concentration_file=f"{gwt_name}.ucn",
-        save_concentration={0: "ALL"},
-        print_concentration={0: "ALL"},
-        print_budget={0: "ALL"},
+        save_concentration={0: ["ALL"]},
+        print_concentration={0: ["ALL"]},
+        print_budget={0: ["ALL"]},
     )
 
     sim.write()
@@ -2573,8 +2541,6 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
       - Center cell has higher temperature than edge cells
     """
     from flopy.utils import HeadFile
-
-    from flopy4.mf6.constants import FILL_DNODATA
 
     sim_name = "gwe_lke_aux"
     gwf_name = "gwf_lke_aux"
@@ -2640,10 +2606,14 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        save_head={0: "ALL"},
-        save_budget={0: "ALL"},
+        save_head={0: ["ALL"]},
+        save_budget={0: ["ALL"]},
     )
-    Chd(parent=gwf, head={0: {(0, 0, 0): -0.5, (0, 0, ncol - 1): -0.5}}, name="CHD-1")
+    Chd(
+        parent=gwf,
+        stress_period_data={0: [[(0, 0, 0), -0.5], [(0, 0, ncol - 1), -0.5]]},
+        name="CHD-1",
+    )
 
     connlen = connwidth = delr / 2.0
     nconn = 3
@@ -2658,41 +2628,25 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         budget_file=f"{gwf_name}.lak.bud",
         nlakes=1,
         noutlets=1,
-        packagedata={
-            "ifno": np.array([0]),
-            "strt": np.array([-0.4]),
-            "nlakeconn": np.array([nconn]),
-            "aux": np.array([[20.0]]),
-            "boundname": np.array(["mylake"], dtype=object),
+        boundnames=True,
+        packagedata=[(0, -0.4, nconn, "mylake", 20.0)],
+        connectiondata=[
+            (0, 0, (0, 0, 1), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+            (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+            (0, 2, (0, 0, 2), "VERTICAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
+        ],
+        outlets=[(0, 0, -1, "SPECIFIED", 999.0, 999.0, 999.0, 999.0)],
+        stress_period_data={
+            0: [
+                [0, "STATUS", "CONSTANT"],
+                [0, "STAGE", -0.4],
+                [0, "RAINFALL", 0.1],
+                [0, "EVAPORATION", 0.2],
+                [0, "RUNOFF", 0.1 * delr * delc],
+                [0, "WITHDRAWAL", 0.1],
+                [0, "RATE", -0.1],
+            ]
         },
-        connectiondata={
-            "ifno": np.zeros(nconn, dtype=np.int64),
-            "iconn": np.arange(nconn, dtype=np.int64),
-            "cellid": np.array([(0, 0, 1), (0, 0, 3), (0, 0, 2)]),
-            "claktype": np.array(["HORIZONTAL", "HORIZONTAL", "VERTICAL"], dtype=object),
-            "bedleak": np.full(nconn, FILL_DNODATA),
-            "belev": np.full(nconn, 10.0),
-            "telev": np.full(nconn, 10.0),
-            "connlen": np.full(nconn, connlen),
-            "connwidth": np.full(nconn, connwidth),
-        },
-        outlets={
-            "outletno": np.array([0], dtype=np.int64),
-            "lakein": np.array([0], dtype=np.int64),
-            "lakeout": np.array([-1], dtype=np.int64),
-            "couttype": np.array(["SPECIFIED"], dtype=object),
-            "invert": np.array([999.0]),
-            "width": np.array([999.0]),
-            "rough": np.array([999.0]),
-            "slope": np.array([999.0]),
-        },
-        status={0: ["CONSTANT"]},
-        stage={0: [-0.4]},
-        rainfall={0: [0.1]},
-        evaporation={0: [0.2]},
-        runoff={0: [0.1 * delr * delc]},
-        withdrawal={0: [0.1]},
-        rate={0: [-0.1]},
         name="LAK-1",
     )
 
@@ -2727,19 +2681,16 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         budget_file=f"{gwe_name}.lke.bud",
         flow_package_name=lak.name,
         flow_package_auxiliary_name="TEMPERATURE",
-        nlakes=1,
-        packagedata={
-            "lakeno": np.array([0]),
-            "strt": np.array([5.0]),
-            "ktf": np.array([0.6]),
-            "rbthcnd": np.array([0.1]),
-            "boundname": np.array(["mylake"], dtype=object),
+        packagedata=[(0, 5.0, 0.6, 0.1, "mylake")],
+        stress_period_data={
+            0: [
+                [0, "STATUS", "CONSTANT"],
+                [0, "TEMPERATURE", 20.0],
+                [0, "RAINFALL", 5.0],
+                [0, "EVAPORATION", 5.0],
+                [0, "RUNOFF", 5.0],
+            ]
         },
-        status={0: ["CONSTANT"]},
-        temperature={0: [20.0]},
-        rainfall={0: [5.0]},
-        evaporation={0: [5.0]},
-        runoff={0: [5.0]},
         name="LKE-1",
     )
 
@@ -2747,9 +2698,9 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         parent=gwe,
         budget_file=f"{gwe_name}.cbc",
         temperature_file=f"{gwe_name}.utn",
-        save_temperature={0: "ALL"},
-        print_temperature={0: "ALL"},
-        print_budget={0: "ALL"},
+        save_temperature={0: ["ALL"]},
+        print_temperature={0: ["ALL"]},
+        print_budget={0: ["ALL"]},
     )
 
     sim.write()

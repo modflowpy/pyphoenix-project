@@ -146,8 +146,12 @@ class StructuredGrid(LegacyStructuredGrid):
             ncol=dis.ncol,
             delr=dis.delr,
             delc=dis.delc,
-            top=dis.top,
-            botm=dis.botm,
+            top=dis.top.reshape(dis.nrow, dis.ncol)
+            if hasattr(dis.top, "reshape") and dis.top.ndim == 1
+            else dis.top,
+            botm=dis.botm.reshape(dis.nlay, dis.nrow, dis.ncol)
+            if hasattr(dis.botm, "reshape") and dis.botm.ndim == 1
+            else dis.botm,
             idomain=getattr(dis, "idomain", None),
         )
 
@@ -886,6 +890,12 @@ class VertexGrid(LegacyVertexGrid):
         ...            )])
         >>> grid = VertexGrid.from_dis(dis)
         """
+        _top = dis.top
+        _botm = dis.botm
+        if hasattr(_top, "reshape") and hasattr(_top, "ndim") and _top.ndim == 1:
+            _top = _top  # VertexGrid expects top as 1D (ncpl,)
+        if hasattr(_botm, "reshape") and hasattr(_botm, "ndim") and _botm.ndim == 1:
+            _botm = _botm.reshape(dis.nlay, dis.ncpl)
         return cls(
             length_units=dis.length_units,
             xoff=dis.xorigin,
@@ -893,8 +903,8 @@ class VertexGrid(LegacyVertexGrid):
             crs=dis.crs,
             nlay=dis.nlay,
             ncpl=dis.ncpl,
-            top=dis.top,
-            botm=dis.botm,
+            top=_top,
+            botm=_botm,
             idomain=getattr(dis, "idomain", None),
             iv=dis.iv,
             xv=dis.xv,
@@ -1448,3 +1458,23 @@ def update_maxbound(instance, attribute, new_value):
         instance.maxbound = max(maxbound_values)
 
     return new_value
+
+
+def dims_from_grb(grb_path) -> dict:
+    """Extract grid dimension dict from a binary grid file (.grb).
+
+    Returns a dict suitable for ``Package.load(dims=...)``:
+    - DIS grids:  ``{"nlay", "nrow", "ncol", "nodes"}``
+    - DISV grids: ``{"nlay", "ncpl", "nodes"}``
+    """
+    from flopy4.adapters import read_binary_grid_file
+
+    grb_info = read_binary_grid_file(grb_path)
+    grid = grb_info["grid"]
+    nlay = grid.nlay
+    if grb_info["grid_type"] == "DIS":
+        nrow, ncol = grid.nrow, grid.ncol
+        return {"nlay": nlay, "nrow": nrow, "ncol": ncol, "nodes": nlay * nrow * ncol}
+    else:
+        ncpl = grb_info["ncells_per_layer"]
+        return {"nlay": nlay, "ncpl": ncpl, "nodes": nlay * ncpl}
