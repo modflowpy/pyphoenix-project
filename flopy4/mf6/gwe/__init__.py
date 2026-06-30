@@ -7,6 +7,7 @@ from flopy4.mf6.gwe.adv import Adv
 from flopy4.mf6.gwe.cnd import Cnd
 from flopy4.mf6.gwe.ctp import Ctp
 from flopy4.mf6.gwe.dis import Dis
+from flopy4.mf6.gwe.disv import Disv
 from flopy4.mf6.gwe.esl import Esl
 from flopy4.mf6.gwe.est import Est
 from flopy4.mf6.gwe.ic import Ic
@@ -21,6 +22,7 @@ from flopy4.utils import to_path
 __all__ = [
     "Gwe",
     "Dis",
+    "Disv",
     "Adv",
     "Cnd",
     "Ctp",

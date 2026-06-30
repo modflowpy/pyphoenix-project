@@ -4,6 +4,7 @@ from xattree import xattree
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.prt.dis import Dis
+from flopy4.mf6.prt.disv import Disv
 from flopy4.mf6.prt.fmi import Fmi
 from flopy4.mf6.prt.mip import Mip
 from flopy4.mf6.prt.oc import Oc
@@ -13,6 +14,7 @@ from flopy4.mf6.spec import field
 __all__ = [
     "Prt",
     "Dis",
+    "Disv",
     "Fmi",
     "Mip",
     "Oc",

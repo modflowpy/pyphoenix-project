@@ -7,6 +7,7 @@ from flopy4.mf6.gwt.adv import Adv
 from flopy4.mf6.gwt.api import Api
 from flopy4.mf6.gwt.cnc import Cnc
 from flopy4.mf6.gwt.dis import Dis
+from flopy4.mf6.gwt.disv import Disv
 from flopy4.mf6.gwt.dsp import Dsp
 from flopy4.mf6.gwt.ic import Ic
 from flopy4.mf6.gwt.lkt import Lkt
@@ -22,6 +23,7 @@ from flopy4.utils import to_path
 __all__ = [
     "Gwt",
     "Dis",
+    "Disv",
     "Adv",
     "Api",
     "Cnc",
