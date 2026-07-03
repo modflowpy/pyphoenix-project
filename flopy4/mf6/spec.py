@@ -419,7 +419,38 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
+def _ndarray_field_type(t) -> FieldType | None:
+    """Map a bare ``NDArray[dtype]`` annotation to its DFN field type, if possible.
+
+    Hand-written DIS/DISV griddata fields (``delr``, ``top``, ``idomain``, ...)
+    are typed with plain ``NDArray[np.int64]``/``NDArray[np.float64]`` rather
+    than ``IntArrayLike``/``FloatArrayLike`` (those exist for fields that may
+    also be dask-backed; DIS/DISV griddata never is). Returns ``None`` for
+    anything that isn't a parameterized ``numpy.ndarray`` annotation.
+    """
+    if get_origin(t) is not np.ndarray:
+        return None
+    args = get_args(t)
+    if len(args) < 2:
+        return None
+    dtype_args = get_args(args[1])
+    if not dtype_args or not isinstance(dtype_args[0], type):
+        return None
+    scalar = dtype_args[0]
+    if issubclass(scalar, np.bool_):
+        return "keyword"
+    if issubclass(scalar, np.integer):
+        return "integer"
+    if issubclass(scalar, np.floating):
+        return "double"
+    if issubclass(scalar, (np.str_, np.object_)):
+        return "string"
+    return None
+
+
 def to_field_type(t: type) -> FieldType:
+    if (result := _ndarray_field_type(t)) is not None:
+        return result
     match t:
         case builtins.str | np.str_:
             return "string"
@@ -438,6 +469,8 @@ def to_field_type(t: type) -> FieldType:
         case t if get_origin(t) in (Union, types.UnionType):
             args = get_args(t)
             if args[-1] is types.NoneType:
+                if (result := _ndarray_field_type(args[0])) is not None:
+                    return result
                 match args[0]:
                     case builtins.str | np.str_:
                         return "string"
