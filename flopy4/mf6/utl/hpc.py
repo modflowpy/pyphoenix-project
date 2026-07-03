@@ -14,13 +14,11 @@ class Hpc(Package):
     print_table: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_log_mpi: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     partitions: Optional[np.recarray] = field(

@@ -25,17 +25,14 @@ class Tdis(Package):
         tsmult = Column("tsmult", role="value", dfn_type="double")
 
     __perioddata_schema__: ClassVar[type[Schema]] = _PeriodDataSchema
-    time_units: Optional[str] = field(
-        default=None, block="options", dfn_type="string", optional=True
-    )
+    time_units: Optional[str] = field(default=None, block="options", optional=True)
     start_date_time: Optional[str] = field(
         default=None,
         converter=lambda v: v.isoformat() if isinstance(v, datetime) else v,
         block="options",
-        dfn_type="string",
         optional=True,
     )
-    nper: int = field(default=1, block="dimensions", dfn_type="integer")
+    nper: int = field(default=1, block="dimensions")
     perlen: NDArray[np.float64] = attrs.field(default=1.0)
     nstp: NDArray[np.int64] = attrs.field(default=1)
     tsmult: NDArray[np.float64] = attrs.field(default=1.0)

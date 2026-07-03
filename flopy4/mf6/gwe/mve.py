@@ -14,26 +14,22 @@ class Mve(Package):
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -41,7 +37,6 @@ class Mve(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )

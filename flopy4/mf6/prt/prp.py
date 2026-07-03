@@ -29,44 +29,37 @@ class Prp(Package):
     boundnames: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_exit_solve_method: Optional[int] = field(
         default=None,
         block="options",
-        dfn_type="integer",
         optional=True,
     )
     exit_solve_tolerance: Optional[float] = field(
         default=1e-05,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     local_z: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     extend_tracking: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -74,38 +67,32 @@ class Prp(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
     stoptime: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     stoptraveltime: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     stop_at_weak_sink: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     istopzone: Optional[int] = field(
         default=None,
         block="options",
-        dfn_type="integer",
         optional=True,
     )
     drape: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     release_times: Optional[ReleaseTimes] = field(
@@ -119,47 +106,39 @@ class Prp(Package):
     dry_tracking_method: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     dev_forceternary: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
     )
     release_time_tolerance: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     release_time_frequency: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     coordinate_check_method: Optional[str] = field(
         default="eager",
         block="options",
-        dfn_type="string",
         optional=True,
     )
     dev_cycle_detection_window: Optional[int] = field(
         default=None,
         block="options",
-        dfn_type="integer",
         optional=True,
     )
     nreleasepts: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     nreleasetimes: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     packagedata: Optional[np.recarray] = field(
         default=None,

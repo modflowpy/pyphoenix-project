@@ -355,7 +355,6 @@ def _expand_oc_record_field(f: Field, dfn_name: str) -> list[FieldSpec]:
         spec_call = _ml_field(
             metadata={
                 "block": "period",
-                "dfn_type": "string",
                 "oc_action": action,
                 "oc_rtype": rtype,
             }
@@ -573,8 +572,9 @@ def _new_codegen_imports(
     has_inner_classes: bool = False,
     has_period_schema: bool = False,
     has_path: bool = False,
-    has_griddata: bool = False,
     has_readarray_period: bool = False,
+    needs_int_arraylike: bool = False,
+    needs_float_arraylike: bool = False,
     has_injected_paths: bool = False,
     has_field_call: bool = False,
     has_path_call: bool = False,
@@ -584,10 +584,10 @@ def _new_codegen_imports(
     """Compute import lines for new-codegen packages (no xattree, no spec calls)."""
     has_array = any(
         (filters.is_array(f) or filters.is_keyword_array(f))
-        and f.get("block") != "griddata"  # griddata fields → ArrayLike, not NDArray[np.xxx]
+        and f.get("block")
+        != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
         for f in generatable_fields
     )
-    has_arraylike = has_griddata or has_readarray_period
     has_file_records = any(filters.is_file_record(f) for f in generatable_fields)
     has_optional = (
         any(
@@ -648,8 +648,10 @@ def _new_codegen_imports(
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
     _types_parts: list[str] = []
-    if has_arraylike:
-        _types_parts.append("ArrayLike")
+    if needs_int_arraylike:
+        _types_parts.append("IntArrayLike")
+    if needs_float_arraylike:
+        _types_parts.append("FloatArrayLike")
     if has_file_records or has_injected_paths:
         _types_parts.append("_optional_path")
     if _types_parts:
@@ -737,7 +739,7 @@ def build_component_spec(
 
         # New codegen: collect period array fields.
         # G-variant packages (CHDG, DRNG, WELG, RCHA …) use reader=readarray →
-        # individual Optional[ArrayLike] fields.
+        # individual Optional[Int|FloatArrayLike] fields.
         # Standard stress packages (DRN, WEL, CHD …) use list-based recarray.
         if "period" in f["block"] and filters.is_period_array(f):
             if f.get("reader") == "readarray":
@@ -806,7 +808,6 @@ def build_component_spec(
         inout = entry["inout"]
         _path_meta: dict = {
             "block": block,
-            "dfn_type": "record",
             "optional": True,
             "inout": inout,
         }
@@ -971,23 +972,23 @@ def build_component_spec(
             )
         )
 
-    # New codegen: READARRAY period fields → individual Optional[ArrayLike] attrs fields.
-    # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period array
-    # separately with reader=readarray.  Each field is a full-grid array passed
+    # New codegen: READARRAY period fields → individual Optional[Int|FloatArrayLike]
+    # attrs fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period
+    # array separately with reader=readarray. Each field is a full-grid array passed
     # directly by the user; the egress dispatches to _unstructure_readarray_period.
     if _readarray_period_fields:
         for _ra_f in _readarray_period_fields:
             _ra_meta = {
                 "block": "period",
                 "reader": "readarray",
-                "dfn_type": _ra_f.get("type", "double"),
                 "layered": _ra_f.get("layered", False),
             }
+            _ra_base = "IntArrayLike" if _ra_f.get("type") == "integer" else "FloatArrayLike"
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f["name"],
                     py_name=filters.safe_name(_ra_f["name"]),
-                    type_annotation="Optional[ArrayLike]",
+                    type_annotation=f"Optional[{_ra_base}]",
                     spec_call=_ml_field(metadata=_ra_meta),
                     generatable=True,
                 )
@@ -1009,6 +1010,11 @@ def build_component_spec(
     _has_griddata = any(
         f.get("block") == "griddata" and filters.is_array(f) for f in generatable_field_objects
     )
+    _arraylike_types = {
+        f["type"] for f in generatable_field_objects if f.get("block") == "griddata"
+    } | {f.get("type", "double") for f in _readarray_period_fields}
+    _needs_int_arraylike = "integer" in _arraylike_types
+    _needs_float_arraylike = bool(_arraylike_types - {"integer"})
     _has_field_call = any(
         fs.generatable and fs.spec_call.startswith("field(") for fs in field_specs
     )
@@ -1023,7 +1029,8 @@ def build_component_spec(
         has_path=(
             any(filters.is_file_record(f) for f in generatable_field_objects) or has_injected_paths
         ),
-        has_griddata=_has_griddata,
+        needs_int_arraylike=_needs_int_arraylike,
+        needs_float_arraylike=_needs_float_arraylike,
         has_injected_paths=has_injected_paths,
         has_field_call=_has_field_call,
         has_path_call=_has_path_call,

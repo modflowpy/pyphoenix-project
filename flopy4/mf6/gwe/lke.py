@@ -18,57 +18,48 @@ class Lke(Package):
     flow_package_name: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        dfn_type="string",
         shape=(),
         optional=True,
     )
     flow_package_auxiliary_name: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     boundnames: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_temperature: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     temperature_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -76,7 +67,6 @@ class Lke(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -84,7 +74,6 @@ class Lke(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -92,7 +81,6 @@ class Lke(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -100,7 +88,6 @@ class Lke(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )

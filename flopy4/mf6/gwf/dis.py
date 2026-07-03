@@ -14,33 +14,27 @@ from flopy4.mf6.utl.ncf import Ncf
 
 @attrs.define(kw_only=True, slots=False)
 class Dis(DisBase):
-    length_units: Optional[str] = field(
-        default=None, block="options", dfn_type="string", optional=True
-    )
-    nogrb: bool = field(default=False, block="options", dfn_type="keyword", optional=True)
-    xorigin: float = field(default=0.0, block="options", dfn_type="double", optional=True)
-    yorigin: float = field(default=0.0, block="options", dfn_type="double", optional=True)
-    angrot: Optional[float] = field(default=None, block="options", dfn_type="double", optional=True)
-    export_array_netcdf: bool = field(
-        default=False, block="options", dfn_type="keyword", optional=True
-    )
-    crs: Optional[str] = field(default=None, block="options", dfn_type="string", optional=True)
+    length_units: Optional[str] = field(default=None, block="options", optional=True)
+    nogrb: bool = field(default=False, block="options", optional=True)
+    xorigin: float = field(default=0.0, block="options", optional=True)
+    yorigin: float = field(default=0.0, block="options", optional=True)
+    angrot: Optional[float] = field(default=None, block="options", optional=True)
+    export_array_netcdf: bool = field(default=False, block="options", optional=True)
+    crs: Optional[str] = field(default=None, block="options", optional=True)
     ncf6_filerecord: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     ncf: Optional[Ncf] = attrs.field(default=None)
-    nlay: int = field(default=1, block="dimensions", dfn_type="integer")
-    ncol: int = field(default=2, block="dimensions", dfn_type="integer")
-    nrow: int = field(default=2, block="dimensions", dfn_type="integer")
+    nlay: int = field(default=1, block="dimensions")
+    ncol: int = field(default=2, block="dimensions")
+    nrow: int = field(default=2, block="dimensions")
     delr: NDArray[np.float64] = field(
         default=1.0,
         block="griddata",
-        dfn_type="double",
         shape=("ncol",),
         layered=False,
         netcdf=True,
@@ -48,7 +42,6 @@ class Dis(DisBase):
     delc: NDArray[np.float64] = field(
         default=1.0,
         block="griddata",
-        dfn_type="double",
         shape=("nrow",),
         layered=False,
         netcdf=True,
@@ -56,7 +49,6 @@ class Dis(DisBase):
     top: NDArray[np.float64] = field(
         default=1.0,
         block="griddata",
-        dfn_type="double",
         shape=("ncpl",),
         layered=False,
         netcdf=True,
@@ -64,13 +56,12 @@ class Dis(DisBase):
     botm: NDArray[np.float64] = field(
         default=0.0,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )
     idomain: Optional[NDArray[np.int64]] = field(
-        default=1, block="griddata", dfn_type="integer", shape=("nodes",), layered=True, netcdf=True
+        default=1, block="griddata", shape=("nodes",), layered=True, netcdf=True
     )
 
     def __attrs_post_init__(self):

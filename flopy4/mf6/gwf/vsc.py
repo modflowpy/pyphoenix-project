@@ -16,51 +16,43 @@ class Vsc(Package):
     viscref: Optional[float] = field(
         default=1.0,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     temperature_species_name: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     thermal_formulation: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     thermal_a2: Optional[float] = field(
         default=10.0,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     thermal_a3: Optional[float] = field(
         default=248.37,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     thermal_a4: Optional[float] = field(
         default=133.15,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     viscosity_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
     nviscspecies: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     packagedata: Optional[np.recarray] = field(
         default=None,

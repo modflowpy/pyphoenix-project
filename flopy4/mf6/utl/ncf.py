@@ -22,27 +22,21 @@ class Ncf(Package):
       for explicit geographic coordinates when needed.
     """
 
-    wkt: Optional[str] = field(default=None, block="options", dfn_type="string", optional=True)
-    deflate: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
-    shuffle: bool = field(default=False, block="options", dfn_type="keyword", optional=True)
-    chunk_time: Optional[int] = field(
-        default=None, block="options", dfn_type="integer", optional=True
-    )
-    chunk_face: Optional[int] = field(
-        default=None, block="options", dfn_type="integer", optional=True
-    )
-    chunk_z: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
-    chunk_y: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
-    chunk_x: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
-    modflow6_attr_off: bool = field(
-        default=False, block="options", dfn_type="keyword", optional=True
-    )
-    ncpl: Optional[int] = field(default=None, block="dimensions", dfn_type="integer", optional=True)
+    wkt: Optional[str] = field(default=None, block="options", optional=True)
+    deflate: Optional[int] = field(default=None, block="options", optional=True)
+    shuffle: bool = field(default=False, block="options", optional=True)
+    chunk_time: Optional[int] = field(default=None, block="options", optional=True)
+    chunk_face: Optional[int] = field(default=None, block="options", optional=True)
+    chunk_z: Optional[int] = field(default=None, block="options", optional=True)
+    chunk_y: Optional[int] = field(default=None, block="options", optional=True)
+    chunk_x: Optional[int] = field(default=None, block="options", optional=True)
+    modflow6_attr_off: bool = field(default=False, block="options", optional=True)
+    ncpl: Optional[int] = field(default=None, block="dimensions", optional=True)
     latitude: Optional[NDArray[np.float64]] = field(
-        default=None, block="griddata", dfn_type="double", shape=("ncpl",), layered=False
+        default=None, block="griddata", shape=("ncpl",), layered=False
     )
     longitude: Optional[NDArray[np.float64]] = field(
-        default=None, block="griddata", dfn_type="double", shape=("ncpl",), layered=False
+        default=None, block="griddata", shape=("ncpl",), layered=False
     )
 
     @classmethod

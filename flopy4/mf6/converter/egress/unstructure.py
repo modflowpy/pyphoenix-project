@@ -13,7 +13,7 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict
+from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type
 
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
@@ -166,7 +166,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     except ImportError:
         _DaskArray = type(None)  # type: ignore[misc,assignment]
 
-    for f in attrs.fields(cls):
+    for f in attrs.fields(cls):  # type: ignore[arg-type]
         meta = f.metadata
         block_name = meta.get("block")
         if not block_name:
@@ -182,7 +182,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         if field_value is None:
             continue
 
-        dfn_type = meta.get("dfn_type", "")
+        dfn_type = to_field_type(f.type)
 
         # ── PERIOD block ────────────────────────────────────────────────────────
         if block_name == "period":
@@ -254,7 +254,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             if field_value:
                 blocks[block_name][f.name] = field_value
 
-        elif dfn_type == "record" and isinstance(field_value, Path):
+        elif meta.get("inout") and isinstance(field_value, Path):
             t = _path_to_tuple(f.name, field_value, meta.get("inout", "fileout"))
             blocks[block_name][t[0].lower()] = t
 

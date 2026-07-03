@@ -28,7 +28,6 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -36,7 +35,6 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -44,7 +42,6 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -52,56 +49,47 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
     track_release: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_exit: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_subfeature_exit: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_timestep: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_terminate: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_weaksink: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_usertime: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_dropped: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     track_times: Optional[TrackTimes] = field(
@@ -115,13 +103,11 @@ class Oc(Package):
     dev_dump_event_trace: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     ntracktimes: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
         optional=True,
     )
     tracktimes: Optional[np.recarray] = field(
@@ -133,14 +119,12 @@ class Oc(Package):
     save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
         block="period",
-        dfn_type="string",
         oc_action="save",
         oc_rtype="budget",
     )
     print_budget: Optional[dict[int, list[str]]] = field(
         default=None,
         block="period",
-        dfn_type="string",
         oc_action="print",
         oc_rtype="budget",
     )

@@ -26,28 +26,19 @@ class Disv(DisBase):
         yv = Column("yv", role="value", dfn_type="double")
 
     __vertices_schema__: ClassVar[type[Schema]] = _VerticesSchema
-    length_units: Optional[str] = field(
-        default=None, block="options", dfn_type="string", optional=True
-    )
-    nogrb: bool = field(default=False, block="options", dfn_type="keyword", optional=True)
-    xorigin: Optional[float] = field(
-        default=None, block="options", dfn_type="double", optional=True
-    )
-    yorigin: Optional[float] = field(
-        default=None, block="options", dfn_type="double", optional=True
-    )
-    angrot: Optional[float] = field(default=None, block="options", dfn_type="double", optional=True)
-    export_array_netcdf: bool = field(
-        default=False, block="options", dfn_type="keyword", optional=True
-    )
-    crs: Optional[str] = field(default=None, block="options", dfn_type="string", optional=True)
-    nlay: int = field(default=0, block="dimensions", dfn_type="integer")
-    ncpl: int = field(default=0, block="dimensions", dfn_type="integer")
-    nvert: int = field(default=0, block="dimensions", dfn_type="integer")
+    length_units: Optional[str] = field(default=None, block="options", optional=True)
+    nogrb: bool = field(default=False, block="options", optional=True)
+    xorigin: Optional[float] = field(default=None, block="options", optional=True)
+    yorigin: Optional[float] = field(default=None, block="options", optional=True)
+    angrot: Optional[float] = field(default=None, block="options", optional=True)
+    export_array_netcdf: bool = field(default=False, block="options", optional=True)
+    crs: Optional[str] = field(default=None, block="options", optional=True)
+    nlay: int = field(default=0, block="dimensions")
+    ncpl: int = field(default=0, block="dimensions")
+    nvert: int = field(default=0, block="dimensions")
     top: NDArray[np.float64] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("ncpl",),
         layered=False,
         netcdf=False,
@@ -55,7 +46,6 @@ class Disv(DisBase):
     botm: NDArray[np.float64] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=False,
@@ -63,7 +53,6 @@ class Disv(DisBase):
     idomain: Optional[NDArray[np.int64]] = field(
         default=None,
         block="griddata",
-        dfn_type="integer",
         shape=("nodes",),
         layered=True,
         netcdf=False,
@@ -118,6 +107,7 @@ class Disv(DisBase):
     def to_grid(self) -> VertexGrid:
         """Convert the discretization to a `VertexGrid`."""
         vertices = []
+        assert self.iv is not None and self.xv is not None and self.yv is not None
         for i in range(len(self.iv)):
             vertices.append([self.iv[i], self.xv[i], self.yv[i]])
         botm = (

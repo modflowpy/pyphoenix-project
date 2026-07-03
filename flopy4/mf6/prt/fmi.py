@@ -14,14 +14,12 @@ class Fmi(Package):
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     gwfhead: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="packagedata",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -29,7 +27,6 @@ class Fmi(Package):
         default=None,
         converter=_optional_path,
         block="packagedata",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -37,7 +34,6 @@ class Fmi(Package):
         default=None,
         converter=_optional_path,
         block="packagedata",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )

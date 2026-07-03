@@ -4,7 +4,7 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -14,95 +14,82 @@ class Mst(Package):
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     first_order_decay: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     zero_order_decay: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     sorption: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     sorbate_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
     export_array_ascii: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
-    porosity: ArrayLike = field(
+    porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )
-    decay: Optional[ArrayLike] = field(
+    decay: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
-        shape=("nodes",),
-        layered=True,
-        netcdf=True,
-        optional=True,
-    )
-    decay_sorbed: Optional[ArrayLike] = field(
-        default=None,
-        block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    bulk_density: Optional[ArrayLike] = field(
+    decay_sorbed: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    distcoef: Optional[ArrayLike] = field(
+    bulk_density: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    sp2: Optional[ArrayLike] = field(
+    distcoef: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
+    )
+    sp2: Optional[FloatArrayLike] = field(
+        default=None,
+        block="griddata",
         shape=("nodes",),
         layered=True,
         netcdf=True,

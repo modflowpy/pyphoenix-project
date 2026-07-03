@@ -14,13 +14,11 @@ class Ssm(Package):
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     sources: Optional[np.recarray] = field(

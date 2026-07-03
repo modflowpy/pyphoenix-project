@@ -22,20 +22,17 @@ class Pts(Solution):
     print_option: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     complexity: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     csv_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -43,7 +40,6 @@ class Pts(Solution):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -51,7 +47,6 @@ class Pts(Solution):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -62,11 +57,9 @@ class Pts(Solution):
     ats_outer_maximum_fraction: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     outer_maximum: int = field(
         default=None,
         block="nonlinear",
-        dfn_type="integer",
     )

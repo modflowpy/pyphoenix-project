@@ -16,12 +16,10 @@ class Sfrtab(Package):
     nrow: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     ncol: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     table: Optional[np.recarray] = field(
         default=None,

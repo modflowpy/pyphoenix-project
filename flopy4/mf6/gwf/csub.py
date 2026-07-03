@@ -5,7 +5,7 @@ from typing import ClassVar, Optional, Union
 import attrs
 import numpy as np
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
 from flopy4.mf6.spec import field, path
@@ -16,98 +16,82 @@ class Csub(Package):
     boundnames: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     gammaw: Optional[float] = field(
         default=9806.65,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     beta: Optional[float] = field(
         default=4.6512e-10,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     head_based: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     initial_preconsolidation_head: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     ndelaycells: Optional[int] = field(
         default=None,
         block="options",
-        dfn_type="integer",
         optional=True,
     )
     compression_indices: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     update_material_properties: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     cell_fraction: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     specified_initial_interbed_state: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     specified_initial_preconsolidation_stress: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     specified_initial_delay_head: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     effective_stress_lag: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     strainib_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -115,7 +99,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -123,7 +106,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -131,7 +113,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -139,7 +120,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -147,7 +127,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -155,7 +134,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -163,7 +141,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -171,7 +148,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -179,7 +155,6 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -187,19 +162,16 @@ class Csub(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     ninterbeds: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     maxsig0: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
         optional=True,
     )
     packagedata: Optional[np.recarray] = field(
@@ -208,35 +180,31 @@ class Csub(Package):
         schema="__packagedata_schema__",
         auto_from="packagedata",
     )
-    cg_ske_cr: ArrayLike = field(
+    cg_ske_cr: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    cg_theta: ArrayLike = field(
+    cg_theta: FloatArrayLike = field(
         default=0.2,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    sgm: Optional[ArrayLike] = field(
+    sgm: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    sgs: Optional[ArrayLike] = field(
+    sgs: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,

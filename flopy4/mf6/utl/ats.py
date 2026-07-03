@@ -14,7 +14,6 @@ class Ats(Package):
     maxats: Optional[int] = field(
         default=1,
         block="dimensions",
-        dfn_type="integer",
     )
     perioddata: Optional[np.recarray] = field(
         default=None,

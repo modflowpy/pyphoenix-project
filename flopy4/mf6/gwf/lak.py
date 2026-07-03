@@ -18,45 +18,38 @@ class Lak(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        dfn_type="string",
         shape=(),
         optional=True,
     )
     boundnames: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_stage: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     stage_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -64,7 +57,6 @@ class Lak(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -72,7 +64,6 @@ class Lak(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -80,7 +71,6 @@ class Lak(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -88,7 +78,6 @@ class Lak(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -96,60 +85,50 @@ class Lak(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     mover: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     surfdep: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     maximum_iterations: Optional[int] = field(
         default=None,
         block="options",
-        dfn_type="integer",
         optional=True,
     )
     maximum_stage_change: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     time_conversion: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     length_conversion: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     nlakes: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     noutlets: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     ntables: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     packagedata: Optional[np.recarray] = field(
         default=None,

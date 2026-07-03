@@ -14,6 +14,7 @@ import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema import Field, FieldType
 
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
 from flopy4.spec import dim as flopy_dim
@@ -33,7 +34,6 @@ def field(
     alias: str | None = None,
     block: str | None = None,
     longname: str | None = None,
-    dfn_type: str | None = None,
     shape: tuple[str, ...] | None = None,
     layered: bool | None = None,
     optional: bool = False,
@@ -47,84 +47,87 @@ def field(
     oc_rtype: str | None = None,
     time_series: bool = False,
 ):
-    """Define a field.
+    """Define a codegen-v2 field: always a plain ``attrs.field()``.
 
-    The ``dfn_type``/``shape``/``layered``/``optional``/``schema``/``always_emit``/
-    ``auto_from``/``fill_forward``/``reader``/``oc_action``/``oc_rtype``/``time_series``
-    kwargs describe codegen-v2 recarray/period-block fields. Codegen-v2 packages
-    are plain attrs classes, not ``@xattree``-decorated, so a field carrying any
-    of these builds a plain ``attrs.field()`` instead of going through
-    ``xattree.field()`` — the latter only registers a field with xattree's
-    tree/xatspec machinery when the *enclosing class* is itself ``@xattree``-
-    decorated, and stashing its marker metadata on a non-decorated class's
-    field is actively harmful: ``_get_xatspec()`` recomputes from
-    ``attrs.fields(cls)`` for whatever class is asked about, so it would treat
-    the field as real xattree state and start moving it in/out of a DataTree
-    that doesn't otherwise track it, corrupting ``Package``'s plain
+    Codegen-v2 packages (``Package`` subclasses, hand-written or generated)
+    are plain attrs classes, not ``@xattree``-decorated. Use
+    ``xattree_field()`` instead for fields on real ``@xattree`` component
+    classes (``Model``, ``Simulation``, ``Gwf``, ...) — routing one of
+    *those* through plain ``attrs.field()``, or a codegen-v2 field through
+    ``xattree_field()``, would be wrong either way: ``_get_xatspec()``
+    recomputes from ``attrs.fields(cls)`` for whatever class is asked about,
+    so a stray xattree marker on a non-decorated class's field would be
+    treated as real xattree state and moved in/out of a DataTree that
+    doesn't otherwise track it, corrupting ``Package``'s plain
     ``__dict__``-based field storage.
     """
-    plain = any(
-        (
-            dfn_type,
-            shape,
-            layered is not None,
-            optional,
-            schema,
-            always_emit,
-            auto_from,
-            fill_forward,
-            reader,
-            oc_action,
-            oc_rtype,
-            time_series,
-        )
+    metadata = metadata or {}
+    if block:
+        metadata["block"] = block
+    if longname:
+        metadata["longname"] = longname
+    if shape:
+        metadata["shape"] = shape
+    if layered is not None:
+        # Explicit False must round-trip: some consumers (netcdf.py) default
+        # a *missing* key to True, so omitting a deliberate False would flip it.
+        metadata["layered"] = layered
+    if optional:
+        metadata["optional"] = True
+    if netcdf:
+        metadata["netcdf"] = True
+    if schema:
+        metadata["schema"] = schema
+    if always_emit:
+        metadata["always_emit"] = True
+    if auto_from:
+        metadata["auto_from"] = auto_from
+    if fill_forward:
+        metadata["fill_forward"] = True
+    if reader:
+        metadata["reader"] = reader
+    if oc_action:
+        metadata["oc_action"] = oc_action
+    if oc_rtype:
+        metadata["oc_rtype"] = oc_rtype
+    if time_series:
+        metadata["time_series"] = True
+    return attrs.field(
+        default=default,
+        validator=validator,
+        converter=converter,
+        repr=repr,
+        eq=eq,
+        init=init,
+        on_setattr=on_setattr,
+        metadata=metadata,
+        alias=alias,
     )
-    if block or longname or plain:
+
+
+def xattree_field(
+    default=NOTHING,
+    validator=None,
+    converter=None,
+    repr=True,
+    eq=True,
+    init=True,
+    metadata=None,
+    on_setattr=None,
+    block: str | None = None,
+    longname: str | None = None,
+):
+    """Define a field on a real ``@xattree``-decorated component class.
+
+    See ``field()`` for why this is a separate function rather than a shared
+    one that infers which case applies.
+    """
+    if block or longname:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
         if longname:
             metadata["longname"] = longname
-        if dfn_type:
-            metadata["dfn_type"] = dfn_type
-        if shape:
-            metadata["shape"] = shape
-        if layered is not None:
-            # Explicit False must round-trip: some consumers (netcdf.py) default
-            # a *missing* key to True, so omitting a deliberate False would flip it.
-            metadata["layered"] = layered
-        if optional:
-            metadata["optional"] = True
-        if netcdf:
-            metadata["netcdf"] = True
-        if schema:
-            metadata["schema"] = schema
-        if always_emit:
-            metadata["always_emit"] = True
-        if auto_from:
-            metadata["auto_from"] = auto_from
-        if fill_forward:
-            metadata["fill_forward"] = True
-        if reader:
-            metadata["reader"] = reader
-        if oc_action:
-            metadata["oc_action"] = oc_action
-        if oc_rtype:
-            metadata["oc_rtype"] = oc_rtype
-        if time_series:
-            metadata["time_series"] = True
-    if plain:
-        return attrs.field(
-            default=default,
-            validator=validator,
-            converter=converter,
-            repr=repr,
-            eq=eq,
-            init=init,
-            on_setattr=on_setattr,
-            metadata=metadata,
-            alias=alias,
-        )
     return flopy_field(
         default=default,
         validator=validator,
@@ -152,16 +155,53 @@ def path(
     block: str | None = None,
     inout: FileInOut | None = None,
     longname: str | None = None,
-    dfn_type: str | None = None,
     optional: bool = False,
 ):
-    """Define a path field.
+    """Define a codegen-v2 path field: always a plain ``attrs.field()``.
 
-    See ``field()`` for why ``dfn_type``/``optional`` force a plain (non-xattree)
-    attrs field: they only ever appear on codegen-v2 (non-``@xattree``) classes.
+    See ``field()`` — use ``xattree_path()`` instead for fields on real
+    ``@xattree`` component classes.
     """
-    plain = bool(dfn_type or optional)
-    if block or inout or longname or plain:
+    metadata = metadata or {}
+    if block:
+        metadata["block"] = block
+    if inout:
+        metadata["inout"] = inout
+    if longname:
+        metadata["longname"] = longname
+    if optional:
+        metadata["optional"] = True
+    return attrs.field(
+        default=default,
+        validator=validator,
+        converter=converter,
+        repr=repr,
+        eq=eq,
+        init=init,
+        on_setattr=on_setattr,
+        metadata=metadata,
+    )
+
+
+def xattree_path(
+    default=NOTHING,
+    validator=None,
+    converter=None,
+    repr=True,
+    eq=True,
+    init=True,
+    metadata=None,
+    on_setattr=None,
+    block: str | None = None,
+    inout: FileInOut | None = None,
+    longname: str | None = None,
+):
+    """Define a path field on a real ``@xattree``-decorated component class.
+
+    See ``field()`` for why this is a separate function rather than a shared
+    one that infers which case applies.
+    """
+    if block or inout or longname:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
@@ -169,21 +209,6 @@ def path(
             metadata["inout"] = inout
         if longname:
             metadata["longname"] = longname
-        if dfn_type:
-            metadata["dfn_type"] = dfn_type
-        if optional:
-            metadata["optional"] = True
-    if plain:
-        return attrs.field(
-            default=default,
-            validator=validator,
-            converter=converter,
-            repr=repr,
-            eq=eq,
-            init=init,
-            on_setattr=on_setattr,
-            metadata=metadata,
-        )
     return flopy_field(
         default=default,
         validator=validator,
@@ -406,6 +431,10 @@ def to_field_type(t: type) -> FieldType:
             return "double"  # type: ignore
         case t if t is Path or t is datetime:
             return "string"
+        case t if t is IntArrayLike:
+            return "integer"
+        case t if t is FloatArrayLike:
+            return "double"
         case t if get_origin(t) in (Union, types.UnionType):
             args = get_args(t)
             if args[-1] is types.NoneType:
@@ -420,6 +449,10 @@ def to_field_type(t: type) -> FieldType:
                         return "double"
                     case tt if tt is Path or tt is datetime:
                         return "string"
+                    case tt if tt is IntArrayLike:
+                        return "integer"
+                    case tt if tt is FloatArrayLike:
+                        return "double"
                     case _:
                         return "record"
             return "list"

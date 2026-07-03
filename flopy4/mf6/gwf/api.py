@@ -16,44 +16,37 @@ class Api(Package):
     boundnames: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     mover: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
-        dfn_type="integer",
         auto_from="stress_period_data",
     )

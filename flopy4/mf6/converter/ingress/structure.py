@@ -6,6 +6,7 @@ import numpy as np
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Schema
+from flopy4.mf6.spec import to_field_type
 
 
 def _inner_class_type(field_type) -> type | None:
@@ -247,7 +248,7 @@ def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
             i += 1
             continue
 
-        is_int = f.metadata.get("dfn_type") in ("integer",)
+        is_int = to_field_type(f.type) == "integer"
         layered = any(str(t).upper() == "LAYERED" for t in row[1:])
         i += 1
 
@@ -312,7 +313,7 @@ def _parse_readarray_period_block(
         if f is None:
             i += 1
             continue
-        is_int = f.metadata.get("dfn_type") in ("integer",)
+        is_int = to_field_type(f.type) == "integer"
         is_layered = f.metadata.get("layered", False) or any(
             str(t).upper() == "LAYERED" for t in row[1:]
         )

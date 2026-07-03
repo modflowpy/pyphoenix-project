@@ -16,33 +16,28 @@ class Buy(Package):
     hhformulation_rhs: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     denseref: Optional[float] = field(
         default=1000.0,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     density_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
     dev_efh_formulation: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     nrhospecies: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     packagedata: Optional[np.recarray] = field(
         default=None,

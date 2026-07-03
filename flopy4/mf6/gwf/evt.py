@@ -18,51 +18,43 @@ class Evt(Package):
     fixed_cell: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        dfn_type="string",
         shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     boundnames: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -70,26 +62,22 @@ class Evt(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     surf_rate_specified: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
-        dfn_type="integer",
         auto_from="stress_period_data",
     )
     nseg: Optional[int] = field(
         default=None,
         block="dimensions",
-        dfn_type="integer",
     )
     _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",

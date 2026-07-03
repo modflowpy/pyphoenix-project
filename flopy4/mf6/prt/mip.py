@@ -3,7 +3,7 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field
 
@@ -13,28 +13,24 @@ class Mip(Package):
     export_array_ascii: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
-    porosity: ArrayLike = field(
+    porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
     )
-    retfactor: Optional[ArrayLike] = field(
+    retfactor: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         optional=True,
     )
-    izone: Optional[ArrayLike] = field(
+    izone: Optional[IntArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="integer",
         shape=("nodes",),
         layered=True,
         optional=True,

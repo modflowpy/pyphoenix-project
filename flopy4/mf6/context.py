@@ -6,7 +6,7 @@ from xattree import xattree
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import xattree_field as field
 from flopy4.utils import to_path
 
 

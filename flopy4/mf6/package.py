@@ -9,6 +9,7 @@ from xattree import xattree
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.schema import Schema
+from flopy4.mf6.spec import to_field_type
 
 
 @xattree
@@ -170,7 +171,7 @@ class Package(Component, ABC):
             val = self.__dict__.get(f.name)
             if val is None:
                 continue
-            _gd_dtype = self._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+            _gd_dtype = self._DTYPE_MAP.get(to_field_type(f.type), np.float64)
             try:
                 resolved = []
                 for d in shape_meta:

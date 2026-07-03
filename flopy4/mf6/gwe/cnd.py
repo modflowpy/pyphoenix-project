@@ -3,7 +3,7 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field
 
@@ -13,85 +13,74 @@ class Cnd(Package):
     xt3d_off: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     xt3d_rhs: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     export_array_ascii: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
-    alh: Optional[ArrayLike] = field(
+    alh: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    alv: Optional[ArrayLike] = field(
+    alv: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    ath1: Optional[ArrayLike] = field(
+    ath1: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    ath2: Optional[ArrayLike] = field(
+    ath2: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    atv: Optional[ArrayLike] = field(
+    atv: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    ktw: Optional[ArrayLike] = field(
+    ktw: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    kts: Optional[ArrayLike] = field(
+    kts: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,

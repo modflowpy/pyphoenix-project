@@ -5,7 +5,7 @@ from typing import ClassVar, Optional
 import attrs
 import numpy as np
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
 from flopy4.mf6.spec import field, path
@@ -16,73 +16,62 @@ class Sto(Package):
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     storagecoefficient: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     ss_confined_only: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     tvs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     export_array_ascii: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_original_specific_storage: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_oldstorageformulation: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
-    iconvert: ArrayLike = field(
+    iconvert: IntArrayLike = field(
         default=0,
         block="griddata",
-        dfn_type="integer",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    ss: ArrayLike = field(
+    ss: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    sy: ArrayLike = field(
+    sy: FloatArrayLike = field(
         default=0.15,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,

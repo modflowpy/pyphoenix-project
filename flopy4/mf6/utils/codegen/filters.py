@@ -456,7 +456,7 @@ def py_type(f: Field) -> str:
         base = "NDArray[np.bool_]"
     elif is_array(f):
         if f.get("block") == "griddata":
-            base = "ArrayLike"
+            base = "IntArrayLike" if f["type"] == "integer" else "FloatArrayLike"
         else:
             dtype = ARRAY_NUMPY_DTYPES.get(f["type"], "np.object_")
             base = f"NDArray[{dtype}]"
@@ -536,7 +536,7 @@ def field_metadata(f: Field, *, has_maxbound: bool = False) -> dict:
     these calls carry passive metadata read by the codec and conversion methods
     at call time rather than real xattree array/dim/coord structure.
     """
-    kw: dict = {"block": f["block"], "dfn_type": f["type"]}
+    kw: dict = {"block": f["block"]}
     if shape := f.get("shape"):
         kw["shape"] = _dims_tuple_val(shape)
     if f.get("layered"):
@@ -584,7 +584,7 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
         default = _default_repr(f)
     # String-encoded numeric defaults (e.g. '1.e-5', '1000.') are valid at
     # runtime but mypy can't verify they satisfy Optional[float/int].
-    # Scalar defaults (int, float, str) on ArrayLike fields have the same issue.
+    # Scalar defaults (int, float, str) on Int/FloatArrayLike fields have the same issue.
     _str_default = default.startswith("'")
     _numeric_field = f.get("type", "") in ("double", "double precision", "integer")
     type_ignore = ""

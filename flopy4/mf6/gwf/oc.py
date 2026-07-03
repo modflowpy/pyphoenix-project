@@ -25,7 +25,6 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -33,7 +32,6 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -41,7 +39,6 @@ class Oc(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -52,28 +49,24 @@ class Oc(Package):
     save_head: Optional[dict[int, list[str]]] = field(
         default=None,
         block="period",
-        dfn_type="string",
         oc_action="save",
         oc_rtype="head",
     )
     save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
         block="period",
-        dfn_type="string",
         oc_action="save",
         oc_rtype="budget",
     )
     print_head: Optional[dict[int, list[str]]] = field(
         default=None,
         block="period",
-        dfn_type="string",
         oc_action="print",
         oc_rtype="head",
     )
     print_budget: Optional[dict[int, list[str]]] = field(
         default=None,
         block="period",
-        dfn_type="string",
         oc_action="print",
         oc_rtype="budget",
     )

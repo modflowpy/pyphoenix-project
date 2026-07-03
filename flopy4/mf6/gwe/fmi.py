@@ -14,13 +14,11 @@ class Fmi(Package):
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     flow_imbalance_correction: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     packagedata: Optional[np.recarray] = field(

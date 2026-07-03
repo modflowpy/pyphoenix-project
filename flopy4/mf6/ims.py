@@ -28,20 +28,17 @@ class Ims(Solution):
     print_option: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     complexity: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     csv_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -49,7 +46,6 @@ class Ims(Solution):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -57,7 +53,6 @@ class Ims(Solution):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="fileout",
     )
@@ -68,100 +63,83 @@ class Ims(Solution):
     ats_outer_maximum_fraction: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     outer_hclose: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     outer_dvclose: float = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
     )
     outer_rclosebnd: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     outer_maximum: int = field(
         default=None,
         block="nonlinear",
-        dfn_type="integer",
     )
     under_relaxation: Optional[str] = field(
         default=None,
         block="nonlinear",
-        dfn_type="string",
         optional=True,
     )
     under_relaxation_gamma: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     under_relaxation_theta: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     under_relaxation_kappa: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     under_relaxation_momentum: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     backtracking_number: Optional[int] = field(
         default=None,
         block="nonlinear",
-        dfn_type="integer",
         optional=True,
     )
     backtracking_tolerance: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     backtracking_reduction_factor: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     backtracking_residual_limit: Optional[float] = field(
         default=None,
         block="nonlinear",
-        dfn_type="double",
         optional=True,
     )
     inner_maximum: int = field(
         default=None,
         block="linear",
-        dfn_type="integer",
     )
     inner_hclose: Optional[float] = field(
         default=None,
         block="linear",
-        dfn_type="double",
         optional=True,
     )
     inner_dvclose: float = field(
         default=None,
         block="linear",
-        dfn_type="double",
     )
     rclose: Optional[Rclose] = field(
         default=None,
@@ -170,41 +148,34 @@ class Ims(Solution):
     linear_acceleration: str = field(
         default=None,
         block="linear",
-        dfn_type="string",
     )
     relaxation_factor: Optional[float] = field(
         default=None,
         block="linear",
-        dfn_type="double",
         optional=True,
     )
     preconditioner_levels: Optional[int] = field(
         default=None,
         block="linear",
-        dfn_type="integer",
         optional=True,
     )
     preconditioner_drop_tolerance: Optional[float] = field(
         default=None,
         block="linear",
-        dfn_type="double",
         optional=True,
     )
     number_orthogonalizations: Optional[int] = field(
         default=None,
         block="linear",
-        dfn_type="integer",
         optional=True,
     )
     scaling_method: Optional[str] = field(
         default=None,
         block="linear",
-        dfn_type="string",
         optional=True,
     )
     reordering_method: Optional[str] = field(
         default=None,
         block="linear",
-        dfn_type="string",
         optional=True,
     )

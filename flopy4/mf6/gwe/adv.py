@@ -12,12 +12,10 @@ class Adv(Package):
     scheme: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     ats_percel: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )

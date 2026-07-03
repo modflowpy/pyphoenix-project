@@ -19,7 +19,8 @@ from flopy4.mf6.gwe.oc import Oc
 from flopy4.mf6.gwe.ssm import Ssm
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import xattree_field as field
+from flopy4.mf6.spec import xattree_path as path
 from flopy4.utils import to_path
 
 

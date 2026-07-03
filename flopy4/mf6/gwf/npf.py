@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
@@ -32,25 +32,21 @@ class Npf(Package):
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     alternative_cell_averaging: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     thickstrt: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     cvoptions: Optional[Cvoptions] = field(
@@ -60,7 +56,6 @@ class Npf(Package):
     perched: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     rewet: Optional[Rewet] = field(
@@ -74,130 +69,112 @@ class Npf(Package):
     highest_cell_saturation: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_specific_discharge: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_saturation: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     k22overk: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     k33overk: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     tvk_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     export_array_ascii: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_no_newton: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_omega: Optional[float] = field(
         default=None,
         block="options",
-        dfn_type="double",
         optional=True,
     )
-    icelltype: ArrayLike = field(
+    icelltype: IntArrayLike = field(
         default=0,
         block="griddata",
-        dfn_type="integer",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    k: ArrayLike = field(
+    k: FloatArrayLike = field(
         default=1.0,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    k22: Optional[ArrayLike] = field(
+    k22: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    k33: Optional[ArrayLike] = field(
+    k33: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    angle1: Optional[ArrayLike] = field(
+    angle1: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    angle2: Optional[ArrayLike] = field(
+    angle2: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    angle3: Optional[ArrayLike] = field(
+    angle3: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         optional=True,
     )
-    wetdry: Optional[ArrayLike] = field(
+    wetdry: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         netcdf=True,

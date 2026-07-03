@@ -3,7 +3,7 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field
 
@@ -13,73 +13,62 @@ class Est(Package):
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     zero_order_decay_water: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     zero_order_decay_solid: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     density_water: Optional[float] = field(
         default=1000.0,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     heat_capacity_water: Optional[float] = field(
         default=4184.0,
         block="options",
-        dfn_type="double",
         optional=True,
     )
     latent_heat_vaporization: Optional[float] = field(
         default=2453500.0,
         block="options",
-        dfn_type="double",
         optional=True,
     )
-    porosity: ArrayLike = field(
+    porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
     )
-    decay_water: Optional[ArrayLike] = field(
+    decay_water: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         optional=True,
     )
-    decay_solid: Optional[ArrayLike] = field(
+    decay_solid: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
         optional=True,
     )
-    heat_capacity_solid: ArrayLike = field(
+    heat_capacity_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
     )
-    density_solid: ArrayLike = field(
+    density_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
-        dfn_type="double",
         shape=("nodes",),
         layered=True,
     )

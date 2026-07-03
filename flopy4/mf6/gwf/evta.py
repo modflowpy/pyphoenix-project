@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -16,50 +16,42 @@ class Evta(Package):
     readasarrays: bool = field(
         default=True,
         block="options",
-        dfn_type="keyword",
     )
     fixed_cell: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        dfn_type="string",
         shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     tas_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
@@ -67,48 +59,41 @@ class Evta(Package):
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
-    ievt: Optional[ArrayLike] = field(
+    ievt: Optional[IntArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="integer",
         layered=False,
     )
-    surface: Optional[ArrayLike] = field(
+    surface: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=False,
     )
-    rate: Optional[ArrayLike] = field(
+    rate: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=False,
     )
-    depth: Optional[ArrayLike] = field(
+    depth: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=False,
     )
-    aux: Optional[ArrayLike] = field(
+    aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=False,
     )

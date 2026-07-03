@@ -44,6 +44,5 @@ class Tas(Package):
     tas_array: NDArray[np.float64] = field(
         default=None,
         block="time",
-        dfn_type="double",
         shape=("unknown",),
     )

@@ -15,6 +15,7 @@ from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
@@ -86,8 +87,7 @@ class _CodegenV2Spec:
         class _ArrayInfo:
             def __init__(self, f):
                 is_ra_period = (
-                    f.metadata.get("block") == "period"
-                    and f.metadata.get("reader") == "readarray"
+                    f.metadata.get("block") == "period" and f.metadata.get("reader") == "readarray"
                 )
                 # Non-layered READARRAY period fields (e.g. RCHA recharge) have shape
                 # (nper, nrow, ncol), so use "ncpl" so _structured_shape maps to
@@ -104,7 +104,7 @@ class _CodegenV2Spec:
                     normalized = ("nper",) + normalized
 
                 self.dtype = np.dtype(
-                    _CodegenV2Spec._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+                    _CodegenV2Spec._DTYPE_MAP.get(to_field_type(f.type), np.float64)
                 )
                 self.dims = normalized
                 self.metadata = {

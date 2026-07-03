@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -16,96 +16,81 @@ class Drng(Package):
     readarraygrid: bool = field(
         default=True,
         block="options",
-        dfn_type="keyword",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        dfn_type="string",
         shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     auxdepthname: Optional[str] = field(
         default=None,
         block="options",
-        dfn_type="string",
         optional=True,
     )
     print_input: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     print_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     save_flows: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
-        dfn_type="record",
         optional=True,
         inout="filein",
     )
     mover: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     dev_cubic_scaling: bool = field(
         default=False,
         block="options",
-        dfn_type="keyword",
         optional=True,
     )
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
-        dfn_type="integer",
         optional=True,
         auto_from="stress_period_data",
     )
-    elev: Optional[ArrayLike] = field(
+    elev: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=True,
     )
-    cond: Optional[ArrayLike] = field(
+    cond: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=True,
     )
-    aux: Optional[ArrayLike] = field(
+    aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
         reader="readarray",
-        dfn_type="double",
         layered=True,
     )
