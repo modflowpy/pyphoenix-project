@@ -149,8 +149,8 @@ def _normalize_kper(kper: Any) -> int | None:
         return None
 
 
-def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
-    """Unstructure a Package leaf (attrs-based, non-xattree; e.g. Npf, Chd, Dis)."""
+def _unstructure_package(value: Package) -> dict[str, Any]:
+    """Unstructure a package (attrs-based, non-xattree)."""
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
     # Block names that must appear in output even when empty (e.g. SSM SOURCES).
@@ -378,22 +378,14 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    # Package (Npf, Chd, Dis, ...) and Context/Model (Simulation, Gwf, ...) are
-    # disjoint Component subclasses with different field-metadata shapes: Package
-    # leaves are plain attrs classes with schema/oc_action-driven block metadata,
-    # while Context/Model classes are real @xattree trees. Dispatch on the class
-    # hierarchy rather than sniffing field metadata.
+    # temporary; TODO unify once xattree is fully gone
     if isinstance(value, Package):
-        return _unstructure_codegen_v2(value)
+        return _unstructure_package(value)
     return _unstructure_component(value)
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
-    """Unstructure a model-level xattree component (Gwf, Simulation, etc.).
-
-    Model-level classes only have options blocks (bools, paths, inner records,
-    strings) and child bindings. They have no griddata, period, or list blocks.
-    """
+    """Unstructure a xattree component (Gwf, Simulation, etc.)."""
     blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))
