@@ -8,9 +8,8 @@ from attrs import fields
 from xattree import asdict as xattree_asdict
 from xattree import xattree
 
-from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import xattree_field as field
 from flopy4.dimensions import DimensionResolverMixin
+from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext

@@ -56,6 +56,7 @@ def test_resolve_dimension_from_direct_child():
     assert container.resolve_dims("nrow") == {"nrow": 10}
     assert container.resolve_dims("ncol") == {"ncol": 20}
 
+
 def test_resolve_computed_dimension():
     """Test resolving computed dimensions."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -64,12 +65,14 @@ def test_resolve_computed_dimension():
     assert container.resolve_dims("nodes") == {"nodes": 600}
     assert container.resolve_dims("ncpl") == {"ncpl": 200}
 
+
 def test_resolve_dimension_not_found():
     """Test resolving dimension that doesn't exist returns None."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
     container = MockContainer(provider=provider)
 
     assert container.resolve_dims("nonexistent") == {}
+
 
 def test_resolve_dimension_from_dict_child():
     """Test resolving dimension from children in a dict."""
@@ -79,6 +82,7 @@ def test_resolve_dimension_from_dict_child():
     assert container.resolve_dims("nlay") == {"nlay": 3}
     assert container.resolve_dims("nodes") == {"nodes": 600}
 
+
 def test_resolve_dimension_from_list_child():
     """Test resolving dimension from children in a list."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -86,6 +90,7 @@ def test_resolve_dimension_from_list_child():
 
     assert container.resolve_dims("nlay") == {"nlay": 3}
     assert container.resolve_dims("nodes") == {"nodes": 600}
+
 
 def test_resolve_multiple_dimensions():
     """Test resolving multiple dimensions at once."""
@@ -95,6 +100,7 @@ def test_resolve_multiple_dimensions():
     result = container.resolve_dims("nlay", "nrow", "ncol")
     assert result == {"nlay": 3, "nrow": 10, "ncol": 20}
 
+
 def test_resolve_multiple_with_computed():
     """Test resolving multiple dimensions including computed ones."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -103,6 +109,7 @@ def test_resolve_multiple_with_computed():
     result = container.resolve_dims("nlay", "nodes", "ncpl")
     assert result == {"nlay": 3, "nodes": 600, "ncpl": 200}
 
+
 def test_resolve_multiple_computed_dimensions():
     """Test resolving only computed dimensions."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -110,6 +117,7 @@ def test_resolve_multiple_computed_dimensions():
 
     result = container.resolve_dims("nodes", "ncpl")
     assert result == {"nodes": 600, "ncpl": 200}
+
 
 def test_resolve_multiple_mix_valid_invalid():
     """Test resolving mix of valid and invalid dimensions."""
@@ -122,6 +130,7 @@ def test_resolve_multiple_mix_valid_invalid():
     assert result == {"nlay": 3, "nrow": 10}
     assert "nonexistent" not in result
 
+
 def test_resolve_multiple_all_invalid():
     """Test resolving multiple dimensions that all don't exist."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -129,6 +138,7 @@ def test_resolve_multiple_all_invalid():
 
     result = container.resolve_dims("invalid1", "invalid2", "invalid3")
     assert result == {}
+
 
 def test_resolve_duplicate_dimensions():
     """Test resolving with duplicate dimension names."""
@@ -139,6 +149,7 @@ def test_resolve_duplicate_dimensions():
     result = container.resolve_dims("nlay", "nlay", "nlay")
     # Should handle duplicates gracefully and return it once
     assert result == {"nlay": 3}
+
 
 def test_resolve_dimension_caching():
     """Test that resolved dimensions are cached."""
@@ -154,6 +165,7 @@ def test_resolve_dimension_caching():
     # Second resolution should use cache
     result2 = container.resolve_dims("nlay")
     assert result1 == result2 == {"nlay": 3}
+
 
 def test_resolve_multiple_dimensions_uses_cache():
     """Test that cache is used when resolving multiple dimensions."""
@@ -171,6 +183,7 @@ def test_resolve_multiple_dimensions_uses_cache():
     assert "nlay" in container._dimension_cache
     assert "nrow" in container._dimension_cache
 
+
 def test_get_all_dimensions_direct_child():
     """Test getting all dimensions from direct child."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -184,6 +197,7 @@ def test_get_all_dimensions_direct_child():
         "nodes": 600,
         "ncpl": 200,
     }
+
 
 def test_get_all_dimensions_dict_children():
     """Test getting all dimensions from dict of children."""
@@ -199,6 +213,7 @@ def test_get_all_dimensions_dict_children():
         "ncpl": 200,
     }
 
+
 def test_get_all_dimensions_list_children():
     """Test getting all dimensions from list of children."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
@@ -212,6 +227,7 @@ def test_get_all_dimensions_list_children():
         "nodes": 600,
         "ncpl": 200,
     }
+
 
 def test_get_all_dimensions_none_fields():
     """Test that None fields don't break dimension collection."""

@@ -17,6 +17,7 @@ def test_dis_get_dimensions():
         "ncpl": 200,
     }
 
+
 def test_dis_computed_dimensions():
     """Test that Dis correctly computes nodes and ncpl."""
     from flopy4.mf6.gwf.dis import Dis
@@ -27,6 +28,7 @@ def test_dis_computed_dimensions():
 
     assert dims["nodes"] == 5 * 15 * 25
     assert dims["ncpl"] == 15 * 25
+
 
 def test_dis_single_layer():
     """Test Dis dimensions with a single layer."""
