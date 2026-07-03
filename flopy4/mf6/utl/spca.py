@@ -6,52 +6,43 @@ import attrs
 
 from flopy4.mf6._types import ArrayLike, _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Spca(Package):
     multi_package: ClassVar[bool] = True
 
-    readasarrays: bool = attrs.field(
+    readasarrays: bool = field(
         default=True,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-        },
+        block="options",
+        dfn_type="keyword",
     )
-    print_input: bool = attrs.field(
+    print_input: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    tas_file: Optional[Path] = attrs.field(
+    tas_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="filein",
     )
-    concentration: Optional[ArrayLike] = attrs.field(
+    concentration: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "reader": "readarray",
-            "dfn_type": "double",
-            "layered": False,
-        },
+        block="period",
+        reader="readarray",
+        dfn_type="double",
+        layered=False,
     )
-    temperature: Optional[ArrayLike] = attrs.field(
+    temperature: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "reader": "readarray",
-            "dfn_type": "double",
-            "layered": False,
-        },
+        block="period",
+        reader="readarray",
+        dfn_type="double",
+        layered=False,
     )

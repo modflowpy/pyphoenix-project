@@ -7,6 +7,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field
 from flopy4.mf6.utils.time import Time
 
 
@@ -24,43 +25,25 @@ class Tdis(Package):
         tsmult = Column("tsmult", role="value", dfn_type="double")
 
     __perioddata_schema__: ClassVar[type[Schema]] = _PeriodDataSchema
-
-    time_units: Optional[str] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
+    time_units: Optional[str] = field(
+        default=None, block="options", dfn_type="string", optional=True
     )
-    start_date_time: Optional[str] = attrs.field(
+    start_date_time: Optional[str] = field(
         default=None,
         converter=lambda v: v.isoformat() if isinstance(v, datetime) else v,
-        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    nper: int = attrs.field(
-        default=1,
-        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
+    nper: int = field(default=1, block="dimensions", dfn_type="integer")
+    perlen: NDArray[np.float64] = attrs.field(default=1.0)
+    nstp: NDArray[np.int64] = attrs.field(default=1)
+    tsmult: NDArray[np.float64] = attrs.field(default=1.0)
+    perioddata: Optional[np.recarray] = field(
+        default=None, block="perioddata", schema="__perioddata_schema__"
     )
-    # Parallel arrays — user-facing API. Stored as ndarray of length nper.
-    perlen: NDArray[np.float64] = attrs.field(
-        default=1.0,
-    )  # type: ignore[assignment]
-    nstp: NDArray[np.int64] = attrs.field(
-        default=1,
-    )  # type: ignore[assignment]
-    tsmult: NDArray[np.float64] = attrs.field(
-        default=1.0,
-    )  # type: ignore[assignment]
-    # The combined perioddata recarray written to the PERIODDATA block.
-    # Built automatically from perlen/nstp/tsmult in __attrs_post_init__.
-    perioddata: Optional[np.recarray] = attrs.field(
-        default=None,
-        metadata={
-            "dfn_block": "perioddata",
-            "schema": "__perioddata_schema__",
-        },
-    )  # type: ignore[assignment]
 
     def __attrs_post_init__(self):
-        # When structure_component provides perioddata directly (ingress round-trip),
-        # decompose it back to perlen/nstp/tsmult rather than overwriting with defaults.
         if isinstance(self.perioddata, np.recarray):
             pd = self.perioddata
             object.__setattr__(self, "perlen", pd["perlen"].copy())
@@ -68,8 +51,6 @@ class Tdis(Package):
             object.__setattr__(self, "tsmult", pd["tsmult"].copy())
             super().__attrs_post_init__()
             return
-
-        # Coerce scalar defaults to arrays of length nper.
         nper = self.nper
         if isinstance(self.perlen, (int, float)):
             object.__setattr__(self, "perlen", np.full(nper, self.perlen, dtype=np.float64))
@@ -83,7 +64,6 @@ class Tdis(Package):
             object.__setattr__(self, "tsmult", np.full(nper, self.tsmult, dtype=np.float64))
         elif not isinstance(self.tsmult, np.ndarray):
             object.__setattr__(self, "tsmult", np.asarray(self.tsmult, dtype=np.float64))
-        # Build the combined perioddata recarray for the codec.
         dtype = np.dtype([("perlen", np.float64), ("nstp", np.int64), ("tsmult", np.float64)])
         arr = np.zeros(nper, dtype=dtype)
         arr["perlen"] = self.perlen

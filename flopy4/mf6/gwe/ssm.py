@@ -6,40 +6,33 @@ import numpy as np
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Ssm(Package):
-    print_flows: bool = attrs.field(
+    print_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    sources: Optional[np.recarray] = attrs.field(
+    sources: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "sources",
-            "schema": "__sources_schema__",
-            "always_emit": True,
-        },
+        block="sources",
+        schema="__sources_schema__",
+        always_emit=True,
     )
-    fileinput: Optional[np.recarray] = attrs.field(
+    fileinput: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "fileinput",
-            "schema": "__fileinput_schema__",
-        },
+        block="fileinput",
+        schema="__fileinput_schema__",
     )
 
     class _SourcesSchema(Schema):

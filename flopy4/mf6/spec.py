@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, Union, get_args, get_origin
 
+import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema import Field, FieldType
@@ -29,16 +30,101 @@ def field(
     init=True,
     metadata=None,
     on_setattr=None,
+    alias: str | None = None,
     block: str | None = None,
     longname: str | None = None,
+    dfn_type: str | None = None,
+    shape: tuple[str, ...] | None = None,
+    layered: bool | None = None,
+    optional: bool = False,
+    netcdf: bool | None = None,
+    schema: str | None = None,
+    always_emit: bool = False,
+    auto_from: str | None = None,
+    fill_forward: bool = False,
+    reader: str | None = None,
+    oc_action: str | None = None,
+    oc_rtype: str | None = None,
+    time_series: bool = False,
 ):
-    """Define a field."""
-    if block or longname:
+    """Define a field.
+
+    The ``dfn_type``/``shape``/``layered``/``optional``/``schema``/``always_emit``/
+    ``auto_from``/``fill_forward``/``reader``/``oc_action``/``oc_rtype``/``time_series``
+    kwargs describe codegen-v2 recarray/period-block fields. Codegen-v2 packages
+    are plain attrs classes, not ``@xattree``-decorated, so a field carrying any
+    of these builds a plain ``attrs.field()`` instead of going through
+    ``xattree.field()`` — the latter only registers a field with xattree's
+    tree/xatspec machinery when the *enclosing class* is itself ``@xattree``-
+    decorated, and stashing its marker metadata on a non-decorated class's
+    field is actively harmful: ``_get_xatspec()`` recomputes from
+    ``attrs.fields(cls)`` for whatever class is asked about, so it would treat
+    the field as real xattree state and start moving it in/out of a DataTree
+    that doesn't otherwise track it, corrupting ``Package``'s plain
+    ``__dict__``-based field storage.
+    """
+    plain = any(
+        (
+            dfn_type,
+            shape,
+            layered is not None,
+            optional,
+            schema,
+            always_emit,
+            auto_from,
+            fill_forward,
+            reader,
+            oc_action,
+            oc_rtype,
+            time_series,
+        )
+    )
+    if block or longname or plain:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
         if longname:
             metadata["longname"] = longname
+        if dfn_type:
+            metadata["dfn_type"] = dfn_type
+        if shape:
+            metadata["shape"] = shape
+        if layered is not None:
+            # Explicit False must round-trip: some consumers (netcdf.py) default
+            # a *missing* key to True, so omitting a deliberate False would flip it.
+            metadata["layered"] = layered
+        if optional:
+            metadata["optional"] = True
+        if netcdf:
+            metadata["netcdf"] = True
+        if schema:
+            metadata["schema"] = schema
+        if always_emit:
+            metadata["always_emit"] = True
+        if auto_from:
+            metadata["auto_from"] = auto_from
+        if fill_forward:
+            metadata["fill_forward"] = True
+        if reader:
+            metadata["reader"] = reader
+        if oc_action:
+            metadata["oc_action"] = oc_action
+        if oc_rtype:
+            metadata["oc_rtype"] = oc_rtype
+        if time_series:
+            metadata["time_series"] = True
+    if plain:
+        return attrs.field(
+            default=default,
+            validator=validator,
+            converter=converter,
+            repr=repr,
+            eq=eq,
+            init=init,
+            on_setattr=on_setattr,
+            metadata=metadata,
+            alias=alias,
+        )
     return flopy_field(
         default=default,
         validator=validator,
@@ -66,9 +152,16 @@ def path(
     block: str | None = None,
     inout: FileInOut | None = None,
     longname: str | None = None,
+    dfn_type: str | None = None,
+    optional: bool = False,
 ):
-    """Define a path field."""
-    if block or inout or longname:
+    """Define a path field.
+
+    See ``field()`` for why ``dfn_type``/``optional`` force a plain (non-xattree)
+    attrs field: they only ever appear on codegen-v2 (non-``@xattree``) classes.
+    """
+    plain = bool(dfn_type or optional)
+    if block or inout or longname or plain:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
@@ -76,6 +169,21 @@ def path(
             metadata["inout"] = inout
         if longname:
             metadata["longname"] = longname
+        if dfn_type:
+            metadata["dfn_type"] = dfn_type
+        if optional:
+            metadata["optional"] = True
+    if plain:
+        return attrs.field(
+            default=default,
+            validator=validator,
+            converter=converter,
+            repr=repr,
+            eq=eq,
+            init=init,
+            on_setattr=on_setattr,
+            metadata=metadata,
+        )
     return flopy_field(
         default=default,
         validator=validator,

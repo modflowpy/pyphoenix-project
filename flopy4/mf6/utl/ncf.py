@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -21,72 +22,32 @@ class Ncf(Package):
       for explicit geographic coordinates when needed.
     """
 
-    wkt: Optional[str] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
+    wkt: Optional[str] = field(default=None, block="options", dfn_type="string", optional=True)
+    deflate: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
+    shuffle: bool = field(default=False, block="options", dfn_type="keyword", optional=True)
+    chunk_time: Optional[int] = field(
+        default=None, block="options", dfn_type="integer", optional=True
     )
-    deflate: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "integer", "optional": True},
+    chunk_face: Optional[int] = field(
+        default=None, block="options", dfn_type="integer", optional=True
     )
-    shuffle: bool = attrs.field(
-        default=False,
-        metadata={"dfn_block": "options", "dfn_type": "keyword", "optional": True},
+    chunk_z: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
+    chunk_y: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
+    chunk_x: Optional[int] = field(default=None, block="options", dfn_type="integer", optional=True)
+    modflow6_attr_off: bool = field(
+        default=False, block="options", dfn_type="keyword", optional=True
     )
-    chunk_time: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "integer", "optional": True},
+    ncpl: Optional[int] = field(default=None, block="dimensions", dfn_type="integer", optional=True)
+    latitude: Optional[NDArray[np.float64]] = field(
+        default=None, block="griddata", dfn_type="double", shape=("ncpl",), layered=False
     )
-    chunk_face: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "integer", "optional": True},
+    longitude: Optional[NDArray[np.float64]] = field(
+        default=None, block="griddata", dfn_type="double", shape=("ncpl",), layered=False
     )
-    chunk_z: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "integer", "optional": True},
-    )
-    chunk_y: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "integer", "optional": True},
-    )
-    chunk_x: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "integer", "optional": True},
-    )
-    modflow6_attr_off: bool = attrs.field(
-        default=False,
-        metadata={"dfn_block": "options", "dfn_type": "keyword", "optional": True},
-    )
-    ncpl: Optional[int] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "dimensions", "dfn_type": "integer", "optional": True},
-    )
-    latitude: Optional[NDArray[np.float64]] = attrs.field(
-        default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("ncpl",),
-            "layered": False,
-        },
-    )  # type: ignore[assignment]
-    longitude: Optional[NDArray[np.float64]] = attrs.field(
-        default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("ncpl",),
-            "layered": False,
-        },
-    )  # type: ignore[assignment]
 
     @classmethod
     def from_grid(
-        cls,
-        grid,
-        netcdf_format: NetCDFFormat,
-        wkt_version: Literal[1, 2] = 1,
-        latlon: bool = False,
+        cls, grid, netcdf_format: NetCDFFormat, wkt_version: Literal[1, 2] = 1, latlon: bool = False
     ) -> "Ncf":
         """Build an Ncf configured for the given NetCDF output format.
 
@@ -117,7 +78,6 @@ class Ncf(Package):
                 )
                 return cls()
             return cls(ncpl=len(lats), latitude=lats, longitude=lons)
-
         from pyproj import CRS
         from pyproj.enums import WktVersion
 

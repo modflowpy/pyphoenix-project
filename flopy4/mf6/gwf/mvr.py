@@ -8,85 +8,68 @@ import numpy as np
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mvr(Package):
-    print_input: bool = attrs.field(
+    print_input: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    print_flows: bool = attrs.field(
+    print_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    modelnames: bool = attrs.field(
+    modelnames: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    budget_file: Optional[Path] = attrs.field(
+    budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    budgetcsv_file: Optional[Path] = attrs.field(
+    budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    maxmvr: Optional[int] = attrs.field(
+    maxmvr: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
+        dfn_type="integer",
     )
-    maxpackages: Optional[int] = attrs.field(
+    maxpackages: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
+        dfn_type="integer",
     )
-    packages: Optional[np.recarray] = attrs.field(
+    packages: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "packages",
-            "schema": "__packages_schema__",
-            "auto_from": "packages",
-        },
+        block="packages",
+        schema="__packages_schema__",
+        auto_from="packages",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = attrs.field(
+    _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
-        metadata={
-            "dfn_block": "period",
-            "schema": "__period_schema__",
-            "fill_forward": True,
-        },
+        block="period",
+        schema="__period_schema__",
+        fill_forward=True,
     )
 
     class _PackagesSchema(Schema):

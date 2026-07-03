@@ -8,58 +8,47 @@ import numpy as np
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Buy(Package):
-    hhformulation_rhs: bool = attrs.field(
+    hhformulation_rhs: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    denseref: Optional[float] = attrs.field(
+    denseref: Optional[float] = field(
         default=1000.0,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    density_file: Optional[Path] = attrs.field(
+    density_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    dev_efh_formulation: bool = attrs.field(
+    dev_efh_formulation: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    nrhospecies: Optional[int] = attrs.field(
+    nrhospecies: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
+        dfn_type="integer",
     )
-    packagedata: Optional[np.recarray] = attrs.field(
+    packagedata: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "packagedata",
-            "schema": "__packagedata_schema__",
-            "auto_from": "packagedata",
-        },
+        block="packagedata",
+        schema="__packagedata_schema__",
+        auto_from="packagedata",
     )
 
     class _PackagedataSchema(Schema):

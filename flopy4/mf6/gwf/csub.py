@@ -8,318 +8,247 @@ import numpy as np
 from flopy4.mf6._types import ArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Csub(Package):
-    boundnames: bool = attrs.field(
+    boundnames: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    print_input: bool = attrs.field(
+    print_input: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    gammaw: Optional[float] = attrs.field(
+    gammaw: Optional[float] = field(
         default=9806.65,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    beta: Optional[float] = attrs.field(
+    beta: Optional[float] = field(
         default=4.6512e-10,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    head_based: bool = attrs.field(
+    head_based: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    initial_preconsolidation_head: bool = attrs.field(
+    initial_preconsolidation_head: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    ndelaycells: Optional[int] = attrs.field(
+    ndelaycells: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="integer",
+        optional=True,
     )
-    compression_indices: bool = attrs.field(
+    compression_indices: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    update_material_properties: bool = attrs.field(
+    update_material_properties: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    cell_fraction: bool = attrs.field(
+    cell_fraction: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    specified_initial_interbed_state: bool = attrs.field(
+    specified_initial_interbed_state: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    specified_initial_preconsolidation_stress: bool = attrs.field(
+    specified_initial_preconsolidation_stress: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    specified_initial_delay_head: bool = attrs.field(
+    specified_initial_delay_head: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    effective_stress_lag: bool = attrs.field(
+    effective_stress_lag: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    strainib_file: Optional[Path] = attrs.field(
+    strainib_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    straincg_file: Optional[Path] = attrs.field(
+    straincg_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    compaction_file: Optional[Path] = attrs.field(
+    compaction_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    compaction_elastic_file: Optional[Path] = attrs.field(
+    compaction_elastic_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    compaction_inelastic_file: Optional[Path] = attrs.field(
+    compaction_inelastic_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    compaction_interbed_file: Optional[Path] = attrs.field(
+    compaction_interbed_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    compaction_coarse_file: Optional[Path] = attrs.field(
+    compaction_coarse_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    zdisplacement_file: Optional[Path] = attrs.field(
+    zdisplacement_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    package_convergence_file: Optional[Path] = attrs.field(
+    package_convergence_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    ts_file: Optional[Path] = attrs.field(
+    ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="filein",
     )
-    obs_file: Optional[Path] = attrs.field(
+    obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="filein",
     )
-    ninterbeds: Optional[int] = attrs.field(
+    ninterbeds: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
+        dfn_type="integer",
     )
-    maxsig0: Optional[int] = attrs.field(
+    maxsig0: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="dimensions",
+        dfn_type="integer",
+        optional=True,
     )
-    packagedata: Optional[np.recarray] = attrs.field(
+    packagedata: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "packagedata",
-            "schema": "__packagedata_schema__",
-            "auto_from": "packagedata",
-        },
+        block="packagedata",
+        schema="__packagedata_schema__",
+        auto_from="packagedata",
     )
-    cg_ske_cr: ArrayLike = attrs.field(
+    cg_ske_cr: ArrayLike = field(
         default=1e-05,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    cg_theta: ArrayLike = attrs.field(
+    cg_theta: ArrayLike = field(
         default=0.2,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    sgm: Optional[ArrayLike] = attrs.field(
+    sgm: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    sgs: Optional[ArrayLike] = attrs.field(
+    sgs: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = attrs.field(
+    _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
-        metadata={
-            "dfn_block": "period",
-            "schema": "__period_schema__",
-            "fill_forward": True,
-        },
+        block="period",
+        schema="__period_schema__",
+        fill_forward=True,
     )
 
     class _PackagedataSchema(Schema):

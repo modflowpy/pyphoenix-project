@@ -7,6 +7,7 @@ import attrs
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -20,75 +21,59 @@ class Oc(Package):
         width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
         digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
 
-    budget_file: Optional[Path] = attrs.field(
+    budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    budgetcsv_file: Optional[Path] = attrs.field(
+    budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    head_file: Optional[Path] = attrs.field(
+    head_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    headprint: Optional[Headprint] = attrs.field(
+    headprint: Optional[Headprint] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    save_head: Optional[dict[int, list[str]]] = attrs.field(
+    save_head: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "save",
-            "oc_rtype": "head",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="save",
+        oc_rtype="head",
     )
-    save_budget: Optional[dict[int, list[str]]] = attrs.field(
+    save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "save",
-            "oc_rtype": "budget",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="save",
+        oc_rtype="budget",
     )
-    print_head: Optional[dict[int, list[str]]] = attrs.field(
+    print_head: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "print",
-            "oc_rtype": "head",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="print",
+        oc_rtype="head",
     )
-    print_budget: Optional[dict[int, list[str]]] = attrs.field(
+    print_budget: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "print",
-            "oc_rtype": "budget",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="print",
+        oc_rtype="budget",
     )

@@ -7,6 +7,7 @@ import attrs
 from flopy4.mf6._types import ArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -28,237 +29,177 @@ class Npf(Package):
         _keyword: ClassVar[str] = "xt3d"
         rhs: Optional[bool] = attrs.field(default=None)
 
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    print_flows: bool = attrs.field(
+    print_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    alternative_cell_averaging: Optional[str] = attrs.field(
+    alternative_cell_averaging: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    thickstrt: bool = attrs.field(
+    thickstrt: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    cvoptions: Optional[Cvoptions] = attrs.field(
+    cvoptions: Optional[Cvoptions] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    perched: bool = attrs.field(
+    perched: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    rewet: Optional[Rewet] = attrs.field(
+    rewet: Optional[Rewet] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    xt3doptions: Optional[Xt3doptions] = attrs.field(
+    xt3doptions: Optional[Xt3doptions] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    highest_cell_saturation: bool = attrs.field(
+    highest_cell_saturation: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    save_specific_discharge: bool = attrs.field(
+    save_specific_discharge: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    save_saturation: bool = attrs.field(
+    save_saturation: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    k22overk: bool = attrs.field(
+    k22overk: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    k33overk: bool = attrs.field(
+    k33overk: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    tvk_file: Optional[Path] = attrs.field(
+    tvk_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="filein",
     )
-    export_array_ascii: bool = attrs.field(
+    export_array_ascii: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    export_array_netcdf: bool = attrs.field(
+    export_array_netcdf: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    dev_no_newton: bool = attrs.field(
+    dev_no_newton: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    dev_omega: Optional[float] = attrs.field(
+    dev_omega: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    icelltype: ArrayLike = attrs.field(
+    icelltype: ArrayLike = field(
         default=0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "integer",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        dfn_type="integer",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    k: ArrayLike = attrs.field(
+    k: ArrayLike = field(
         default=1.0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    k22: Optional[ArrayLike] = attrs.field(
+    k22: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    k33: Optional[ArrayLike] = attrs.field(
+    k33: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    angle1: Optional[ArrayLike] = attrs.field(
+    angle1: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    angle2: Optional[ArrayLike] = attrs.field(
+    angle2: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    angle3: Optional[ArrayLike] = attrs.field(
+    angle3: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    wetdry: Optional[ArrayLike] = attrs.field(
+    wetdry: Optional[ArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )

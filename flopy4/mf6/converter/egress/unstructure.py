@@ -12,18 +12,8 @@ from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
+from flopy4.mf6.package import Package
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict
-
-
-def has_dfn_metadata(cls: type) -> bool:
-    """True if cls is a codegen v2 package (has attrs fields with 'dfn_block' metadata).
-
-    Old xattree-based packages use 'block' as the metadata key; codegen v2 uses 'dfn_block'.
-    This distinguishes Ic/Chd/Npf (codegen v2) from Dis/Gwf/Package (xattree).
-    """
-    if not attrs.has(cls):
-        return False
-    return any("dfn_block" in f.metadata for f in attrs.fields(cls))
 
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
@@ -160,7 +150,7 @@ def _normalize_kper(kper: Any) -> int | None:
 
 
 def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
-    """Unstructure a codegen v2 (attrs-based, non-xattree) Package."""
+    """Unstructure a Package leaf (attrs-based, non-xattree; e.g. Npf, Chd, Dis)."""
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
     # Block names that must appear in output even when empty (e.g. SSM SOURCES).
@@ -178,7 +168,7 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
 
     for f in attrs.fields(cls):
         meta = f.metadata
-        block_name = meta.get("dfn_block")
+        block_name = meta.get("block")
         if not block_name:
             continue
 
@@ -388,7 +378,12 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    if has_dfn_metadata(type(value)):
+    # Package (Npf, Chd, Dis, ...) and Context/Model (Simulation, Gwf, ...) are
+    # disjoint Component subclasses with different field-metadata shapes: Package
+    # leaves are plain attrs classes with schema/oc_action-driven block metadata,
+    # while Context/Model classes are real @xattree trees. Dispatch on the class
+    # hierarchy rather than sniffing field metadata.
+    if isinstance(value, Package):
         return _unstructure_codegen_v2(value)
     return _unstructure_component(value)
 

@@ -264,7 +264,7 @@ class Flopy3Package(PackageInterface):
 
         try:
             for f in _attrs.fields(type(self._package)):
-                if f.metadata.get("dfn_block") == "period":
+                if f.metadata.get("block") == "period":
                     attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
                     if getattr(self._package, attr_name, None) is not None:
                         return True

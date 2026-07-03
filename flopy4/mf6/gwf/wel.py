@@ -8,132 +8,105 @@ import numpy as np
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Wel(Package):
     multi_package: ClassVar[bool] = True
 
-    auxiliary: Optional[list[str]] = attrs.field(
+    auxiliary: Optional[list[str]] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "shape": (),
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        shape=(),
+        optional=True,
     )
-    auxmultname: Optional[str] = attrs.field(
+    auxmultname: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    boundnames: bool = attrs.field(
+    boundnames: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    print_input: bool = attrs.field(
+    print_input: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    print_flows: bool = attrs.field(
+    print_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    auto_flow_reduce: Optional[float] = attrs.field(
+    auto_flow_reduce: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    afrcsv_file: Optional[Path] = attrs.field(
+    afrcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    flow_reduction_length: bool = attrs.field(
+    flow_reduction_length: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    ts_file: Optional[Path] = attrs.field(
+    ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="filein",
     )
-    obs_file: Optional[Path] = attrs.field(
+    obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="filein",
     )
-    mover: bool = attrs.field(
+    mover: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    maxbound: Optional[int] = attrs.field(
+    maxbound: Optional[int] = field(
         default=0,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-            "auto_from": "stress_period_data",
-        },
+        block="dimensions",
+        dfn_type="integer",
+        auto_from="stress_period_data",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = attrs.field(
+    _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
-        metadata={
-            "dfn_block": "period",
-            "schema": "__period_schema__",
-            "fill_forward": True,
-        },
+        block="period",
+        schema="__period_schema__",
+        fill_forward=True,
     )
 
     @attrs.define

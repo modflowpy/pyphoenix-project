@@ -3,34 +3,28 @@ import attrs
 
 from flopy4.mf6._types import ArrayLike
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Ic(Package):
-    export_array_ascii: bool = attrs.field(
+    export_array_ascii: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    export_array_netcdf: bool = attrs.field(
+    export_array_netcdf: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    strt: ArrayLike = attrs.field(
+    strt: ArrayLike = field(
         default=1.0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        dfn_type="double",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]

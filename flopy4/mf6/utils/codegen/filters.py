@@ -530,31 +530,28 @@ def _default_repr(f: Field) -> str:
 
 
 def field_metadata(f: Field, *, has_maxbound: bool = False) -> dict:
-    """Build the metadata dict for an attrs.field() call (new codegen path).
+    """Build the ``field()``/``path()`` spec-call kwargs for a field (new codegen path).
 
-    Replaces the xattree spec call (array(), field(), dim(), path()) with a
-    passive dict read by the codec and conversion methods at call time.
+    Codegen-v2 packages are plain attrs classes (not ``@xattree``-decorated), so
+    these calls carry passive metadata read by the codec and conversion methods
+    at call time rather than real xattree array/dim/coord structure.
     """
-    meta: dict = {"dfn_block": f["block"], "dfn_type": f["type"]}
+    kw: dict = {"block": f["block"], "dfn_type": f["type"]}
     if shape := f.get("shape"):
-        meta["shape"] = _dims_tuple_val(shape)
+        kw["shape"] = _dims_tuple_val(shape)
     if f.get("layered"):
-        meta["layered"] = True
-        meta["chunk_axis"] = "nlay"
+        kw["layered"] = True
     if f.get("netcdf"):
-        meta["netcdf"] = True
+        kw["netcdf"] = True
     if f.get("time_series"):
-        meta["time_series"] = True
-    if is_period_array(f):
-        meta["period_data"] = True
+        kw["time_series"] = True
     if f.get("optional"):
-        meta["optional"] = True
+        kw["optional"] = True
     if f["block"] == "dimensions" and f["name"] == "maxbound" and has_maxbound:
-        meta["auto_from"] = "stress_period_data"
+        kw["auto_from"] = "stress_period_data"
     if is_file_record(f):
-        inout = "filein" if _has_file_child_of(f, "filein") else "fileout"
-        meta["inout"] = inout
-    return meta
+        kw["inout"] = "filein" if _has_file_child_of(f, "filein") else "fileout"
+    return kw
 
 
 def _dq(v) -> str:
@@ -573,13 +570,13 @@ def _dq(v) -> str:
 
 
 def field_call(f: Field, *, has_maxbound: bool = False) -> str:
-    """Return the attrs.field() call string for a field.
+    """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
-    12-space dict keys, 4-space closing paren).
+    4-space closing paren).
     """
-    meta = field_metadata(f, has_maxbound=has_maxbound)
+    kw = field_metadata(f, has_maxbound=has_maxbound)
     # maxbound is auto-computed from stress_period_data at write time; default 0.
     if f["block"] == "dimensions" and f["name"] == "maxbound":
         default = "0"
@@ -593,20 +590,14 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
     type_ignore = ""
     if (is_array(f) and default != "None") or (_str_default and _numeric_field):
         type_ignore = "  # type: ignore[assignment]"
-    meta_lines = ["        metadata={"]
-    for k, v in meta.items():
-        meta_lines.append(f'            "{k}": {_dq(v)},')
-    meta_lines.append("        },")
-    converter_line = ""
+    fn = "path" if is_file_record(f) else "field"
+    lines = [f"{fn}(", f"        default={default},"]
     if is_file_record(f):
-        converter_line = "        converter=_optional_path,\n"
-    return (
-        f"attrs.field(\n"
-        f"        default={default},\n"
-        + converter_line
-        + "\n".join(meta_lines)
-        + f"\n    ){type_ignore}"
-    )
+        lines.append("        converter=_optional_path,")
+    for k, v in kw.items():
+        lines.append(f"        {k}={_dq(v)},")
+    lines.append(f"    ){type_ignore}")
+    return "\n".join(lines)
 
 
 def python_repr(v) -> str:

@@ -6,32 +6,27 @@ import numpy as np
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Hpc(Package):
-    print_table: bool = attrs.field(
+    print_table: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    dev_log_mpi: bool = attrs.field(
+    dev_log_mpi: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    partitions: Optional[np.recarray] = attrs.field(
+    partitions: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "partitions",
-            "schema": "__partitions_schema__",
-        },
+        block="partitions",
+        schema="__partitions_schema__",
     )
 
     class _PartitionsSchema(Schema):

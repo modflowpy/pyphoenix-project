@@ -8,82 +8,65 @@ import numpy as np
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Vsc(Package):
-    viscref: Optional[float] = attrs.field(
+    viscref: Optional[float] = field(
         default=1.0,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    temperature_species_name: Optional[str] = attrs.field(
+    temperature_species_name: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    thermal_formulation: Optional[str] = attrs.field(
+    thermal_formulation: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    thermal_a2: Optional[float] = attrs.field(
+    thermal_a2: Optional[float] = field(
         default=10.0,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    thermal_a3: Optional[float] = attrs.field(
+    thermal_a3: Optional[float] = field(
         default=248.37,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    thermal_a4: Optional[float] = attrs.field(
+    thermal_a4: Optional[float] = field(
         default=133.15,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    viscosity_file: Optional[Path] = attrs.field(
+    viscosity_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    nviscspecies: Optional[int] = attrs.field(
+    nviscspecies: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
+        dfn_type="integer",
     )
-    packagedata: Optional[np.recarray] = attrs.field(
+    packagedata: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "packagedata",
-            "schema": "__packagedata_schema__",
-            "auto_from": "packagedata",
-        },
+        block="packagedata",
+        schema="__packagedata_schema__",
+        auto_from="packagedata",
     )
 
     class _PackagedataSchema(Schema):

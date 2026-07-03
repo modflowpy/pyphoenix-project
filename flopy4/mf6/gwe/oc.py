@@ -7,6 +7,7 @@ import attrs
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -16,75 +17,59 @@ class Oc(Package):
         _keyword: ClassVar[str] = "temperature"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
 
-    budget_file: Optional[Path] = attrs.field(
+    budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    budgetcsv_file: Optional[Path] = attrs.field(
+    budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    temperature_file: Optional[Path] = attrs.field(
+    temperature_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    temperatureprint: Optional[Temperatureprint] = attrs.field(
+    temperatureprint: Optional[Temperatureprint] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    save_temperature: Optional[dict[int, list[str]]] = attrs.field(
+    save_temperature: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "save",
-            "oc_rtype": "temperature",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="save",
+        oc_rtype="temperature",
     )
-    save_budget: Optional[dict[int, list[str]]] = attrs.field(
+    save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "save",
-            "oc_rtype": "budget",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="save",
+        oc_rtype="budget",
     )
-    print_temperature: Optional[dict[int, list[str]]] = attrs.field(
+    print_temperature: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "print",
-            "oc_rtype": "temperature",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="print",
+        oc_rtype="temperature",
     )
-    print_budget: Optional[dict[int, list[str]]] = attrs.field(
+    print_budget: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "print",
-            "oc_rtype": "budget",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="print",
+        oc_rtype="budget",
     )

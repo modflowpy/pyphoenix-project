@@ -9,6 +9,7 @@ from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -23,171 +24,125 @@ class Oc(Package):
         _keyword: ClassVar[str] = "track_timesfile"
         timesfile: str = attrs.field()
 
-    budget_file: Optional[Path] = attrs.field(
+    budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    budgetcsv_file: Optional[Path] = attrs.field(
+    budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    track_file: Optional[Path] = attrs.field(
+    track_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    trackcsv_file: Optional[Path] = attrs.field(
+    trackcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    track_release: bool = attrs.field(
+    track_release: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_exit: bool = attrs.field(
+    track_exit: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_subfeature_exit: bool = attrs.field(
+    track_subfeature_exit: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_timestep: bool = attrs.field(
+    track_timestep: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_terminate: bool = attrs.field(
+    track_terminate: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_weaksink: bool = attrs.field(
+    track_weaksink: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_usertime: bool = attrs.field(
+    track_usertime: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_dropped: bool = attrs.field(
+    track_dropped: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    track_times: Optional[TrackTimes] = attrs.field(
+    track_times: Optional[TrackTimes] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    track_timesfile: Optional[TrackTimesfile] = attrs.field(
+    track_timesfile: Optional[TrackTimesfile] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    dev_dump_event_trace: bool = attrs.field(
+    dev_dump_event_trace: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="keyword",
+        optional=True,
     )
-    scratch_buffer: bool = attrs.field(
-        default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
-    )
-    ntracktimes: Optional[int] = attrs.field(
+    ntracktimes: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="dimensions",
+        dfn_type="integer",
+        optional=True,
     )
-    tracktimes: Optional[np.recarray] = attrs.field(
+    tracktimes: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "tracktimes",
-            "schema": "__tracktimes_schema__",
-            "auto_from": "tracktimes",
-        },
+        block="tracktimes",
+        schema="__tracktimes_schema__",
+        auto_from="tracktimes",
     )
-    save_budget: Optional[dict[int, list[str]]] = attrs.field(
+    save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "save",
-            "oc_rtype": "budget",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="save",
+        oc_rtype="budget",
     )
-    print_budget: Optional[dict[int, list[str]]] = attrs.field(
+    print_budget: Optional[dict[int, list[str]]] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "dfn_type": "string",
-            "oc_action": "print",
-            "oc_rtype": "budget",
-        },
+        block="period",
+        dfn_type="string",
+        oc_action="print",
+        oc_rtype="budget",
     )
 
     class _TracktimesSchema(Schema):

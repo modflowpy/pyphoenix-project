@@ -7,6 +7,7 @@ import attrs
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.record import Record
 from flopy4.mf6.solution import Solution
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -18,70 +19,54 @@ class Pts(Solution):
         _keyword: ClassVar[str] = "no_ptc"
         no_ptc_option: Optional[str] = attrs.field(default=None)
 
-    print_option: Optional[str] = attrs.field(
+    print_option: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    complexity: Optional[str] = attrs.field(
+    complexity: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="string",
+        optional=True,
     )
-    csv_output_file: Optional[Path] = attrs.field(
+    csv_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    csv_outer_output_file: Optional[Path] = attrs.field(
+    csv_outer_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    csv_inner_output_file: Optional[Path] = attrs.field(
+    csv_inner_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        dfn_type="record",
+        optional=True,
+        inout="fileout",
     )
-    no_ptc: Optional[NoPtc] = attrs.field(
+    no_ptc: Optional[NoPtc] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    ats_outer_maximum_fraction: Optional[float] = attrs.field(
+    ats_outer_maximum_fraction: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        dfn_type="double",
+        optional=True,
     )
-    outer_maximum: int = attrs.field(
+    outer_maximum: int = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "integer",
-        },
+        block="nonlinear",
+        dfn_type="integer",
     )

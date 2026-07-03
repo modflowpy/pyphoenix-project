@@ -80,11 +80,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         (like CHD, DRN, etc.) will have it automatically computed at
         initialization and updated when period arrays change.
         """
-        # Codegen v2 packages compute maxbound in Package.__attrs_post_init__
-        # via _init_period_dtype; skip the xattree metadata scan.
-        from flopy4.mf6.converter.egress.unstructure import has_dfn_metadata
+        # Package leaves compute maxbound in Package.__attrs_post_init__ via
+        # _init_period_dtype; skip the xattree metadata scan for them.
+        from flopy4.mf6.package import Package
 
-        if has_dfn_metadata(type(self)):
+        if isinstance(self, Package):
             return
 
         # Check if component has a maxbound field and period block arrays
@@ -233,7 +233,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     _fields = _attrs.fields(type(child))
                 except _attrs.exceptions.NotAnAttrsClassError:
                     continue
-                if not any(f.metadata.get("dfn_block") == "griddata" for f in _fields):
+                if not any(f.metadata.get("block") == "griddata" for f in _fields):
                     continue
                 try:
                     ds = child.to_xarray()

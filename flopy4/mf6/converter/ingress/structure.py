@@ -243,7 +243,7 @@ def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
             continue
         key = str(row[0]).lower()
         f = fields_by_name.get(key)
-        if f is None or f.metadata.get("dfn_block") != "griddata":
+        if f is None or f.metadata.get("block") != "griddata":
             i += 1
             continue
 
@@ -356,15 +356,16 @@ def _parse_readarray_period_block(
     return result
 
 
-def _structure_codegen_v2(raw: dict, cls: type, dims: dict | None = None) -> Any:
-    """Reconstruct a codegen v2 (attrs-based) component from raw MF6 input.
+def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> Any:
+    """Reconstruct a component instance from a raw parsed MF6 input dict.
 
     Parameters
     ----------
     raw : dict
         Output of ``loads()`` — {BLOCK_NAME_UPPER: list_of_token_rows}.
     cls : type
-        A codegen v2 package class (has attrs fields with 'dfn_block' metadata).
+        The component class to instantiate. Fields are read via ``block``/
+        ``schema``/``oc_action`` metadata (see ``flopy4.mf6.spec.field``).
     dims : dict, optional
         Grid dimensions (e.g. {"nlay": 3, "nodes": 675}) used to resolve
         GRIDDATA array shapes.  Required for packages with griddata fields.
@@ -402,7 +403,7 @@ def _structure_codegen_v2(raw: dict, cls: type, dims: dict | None = None) -> Any
     period_field = None  # field for recarray stress_period_data
 
     for f in attrs.fields(cls):
-        block = f.metadata.get("dfn_block", "")
+        block = f.metadata.get("block", "")
         schema_ref = f.metadata.get("schema")
         oc_action = f.metadata.get("oc_action")
 
@@ -519,11 +520,11 @@ def _structure_codegen_v2(raw: dict, cls: type, dims: dict | None = None) -> Any
         else:
             # ── Pass 3b: READARRAY period fields (G/A variants) ─────────────
             # Packages like Rcha/Chdg store full-grid arrays per stress period.
-            # Each field has dfn_block="period" + reader="readarray".
+            # Each field has block="period" + reader="readarray".
             ra_fields = {
                 f.name: f
                 for f in attrs.fields(cls)
-                if f.metadata.get("dfn_block") == "period"
+                if f.metadata.get("block") == "period"
                 and f.metadata.get("reader") == "readarray"
                 and f.init is not False
             }
@@ -553,69 +554,9 @@ def _structure_codegen_v2(raw: dict, cls: type, dims: dict | None = None) -> Any
             gd_fields = {
                 f.name: f
                 for f in attrs.fields(cls)
-                if f.metadata.get("dfn_block") == "griddata" and f.init is not False
+                if f.metadata.get("block") == "griddata" and f.init is not False
             }
             parsed = _parse_griddata_block(griddata_rows, gd_fields, dims)
             kwargs.update(parsed)
 
-    return cls(**kwargs)
-
-
-def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> Any:
-    """Reconstruct a component instance from a raw parsed MF6 input dict.
-
-    Parameters
-    ----------
-    raw : dict
-        Output of ``loads()`` — {block_name_upper: list_of_token_rows}.
-    cls : type
-        The component class to instantiate.
-
-    Returns
-    -------
-    Component instance.
-    """
-    from flopy4.mf6.converter.egress.unstructure import has_dfn_metadata
-
-    if has_dfn_metadata(cls):
-        return _structure_codegen_v2(raw, cls, dims=dims)
-
-    raw_lower = {k.lower(): v for k, v in raw.items()}
-
-    # Build (name → attrs.Attribute) for init-eligibility checks
-    all_attrs = {f.name: f for f in attrs.fields(cls)}
-
-    kwargs: dict[str, Any] = {}
-
-    # Scalar block (options / dimensions) pass.
-    for block_name, rows in raw_lower.items():
-        if not rows or block_name.startswith("period"):
-            continue
-        for row in rows:
-            if not row:
-                continue
-            if len(row) == 1:
-                key = str(row[0]).lower()
-                af = all_attrs.get(key)
-                if af is not None and af.init is not False:
-                    kwargs[key] = True
-            elif len(row) >= 2:
-                key = str(row[0]).lower()
-                af = all_attrs.get(key)
-                if af is not None and af.init is not False:
-                    # Collect all values for list-type options (e.g. auxiliary names)
-                    kwargs[key] = list(row[1:]) if len(row) > 2 else row[1]
-
-    # Derive naux from auxiliary option.
-    naux = 0
-    if "auxiliary" in kwargs:
-        aux_opt = kwargs["auxiliary"]
-        naux = len(aux_opt) if isinstance(aux_opt, list) else 1
-
-    # Pass naux as constructor kwarg when the class declares a naux dim field.
-    if naux > 0 and any(f.name == "naux" for f in attrs.fields(cls)):
-        kwargs["naux"] = naux
-
-    if dims:
-        kwargs["dims"] = dims
     return cls(**kwargs)

@@ -36,7 +36,7 @@ class DisBase(Package):
         ncpl = dims.get("ncpl", 0)
         nlay = dims.get("nlay", 1)
         for f in fields:
-            if f.metadata.get("dfn_block") != "griddata":
+            if f.metadata.get("block") != "griddata":
                 continue
             val = self.__dict__.get(f.name)
             if val is None:

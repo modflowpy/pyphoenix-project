@@ -76,7 +76,7 @@ def get_spec(package_name: str):
 
 
 class _CodegenV2Spec:
-    """XatSpec-compatible adapter for codegen v2 packages (attrs + dfn_block metadata)."""
+    """XatSpec-compatible adapter for codegen v2 packages (attrs + block metadata)."""
 
     _DTYPE_MAP = Package._DTYPE_MAP
 
@@ -86,7 +86,7 @@ class _CodegenV2Spec:
         class _ArrayInfo:
             def __init__(self, f):
                 is_ra_period = (
-                    f.metadata.get("dfn_block") == "period"
+                    f.metadata.get("block") == "period"
                     and f.metadata.get("reader") == "readarray"
                 )
                 # Non-layered READARRAY period fields (e.g. RCHA recharge) have shape
@@ -109,12 +109,12 @@ class _CodegenV2Spec:
                 self.dims = normalized
                 self.metadata = {
                     "longname": f.name,
-                    "block": f.metadata.get("dfn_block", ""),
+                    "block": f.metadata.get("block", ""),
                     "netcdf": True,
                 }
 
         def _include(f) -> bool:
-            block = f.metadata.get("dfn_block", "")
+            block = f.metadata.get("block", "")
             if block == "griddata" and f.metadata.get("netcdf"):
                 return True
             if block == "period" and f.metadata.get("reader") == "readarray":
@@ -245,7 +245,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 _nodes = d.get("nodes", _nlay)
 
             for f in _attrs.fields(type(package)):
-                block = f.metadata.get("dfn_block")
+                block = f.metadata.get("block")
                 if block == "griddata" and f.metadata.get("netcdf"):
                     val = getattr(package, f.name)
                     if val is None:

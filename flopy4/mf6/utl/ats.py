@@ -6,23 +6,20 @@ import numpy as np
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Ats(Package):
-    maxats: Optional[int] = attrs.field(
+    maxats: Optional[int] = field(
         default=1,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
+        dfn_type="integer",
     )
-    perioddata: Optional[np.recarray] = attrs.field(
+    perioddata: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "perioddata",
-            "schema": "__perioddata_schema__",
-        },
+        block="perioddata",
+        schema="__perioddata_schema__",
     )
 
     class _PerioddataSchema(Schema):
