@@ -302,7 +302,7 @@ class Package(Component, ABC):
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
-    def from_dataframe(self, df: "pd.DataFrame") -> None:
+    def from_dataframe(self, df: pd.DataFrame) -> None:
         """Set stress_period_data from a tidy DataFrame.
 
         The DataFrame must have a ``kper`` column and data columns matching
