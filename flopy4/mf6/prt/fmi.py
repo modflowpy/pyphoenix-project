@@ -6,45 +6,34 @@ import attrs
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Fmi(Package):
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    gwfhead: Optional[Path] = attrs.field(
+    gwfhead: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "packagedata",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="packagedata",
+        optional=True,
+        inout="filein",
     )
-    gwfbudget: Optional[Path] = attrs.field(
+    gwfbudget: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "packagedata",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="packagedata",
+        optional=True,
+        inout="filein",
     )
-    gwfspdis: Optional[Path] = attrs.field(
+    gwfspdis: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "packagedata",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="packagedata",
+        optional=True,
+        inout="filein",
     )

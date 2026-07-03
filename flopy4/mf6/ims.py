@@ -7,6 +7,7 @@ import attrs
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.record import Record
 from flopy4.mf6.solution import Solution
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -24,248 +25,157 @@ class Ims(Solution):
         inner_rclose: float = attrs.field(metadata={"tagged": True})
         rclose_option: Optional[str] = attrs.field(default=None)
 
-    print_option: Optional[str] = attrs.field(
+    print_option: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    complexity: Optional[str] = attrs.field(
+    complexity: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    csv_output_file: Optional[Path] = attrs.field(
+    csv_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    csv_outer_output_file: Optional[Path] = attrs.field(
+    csv_outer_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    csv_inner_output_file: Optional[Path] = attrs.field(
+    csv_inner_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    no_ptc: Optional[NoPtc] = attrs.field(
+    no_ptc: Optional[NoPtc] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    ats_outer_maximum_fraction: Optional[float] = attrs.field(
+    ats_outer_maximum_fraction: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    outer_hclose: Optional[float] = attrs.field(
+    outer_hclose: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    outer_dvclose: float = attrs.field(
+    outer_dvclose: float = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-        },
+        block="nonlinear",
     )
-    outer_rclosebnd: Optional[float] = attrs.field(
+    outer_rclosebnd: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    outer_maximum: int = attrs.field(
+    outer_maximum: int = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "integer",
-        },
+        block="nonlinear",
     )
-    under_relaxation: Optional[str] = attrs.field(
+    under_relaxation: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    under_relaxation_gamma: Optional[float] = attrs.field(
+    under_relaxation_gamma: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    under_relaxation_theta: Optional[float] = attrs.field(
+    under_relaxation_theta: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    under_relaxation_kappa: Optional[float] = attrs.field(
+    under_relaxation_kappa: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    under_relaxation_momentum: Optional[float] = attrs.field(
+    under_relaxation_momentum: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    backtracking_number: Optional[int] = attrs.field(
+    backtracking_number: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    backtracking_tolerance: Optional[float] = attrs.field(
+    backtracking_tolerance: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    backtracking_reduction_factor: Optional[float] = attrs.field(
+    backtracking_reduction_factor: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    backtracking_residual_limit: Optional[float] = attrs.field(
+    backtracking_residual_limit: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "nonlinear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="nonlinear",
+        optional=True,
     )
-    inner_maximum: int = attrs.field(
+    inner_maximum: int = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "integer",
-        },
+        block="linear",
     )
-    inner_hclose: Optional[float] = attrs.field(
+    inner_hclose: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )
-    inner_dvclose: float = attrs.field(
+    inner_dvclose: float = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "double",
-        },
+        block="linear",
     )
-    rclose: Optional[Rclose] = attrs.field(
+    rclose: Optional[Rclose] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-        },
+        block="linear",
     )
-    linear_acceleration: str = attrs.field(
+    linear_acceleration: str = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "string",
-        },
+        block="linear",
     )
-    relaxation_factor: Optional[float] = attrs.field(
+    relaxation_factor: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )
-    preconditioner_levels: Optional[int] = attrs.field(
+    preconditioner_levels: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )
-    preconditioner_drop_tolerance: Optional[float] = attrs.field(
+    preconditioner_drop_tolerance: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )
-    number_orthogonalizations: Optional[int] = attrs.field(
+    number_orthogonalizations: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )
-    scaling_method: Optional[str] = attrs.field(
+    scaling_method: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )
-    reordering_method: Optional[str] = attrs.field(
+    reordering_method: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "linear",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="linear",
+        optional=True,
     )

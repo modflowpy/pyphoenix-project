@@ -12,18 +12,8 @@ from flopy4.mf6.binding import Binding
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
-from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict
-
-
-def has_dfn_metadata(cls: type) -> bool:
-    """True if cls is a codegen v2 package (has attrs fields with 'dfn_block' metadata).
-
-    Old xattree-based packages use 'block' as the metadata key; codegen v2 uses 'dfn_block'.
-    This distinguishes Ic/Chd/Npf (codegen v2) from Dis/Gwf/Package (xattree).
-    """
-    if not attrs.has(cls):
-        return False
-    return any("dfn_block" in f.metadata for f in attrs.fields(cls))
+from flopy4.mf6.package import Package
+from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type
 
 
 def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
@@ -159,8 +149,8 @@ def _normalize_kper(kper: Any) -> int | None:
         return None
 
 
-def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
-    """Unstructure a codegen v2 (attrs-based, non-xattree) Package."""
+def _unstructure_package(value: Package) -> dict[str, Any]:
+    """Unstructure a package (attrs-based, non-xattree)."""
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
     # Block names that must appear in output even when empty (e.g. SSM SOURCES).
@@ -176,9 +166,9 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
     except ImportError:
         _DaskArray = type(None)  # type: ignore[misc,assignment]
 
-    for f in attrs.fields(cls):
+    for f in attrs.fields(cls):  # type: ignore[arg-type]
         meta = f.metadata
-        block_name = meta.get("dfn_block")
+        block_name = meta.get("block")
         if not block_name:
             continue
 
@@ -192,7 +182,7 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
         if field_value is None:
             continue
 
-        dfn_type = meta.get("dfn_type", "")
+        dfn_type = to_field_type(f.type)
 
         # ── PERIOD block ────────────────────────────────────────────────────────
         if block_name == "period":
@@ -264,7 +254,7 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
             if field_value:
                 blocks[block_name][f.name] = field_value
 
-        elif dfn_type == "record" and isinstance(field_value, Path):
+        elif meta.get("inout") and isinstance(field_value, Path):
             t = _path_to_tuple(f.name, field_value, meta.get("inout", "fileout"))
             blocks[block_name][t[0].lower()] = t
 
@@ -388,17 +378,14 @@ def _unstructure_codegen_v2(value: Any) -> dict[str, Any]:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    if has_dfn_metadata(type(value)):
-        return _unstructure_codegen_v2(value)
+    # temporary; TODO unify once xattree is fully gone
+    if isinstance(value, Package):
+        return _unstructure_package(value)
     return _unstructure_component(value)
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
-    """Unstructure a model-level xattree component (Gwf, Simulation, etc.).
-
-    Model-level classes only have options blocks (bools, paths, inner records,
-    strings) and child bindings. They have no griddata, period, or list blocks.
-    """
+    """Unstructure a xattree component (Gwf, Simulation, etc.)."""
     blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
     xatspec = xattree.get_xatspec(type(value))

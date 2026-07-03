@@ -9,6 +9,7 @@ from xattree import xattree
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.schema import Schema
+from flopy4.mf6.spec import to_field_type
 
 
 @xattree
@@ -37,12 +38,14 @@ class Package(Component, ABC):
         """
         import attrs as _attrs
 
-        # Detect codegen v2 by presence of 'dfn_block' in any field metadata.
+        # Detect schema-driven (codegen v2 style) fields by presence of 'block'
+        # in field metadata. Package subclasses with no such fields (rare) just
+        # no-op through the rest of this method.
         try:
             fields = _attrs.fields(type(self))  # type: ignore[arg-type]
         except _attrs.exceptions.NotAnAttrsClassError:
             return
-        if not any(f.metadata.get("dfn_block") is not None for f in fields):
+        if not any(f.metadata.get("block") is not None for f in fields):
             return
 
         # 1. Fix xattree name registration.
@@ -160,7 +163,7 @@ class Package(Component, ABC):
         ) or ("ncpl" in dims and "nrow" not in dims)
 
         for f in fields:
-            if f.metadata.get("dfn_block") != "griddata":
+            if f.metadata.get("block") != "griddata":
                 continue
             shape_meta = f.metadata.get("shape")
             if not shape_meta:
@@ -168,7 +171,7 @@ class Package(Component, ABC):
             val = self.__dict__.get(f.name)
             if val is None:
                 continue
-            _gd_dtype = self._DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+            _gd_dtype = self._DTYPE_MAP.get(to_field_type(f.type), np.float64)
             try:
                 resolved = []
                 for d in shape_meta:
@@ -213,7 +216,6 @@ class Package(Component, ABC):
         cls,
         path: Path,
         dims: "dict[str, int] | None" = None,
-        chunks: "int | str | None" = None,
     ):
         """Load from an MF6 text input file.
 
@@ -226,10 +228,6 @@ class Package(Component, ABC):
             e.g. ``{"nlay": 3, "nodes": 900}``.  Required for griddata
             packages (NPF, IC, STO, etc.); may be omitted for list-input
             packages (WEL, DRN, etc.).
-        chunks :
-            None   → eager numpy arrays.
-            "auto" → one dask chunk per layer (griddata packages only).
-            int    → approximate chunk size in elements.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
@@ -242,44 +240,6 @@ class Package(Component, ABC):
         # on standalone packages (not attached to a parent model).
         if dims:
             _pkg._dimension_cache.update(dims)
-
-        if chunks is not None:
-            try:
-                import dask.array as _da
-            except ImportError:
-                raise ImportError(
-                    "dask is required for chunked loading; install with 'pip install dask[array]'"
-                ) from None
-            import attrs as _attrs
-
-            _nlay = (dims or {}).get("nlay", 1)
-            _nodes = (dims or {}).get("nodes", _nlay)
-            _ncpl = _nodes // _nlay if _nlay > 1 else _nodes
-            _chunk_shape = (1, _ncpl) if chunks == "auto" else (max(1, int(chunks) // _ncpl), _ncpl)
-            for _fld in _attrs.fields(cls):  # type: ignore[arg-type]
-                if _fld.metadata.get("dfn_block") != "griddata":
-                    continue
-                _arr = getattr(_pkg, _fld.name)
-                if _arr is None or not isinstance(_arr, np.ndarray):
-                    continue
-                setattr(
-                    _pkg,
-                    _fld.name,
-                    _da.from_array(_arr.reshape(_nlay, _ncpl), chunks=_chunk_shape).reshape(-1),
-                )
-
-            # READARRAY period fields (G/A variants: Rcha, Chdg, etc.)
-            # Shape is (nper, ncpl) for non-layered or (nper, nlay, ncpl) for layered.
-            # Chunk 1 period at a time along the first axis.
-            for _fld in _attrs.fields(cls):  # type: ignore[arg-type]
-                if _fld.metadata.get("dfn_block") != "period":
-                    continue
-                if _fld.metadata.get("reader") != "readarray":
-                    continue
-                _arr = getattr(_pkg, _fld.name)
-                if _arr is None or not isinstance(_arr, np.ndarray):
-                    continue
-                setattr(_pkg, _fld.name, _da.from_array(_arr, chunks=(1,) + _arr.shape[1:]))
 
         return _pkg
 
@@ -296,7 +256,7 @@ class Package(Component, ABC):
         blocks : bool
             If True, return nested dict keyed by DFN block name.
         strict : bool
-            If True, only include fields with ``dfn_block`` metadata.
+            If True, only include fields with ``block`` metadata.
         """
         import attrs as _attrs
 
@@ -306,7 +266,7 @@ class Package(Component, ABC):
             return super().to_dict(blocks=blocks, strict=strict)
 
         # Check if this is a codegen v2 class
-        if not any(f.metadata.get("dfn_block") for f in all_fields):
+        if not any(f.metadata.get("block") for f in all_fields):
             return super().to_dict(blocks=blocks, strict=strict)
 
         _exclude = {"name", "parent", "dims", "filename", "workspace", "strict"}
@@ -314,7 +274,7 @@ class Package(Component, ABC):
         for f in all_fields:
             if f.name in _exclude or f.init is False:
                 continue
-            block = f.metadata.get("dfn_block")
+            block = f.metadata.get("block")
             if not block:
                 continue
             key = f.alias if (f.alias and f.name.startswith("_")) else f.name
@@ -449,7 +409,7 @@ class Package(Component, ABC):
             data_vars = {
                 a.name: self.to_dataarray(a.name)
                 for a in fields
-                if a.metadata.get("dfn_block") == _block and getattr(self, a.name) is not None
+                if a.metadata.get("block") == _block and getattr(self, a.name) is not None
             }
             if data_vars:
                 return xr.Dataset(data_vars)

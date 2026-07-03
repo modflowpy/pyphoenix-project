@@ -20,7 +20,8 @@ from flopy4.mf6.gwt.oc import Oc
 from flopy4.mf6.gwt.src import Src
 from flopy4.mf6.gwt.ssm import Ssm
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import xattree_field as field
+from flopy4.mf6.spec import xattree_path as path
 from flopy4.utils import to_path
 
 

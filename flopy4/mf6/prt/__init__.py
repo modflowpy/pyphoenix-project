@@ -12,7 +12,7 @@ from flopy4.mf6.prt.fmi import Fmi
 from flopy4.mf6.prt.mip import Mip
 from flopy4.mf6.prt.oc import Oc
 from flopy4.mf6.prt.prp import Prp
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import xattree_field as field
 
 
 def convert_grid(value):

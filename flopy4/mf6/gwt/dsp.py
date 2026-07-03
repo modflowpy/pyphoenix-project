@@ -3,113 +3,78 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Dsp(Package):
-    xt3d_off: bool = attrs.field(
+    xt3d_off: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    xt3d_rhs: bool = attrs.field(
+    xt3d_rhs: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    export_array_ascii: bool = attrs.field(
+    export_array_ascii: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    export_array_netcdf: bool = attrs.field(
+    export_array_netcdf: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    diffc: Optional[ArrayLike] = attrs.field(
+    diffc: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    alh: Optional[ArrayLike] = attrs.field(
+    alh: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    alv: Optional[ArrayLike] = attrs.field(
+    alv: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    ath1: Optional[ArrayLike] = attrs.field(
+    ath1: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    ath2: Optional[ArrayLike] = attrs.field(
+    ath2: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    atv: Optional[ArrayLike] = attrs.field(
+    atv: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )

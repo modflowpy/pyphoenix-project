@@ -4,23 +4,18 @@ from typing import Optional
 import attrs
 
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Adv(Package):
-    scheme: Optional[str] = attrs.field(
+    scheme: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    ats_percel: Optional[float] = attrs.field(
+    ats_percel: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )

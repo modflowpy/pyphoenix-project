@@ -37,7 +37,8 @@ from flopy4.mf6.gwf.vsc import Vsc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.gwf.welg import Welg
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import xattree_field as field
+from flopy4.mf6.spec import xattree_path as path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 

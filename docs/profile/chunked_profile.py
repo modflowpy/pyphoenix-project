@@ -6,8 +6,6 @@ Lark text parser) and measures the write path. This isolates the dask
 streaming benefit: the codec writer's array2chunks iterates dask blocks one
 layer at a time, never materializing the full array simultaneously.
 
-Also profiles text-format load to confirm dask wrapping adds zero overhead.
-
 Variants
 --------
 **Write (user-constructed arrays):**
@@ -16,7 +14,6 @@ Variants
 
 **Load from text file:**
   npf  load (eager)          Package.load(path, dims)
-  npf  load (chunked)        Package.load(path, dims, chunks="auto")
 
 **xarray views:**
   npf  to_xarray (numpy)     npf.to_xarray() on numpy-backed package
@@ -127,9 +124,9 @@ def main():
         )
     )
 
-    # ── Load from text (confirms zero dask overhead) ──────────────────────────
+    # ── Load from text ──────────────────────────────────────────────────────
     print(f"\n{'─' * 60}")
-    print("Load from text file (Lark parser dominates — confirms zero dask overhead)")
+    print("Load from text file")
     print(f"{'─' * 60}")
 
     # Write a text file to load from
@@ -144,18 +141,6 @@ def main():
         report(
             "npf  load (eager)",
             time_reads(lambda: Npf.load(npf_path, dims=dims), N, "load eager", include_slow),
-        )
-    )
-
-    timing_results.append(
-        report(
-            "npf  load (chunked)",
-            time_reads(
-                lambda: Npf.load(npf_path, dims=dims, chunks="auto"),
-                N,
-                "load chunked",
-                include_slow,
-            ),
         )
     )
 
@@ -181,11 +166,6 @@ def main():
         )
         mem_results.append(
             profile_memory(lambda: Npf.load(npf_path, dims=dims), "npf  load (eager)")
-        )
-        mem_results.append(
-            profile_memory(
-                lambda: Npf.load(npf_path, dims=dims, chunks="auto"), "npf  load (chunked)"
-            )
         )
         sections.append({"name": "chunked-profile-memory", "results": mem_results})
 

@@ -4,122 +4,84 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Rcha(Package):
     multi_package: ClassVar[bool] = True
 
-    readasarrays: bool = attrs.field(
+    readasarrays: bool = field(
         default=True,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-        },
+        block="options",
     )
-    fixed_cell: bool = attrs.field(
+    fixed_cell: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    auxiliary: Optional[list[str]] = attrs.field(
+    auxiliary: Optional[list[str]] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "shape": (),
-            "optional": True,
-        },
+        block="options",
+        shape=(),
+        optional=True,
     )
-    auxmultname: Optional[str] = attrs.field(
+    auxmultname: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    print_input: bool = attrs.field(
+    print_input: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    print_flows: bool = attrs.field(
+    print_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    tas_file: Optional[Path] = attrs.field(
+    tas_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        optional=True,
+        inout="filein",
     )
-    obs_file: Optional[Path] = attrs.field(
+    obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        optional=True,
+        inout="filein",
     )
-    export_array_netcdf: bool = attrs.field(
+    export_array_netcdf: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    irch: Optional[ArrayLike] = attrs.field(
+    irch: Optional[IntArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "reader": "readarray",
-            "dfn_type": "integer",
-            "layered": False,
-        },
+        block="period",
+        reader="readarray",
+        layered=False,
     )
-    recharge: Optional[ArrayLike] = attrs.field(
+    recharge: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "reader": "readarray",
-            "dfn_type": "double",
-            "layered": False,
-        },
+        block="period",
+        reader="readarray",
+        layered=False,
     )
-    aux: Optional[ArrayLike] = attrs.field(
+    aux: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "period",
-            "reader": "readarray",
-            "dfn_type": "double",
-            "layered": False,
-        },
+        block="period",
+        reader="readarray",
+        layered=False,
     )

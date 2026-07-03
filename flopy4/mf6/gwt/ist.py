@@ -4,9 +4,10 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -18,190 +19,126 @@ class Ist(Package):
         _keyword: ClassVar[str] = "cim"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
 
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    budget_file: Optional[Path] = attrs.field(
+    budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    budgetcsv_file: Optional[Path] = attrs.field(
+    budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    sorption: Optional[str] = attrs.field(
+    sorption: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    first_order_decay: bool = attrs.field(
+    first_order_decay: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    zero_order_decay: bool = attrs.field(
+    zero_order_decay: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    cim_file: Optional[Path] = attrs.field(
+    cim_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    cimprint: Optional[Cimprint] = attrs.field(
+    cimprint: Optional[Cimprint] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    sorbate_file: Optional[Path] = attrs.field(
+    sorbate_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    export_array_ascii: bool = attrs.field(
+    export_array_ascii: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    export_array_netcdf: bool = attrs.field(
+    export_array_netcdf: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    porosity: ArrayLike = attrs.field(
+    porosity: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )
-    volfrac: ArrayLike = attrs.field(
+    volfrac: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )
-    zetaim: ArrayLike = attrs.field(
+    zetaim: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )
-    decay: Optional[ArrayLike] = attrs.field(
+    decay: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    decay_sorbed: Optional[ArrayLike] = attrs.field(
+    decay_sorbed: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    bulk_density: Optional[ArrayLike] = attrs.field(
+    bulk_density: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    distcoef: Optional[ArrayLike] = attrs.field(
+    distcoef: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )
-    sp2: Optional[ArrayLike] = attrs.field(
+    sp2: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        optional=True,
     )

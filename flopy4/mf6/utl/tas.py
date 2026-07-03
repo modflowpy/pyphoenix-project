@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -28,29 +29,20 @@ class Tas(Package):
         _keyword: ClassVar[str] = "sfac"
         sfacval: float = attrs.field()
 
-    time_series_name: Optional[TimeSeriesName] = attrs.field(
+    time_series_name: Optional[TimeSeriesName] = field(
         default=None,
-        metadata={
-            "dfn_block": "attributes",
-        },
+        block="attributes",
     )
-    interpolation_method: Optional[InterpolationMethod] = attrs.field(
+    interpolation_method: Optional[InterpolationMethod] = field(
         default=None,
-        metadata={
-            "dfn_block": "attributes",
-        },
+        block="attributes",
     )
-    sfac: Optional[Sfac] = attrs.field(
+    sfac: Optional[Sfac] = field(
         default=None,
-        metadata={
-            "dfn_block": "attributes",
-        },
+        block="attributes",
     )
-    tas_array: NDArray[np.float64] = attrs.field(
+    tas_array: NDArray[np.float64] = field(
         default=None,
-        metadata={
-            "dfn_block": "time",
-            "dfn_type": "double",
-            "shape": ("unknown",),
-        },
+        block="time",
+        shape=("unknown",),
     )

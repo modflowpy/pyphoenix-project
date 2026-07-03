@@ -8,7 +8,7 @@ from flopy4.mf6.context import Context, update_child_attr
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import xattree_field as field
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.time import Time
 

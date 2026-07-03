@@ -5,101 +5,57 @@ import numpy as np
 from numpy.typing import NDArray
 
 from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.spec import field
 from flopy4.mf6.utils.grid import StructuredGrid
 
 
 @attrs.define(kw_only=True, slots=False)
 class Dis(DisBase):
-    length_units: Optional[str] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
+    length_units: Optional[str] = field(default=None, block="options", optional=True)
+    nogrb: bool = field(default=False, block="options", optional=True)
+    xorigin: float = field(default=0.0, block="options", optional=True)
+    yorigin: float = field(default=0.0, block="options", optional=True)
+    angrot: Optional[float] = field(default=None, block="options", optional=True)
+    export_array_netcdf: bool = field(default=False, block="options", optional=True)
+    crs: Optional[str] = field(default=None, block="options", optional=True)
+    nlay: int = field(default=1, block="dimensions")
+    ncol: int = field(default=2, block="dimensions")
+    nrow: int = field(default=2, block="dimensions")
+    delr: NDArray[np.float64] = field(
+        default=1.0,
+        block="griddata",
+        shape=("ncol",),
+        layered=False,
+        netcdf=False,
     )
-    nogrb: bool = attrs.field(
-        default=False,
-        metadata={"dfn_block": "options", "dfn_type": "keyword", "optional": True},
+    delc: NDArray[np.float64] = field(
+        default=1.0,
+        block="griddata",
+        shape=("nrow",),
+        layered=False,
+        netcdf=False,
     )
-    xorigin: float = attrs.field(
+    top: NDArray[np.float64] = field(
+        default=1.0,
+        block="griddata",
+        shape=("ncpl",),
+        layered=False,
+        netcdf=False,
+    )
+    botm: NDArray[np.float64] = field(
         default=0.0,
-        metadata={"dfn_block": "options", "dfn_type": "double", "optional": True},
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=False,
     )
-    yorigin: float = attrs.field(
-        default=0.0,
-        metadata={"dfn_block": "options", "dfn_type": "double", "optional": True},
-    )
-    angrot: Optional[float] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "double", "optional": True},
-    )
-    export_array_netcdf: bool = attrs.field(
-        default=False,
-        metadata={"dfn_block": "options", "dfn_type": "keyword", "optional": True},
-    )
-    crs: Optional[str] = attrs.field(
-        default=None,
-        metadata={"dfn_block": "options", "dfn_type": "string", "optional": True},
-    )
-    nlay: int = attrs.field(
+    idomain: Optional[NDArray[np.int64]] = field(
         default=1,
-        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=False,
     )
-    ncol: int = attrs.field(
-        default=2,
-        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
-    )
-    nrow: int = attrs.field(
-        default=2,
-        metadata={"dfn_block": "dimensions", "dfn_type": "integer"},
-    )
-    delr: NDArray[np.float64] = attrs.field(
-        default=1.0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("ncol",),
-            "layered": False,
-            "netcdf": False,
-        },
-    )  # type: ignore[assignment]
-    delc: NDArray[np.float64] = attrs.field(
-        default=1.0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nrow",),
-            "layered": False,
-            "netcdf": False,
-        },
-    )  # type: ignore[assignment]
-    top: NDArray[np.float64] = attrs.field(
-        default=1.0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("ncpl",),
-            "layered": False,
-            "netcdf": False,
-        },
-    )  # type: ignore[assignment]
-    botm: NDArray[np.float64] = attrs.field(
-        default=0.0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "netcdf": False,
-        },
-    )  # type: ignore[assignment]
-    idomain: Optional[NDArray[np.int64]] = attrs.field(
-        default=1,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "integer",
-            "shape": ("nodes",),
-            "layered": True,
-            "netcdf": False,
-        },
-    )  # type: ignore[assignment]
 
     def __attrs_post_init__(self):
         self.nodes = self.ncol * self.nrow * self.nlay

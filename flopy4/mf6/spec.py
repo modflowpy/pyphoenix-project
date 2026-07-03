@@ -9,10 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, Union, get_args, get_origin
 
+import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema import Field, FieldType
 
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.spec import array as flopy_array
 from flopy4.spec import coord as flopy_coord
 from flopy4.spec import dim as flopy_dim
@@ -29,10 +31,97 @@ def field(
     init=True,
     metadata=None,
     on_setattr=None,
+    alias: str | None = None,
+    block: str | None = None,
+    longname: str | None = None,
+    shape: tuple[str, ...] | None = None,
+    layered: bool | None = None,
+    optional: bool = False,
+    netcdf: bool | None = None,
+    schema: str | None = None,
+    always_emit: bool = False,
+    auto_from: str | None = None,
+    fill_forward: bool = False,
+    reader: str | None = None,
+    oc_action: str | None = None,
+    oc_rtype: str | None = None,
+    time_series: bool = False,
+):
+    """Define a codegen-v2 field: always a plain ``attrs.field()``.
+
+    Codegen-v2 packages (``Package`` subclasses, hand-written or generated)
+    are plain attrs classes, not ``@xattree``-decorated. Use
+    ``xattree_field()`` instead for fields on real ``@xattree`` component
+    classes (``Model``, ``Simulation``, ``Gwf``, ...) — routing one of
+    *those* through plain ``attrs.field()``, or a codegen-v2 field through
+    ``xattree_field()``, would be wrong either way: ``_get_xatspec()``
+    recomputes from ``attrs.fields(cls)`` for whatever class is asked about,
+    so a stray xattree marker on a non-decorated class's field would be
+    treated as real xattree state and moved in/out of a DataTree that
+    doesn't otherwise track it, corrupting ``Package``'s plain
+    ``__dict__``-based field storage.
+    """
+    metadata = metadata or {}
+    if block:
+        metadata["block"] = block
+    if longname:
+        metadata["longname"] = longname
+    if shape:
+        metadata["shape"] = shape
+    if layered is not None:
+        # Explicit False must round-trip: some consumers (netcdf.py) default
+        # a *missing* key to True, so omitting a deliberate False would flip it.
+        metadata["layered"] = layered
+    if optional:
+        metadata["optional"] = True
+    if netcdf:
+        metadata["netcdf"] = True
+    if schema:
+        metadata["schema"] = schema
+    if always_emit:
+        metadata["always_emit"] = True
+    if auto_from:
+        metadata["auto_from"] = auto_from
+    if fill_forward:
+        metadata["fill_forward"] = True
+    if reader:
+        metadata["reader"] = reader
+    if oc_action:
+        metadata["oc_action"] = oc_action
+    if oc_rtype:
+        metadata["oc_rtype"] = oc_rtype
+    if time_series:
+        metadata["time_series"] = True
+    return attrs.field(
+        default=default,
+        validator=validator,
+        converter=converter,
+        repr=repr,
+        eq=eq,
+        init=init,
+        on_setattr=on_setattr,
+        metadata=metadata,
+        alias=alias,
+    )
+
+
+def xattree_field(
+    default=NOTHING,
+    validator=None,
+    converter=None,
+    repr=True,
+    eq=True,
+    init=True,
+    metadata=None,
+    on_setattr=None,
     block: str | None = None,
     longname: str | None = None,
 ):
-    """Define a field."""
+    """Define a field on a real ``@xattree``-decorated component class.
+
+    See ``field()`` for why this is a separate function rather than a shared
+    one that infers which case applies.
+    """
     if block or longname:
         metadata = metadata or {}
         if block:
@@ -66,8 +155,52 @@ def path(
     block: str | None = None,
     inout: FileInOut | None = None,
     longname: str | None = None,
+    optional: bool = False,
 ):
-    """Define a path field."""
+    """Define a codegen-v2 path field: always a plain ``attrs.field()``.
+
+    See ``field()`` — use ``xattree_path()`` instead for fields on real
+    ``@xattree`` component classes.
+    """
+    metadata = metadata or {}
+    if block:
+        metadata["block"] = block
+    if inout:
+        metadata["inout"] = inout
+    if longname:
+        metadata["longname"] = longname
+    if optional:
+        metadata["optional"] = True
+    return attrs.field(
+        default=default,
+        validator=validator,
+        converter=converter,
+        repr=repr,
+        eq=eq,
+        init=init,
+        on_setattr=on_setattr,
+        metadata=metadata,
+    )
+
+
+def xattree_path(
+    default=NOTHING,
+    validator=None,
+    converter=None,
+    repr=True,
+    eq=True,
+    init=True,
+    metadata=None,
+    on_setattr=None,
+    block: str | None = None,
+    inout: FileInOut | None = None,
+    longname: str | None = None,
+):
+    """Define a path field on a real ``@xattree``-decorated component class.
+
+    See ``field()`` for why this is a separate function rather than a shared
+    one that infers which case applies.
+    """
     if block or inout or longname:
         metadata = metadata or {}
         if block:
@@ -286,7 +419,38 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
+def _ndarray_field_type(t) -> FieldType | None:
+    """Map a bare ``NDArray[dtype]`` annotation to its DFN field type, if possible.
+
+    Hand-written DIS/DISV griddata fields (``delr``, ``top``, ``idomain``, ...)
+    are typed with plain ``NDArray[np.int64]``/``NDArray[np.float64]`` rather
+    than ``IntArrayLike``/``FloatArrayLike`` (those exist for fields that may
+    also be dask-backed; DIS/DISV griddata never is). Returns ``None`` for
+    anything that isn't a parameterized ``numpy.ndarray`` annotation.
+    """
+    if get_origin(t) is not np.ndarray:
+        return None
+    args = get_args(t)
+    if len(args) < 2:
+        return None
+    dtype_args = get_args(args[1])
+    if not dtype_args or not isinstance(dtype_args[0], type):
+        return None
+    scalar = dtype_args[0]
+    if issubclass(scalar, np.bool_):
+        return "keyword"
+    if issubclass(scalar, np.integer):
+        return "integer"
+    if issubclass(scalar, np.floating):
+        return "double"
+    if issubclass(scalar, (np.str_, np.object_)):
+        return "string"
+    return None
+
+
 def to_field_type(t: type) -> FieldType:
+    if (result := _ndarray_field_type(t)) is not None:
+        return result
     match t:
         case builtins.str | np.str_:
             return "string"
@@ -298,9 +462,15 @@ def to_field_type(t: type) -> FieldType:
             return "double"  # type: ignore
         case t if t is Path or t is datetime:
             return "string"
+        case t if t is IntArrayLike:
+            return "integer"
+        case t if t is FloatArrayLike:
+            return "double"
         case t if get_origin(t) in (Union, types.UnionType):
             args = get_args(t)
             if args[-1] is types.NoneType:
+                if (result := _ndarray_field_type(args[0])) is not None:
+                    return result
                 match args[0]:
                     case builtins.str | np.str_:
                         return "string"
@@ -312,6 +482,10 @@ def to_field_type(t: type) -> FieldType:
                         return "double"
                     case tt if tt is Path or tt is datetime:
                         return "string"
+                    case tt if tt is IntArrayLike:
+                        return "integer"
+                    case tt if tt is FloatArrayLike:
+                        return "double"
                     case _:
                         return "record"
             return "list"

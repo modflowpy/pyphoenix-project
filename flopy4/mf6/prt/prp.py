@@ -9,6 +9,7 @@ from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -25,212 +26,139 @@ class Prp(Package):
         _keyword: ClassVar[str] = "release_timesfile"
         timesfile: str = attrs.field()
 
-    boundnames: bool = attrs.field(
+    boundnames: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    print_input: bool = attrs.field(
+    print_input: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    dev_exit_solve_method: Optional[int] = attrs.field(
+    dev_exit_solve_method: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    exit_solve_tolerance: Optional[float] = attrs.field(
+    exit_solve_tolerance: Optional[float] = field(
         default=1e-05,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    local_z: bool = attrs.field(
+    local_z: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    extend_tracking: bool = attrs.field(
+    extend_tracking: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    track_file: Optional[Path] = attrs.field(
+    track_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    trackcsv_file: Optional[Path] = attrs.field(
+    trackcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "fileout",
-        },
+        block="options",
+        optional=True,
+        inout="fileout",
     )
-    stoptime: Optional[float] = attrs.field(
+    stoptime: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    stoptraveltime: Optional[float] = attrs.field(
+    stoptraveltime: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    stop_at_weak_sink: bool = attrs.field(
+    stop_at_weak_sink: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    istopzone: Optional[int] = attrs.field(
+    istopzone: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    drape: bool = attrs.field(
+    drape: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    release_times: Optional[ReleaseTimes] = attrs.field(
+    release_times: Optional[ReleaseTimes] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    release_timesfile: Optional[ReleaseTimesfile] = attrs.field(
+    release_timesfile: Optional[ReleaseTimesfile] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-        },
+        block="options",
     )
-    dry_tracking_method: Optional[str] = attrs.field(
+    dry_tracking_method: Optional[str] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    dev_forceternary: bool = attrs.field(
+    dev_forceternary: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-        },
+        block="options",
     )
-    release_time_tolerance: Optional[float] = attrs.field(
+    release_time_tolerance: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    release_time_frequency: Optional[float] = attrs.field(
+    release_time_frequency: Optional[float] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    coordinate_check_method: Optional[str] = attrs.field(
+    coordinate_check_method: Optional[str] = field(
         default="eager",
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "string",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    dev_cycle_detection_window: Optional[int] = attrs.field(
+    dev_cycle_detection_window: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "integer",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    nreleasepts: Optional[int] = attrs.field(
+    nreleasepts: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
     )
-    nreleasetimes: Optional[int] = attrs.field(
+    nreleasetimes: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
     )
-    packagedata: Optional[np.recarray] = attrs.field(
+    packagedata: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "packagedata",
-            "schema": "__packagedata_schema__",
-            "auto_from": "packagedata",
-        },
+        block="packagedata",
+        schema="__packagedata_schema__",
+        auto_from="packagedata",
     )
-    releasetimes: Optional[np.recarray] = attrs.field(
+    releasetimes: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "releasetimes",
-            "schema": "__releasetimes_schema__",
-            "auto_from": "releasetimes",
-        },
+        block="releasetimes",
+        schema="__releasetimes_schema__",
+        auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = attrs.field(
+    _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
-        metadata={
-            "dfn_block": "period",
-            "schema": "__period_schema__",
-            "fill_forward": True,
-        },
+        block="period",
+        schema="__period_schema__",
+        fill_forward=True,
     )
 
     class _PackagedataSchema(Schema):

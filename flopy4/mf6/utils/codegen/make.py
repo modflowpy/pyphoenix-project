@@ -313,18 +313,23 @@ def _ml_field(
     default: str = "None",
     metadata: dict | None = None,
     *,
+    fn: str = "field",
     alias: str | None = None,
     converter: str | None = None,
     repr_: bool = True,
     type_ignore: str | None = None,
 ) -> str:
-    """Multi-line attrs.field() string for class-body spec_calls (4-space indent).
+    """Multi-line field()/path() spec-call string for class-body spec_calls.
 
-    Produces continuation lines pre-indented at 8 spaces (args), 12 spaces
-    (dict keys), and 4 spaces (closing paren) so the Jinja template can render
-    it verbatim after ``    {name}: {type} = ``.
+    Produces continuation lines pre-indented at 8 spaces (args) and 4 spaces
+    (closing paren) so the Jinja template can render it verbatim after
+    ``    {name}: {type} = ``. ``metadata`` here is the set of ``field()``/
+    ``path()`` kwargs (block, schema, oc_action, ...), not a raw attrs
+    metadata dict — codegen-v2 fields are plain attrs fields, so they go
+    through the same passive-metadata constructors hand-written xattree
+    classes use for their scalar fields.
     """
-    lines = ["attrs.field("]
+    lines = [f"{fn}("]
     if alias is not None:
         lines.append(f'        alias="{alias}",')
     lines.append(f"        default={default},")
@@ -333,10 +338,8 @@ def _ml_field(
     if not repr_:
         lines.append("        repr=False,")
     if metadata is not None:
-        lines.append("        metadata={")
         for k, v in metadata.items():
-            lines.append(f'            "{k}": {_dq(v)},')
-        lines.append("        },")
+            lines.append(f"        {k}={_dq(v)},")
     suffix = f"  {type_ignore}" if type_ignore else ""
     lines.append(f"    ){suffix}")
     return "\n".join(lines)
@@ -351,8 +354,7 @@ def _expand_oc_record_field(f: Field, dfn_name: str) -> list[FieldSpec]:
         py_name = f"{action}_{rtype}"
         spec_call = _ml_field(
             metadata={
-                "dfn_block": "period",
-                "dfn_type": "string",
+                "block": "period",
                 "oc_action": action,
                 "oc_rtype": rtype,
             }
@@ -570,19 +572,22 @@ def _new_codegen_imports(
     has_inner_classes: bool = False,
     has_period_schema: bool = False,
     has_path: bool = False,
-    has_griddata: bool = False,
     has_readarray_period: bool = False,
+    needs_int_arraylike: bool = False,
+    needs_float_arraylike: bool = False,
     has_injected_paths: bool = False,
+    has_field_call: bool = False,
+    has_path_call: bool = False,
     period_schema: list[dict] | None = None,
     block_schemas: dict[str, list[dict]] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for new-codegen packages (no xattree, no spec calls)."""
     has_array = any(
         (filters.is_array(f) or filters.is_keyword_array(f))
-        and f.get("block") != "griddata"  # griddata fields → ArrayLike, not NDArray[np.xxx]
+        and f.get("block")
+        != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
         for f in generatable_fields
     )
-    has_arraylike = has_griddata or has_readarray_period
     has_file_records = any(filters.is_file_record(f) for f in generatable_fields)
     has_optional = (
         any(
@@ -635,9 +640,18 @@ def _new_codegen_imports(
         flopy4.append("from flopy4.mf6.record import Record")
     if has_period_schema:
         flopy4.append("from flopy4.mf6.schema import Column, Schema")
+    _spec_parts: list[str] = []
+    if has_field_call:
+        _spec_parts.append("field")
+    if has_path_call:
+        _spec_parts.append("path")
+    if _spec_parts:
+        flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
     _types_parts: list[str] = []
-    if has_arraylike:
-        _types_parts.append("ArrayLike")
+    if needs_int_arraylike:
+        _types_parts.append("IntArrayLike")
+    if needs_float_arraylike:
+        _types_parts.append("FloatArrayLike")
     if has_file_records or has_injected_paths:
         _types_parts.append("_optional_path")
     if _types_parts:
@@ -725,7 +739,7 @@ def build_component_spec(
 
         # New codegen: collect period array fields.
         # G-variant packages (CHDG, DRNG, WELG, RCHA …) use reader=readarray →
-        # individual Optional[ArrayLike] fields.
+        # individual Optional[Int|FloatArrayLike] fields.
         # Standard stress packages (DRN, WEL, CHD …) use list-based recarray.
         if "period" in f["block"] and filters.is_period_array(f):
             if f.get("reader") == "readarray":
@@ -746,7 +760,7 @@ def build_component_spec(
             schema = _build_schema_from_list_field(f)
             if schema:
                 block_schemas[block_name] = schema
-                meta = {"dfn_block": block_name, "schema": f"__{block_name}_schema__"}
+                meta = {"block": block_name, "schema": f"__{block_name}_schema__"}
                 target.append(
                     FieldSpec(
                         dfn_name=f["name"],
@@ -764,7 +778,7 @@ def build_component_spec(
             inner_class_specs.append(record_spec)
             clean_name = filters.safe_name("_".join(_strip_record_words(f["name"])))
             block = f["block"]
-            inner_spec_call = _ml_field(metadata={"dfn_block": block})
+            inner_spec_call = _ml_field(metadata={"block": block})
             target.append(
                 FieldSpec(
                     dfn_name=f["name"],
@@ -793,12 +807,11 @@ def build_component_spec(
         block = entry["block"]
         inout = entry["inout"]
         _path_meta: dict = {
-            "dfn_block": block,
-            "dfn_type": "record",
+            "block": block,
             "optional": True,
             "inout": inout,
         }
-        spec_call_str = _ml_field(metadata=_path_meta, converter="_optional_path")
+        spec_call_str = _ml_field(metadata=_path_meta, converter="_optional_path", fn="path")
         extra_specs.append(
             FieldSpec(
                 dfn_name=entry["name"],
@@ -890,7 +903,7 @@ def build_component_spec(
         schema = _build_block_schema(bp)
         block_schemas[bp.block_name] = schema
         _meta: dict = {
-            "dfn_block": bp.block_name,
+            "block": bp.block_name,
             "schema": f"__{bp.block_name}_schema__",
         }
         if bp.dim_is_dfn_declared:
@@ -941,7 +954,7 @@ def build_component_spec(
         if not has_period_keystring:
             period_schema = _build_period_schema_from_array_fields(_period_array_fields)
         _spd_meta = {
-            "dfn_block": "period",
+            "block": "period",
             "schema": "__period_schema__",
             "fill_forward": True,
         }
@@ -959,23 +972,23 @@ def build_component_spec(
             )
         )
 
-    # New codegen: READARRAY period fields → individual Optional[ArrayLike] attrs fields.
-    # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period array
-    # separately with reader=readarray.  Each field is a full-grid array passed
+    # New codegen: READARRAY period fields → individual Optional[Int|FloatArrayLike]
+    # attrs fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period
+    # array separately with reader=readarray. Each field is a full-grid array passed
     # directly by the user; the egress dispatches to _unstructure_readarray_period.
     if _readarray_period_fields:
         for _ra_f in _readarray_period_fields:
             _ra_meta = {
-                "dfn_block": "period",
+                "block": "period",
                 "reader": "readarray",
-                "dfn_type": _ra_f.get("type", "double"),
                 "layered": _ra_f.get("layered", False),
             }
+            _ra_base = "IntArrayLike" if _ra_f.get("type") == "integer" else "FloatArrayLike"
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f["name"],
                     py_name=filters.safe_name(_ra_f["name"]),
-                    type_annotation="Optional[ArrayLike]",
+                    type_annotation=f"Optional[{_ra_base}]",
                     spec_call=_ml_field(metadata=_ra_meta),
                     generatable=True,
                 )
@@ -997,6 +1010,15 @@ def build_component_spec(
     _has_griddata = any(
         f.get("block") == "griddata" and filters.is_array(f) for f in generatable_field_objects
     )
+    _arraylike_types = {
+        f["type"] for f in generatable_field_objects if f.get("block") == "griddata"
+    } | {f.get("type", "double") for f in _readarray_period_fields}
+    _needs_int_arraylike = "integer" in _arraylike_types
+    _needs_float_arraylike = bool(_arraylike_types - {"integer"})
+    _has_field_call = any(
+        fs.generatable and fs.spec_call.startswith("field(") for fs in field_specs
+    )
+    _has_path_call = any(fs.generatable and fs.spec_call.startswith("path(") for fs in field_specs)
     imports = _new_codegen_imports(
         generatable_field_objects,
         base_class=base,
@@ -1007,8 +1029,11 @@ def build_component_spec(
         has_path=(
             any(filters.is_file_record(f) for f in generatable_field_objects) or has_injected_paths
         ),
-        has_griddata=_has_griddata,
+        needs_int_arraylike=_needs_int_arraylike,
+        needs_float_arraylike=_needs_float_arraylike,
         has_injected_paths=has_injected_paths,
+        has_field_call=_has_field_call,
+        has_path_call=_has_path_call,
         has_readarray_period=bool(_readarray_period_fields),
         period_schema=period_schema,
         block_schemas=block_schemas,

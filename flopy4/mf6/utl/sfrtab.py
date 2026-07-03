@@ -6,33 +6,26 @@ import numpy as np
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Sfrtab(Package):
     multi_package: ClassVar[bool] = True
 
-    nrow: Optional[int] = attrs.field(
+    nrow: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
     )
-    ncol: Optional[int] = attrs.field(
+    ncol: Optional[int] = field(
         default=None,
-        metadata={
-            "dfn_block": "dimensions",
-            "dfn_type": "integer",
-        },
+        block="dimensions",
     )
-    table: Optional[np.recarray] = attrs.field(
+    table: Optional[np.recarray] = field(
         default=None,
-        metadata={
-            "dfn_block": "table",
-            "schema": "__table_schema__",
-            "auto_from": "table",
-        },
+        block="table",
+        schema="__table_schema__",
+        auto_from="table",
     )
 
     class _TableSchema(Schema):

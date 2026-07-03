@@ -3,49 +3,35 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mip(Package):
-    export_array_ascii: bool = attrs.field(
+    export_array_ascii: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    porosity: ArrayLike = attrs.field(
+    porosity: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
     )
-    retfactor: Optional[ArrayLike] = attrs.field(
+    retfactor: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        optional=True,
     )
-    izone: Optional[ArrayLike] = attrs.field(
+    izone: Optional[IntArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "integer",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        optional=True,
     )

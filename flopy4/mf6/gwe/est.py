@@ -3,109 +3,72 @@ from typing import Optional
 
 import attrs
 
-from flopy4.mf6._types import ArrayLike
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Est(Package):
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    zero_order_decay_water: bool = attrs.field(
+    zero_order_decay_water: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    zero_order_decay_solid: bool = attrs.field(
+    zero_order_decay_solid: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    density_water: Optional[float] = attrs.field(
+    density_water: Optional[float] = field(
         default=1000.0,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    heat_capacity_water: Optional[float] = attrs.field(
+    heat_capacity_water: Optional[float] = field(
         default=4184.0,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    latent_heat_vaporization: Optional[float] = attrs.field(
+    latent_heat_vaporization: Optional[float] = field(
         default=2453500.0,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "double",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    porosity: ArrayLike = attrs.field(
+    porosity: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
     )
-    decay_water: Optional[ArrayLike] = attrs.field(
+    decay_water: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        optional=True,
     )
-    decay_solid: Optional[ArrayLike] = attrs.field(
+    decay_solid: Optional[FloatArrayLike] = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "optional": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        optional=True,
     )
-    heat_capacity_solid: ArrayLike = attrs.field(
+    heat_capacity_solid: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
     )
-    density_solid: ArrayLike = attrs.field(
+    density_solid: FloatArrayLike = field(
         default=None,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
     )

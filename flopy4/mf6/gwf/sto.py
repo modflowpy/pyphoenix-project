@@ -5,121 +5,84 @@ from typing import ClassVar, Optional
 import attrs
 import numpy as np
 
-from flopy4.mf6._types import ArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Sto(Package):
-    save_flows: bool = attrs.field(
+    save_flows: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    storagecoefficient: bool = attrs.field(
+    storagecoefficient: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    ss_confined_only: bool = attrs.field(
+    ss_confined_only: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    tvs_file: Optional[Path] = attrs.field(
+    tvs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "record",
-            "optional": True,
-            "inout": "filein",
-        },
+        block="options",
+        optional=True,
+        inout="filein",
     )
-    export_array_ascii: bool = attrs.field(
+    export_array_ascii: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    export_array_netcdf: bool = attrs.field(
+    export_array_netcdf: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    dev_original_specific_storage: bool = attrs.field(
+    dev_original_specific_storage: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    dev_oldstorageformulation: bool = attrs.field(
+    dev_oldstorageformulation: bool = field(
         default=False,
-        metadata={
-            "dfn_block": "options",
-            "dfn_type": "keyword",
-            "optional": True,
-        },
+        block="options",
+        optional=True,
     )
-    iconvert: ArrayLike = attrs.field(
+    iconvert: IntArrayLike = field(
         default=0,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "integer",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    ss: ArrayLike = attrs.field(
+    ss: FloatArrayLike = field(
         default=1e-05,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    sy: ArrayLike = attrs.field(
+    sy: FloatArrayLike = field(
         default=0.15,
-        metadata={
-            "dfn_block": "griddata",
-            "dfn_type": "double",
-            "shape": ("nodes",),
-            "layered": True,
-            "chunk_axis": "nlay",
-            "netcdf": True,
-        },
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
     )  # type: ignore[assignment]
-    _stress_period_data: Optional[dict[int, np.recarray]] = attrs.field(
+    _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
-        metadata={
-            "dfn_block": "period",
-            "schema": "__period_schema__",
-            "fill_forward": True,
-        },
+        block="period",
+        schema="__period_schema__",
+        fill_forward=True,
     )
 
     @attrs.define
