@@ -14,7 +14,7 @@ from packaging.version import Version
 from flopy4.mf6.codec.reader.parser import get_typed_parser
 from flopy4.mf6.codec.reader.transformer import TypedTransformer
 
-PROJ_ROOT_PATH = Path(__file__).parents[1]
+PROJ_ROOT_PATH = Path(__file__).parents[2]
 BASE_GRAMMAR_PATH = (
     PROJ_ROOT_PATH / "flopy4" / "mf6" / "codec" / "reader" / "grammar" / "typed.lark"
 )
