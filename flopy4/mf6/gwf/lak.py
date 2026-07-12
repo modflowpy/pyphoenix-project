@@ -235,7 +235,7 @@ class Lak(Package):
     @attrs.define
     class TablesRow:
         ifno: int
-        tab6_filename: Union[float, str]
+        tab6_filename: Path = path(converter=Path, inout="filein")
 
         def __iter__(self):
             yield self.ifno
