@@ -676,6 +676,29 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
     def _is_optional(col: dict) -> bool:
         return bool(col.get("optional")) or col["role"] in ("boundname", "inline_keyword")
 
+    def _prefix_inout(col: dict) -> str:
+        """MF6 inout direction implied by a row column's prefix tokens."""
+        return "fileout" if "FILEOUT" in (col.get("prefix") or "").upper().split() else "filein"
+
+    def _field_line(col: dict, *, optional: bool) -> str:
+        # File-reference columns (a fixed MF6 token or two before a filename,
+        # e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields built via the
+        # same path() convention used for Package-level file fields, not the
+        # generic dtype-based Union[float, str] fallback below.
+        if col.get("prefix"):
+            inout = _prefix_inout(col)
+            if optional:
+                return (
+                    f"        {col['name']}: Optional[Path] = path(\n"
+                    f'            default=None, converter=_optional_path, inout="{inout}"\n'
+                    f"        )"
+                )
+            return f'        {col["name"]}: Path = path(converter=Path, inout="{inout}")'
+        py_type = _py_type(col)
+        if optional:
+            return f"        {col['name']}: Optional[{py_type}] = None"
+        return f"        {col['name']}: {py_type}"
+
     required = [col for col in schema_list if not _is_optional(col)]
     optional = [col for col in schema_list if _is_optional(col)]
     # Aux injection: only for period blocks.  Standard stress packages (CHD,
@@ -689,11 +712,11 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
     lines = ["    @attrs.define"]
     lines.append(f"    class {class_name}:")
     for col in required:
-        lines.append(f"        {col['name']}: {_py_type(col)}")
+        lines.append(_field_line(col, optional=False))
     if has_positional_aux:
         lines.append("        aux: tuple = ()")
     for col in optional:
-        lines.append(f"        {col['name']}: Optional[{_py_type(col)}] = None")
+        lines.append(_field_line(col, optional=True))
     lines.append("")
     lines.append("        def __iter__(self):")
     for col in required:

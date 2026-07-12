@@ -608,11 +608,16 @@ def _new_codegen_imports(
     has_union = any(
         col.get("time_series") or col.get("dtype") == "np.object_"
         for col in _all_schema_cols
-        if col.get("role") not in ("keystring_value", "boundname")
+        if col.get("role") not in ("keystring_value", "boundname") and not col.get("prefix")
     )
+    # prefix= row columns (file references, e.g. LAK tables' TAB6 FILEIN)
+    # become Path fields via path() in row_class(), not Union[float, str].
+    _row_path_cols = [col for col in _all_schema_cols if col.get("prefix")]
+    has_row_path_cols = bool(_row_path_cols)
+    has_optional_row_path_cols = any(col.get("optional") for col in _row_path_cols)
 
     stdlib: list[str] = []
-    if has_path or has_injected_paths or has_file_records:
+    if has_path or has_injected_paths or has_file_records or has_row_path_cols:
         stdlib.append("from pathlib import Path")
     typing_parts: list[str] = []
     if has_classvar:
@@ -643,7 +648,7 @@ def _new_codegen_imports(
     _spec_parts: list[str] = []
     if has_field_call:
         _spec_parts.append("field")
-    if has_path_call:
+    if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
@@ -652,7 +657,7 @@ def _new_codegen_imports(
         _types_parts.append("IntArrayLike")
     if needs_float_arraylike:
         _types_parts.append("FloatArrayLike")
-    if has_file_records or has_injected_paths:
+    if has_file_records or has_injected_paths or has_optional_row_path_cols:
         _types_parts.append("_optional_path")
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")

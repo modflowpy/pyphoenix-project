@@ -46,6 +46,8 @@ def field(
     oc_action: str | None = None,
     oc_rtype: str | None = None,
     time_series: bool = False,
+    pk: bool = False,
+    fk: str | None = None,
 ):
     """Define a codegen-v2 field: always a plain ``attrs.field()``.
 
@@ -92,6 +94,10 @@ def field(
         metadata["oc_rtype"] = oc_rtype
     if time_series:
         metadata["time_series"] = True
+    if pk:
+        metadata["pk"] = True
+    if fk:
+        metadata["fk"] = fk
     return attrs.field(
         default=default,
         validator=validator,
