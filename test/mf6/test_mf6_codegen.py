@@ -684,12 +684,12 @@ def test_npf_compound_records_expanded(all_dfns):
 
 
 # Layer 3: End-to-end generation
-def test_simple_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
+def test_simple_tier_generates_importable_files(tmp_path, all_dfns):
     """Run make_all() and verify each simple-tier file is importable with the right class."""
     (tmp_path / "gwf").mkdir()
 
     skip = {n for n in all_dfns if n not in SIMPLE_TIER}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
+    specs = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip)
 
     generated = {s.dfn_name: s for s in specs}
 
@@ -722,12 +722,12 @@ def test_simple_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
 
 
-def test_solution_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
+def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
     """Run make_all() and verify each solution-tier file is importable with Solution base."""
     from flopy4.mf6.solution import Solution
 
     skip = {n for n in all_dfns if n not in SOLUTION_TIER}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
+    specs = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip)
 
     generated = {s.dfn_name: s for s in specs}
 
@@ -780,14 +780,14 @@ def _load_class_from_spec(spec, mod_name: str, expected_class: str):
             del sys.modules[key]
 
 
-def test_transport_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
+def test_transport_tier_generates_importable_files(tmp_path, all_dfns):
     """gwt-disv, gwt-ist, gwe-disv generate importable Package subclasses."""
     for subdir in ("gwt", "gwe"):
         (tmp_path / subdir).mkdir()
 
     target = {n for n in TRANSPORT_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
+    specs = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
@@ -802,14 +802,14 @@ def test_transport_tier_generates_importable_files(dfn_path, tmp_path, all_dfns)
         assert issubclass(cls, Package)
 
 
-def test_oc_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
+def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
     """gwt-oc, gwe-oc, prt-oc generate importable Package subclasses with OC period fields."""
     for subdir in ("gwt", "gwe", "prt"):
         (tmp_path / subdir).mkdir()
 
     target = {n for n in OC_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, skip=skip)
+    specs = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
@@ -827,13 +827,13 @@ def test_oc_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
         assert oc_fields, f"{dfn_name} should have save_/print_ period fields"
 
 
-def test_utl_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
+def test_utl_tier_generates_importable_files(tmp_path, all_dfns):
     """utl-* packages generate importable Package subclasses (including utl-tas inner classes)."""
     (tmp_path / "utl").mkdir()
 
     target = {n for n in UTL_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, makedirs=True, skip=skip)
+    specs = make_modules(dfns=all_dfns, outdir=tmp_path, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package
@@ -848,13 +848,13 @@ def test_utl_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
         assert issubclass(cls, Package)
 
 
-def test_exg_tier_generates_importable_files(dfn_path, tmp_path, all_dfns):
+def test_exg_tier_generates_importable_files(tmp_path, all_dfns):
     """exg-* packages generate importable Package subclasses (including 0-field pass-only)."""
     (tmp_path / "exg").mkdir()
 
     target = {n for n in EXG_TIER if n in all_dfns}
     skip = {n for n in all_dfns if n not in target}
-    specs = make_modules(dfndir=dfn_path, outdir=tmp_path, makedirs=True, skip=skip)
+    specs = make_modules(dfns=all_dfns, outdir=tmp_path, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
     from flopy4.mf6.package import Package

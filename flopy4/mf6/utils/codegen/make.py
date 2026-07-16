@@ -1101,8 +1101,7 @@ def make_module(spec: ComponentSpec, env: jinja2.Environment, verbose: bool = Fa
 
 def make_modules(
     *,
-    dfns: dict[str, "Dfn"] | None = None,
-    dfndir: PathLike | None = None,
+    dfns: dict[str, "Dfn"],
     outdir: PathLike,
     developmode: bool = False,
     skip: set[str] | None = None,
@@ -1115,10 +1114,7 @@ def make_modules(
     Parameters
     ----------
     dfns :
-        Pre-loaded DFN dict from a registry's spec() call. Takes precedence
-        over dfndir when both are provided.
-    dfndir :
-        Directory containing DFN files. Used only when dfns is not provided.
+        Pre-loaded DFN dict, e.g. from a registry's spec() call.
     outdir :
         Root output directory for generated Python files.
     developmode :
@@ -1137,10 +1133,6 @@ def make_modules(
     list[ComponentSpec]
         Specs for all components that were generated.
     """
-    if dfns is None:
-        if dfndir is None:
-            raise ValueError("Provide either 'dfns' or 'dfndir'.")
-        dfns = Dfn.load_all(Path(dfndir), schema_version="2.0.0.dev1")
     outdir = Path(outdir)
     skip = skip or set()
     env = _get_env()

@@ -5,8 +5,6 @@ import sys
 from os import PathLike
 from pathlib import Path
 
-import modflow_devtools.dfn as dfn
-
 from flopy4.mf6.utils.codegen.make import make_modules
 
 _PROJ_ROOT = Path(__file__).parents[4].expanduser().resolve()
@@ -41,18 +39,22 @@ _SKIP = {
 
 
 def make(
-    dfndir: str | PathLike,
+    dfns: dict,
     outdir: str | PathLike = _MF6_ROOT,
     developmode: bool = False,
     makedirs: bool = False,
     existing_only: bool = False,
     verbose: bool = False,
 ):
-    """Generate an MF6 module from DFNs."""
-    dfndir = Path(dfndir).expanduser().resolve()
+    """Generate an MF6 module from DFNs.
+
+    Parameters
+    ----------
+    dfns :
+        Pre-loaded DFN dict, e.g. from a registry's `spec()` call.
+    """
     outdir = Path(outdir).expanduser().resolve()
     outdir.mkdir(exist_ok=True, parents=True)
-    dfns = dfn.Dfn.load_all(dfndir, schema_version="2.0.0.dev1")
     components = make_modules(
         dfns=dfns,
         outdir=outdir,
@@ -99,9 +101,14 @@ def cli_main() -> None:
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
+    from modflow_devtools.dfns import LocalDfnRegistry
+
+    registry = LocalDfnRegistry(path=Path(args.dfndir))
+    dfns = registry.spec(schema_version="2.0.0.dev1")
+
     try:
         make(
-            dfndir=args.dfndir,
+            dfns=dfns,
             outdir=args.outdir,
             developmode=args.developmode,
             makedirs=args.makedirs,
