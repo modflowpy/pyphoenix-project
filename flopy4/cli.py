@@ -140,8 +140,9 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         is_branch = not effective_version[0].isdigit() if effective_version else True
         _populate_remote_cache(registry, release_id, force=args.force or is_branch)
 
+    dfns_spec = registry.spec(schema_version=_DFN_SCHEMA_VERSION)
     make(
-        dfndir=registry.cache_path if isinstance(registry, RemoteDfnRegistry) else registry.path,
+        dfns=dfns_spec,
         outdir=_MF6_ROOT,
         existing_only=not args.all_packages,
         makedirs=args.all_packages,
