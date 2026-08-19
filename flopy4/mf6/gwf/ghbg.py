@@ -20,7 +20,6 @@ class Ghbg(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(

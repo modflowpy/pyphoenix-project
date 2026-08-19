@@ -1,9 +1,15 @@
 """
 Python-side filters for MF6 code generation.
 
-Converts modflow_devtools.dfn.Dfn/Field dataclasses to the context
-dicts consumed by Jinja templates. Keeping computation here (rather
-than in Jinja macros) makes edge-case handling easier to test and debug.
+Converts modflow_devtools.dfns (pydantic, schema 2.0.0.dev3) Component/Block/
+Field objects to the context dicts consumed by Jinja templates. Keeping
+computation here (rather than in Jinja macros) makes edge-case handling
+easier to test and debug.
+
+Sources from the pydantic-native dev3 schema (Scalar | Array | Record | Union
+| List, discriminated by `.type`) rather than the legacy flat TypedDict schema
+(modflow_devtools.dfn). See namefile-load-plan.md, Phase 0.6a+0.6b, for the
+migration history and the reasoning behind specific choices below.
 """
 
 import builtins
@@ -12,9 +18,22 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from modflow_devtools.dfn import Dfn, Field
+from modflow_devtools.dfns.schema import (
+    Array,
+    Component,
+    Double,
+    File,
+    Integer,
+    Keyword as KeywordField,
+    List as ListField,
+    Record,
+    String,
+    Union as UnionField,
+)
 
 from .overrides import apply as apply_override
+
+FieldV3 = KeywordField | Integer | Double | String | Array | Record | UnionField | ListField | File
 
 # DFN-level routing helpers
 
@@ -76,367 +95,38 @@ def output_path(dfn_name: str, root: Path) -> Path:
     return root / abbr / f"{mod}.py"
 
 
-# DFN block-level helpers
+# Component/Block-level helpers
 
 
-def has_period_block(dfn: Dfn) -> bool:
-    """True if the DFN defines a period block (stress package)."""
-    return "period" in (dfn.get("blocks") or {})
+def has_period_block(component: Component) -> bool:
+    """True if the component defines a period block (stress package)."""
+    return "period" in (component.blocks or {})
 
 
-def has_dimensions_block(dfn: Dfn) -> bool:
-    """True if the DFN has a dimensions block with a 'maxbound' field.
+def has_dimensions_block(component: Component) -> bool:
+    """True if the component has a dimensions block with a 'maxbound' field.
 
     Only packages with a field literally named 'maxbound' use the
     auto-computed pattern (init=False, on_setattr=update_maxbound).
     Packages like MVR/BUY/VSC have user-specified dimension scalars
     (maxmvr, maxpackages, nrhospecies) that must NOT be init=False.
     """
-    dim_block = (dfn.get("blocks", {}) or {}).get("dimensions", {})
-    return "maxbound" in dim_block
+    block = (component.blocks or {}).get("dimensions")
+    return block is not None and "maxbound" in block.fields
 
 
 # Field classification
-
-# v2 TOML uses "double" for what v1 called "double precision"
-_SCALAR_TYPES = {"keyword", "integer", "double precision", "double", "string"}
-_ARRAY_BASE_TYPES = {"double precision", "double", "integer", "string"}
-
-# DFN dimension name → flopy4 canonical dimension name.
-# Applied when converting DFN shape strings to dims tuples.
-_DIM_ALIASES: dict[str, str] = {
-    "nnodes": "nodes",
-}
-
-# Alternative-grid shape tokens: each key is a raw DFN token that appears in
-# shape strings and contains * or ; (making it look "complex"), but maps to a
-# single well-known flopy4 dimension. Substituted before complexity checks.
-# "ncol*nrow; ncpl": cells per layer — ncol*nrow for DIS, ncpl for DISV.
-_ALT_DIM_TOKENS: dict[str, str] = {
-    "ncol*nrow; ncpl": "ncpl",
-}
-
-# DFN dimension names that are dropped from dims tuples entirely.
-# naux: auxiliary variable count is not tracked as an xattree dim —
-# auxiliary data is stored flattened into the primary node dimension.
-# nseg-1: number of ET segment values per row (EVT list-based input);
-# repeated columns per row like naux, not a separate array dimension.
-_DROP_DIMS: frozenset[str] = frozenset({"naux", "nseg-1"})
-
-
-def _has_file_child(f: Field) -> bool:
-    if f.get("children", None):
-        return "filein" in f["children"] or "fileout" in f["children"]
-    # v1 DFN fields encode subfields in the type string, e.g.
-    # "record ts6 filein ts6_filename" — check there instead.
-    return " filein " in f["type"] or " fileout " in f["type"]
-
-
-def _has_file_child_of(f: Field, kind: str) -> bool:
-    """True if the record has a child of the given kind ('filein' or 'fileout')."""
-    if f.get("children", None):
-        return kind in f["children"]
-    return f" {kind} " in f["type"]
-
-
-def _file_record_subfield_names(f: Field) -> frozenset[str]:
-    """Return the subfield names encoded in a v1 DFN record type string."""
-    if f.get("children", None):
-        return frozenset(f["children"])
-    # type string format: "record name1 name2 ..."
-    parts = f["type"].split()
-    return frozenset(parts[1:]) if len(parts) > 1 else frozenset()
-
-
-def _resolve_alt_grid(shape: str) -> str:
-    """Replace known alternative-grid tokens with their canonical names."""
-    for token, canonical in _ALT_DIM_TOKENS.items():
-        shape = shape.replace(token, canonical)
-    return shape
-
-
-def _has_complex_shape(f: Field) -> bool:
-    """True for shapes with unsupported alternative-grid or arithmetic notation."""
-    if not f.get("shape", None):
-        return False
-    resolved = _resolve_alt_grid(f["shape"])
-    return "*" in resolved or ";" in resolved
-
-
-def is_scalar(f: Field) -> bool:
-    """True for simple scalar fields (no shape)."""
-    return f["type"] in _SCALAR_TYPES and not f.get("shape", None)
-
-
-_STRING_LENGTH_DIMS = frozenset({"lenbigline", "linelength"})
-
-
-def is_array(f: Field) -> bool:
-    """True for array fields (numeric or string type with a shape).
-
-    Excludes auxiliary variable lists, which are handled by is_aux_list_field.
-    """
-    # TODO: emit string fields shaped only by lenbigline/linelength as field(Optional[str]);
-    # for now exclude so they fall to scalar handling (see ncf.py Ncf.wkt for the pattern).
-    if (
-        f["type"] == "string"
-        and f.get("shape", None)
-        and all(s in _STRING_LENGTH_DIMS for s in f.get("shape", None))
-    ):
-        return False
-    return (
-        f["type"] in _ARRAY_BASE_TYPES
-        and bool(f.get("shape", None))
-        and not _has_complex_shape(f)
-        and not is_aux_list_field(f)
-    )
-
-
-def is_keyword_array(f: Field) -> bool:
-    """True for boolean-array fields (keyword type with shape)."""
-    return f["type"] == "keyword" and bool(f.get("shape", None)) and not _has_complex_shape(f)
-
-
-def is_file_record(f: Field) -> bool:
-    """True for record fields whose children include filein or fileout."""
-    return f["type"].startswith("record") and _has_file_child(f)
-
-
-def is_aux_list_field(f: Field) -> bool:
-    """True for auxiliary variable name lists (options block, shape naux).
-
-    These are generated as ``Optional[list[str]]`` with no dims and no
-    structure_array converter, matching the hand-written pattern.
-    """
-    return (
-        f["type"] == "string"
-        and f["block"] == "options"
-        and bool(f.get("shape", None))
-        and "naux" in f.get("shape", None)
-    )
-
-
-def is_period_array(f: Field) -> bool:
-    """True for array fields in the period block."""
-    return f["block"] == "period" and (is_array(f) or is_keyword_array(f))
-
-
-def is_dimensions_scalar(f: Field) -> bool:
-    """True for scalar fields in the dimensions block (computed, init=False)."""
-    return f["block"] == "dimensions" and is_scalar(f)
-
-
-def is_boundname_field(f: Field) -> bool:
-    """True for the boundname string array in the period block."""
-    return f["block"] == "period" and f["name"] == "boundname"
-
-
-# Per-package OC record types.  Each entry maps a DFN name to the list of
-# rtype strings that are valid for its SAVE/PRINT period records.
-_OC_RTYPES: dict[str, list[str]] = {
-    "gwf-oc": ["head", "budget"],
-    "gwt-oc": ["concentration", "budget"],
-    "gwe-oc": ["temperature", "budget"],
-    "prt-oc": ["budget"],
-}
-
-
-def is_oc_record(f: Field, dfn_name: str) -> bool:
-    """True for saverecord/printrecord in OC-style period blocks.
-
-    These records take the form ``SAVE|PRINT RTYPE OCSETTING`` and are
-    expanded by codegen into per-rtype NDArray[np.str_] fields rather than
-    being emitted as inner classes or TODO comments.
-    """
-    return (
-        f["block"] == "period"
-        and f["type"].startswith("record")
-        and f["name"] in ("saverecord", "printrecord")
-        and dfn_name in _OC_RTYPES
-    )
-
-
-def is_list_field(f: Field) -> bool:
-    """True for list-type sub-table fields (packagedata, perioddata, etc.)."""
-    return f["type"] == "list"
-
-
-def list_columns(f: Field) -> list[dict]:
-    """Return the leaf column dicts of a list-type sub-table.
-
-    Children in the v2 TOML schema are stored as plain dicts, not Field
-    objects.  The list field has a single record child dict; the column
-    entries are that record's ``children`` mapping.
-    """
-    if not f.get("children", None):
-        return []
-    record_child = next(iter(f["children"].values()))
-    if not isinstance(record_child, dict):
-        return []
-    return list(record_child.get("children", {}).values())
-
-
-def list_col_dim(f: Field, dfn: Dfn) -> str | None:
-    """Return the dimension name for list column arrays.
-
-    Uses the last token from the list field's explicit shape when present,
-    preferring the actual dimensions-block field name when the shape token
-    differs (e.g. shape uses 'npackages' but field is 'maxpackages').
-    Falls back to the single entry in the DFN's dimensions block.
-    Returns None when the dimension cannot be determined unambiguously.
-    """
-    dim_block = (dfn.get("blocks") or {}).get("dimensions", {})
-    if shape := f.get("shape", None):
-        inner = shape.strip().strip("()")
-        parts = [p.strip() for p in inner.split(",") if p.strip()]
-        if parts:
-            shape_dim = _DIM_ALIASES.get(parts[-1], parts[-1])
-            if shape_dim in dim_block:
-                return shape_dim
-            # Shape dim may use a different prefix than the actual field name
-            # (e.g., shape "npackages" vs dimensions field "maxpackages").
-            # Try suffix matching: strip leading "n" and find a field that ends
-            # with the remainder.
-            suffix = shape_dim.lstrip("n")
-            if suffix:
-                for fname in dim_block:
-                    if fname.endswith(suffix):
-                        return fname
-    if len(dim_block) == 1:
-        name = next(iter(dim_block))
-        return _DIM_ALIASES.get(name, name)
-    return None
-
-
-def is_generatable(f: Field) -> bool:
-    """True if this field can be handled in the current generation pass."""
-    if _has_complex_shape(f):
-        return False
-    return (
-        is_scalar(f)
-        or is_array(f)
-        or is_keyword_array(f)
-        or is_file_record(f)
-        or is_aux_list_field(f)
-    )
-
-
-def _is_expandable_child(child: dict) -> bool:
-    """True if a record child dict can be generated as a standalone field.
-
-    Only keyword-type children are expandable: they're self-naming tokens that
-    map cleanly to individual bool fields.  Scalar data fields (even tagged ones)
-    are positional components of a compound construct and must stay grouped.
-    """
-    return child["type"] == "keyword"
-
-
-_RECORD_CLASS_SCALAR_TYPES = frozenset({"integer", "double precision", "double", "string"})
-
-
-def can_generate_record_class(f: Field) -> bool:
-    """True when a compound record should be rendered as an inner attrs class.
-
-    All non-file records whose children are entirely scalars and/or keywords
-    become inner attrs classes.  The first keyword child (if any) is the
-    trigger token (``_keyword``); remaining keyword children become
-    ``Optional[bool]`` fields so related options stay grouped.
-
-    All-keyword records with only one child (a lone flag keyword) are left to
-    :func:`can_expand_record` — a bare bool field is cleaner there than an
-    empty inner class.  Records with unsupported child types (recarray, union,
-    complex shapes) fall back to TODO comments.
-    """
-    if is_file_record(f) or not f.get("children", None):
-        return False
-    children = list(f["children"].values())
-    _supported = _RECORD_CLASS_SCALAR_TYPES | {"keyword"}
-    all_supported = all(c.get("type") in _supported for c in children)
-    if not all_supported:
-        return False
-    has_scalar = any(c.get("type") in _RECORD_CLASS_SCALAR_TYPES for c in children)
-    # All-keyword records need at least 2 children (trigger + modifier) to
-    # justify a class; a single lone keyword expands more cleanly to a bool.
-    if not has_scalar:
-        return len(children) >= 2
-    return True
-
-
-def can_expand_record(f: Field) -> bool:
-    """True if a non-file compound record can be at least partially expanded.
-
-    A record can be expanded when all its required (non-optional) children are
-    individually generatable as standalone fields.  Optional children that
-    can't be generated standalone are noted in a TODO comment but don't
-    block expansion.
-    """
-    if is_file_record(f) or not f.get("children", None):
-        return False
-    for child in f["children"].values():
-        if not child.get("optional", False) and not _is_expandable_child(child):
-            return False
-    return True
-
-
-def skip_reason(f: Field) -> str | None:
-    """Return a human-readable reason why a field is skipped, or None."""
-    if is_generatable(f):
-        return None
-    if is_list_field(f):
-        return None  # handled as recarray block in build_component_spec
-    if can_expand_record(f):
-        return None  # handled by _expand_record_field in make.py
-    if _has_complex_shape(f):
-        return f"complex shape '{f.get('shape', None)}' not yet supported"
-    if f["type"] in ("record", "recarray", "keystring"):
-        return f"complex type '{f['type']}' not yet supported"
-    return f"type '{f['type']}' not yet supported"
-
-
-# Field iteration
-
-
-def flat_fields(dfn: Dfn, *, developmode: bool = False) -> list[Field]:
-    """Return an ordered flat list of all fields from all blocks.
-
-    Parameters
-    ----------
-    dfn :
-        The component definition.
-    developmode :
-        If False (default), fields marked developmode are excluded.
-    """
-    # Collect subfield names from file records so they can be suppressed.
-    subfield_names: set[str] = set()
-    for block in (dfn.get("blocks", {}) or {}).values():
-        for f in block.values():
-            if is_file_record(f):
-                subfield_names.update(_file_record_subfield_names(f))
-
-    result = []
-    for block in (dfn.get("blocks", {}) or {}).values():
-        for f in block.values():
-            f = apply_override(dfn["name"], f)
-            if f.get("developmode", False) and not developmode:
-                continue
-            if f["name"] in subfield_names:
-                continue
-            result.append(f)
-    return result
-
-
-# Python type annotations
-
-_SCALAR_PY_TYPES: dict[str, str] = {
-    "keyword": "bool",
-    "integer": "int",
-    "double precision": "float",
-    "double": "float",
-    "string": "str",
-}
+#
+# dev3's Field union is a real discriminated union -- isinstance dispatch
+# replaces the legacy schema's string-set membership checks directly. No
+# equivalent of the legacy _has_complex_shape/_ALT_DIM_TOKENS/_DIM_ALIASES is
+# needed: verified against a broad corpus slice (gwf-npf, gwf-disu, gwf-evta,
+# gwf-rcha, gwf-dis) that dev3 shapes are already canonicalized (e.g.
+# ['ncpl'] uniformly for DIS/DISV cell-count dims, never 'ncol*nrow' or a
+# ';'-joined alternative-grid expression) -- the workaround those three
+# helpers existed for is gone at the source.
 
 ARRAY_NUMPY_DTYPES: dict[str, str] = {
-    "double precision": "np.float64",
     "double": "np.float64",
     "integer": "np.int64",
     "string": "np.object_",
@@ -444,37 +134,251 @@ ARRAY_NUMPY_DTYPES: dict[str, str] = {
 }
 
 
-def py_type(f: Field) -> str:
+def is_scalar(f: FieldV3) -> bool:
+    """True for simple scalar fields (no shape)."""
+    return isinstance(f, (KeywordField, Integer, Double, String))
+
+
+def is_array(f: FieldV3) -> bool:
+    """True for array fields (numeric or string type with a shape).
+
+    Excludes auxiliary variable name lists (shape == [], see is_aux_list_field)
+    and other unshaped arrays (variadic-count fields with no static dim --
+    see devtools/todo.md 2026-08-18 entry on Array.repeat).
+    """
+    return isinstance(f, Array) and bool(f.shape) and f.dtype != "keyword"
+
+
+def is_keyword_array(f: FieldV3) -> bool:
+    """True for boolean-array fields (keyword type with shape)."""
+    return isinstance(f, Array) and f.dtype == "keyword" and bool(f.shape)
+
+
+def is_file_record(f: FieldV3) -> bool:
+    """True for record fields whose children include a File field.
+
+    The MF6 ``KEYWORD FILEIN <path>``/``KEYWORD FILEOUT <path>`` pattern
+    (e.g. options-block ``ts_filerecord``): a Record wrapping a trigger
+    Keyword and a File child. Distinct from is_bare_file (below) -- a File
+    field can also appear directly in a block with no wrapping Record (e.g.
+    prt-fmi.packagedata's gwfhead/gwfbudget/gwfgrid).
+    """
+    return isinstance(f, Record) and any(isinstance(c, File) for c in f.fields.values())
+
+
+def is_bare_file(f: FieldV3) -> bool:
+    """True for a File field with no wrapping Record (no fixed keyword token
+    precedes it -- just ``<path>`` directly, e.g. prt-fmi's packagedata File
+    fields). See is_file_record for the wrapped-in-a-Record case."""
+    return isinstance(f, File)
+
+
+def file_child(f: Record) -> File | None:
+    """Return the File child of a file record, or None."""
+    return next((c for c in f.fields.values() if isinstance(c, File)), None)
+
+
+def is_aux_list_field(f: FieldV3) -> bool:
+    """True for auxiliary variable name lists (options block, shape []).
+
+    dev3 represents this as Array(dtype="string", shape=[], name="auxiliary")
+    -- an unshaped string array. (Legacy encoded this as a shaped field with
+    a self-referential dim "naux"; dev3 drops the fake dimension entirely
+    since the count *is* len() of the list itself, nothing to declare.)
+    """
+    return isinstance(f, Array) and f.dtype == "string" and f.shape == [] and f.name == "auxiliary"
+
+
+def is_period_array(f: FieldV3, block_name: str) -> bool:
+    """True for array fields in the period block (G-variant packages)."""
+    return block_name == "period" and (is_array(f) or is_keyword_array(f))
+
+
+def is_dimensions_scalar(f: FieldV3, block_name: str) -> bool:
+    """True for scalar fields in the dimensions block (computed, init=False)."""
+    return block_name == "dimensions" and is_scalar(f)
+
+
+def is_boundname_field(f: FieldV3, block_name: str) -> bool:
+    """True for the boundname string field in the period block."""
+    return block_name == "period" and f.name == "boundname"
+
+
+def is_list_field(f: FieldV3) -> bool:
+    """True for list-type sub-table fields (packagedata, perioddata, etc.)."""
+    return isinstance(f, ListField)
+
+
+def is_generatable(f: FieldV3) -> bool:
+    """True if this field can be handled in the current generation pass."""
+    return (
+        is_scalar(f)
+        or is_array(f)
+        or is_keyword_array(f)
+        or is_file_record(f)
+        or is_bare_file(f)
+        or is_aux_list_field(f)
+    )
+
+
+_RECORD_CLASS_SCALAR_TYPES = (Integer, Double, String)
+
+
+def _is_expandable_child(child: FieldV3) -> bool:
+    """True if a record child can be generated as a standalone field.
+
+    Only keyword-type children are expandable: they're self-naming tokens that
+    map cleanly to individual bool fields. Scalar data fields (even tagged ones)
+    are positional components of a compound construct and must stay grouped.
+    """
+    return isinstance(child, KeywordField)
+
+
+def can_generate_record_class(f: FieldV3) -> bool:
+    """True when a compound record should be rendered as an inner attrs class.
+
+    All non-file records whose children are entirely scalars and/or keywords
+    become inner attrs classes. The first keyword child (if any) is the
+    trigger token (``_keyword``); remaining keyword children become
+    ``Optional[bool]`` fields so related options stay grouped.
+
+    All-keyword records with only one child (a lone flag keyword) are left to
+    :func:`can_expand_record` -- a bare bool field is cleaner there than an
+    empty inner class. Records with unsupported child types (list, union)
+    fall back to TODO comments. A child that is itself a Record is supported
+    one level deep, provided *its* children are all scalar/keyword too (the
+    `head/temperature/concentration/qoutflow/cim` printrecord family: outer
+    record wraps `formatrecord: Record{columns, width, digits, format}`) --
+    its fields are flattened into the same inner class (see
+    make.py._build_inner_class_spec). Deeper nesting falls back to TODO.
+    """
+    if not isinstance(f, Record) or is_file_record(f) or not f.fields:
+        return False
+    children = list(f.fields.values())
+
+    def _supported(c: FieldV3) -> bool:
+        if isinstance(c, _RECORD_CLASS_SCALAR_TYPES + (KeywordField,)):
+            return True
+        if isinstance(c, Record) and c.fields:
+            return all(
+                isinstance(gc, _RECORD_CLASS_SCALAR_TYPES + (KeywordField,))
+                for gc in c.fields.values()
+            )
+        return False
+
+    all_supported = all(_supported(c) for c in children)
+    if not all_supported:
+        return False
+    has_scalar = any(isinstance(c, _RECORD_CLASS_SCALAR_TYPES) for c in children)
+    # All-keyword records need at least 2 children (trigger + modifier) to
+    # justify a class; a single lone keyword expands more cleanly to a bool.
+    if not has_scalar:
+        return len(children) >= 2
+    return True
+
+
+def can_expand_record(f: FieldV3) -> bool:
+    """True if a non-file compound record can be at least partially expanded.
+
+    A record can be expanded when all its required (non-optional) children are
+    individually generatable as standalone fields. Optional children that
+    can't be generated standalone are noted in a TODO comment but don't
+    block expansion.
+    """
+    if not isinstance(f, Record) or is_file_record(f) or not f.fields:
+        return False
+    for child in f.fields.values():
+        if not child.optional and not _is_expandable_child(child):
+            return False
+    return True
+
+
+def skip_reason(f: FieldV3) -> str | None:
+    """Return a human-readable reason why a field is skipped, or None."""
+    if is_generatable(f):
+        return None
+    if is_list_field(f):
+        return None  # handled as recarray block in build_component_spec
+    if can_expand_record(f):
+        return None  # handled by _expand_record_field in make.py
+    if isinstance(f, Array) and not f.shape:
+        return "unshaped (variadic-count) array not yet supported"
+    return f"type '{f.type}' not yet supported"
+
+
+# Field iteration
+
+
+def flat_fields(
+    component: Component, *, developmode: bool = False
+) -> list[tuple[str, FieldV3]]:
+    """Return an ordered flat list of (block_name, field) for all blocks.
+
+    Unlike the legacy schema, dev3 fields don't carry their own block name --
+    block membership is structural (Block.fields), so callers need the block
+    name alongside the field. Subfields of file records and record children
+    are NOT included (records are walked separately where needed); this
+    mirrors the legacy flat_fields, which also excluded file-record subfields.
+
+    Parameters
+    ----------
+    component :
+        The component definition.
+    developmode :
+        If False (default), fields marked developmode are excluded.
+    """
+    result: list[tuple[str, FieldV3]] = []
+    for block_name, block in (component.blocks or {}).items():
+        for f in block.fields.values():
+            f = apply_override(component.name, f)
+            if f.developmode and not developmode:
+                continue
+            result.append((block_name, f))
+    return result
+
+
+# Python type annotations
+
+_SCALAR_PY_TYPES: dict[type, str] = {
+    KeywordField: "bool",
+    Integer: "int",
+    Double: "float",
+    String: "str",
+}
+
+
+def py_type(f: FieldV3, block_name: str) -> str:
     """Return the Python type annotation string for a field."""
     if is_aux_list_field(f):
         return "Optional[list[str]]"
-    if is_file_record(f):
+    if is_file_record(f) or is_bare_file(f):
         base = "Path"
-    elif is_boundname_field(f):
+    elif is_boundname_field(f, block_name):
         base = "NDArray[np.str_]"
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
     elif is_array(f):
-        if f.get("block") == "griddata":
-            base = "IntArrayLike" if f["type"] == "integer" else "FloatArrayLike"
+        assert isinstance(f, Array)
+        if block_name == "griddata":
+            base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
         else:
-            dtype = ARRAY_NUMPY_DTYPES.get(f["type"], "np.object_")
+            dtype = ARRAY_NUMPY_DTYPES.get(f.dtype, "np.object_")
             base = f"NDArray[{dtype}]"
-    elif is_dimensions_scalar(f):
+    elif is_dimensions_scalar(f, block_name):
         # dimensions fields are computed (init=False) and always nullable
-        base = _SCALAR_PY_TYPES.get(f["type"], "Any")
+        base = _SCALAR_PY_TYPES.get(type(f), "Any")
         return f"Optional[{base}]"
     elif is_scalar(f):
         # Keywords are always bool (not Optional[bool]) regardless of optional flag.
-        if f["type"] == "keyword":
+        if isinstance(f, KeywordField):
             return "bool"
-        base = _SCALAR_PY_TYPES.get(f["type"], "Any")
+        base = _SCALAR_PY_TYPES.get(type(f), "Any")
     else:
         base = "Any"
 
     # Period-block arrays can be absent for a given stress period, so they're
     # implicitly nullable at the Python level even when the DFN marks them required.
-    is_nullable = f.get("optional", None) or is_period_array(f)
+    is_nullable = f.optional or is_period_array(f, block_name)
     return f"Optional[{base}]" if is_nullable else base
 
 
@@ -492,32 +396,22 @@ def safe_name(name: str) -> str:
 # spec() call strings
 
 
-def _dims_tuple_val(shape: str, *, keep: frozenset[str] | None = None) -> tuple:
-    """Like _dims_tuple but returns an actual tuple instead of a string literal."""
-    resolved = _resolve_alt_grid(shape)
-    inner = resolved.strip().strip("()")
-    raw = [_DIM_ALIASES.get(p.strip(), p.strip()) for p in inner.split(",") if p.strip()]
-    drop = _DROP_DIMS - (keep or frozenset())
-    return tuple(p for p in raw if p not in drop)
-
-
-def _default_repr(f: Field) -> str:
+def _default_repr(f: FieldV3) -> str:
     """Return the Python repr of a field's default value."""
-    default = f.get("default", None)
+    default = f.default
     if default is None:
         # Scalar keywords default to False (absent == not set).
         # Arrays (including keyword arrays) default to None.
-        if f["type"] == "keyword" and not f.get("shape", None):
+        if isinstance(f, KeywordField) and not getattr(f, "shape", None):
             return "False"
         return "None"
     if isinstance(default, str):
-        dfn_type = f.get("type", "")
-        if dfn_type == "integer":
+        if isinstance(f, Integer):
             try:
                 return repr(int(default))
             except (ValueError, TypeError):
                 pass
-        elif dfn_type in ("double", "double precision"):
+        elif isinstance(f, Double):
             try:
                 return repr(float(default))
             except (ValueError, TypeError):
@@ -529,28 +423,29 @@ def _default_repr(f: Field) -> str:
 # New-codegen field call strings
 
 
-def field_metadata(f: Field, *, has_maxbound: bool = False) -> dict:
+def field_metadata(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -> dict:
     """Build the ``field()``/``path()`` spec-call kwargs for a field (new codegen path).
 
     Codegen-v2 packages are plain attrs classes (not ``@xattree``-decorated), so
     these calls carry passive metadata read by the codec and conversion methods
     at call time rather than real xattree array/dim/coord structure.
     """
-    kw: dict = {"block": f["block"]}
-    if shape := f.get("shape"):
-        kw["shape"] = _dims_tuple_val(shape)
-    if f.get("layered"):
-        kw["layered"] = True
-    if f.get("netcdf"):
+    kw: dict = {"block": block_name}
+    if shape := getattr(f, "shape", None):
+        kw["shape"] = tuple(shape)
+    if getattr(f, "netcdf", False):
         kw["netcdf"] = True
-    if f.get("time_series"):
+    if getattr(f, "time_series", False):
         kw["time_series"] = True
-    if f.get("optional"):
+    if f.optional:
         kw["optional"] = True
-    if f["block"] == "dimensions" and f["name"] == "maxbound" and has_maxbound:
+    if block_name == "dimensions" and f.name == "maxbound" and has_maxbound:
         kw["auto_from"] = "stress_period_data"
     if is_file_record(f):
-        kw["inout"] = "filein" if _has_file_child_of(f, "filein") else "fileout"
+        child = file_child(f)
+        kw["inout"] = "filein" if child.direction == "in" else "fileout"
+    elif is_bare_file(f):
+        kw["inout"] = "filein" if f.direction == "in" else "fileout"
     return kw
 
 
@@ -569,16 +464,16 @@ def _dq(v) -> str:
     return repr(v)
 
 
-def field_call(f: Field, *, has_maxbound: bool = False) -> str:
+def field_call(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
-    kw = field_metadata(f, has_maxbound=has_maxbound)
+    kw = field_metadata(f, block_name, has_maxbound=has_maxbound)
     # maxbound is auto-computed from stress_period_data at write time; default 0.
-    if f["block"] == "dimensions" and f["name"] == "maxbound":
+    if block_name == "dimensions" and f.name == "maxbound":
         default = "0"
     else:
         default = _default_repr(f)
@@ -586,13 +481,13 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
     # runtime but mypy can't verify they satisfy Optional[float/int].
     # Scalar defaults (int, float, str) on Int/FloatArrayLike fields have the same issue.
     _str_default = default.startswith("'")
-    _numeric_field = f.get("type", "") in ("double", "double precision", "integer")
+    _numeric_field = isinstance(f, (Double, Integer))
     type_ignore = ""
     if (is_array(f) and default != "None") or (_str_default and _numeric_field):
         type_ignore = "  # type: ignore[assignment]"
-    fn = "path" if is_file_record(f) else "field"
+    fn = "path" if (is_file_record(f) or is_bare_file(f)) else "field"
     lines = [f"{fn}(", f"        default={default},"]
-    if is_file_record(f):
+    if is_file_record(f) or is_bare_file(f):
         lines.append("        converter=_optional_path,")
     for k, v in kw.items():
         lines.append(f"        {k}={_dq(v)},")
@@ -603,7 +498,7 @@ def field_call(f: Field, *, has_maxbound: bool = False) -> str:
 def python_repr(v) -> str:
     """Format a list[dict] schema as multi-line Python for class-body assignment.
 
-    Registered as the ``python_repr`` Jinja filter.  Produces 8-space item
+    Registered as the ``python_repr`` Jinja filter. Produces 8-space item
     indent, 12-space key indent, 4-space closing bracket so the result renders
     correctly after ``    __name__: ClassVar[...] = ``.
     """
@@ -632,18 +527,23 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
 
     Produces a 4-space-indented ``@attrs.define`` class with typed fields and
     an ``__iter__`` method that yields column values in schema column order.
-    Row instances can be passed anywhere nested lists are accepted — they are
+    Row instances can be passed anywhere nested lists are accepted -- they are
     coerced to np.recarray in ``__attrs_post_init__`` exactly like nested lists.
 
     Required fields (no default) are declared before optional fields to
-    satisfy attrs ordering constraints.  ``__iter__`` follows schema column
+    satisfy attrs ordering constraints. ``__iter__`` follows schema column
     order so coercion produces the correct recarray layout.
 
     ``is_period=True`` injects ``aux: tuple = ()`` between required value
     columns and optional columns, for packages that accept positional AUXILIARY
-    columns in their stress period recarray.  Static list blocks (packagedata,
+    columns in their stress period recarray. Static list blocks (packagedata,
     connectiondata, etc.) have fixed DFN schemas and never carry dynamic aux
     columns, so ``is_period`` should be False (the default) for those.
+
+    Note: this function is unchanged from the legacy-schema codegen path --
+    it operates entirely on the pre-built list[dict] schema format (see
+    filters.py's docstring / namefile-load-plan.md Phase 0.6a+0.6b), not on
+    the source DFN schema type, so it needed no changes for the dev3 migration.
     """
     if not schema_list:
         return ""
@@ -701,10 +601,10 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
 
     required = [col for col in schema_list if not _is_optional(col)]
     optional = [col for col in schema_list if _is_optional(col)]
-    # Aux injection: only for period blocks.  Standard stress packages (CHD,
+    # Aux injection: only for period blocks. Standard stress packages (CHD,
     # WEL, DRN, …) carry aux as positional trailing columns in the recarray
-    # whose count equals len(package.auxiliary).  Keystring period packages
-    # (LAK, SFR) embed AUXILIARY as a named keyword record — no positional aux.
+    # whose count equals len(package.auxiliary). Keystring period packages
+    # (LAK, SFR) embed AUXILIARY as a named keyword record -- no positional aux.
     # Static list blocks (packagedata, connectiondata, etc.) have fixed schemas
     # and never carry dynamic aux columns regardless of package options.
     has_positional_aux = is_period and not any(col["role"] == "keystring" for col in schema_list)
@@ -731,7 +631,7 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
 def schema_class(schema_list: list[dict], class_name: str) -> str:
     """Render a Schema subclass body for a list[dict] column schema.
 
-    Registered as the ``schema_class`` Jinja filter.  Called as::
+    Registered as the ``schema_class`` Jinja filter. Called as::
 
         {{ spec.period_schema | schema_class("_PeriodSchema") }}
 
@@ -739,6 +639,9 @@ def schema_class(schema_list: list[dict], class_name: str) -> str:
     emission in generated files) with one Column(...) attribute per column.
     Long Column() calls are wrapped to keep lines under the 100-character
     ruff limit.
+
+    Note: unchanged from the legacy-schema codegen path, same reason as
+    row_class above -- operates on the pre-built list[dict] format only.
     """
     if not schema_list:
         return ""
@@ -769,95 +672,140 @@ def schema_class(schema_list: list[dict], class_name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# v1 DFN block schema utilities
+# List-block column schema utilities
 # ---------------------------------------------------------------------------
-# These functions derive recarray block column schemas from v1 DFN data.
-# Used by make.py to auto-detect list blocks and build BlockPropertySpec.
+# These functions derive recarray block column schemas directly from dev3
+# List/Record/Array fields. Used by make.py to auto-detect list blocks and
+# build BlockPropertySpec. Replaces the legacy schema's v1-DFN-sourced
+# ColumnSpec/block_schema (which needed v1 DFN data because dfn2toml dropped
+# column-level detail, and used the bespoke `numeric_index` flag) -- dev3
+# carries real pk/fk and real column structure natively, no v1 fallback needed.
 # ---------------------------------------------------------------------------
-
-
-def _as_bool(val) -> bool:
-    """Normalize a v1 DFN attribute that may be bool or string 'true'/'false'."""
-    if isinstance(val, bool):
-        return val
-    return str(val).lower() == "true"
 
 
 @dataclass
 class ColumnSpec:
-    """Schema for one column in a v1 DFN recarray block."""
+    """Schema for one column in a dev3 List[Record] block."""
 
     name: str
-    type: str
-    longname: str
-    is_cellid: bool  # shape=(ncelldim) — stored as object-dtype tuple attr
-    is_prefix: bool  # tagged non-optional keyword — write-side token only, no attr
-    is_row_keyword: bool  # optional keyword — stored as bool attr
-    numeric_index: bool  # 0-based index written as 1-based (+1 at write time)
+    field: FieldV3  # the underlying dev3 field, for shape/dtype/time_series/fk access
+    is_cellid: bool  # shape=["ncelldim"] -- stored as object-dtype tuple attr
+    is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
+    is_row_keyword: bool  # optional keyword -- stored as bool attr
+    is_index: bool  # pk or fk column: 0-based index written as 1-based (+1 at write time)
 
 
-def block_schema(v1_dfn: Dfn, block_name: str) -> list[ColumnSpec]:
-    """Derive column schema for a recarray block from a v1 DFN.
+def find_keystring_union(list_field: ListField) -> UnionField | None:
+    """Find the discriminating Union in a List field's per-row shape, if any.
 
-    Finds the list-type header field in the block and reads columns from
-    its nested children (built by the v2.0.0.dev1 migration). Returns one
-    ColumnSpec per column in DFN order.
+    Two real shapes seen in the corpus:
+    - OC-style: ``item`` is a Union directly (no Record wrapper) -- saverecord/
+      printrecord.
+    - LAK-style: ``item`` is a Record with exactly one field, itself a Union
+      (no separate index column -- each arm carries its own fk index, e.g.
+      LAK's ``lakeno``/``outletno``).
+    - LKE/LKT/SFR-style: ``item`` is a Record with an index column *and* a
+      sibling Union field (e.g. gwe-lke's ``{lakeno: Integer, laksetting:
+      Union}`` -- the index is a plain field here, not embedded per-arm).
+
+    Returns None for ordinary (non-keystring) list blocks -- packagedata,
+    connectiondata, standard period blocks (CHD/WEL/DRN-style) -- where
+    ``item`` is a Record with no Union field anywhere among its top-level
+    fields.
     """
-    v1_block = (v1_dfn.get("blocks") or {}).get(block_name) or {}
-    list_field = next((f for f in v1_block.values() if f.get("type") == "list"), None)
-    if list_field is None:
+    item = list_field.item
+    if isinstance(item, UnionField):
+        return item
+    if isinstance(item, Record):
+        for f in item.fields.values():
+            if isinstance(f, UnionField):
+                return f
+    return None
+
+
+def list_columns(f: ListField, component_name: str = "") -> list[ColumnSpec]:
+    """Return the leaf column specs of a dev3 List[Record] field, in order.
+
+    Returns [] for keystring-shaped lists (see find_keystring_union) -- those
+    are handled separately (see make.py's keystring period handling).
+
+    ``component_name`` applies dfn_overrides.toml patches to list columns --
+    unlike top-level block fields (patched in flat_fields), columns nested
+    inside a List's item Record aren't reached by that walk, so this is the
+    only place a list-column override (e.g. a temporary pk=True stopgap for
+    a numeric_index field devtools hasn't backfilled yet) takes effect.
+    """
+    if find_keystring_union(f) is not None:
+        return []
+    item = f.item
+    if not isinstance(item, Record):
         return []
     result = []
-    for col in list_columns(list_field):
-        ftype = col.get("type", "") or ""
-        optional_val = col.get("optional")
-        optional = _as_bool(optional_val or False)
-        shape = str(col.get("shape", "") or "")
-        is_keyword = ftype.lower() == "keyword"
+    for col_name, raw_col in item.fields.items():
+        col = apply_override(component_name, raw_col) if component_name else raw_col
+        is_keyword = isinstance(col, KeywordField)
+        is_optional = col.optional
         result.append(
             ColumnSpec(
-                name=col.get("name", ""),
-                type=ftype,
-                longname=col.get("longname", "") or "",
-                is_cellid="(ncelldim)" in shape,
-                is_prefix=is_keyword and (optional_val is False),
-                is_row_keyword=is_keyword and optional,
-                numeric_index=bool(col.get("numeric_index", False)),
+                name=col_name,
+                field=col,
+                is_cellid=isinstance(col, Array) and list(col.shape or []) == ["ncelldim"],
+                is_prefix=is_keyword and not is_optional,
+                is_row_keyword=is_keyword and is_optional,
+                # role="feature_id" implies MF6's numeric 0-based-Python/1-based-
+                # file conversion (structure.py: int(...) - 1) -- only sound for
+                # integer indices. String pk/fk (e.g. MVR's `pname`, a package
+                # *name* reference, not a numeric one) must stay role="value".
+                is_index=isinstance(col, Integer)
+                and bool(getattr(col, "pk", False) or getattr(col, "fk", None)),
             )
         )
     return result
 
 
-def list_block_names(dfn: Dfn) -> list[str]:
-    """Return block names that contain list-type (recarray) fields, in DFN order."""
-    seen: set[str] = set()
-    result = []
-    for f in flat_fields(dfn):
-        if is_list_field(f) and f["block"] not in seen:
-            seen.add(f["block"])
-            result.append(f["block"])
-    return result
+def is_keystring_list(f: ListField) -> bool:
+    """True if a List field's per-row shape has a discriminating Union
+    (keystring period style)."""
+    return find_keystring_union(f) is not None
 
 
-def v1_list_block_names(v1_dfn: Dfn) -> list[str]:
-    """Return recarray block names from a v1 DFN, in order.
+def list_col_dim(f: ListField, component: Component) -> str | None:
+    """Return the dimension name for list column arrays.
 
-    A block is a recarray when it contains a header field whose ``type``
-    is ``"list"`` (v2.0.0.dev1) or starts with ``"recarray"`` (v1).
-    Used to discover blocks that dfn2toml dropped from the v2 TOML.
+    Uses the last entry of the list field's explicit shape when present,
+    preferring the actual dimensions-block field name when the shape entry
+    differs (e.g. shape uses 'npackages' but field is 'maxpackages').
+    Falls back to the single entry in the component's dimensions block.
+    Returns None when the dimension cannot be determined unambiguously.
     """
+    dim_block = (component.blocks or {}).get("dimensions")
+    dim_names = list(dim_block.fields.keys()) if dim_block is not None else []
+    if shape := (f.shape or []):
+        shape_dim = shape[-1]
+        if shape_dim in dim_names:
+            return shape_dim
+        # Shape dim may use a different prefix than the actual field name
+        # (e.g., shape "npackages" vs dimensions field "maxpackages"). Try
+        # suffix matching: strip leading "n" and find a field that ends with
+        # the remainder.
+        suffix = shape_dim.lstrip("n")
+        if suffix:
+            for fname in dim_names:
+                if fname.endswith(suffix):
+                    return fname
+    if len(dim_names) == 1:
+        return dim_names[0]
+    return None
+
+
+def list_block_names(component: Component) -> list[str]:
+    """Return block names that contain list-type fields, in component order."""
     seen: set[str] = set()
     result = []
-    for block_name, block in (v1_dfn.get("blocks") or {}).items():
-        if block_name in seen:
-            continue
-        if any(
-            (f.get("type", "") or "").lower() == "list"
-            or (f.get("type", "") or "").lower().startswith("recarray")
-            for f in block.values()
-        ):
-            result.append(block_name)
+    for block_name, f in flat_fields(component):
+        if is_list_field(f) and block_name not in seen:
             seen.add(block_name)
+            result.append(block_name)
     return result
 
 
@@ -868,7 +816,7 @@ def collision_names(
     """Column names that require block-prefixed Python attr names.
 
     A name is a collision when it appears in more than one static list block,
-    OR when it appears in any block AND is reserved by a period field.  The
+    OR when it appears in any block AND is reserved by a period field. The
     latter ensures that static block attrs never shadow bare period field names.
     Prefix columns are excluded since they produce no attr.
     """

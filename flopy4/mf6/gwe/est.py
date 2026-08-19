@@ -44,31 +44,26 @@ class Est(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
     )
     decay_water: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         optional=True,
     )
     decay_solid: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         optional=True,
     )
     heat_capacity_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
     )
     density_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
     )

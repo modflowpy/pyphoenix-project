@@ -45,35 +45,22 @@ class Sto(Package):
         block="options",
         optional=True,
     )
-    dev_original_specific_storage: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
-    dev_oldstorageformulation: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
     iconvert: IntArrayLike = field(
         default=0,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     ss: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     sy: FloatArrayLike = field(
         default=0.15,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     _stress_period_data: Optional[dict[int, np.recarray]] = field(
@@ -87,13 +74,13 @@ class Sto(Package):
 
     @attrs.define
     class Row:
-        storagestate: str
+        storage: str
 
         def __iter__(self):
-            yield self.storagestate
+            yield self.storage
 
     class _PeriodSchema(Schema):
-        storagestate = Column("storagestate", role="keystring", dfn_type="keyword")
+        storage = Column("storage", role="keystring", dfn_type="keyword")
 
     __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 

@@ -66,35 +66,33 @@ class Mvr(Package):
     )
 
     class _PackagesSchema(Schema):
-        mname = Column("mname", role="value", dfn_type="string", dtype="np.object_")
+        mname = Column("mname", role="value", dfn_type="string", optional=True, dtype="np.object_")
         pname = Column("pname", role="value", dfn_type="string", dtype="np.object_")
 
     __packages_schema__: ClassVar[type[Schema]] = _PackagesSchema
 
     @attrs.define
     class PackagesRow:
-        mname: Union[float, str]
         pname: Union[float, str]
+        mname: Optional[Union[float, str]] = None
 
         def __iter__(self):
-            yield self.mname
             yield self.pname
+            yield self.mname
 
     @attrs.define
     class Row:
-        cellid: tuple
-        pname1: str
+        pname1: Union[float, str]
         id1: int
-        pname2: str
+        pname2: Union[float, str]
         id2: int
-        mvrtype: str
+        mvrtype: Union[float, str]
         value: float
         aux: tuple = ()
-        mname1: Optional[str] = None
-        mname2: Optional[str] = None
+        mname1: Optional[Union[float, str]] = None
+        mname2: Optional[Union[float, str]] = None
 
         def __iter__(self):
-            yield self.cellid
             yield self.pname1
             yield self.id1
             yield self.pname2
@@ -106,14 +104,25 @@ class Mvr(Package):
             yield self.mname2
 
     class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        mname1 = Column("mname1", role="value", dfn_type="string", optional=True)
-        pname1 = Column("pname1", role="value", dfn_type="string")
+        mname1 = Column(
+            "mname1",
+            role="value",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
+        pname1 = Column("pname1", role="value", dfn_type="string", dtype="np.object_")
         id1 = Column("id1", role="value", dfn_type="integer")
-        mname2 = Column("mname2", role="value", dfn_type="string", optional=True)
-        pname2 = Column("pname2", role="value", dfn_type="string")
+        mname2 = Column(
+            "mname2",
+            role="value",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
+        pname2 = Column("pname2", role="value", dfn_type="string", dtype="np.object_")
         id2 = Column("id2", role="value", dfn_type="integer")
-        mvrtype = Column("mvrtype", role="value", dfn_type="string")
+        mvrtype = Column("mvrtype", role="value", dfn_type="string", dtype="np.object_")
         value = Column("value", role="value", dfn_type="double")
 
     __period_schema__: ClassVar[type[Schema]] = _PeriodSchema

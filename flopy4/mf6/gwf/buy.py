@@ -30,11 +30,6 @@ class Buy(Package):
         optional=True,
         inout="fileout",
     )
-    dev_efh_formulation: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
     nrhospecies: Optional[int] = field(
         default=None,
         block="dimensions",

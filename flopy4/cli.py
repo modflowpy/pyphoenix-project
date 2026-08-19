@@ -9,7 +9,7 @@ from pathlib import Path
 
 _PROJ_ROOT = Path(__file__).parents[1].expanduser().resolve()
 _MF6_ROOT = _PROJ_ROOT / "flopy4" / "mf6"
-_DFN_SCHEMA_VERSION = "2.0.0.dev1"
+_DFN_SCHEMA_VERSION = "2.0.0.dev3"
 
 
 def _resolve_release_id(release_id: str | None, verbose: bool = False) -> str:
@@ -142,7 +142,7 @@ def _cmd_sync(args: argparse.Namespace) -> None:
 
     dfns_spec = registry.spec(schema_version=_DFN_SCHEMA_VERSION)
     make(
-        dfns=dfns_spec,
+        dfns=dfns_spec.components,
         outdir=_MF6_ROOT,
         existing_only=not args.all_packages,
         makedirs=args.all_packages,

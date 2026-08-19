@@ -15,10 +15,11 @@ To add a new tier:
 
 import importlib.util
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
-from modflow_devtools.dfn import Dfn, Field
+from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.utils.codegen.filters import (
@@ -39,8 +40,13 @@ from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 # Shared fixtures
 @pytest.fixture(scope="session")
 def all_dfns(dfn_path):
-    """Load all DFNs as a flat dict."""
-    return Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
+    """Load all DFNs as a flat {name: Component} dict."""
+    from modflow_devtools.dfns import LocalDfnRegistry
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
+        registry = LocalDfnRegistry(path=dfn_path)
+        return registry.spec(schema_version="2.0.0.dev3").components
 
 
 # Simple tier: Package subclasses with only scalars, arrays, and path records.
@@ -185,64 +191,68 @@ class TestFilters:
         assert safe_name(name) == expected
 
     @pytest.mark.parametrize(
-        "ftype, shape, optional, expected",
+        "field, block_name, expected",
         [
-            ("keyword", None, False, "bool"),
-            ("keyword", None, True, "bool"),  # keywords never Optional
-            ("integer", None, False, "int"),
-            ("integer", None, True, "Optional[int]"),
-            ("double", None, False, "float"),
-            ("double precision", None, False, "float"),
-            ("string", None, False, "str"),
-            ("double", "(nodes)", False, "NDArray[np.float64]"),
-            ("integer", "(nodes)", True, "Optional[NDArray[np.int64]]"),
-            ("keyword", "(nper)", True, "Optional[NDArray[np.bool_]]"),
+            (Keyword(name="x"), "options", "bool"),
+            (Keyword(name="x", optional=True), "options", "bool"),  # keywords never Optional
+            (Integer(name="x"), "options", "int"),
+            (Integer(name="x", optional=True), "options", "Optional[int]"),
+            (Double(name="x"), "options", "float"),
+            (String(name="x"), "options", "str"),
+            (Array(name="x", dtype="double", shape=["nodes"]), "options", "NDArray[np.float64]"),
+            (
+                Array(name="x", dtype="integer", shape=["nodes"], optional=True),
+                "options",
+                "Optional[NDArray[np.int64]]",
+            ),
+            (
+                Array(name="x", dtype="keyword", shape=["nper"], optional=True),
+                "options",
+                "Optional[NDArray[np.bool_]]",
+            ),
         ],
     )
-    def test_py_type(self, ftype, shape, optional, expected):
-        f = Field(name="x", type=ftype, block="options", shape=shape, optional=optional)
-        assert py_type(f) == expected
+    def test_py_type(self, field, block_name, expected):
+        assert py_type(field, block_name) == expected
 
     @pytest.mark.parametrize(
-        "ftype, shape",
+        "field",
         [
-            ("double", "(nodes)"),
-            ("integer", "(nodes)"),
-            ("keyword", "(nodes)"),
+            Array(name="x", dtype="double", shape=["nodes"]),
+            Array(name="x", dtype="integer", shape=["nodes"]),
+            Array(name="x", dtype="keyword", shape=["nodes"]),
         ],
     )
-    def test_py_type_period_array_always_optional(self, ftype, shape):
+    def test_py_type_period_array_always_optional(self, field):
         """Period arrays get Optional even when DFN marks them required."""
-        f = Field(name="x", type=ftype, block="period", shape=shape, optional=False)
-        result = py_type(f)
+        result = py_type(field, "period")
         assert result.startswith("Optional["), (
-            f"Expected Optional for period {ftype} array but got {result!r}"
+            f"Expected Optional for period array but got {result!r}"
         )
 
     @pytest.mark.parametrize(
-        "ftype, shape, generatable",
+        "field, generatable",
         [
-            ("keyword", None, True),
-            ("double", "(nodes)", True),
-            ("integer", None, True),
-            ("string", None, True),
-            ("record", None, False),  # plain record — not yet supported
-            ("recarray", None, False),
-            ("keystring", None, False),
+            (Keyword(name="x"), True),
+            (Array(name="x", dtype="double", shape=["nodes"]), True),
+            (Integer(name="x"), True),
+            (String(name="x"), True),
+            (Record(name="x", fields={"a": Integer(name="a"), "b": Integer(name="b")}), False),
         ],
     )
-    def test_is_generatable(self, ftype, shape, generatable):
-        f = Field(name="x", type=ftype, block="options", shape=shape)
-        assert is_generatable(f) == generatable
+    def test_is_generatable(self, field, generatable):
+        assert is_generatable(field) == generatable
 
     def test_is_generatable_file_record(self):
         """A record with a filein/fileout child is generatable as a path."""
-        child_in = Field(name="filein", type="keyword", block="options")
-        f = Field(
+        from modflow_devtools.dfns.schema import File
+
+        f = Record(
             name="my_filerecord",
-            type="record",
-            block="options",
-            children={"filein": child_in},
+            fields={
+                "filein": Keyword(name="filein"),
+                "my_filename": File(name="my_filename", direction="in"),
+            },
         )
         assert is_generatable(f)
 
@@ -474,14 +484,11 @@ class TestSolutionTierComponentSpec:
 
 
 # Layer 2b: List-field expansion
-def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
+def test_lak_numeric_index_autodetects_cellid(all_dfns):
     """LAK packagedata/connectiondata are emitted as recarray fields with schemas."""
     if "gwf-lak" not in all_dfns:
         pytest.skip("gwf-lak not in DFN set")
-    v1_dfns = Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
-    spec = build_component_spec(
-        all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
-    )
+    spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
     # New codegen: block schemas exist for list blocks (single recarray field each)
@@ -515,13 +522,10 @@ class TestBlockPropertySpec:
     """Verify BlockPropertySpec population in build_component_spec."""
 
     @pytest.fixture
-    def lak_spec(self, all_dfns, dfn_path):
+    def lak_spec(self, all_dfns):
         if "gwf-lak" not in all_dfns:
             pytest.skip("gwf-lak not in DFN set")
-        v1_dfns = Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
-        return build_component_spec(
-            all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
-        )
+        return build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
 
     def test_lak_block_count(self, lak_spec):
         assert len(lak_spec.block_properties) == 4
@@ -586,11 +590,6 @@ class TestBlockPropertySpec:
         assert "tab6" not in bp.attr_name_map
         assert "filein" not in bp.attr_name_map
 
-    def test_no_block_properties_without_v1(self, all_dfns):
-        if "gwf-lak" not in all_dfns:
-            pytest.skip("gwf-lak not in DFN set")
-        spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
-        assert spec.block_properties == []
 
 
 # Layer 2c: Compound record expansion
@@ -598,7 +597,7 @@ def test_can_expand_record_all_keywords(all_dfns):
     """A record whose children are all keyword type (like cvoptions) is expandable."""
     if "gwf-npf" not in all_dfns:
         pytest.skip("gwf-npf not in DFN set")
-    cvoptions = all_dfns["gwf-npf"]["blocks"]["options"]["cvoptions"]
+    cvoptions = all_dfns["gwf-npf"].blocks["options"].fields["cvoptions"]
     assert can_expand_record(cvoptions)
 
 
@@ -608,7 +607,7 @@ def test_can_expand_record_with_positional_required_data(all_dfns):
         pytest.skip("gwf-npf not in DFN set")
     from flopy4.mf6.utils.codegen.filters import can_generate_record_class
 
-    rewet_record = all_dfns["gwf-npf"]["blocks"]["options"]["rewet_record"]
+    rewet_record = all_dfns["gwf-npf"].blocks["options"].fields["rewet_record"]
     assert not can_expand_record(rewet_record)
     assert can_generate_record_class(rewet_record)
 
@@ -619,7 +618,7 @@ def test_rcloserecord_generates_inner_class(all_dfns):
         pytest.skip("sln-ims not in DFN set")
     from flopy4.mf6.utils.codegen.filters import can_generate_record_class
 
-    rcloserecord = all_dfns["sln-ims"]["blocks"]["linear"]["rcloserecord"]
+    rcloserecord = all_dfns["sln-ims"].blocks["linear"].fields["rcloserecord"]
     assert can_generate_record_class(rcloserecord)
 
 

@@ -19,19 +19,16 @@ class Mip(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
     )
     retfactor: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         optional=True,
     )
     izone: Optional[IntArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         optional=True,
     )

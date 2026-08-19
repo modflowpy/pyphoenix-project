@@ -17,11 +17,6 @@ class Prp(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class ReleaseTimes(Record):
-        _keyword: ClassVar[str] = "release_times"
-        times: float = attrs.field()
-
-    @attrs.define
     class ReleaseTimesfile(Record):
         _keyword: ClassVar[str] = "release_timesfile"
         timesfile: str = attrs.field()
@@ -33,11 +28,6 @@ class Prp(Package):
     )
     print_input: bool = field(
         default=False,
-        block="options",
-        optional=True,
-    )
-    dev_exit_solve_method: Optional[int] = field(
-        default=None,
         block="options",
         optional=True,
     )
@@ -95,10 +85,7 @@ class Prp(Package):
         block="options",
         optional=True,
     )
-    release_times: Optional[ReleaseTimes] = field(
-        default=None,
-        block="options",
-    )
+    # TODO: release_timesrecord — type 'record' not yet supported
     release_timesfile: Optional[ReleaseTimesfile] = field(
         default=None,
         block="options",
@@ -107,10 +94,6 @@ class Prp(Package):
         default=None,
         block="options",
         optional=True,
-    )
-    dev_forceternary: bool = field(
-        default=False,
-        block="options",
     )
     release_time_tolerance: Optional[float] = field(
         default=None,
@@ -124,11 +107,6 @@ class Prp(Package):
     )
     coordinate_check_method: Optional[str] = field(
         default="eager",
-        block="options",
-        optional=True,
-    )
-    dev_cycle_detection_window: Optional[int] = field(
-        default=None,
         block="options",
         optional=True,
     )
@@ -163,11 +141,17 @@ class Prp(Package):
 
     class _PackagedataSchema(Schema):
         irptno = Column("irptno", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer")
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
         xrpt = Column("xrpt", role="value", dfn_type="double")
         yrpt = Column("yrpt", role="value", dfn_type="double")
         zrpt = Column("zrpt", role="value", dfn_type="double")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
+        boundname = Column(
+            "boundname",
+            role="boundname",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
@@ -202,33 +186,16 @@ class Prp(Package):
 
     @attrs.define
     class Row:
-        cellid: tuple
-        all: str
-        first: str
-        last: str
-        frequency: int
-        steps: int
-        aux: tuple = ()
-        fraction: Optional[float] = None
+        keyword: str
+        value: object
 
         def __iter__(self):
-            yield self.cellid
-            yield self.all
-            yield self.first
-            yield self.last
-            yield self.frequency
-            yield self.steps
-            yield from self.aux
-            yield self.fraction
+            yield self.keyword
+            yield self.value
 
     class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        all = Column("all", role="value", dfn_type="keyword")
-        first = Column("first", role="value", dfn_type="keyword")
-        last = Column("last", role="value", dfn_type="keyword")
-        frequency = Column("frequency", role="value", dfn_type="integer")
-        steps = Column("steps", role="value", dfn_type="integer")
-        fraction = Column("fraction", role="value", dfn_type="double", optional=True)
+        keyword = Column("keyword", role="keystring", dfn_type="string")
+        value = Column("value", role="keystring_value", dfn_type="object")
 
     __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
 

@@ -18,7 +18,6 @@ class Wel(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
@@ -60,6 +59,11 @@ class Wel(Package):
     )
     flow_reduction_length: bool = field(
         default=False,
+        block="options",
+        optional=True,
+    )
+    auto_flow_reduce_auxname: Optional[str] = field(
+        default=None,
         block="options",
         optional=True,
     )

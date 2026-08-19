@@ -52,14 +52,12 @@ class Mst(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )
     decay: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -67,7 +65,6 @@ class Mst(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -75,7 +72,6 @@ class Mst(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -83,7 +79,6 @@ class Mst(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -91,7 +86,6 @@ class Mst(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )

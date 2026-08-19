@@ -15,7 +15,7 @@ class Npf(Package):
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"
-        dewatered: Optional[bool] = attrs.field(default=None)
+        dewatered: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
 
     @attrs.define
     class Rewet(Record):
@@ -27,7 +27,7 @@ class Npf(Package):
     @attrs.define
     class Xt3doptions(Record):
         _keyword: ClassVar[str] = "xt3d"
-        rhs: Optional[bool] = attrs.field(default=None)
+        rhs: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
 
     save_flows: bool = field(
         default=False,
@@ -108,35 +108,22 @@ class Npf(Package):
         block="options",
         optional=True,
     )
-    dev_no_newton: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
-    dev_omega: Optional[float] = field(
-        default=None,
-        block="options",
-        optional=True,
-    )
     icelltype: IntArrayLike = field(
         default=0,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     k: FloatArrayLike = field(
         default=1.0,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     k22: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -144,7 +131,6 @@ class Npf(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -152,7 +138,6 @@ class Npf(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -160,7 +145,6 @@ class Npf(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -168,7 +152,6 @@ class Npf(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -176,7 +159,6 @@ class Npf(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )

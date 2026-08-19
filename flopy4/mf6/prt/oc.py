@@ -15,11 +15,6 @@ from flopy4.mf6.spec import field, path
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
     @attrs.define
-    class TrackTimes(Record):
-        _keyword: ClassVar[str] = "track_times"
-        times: float = attrs.field()
-
-    @attrs.define
     class TrackTimesfile(Record):
         _keyword: ClassVar[str] = "track_timesfile"
         timesfile: str = attrs.field()
@@ -92,15 +87,12 @@ class Oc(Package):
         block="options",
         optional=True,
     )
-    track_times: Optional[TrackTimes] = field(
-        default=None,
-        block="options",
-    )
+    # TODO: track_timesrecord — type 'record' not yet supported
     track_timesfile: Optional[TrackTimesfile] = field(
         default=None,
         block="options",
     )
-    dev_dump_event_trace: bool = field(
+    scratch_buffer: bool = field(
         default=False,
         block="options",
         optional=True,
@@ -109,12 +101,6 @@ class Oc(Package):
         default=None,
         block="dimensions",
         optional=True,
-    )
-    tracktimes: Optional[np.recarray] = field(
-        default=None,
-        block="tracktimes",
-        schema="__tracktimes_schema__",
-        auto_from="tracktimes",
     )
     save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
@@ -127,6 +113,12 @@ class Oc(Package):
         block="period",
         oc_action="print",
         oc_rtype="budget",
+    )
+    tracktimes: Optional[np.recarray] = field(
+        default=None,
+        block="tracktimes",
+        schema="__tracktimes_schema__",
+        auto_from="tracktimes",
     )
 
     class _TracktimesSchema(Schema):

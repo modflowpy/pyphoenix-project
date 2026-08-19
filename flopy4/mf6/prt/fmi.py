@@ -37,3 +37,10 @@ class Fmi(Package):
         optional=True,
         inout="filein",
     )
+    gwfgrid: Optional[Path] = path(
+        default=None,
+        converter=_optional_path,
+        block="packagedata",
+        optional=True,
+        inout="filein",
+    )

@@ -18,7 +18,6 @@ class Chd(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
@@ -59,11 +58,6 @@ class Chd(Package):
         block="options",
         optional=True,
         inout="filein",
-    )
-    dev_no_newton: bool = field(
-        default=False,
-        block="options",
-        optional=True,
     )
     maxbound: Optional[int] = field(
         default=0,

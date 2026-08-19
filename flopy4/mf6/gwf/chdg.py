@@ -20,7 +20,6 @@ class Chdg(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
@@ -51,11 +50,6 @@ class Chdg(Package):
         inout="filein",
     )
     export_array_netcdf: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
-    dev_no_newton: bool = field(
         default=False,
         block="options",
         optional=True,

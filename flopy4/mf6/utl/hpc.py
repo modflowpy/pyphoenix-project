@@ -16,11 +16,6 @@ class Hpc(Package):
         block="options",
         optional=True,
     )
-    dev_log_mpi: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
     partitions: Optional[np.recarray] = field(
         default=None,
         block="partitions",

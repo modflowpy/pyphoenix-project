@@ -23,7 +23,6 @@ class Lke(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     flow_package_auxiliary_name: Optional[str] = field(
@@ -96,7 +95,6 @@ class Lke(Package):
         block="packagedata",
         schema="__packagedata_schema__",
     )
-    # TODO: laksetting — type 'union' not yet supported
     _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
@@ -111,7 +109,13 @@ class Lke(Package):
         strt = Column("strt", role="value", dfn_type="double")
         ktf = Column("ktf", role="value", dfn_type="double")
         rbthcnd = Column("rbthcnd", role="value", dfn_type="double")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
+        boundname = Column(
+            "boundname",
+            role="boundname",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
@@ -132,17 +136,17 @@ class Lke(Package):
 
     @attrs.define
     class Row:
-        lakeno: int
+        number: int
         keyword: str
         value: object
 
         def __iter__(self):
-            yield self.lakeno
+            yield self.number
             yield self.keyword
             yield self.value
 
     class _PeriodSchema(Schema):
-        lakeno = Column("lakeno", role="feature_id", dfn_type="integer")
+        number = Column("number", role="feature_id", dfn_type="integer")
         keyword = Column("keyword", role="keystring", dfn_type="string")
         value = Column("value", role="keystring_value", dfn_type="object")
 

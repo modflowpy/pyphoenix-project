@@ -18,7 +18,6 @@ class Lak(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     boundnames: bool = field(
@@ -98,6 +97,11 @@ class Lak(Package):
         block="options",
         optional=True,
     )
+    implicit: bool = field(
+        default=False,
+        block="options",
+        optional=True,
+    )
     maximum_iterations: Optional[int] = field(
         default=None,
         block="options",
@@ -153,7 +157,6 @@ class Lak(Package):
         schema="__outlets_schema__",
         auto_from="outlets",
     )
-    # TODO: laksetting — type 'union' not yet supported
     _stress_period_data: Optional[dict[int, np.recarray]] = field(
         alias="stress_period_data",
         default=None,
@@ -167,7 +170,13 @@ class Lak(Package):
         ifno = Column("ifno", role="feature_id", dfn_type="integer")
         strt = Column("strt", role="value", dfn_type="double")
         nlakeconn = Column("nlakeconn", role="value", dfn_type="integer")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
+        boundname = Column(
+            "boundname",
+            role="boundname",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 
@@ -187,7 +196,7 @@ class Lak(Package):
     class _ConnectiondataSchema(Schema):
         ifno = Column("ifno", role="feature_id", dfn_type="integer")
         iconn = Column("iconn", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer")
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
         claktype = Column("claktype", role="value", dfn_type="string", dtype="np.object_")
         bedleak = Column("bedleak", role="value", dfn_type="string", dtype="np.object_")
         belev = Column("belev", role="value", dfn_type="double")
@@ -246,10 +255,34 @@ class Lak(Package):
         lakein = Column("lakein", role="feature_id", dfn_type="integer")
         lakeout = Column("lakeout", role="feature_id", dfn_type="integer")
         couttype = Column("couttype", role="value", dfn_type="string", dtype="np.object_")
-        invert = Column("invert", role="value", dfn_type="double")
-        width = Column("width", role="value", dfn_type="double")
-        rough = Column("rough", role="value", dfn_type="double")
-        slope = Column("slope", role="value", dfn_type="double")
+        invert = Column(
+            "invert",
+            role="value",
+            dfn_type="double",
+            time_series=True,
+            dtype="np.object_",
+        )
+        width = Column(
+            "width",
+            role="value",
+            dfn_type="double",
+            time_series=True,
+            dtype="np.object_",
+        )
+        rough = Column(
+            "rough",
+            role="value",
+            dfn_type="double",
+            time_series=True,
+            dtype="np.object_",
+        )
+        slope = Column(
+            "slope",
+            role="value",
+            dfn_type="double",
+            time_series=True,
+            dtype="np.object_",
+        )
 
     __outlets_schema__: ClassVar[type[Schema]] = _OutletsSchema
 
@@ -259,10 +292,10 @@ class Lak(Package):
         lakein: int
         lakeout: int
         couttype: Union[float, str]
-        invert: float
-        width: float
-        rough: float
-        slope: float
+        invert: Union[float, str]
+        width: Union[float, str]
+        rough: Union[float, str]
+        slope: Union[float, str]
 
         def __iter__(self):
             yield self.outletno

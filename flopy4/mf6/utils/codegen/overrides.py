@@ -20,10 +20,11 @@ Usage::
 
 import tomllib
 from pathlib import Path
-
-from modflow_devtools.dfn import Field
+from typing import TypeVar
 
 _OVERRIDES_PATH = Path(__file__).parent / "dfn_overrides.toml"
+
+FieldT = TypeVar("FieldT")
 
 
 def _load() -> dict[str, dict[str, dict]]:
@@ -36,7 +37,7 @@ def _load() -> dict[str, dict[str, dict]]:
 _OVERRIDES: dict[str, dict[str, dict]] = _load()
 
 
-def apply(dfn_name: str, f: Field) -> Field:
+def apply(dfn_name: str, f: FieldT) -> FieldT:
     """Return ``f`` with any registered overrides applied.
 
     Parameters
@@ -44,20 +45,20 @@ def apply(dfn_name: str, f: Field) -> Field:
     dfn_name :
         DFN identifier, e.g. ``"gwf-ic"``.
     f :
-        The field to patch.
+        The pydantic field (dev3 Scalar/Array/Record/Union/List instance) to patch.
 
     Returns
     -------
-    Field
-        The original field if no overrides exist, otherwise a new
-        dataclass instance with the patched attributes.
+    FieldT
+        The original field if no overrides exist, otherwise a copy with the
+        patched attributes (``model_copy(update=...)``).
     """
-    patches = _OVERRIDES.get(dfn_name, {}).get(f["name"], {})
+    patches = _OVERRIDES.get(dfn_name, {}).get(f.name, {})
     # extra_children is consumed by extra_record_children(), not a Field attribute
     patches = {k: v for k, v in patches.items() if k != "extra_children"}
     if not patches:
         return f
-    return {**f, **patches}
+    return f.model_copy(update=patches)
 
 
 def extra_list_blocks(dfn_name: str) -> list[dict]:
@@ -136,27 +137,3 @@ def always_emit_blocks(dfn_name: str) -> list[str]:
     )
 
 
-def apply_to_child(dfn_name: str, child: dict) -> dict:
-    """Return ``child`` dict with any registered overrides applied.
-
-    Used for record child dicts, which are plain dicts rather than Field
-    objects.  Looks up by the child's ``name`` key using the same override
-    table as :func:`apply`.
-
-    Parameters
-    ----------
-    dfn_name :
-        DFN identifier, e.g. ``"gwf-npf"``.
-    child :
-        A record child dict from the v2 TOML schema.
-
-    Returns
-    -------
-    dict
-        The original dict if no overrides exist, otherwise a shallow-merged
-        copy with the patched keys.
-    """
-    patches = _OVERRIDES.get(dfn_name, {}).get(child.get("name", ""), {})
-    if not patches:
-        return child
-    return {**child, **patches}

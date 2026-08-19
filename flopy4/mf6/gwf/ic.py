@@ -22,6 +22,5 @@ class Ic(Package):
         default=1.0,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]

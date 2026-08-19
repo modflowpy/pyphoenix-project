@@ -18,6 +18,10 @@ class Ist(Package):
     class Cimprint(Record):
         _keyword: ClassVar[str] = "cim"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
+        format_: str = attrs.field()
+        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
 
     save_flows: bool = field(
         default=False,
@@ -85,28 +89,31 @@ class Ist(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )
     volfrac: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )
     zetaim: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
+    )
+    cim: Optional[FloatArrayLike] = field(
+        default=None,
+        block="griddata",
+        shape=("nodes",),
+        netcdf=True,
+        optional=True,
     )
     decay: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -114,7 +121,6 @@ class Ist(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -122,7 +128,6 @@ class Ist(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -130,7 +135,6 @@ class Ist(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -138,7 +142,6 @@ class Ist(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )

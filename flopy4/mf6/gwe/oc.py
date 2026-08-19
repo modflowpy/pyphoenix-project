@@ -16,6 +16,10 @@ class Oc(Package):
     class Temperatureprint(Record):
         _keyword: ClassVar[str] = "temperature"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
+        format_: str = attrs.field()
+        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
 
     budget_file: Optional[Path] = path(
         default=None,

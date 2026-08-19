@@ -32,7 +32,7 @@ class Laktab(Package):
         stage = Column("stage", role="value", dfn_type="double")
         volume = Column("volume", role="value", dfn_type="double")
         sarea = Column("sarea", role="value", dfn_type="double")
-        barea = Column("barea", role="value", dfn_type="double")
+        barea = Column("barea", role="value", dfn_type="double", optional=True)
 
     __table_schema__: ClassVar[type[Schema]] = _TableSchema
 
@@ -41,7 +41,7 @@ class Laktab(Package):
         stage: float
         volume: float
         sarea: float
-        barea: float
+        barea: Optional[float] = None
 
         def __iter__(self):
             yield self.stage

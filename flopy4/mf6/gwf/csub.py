@@ -38,6 +38,16 @@ class Csub(Package):
         block="options",
         optional=True,
     )
+    elastic_inelastic_smoothing: bool = field(
+        default=False,
+        block="options",
+        optional=True,
+    )
+    strict_effective_stress: bool = field(
+        default=False,
+        block="options",
+        optional=True,
+    )
     head_based: bool = field(
         default=False,
         block="options",
@@ -184,21 +194,18 @@ class Csub(Package):
         default=1e-05,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     cg_theta: FloatArrayLike = field(
         default=0.2,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     sgm: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -206,7 +213,6 @@ class Csub(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -221,7 +227,7 @@ class Csub(Package):
 
     class _PackagedataSchema(Schema):
         icsubno = Column("icsubno", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer")
+        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
         cdelay = Column("cdelay", role="value", dfn_type="string", dtype="np.object_")
         pcs0 = Column("pcs0", role="value", dfn_type="double")
         thick_frac = Column("thick_frac", role="value", dfn_type="double")
@@ -231,7 +237,13 @@ class Csub(Package):
         theta = Column("theta", role="value", dfn_type="double")
         kv = Column("kv", role="value", dfn_type="double")
         h0 = Column("h0", role="value", dfn_type="double")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
+        boundname = Column(
+            "boundname",
+            role="boundname",
+            dfn_type="string",
+            optional=True,
+            dtype="np.object_",
+        )
 
     __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
 

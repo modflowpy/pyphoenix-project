@@ -20,7 +20,6 @@ class Drng(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
@@ -61,11 +60,6 @@ class Drng(Package):
         optional=True,
     )
     export_array_netcdf: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
-    dev_cubic_scaling: bool = field(
         default=False,
         block="options",
         optional=True,

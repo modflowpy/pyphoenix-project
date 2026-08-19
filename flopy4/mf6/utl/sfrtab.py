@@ -31,7 +31,7 @@ class Sfrtab(Package):
     class _TableSchema(Schema):
         xfraction = Column("xfraction", role="value", dfn_type="double")
         height = Column("height", role="value", dfn_type="double")
-        manfraction = Column("manfraction", role="value", dfn_type="double")
+        manfraction = Column("manfraction", role="value", dfn_type="double", optional=True)
 
     __table_schema__: ClassVar[type[Schema]] = _TableSchema
 
@@ -39,7 +39,7 @@ class Sfrtab(Package):
     class TableRow:
         xfraction: float
         height: float
-        manfraction: float
+        manfraction: Optional[float] = None
 
         def __iter__(self):
             yield self.xfraction

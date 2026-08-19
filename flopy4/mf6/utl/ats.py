@@ -19,6 +19,7 @@ class Ats(Package):
         default=None,
         block="perioddata",
         schema="__perioddata_schema__",
+        auto_from="perioddata",
     )
 
     class _PerioddataSchema(Schema):

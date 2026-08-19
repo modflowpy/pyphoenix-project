@@ -34,7 +34,6 @@ class Dsp(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -42,7 +41,6 @@ class Dsp(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -50,7 +48,6 @@ class Dsp(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -58,7 +55,6 @@ class Dsp(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -66,7 +62,6 @@ class Dsp(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -74,7 +69,6 @@ class Dsp(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
