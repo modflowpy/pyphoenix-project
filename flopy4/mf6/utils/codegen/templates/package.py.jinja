@@ -16,6 +16,8 @@
 
 @attrs.define(kw_only=True, slots=False)
 class {{ spec.class_name }}({{ spec.base_class }}):
+    dfn_name: ClassVar[str] = "{{ spec.dfn_name }}"
+
 {% if spec.multi %}
     multi_package: ClassVar[bool] = True
 
@@ -59,9 +61,6 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     # TODO: {{ f.dfn_name }} — {{ f.skip_reason }}
 {% endif %}
 {% endfor %}
-{% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields and not spec.block_schemas and not spec.period_schema %}
-    pass
-{% endif %}
 {% if spec.period_schema or spec.block_schemas %}
 
 {% if spec.period_schema %}

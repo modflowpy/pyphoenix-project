@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Wel(Package):
+    dfn_name: ClassVar[str] = "gwf-wel"
+
     multi_package: ClassVar[bool] = True
 
     @attrs.define

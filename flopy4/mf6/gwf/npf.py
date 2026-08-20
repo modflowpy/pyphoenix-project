@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Npf(Package):
+    dfn_name: ClassVar[str] = "gwf-npf"
+
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"

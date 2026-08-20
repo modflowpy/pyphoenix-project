@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
@@ -15,6 +15,8 @@ from flopy4.mf6.utl.ncf import Ncf
 
 @attrs.define(kw_only=True, slots=False)
 class Disv(DisBase):
+    dfn_name: ClassVar[str] = "gwt-disv"
+
     @attrs.define(slots=False)
     class Cell2dRecord:
         icell2d: int = attrs.field()

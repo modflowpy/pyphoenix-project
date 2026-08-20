@@ -10,6 +10,8 @@ from flopy4.mf6.spec import field
 
 @attrs.define(kw_only=True, slots=False)
 class Tas(Package):
+    dfn_name: ClassVar[str] = "utl-tas"
+
     multi_package: ClassVar[bool] = True
 
     @attrs.define

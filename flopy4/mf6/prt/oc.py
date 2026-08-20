@@ -13,6 +13,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
+    dfn_name: ClassVar[str] = "prt-oc"
+
     @attrs.define
     class TrackTimesfile(Record):
         _keyword: ClassVar[str] = "track_timesfile"

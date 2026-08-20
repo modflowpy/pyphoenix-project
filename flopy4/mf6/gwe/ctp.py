@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Ctp(Package):
+    dfn_name: ClassVar[str] = "gwe-ctp"
+
     multi_package: ClassVar[bool] = True
 
     @attrs.define

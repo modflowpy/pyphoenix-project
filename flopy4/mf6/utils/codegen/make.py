@@ -653,7 +653,9 @@ def _new_codegen_imports(
         or has_readarray_period
         or has_injected_paths  # injected path fields are always Optional[Path]
     )
-    has_classvar = multi or slntype or has_inner_classes
+    # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
+    # ClassVar is always needed regardless of multi/slntype/inner classes.
+    has_classvar = True
     # Union[float, str] is used by row_class() for time_series and np.object_ columns.
     # Check both the period schema and all static block schemas.
     _all_schema_cols = list(period_schema or []) + [

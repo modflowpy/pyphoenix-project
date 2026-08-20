@@ -16,25 +16,24 @@ from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
-COMPONENTS: dict[str, type] = {}
-"""MF6 component name -> component type, keyed by fully-qualified name
-(e.g. 'gwf-ic') for classes with a model prefix, or by the plain
-lowercased class name for classes without one ('simulation', 'gwf', ...).
-Use `lookup_component()` rather than indexing this directly unless the
-fully-qualified key is already known."""
+FNAMES: dict[str, type] = {}
+"""MF6 component name -> component type, keyed by each class's own
+`dfn_name` -- the canonical DFN component name (e.g. 'gwf-ic', 'sim-nam').
+Codegen sets `dfn_name` on every generated class (see package.py.jinja);
+the handful of hand-written classes (Simulation, Tdis, Gwf/Gwt/Gwe/Prt,
+Dis/Disv, exchanges) declare it themselves. Classes with no `dfn_name` of
+their own -- abstract bases like Package, Context, Model, Exchange,
+Solution, DisBase -- are never registered."""
 
 FTYPES: dict[str, type] = {}
-"""MF6 file-type (lowercased, e.g. 'gwf-dis6') -> component class, keyed
-the same way as `COMPONENTS` but by ftype token instead of class name.
-Use `lookup_ftype()` rather than indexing this directly unless the
-fully-qualified key is already known."""
+"""MF6 file-type (lowercased, e.g. 'gwf-dis6') -> component class."""
 
 
-def _model_prefix(cls: type) -> "str | None":
-    parts = cls.__module__.split(".")
-    if len(parts) >= 4 and parts[0] == "flopy4" and parts[1] == "mf6":
-        return parts[2]
-    return None
+def _prefix(dfn_name: str) -> "str | None":
+    """The prefix implied by a `dfn_name` (e.g. 'gwf' for 'gwf-ic'), or
+    None for a bare name with no '-' (e.g. 'ims')."""
+    prefix, sep, _ = dfn_name.partition("-")
+    return prefix if sep else None
 
 
 def _qualify(name: str, prefix: "str | None") -> str:
@@ -46,10 +45,10 @@ def _lookup(registry: "dict[str, type]", name: str, prefix: "str | None") -> "ty
 
     Tries, in order: `prefix` qualifying `name` (a caller that knows its
     scope, e.g. `_resolve_bindings` resolving within a known model);
-    `name` itself, in case it's already fully qualified (the brief
-    `<model>-<component>` form DFN files use) or unprefixed to begin with
-    (`Simulation`, `Tdis`, `Model` leaves, ...); and finally a best-effort
-    scan for a single registered key ending in `-{name}` -- genuinely
+    `name` itself, in case it's already a full `dfn_name` (the
+    `<model>-<component>` form DFN files use, e.g. "gwf-ic") or a bare
+    name with no such prefix (e.g. "ims"); and finally a best-effort scan
+    for a single registered key ending in `-{name}` -- genuinely
     unambiguous single-component names resolve this way, but names shared
     by more than one model (e.g. 'ic') return `None` rather than an
     arbitrary pick, since the registry alone can't disambiguate them.
@@ -65,7 +64,7 @@ def _lookup(registry: "dict[str, type]", name: str, prefix: "str | None") -> "ty
 
 def lookup_component(name: str, prefix: "str | None" = None) -> "type | None":
     """Look up a registered component class by name (see `_lookup`)."""
-    return _lookup(COMPONENTS, name.lower(), prefix)
+    return _lookup(FNAMES, name.lower(), prefix)
 
 
 def lookup_ftype(token: str, prefix: "str | None" = None) -> "type | None":
@@ -74,8 +73,8 @@ def lookup_ftype(token: str, prefix: "str | None" = None) -> "type | None":
 
 
 def get_ftypes() -> "dict[str, type]":
-    """Build and return the ftypes registry, keyed like `COMPONENTS` but
-    by ftype token (e.g. 'gwf-dis6') instead of class name.
+    """Build and return the ftypes registry, keyed like `FNAMES` but
+    by ftype token (e.g. 'gwf-dis6') instead of DFN name.
 
     Some tokens aren't globally unique -- every model type has its own
     'DIS6'/'IC6'/'OC6'/... via a shared abstract base (e.g. `Dis` under
@@ -84,13 +83,24 @@ def get_ftypes() -> "dict[str, type]":
     one -- that's what the model-qualified key is for.
     """
     if not FTYPES:
+        from collections import defaultdict
+
         from flopy4.mf6.converter.binding import component_ftype
 
-        for cls in set(COMPONENTS.values()):
-            if ABC in cls.__bases__:
-                continue
-            token = component_ftype(cls).lower()
-            FTYPES[_qualify(token, _model_prefix(cls))] = cls
+        by_token: "dict[str, list[type]]" = defaultdict(list)
+        for cls in set(FNAMES.values()):
+            by_token[component_ftype(cls).lower()].append(cls)
+
+        # Qualify only where the bare token actually collides (e.g. every
+        # model has its own DIS6 via a shared abstract base) -- a token
+        # that's already unique (GWF6, TDIS6, GWF6-GWT6, ...) stays bare,
+        # even if its class's own `dfn_name` happens to carry a prefix.
+        for token, classes in by_token.items():
+            if len(classes) == 1:
+                FTYPES[token] = classes[0]
+            else:
+                for cls in classes:
+                    FTYPES[_qualify(token, _prefix(cls.dfn_name))] = cls
     return FTYPES
 
 
@@ -177,11 +187,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def __attrs_init_subclass__(cls):
-        # Keyed by fully-qualified name (e.g. "gwf-ic") for classes in a
-        # model subpackage (flopy4.mf6.<model>.<pkg>), or by the plain
-        # class name otherwise -- see `lookup_component()` for resolving
-        # a bare name like "ic" when the model scope isn't known upfront.
-        COMPONENTS[_qualify(cls.__name__.lower(), _model_prefix(cls))] = cls
+        # Only register classes that declare their own `dfn_name` -- see
+        # `lookup_component()` for resolving a bare name like "ic" when
+        # the model scope isn't known upfront. Abstract bases (Package,
+        # Context, Model, Exchange, Solution, DisBase, ...) have no
+        # `dfn_name` of their own and are silently skipped.
+        dfn_name = cls.__dict__.get("dfn_name")
+        if dfn_name is not None:
+            FNAMES[dfn_name] = cls
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.

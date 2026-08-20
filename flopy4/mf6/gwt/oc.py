@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
+    dfn_name: ClassVar[str] = "gwt-oc"
+
     @attrs.define
     class Concentrationprint(Record):
         _keyword: ClassVar[str] = "concentration"

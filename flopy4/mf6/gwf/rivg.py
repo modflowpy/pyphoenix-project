@@ -11,6 +11,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Rivg(Package):
+    dfn_name: ClassVar[str] = "gwf-rivg"
+
     multi_package: ClassVar[bool] = True
 
     readarraygrid: bool = field(

@@ -10,6 +10,8 @@ from flopy4.mf6.spec import field
 
 @attrs.define(kw_only=True, slots=False)
 class Sfrtab(Package):
+    dfn_name: ClassVar[str] = "utl-sfrtab"
+
     multi_package: ClassVar[bool] = True
 
     @attrs.define

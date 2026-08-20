@@ -11,6 +11,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Chdg(Package):
+    dfn_name: ClassVar[str] = "gwf-chdg"
+
     multi_package: ClassVar[bool] = True
 
     readarraygrid: bool = field(

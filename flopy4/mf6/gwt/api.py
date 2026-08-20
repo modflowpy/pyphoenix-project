@@ -11,6 +11,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Api(Package):
+    dfn_name: ClassVar[str] = "gwt-api"
+
     multi_package: ClassVar[bool] = True
 
     boundnames: bool = field(

@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
 
-from flopy4.mf6.component import COMPONENTS
+from flopy4.mf6.component import FNAMES
 from flopy4.mf6.utils.codegen.filters import (
     can_expand_record,
     class_name,
@@ -661,13 +661,13 @@ def test_simple_tier_generates_importable_files(tmp_path, all_dfns):
         # Snapshot COMPONENTS and sys.modules before loading so that the
         # generated class's __init_subclass__ registration doesn't leak
         # into the shared registry used by other tests.
-        components_snapshot = dict(COMPONENTS)
+        components_snapshot = dict(FNAMES)
         sys_modules_keys = set(sys.modules)
         try:
             mod_spec.loader.exec_module(mod)
         finally:
-            COMPONENTS.clear()
-            COMPONENTS.update(components_snapshot)
+            FNAMES.clear()
+            FNAMES.update(components_snapshot)
             for key in set(sys.modules) - sys_modules_keys:
                 del sys.modules[key]
 
@@ -696,13 +696,13 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
         mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
         mod = importlib.util.module_from_spec(mod_spec)
 
-        components_snapshot = dict(COMPONENTS)
+        components_snapshot = dict(FNAMES)
         sys_modules_keys = set(sys.modules)
         try:
             mod_spec.loader.exec_module(mod)
         finally:
-            COMPONENTS.clear()
-            COMPONENTS.update(components_snapshot)
+            FNAMES.clear()
+            FNAMES.update(components_snapshot)
             for key in set(sys.modules) - sys_modules_keys:
                 del sys.modules[key]
 
@@ -719,15 +719,15 @@ def _load_class_from_spec(spec, mod_name: str, expected_class: str):
     mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
     assert mod_spec is not None and mod_spec.loader is not None
     mod = importlib.util.module_from_spec(mod_spec)
-    components_snapshot = dict(COMPONENTS)
+    components_snapshot = dict(FNAMES)
     sys_modules_keys = set(sys.modules)
     try:
         mod_spec.loader.exec_module(mod)  # type: ignore[union-attr]
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
         return getattr(mod, expected_class)
     finally:
-        COMPONENTS.clear()
-        COMPONENTS.update(components_snapshot)
+        FNAMES.clear()
+        FNAMES.update(components_snapshot)
         for key in set(sys.modules) - sys_modules_keys:
             del sys.modules[key]
 

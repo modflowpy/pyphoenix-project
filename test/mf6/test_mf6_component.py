@@ -8,7 +8,7 @@ import pytest
 import xarray as xr
 from xarray import DataTree
 
-from flopy4.mf6.component import COMPONENTS, lookup_component, lookup_ftype
+from flopy4.mf6.component import FNAMES, lookup_component, lookup_ftype
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.gwf import Chd, Chdg, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
@@ -22,14 +22,14 @@ from flopy4.mf6.utl.ncf import Ncf
 def test_registry():
     from flopy4.mf6.gwt.ic import Ic as GwtIc
 
-    assert COMPONENTS["simulation"] is Simulation
-    assert COMPONENTS["tdis"] is Tdis
-    assert COMPONENTS["gwf"] is Gwf
+    assert FNAMES["sim-nam"] is Simulation
+    assert FNAMES["sim-tdis"] is Tdis
+    assert FNAMES["gwf-nam"] is Gwf
     # Qualified keys are deterministic regardless of import order.
-    assert COMPONENTS["gwf-npf"] is Npf
-    assert COMPONENTS["gwf-ic"] is Ic
-    assert COMPONENTS["gwt-ic"] is GwtIc
-    assert COMPONENTS["gwf-oc"] is Oc
+    assert FNAMES["gwf-npf"] is Npf
+    assert FNAMES["gwf-ic"] is Ic
+    assert FNAMES["gwt-ic"] is GwtIc
+    assert FNAMES["gwf-oc"] is Oc
 
     # Best-effort single-name lookup: unambiguous names resolve, names
     # shared by more than one model (e.g. "ic") don't -- disambiguating

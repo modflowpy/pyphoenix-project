@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import ClassVar, Literal, Optional
 from warnings import warn
 
 import attrs
@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field
 
 @attrs.define(kw_only=True, slots=False)
 class Ncf(Package):
+    dfn_name: ClassVar[str] = "utl-ncf"
+
     """NetCDF configuration subpackage (UTL-NCF).
 
     Two distinct use cases:

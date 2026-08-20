@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
@@ -13,6 +13,8 @@ from flopy4.mf6.utils.time import Time
 
 @attrs.define(kw_only=True, slots=False)
 class Tdis(Package):
+    dfn_name: ClassVar[str] = "sim-tdis"
+
     @attrs.define
     class PeriodData(Row):
         perlen: float
