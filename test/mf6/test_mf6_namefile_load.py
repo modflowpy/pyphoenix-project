@@ -123,6 +123,41 @@ def test_load_gwf_directly(written_sim):
     assert len(gwf.chd) == 1
 
 
+def test_load_preserves_model_pname(tmp_path):
+    """A dict-kind binding field (Simulation.models/exchanges/solutions)
+    round-trips a custom pname -- xattree reconciles a dict child's name
+    to the key it's attached under, so the namefile row's pname (not the
+    referenced file's name, which the row's pname needn't match) has to
+    become that key. Scalar/list package fields (dis, chd, ...) can't
+    round-trip a custom pname the same way: xattree reconciles those to a
+    field-derived name regardless of what's passed, confirmed true even
+    for the original write (not something this fix could or should
+    change -- it's xattree's own child-attachment convention)."""
+    import numpy as np
+    from flopy.discretization.structuredgrid import StructuredGrid
+
+    workspace = tmp_path / "pname"
+    workspace.mkdir()
+    grid = StructuredGrid(
+        nlay=1,
+        nrow=2,
+        ncol=2,
+        delr=1.0 * np.ones(2),
+        delc=1.0 * np.ones(2),
+        top=1.0 * np.ones((2, 2)),
+        botm=0.0 * np.ones((1, 2, 2)),
+    )
+    sim = Simulation(name="sim", workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]))
+    Gwf(parent=sim, name="a_custom_model_name", dis=grid)
+    sim.write()
+
+    loaded = Simulation.load(workspace / "mfsim.nam")
+
+    assert list(loaded.models.keys()) == ["a_custom_model_name"]
+    gwf = loaded.models["a_custom_model_name"]
+    assert gwf.name == "a_custom_model_name"
+
+
 def test_load_disambiguates_ga_variant(tmp_path):
     """Real MF6 writes "CHD6" for both Chd and Chdg (see
     component_ftype()'s docstring) -- the namefile row alone can't tell

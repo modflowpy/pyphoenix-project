@@ -197,7 +197,9 @@ def test_load_return_type():
     assert return_annotation is not None
 
     original_loader = DEFAULT_REGISTRY._loaders.get((Component, MF6))
-    DEFAULT_REGISTRY._loaders[(Component, MF6)] = lambda cls, path, format=MF6: cls(name="loaded")
+    DEFAULT_REGISTRY._loaders[(Component, MF6)] = lambda cls, path, format=MF6, name=None: cls(
+        name="loaded"
+    )
     try:
         loaded = MockComponent.load(Path("/test/file.txt"), format=MF6)
         assert isinstance(loaded, MockComponent)
@@ -317,7 +319,7 @@ def test_component_load_classmethod_calls_loader():
     # Track whether the loader was called
     loader_calls = []
 
-    def mock_loader(cls, path, format=MF6):
+    def mock_loader(cls, path, format=MF6, name=None):
         """Mock loader that returns an instance with no children."""
         loader_calls.append({"cls": cls, "path": path, "format": format})
         # Return an instance (simulating a loaded component)

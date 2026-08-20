@@ -190,6 +190,7 @@ class Package(Component, ABC):
         cls,
         path: Path,
         dims: "dict[str, int] | None" = None,
+        name: "str | None" = None,
     ):
         """Load from an MF6 text input file.
 
@@ -202,13 +203,16 @@ class Package(Component, ABC):
             e.g. ``{"nlay": 3, "nodes": 900}``.  Required for griddata
             packages (NPF, IC, STO, etc.); may be omitted for list-input
             packages (WEL, DRN, etc.).
+        name :
+            Explicit component name (e.g. a namefile binding row's
+            pname), overriding xattree's default auto-assigned name.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
 
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(_raw, cls, dims=dims)
+        _pkg = structure_component(_raw, cls, dims=dims, name=name)
 
         # Pre-populate dimension cache so to_xarray()/to_dataarray() work
         # on standalone packages (not attached to a parent model).

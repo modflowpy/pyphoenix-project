@@ -49,14 +49,16 @@ class Context(Component, ABC):
         return self.workspace / self.filename
 
     @classmethod
-    def load(cls, path, format=MF6):
+    def load(cls, path, format=MF6, name=None):
         """
         Load the context component, with any children already resolved and
         attached (binding resolution happens during construction, inside
         the registered loader, relative to the namefile's own directory).
+
+        `name`, if given, overrides xattree's default auto-assigned name.
         """
         with cd(Path(path).parent):
-            return cls._load(path, format=format)
+            return cls._load(path, format=format, name=name)
 
     def write(self, format=MF6, context=None):
         with cd(self.workspace):

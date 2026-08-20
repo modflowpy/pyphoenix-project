@@ -261,7 +261,9 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     """
     from flopy4.mf6.binding import component_ftype
     from flopy4.mf6.component import get_ftypes
+    from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
+    from flopy4.mf6.solution import Solution
 
     xatspec = xattree.get_xatspec(cls)
     if not xatspec.children:
@@ -342,10 +344,31 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
         collectors: dict[str, Any] = {}
         for row, target_cls, child_name, kind in resolved:
             fname = str(row[1])
+            # A row's third+ terms mean different things by target kind (see
+            # _apply_binding_terms): for a plain Model/Package they're the
+            # pname; for Exchange/Solution they're real semantic data
+            # (coupled model names / applicable models), not a name to
+            # assign the loaded child itself.
+            #
+            # name= only actually takes effect for "dict"-kind children
+            # below (Simulation.models/exchanges/solutions) -- xattree
+            # reconciles a "list"-kind child's name to f"{field}{index}"
+            # and an "only"-kind child's to the field name regardless of
+            # what's passed (confirmed both at load time here and at write
+            # time: Chd(name="custom")/Ic(name="custom") get renamed
+            # "chd0"/"ic" the same way on construction already, before
+            # this code ever runs). Passed through anyway for the dict
+            # case and because it's harmless (silently ignored) otherwise,
+            # not because it's expected to matter for "list"/"only".
+            pname = (
+                str(row[2])
+                if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
+                else None
+            )
             child = (
-                target_cls.load(workspace / fname, dims=dims)
+                target_cls.load(workspace / fname, dims=dims, name=pname)
                 if issubclass(target_cls, Package)
-                else target_cls.load(workspace / fname)
+                else target_cls.load(workspace / fname, name=pname)
             )
             child.filename = fname
             _apply_binding_terms(child, row[2:])
@@ -357,11 +380,15 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             elif kind == "list":
                 collectors.setdefault(child_name, []).append(child)
             elif kind == "dict":
-                # Row fname, not child.name/.filename post-load state, since
-                # it's guaranteed present and unique within the block. This
-                # key has no round-trip significance -- egress iterates
-                # dict.values(), never dict keys (see unstructure.py).
-                collectors.setdefault(child_name, {})[fname] = child
+                # pname when there is one (matches the child's own real
+                # name, e.g. Simulation.models); row fname as a fallback
+                # for rows with no pname (e.g. solutiongroup, whose row[2:]
+                # are applicable model names, not a pname -- see pname
+                # above). This key is NOT cosmetic: xattree reconciles a
+                # dict-kind child's attached .name to match the key it's
+                # placed under, overriding whatever name= was passed to
+                # load() above.
+                collectors.setdefault(child_name, {})[pname or fname] = child
 
         kwargs.update(collectors)
 
@@ -369,7 +396,12 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
 
 
 def structure_component(
-    raw: dict, cls: type, *, dims: dict | None = None, workspace: Path | None = None
+    raw: dict,
+    cls: type,
+    *,
+    dims: dict | None = None,
+    workspace: Path | None = None,
+    name: str | None = None,
 ) -> Any:
     """Reconstruct a component instance from a raw parsed MF6 input dict.
 
@@ -389,6 +421,11 @@ def structure_component(
         loaded child recursively loaded from. Required only for classes
         that actually have such fields (see `_resolve_bindings`); unused
         for leaf `Package` classes, which have none.
+    name : str, optional
+        Explicit component name (e.g. a namefile binding row's pname),
+        overriding xattree's default auto-assigned name. Not derivable
+        from the file's own content -- passed down by a parent's
+        `_resolve_bindings` call when loading this component as a child.
 
     Returns
     -------
@@ -582,5 +619,7 @@ def structure_component(
             kwargs.update(parsed)
 
     kwargs.update(binding_kwargs)
+    if name is not None:
+        kwargs["name"] = name
 
     return cls(**kwargs)

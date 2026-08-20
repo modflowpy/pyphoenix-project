@@ -180,12 +180,19 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         return len(self.children)  # type: ignore
 
     @classmethod
-    def load(cls, path: str | PathLike, format: str = MF6) -> "Component":
+    def load(
+        cls, path: str | PathLike, format: str = MF6, name: "str | None" = None
+    ) -> "Component":
         """Load the component, with any children already resolved and
         attached (binding resolution -- see `structure.py`'s
         `_resolve_bindings` -- happens during construction, inside the
-        registered loader)."""
-        return cls._load(path, format=format)
+        registered loader).
+
+        `name`, if given, overrides xattree's default auto-assigned name
+        (e.g. a namefile binding row's pname, threaded down by a parent's
+        `_resolve_bindings` call when loading this component as a child).
+        """
+        return cls._load(path, format=format, name=name)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         """
