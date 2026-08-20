@@ -1,9 +1,14 @@
+from abc import ABC
+from pathlib import Path
 from typing import Any, get_args
 
 import attrs
 import numpy as np
+import xattree
 
+from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.package import Package
 from flopy4.mf6.row import infer_ncelldim, parse_union_rows, row_list_type
 from flopy4.mf6.spec import to_field_type
 
@@ -185,7 +190,187 @@ def _parse_readarray_period_block(
     return result
 
 
-def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> Any:
+def _binding_target_classes(child_type: type) -> tuple[type, ...]:
+    """The concrete `Component` subclass(es) a xattree `Child.type` accepts.
+
+    `xattree.get_xatspec()` already unwraps `Optional`/`list`/`dict` down to
+    the child's element type -- only a bare `Union[A, B]` (e.g. a G/A-variant
+    package pair like `Union[Chd, Chdg]`) needs unwrapping here.
+    """
+    args = get_args(child_type)
+    return args if args else (child_type,)
+
+
+def _apply_binding_terms(child: Any, terms: list) -> None:
+    """Ingress mirror of `binding.py`'s `Binding.from_component`'s
+    `_get_binding_terms`: for `Exchange`/`Solution` targets, a binding
+    row's trailing terms carry real semantic data (the two model names an
+    exchange couples, or the model name(s) a solution applies to) that
+    isn't recoverable from the referenced file's own content -- write it
+    back onto the loaded child. A `Model`/`Package` target's trailing term
+    is just its pname (already handled by xattree's own naming), not state
+    to set here.
+    """
+    from flopy4.mf6.exchange import Exchange
+    from flopy4.mf6.solution import Solution
+
+    if not terms:
+        return
+    if isinstance(child, Exchange):
+        if len(terms) > 0:
+            child.exgmnamea = str(terms[0])
+        if len(terms) > 1:
+            child.exgmnameb = str(terms[1])
+    elif isinstance(child, Solution):
+        child.models = [str(t) for t in terms]
+
+
+def _disambiguate_ga_variant(candidates: list[type], path: Path) -> type:
+    """Pick between a base package class and its G/A-variant sibling (e.g.
+    Chd vs Chdg) when both share one namefile ftype (see
+    `component_ftype()`'s docstring) -- real MF6 decides this from a
+    READASARRAYS/READARRAYGRID option keyword inside the file itself, not
+    the namefile row, so peek the file's own text for either marker rather
+    than requiring a per-package-family keyword table (both markers are
+    used consistently, one across RCH/EVT, the other across CHD/DRN/GHB/
+    RIV/WEL).
+    """
+    text = path.read_text().upper()
+    is_variant = "READASARRAYS" in text or "READARRAYGRID" in text
+    for c in candidates:
+        suffixed = len(c.__name__) == 4 and c.__name__[-1] in ("g", "a")
+        if suffixed == is_variant:
+            return c
+    return candidates[0]
+
+
+def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, Any]:
+    """Resolve packages/models/exchanges/solutiongroup-style binding rows
+    into loaded child component instances, keyed by field name -- merged
+    into `structure_component`'s kwargs so children are attached the same
+    way manual construction already attaches them (`Gwf(dis=Dis(...))`).
+
+    Child-Component fields are found via `xattree.get_xatspec(cls).children`
+    (mirroring `unstructure.py`'s `_make_binding_blocks`, the egress side of
+    this same job), grouped by block name since several fields can share one
+    block (every `Gwf` package field shares `"packages"`). Within a block,
+    `DimensionProvider` targets (`dis`/`disv`/`disu`) are resolved first so
+    their dims can be threaded into that block's other `Package.load(...,
+    dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
+    a child is already attached, not while its siblings are still loading.
+    """
+    from flopy4.mf6.binding import component_ftype
+    from flopy4.mf6.component import get_ftypes
+    from flopy4.mf6.model import Model
+
+    xatspec = xattree.get_xatspec(cls)
+    if not xatspec.children:
+        return {}
+
+    ftypes = get_ftypes()
+    # Model scope to prefer when resolving this class's own binding rows'
+    # ftype tokens (see get_ftypes()) -- e.g. structuring a Gwf's "packages"
+    # block should resolve "DIS6" to gwf's own Dis, not gwt's/gwe's/prt's.
+    # A Model class's __module__ is "flopy4.mf6.<model>" (defined directly
+    # in that subpackage's __init__.py), not "...<model>.<name>" like its
+    # child packages, so this can't reuse component.py's _model_prefix --
+    # a Model's own class name *is* its model prefix by convention.
+    model_prefix = cls.__name__.lower() if issubclass(cls, Model) else None
+
+    fields_by_block: dict[str, list] = {}
+    for child_name, child_spec in xatspec.children.items():
+        fields_by_block.setdefault(child_spec.metadata["block"], []).append(
+            (child_name, child_spec)
+        )
+
+    kwargs: dict[str, Any] = {}
+    for block_name, field_specs in fields_by_block.items():
+        # Some binding blocks are numbered (e.g. "SOLUTIONGROUP 1", like
+        # "PERIOD 1" elsewhere) -- gather every raw block whose name matches
+        # or starts with "{block_name} ".
+        rows = [
+            row
+            for raw_name, raw_rows in raw_lower.items()
+            if raw_name == block_name or raw_name.startswith(f"{block_name} ")
+            for row in raw_rows
+        ]
+        if not rows:
+            continue
+
+        # Resolve each row's target class + owning field up front, so rows
+        # can be reordered (dims providers first) without re-parsing.
+        resolved = []
+        for row in rows:
+            if not row:
+                continue
+            token = str(row[0]).lower()
+            for child_name, child_spec in field_specs:
+                accepted = _binding_target_classes(child_spec.type)
+
+                # Concrete candidates first: compare each accepted class's
+                # own ftype directly to the row's token. G/A-variant pairs
+                # (Chd/Chdg, Rch/Rcha, ...) share one namefile ftype (real
+                # MF6 has no separate 'CHDG6' case, only 'CHD6' -- see
+                # component_ftype()'s docstring), so more than one concrete
+                # candidate can match; disambiguate from the file content.
+                concrete = [c for c in accepted if ABC not in c.__bases__]
+                matches = [c for c in concrete if component_ftype(c).lower() == token]
+                if len(matches) > 1:
+                    target_cls = _disambiguate_ga_variant(matches, workspace / str(row[1]))
+                elif matches:
+                    target_cls = matches[0]
+                else:
+                    # Fall back to the (possibly model-qualified) FTYPES
+                    # registry for abstract-typed fields (Model/Exchange/
+                    # Solution/DisBase), where the field's declared type
+                    # can't be compared to a token directly.
+                    resolved_cls = (
+                        ftypes.get(f"{model_prefix}-{token}") if model_prefix else None
+                    ) or ftypes.get(token)
+                    if resolved_cls is None or not any(
+                        issubclass(resolved_cls, t) for t in accepted
+                    ):
+                        continue
+                    target_cls = resolved_cls
+
+                resolved.append((row, target_cls, child_name, child_spec.kind))
+                break
+
+        resolved.sort(key=lambda r: 0 if issubclass(r[1], DimensionProvider) else 1)
+
+        dims: dict = {}
+        collectors: dict[str, Any] = {}
+        for row, target_cls, child_name, kind in resolved:
+            fname = str(row[1])
+            child = (
+                target_cls.load(workspace / fname, dims=dims)
+                if issubclass(target_cls, Package)
+                else target_cls.load(workspace / fname)
+            )
+            child.filename = fname
+            _apply_binding_terms(child, row[2:])
+            if issubclass(target_cls, DimensionProvider):
+                dims = {**dims, **child.get_dims()}
+
+            if kind == "only":
+                collectors[child_name] = child
+            elif kind == "list":
+                collectors.setdefault(child_name, []).append(child)
+            elif kind == "dict":
+                # Row fname, not child.name/.filename post-load state, since
+                # it's guaranteed present and unique within the block. This
+                # key has no round-trip significance -- egress iterates
+                # dict.values(), never dict keys (see unstructure.py).
+                collectors.setdefault(child_name, {})[fname] = child
+
+        kwargs.update(collectors)
+
+    return kwargs
+
+
+def structure_component(
+    raw: dict, cls: type, *, dims: dict | None = None, workspace: Path | None = None
+) -> Any:
     """Reconstruct a component instance from a raw parsed MF6 input dict.
 
     Parameters
@@ -198,6 +383,12 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
     dims : dict, optional
         Grid dimensions (e.g. {"nlay": 3, "nodes": 675}) used to resolve
         GRIDDATA array shapes.  Required for packages with griddata fields.
+    workspace : Path, optional
+        Directory binding-shaped fields' (packages/models/exchanges/
+        solutiongroup) relative filenames are resolved against, and each
+        loaded child recursively loaded from. Required only for classes
+        that actually have such fields (see `_resolve_bindings`); unused
+        for leaf `Package` classes, which have none.
 
     Returns
     -------
@@ -205,6 +396,7 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
     """
 
     raw_lower = {k.lower(): v for k, v in raw.items()}
+    binding_kwargs = _resolve_bindings(cls, raw_lower, workspace) if workspace else {}
 
     # Index all init-eligible fields by name and alias
     all_fields = {f.name: f for f in attrs.fields(cls) if f.init is not False}
@@ -388,5 +580,7 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
             }
             parsed = _parse_griddata_block(griddata_rows, gd_fields, dims)
             kwargs.update(parsed)
+
+    kwargs.update(binding_kwargs)
 
     return cls(**kwargs)

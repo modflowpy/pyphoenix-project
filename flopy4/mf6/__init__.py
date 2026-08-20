@@ -17,6 +17,7 @@ from flopy4.mf6._compat import check_mf6_compatibility
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
+from flopy4.mf6.context import Context
 from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.ems import Ems
 from flopy4.mf6.enums import NetCDFFormat
@@ -55,9 +56,22 @@ class WriteError(Exception):
 
 
 def _load_mf6(cls, path: Path) -> Component:
-    """Load MF6 format file into a component instance."""
+    """Load MF6 format file into a component instance.
+
+    Mirrors Package.load()'s working pattern (same codec reader,
+    structure_component) rather than the generic cattrs-based `structure()`
+    below, which has no structure hook registered for the abstract
+    `Component` base and isn't functional.
+    """
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
     with open(path, "r") as fp:
-        return structure(load_mf6(fp), path)
+        raw = load_mf6(fp)
+    instance = structure_component(raw, cls, workspace=path.parent)
+    if isinstance(instance, Context):
+        instance.workspace = path.parent
+    instance.filename = path.name
+    return instance
 
 
 def _load_json(cls, path: Path) -> Component:

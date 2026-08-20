@@ -1,4 +1,4 @@
-# Plan: namefile loading via recursive structuring
+# MF6 object model plan
 
 ## Background
 
@@ -209,81 +209,57 @@ three, no replacement metadata needed on `Row`.**
   exactly as buggy/simplified as they are today (not a regression) rather
   than blocking `Column`/`Schema` removal on designing union support.
 
-**Steps.** Today's 76 generated `Row` classes carry **zero**
-`field()`-based metadata (e.g. `Lak.PackagedataRow.ifno: int` is a bare
-attrs field) — that tagging is what step 9 (codegen) adds, and step 9 is
-blocked on the upstream `pk`/`fk` backfill (see Phase 0.6a). So only a
-subset of these steps are actually unblocked today:
-
-*Unblocked, no regression risk (steps 1-2 landed in `f1dd830` / #341;
-step 3 still open):*
+**Steps. Status: all 12 done, landed 2026-08-19/20 in `6cdfb2a` (steps 9-10,
+the pk/fk-tagged codegen rewrite) and `78c506b` (steps 3-8, 11-12, the
+Row-mixin runtime rewrite).** `flopy4/mf6/schema.py` is deleted;
+`flopy4/mf6/row.py` (a `Row` mixin, matching `record.py`'s `Record`
+pattern) is now the sole row-item schema, introspected via
+`attrs.fields()` by `package.py`, `structure.py`, and `unstructure.py`
+directly — no separate `Schema`/`Column` lookup anywhere. All 76 (now 64,
+after some consolidation in the dev3 regen) generated `Row` classes carry
+real `field(pk=..., fk=..., time_series=...)` metadata sourced from the
+dev3 DFN corpus. Two parsing bugs were found and fixed along the way (see
+`78c506b`'s commit message): `row_class()` codegen was placing the
+synthetic `aux` field ahead of a package's own optional non-aux columns
+(wrong token order vs. the real DFN, e.g. EVT's `pxdp`/`petm`/`petm0`), and
+`Row.from_row()` greedily consumed tokens for optional columns without
+knowing whether they were present in a given row; it now infers the count
+of trailing optional columns from the remaining token budget, same as
+`naux`/`ncelldim` already did. Full suite green except two pre-existing,
+unrelated integration-test failures (xattree mangling an explicit
+`multi_package` `name=`, e.g. `"LAK-1"` → `"LAK-10"`).
 
 1. ~~Extend `field()` in `flopy4/mf6/spec.py` with `pk: bool = False`,
-   `fk: str | None = None`.~~ **Done.**
+   `fk: str | None = None`.~~ **Done** (`f1dd830` / #341).
 2. ~~Retype the 5 `prefix=`-using file-reference row columns as `Path`
-   fields via `path()`.~~ **Done.**
-3. Build the *name-based* half of the generalized row-iteration mixin
-   (extend `flopy4/mf6/record.py` or add a sibling): `cellid` (variable-
-   width tuple unpacking + 1-based shift), `boundname` (deferred to end of
-   row, `boundnames`-gated), `aux` (positional tuple, `yield from`).
-   Resolved by reserved field *name*, not `pk`/`fk` metadata, so no
-   backfill dependency. Land as standalone, unit-tested infrastructure —
-   do **not** wire into `package.py`/`structure.py`/`unstructure.py` yet
-   (see step 5).
-
-*Entangled with the `pk`/`fk` backfill and step 9's codegen change —
-designable now, landable only with step 9/10:*
-
-4. Add the `pk`/`fk`-driven half of the mixin (int-typed `pk`/`fk`-tagged
-   columns get the 1-based↔0-based shift; string pk/fk don't;
-   `time_series` drives float/string coercion order). Can be unit-tested
-   against synthetic fixtures now, but is dead code against real generated
-   `Row` classes until step 9 tags their fields.
-5. Update the three runtime consumers (`package.py`'s schema/dtype init,
-   `structure.py`'s row parser, `unstructure.py`'s row serializer) to read
-   `attrs.fields(RowClass)` instead of `Schema.columns()`. **Blocked**:
-   swapping this in before step 9 regenerates silently drops the shift for
-   all 17 `feature_id` columns, since those fields carry no `pk`/`fk` tags
-   yet.
-6. Drop the `__{block}_schema__`/`__period_schema__` ClassVar aliases;
-   `field(schema=...)` can name the `Row`/`*Row` class directly. Depends on
-   step 5.
-7. Drop `role in ("keystring", "keystring_value", "inline_keyword")`
-   entirely — no replacement metadata (real union support is Phase 0.7).
-   `mixed`-style columns become plain `bool` fields; LAK/LKT/STO period
-   rows keep their current (already lossy) shape for now. **Blocked**:
-   today this is the only parsing/serialization path those three packages
-   have; removing it breaks them unless done atomically with step 9's
-   regen.
-8. Delete `flopy4/mf6/schema.py`. **Hard blocked**: all 76 generated files
-   still import and subclass `Schema`. Cannot delete until step 9's regen
-   stops emitting those references.
-
-*Blocked on the modflow-devtools `pk`/`fk`/`fk_ref` corpus backfill (owner:
-wpbonelli) landing for `gwf/`, `gwt/`, `gwe/`, `prt/`, `utl/`, **and** on
-Phase 0.6a (flopy4's own codegen migration onto a DFN module that has
-`pk`/`fk` at all):*
-
-9. Codegen (`make.py`, `filters.py`): read `pk`/`fk`/`fk_ref` directly off
-   the (by then backfilled) DFN attributes; collapse `row_class()` +
-   `schema_class()` into one filter emitting plain typed attributes where
-   no metadata is needed and `field(pk=..., fk=..., time_series=...)` only
-   where it is; delete `schema_class()`; drop `Column`/`Schema` imports
-   from the package template.
-10. Regenerate all codegen-v2 packages; diff to confirm: `Row`/`*Row`
-    fields are either plain typed attributes or `field(pk=...)`/
-    `field(fk=...)`/`field(time_series=...)`; `Column`/`Schema` and
-    `_XxxSchema`/`__xxx_schema__` are gone. Steps 5-8 land together with
-    this step.
-
-*Either order, after the above:*
-
-11. Rewrite tests: delete `test_mf6_schema.py`; fold any still-relevant
-    assertions into `test_mf6_row_api.py`; check `test_mf6_codegen.py` for
-    `schema_class`/`Column` assertions.
-12. Re-run the full suite, particular attention to `test_mf6_codec.py`,
-    `test_mf6_row_api.py`, `test_dataframe_api.py`,
-    `test_converter_structure.py`.
+   fields via `path()`.~~ **Done** (`f1dd830` / #341).
+3. ~~Build the *name-based* half of the generalized row-iteration mixin
+   (`cellid`, `boundname`, `aux`).~~ **Done** — `flopy4/mf6/row.py`.
+4. ~~Add the `pk`/`fk`-driven half of the mixin.~~ **Done** —
+   `flopy4/mf6/row.py`; sourced from real dev3 `pk`/`fk` tags via
+   `6cdfb2a`'s codegen rewrite.
+5. ~~Update `package.py`/`structure.py`/`unstructure.py` to read
+   `attrs.fields(RowClass)` instead of `Schema.columns()`.~~ **Done.**
+6. ~~Drop the `__{block}_schema__`/`__period_schema__` ClassVar
+   aliases.~~ **Done.**
+7. ~~Drop `role in ("keystring", "keystring_value", "inline_keyword")`
+   entirely.~~ **Done** — superseded by real `Union.arms`-driven detection
+   from `6cdfb2a` (see Phase 0.6b/0.7 below); LAK/LKE/LKT/SFR keystring
+   period rows still use the flat `(index, keyword, value)` output shape
+   for now (typed union-item-class representation is a deferred follow-up,
+   see Phase 0.7 status below), but the detection mechanism itself is now
+   schema-driven, not a hardcoded `role=`.
+8. ~~Delete `flopy4/mf6/schema.py`.~~ **Done.**
+9. ~~Codegen (`make.py`, `filters.py`): read `pk`/`fk`/`fk_ref` directly
+   off the dev3 DFN attributes.~~ **Done** — landed as part of `6cdfb2a`'s
+   full pydantic-native rewrite (Phase 0.6a step 2), not a standalone
+   pk/fk-only pass as originally scoped; see that phase for detail.
+10. ~~Regenerate all codegen-v2 packages; diff to confirm `Column`/`Schema`
+    gone.~~ **Done.**
+11. ~~Rewrite tests: delete `test_mf6_schema.py`; fold assertions into
+    `test_mf6_row_api.py`.~~ **Done.**
+12. ~~Re-run the full suite.~~ **Done**, green modulo the two pre-existing
+    unrelated xattree failures noted above.
 
 **Why before Phase 1, not after:** Phase 1's generalized structuring pass
 wants exactly one field-introspection idiom to special-case (`field()`-
@@ -298,12 +274,19 @@ of reverse-engineering it later.
 ## Phase 0.6a — Migrate flopy4 off `modflow_devtools.dfn` onto
 `modflow_devtools.dfns` (dev3, pydantic-native)
 
-**Status: in progress (2026-07-16). Step 1 done. Devtools-side
-`numeric_index` fix landed upstream and verified**: all 5 previously-
+**Status: step 2 (the atomic pydantic-native rewrite + version flip) done,
+landed 2026-08-19 in `6cdfb2a`. Step 3 (codec reader path) not started —
+confirmed `flopy4/mf6/codec/reader/dfn2lark.py`,
+`flopy4/mf6/codec/filters.py`, `flopy4/mf6/codec/reader/transformer/typed.py`,
+and `flopy4/mf6/codec/reader/grammar/filters.py` still import legacy
+`modflow_devtools.dfn` at `schema_version="2.0.0.dev1"`.** As noted below,
+step 3 is decoupled from step 2 with no ordering dependency, so this is
+expected, not a regression — it's simply still open. Step 1's devtools-side
+`numeric_index` fix landed upstream and was verified: all 5 previously-
 missing fields (`buy.irhospec`, `csub.icsubno`, `vsc.iviscspec`,
-`prp.irptno`, `ats.iperats`) now carry `pk=True`, and LAK's relational case
-(`outlets.lakein` → `fk="packagedata.ifno"`) is unaffected. No temporary
-override stopgap needed. Ready for the atomic rewrite (step 2).
+`prp.irptno`, `ats.iperats`) carry `pk=True`, and LAK's relational case
+(`outlets.lakein` → `fk="packagedata.ifno"`) was unaffected. No temporary
+override stopgap was needed.
 
 Prerequisite for Phase 0.6 step 9, discovered while attempting to start it:
 `pk`/`fk` only exist in devtools' newer `modflow_devtools.dfns` module
@@ -374,7 +357,10 @@ constant — genuinely decoupled, can migrate on its own schedule.
 1. ~~Wire the real entrypoint~~ — **done** (`registry.spec()` plumbed
    through the codegen CLI, still requesting `dev1` at the time, pure
    refactor).
-2. **Atomic pydantic-native rewrite + version flip.** In one PR/landing:
+2. ~~**Atomic pydantic-native rewrite + version flip.**~~ **Done**,
+   `6cdfb2a` (2026-08-19). Also merged in Phase 0.6b + 0.7's scope where the
+   runtime already supported it (see those sections) — broader than
+   originally scoped for this step alone, but landed atomically as planned:
    - Rewrite `filters.py`, then `make.py`, to walk the pydantic
      `Component`/`Block`/`Field` tree (`isinstance` dispatch over
      `Scalar | Array | Record | Union | List`) instead of dict `.get()`
@@ -406,12 +392,13 @@ constant — genuinely decoupled, can migrate on its own schedule.
      otherwise the 5 affected fields silently lose their `pk`. If timing
      doesn't line up, add a temporary 5-field `pk: true` patch in
      `overrides.py` as a stopgap and drop it once the upstream fix ships.
-3. **Codec reader path** (decoupled, independent schedule): same
-   tree-walk conversion for the reader/grammar chain. `field["block"]`
-   isn't a per-field attribute in the new schema (block membership is
-   structural via `Block.fields`), but `ComponentBase.get_block()` already
-   does this reverse lookup. Own independent `schema_version` literal, no
-   ordering dependency on step 2.
+3. **Codec reader path** (decoupled, independent schedule). **Status: not
+   started.** Same tree-walk conversion for the reader/grammar chain.
+   `field["block"]` isn't a per-field attribute in the new schema (block
+   membership is structural via `Block.fields`), but
+   `ComponentBase.get_block()` already does this reverse lookup. Own
+   independent `schema_version` literal, no ordering dependency on step 2 —
+   can land any time, including in parallel with Phase 1.
 
 **Ordering:** step 2 is the only place the devtools-side `numeric_index`
 fix matters, and only for the regenerate-and-diff sub-step, not rewrite
@@ -424,7 +411,9 @@ after it.
 
 ## Phase 0.6b — Reflect DFN structure literally instead of custom-flattening
 
-**Status: scoping (2026-07-19). Structural survey complete.** Carved out
+**Status: done (merged into `6cdfb2a`, 2026-08-19) for the scope that
+landed — see "Revised plan" and the note at the end of this section for
+exactly what shipped vs. what's still deferred.** Carved out
 of Phase 0.6a step 2 mid-survey. No code changes yet; next step is the
 concrete design pass for the `List[Union[Record]]`-shaped rendering (OC
 records, keystring periods), then starting Phase 0.6a step 2's actual
@@ -654,40 +643,46 @@ above (0.6a+0.6b+0.7 as one effort) undercounted this runtime dependency;
 changes. `composite_v3.py`'s logic is worth keeping as a starting point
 when that follow-up phase starts.
 
-*Not yet started:* actual code changes for the merged 0.6a+0.6b effort —
-the structural survey above and the union-shape decision are the only
-work done so far; nothing has landed. Regenerate a fresh baseline codegen
-snapshot (via the current legacy loader) before starting the rewrite, so
-there's something to diff the pydantic-native output against — any
-previously-generated baseline lived under a session-scoped scratchpad path
-and does not survive between sessions.
-
-**Next concrete action:** start the `filters.py` rewrite in bite-sized,
-independently-verifiable slices: (1) leaf name/path/class-name helpers —
-no field-type dispatch, lowest risk; (2) field classification as
-`isinstance`/`match` dispatch on `Keyword|Integer|Double|String|Array|
-Record|Union|List|File`; (3) Record/Union/List tree-walking, including the
-new union-item-class mechanism above; (4) wire `make.py`'s spec-builders
-to the new dispatch; (5) migrate `test_mf6_codegen.py`'s `all_dfns`
-fixture off the legacy loader; (6) regenerate all 76 and diff against the
-pre-rewrite baseline.
+**Landed 2026-08-19 in `6cdfb2a`** (the same commit as Phase 0.6a step 2 —
+per the merge decision above, these were never separable in practice): the
+`filters.py`/`make.py` tree-walk rewrite, OC's rtype table replaced by
+reading `rtype.valid` directly from the schema, and LAK/LKE/LKT/SFR-style
+keystring period settings now detected from the schema's real `Union.arms`
+instead of a hand-maintained override list. **What did *not* land** (per
+that commit's own message, and per the "Revised plan" above): the
+union-item-class shape itself — real per-arm typed classes — is still not
+wired into the generated output. Detection is schema-driven now; the
+*generated Python shape* for keystring/union period rows is still the flat
+`(index, keyword, value)`-approximation output, same as before, because
+`structure.py`/`unstructure.py` only understood that flat vocabulary at
+the time. **This blocker is now gone**: Phase 0.6's `Row` migration landed
+the next day (`78c506b`, 2026-08-20), so the union-item-class mechanism
+(prototyped and validated in a scratchpad script, `composite_v3.py` — not
+committed, doesn't survive between sessions, would need re-deriving) is now
+a well-scoped, unblocked follow-up phase rather than a hypothetical one.
+Not required for Phase 1 (namefile loading doesn't touch period-row
+parsing), so it's optional/parallelizable — see "Suggested order" below.
 
 ---
 
 ## Phase 0.7 — Model DFN `union` fields properly (replaces `keystring`/
 `keystring_value`/`inline_keyword`)
 
-**Status (2026-08-18): absorbed into the merged Phase 0.6a+0.6b effort
-above** — the union-field mechanism this phase designs is needed for OC's
-`ocsetting` union too, not just LAK/STO, and building it twice (once
-ad hoc for OC's flattening, once properly here) was the reasoning for the
-merge. This section's design steps (1, 4, 5) still apply as written; step
-2's Python-type decision is now made (see the merged section above); step
-3's "current `role="keystring"` two-column flattening" being replaced no
-longer exists as an intermediate state to replace — the merged effort
-goes straight to the union representation. Kept here for the scope list
-(`gwf/sto.py`'s `storagestate`) and the `AUXILIARY` regression case, both
-still relevant.
+**Status (2026-08-20): partially landed, real scope remaining.** The
+*detection* half (recognizing `type: union`/`arms` in the schema instead of
+a hand-maintained override list) absorbed into and landed with the merged
+Phase 0.6a+0.6b effort (`6cdfb2a`) as described there. The *representation*
+half — this phase's actual goal, a real discriminated-union Python type
+replacing the lossy flat `{keyword, value}` pair, fixing the reproduced
+`AUXILIARY` data-loss bug below — has **not** landed; `6cdfb2a` explicitly
+kept the flat output shape because `structure.py`/`unstructure.py` didn't
+support anything richer at the time. That blocker is gone now that Phase
+0.6's `Row` migration landed (`78c506b`, 2026-08-20) — this phase is
+unblocked and its design steps (1-6 below) are still accurate as written.
+Not required for Phase 1; scoped to 3-4 packages
+(`gwf/lak.py`/`gwe/lke.py`/`gwt/lkt.py`/`gwf/sto.py`) and parallelizable
+with the namefile-loading phases. Kept here for the scope list and the
+`AUXILIARY` regression case, both still relevant and still unfixed.
 
 **Goal:** give list-item records a real discriminated-union field type,
 matching modflow-devtools' `type: union`/`arms` (see `dfnspec.md`,
@@ -732,37 +727,89 @@ roles it replaces.
 
 ## Phase 1 — Generalize structuring to resolve bindings
 
-With Phase 0 done, there is exactly one field-metadata convention, so this
-phase is simpler than originally scoped — no more "check `dfn_block` OR
-`block`."
+**Status: done (2026-08-20).** `Simulation.load("mfsim.nam")`/`Gwf.load(
+"model.nam")` now recursively resolve `packages`/`models`/`exchanges`/
+`solutiongroup` rows into real loaded, attached children, with dims
+threaded from a `dis`-like sibling to the rest of its block. Landed
+alongside two real, previously-latent bugs this work surfaced:
 
-Target: `component.py`, `converter/ingress/structure.py`
+- `Component.load()`/`Context.load()` were calling a dead code path
+  (`flopy4.mf6.converter.structure()`, a bare `cattrs.Converter.structure`
+  with no hook registered for the abstract `Component` base) — confirmed
+  by direct repro (`TypeError: node name must be a string or None`) and by
+  the fact that no test exercised it against real files, only a fully
+  mocked loader. Fixed by routing `_load_mf6` through the same
+  `structure_component()` pipeline `Package.load()` already used
+  successfully.
+- **False start, corrected the same day**: initially "fixed"
+  `binding.py`'s `_get_binding_type` to treat G/A-variant package classes
+  (`Chdg`, `Drng`, `Evta`, `Ghbg`, `Rcha`, `Rivg`, `Welg`) as having
+  distinct namefile ftypes (`"CHDG6"`, not `"CHD6"`), based on legacy
+  flopy's `dfn_file_name`/`_package_type` attributes. This was wrong and
+  broke real `mf6` runs ("Model package type not supported [type=CHDG6]")
+  — confirmed against the actual MF6 Fortran source (`gwf.f90`'s
+  package-type `select case` has no `'CHDG6'`/`'RCHA6'`/etc. arm at all,
+  only the base tokens; `chd_create` handles both variants once
+  dispatched). Reverted to the original collapsing behavior. Real lesson:
+  a DFN's `dfn_file_name` describes the DFN/class identity, not
+  necessarily the namefile-level ftype token — verify against the actual
+  MF6 source dispatch table, not a generated client library's class
+  attributes.
+- Because G/A variants genuinely share one namefile ftype, `Union[Chd,
+  Chdg]`-shaped fields can't be disambiguated by token alone — resolved by
+  peeking the referenced file's own `OPTIONS` block for the
+  `READASARRAYS`/`READARRAYGRID` marker keyword (the same signal real MF6
+  itself uses) rather than the namefile row.
 
-1. Add a component-type registry keyed by MF6 file-type token: `ftype:
-   ClassVar[str | None] = None` on `Component`, populated in
-   `__attrs_init_subclass__` alongside the existing `COMPONENTS` dict.
-   Reuse the model-qualified-key pattern already there (`component.py`) to
-   avoid collisions between e.g. `gwf.Ic` and `gwt.Ic`.
-2. Write a `_resolve_binding` helper: given a field whose declared type is
-   a `Component` subclass (or `list[...]`/`dict[str, ...]`/`Union[...]` of
-   them) and a parsed row shaped `[type_token, filename, *names]`, resolve
-   the target class (disambiguating `Union` members by `type_token`), then
-   call `TargetClass.load(workspace / filename)` recursively.
-3. Route any `block=`-tagged field whose value looks binding-shaped through
-   `_resolve_binding` instead of the scalar-kwarg path in the (now single)
-   structuring function.
-4. Dimension propagation: check whether `flopy4/dimensions.py`'s existing
-   `DimensionProvider`/`DimensionResolver`/`resolve_dims()` (already
-   in-flight, uncommitted) is sufficient for "NPF picks up nlay/nrow/ncol
-   from a DIS sibling loaded moments earlier during the same structuring
-   pass," or needs a small load-order-aware cache. Prefer extending this
-   existing mechanism over introducing a separate contextvar
-   (`DimContext`) as PR #284 did. Now informed by Phase 0.6's `pk`/`fk`
-   metadata where relevant (e.g. resolving a foreign-key-typed field's
-   target component/block).
-5. Simplify `Component.load()` / `Context.load()` to drop the manual
-   `for child in self.children: child.load()` loop — recursion now lives
-   inside structuring (steps 2-3).
+Target: `component.py`, `converter/ingress/structure.py`, `binding.py`,
+`flopy4/mf6/__init__.py`, `context.py`.
+
+1. ~~Add a component-type registry keyed by MF6 file-type token.~~ **Done**
+   as `FTYPES`/`get_ftypes()` in `component.py`, built lazily (not eagerly
+   in `__attrs_init_subclass__`, to dodge an import-reentrancy failure:
+   computing a token needs `binding.py`, whose own import chain can define
+   further concrete subclasses before finishing). Model-qualified keys
+   (e.g. `"gwf-dis6"`) disambiguate tokens that collide *across* model
+   types (every model has its own `Dis` via one shared abstract base);
+   G/A-variant collisions *within* one model are a different kind of
+   ambiguity, resolved in step 2 instead (a registry entry can only hold
+   one class per key).
+2. ~~Write a `_resolve_binding` helper.~~ **Done** as `_resolve_bindings()`
+   in `structure.py`, using `xattree.get_xatspec(cls).children` to find
+   child-Component fields (mirroring `unstructure.py`'s
+   `_make_binding_blocks`, the egress side of this same job) rather than
+   hand-rolling type introspection from scratch.
+3. ~~Route any `block=`-tagged binding-shaped field through
+   `_resolve_binding`.~~ **Done** — `structure_component()` gained a
+   `workspace` param and merges `_resolve_bindings()`'s result into its
+   kwargs before the single `cls(**kwargs)` call, same as every other
+   field.
+4. ~~Dimension propagation.~~ **Done**, via a small load-order rule local
+   to `_resolve_bindings` (not a `dimensions.py` change): within one block,
+   `DimensionProvider`-typed rows (the `dis` field) are resolved first, the
+   resulting `dims` dict threaded into sibling `Package.load(...,
+   dims=dims)` calls. `dimensions.py`'s existing object-graph walk
+   (`resolve_dims()`) remains the right tool for *post*-attachment queries;
+   it just can't help *during* construction, before children exist to
+   walk.
+5. ~~Simplify `Component.load()`/`Context.load()`.~~ **Done** — both drop
+   the manual child loop entirely (children now arrive already resolved
+   and attached from the constructor call).
+
+**Known limitation, not fixed in this pass**: a binding row's `pname` term
+isn't threaded through to the loaded child's `.name` (no `name=` kwarg on
+`Component.load()`/`Package.load()` today) — loaded children get xattree's
+default auto-assigned name. Round-tripping a namefile with hand-picked
+custom `pname`s isn't preserved. `Solution.models`/`Exchange.exgmnamea`/
+`exgmnameb` *are* threaded through from binding-row terms (real semantic
+data, not display names — see `_apply_binding_terms`).
+
+Test coverage: `test/mf6/test_mf6_namefile_load.py` (new) covers recursive
+`Simulation.load()`/`Gwf.load()`, dims propagation to griddata siblings,
+list-package rows, and G/A-variant disambiguation, via a write-then-load
+round trip built on the existing `docs/examples/quickstart.py` pattern.
+`test/mf6/test_mf6_component.py` covers the `FTYPES` registry and the
+G/A-variant ftype behavior directly.
 
 ---
 
@@ -823,19 +870,55 @@ Target: `codec/reader/dfn2lark.py`, `grammar/templates/component.lark.jinja`,
 
 ## Suggested order
 
-~~Phase 0~~ → ~~Phase 0.5~~ → **Phase 0.6 (steps 1-2 done, step 3+ next)**
-⟷ **Phase 0.6a+0.6b, merged (in progress, blocks Phase 0.6 step 9)** →
-Phase 1 → Phase 2 → (Phase 3 any time) → Phase 4. Phase 0.7 is absorbed
-into the merged 0.6a+0.6b effort (see that section) rather than landing
-separately afterward.
+**Updated 2026-08-20.** ~~Phase 0~~ → ~~Phase 0.5~~ → ~~Phase 0.6~~ ⟷
+~~Phase 0.6a step 2 + Phase 0.6b (merged)~~ are **all done**. Everything
+that was blocking namefile loading has landed:
 
-Phase 0.6 is comparable in blast radius to Phase 0 — touches every
-codegen-v2 package with a list/recarray block, plus `package.py`,
-`structure.py`, `unstructure.py`, and the codegen filters — so it lands as
-its own reviewable step before Phase 1 is written against the post-
-`Column` field-introspection story. See Phase 0.6's Steps for the current
-blocking/sequencing detail (steps 4-8 designable now, landable only with
-steps 9-10's regen, which itself waits on the devtools `pk`/`fk` backfill
-**and** Phase 0.6a). Phase 0.7 fixes a real bug (silent data loss on LAK
-`AUXILIARY` period rows) but is scoped to 3-4 packages and doesn't block
-namefile loading, so it's parallelizable rather than sequenced.
+- Phase 0: one field-metadata convention (`3eda3f9`).
+- Phase 0.5: `dfn_type` eliminated (`3eda3f9`).
+- Phase 0.6: `Column`/`Schema` deleted, `Row` is the sole list-block schema
+  (`f1dd830`, `6cdfb2a`, `78c506b`).
+- Phase 0.6a step 2: codegen migrated onto the pydantic-native dev3 DFN
+  schema (`6cdfb2a`).
+- Phase 0.6b: DFN structure (OC rtypes, keystring/union detection) now read
+  from the schema instead of hardcoded tables (`6cdfb2a`).
+
+~~**Phase 1**~~ (generalize structuring to resolve namefile bindings) is
+**also done** (2026-08-20) — `Simulation.load()`/`Gwf.load()` recursively
+resolve real namefiles now, dims propagation included. See that section
+for what landed and two bugs (one real, one a false-start that was found
+and reverted the same day) it surfaced along the way.
+
+**Next up: Phase 2** (wire through Model/Simulation, prove end-to-end) —
+Phase 1's own tests already exercise a full `Simulation.load()` round
+trip on a small model, so Phase 2 is mostly "prove it against a larger/
+real-world example (`twri.py`?) and confirm DIS-before-NPF/IC ordering
+holds beyond the two-package case," not new mechanism.
+
+**Still open, not blocking Phase 2, land any time / in parallel:**
+
+- Phase 0.6a step 3 (codec reader path off legacy `modflow_devtools.dfn`)
+  — not started.
+- Phase 0.7 / the deferred union-item-class representation (real typed
+  union arms for LAK/LKE/LKT/SFR/STO period rows, fixing the `AUXILIARY`
+  data-loss bug) — unblocked now that Phase 0.6 landed, but no code written
+  yet; `composite_v3.py`'s prototype logic didn't survive between sessions
+  and would need re-deriving.
+- Phase 1's known limitation (binding-row `pname` not threaded to a loaded
+  child's `.name` — see that section) — small, well-scoped follow-up.
+- Phase 3 (namefile grammar refinement) — was already flagged parallelizable.
+
+After Phase 2: Phase 4 (cleanup, close out PR #284, update `docs/dev/`).
+
+**Pre-existing, unrelated to Phase 0/1 work — noticed along the way, not
+investigated:** the full suite has 50 pre-existing failures on `HEAD`
+(confirmed via `git stash`, i.e. present before *and* after this session's
+changes) — 47 in `test_mf6_row_api.py` (`TypeError`/`AttributeError`
+patterns suggesting a `Row`-API round-trip regression from the Phase 0.6
+migration itself, not yet triaged) plus `test_quickstart_grid`,
+`test_gwe_lke_flow_package_auxiliary_name`, and
+`test_gwt_lkt_flow_package_auxiliary_name` in `test_mf6_integration.py`
+(real-`mf6`-execution failures, the last two plausibly related to the
+already-known LAK/LKE/LKT keystring data-loss bug Phase 0.7 is meant to
+fix). Worth a dedicated triage pass — `78c506b`'s commit message claimed
+"full suite is green except two ... failures," which no longer matches.

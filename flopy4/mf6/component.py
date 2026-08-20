@@ -19,6 +19,56 @@ from flopy4.uio import IO, Loader, Writer
 COMPONENTS: dict[str, type] = {}
 """MF6 component registry."""
 
+FTYPES: dict[str, type] = {}
+"""MF6 file-type token (lowercased, e.g. 'gwf6', 'chd6') -> component class.
+
+Built lazily on first use (see `get_ftypes()`) from `COMPONENTS`, rather than
+eagerly in `__attrs_init_subclass__`. Computing a class's ftype token needs
+`component_ftype()` from `binding.py`, and `binding.py`'s own import chain
+(Exchange/Model/Package/Solution) can itself define further concrete
+`Component` subclasses before finishing -- importing it eagerly at
+subclass-definition time reenters it mid-import and fails.
+"""
+
+
+def _model_prefix(cls: type) -> "str | None":
+    """The model subpackage a class lives under (e.g. 'gwf' for
+    `flopy4.mf6.gwf.dis.Dis`), or None. Same convention used for
+    `COMPONENTS`' model-qualified keys (e.g. 'gwf-ic') below."""
+    parts = cls.__module__.split(".")
+    if len(parts) >= 4 and parts[0] == "flopy4" and parts[1] == "mf6":
+        return parts[2]
+    return None
+
+
+def get_ftypes() -> "dict[str, type]":
+    """Build (once) and return the FTYPES registry, keyed by lowercased
+    MF6 file-type token (e.g. 'gwf6', 'chd6').
+
+    Some tokens aren't globally unique -- every model type has its own
+    'DIS6'/'IC6'/'OC6'/... via a shared abstract base (e.g. `Dis` under
+    `gwf`/`gwt`/`gwe`/`prt` all subclass the same `gwf.disbase.DisBase`),
+    so type-based disambiguation alone can't tell a GWF `Dis` from a GWT
+    one. Also register a model-qualified key (e.g. 'gwf-dis6', mirroring
+    `COMPONENTS`' 'gwf-ic') for callers (`_resolve_bindings`) that know
+    which model they're resolving within; the plain token key is a
+    best-effort fallback for genuinely unambiguous tokens.
+    """
+    if not FTYPES:
+        from flopy4.mf6.binding import component_ftype
+
+        for cls in set(COMPONENTS.values()):
+            # Abstract intermediate bases (Package/Context/Model/Exchange/
+            # Solution) declare ABC as a direct base; concrete leaf classes
+            # don't. Only concrete classes have a real, loadable ftype.
+            if ABC in cls.__bases__:
+                continue
+            token = component_ftype(cls).lower()
+            if (prefix := _model_prefix(cls)) is not None:
+                FTYPES[f"{prefix}-{token}"] = cls
+            FTYPES.setdefault(token, cls)
+    return FTYPES
+
 
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
@@ -108,9 +158,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # Also register a model-qualified key (e.g. "gwf-ic") for classes in a
         # model subpackage (flopy4.mf6.<model>.<pkg>), giving deterministic
         # per-model lookup when multiple models share a class name like "ic".
-        parts = cls.__module__.split(".")
-        if len(parts) >= 4 and parts[0] == "flopy4" and parts[1] == "mf6":
-            COMPONENTS[f"{parts[2]}-{key}"] = cls
+        if (prefix := _model_prefix(cls)) is not None:
+            COMPONENTS[f"{prefix}-{key}"] = cls
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.
@@ -131,11 +180,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         return len(self.children)  # type: ignore
 
     @classmethod
-    def load(cls, path: str | PathLike, format: str = MF6) -> None:
-        """Load the component and any children."""
-        self = cls._load(path, format=format)  # Get the instance
-        for child in self.children.values():  # type: ignore
-            child.__class__.load(child.path, format=format)
+    def load(cls, path: str | PathLike, format: str = MF6) -> "Component":
+        """Load the component, with any children already resolved and
+        attached (binding resolution -- see `structure.py`'s
+        `_resolve_bindings` -- happens during construction, inside the
+        registered loader)."""
+        return cls._load(path, format=format)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         """

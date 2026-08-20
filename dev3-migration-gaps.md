@@ -83,11 +83,13 @@ test — not exhaustive fixes of either pattern.
 
 - **Union-item-class shape** (real per-arm typed classes instead of the
   generic `(keyword, value)` approximation) — prototyped and validated
-  (`composite_v3.py`), but `structure.py`/`unstructure.py` only understand
-  the flat `Schema`/`Column`/`role=` vocabulary today, and `list-design.md`'s
-  `list[ItemType]` target isn't the runtime representation for *anything*
-  yet (Phase 0.6, "steps 1-2 done, step 3+ next"). Follow-up phase, sequenced
-  after Phase 0.6's `Row` migration lands.
+  (`composite_v3.py`, a scratchpad script that didn't survive between
+  sessions). At the time this doc was written, `structure.py`/
+  `unstructure.py` only understood the flat `Schema`/`Column`/`role=`
+  vocabulary, so this was deferred pending Phase 0.6's `Row` migration.
+  **Update (2026-08-20): Phase 0.6 has since landed** (`78c506b`) — `Row`
+  is now the sole list-block schema, so this blocker is gone. Still not
+  wired in; see Phase 0.7 in `mf6-object-model-plan.md` for current status.
 - **`utl-tas.TimeSeriesName`/`Sfac`** — same root cause as devtools gap #1
   above (`Array.repeat`); test skipped with a clear reason rather than
   worked around.

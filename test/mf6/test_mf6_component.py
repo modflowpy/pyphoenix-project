@@ -10,7 +10,7 @@ from xarray import DataTree
 
 from flopy4.mf6.component import COMPONENTS
 from flopy4.mf6.enums import NetCDFFormat
-from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Chdg, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
@@ -30,6 +30,48 @@ def test_registry():
     assert COMPONENTS["gwf-ic"] is Ic
     assert COMPONENTS["gwt-ic"] is GwtIc
     assert COMPONENTS["gwf-oc"] is Oc
+
+
+def test_component_ftype_ga_variants():
+    """G/A-variant package classes (Chdg, Drng, Evta, Ghbg, Rcha, Rivg,
+    Welg) share their base's namefile ftype -- confirmed against real MF6
+    source (gwf.f90's package-type dispatch has no 'CHDG6'/'RCHA6'/etc.
+    case at all, only 'CHD6'/'RCH6'/...; a real run rejects the unabridged
+    token with "Model package type not supported"). Legacy flopy's
+    dfn_file_name='gwf-chdg.dfn' describes the DFN/class identity, not the
+    namefile-level ftype -- don't infer the latter from the former."""
+    from flopy4.mf6.binding import component_ftype
+    from flopy4.mf6.gwf.chd import Chd
+    from flopy4.mf6.gwf.chdg import Chdg
+    from flopy4.mf6.gwf.rch import Rch
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    assert component_ftype(Chd) == "CHD6"
+    assert component_ftype(Chdg) == "CHD6"
+    assert component_ftype(Rch) == "RCH6"
+    assert component_ftype(Rcha) == "RCH6"
+
+
+def test_ftypes_registry():
+    from flopy4.mf6.component import get_ftypes
+    from flopy4.mf6.gwf.dis import Dis as GwfDis
+    from flopy4.mf6.gwt.dis import Dis as GwtDis
+
+    ftypes = get_ftypes()
+
+    assert ftypes["gwf6"] is Gwf
+    # "chd6" isn't a reliable registry lookup: Chd and Chdg share it (see
+    # component_ftype()'s docstring) and the registry keeps only one
+    # arbitrarily -- _resolve_bindings disambiguates those via
+    # _disambiguate_ga_variant instead of this registry (see
+    # test_mf6_namefile_load.py), so there's nothing meaningful to assert
+    # about ftypes["chd6"] here.
+    assert ftypes["chd6"] in (Chd, Chdg)
+    # "dis6" isn't globally unique either (every model type has its own Dis
+    # via a shared abstract base), but unambiguously so -- model-qualified
+    # keys disambiguate cleanly, unlike the same-model chd6 collision above.
+    assert ftypes["gwf-dis6"] is GwfDis
+    assert ftypes["gwt-dis6"] is GwtDis
 
 
 def test_init_empty_sim():

@@ -58,18 +58,24 @@ Linting: `ruff` (config in `pyproject.toml`, line-length 100), `mypy`,
   `sdd.md`, `srs.md`, `map.md` — treat these as historical/roadmap context,
   not necessarily current).
 
-## DFN schema migration (active work)
+## MF6 object model rework (active work)
 
-The project depends on `modflow-devtools` for DFN loading and is mid-migration
-from its legacy flat-TypedDict DFN module (`modflow_devtools.dfn`) to the
-newer pydantic-native, discriminated-union schema (`modflow_devtools.dfns`,
-schema version `2.0.0.dev3`). **`namefile-load-plan.md`** at the repo root is
-the live tracker for this effort (phases, status, decisions, next actions) —
-read it before starting related work rather than assuming design intent.
-Other root-level `*-plan.md` files (`sync-plan.md`, `protocols-plan.md`,
-`list-design.md`) describe settled, mostly-implemented designs. The many
-root-level `*.txt` files are historical chat-log dumps from earlier design
-discussions — useful for archaeology, not living documentation.
+The project depends on `modflow-devtools` for DFN loading. The codegen path
+has finished migrating off the legacy flat-TypedDict DFN module
+(`modflow_devtools.dfn`) onto the pydantic-native, discriminated-union schema
+(`modflow_devtools.dfns`, schema version `2.0.0.dev3`); `Column`/`Schema` are
+gone and `Row` (`flopy4/mf6/row.py`) is the sole list-block schema. Active
+work is now namefile loading (recursive structuring/binding resolution) on
+top of that. **`mf6-object-model-plan.md`** at the repo root is the live
+tracker for this effort (phases, status, decisions, next actions) — read it
+before starting related work rather than assuming design intent. The codec
+reader path (`flopy4/mf6/codec/reader/`) still uses the legacy `dfn` module
+at schema version `dev1` — a known, independently-scheduled gap, not an
+oversight. Other root-level `*-plan.md` files (`sync-plan.md`,
+`protocols-plan.md`, `list-design.md`) describe settled, mostly-implemented
+designs. The many root-level `*.txt` files are historical chat-log dumps from
+earlier design discussions — useful for archaeology, not living
+documentation.
 
 General principle currently driving this work: prefer representations that
 mirror the DFN's real structure over ad hoc flattening/special-casing that
@@ -81,7 +87,7 @@ already models something faithfully before adding a workaround.
 
 - Don't add a second field-metadata or DFN-loading convention alongside an
   existing one "temporarily" — this codebase has actively been consolidating
-  away from exactly that pattern (see Phase 0/0.5 in `namefile-load-plan.md`).
+  away from exactly that pattern (see Phase 0/0.5 in `mf6-object-model-plan.md`).
 - Prefer devtools' own tree-walking/lookup helpers (e.g.
   `ComponentBase.get_fields(recurse=True)`, `get_block()`) over reimplementing
   equivalents in flopy4.
