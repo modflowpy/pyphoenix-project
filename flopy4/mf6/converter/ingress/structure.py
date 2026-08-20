@@ -4,8 +4,7 @@ import attrs
 import numpy as np
 
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Schema
+from flopy4.mf6.row import infer_ncelldim, parse_union_rows, row_list_type
 from flopy4.mf6.spec import to_field_type
 
 
@@ -22,205 +21,34 @@ def _inner_class_type(field_type) -> type | None:
     return None
 
 
-def _token_fits(token: Any, dtype: Any) -> bool:
-    """True if *token* is type-compatible with *dtype*.
-
-    Numeric dtypes (float64, int64, …) require a numeric token (int or float).
-    String tokens that look like numbers (e.g. '-0.4' from the grammar's word
-    rule) are also accepted for numeric dtypes.
-    Object dtype accepts any token.  Used to detect absent optional columns
-    whose token slot would otherwise consume the next column's value.
-    """
-    if dtype == object or dtype == np.object_:  # noqa: E721
-        return True
-    if isinstance(token, (int, float)):
-        return True
-    if isinstance(token, str):
-        try:
-            float(token)
-            return True
-        except ValueError:
-            return False
-    return False
-
-
-def _coerce_token(token: Any, dtype: Any) -> Any:
-    """Coerce a string token to its numeric value for numeric dtypes."""
-    if isinstance(token, str) and not (dtype == object or dtype == np.object_):  # noqa: E721
-        try:
-            if np.issubdtype(np.dtype(dtype), np.floating):
-                return float(token)
-            if np.issubdtype(np.dtype(dtype), np.integer):
-                return int(float(token))
-        except (ValueError, TypeError):
-            pass
-    return token
-
-
-_DTYPE_MAP = Package._DTYPE_MAP
-
-
-def _parse_rows_to_recarray(
+def _parse_rows(
     rows: list,
-    schema: "type[Schema]",  # type: ignore[name-defined]
+    row_cls: type | tuple[type, ...],
     *,
     naux: int = 0,
     boundnames: bool = False,
-) -> np.recarray | None:
-    """Parse raw token rows into a np.recarray using a codegen v2 schema.
+) -> list | None:
+    """Parse raw token rows into a list of Row instances.
 
-    Columns are parsed in schema order so that schemas with multiple feature_id
-    columns (e.g. LAK connectiondata: ifno, iconn, cellid, ...) round-trip
-    correctly.  Schema roles:
-      - 'cellid'         → variable-width tuple of 1-based ints, converted to 0-based
-      - 'feature_id'     → 1-based int, converted to 0-based (multiple allowed)
-      - 'value'          → scalar numeric or object token
-      - 'boundname'      → trailing non-numeric string (always parsed last)
+    row_cls is either a single Row class (its own fields, with cellid=/pk=/
+    fk=/time_series= metadata, are the schema -- see Row.from_row) or a
+    tuple of arm classes for a keystring union field, dispatched per-row by
+    keyword token (see row.parse_union_rows). ncelldim (a variable-width
+    cellid's element count) is inferred once from the first row, same as
+    the old Schema-driven parser did -- not applicable to unions (arms with
+    a cellid field aren't a case seen in the corpus).
     """
     if not rows:
         return None
-
-    cols = schema.columns()
-    cellid_col = next((c for c in cols if c.role == "cellid"), None)
-    feature_id_cols = [c for c in cols if c.role == "feature_id"]
-    value_cols = [c for c in cols if c.role == "value"]
-    boundname_col = next((c for c in cols if c.role == "boundname"), None)
-    keystring_cols = [c for c in cols if c.role in ("keystring", "keystring_value")]
-    inline_kw_cols = [c for c in cols if c.role == "inline_keyword"]
-    # Count only value columns that are actually emitted in each row for ncelldim
-    # inference.  Columns that are optional AND not time_series are excluded from
-    # the recarray dtype by __attrs_post_init__ and therefore absent from emitted
-    # rows; counting them inflates n_fixed and under-counts ncelldim.
-    required_value_cols = [c for c in value_cols if not c.optional or c.time_series]
-    n_fixed = len(required_value_cols) + len(keystring_cols) + len(feature_id_cols)
-
-    # Infer ncelldim from the first row that has tokens
-    ncelldim = 0
-    if cellid_col:
-        first = next((r for r in rows if r), None)
-        if first:
-            last = first[-1]
-            first_has_bn = isinstance(last, str) and not _token_fits(last, np.float64)
-            ncelldim = max(1, len(first) - n_fixed - naux - (1 if first_has_bn else 0))
-
-    # Build dtype in schema order so field names align with token parse order
-    dtype_fields: list = []
-    for col in cols:
-        if col.role == "cellid":
-            dtype_fields.append(("cellid", np.int64, (ncelldim,)))
-        elif col.role == "feature_id":
-            dtype_fields.append((col.name, np.int64))
-        elif col.role == "value":
-            if col.dtype:
-                dt = _DTYPE_MAP.get(col.dtype, np.object_)
-            elif col.time_series:
-                dt = np.object_
-            else:
-                dt = _DTYPE_MAP.get(col.dfn_type, np.float64)
-            dtype_fields.append((col.name, dt))
-        elif col.role in ("keystring", "keystring_value"):
-            dtype_fields.append((col.name, np.object_))
-        elif col.role == "inline_keyword":
-            dtype_fields.append((col.name, np.object_))
-        # boundname role is appended after aux below
-    for i in range(naux):
-        dtype_fields.append((f"aux{i}", np.object_))
-    has_bn_col = boundname_col is not None and boundnames
-    if has_bn_col:
-        dtype_fields.append(("boundname", np.object_))
-    dtype = np.dtype(dtype_fields)
-
-    # Parse each row in schema order
-    records: list[tuple] = []
-    for row in rows:
-        if not row:
-            continue
-        tok_idx = 0
-        record: list = []
-
-        for col in cols:
-            if col.role == "cellid":
-                last = row[-1]
-                row_has_bn = isinstance(last, str) and not _token_fits(last, np.float64)
-                this_ncd = max(1, len(row) - n_fixed - naux - (1 if row_has_bn else 0))
-                cellid = tuple(int(row[tok_idx + j]) - 1 for j in range(this_ncd))
-                # Pad/truncate to consistent ncelldim
-                if this_ncd < ncelldim:
-                    cellid = cellid + (0,) * (ncelldim - this_ncd)
-                elif this_ncd > ncelldim:
-                    cellid = cellid[:ncelldim]
-                record.append(cellid)
-                tok_idx += this_ncd
-            elif col.role == "feature_id":
-                record.append(int(float(str(row[tok_idx]))) - 1)
-                tok_idx += 1
-            elif col.role == "value":
-                if tok_idx >= len(row):
-                    record.append(None)
-                    continue
-                if col.prefix:
-                    tok_idx += len(col.prefix.split())
-                if tok_idx >= len(row):
-                    record.append(None)
-                    continue
-                tok = row[tok_idx]
-                if col.dtype or col.time_series:
-                    try:
-                        record.append(float(tok))
-                    except (ValueError, TypeError):
-                        record.append(str(tok))
-                else:
-                    col_dtype = _DTYPE_MAP.get(col.dfn_type, np.float64)
-                    record.append(_coerce_token(tok, col_dtype))
-                tok_idx += 1
-            elif col.role in ("keystring", "keystring_value"):
-                if tok_idx >= len(row):
-                    record.append(None)
-                else:
-                    record.append(str(row[tok_idx]))
-                    tok_idx += 1
-            elif col.role == "inline_keyword":
-                kw = col.name.upper()
-                if tok_idx < len(row) and str(row[tok_idx]).upper() == kw:
-                    record.append(str(row[tok_idx]))
-                    tok_idx += 1
-                else:
-                    record.append(None)
-            # boundname role: handled after schema loop
-
-        # Aux columns
-        for i in range(naux):
-            if tok_idx < len(row):
-                try:
-                    record.append(float(row[tok_idx]))
-                except (ValueError, TypeError):
-                    record.append(row[tok_idx])
-                tok_idx += 1
-            else:
-                record.append(None)
-
-        # Boundname (final non-numeric string if present)
-        if has_bn_col:
-            if tok_idx < len(row):
-                last = row[tok_idx]
-                if isinstance(last, str) and not _token_fits(last, np.float64):
-                    record.append(str(last))
-                else:
-                    record.append(None)
-            else:
-                record.append(None)
-
-        records.append(tuple(record))
-
-    if not records:
-        return None
-
-    arr = np.zeros(len(records), dtype=dtype)
-    for i, rec in enumerate(records):
-        for j, name in enumerate(dtype.names or ()):  # type: ignore[arg-type]
-            if j < len(rec) and rec[j] is not None:
-                arr[name][i] = rec[j]
-    return arr.view(np.recarray)
+    if isinstance(row_cls, tuple):
+        return parse_union_rows(rows, row_cls, naux=naux, boundnames=boundnames)
+    ncelldim = infer_ncelldim(rows, row_cls, naux=naux)
+    result = [
+        row_cls.from_row(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
+        for row in rows
+        if row
+    ]
+    return result or None
 
 
 def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
@@ -398,31 +226,37 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
-    # Identify block-schema fields (packagedata, connectiondata, partitions …)
-    block_schema_fields: dict[str, tuple] = {}  # block_name → (field, schema)
+    # Identify Row-list fields (packagedata, connectiondata, partitions …) --
+    # the field's own type annotation (Optional[list[RowClass]] or
+    # Optional[dict[int, list[RowClass]]]) is the schema; no separate
+    # Schema/Column lookup.
+    block_row_fields: dict[str, tuple] = {}  # block_name → (field, row_cls)
     oc_fields: list = []  # fields with oc_action metadata
-    period_field = None  # field for recarray stress_period_data
+    period_field = None  # field for the period Row-list
+    period_row_cls: type | tuple[type, ...] | None = None
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
-        schema_ref = f.metadata.get("schema")
         oc_action = f.metadata.get("oc_action")
 
         if oc_action:
             oc_fields.append(f)
-        elif block == "period" and schema_ref:
+            continue
+        row_cls = row_list_type(f.type)
+        if row_cls is None:
+            continue
+        if block == "period":
             period_field = f
-        elif schema_ref and block not in ("period",):
-            schema = getattr(cls, schema_ref, None)
-            if schema is not None:
-                block_schema_fields[block] = (f, schema)
+            period_row_cls = row_cls
+        else:
+            block_row_fields[block] = (f, row_cls)
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
-        if block_name in block_schema_fields or block_name.startswith("period"):
+        if block_name in block_row_fields or block_name.startswith("period"):
             continue
         for row in rows:
             if not row:
@@ -453,15 +287,15 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
         naux = len(aux_opt) if isinstance(aux_opt, list) else 1
     boundnames = bool(kwargs.get("boundnames", False))
 
-    # ── Pass 2: block-schema blocks (packagedata, partitions …) ─────────────
-    for block_name, (f, schema) in block_schema_fields.items():
+    # ── Pass 2: block Row-list fields (packagedata, partitions …) ───────────
+    for block_name, (f, row_cls) in block_row_fields.items():
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        recarray = _parse_rows_to_recarray(rows, schema, naux=naux, boundnames=boundnames)
-        if recarray is not None:
+        row_list = _parse_rows(rows, row_cls, naux=naux, boundnames=boundnames)
+        if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
-            kwargs[init_key] = recarray
+            kwargs[init_key] = row_list
 
     # ── Pass 3: period blocks ────────────────────────────────────────────────
     kper_rows: dict[int, list] = {}
@@ -501,22 +335,17 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
             kwargs.update(collected)
 
         elif period_field is not None:
-            schema_ref = period_field.metadata.get("schema")
-            period_schema = getattr(cls, schema_ref, None) if schema_ref else None
-            if period_schema:
-                spd: dict[int, np.recarray] = {}
-                for kper, rows in sorted(kper_rows.items()):
-                    if not rows:
-                        continue
-                    recarray = _parse_rows_to_recarray(
-                        rows, period_schema, naux=naux, boundnames=boundnames
-                    )
-                    if recarray is not None:
-                        spd[kper] = recarray
-                if spd:
-                    # Use the alias (stress_period_data) as the init kwarg
-                    init_key = period_field.alias if period_field.alias else period_field.name
-                    kwargs[init_key] = spd
+            spd: dict[int, list] = {}
+            for kper, rows in sorted(kper_rows.items()):
+                if not rows:
+                    continue
+                row_list = _parse_rows(rows, period_row_cls, naux=naux, boundnames=boundnames)
+                if row_list is not None:
+                    spd[kper] = row_list
+            if spd:
+                # Use the alias (stress_period_data) as the init kwarg
+                init_key = period_field.alias if period_field.alias else period_field.name
+                kwargs[init_key] = spd
 
         else:
             # ── Pass 3b: READARRAY period fields (G/A variants) ─────────────

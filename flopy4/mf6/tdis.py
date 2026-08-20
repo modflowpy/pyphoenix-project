@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import ClassVar, Optional
+from typing import Optional
 
 import attrs
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils.time import Time
 
@@ -14,17 +14,11 @@ from flopy4.mf6.utils.time import Time
 @attrs.define(kw_only=True, slots=False)
 class Tdis(Package):
     @attrs.define
-    class PeriodData:
+    class PeriodData(Row):
         perlen: float
         nstp: int
         tsmult: float
 
-    class _PeriodDataSchema(Schema):
-        perlen = Column("perlen", role="value", dfn_type="double")
-        nstp = Column("nstp", role="value", dfn_type="integer")
-        tsmult = Column("tsmult", role="value", dfn_type="double")
-
-    __perioddata_schema__: ClassVar[type[Schema]] = _PeriodDataSchema
     time_units: Optional[str] = field(default=None, block="options", optional=True)
     start_date_time: Optional[str] = field(
         default=None,
@@ -36,16 +30,26 @@ class Tdis(Package):
     perlen: NDArray[np.float64] = attrs.field(default=1.0)
     nstp: NDArray[np.int64] = attrs.field(default=1)
     tsmult: NDArray[np.float64] = attrs.field(default=1.0)
-    perioddata: Optional[np.recarray] = field(
-        default=None, block="perioddata", schema="__perioddata_schema__"
-    )
+    perioddata: Optional[list[PeriodData]] = field(default=None, block="perioddata")
 
     def __attrs_post_init__(self):
-        if isinstance(self.perioddata, np.recarray):
-            pd = self.perioddata
-            object.__setattr__(self, "perlen", pd["perlen"].copy())
-            object.__setattr__(self, "nstp", pd["nstp"].copy())
-            object.__setattr__(self, "tsmult", pd["tsmult"].copy())
+        if self.perioddata:
+            rows = [
+                row
+                if isinstance(row, Tdis.PeriodData)
+                else Tdis.PeriodData(**row)
+                if isinstance(row, dict)
+                else Tdis.PeriodData(*row)
+                for row in self.perioddata
+            ]
+            object.__setattr__(self, "perioddata", rows)
+            object.__setattr__(
+                self, "perlen", np.array([r.perlen for r in rows], dtype=np.float64)
+            )
+            object.__setattr__(self, "nstp", np.array([r.nstp for r in rows], dtype=np.int64))
+            object.__setattr__(
+                self, "tsmult", np.array([r.tsmult for r in rows], dtype=np.float64)
+            )
             super().__attrs_post_init__()
             return
         nper = self.nper
@@ -61,12 +65,11 @@ class Tdis(Package):
             object.__setattr__(self, "tsmult", np.full(nper, self.tsmult, dtype=np.float64))
         elif not isinstance(self.tsmult, np.ndarray):
             object.__setattr__(self, "tsmult", np.asarray(self.tsmult, dtype=np.float64))
-        dtype = np.dtype([("perlen", np.float64), ("nstp", np.int64), ("tsmult", np.float64)])
-        arr = np.zeros(nper, dtype=dtype)
-        arr["perlen"] = self.perlen
-        arr["nstp"] = self.nstp
-        arr["tsmult"] = self.tsmult
-        object.__setattr__(self, "perioddata", arr.view(np.recarray))
+        rows = [
+            Tdis.PeriodData(perlen=float(p), nstp=int(n), tsmult=float(t))
+            for p, n, t in zip(self.perlen, self.nstp, self.tsmult)
+        ]
+        object.__setattr__(self, "perioddata", rows)
         super().__attrs_post_init__()
 
     def get_dims(self) -> dict[str, int]:

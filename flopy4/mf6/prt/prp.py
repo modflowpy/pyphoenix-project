@@ -3,12 +3,11 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
 
@@ -20,6 +19,25 @@ class Prp(Package):
     class ReleaseTimesfile(Record):
         _keyword: ClassVar[str] = "release_timesfile"
         timesfile: str = attrs.field()
+
+    @attrs.define
+    class PackagedataRow(Row):
+        irptno: int = field(pk=True)
+        cellid: tuple = field(cellid=True)
+        xrpt: float
+        yrpt: float
+        zrpt: float
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
+
+    @attrs.define
+    class ReleasetimesRow(Row):
+        time: float
+
+    @attrs.define
+    class Row(Row):
+        keyword: str
+        value: Optional[object] = field(default=None, optional=True)
 
     boundnames: bool = field(
         default=False,
@@ -118,90 +136,23 @@ class Prp(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
         auto_from="packagedata",
     )
-    releasetimes: Optional[np.recarray] = field(
+    releasetimes: Optional[list[ReleasetimesRow]] = field(
         default=None,
         block="releasetimes",
-        schema="__releasetimes_schema__",
         auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    class _PackagedataSchema(Schema):
-        irptno = Column("irptno", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        xrpt = Column("xrpt", role="value", dfn_type="double")
-        yrpt = Column("yrpt", role="value", dfn_type="double")
-        zrpt = Column("zrpt", role="value", dfn_type="double")
-        boundname = Column(
-            "boundname",
-            role="boundname",
-            dfn_type="string",
-            optional=True,
-            dtype="np.object_",
-        )
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        irptno: int
-        cellid: tuple
-        xrpt: float
-        yrpt: float
-        zrpt: float
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.irptno
-            yield self.cellid
-            yield self.xrpt
-            yield self.yrpt
-            yield self.zrpt
-            yield self.boundname
-
-    class _ReleasetimesSchema(Schema):
-        time = Column("time", role="value", dfn_type="double")
-
-    __releasetimes_schema__: ClassVar[type[Schema]] = _ReleasetimesSchema
-
-    @attrs.define
-    class ReleasetimesRow:
-        time: float
-
-        def __iter__(self):
-            yield self.time
-
-    @attrs.define
-    class Row:
-        keyword: str
-        value: object
-
-        def __iter__(self):
-            yield self.keyword
-            yield self.value
-
-    class _PeriodSchema(Schema):
-        keyword = Column("keyword", role="keystring", dfn_type="string")
-        value = Column("value", role="keystring_value", dfn_type="object")
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    releasetimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 PrpRow = Prp.Row

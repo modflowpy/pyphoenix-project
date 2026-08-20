@@ -3,17 +3,58 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Lak(Package):
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class PackagedataRow(Row):
+        ifno: int = field(pk=True)
+        strt: float
+        nlakeconn: int
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
+
+    @attrs.define
+    class ConnectiondataRow(Row):
+        ifno: int = field(fk="packagedata.ifno")
+        iconn: int = field(pk=True)
+        cellid: tuple = field(cellid=True)
+        claktype: Union[float, str]
+        bedleak: Union[float, str]
+        belev: float
+        telev: float
+        connlen: float
+        connwidth: float
+
+    @attrs.define
+    class TablesRow(Row):
+        ifno: int = field(fk="packagedata.ifno")
+        tab6_filename: Path = path(converter=Path, inout="filein", prefix=("TAB6",))
+
+    @attrs.define
+    class OutletsRow(Row):
+        outletno: int = field(pk=True)
+        lakein: int = field(fk="packagedata.ifno")
+        lakeout: int = field(fk="packagedata.ifno")
+        couttype: Union[float, str]
+        invert: Union[float, str] = field(time_series=True)
+        width: Union[float, str] = field(time_series=True)
+        rough: Union[float, str] = field(time_series=True)
+        slope: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Row(Row):
+        number: int = field(pk=True)
+        keyword: str
+        value: Optional[object] = field(default=None, optional=True)
 
     auxiliary: Optional[list[str]] = field(
         default=None,
@@ -97,11 +138,6 @@ class Lak(Package):
         block="options",
         optional=True,
     )
-    implicit: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
     maximum_iterations: Optional[int] = field(
         default=None,
         block="options",
@@ -134,202 +170,32 @@ class Lak(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
         auto_from="packagedata",
     )
-    connectiondata: Optional[np.recarray] = field(
+    connectiondata: Optional[list[ConnectiondataRow]] = field(
         default=None,
         block="connectiondata",
-        schema="__connectiondata_schema__",
     )
-    tables: Optional[np.recarray] = field(
+    tables: Optional[list[TablesRow]] = field(
         default=None,
         block="tables",
-        schema="__tables_schema__",
         auto_from="tables",
     )
-    outlets: Optional[np.recarray] = field(
+    outlets: Optional[list[OutletsRow]] = field(
         default=None,
         block="outlets",
-        schema="__outlets_schema__",
         auto_from="outlets",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    class _PackagedataSchema(Schema):
-        ifno = Column("ifno", role="feature_id", dfn_type="integer")
-        strt = Column("strt", role="value", dfn_type="double")
-        nlakeconn = Column("nlakeconn", role="value", dfn_type="integer")
-        boundname = Column(
-            "boundname",
-            role="boundname",
-            dfn_type="string",
-            optional=True,
-            dtype="np.object_",
-        )
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        ifno: int
-        strt: float
-        nlakeconn: int
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.ifno
-            yield self.strt
-            yield self.nlakeconn
-            yield self.boundname
-
-    class _ConnectiondataSchema(Schema):
-        ifno = Column("ifno", role="feature_id", dfn_type="integer")
-        iconn = Column("iconn", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        claktype = Column("claktype", role="value", dfn_type="string", dtype="np.object_")
-        bedleak = Column("bedleak", role="value", dfn_type="string", dtype="np.object_")
-        belev = Column("belev", role="value", dfn_type="double")
-        telev = Column("telev", role="value", dfn_type="double")
-        connlen = Column("connlen", role="value", dfn_type="double")
-        connwidth = Column("connwidth", role="value", dfn_type="double")
-
-    __connectiondata_schema__: ClassVar[type[Schema]] = _ConnectiondataSchema
-
-    @attrs.define
-    class ConnectiondataRow:
-        ifno: int
-        iconn: int
-        cellid: tuple
-        claktype: Union[float, str]
-        bedleak: Union[float, str]
-        belev: float
-        telev: float
-        connlen: float
-        connwidth: float
-
-        def __iter__(self):
-            yield self.ifno
-            yield self.iconn
-            yield self.cellid
-            yield self.claktype
-            yield self.bedleak
-            yield self.belev
-            yield self.telev
-            yield self.connlen
-            yield self.connwidth
-
-    class _TablesSchema(Schema):
-        ifno = Column("ifno", role="feature_id", dfn_type="integer")
-        tab6_filename = Column(
-            "tab6_filename",
-            role="value",
-            dfn_type="string",
-            dtype="np.object_",
-            prefix="TAB6 FILEIN",
-        )
-
-    __tables_schema__: ClassVar[type[Schema]] = _TablesSchema
-
-    @attrs.define
-    class TablesRow:
-        ifno: int
-        tab6_filename: Path = path(converter=Path, inout="filein")
-
-        def __iter__(self):
-            yield self.ifno
-            yield self.tab6_filename
-
-    class _OutletsSchema(Schema):
-        outletno = Column("outletno", role="feature_id", dfn_type="integer")
-        lakein = Column("lakein", role="feature_id", dfn_type="integer")
-        lakeout = Column("lakeout", role="feature_id", dfn_type="integer")
-        couttype = Column("couttype", role="value", dfn_type="string", dtype="np.object_")
-        invert = Column(
-            "invert",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-        width = Column(
-            "width",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-        rough = Column(
-            "rough",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-        slope = Column(
-            "slope",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-
-    __outlets_schema__: ClassVar[type[Schema]] = _OutletsSchema
-
-    @attrs.define
-    class OutletsRow:
-        outletno: int
-        lakein: int
-        lakeout: int
-        couttype: Union[float, str]
-        invert: Union[float, str]
-        width: Union[float, str]
-        rough: Union[float, str]
-        slope: Union[float, str]
-
-        def __iter__(self):
-            yield self.outletno
-            yield self.lakein
-            yield self.lakeout
-            yield self.couttype
-            yield self.invert
-            yield self.width
-            yield self.rough
-            yield self.slope
-
-    @attrs.define
-    class Row:
-        number: int
-        keyword: str
-        value: object
-
-        def __iter__(self):
-            yield self.number
-            yield self.keyword
-            yield self.value
-
-    class _PeriodSchema(Schema):
-        number = Column("number", role="feature_id", dfn_type="integer")
-        keyword = Column("keyword", role="keystring", dfn_type="string")
-        value = Column("value", role="keystring_value", dfn_type="object")
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    connectiondata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    tables_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    outlets_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 LakRow = Lak.Row

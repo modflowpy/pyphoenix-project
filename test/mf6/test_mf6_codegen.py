@@ -32,7 +32,6 @@ from flopy4.mf6.utils.codegen.filters import (
     py_type,
     row_class,
     safe_name,
-    schema_class,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 
@@ -256,75 +255,13 @@ class TestFilters:
         )
         assert is_generatable(f)
 
-    def test_schema_class_empty_returns_empty_string(self):
-        assert schema_class([], "_Empty") == ""
-
-    def test_schema_class_basic_structure(self):
-        schema = [
-            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
-            {"name": "head", "role": "value", "dfn_type": "double"},
-        ]
-        result = schema_class(schema, "_PeriodSchema")
-        assert "    class _PeriodSchema(Schema):" in result
-        assert 'Column("cellid"' in result
-        assert 'role="cellid"' in result
-        assert 'dfn_type="integer"' in result
-        assert 'Column("head"' in result
-        assert 'role="value"' in result
-
-    def test_schema_class_no_column_name_alignment(self):
-        schema = [
-            {"name": "ab", "role": "value", "dfn_type": "double"},
-            {"name": "abcdef", "role": "cellid", "dfn_type": "integer"},
-        ]
-        result = schema_class(schema, "_Schema")
-        col_lines = [ln for ln in result.splitlines() if "= Column(" in ln]
-        assert len(col_lines) == 2
-        # Each name is followed immediately by ' = Column(' — no padding spaces.
-        assert "        ab = Column(" in col_lines[0]
-        assert "        abcdef = Column(" in col_lines[1]
-
-    def test_schema_class_long_line_wraps(self):
-        # A column with many optional args whose single-line form exceeds 100 chars.
-        schema = [
-            {
-                "name": "very_long_column_name_xyz",
-                "role": "value",
-                "dfn_type": "double",
-                "time_series": True,
-                "dtype": "np.object_",
-                "shape": "(ncelldim)",
-            },
-        ]
-        result = schema_class(schema, "_Schema")
-        for line in result.splitlines():
-            assert len(line) <= 100, f"Line exceeds 100 chars: {line!r}"
-
-    def test_schema_class_optional_args_emitted(self):
-        schema = [
-            {
-                "name": "col",
-                "role": "value",
-                "dfn_type": "double",
-                "optional": True,
-                "time_series": True,
-                "dtype": "np.float64",
-                "prefix": "pfx",
-                "shape": "(n)",
-            },
-        ]
-        result = schema_class(schema, "_Schema")
-        assert "optional=True" in result
-        assert "time_series=True" in result
-        assert 'dtype="np.float64"' in result
-        assert 'prefix="pfx"' in result
-        assert 'shape="(n)"' in result
-
     def test_row_class_empty_returns_empty_string(self):
         assert row_class([], "Row") == ""
 
     def test_row_class_static_block_no_aux(self):
-        # Static block Row (is_period=False default): no aux field.
+        # Static block Row (is_period=False default): no aux field. Real
+        # field() metadata (pk=/etc.) replaces the old Schema/Column lookup --
+        # the Row class itself is the schema.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
             {"name": "strt", "role": "value", "dfn_type": "double"},
@@ -332,11 +269,21 @@ class TestFilters:
         ]
         result = row_class(schema, "PackagedataRow")
         assert "@attrs.define" in result
-        assert "class PackagedataRow:" in result
-        assert "ifno: int" in result
+        assert "class PackagedataRow(Row):" in result
+        assert "ifno: int = field(pk=True)" in result
         assert "strt: float" in result
-        assert "boundname: Optional[str] = None" in result
+        assert "boundname: Optional[str] = field(default=None, optional=True)" in result
         assert "aux" not in result
+
+    def test_row_class_feature_id_with_fk_uses_fk_metadata(self):
+        # A feature_id column with a real fk target emits fk=, not pk=.
+        schema = [
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "fk": "packagedata.ifno"},
+            {"name": "iconn", "role": "feature_id", "dfn_type": "integer"},
+        ]
+        result = row_class(schema, "ConnectiondataRow")
+        assert 'ifno: int = field(fk="packagedata.ifno")' in result
+        assert "iconn: int = field(pk=True)" in result
 
     def test_row_class_period_has_aux_for_standard_stress(self):
         # Period Row (is_period=True) with no keystring: aux field present.
@@ -347,7 +294,6 @@ class TestFilters:
         ]
         result = row_class(schema, "Row", is_period=True)
         assert "aux: tuple = ()" in result
-        assert "yield from self.aux" in result
 
     def test_row_class_period_keystring_no_aux(self):
         # Period Row with keystring role: no aux even with is_period=True.
@@ -359,8 +305,8 @@ class TestFilters:
         result = row_class(schema, "Row", is_period=True)
         assert "aux" not in result
 
-    def test_row_class_iter_order_matches_schema(self):
-        # __iter__ yields required first, then optional (boundname last).
+    def test_row_class_field_order_matches_schema(self):
+        # Required fields declared in schema order, then optional.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
             {"name": "strt", "role": "value", "dfn_type": "double"},
@@ -368,24 +314,31 @@ class TestFilters:
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
         result = row_class(schema, "PackagedataRow")
-        lines = result.splitlines()
-        iter_lines = [ln.strip() for ln in lines if ln.strip().startswith("yield")]
-        assert iter_lines == [
-            "yield self.ifno",
-            "yield self.strt",
-            "yield self.nlakeconn",
-            "yield self.boundname",
-        ]
+        lines = [ln.strip() for ln in result.splitlines() if ":" in ln and "class" not in ln]
+        names = [ln.split(":")[0] for ln in lines]
+        assert names == ["ifno", "strt", "nlakeconn", "boundname"]
 
     def test_row_class_inline_keyword_optional(self):
-        # inline_keyword role → Optional[str] in Row.
+        # inline_keyword role -> Optional[str], tagged=True (same convention
+        # record.py's Record uses for optional keyword tokens).
         schema = [
             {"name": "pname", "role": "value", "dfn_type": "string", "dtype": "np.object_"},
             {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
         ]
         result = row_class(schema, "FileinputRow")
-        assert "mixed: Optional[str] = None" in result
-        assert "yield self.mixed" in result
+        assert 'mixed: Optional[str] = field(default=None, tagged=True, optional=True)' in result
+
+    def test_row_class_cellid_metadata(self):
+        schema = [{"name": "cellid", "role": "cellid", "dfn_type": "integer"}]
+        result = row_class(schema, "Row", is_period=True)
+        assert "cellid: tuple = field(cellid=True)" in result
+
+    def test_row_class_time_series_metadata(self):
+        schema = [
+            {"name": "head", "role": "value", "dfn_type": "double", "time_series": True},
+        ]
+        result = row_class(schema, "Row", is_period=True)
+        assert 'head: Union[float, str] = field(time_series=True)' in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs
@@ -512,7 +465,7 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     assert spec.period_schema, "MVR should have a period_schema"
     assert "_stress_period_data" in field_map
     spd_field = field_map["_stress_period_data"]
-    assert spd_field.type_annotation == "Optional[dict[int, np.recarray]]"
+    assert spd_field.type_annotation == "Optional[dict[int, list[Row]]]"
     # Packages block → single recarray field
     assert "packages" in field_map or "packages" in spec.block_schemas
 

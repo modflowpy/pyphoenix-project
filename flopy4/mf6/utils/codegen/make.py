@@ -27,7 +27,7 @@ from modflow_devtools.dfns.schema import (
 )
 
 from . import filters
-from .filters import ColumnSpec, FieldV3, _dq, python_repr, row_class, schema_class
+from .filters import ColumnSpec, FieldV3, _dq, python_repr, row_class
 from .overrides import (
     always_emit_blocks,
     apply as apply_override,
@@ -149,6 +149,8 @@ def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
                 entry["shape"] = ",".join(shape)
         elif col.is_index:
             entry["role"] = "feature_id"
+            if getattr(f, "fk", None):
+                entry["fk"] = f.fk
         elif col.name == "boundname":
             entry["role"] = "boundname"
             entry["dtype"] = "np.object_"
@@ -647,10 +649,11 @@ def _new_codegen_imports(
         )
         or has_inner_classes
         or has_period_schema
+        or bool(block_schemas)
         or has_readarray_period
         or has_injected_paths  # injected path fields are always Optional[Path]
     )
-    has_classvar = multi or slntype or has_inner_classes or has_period_schema
+    has_classvar = multi or slntype or has_inner_classes
     # Union[float, str] is used by row_class() for time_series and np.object_ columns.
     # Check both the period schema and all static block schemas.
     _all_schema_cols = list(period_schema or []) + [
@@ -666,6 +669,15 @@ def _new_codegen_imports(
     _row_path_cols = [col for col in _all_schema_cols if col.get("prefix")]
     has_row_path_cols = bool(_row_path_cols)
     has_optional_row_path_cols = any(col.get("optional") for col in _row_path_cols)
+    # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
+    # field(), same as any other codegen-v2 field -- checked separately from
+    # has_field_call since these live inside row_class()'s rendered text, not
+    # in the package's own top-level field_specs.
+    _row_has_field_call = any(
+        col.get("role") in ("cellid", "feature_id", "inline_keyword") or col.get("time_series")
+        for col in _all_schema_cols
+        if not col.get("prefix")
+    )
 
     stdlib: list[str] = []
     if has_path or has_injected_paths or has_file_records or has_row_path_cols:
@@ -681,9 +693,8 @@ def _new_codegen_imports(
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
     third_party: list[str] = ["import attrs"]
-    if has_array or has_period_schema:
-        third_party.append("import numpy as np")
     if has_array:
+        third_party.append("import numpy as np")
         third_party.append("from numpy.typing import NDArray")
 
     _base_imports = {
@@ -695,9 +706,9 @@ def _new_codegen_imports(
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if has_period_schema:
-        flopy4.append("from flopy4.mf6.schema import Column, Schema")
+        flopy4.append("from flopy4.mf6.row import Row")
     _spec_parts: list[str] = []
-    if has_field_call:
+    if has_field_call or _row_has_field_call:
         _spec_parts.append("field")
     if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
@@ -890,8 +901,9 @@ def build_component_spec(
             )
         )
 
-    # BlockPropertySpec-driven fields: one Optional[np.recarray] per block plus
-    # a __*_schema__ ClassVar.
+    # BlockPropertySpec-driven fields: one Optional[list[RowClass]] per block.
+    # The Row class's own fields are the schema -- see row_class() -- no
+    # separate __*_schema__ ClassVar needed.
     _always_emit_set = set(always_emit_blocks(component.name))
     for bp in block_properties:
         if not bp.columns:
@@ -900,16 +912,17 @@ def build_component_spec(
         if not schema:
             continue
         block_schemas[bp.block_name] = schema
-        _meta: dict = {"block": bp.block_name, "schema": f"__{bp.block_name}_schema__"}
+        _meta: dict = {"block": bp.block_name}
         if bp.dim_is_dfn_declared:
             _meta["auto_from"] = bp.block_name
         if bp.block_name in _always_emit_set:
             _meta["always_emit"] = True
+        _row_cls_name = bp.block_name.capitalize() + "Row"
         extra_specs.append(
             FieldSpec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
-                type_annotation="Optional[np.recarray]",
+                type_annotation=f"Optional[list[{_row_cls_name}]]",
                 spec_call=_ml_field(metadata=_meta),
                 generatable=True,
             )
@@ -917,12 +930,12 @@ def build_component_spec(
 
     # Consolidate period fields into one stress_period_data field.
     if period_schema:
-        _spd_meta = {"block": "period", "schema": "__period_schema__", "fill_forward": True}
+        _spd_meta = {"block": "period", "fill_forward": True}
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, np.recarray]]",
+                type_annotation="Optional[dict[int, list[Row]]]",
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
@@ -1033,7 +1046,6 @@ def _get_env() -> jinja2.Environment:
     )
     env.filters["python_repr"] = python_repr
     env.filters["row_class"] = row_class
-    env.filters["schema_class"] = schema_class
     return env
 
 

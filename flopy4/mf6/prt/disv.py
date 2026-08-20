@@ -1,11 +1,11 @@
-from typing import ClassVar, Optional
+from typing import Optional
 
 import attrs
 import numpy as np
 from numpy.typing import NDArray
 
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils.grid import VertexGrid
 
@@ -20,12 +20,12 @@ class Disv(DisBase):
         ncvert: int = attrs.field()
         icvert: tuple[int, ...] = attrs.field()
 
-    class _VerticesSchema(Schema):
-        iv = Column("iv", role="value", dfn_type="integer")
-        xv = Column("xv", role="value", dfn_type="double")
-        yv = Column("yv", role="value", dfn_type="double")
+    @attrs.define
+    class VerticesRow(Row):
+        iv: int
+        xv: float
+        yv: float
 
-    __vertices_schema__: ClassVar[type[Schema]] = _VerticesSchema
     length_units: Optional[str] = field(default=None, block="options", optional=True)
     nogrb: bool = field(default=False, block="options", optional=True)
     xorigin: Optional[float] = field(default=None, block="options", optional=True)
@@ -60,9 +60,7 @@ class Disv(DisBase):
     iv: Optional[NDArray[np.int64]] = attrs.field(default=None)
     xv: Optional[NDArray[np.float64]] = attrs.field(default=None)
     yv: Optional[NDArray[np.float64]] = attrs.field(default=None)
-    vertices: Optional[np.recarray] = field(
-        default=None, block="vertices", schema="__vertices_schema__"
-    )
+    vertices: Optional[list[VerticesRow]] = field(default=None, block="vertices")
     cell2ddata: Optional[list] = attrs.field(default=None)
     cell2d: Optional[list] = field(default=None, init=False, block="cell2d")
 
@@ -74,13 +72,11 @@ class Disv(DisBase):
         if self.yv is not None and (not isinstance(self.yv, np.ndarray)):
             object.__setattr__(self, "yv", np.asarray(self.yv, dtype=np.float64))
         if self.iv is not None and self.xv is not None and (self.yv is not None):
-            dtype = np.dtype([("iv", np.int64), ("xv", np.float64), ("yv", np.float64)])
-            n = len(self.iv)
-            arr = np.zeros(n, dtype=dtype)
-            arr["iv"] = self.iv + 1
-            arr["xv"] = self.xv
-            arr["yv"] = self.yv
-            object.__setattr__(self, "vertices", arr.view(np.recarray))
+            rows = [
+                self.VerticesRow(iv=int(iv) + 1, xv=float(xv), yv=float(yv))
+                for iv, xv, yv in zip(self.iv, self.xv, self.yv)
+            ]
+            object.__setattr__(self, "vertices", rows)
         if self.cell2ddata is not None:
             rows = []
             for rec in self.cell2ddata:

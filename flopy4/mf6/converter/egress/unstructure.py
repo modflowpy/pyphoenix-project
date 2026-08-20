@@ -13,6 +13,7 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.package import Package
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type
 
 
@@ -61,50 +62,15 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
     return blocks
 
 
-def _recarray_to_rows(arr: np.recarray, schema: "type[Schema]") -> list[tuple]:  # type: ignore[name-defined]
-    """Convert a recarray to MF6 record tuples (cellids converted to 1-based).
+def _rows_to_tuples(row_list: list) -> list[tuple]:
+    """Convert a list of Row instances to MF6 record tuples.
 
-    MF6 column order: required cols, aux cols, boundname.  Boundname is deferred
-    past aux so that aux values land in the correct file positions.
+    Each Row's own to_row() (see flopy4.mf6.row.Row) handles cellid/pk/fk
+    1-based conversion, inline keywords, prefix tokens, and aux/boundname
+    ordering -- the Row class's fields are the schema, nothing to look up
+    separately here.
     """
-    cols = schema.columns()
-    schema_names = {col.name for col in cols}
-    rows = []
-    for i in range(len(arr)):
-        row: list[Any] = []
-        pending_boundname: Any = None
-        for col in cols:
-            name = col.name
-            if name not in (arr.dtype.names or ()):  # type: ignore[operator]
-                continue
-            val = arr[name][i]
-            if col.role == "cellid":
-                row.extend(int(c) + 1 for c in val)
-            elif col.role == "feature_id":
-                row.append(int(val) + 1)
-            elif col.role == "boundname":
-                # Deferred past aux so MF6 column order is: cols, aux, boundname.
-                if val is not None and val != "":
-                    pending_boundname = val
-            elif col.role == "inline_keyword":
-                # Trailing optional keyword token (e.g. MIXED in SSM fileinput).
-                # Emit the column name uppercased only when value is truthy.
-                if val:
-                    row.append(name.upper())
-            else:
-                # Emit fixed prefix token(s) before the value when requested.
-                if col.prefix:
-                    row.extend(col.prefix.split())
-                row.append(val)
-        # aux columns not in schema (named aux0, aux1, ...) come after required cols
-        for name in arr.dtype.names or ():  # type: ignore[union-attr]
-            if name not in schema_names:
-                row.append(arr[name][i])
-        # boundname is always last per MF6 convention
-        if pending_boundname is not None:
-            row.append(pending_boundname)
-        rows.append(tuple(row))
-    return rows
+    return [row.to_row() for row in row_list]
 
 
 def _wrap_array(value: Any) -> xr.DataArray:
@@ -231,16 +197,14 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                         setting = " ".join(str(s) for s in setting)
                     oc_per_field.setdefault(field_key, {})[kper_int] = setting
             else:
-                # Stress-period recarray: dict[int, recarray]
-                schema_name = meta.get("schema")
-                schema = getattr(cls, schema_name, None) if schema_name else None
-                for kper, arr in field_value.items():
+                # Stress-period Row list: dict[int, list[Row]]
+                for kper, row_list in field_value.items():
                     kper_int = _normalize_kper(kper)
                     if kper_int is None:
                         continue
                     rows = (
-                        _recarray_to_rows(arr, schema)
-                        if isinstance(arr, np.recarray) and schema is not None
+                        _rows_to_tuples(row_list)
+                        if isinstance(row_list, list) and row_list and isinstance(row_list[0], Row)
                         else []
                     )
                     spd_period.setdefault(kper_int, []).extend(rows)
@@ -258,13 +222,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             t = _path_to_tuple(f.name, field_value, meta.get("inout", "fileout"))
             blocks[block_name][t[0].lower()] = t
 
-        elif meta.get("schema"):
-            # packagedata / connectiondata / perioddata recarray block
-            schema_name = meta["schema"]
-            schema = getattr(cls, schema_name, None)
-            if schema is not None and isinstance(field_value, np.recarray) and len(field_value):
-                rows = _recarray_to_rows(field_value, schema)
-                blocks[block_name][f.name] = rows
+        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Row):
+            # packagedata / connectiondata / etc. -- list[RowClass] block
+            blocks[block_name][f.name] = _rows_to_tuples(field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
             # Pre-formatted list of row tuples (e.g. cell2d).

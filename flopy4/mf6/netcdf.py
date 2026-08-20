@@ -15,6 +15,7 @@ from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
@@ -79,7 +80,7 @@ def get_spec(package_name: str):
 class _CodegenV2Spec:
     """XatSpec-compatible adapter for codegen v2 packages (attrs + block metadata)."""
 
-    _DTYPE_MAP = Package._DTYPE_MAP
+    _DTYPE_MAP = _PKG_DTYPE_MAP
 
     def __init__(self, cls):
         import attrs as _attrs

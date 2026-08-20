@@ -364,10 +364,10 @@ def test_chd_spd_input_styles(style):
     chd2 = structure_component(loaded, Chd)
     rec = chd2.stress_period_data[0]
     assert len(rec) == 2
-    assert tuple(rec["cellid"][0]) == (0, 0, 0)
-    assert float(rec["head"][0]) == 1.0
-    assert tuple(rec["cellid"][1]) == (0, 9, 9)
-    assert float(rec["head"][1]) == 0.0
+    assert tuple(rec[0].cellid) == (0, 0, 0)
+    assert float(rec[0].head) == 1.0
+    assert tuple(rec[1].cellid) == (0, 9, 9)
+    assert float(rec[1].head) == 0.0
 
 
 def test_dumps_chdg():
@@ -837,12 +837,12 @@ def test_prt_prp_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 1
-    assert p0["keyword"][0] == "FREQUENCY"
-    assert float(p0["value"][0]) == pytest.approx(2)
+    assert p0[0].keyword == "FREQUENCY"
+    assert float(p0[0].value) == pytest.approx(2)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1["keyword"][0] == "FIRST"
+    assert p1[0].keyword == "FIRST"
 
 
 # ---------------------------------------------------------------------------
@@ -1597,15 +1597,15 @@ def test_lak_structure_component_roundtrip():
 
     assert lak2.nlakes == 1
     pd = lak2.packagedata
-    assert list(pd["strt"]) == [5.0]
-    assert list(pd["boundname"]) == ["lake1"]
+    assert [r.strt for r in pd] == [5.0]
+    assert [r.boundname for r in pd] == ["lake1"]
     cd = lak2.connectiondata
-    assert list(cd["ifno"]) == [0, 0, 0]
-    assert list(cd["iconn"]) == [0, 1, 2]
-    assert tuple(cd["cellid"][0]) == (0, 0, 0)
-    assert tuple(cd["cellid"][1]) == (0, 0, 1)
-    assert tuple(cd["cellid"][2]) == (0, 1, 0)
-    assert list(cd["claktype"]) == ["vertical", "vertical", "vertical"]
+    assert [r.ifno for r in cd] == [0, 0, 0]
+    assert [r.iconn for r in cd] == [0, 1, 2]
+    assert tuple(cd[0].cellid) == (0, 0, 0)
+    assert tuple(cd[1].cellid) == (0, 0, 1)
+    assert tuple(cd[2].cellid) == (0, 1, 0)
+    assert [r.claktype for r in cd] == ["vertical", "vertical", "vertical"]
 
 
 def test_lak_packagedata_single_aux_roundtrip():
@@ -1639,9 +1639,9 @@ def test_lak_packagedata_single_aux_roundtrip():
     raw = loads(text)
     lak2 = structure_component(raw, Lak)
     pd = lak2.packagedata
-    assert list(pd["strt"]) == [5.0]
-    assert float(pd["aux0"][0]) == pytest.approx(100.0)
-    assert list(pd["boundname"]) == ["lake1"]
+    assert [r.strt for r in pd] == [5.0]
+    assert float(pd[0].aux[0]) == pytest.approx(100.0)
+    assert [r.boundname for r in pd] == ["lake1"]
 
 
 def test_lak_packagedata_double_aux_roundtrip():
@@ -1680,10 +1680,10 @@ def test_lak_packagedata_double_aux_roundtrip():
     lak2 = structure_component(raw, Lak)
     pd = lak2.packagedata
     assert lak2.nlakes == 2
-    assert float(pd["aux0"][0]) == pytest.approx(0.0)
-    assert float(pd["aux1"][0]) == pytest.approx(1025.0)
-    assert float(pd["aux0"][1]) == pytest.approx(5.0)
-    assert float(pd["aux1"][1]) == pytest.approx(1010.0)
+    assert float(pd[0].aux[0]) == pytest.approx(0.0)
+    assert float(pd[0].aux[1]) == pytest.approx(1025.0)
+    assert float(pd[1].aux[0]) == pytest.approx(5.0)
+    assert float(pd[1].aux[1]) == pytest.approx(1010.0)
 
 
 def test_lkt_packagedata_double_aux_roundtrip():
@@ -1718,9 +1718,9 @@ def test_lkt_packagedata_double_aux_roundtrip():
     raw = loads(text)
     lkt2 = structure_component(raw, Lkt)
     pd = lkt2.packagedata
-    assert float(pd["aux0"][0]) == pytest.approx(99.0)
-    assert float(pd["aux1"][0]) == pytest.approx(999.0)
-    assert list(pd["boundname"]) == ["mylake"]
+    assert float(pd[0].aux[0]) == pytest.approx(99.0)
+    assert float(pd[0].aux[1]) == pytest.approx(999.0)
+    assert [r.boundname for r in pd] == ["mylake"]
 
 
 def test_lak_keystring_period_roundtrip():
@@ -1765,35 +1765,35 @@ def test_lak_keystring_period_roundtrip():
     # Period 0: 4 rows
     p0 = spd[0]
     assert len(p0) == 4
-    assert p0["number"][0] == 0  # 0-based feature id
-    assert p0["keyword"][0] == "STATUS"
-    assert p0["value"][0] == "ACTIVE"
-    assert p0["number"][1] == 0
-    assert p0["keyword"][1] == "RAINFALL"
-    assert float(p0["value"][1]) == pytest.approx(0.1)
-    assert p0["number"][2] == 1
-    assert p0["keyword"][2] == "STATUS"
-    assert p0["value"][2] == "CONSTANT"
-    assert p0["number"][3] == 1
-    assert p0["keyword"][3] == "STAGE"
-    assert float(p0["value"][3]) == pytest.approx(5.0)
+    assert p0[0].number == 0  # 0-based feature id
+    assert p0[0].keyword == "STATUS"
+    assert p0[0].value == "ACTIVE"
+    assert p0[1].number == 0
+    assert p0[1].keyword == "RAINFALL"
+    assert float(p0[1].value) == pytest.approx(0.1)
+    assert p0[2].number == 1
+    assert p0[2].keyword == "STATUS"
+    assert p0[2].value == "CONSTANT"
+    assert p0[3].number == 1
+    assert p0[3].keyword == "STAGE"
+    assert float(p0[3].value) == pytest.approx(5.0)
 
     # Period 1: 1 row
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1["number"][0] == 0
-    assert p1["keyword"][0] == "STATUS"
-    assert p1["value"][0] == "INACTIVE"
+    assert p1[0].number == 0
+    assert p1[0].keyword == "STATUS"
+    assert p1[0].value == "INACTIVE"
 
     # Period 2: 2 rows
     p2 = spd[2]
     assert len(p2) == 2
-    assert p2["number"][0] == 0
-    assert p2["keyword"][0] == "STATUS"
-    assert p2["value"][0] == "ACTIVE"
-    assert p2["number"][1] == 1
-    assert p2["keyword"][1] == "WITHDRAWAL"
-    assert float(p2["value"][1]) == pytest.approx(100.0)
+    assert p2[0].number == 0
+    assert p2[0].keyword == "STATUS"
+    assert p2[0].value == "ACTIVE"
+    assert p2[1].number == 1
+    assert p2[1].keyword == "WITHDRAWAL"
+    assert float(p2[1].value) == pytest.approx(100.0)
 
 
 # ---------------------------------------------------------------------------
@@ -1837,8 +1837,8 @@ def test_gwt_fmi_packagedata_roundtrip():
     raw = loads(text)
     fmi2 = structure_component(raw, Fmi)
     pd = fmi2.packagedata
-    assert list(pd["flowtype"]) == ["HEAD"]
-    assert list(pd["fname"]) == ["gwf.hds"]
+    assert [r.flowtype for r in pd] == ["HEAD"]
+    assert [str(r.fname) for r in pd] == ["gwf.hds"]
 
 
 def test_gwe_fmi_packagedata_dump():
@@ -1900,8 +1900,8 @@ def test_hpc_partitions_roundtrip():
     raw = loads(text)
     hpc2 = structure_component(raw, Hpc)
     parts = hpc2.partitions
-    assert list(parts["mname"]) == ["model1", "model2"]
-    assert list(parts["mrank"]) == [0, 1]
+    assert [r.mname for r in parts] == ["model1", "model2"]
+    assert [r.mrank for r in parts] == [0, 1]
 
 
 # ---------------------------------------------------------------------------
@@ -1988,21 +1988,21 @@ def test_lkt_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 3
-    assert p0["number"][0] == 0
-    assert p0["keyword"][0] == "STATUS"
-    assert p0["value"][0] == "ACTIVE"
-    assert p0["number"][1] == 1
-    assert p0["keyword"][1] == "STATUS"
-    assert p0["value"][1] == "CONSTANT"
-    assert p0["number"][2] == 0
-    assert p0["keyword"][2] == "CONCENTRATION"
-    assert float(p0["value"][2]) == pytest.approx(10.0)
+    assert p0[0].number == 0
+    assert p0[0].keyword == "STATUS"
+    assert p0[0].value == "ACTIVE"
+    assert p0[1].number == 1
+    assert p0[1].keyword == "STATUS"
+    assert p0[1].value == "CONSTANT"
+    assert p0[2].number == 0
+    assert p0[2].keyword == "CONCENTRATION"
+    assert float(p0[2].value) == pytest.approx(10.0)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1["number"][0] == 0
-    assert p1["keyword"][0] == "STATUS"
-    assert p1["value"][0] == "INACTIVE"
+    assert p1[0].number == 0
+    assert p1[0].keyword == "STATUS"
+    assert p1[0].value == "INACTIVE"
 
 
 def test_lkt_packagedata_roundtrip():
@@ -2025,8 +2025,8 @@ def test_lkt_packagedata_roundtrip():
 
     pd = lkt2.packagedata
     assert len(pd) == 2
-    assert list(pd["strt"]) == [1.0, 2.0]
-    assert list(pd["boundname"]) == ["lake_a", "lake_b"]
+    assert [r.strt for r in pd] == [1.0, 2.0]
+    assert [r.boundname for r in pd] == ["lake_a", "lake_b"]
 
 
 def _lke_period_blocks(lke):
@@ -2103,21 +2103,21 @@ def test_lke_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 3
-    assert p0["number"][0] == 0
-    assert p0["keyword"][0] == "STATUS"
-    assert p0["value"][0] == "ACTIVE"
-    assert p0["number"][1] == 1
-    assert p0["keyword"][1] == "STATUS"
-    assert p0["value"][1] == "CONSTANT"
-    assert p0["number"][2] == 0
-    assert p0["keyword"][2] == "TEMPERATURE"
-    assert float(p0["value"][2]) == pytest.approx(18.5)
+    assert p0[0].number == 0
+    assert p0[0].keyword == "STATUS"
+    assert p0[0].value == "ACTIVE"
+    assert p0[1].number == 1
+    assert p0[1].keyword == "STATUS"
+    assert p0[1].value == "CONSTANT"
+    assert p0[2].number == 0
+    assert p0[2].keyword == "TEMPERATURE"
+    assert float(p0[2].value) == pytest.approx(18.5)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1["number"][0] == 0
-    assert p1["keyword"][0] == "STATUS"
-    assert p1["value"][0] == "INACTIVE"
+    assert p1[0].number == 0
+    assert p1[0].keyword == "STATUS"
+    assert p1[0].value == "INACTIVE"
 
 
 def test_lke_packagedata_roundtrip():
@@ -2142,9 +2142,9 @@ def test_lke_packagedata_roundtrip():
 
     pd = lke2.packagedata
     assert len(pd) == 2
-    assert list(pd["strt"]) == [12.0, 14.0]
-    assert list(pd["ktf"]) == [0.6, 0.6]
-    assert list(pd["boundname"]) == ["lakeA", "lakeB"]
+    assert [r.strt for r in pd] == [12.0, 14.0]
+    assert [r.ktf for r in pd] == [0.6, 0.6]
+    assert [r.boundname for r in pd] == ["lakeA", "lakeB"]
 
 
 def test_lke_packagedata_double_aux_roundtrip():
@@ -2182,11 +2182,11 @@ def test_lke_packagedata_double_aux_roundtrip():
 
     pd = lke2.packagedata
     assert len(pd) == 2
-    assert float(pd["aux0"][0]) == pytest.approx(10.0)
-    assert float(pd["aux1"][0]) == pytest.approx(20.0)
-    assert float(pd["aux0"][1]) == pytest.approx(30.0)
-    assert float(pd["aux1"][1]) == pytest.approx(40.0)
-    assert list(pd["boundname"]) == ["lakeA", "lakeB"]
+    assert float(pd[0].aux[0]) == pytest.approx(10.0)
+    assert float(pd[0].aux[1]) == pytest.approx(20.0)
+    assert float(pd[1].aux[0]) == pytest.approx(30.0)
+    assert float(pd[1].aux[1]) == pytest.approx(40.0)
+    assert [r.boundname for r in pd] == ["lakeA", "lakeB"]
 
 
 # ---------------------------------------------------------------------------
@@ -2213,7 +2213,7 @@ def test_chd_period_roundtrip():
     spd = chd2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    head_by_cellid = {tuple(rows["cellid"][i]): float(rows["head"][i]) for i in range(len(rows))}
+    head_by_cellid = {tuple(rows[i].cellid): float(rows[i].head) for i in range(len(rows))}
     assert head_by_cellid[(0, 0, 0)] == pytest.approx(10.0)
     assert head_by_cellid[(0, 9, 9)] == pytest.approx(0.0)
 
@@ -2242,7 +2242,7 @@ def test_chd_period_multi_stress_period_roundtrip():
         1: {(0, 0, 0): 8.0, (0, 4, 4): 3.0},
     }.items():
         rows = spd[kper]
-        actual = {tuple(rows["cellid"][i]): float(rows["head"][i]) for i in range(len(rows))}
+        actual = {tuple(rows[i].cellid): float(rows[i].head) for i in range(len(rows))}
         for cellid, val in expected.items():
             assert actual[cellid] == pytest.approx(val)
 
@@ -2266,7 +2266,7 @@ def test_wel_period_roundtrip():
     spd = wel2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    q_by_cellid = {tuple(rows["cellid"][i]): float(rows["q"][i]) for i in range(len(rows))}
+    q_by_cellid = {tuple(rows[i].cellid): float(rows[i].q) for i in range(len(rows))}
     assert q_by_cellid[(0, 1, 2)] == pytest.approx(-75.0)
     assert q_by_cellid[(1, 3, 4)] == pytest.approx(-25.0)
 
@@ -2290,9 +2290,9 @@ def test_drn_period_roundtrip():
     spd = drn2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 2, 2)
-    assert float(rows["elev"][0]) == pytest.approx(5.0)
-    assert float(rows["cond"][0]) == pytest.approx(1.0)
+    assert tuple(rows[0].cellid) == (0, 2, 2)
+    assert float(rows[0].elev) == pytest.approx(5.0)
+    assert float(rows[0].cond) == pytest.approx(1.0)
 
 
 def test_wel_period_aux_ingress_from_file():
@@ -2315,9 +2315,9 @@ END period 1
     spd = wel.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 1, 2)
-    assert float(rows["q"][0]) == pytest.approx(-75.0)
-    assert float(rows["aux0"][0]) == pytest.approx(1.0)
+    assert tuple(rows[0].cellid) == (0, 1, 2)
+    assert float(rows[0].q) == pytest.approx(-75.0)
+    assert float(rows[0].aux[0]) == pytest.approx(1.0)
 
 
 def test_wel_period_double_aux_ingress_from_file():
@@ -2340,10 +2340,10 @@ END period 1
     spd = wel.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 1, 2)
-    assert float(rows["q"][0]) == pytest.approx(-75.0)
-    assert float(rows["aux0"][0]) == pytest.approx(1.0)
-    assert float(rows["aux1"][0]) == pytest.approx(25.0)
+    assert tuple(rows[0].cellid) == (0, 1, 2)
+    assert float(rows[0].q) == pytest.approx(-75.0)
+    assert float(rows[0].aux[0]) == pytest.approx(1.0)
+    assert float(rows[0].aux[1]) == pytest.approx(25.0)
 
 
 # ---------------------------------------------------------------------------
@@ -2372,9 +2372,9 @@ def test_cnc_period_aux_roundtrip():
     spd = cnc2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 0, 2)
-    assert float(rows["conc"][0]) == pytest.approx(35.0)
-    assert float(rows["aux0"][0]) == pytest.approx(99.0)
+    assert tuple(rows[0].cellid) == (0, 0, 2)
+    assert float(rows[0].conc) == pytest.approx(35.0)
+    assert float(rows[0].aux[0]) == pytest.approx(99.0)
 
 
 def test_src_period_aux_roundtrip():
@@ -2398,9 +2398,9 @@ def test_src_period_aux_roundtrip():
     spd = src2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 0, 3)
-    assert float(rows["smassrate"][0]) == pytest.approx(0.5)
-    assert float(rows["aux0"][0]) == pytest.approx(7.0)
+    assert tuple(rows[0].cellid) == (0, 0, 3)
+    assert float(rows[0].smassrate) == pytest.approx(0.5)
+    assert float(rows[0].aux[0]) == pytest.approx(7.0)
 
 
 def test_ctp_period_aux_roundtrip():
@@ -2424,9 +2424,9 @@ def test_ctp_period_aux_roundtrip():
     spd = ctp2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 0, 1)
-    assert float(rows["temp"][0]) == pytest.approx(20.0)
-    assert float(rows["aux0"][0]) == pytest.approx(3.0)
+    assert tuple(rows[0].cellid) == (0, 0, 1)
+    assert float(rows[0].temp) == pytest.approx(20.0)
+    assert float(rows[0].aux[0]) == pytest.approx(3.0)
 
 
 def test_esl_period_aux_roundtrip():
@@ -2450,9 +2450,9 @@ def test_esl_period_aux_roundtrip():
     spd = esl2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 0, 4)
-    assert float(rows["senerrate"][0]) == pytest.approx(1.25)
-    assert float(rows["aux0"][0]) == pytest.approx(55.0)
+    assert tuple(rows[0].cellid) == (0, 0, 4)
+    assert float(rows[0].senerrate) == pytest.approx(1.25)
+    assert float(rows[0].aux[0]) == pytest.approx(55.0)
 
 
 def test_rch_period_aux_roundtrip():
@@ -2476,9 +2476,9 @@ def test_rch_period_aux_roundtrip():
     spd = rch2.stress_period_data
     assert spd is not None and 0 in spd
     rows = spd[0]
-    assert tuple(rows["cellid"][0]) == (0, 0, 0)
-    assert float(rows["recharge"][0]) == pytest.approx(0.001)
-    assert float(rows["aux0"][0]) == pytest.approx(42.0)
+    assert tuple(rows[0].cellid) == (0, 0, 0)
+    assert float(rows[0].recharge) == pytest.approx(0.001)
+    assert float(rows[0].aux[0]) == pytest.approx(42.0)
 
 
 # ---------------------------------------------------------------------------
@@ -2639,10 +2639,9 @@ def test_evt_period_aux_roundtrip():
     assert spd is not None
     assert 0 in spd
     arr = spd[0]
-    assert "surface" in arr.dtype.names
-    assert float(arr["surface"][0]) == pytest.approx(10.0)
-    assert "aux0" in arr.dtype.names
-    assert float(arr["aux0"][0]) == pytest.approx(3.14)
+    assert hasattr(arr[0], "surface")
+    assert float(arr[0].surface) == pytest.approx(10.0)
+    assert float(arr[0].aux[0]) == pytest.approx(3.14)
 
 
 # ---------------------------------------------------------------------------

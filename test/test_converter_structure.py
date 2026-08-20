@@ -164,10 +164,10 @@ class TestChdComponent:
 
         assert hasattr(chd, "_stress_period_data")
         rec = chd._stress_period_data[0]
-        assert rec["cellid"][0].tolist() == [0, 0, 0]
-        assert float(rec["head"][0]) == 1.0
-        assert rec["cellid"][1].tolist() == [0, 9, 9]
-        assert float(rec["head"][1]) == 0.0
+        assert list(rec[0].cellid) == [0, 0, 0]
+        assert float(rec[0].head) == 1.0
+        assert list(rec[1].cellid) == [0, 9, 9]
+        assert float(rec[1].head) == 0.0
 
     def test_chd_with_fill_forward(self):
         """Test CHD stores multiple periods separately (fill-forward is write-time only)."""
@@ -180,8 +180,8 @@ class TestChdComponent:
 
         # Both periods are stored; no in-memory fill-forward in codegen v2
         assert set(chd._stress_period_data.keys()) == {0, 5}
-        assert float(chd._stress_period_data[0]["head"][0]) == 1.0
-        assert float(chd._stress_period_data[5]["head"][0]) == 2.0
+        assert float(chd._stress_period_data[0][0].head) == 1.0
+        assert float(chd._stress_period_data[5][0].head) == 2.0
 
 
 class TestRchComponent:
@@ -198,8 +198,8 @@ class TestRchComponent:
 
         assert hasattr(rch, "_stress_period_data")
         assert set(rch._stress_period_data.keys()) == {0, 1}
-        assert float(rch._stress_period_data[0]["recharge"][0]) == 0.004
-        assert float(rch._stress_period_data[1]["recharge"][0]) == 0.002
+        assert float(rch._stress_period_data[0][0].recharge) == 0.004
+        assert float(rch._stress_period_data[1][0].recharge) == 0.002
 
 
 class TestSparseArrays:
@@ -263,9 +263,9 @@ class TestEdgeCases:
         )
 
         assert set(chd._stress_period_data.keys()) == {0, 5}
-        assert float(chd._stress_period_data[0]["head"][0]) == 1.0
-        assert float(chd._stress_period_data[5]["head"][0]) == 2.0
-        assert float(chd._stress_period_data[5]["head"][1]) == 0.5
+        assert float(chd._stress_period_data[0][0].head) == 1.0
+        assert float(chd._stress_period_data[5][0].head) == 2.0
+        assert float(chd._stress_period_data[5][1].head) == 0.5
 
 
 class TestDataFrameIntegration:

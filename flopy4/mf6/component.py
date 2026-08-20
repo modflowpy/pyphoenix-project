@@ -82,7 +82,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         initialization and updated when period arrays change.
         """
         # Package leaves compute maxbound in Package.__attrs_post_init__ via
-        # _init_period_dtype; skip the xattree metadata scan for them.
+        # _init_row_lists; skip the xattree metadata scan for them.
         from flopy4.mf6.package import Package
 
         if isinstance(self, Package):

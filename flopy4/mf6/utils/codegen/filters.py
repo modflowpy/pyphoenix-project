@@ -517,33 +517,30 @@ def python_repr(v) -> str:
     return "\n".join(lines)
 
 
-def row_class(schema_list: list[dict], class_name: str, is_period: bool = False) -> str:
-    """Render an @attrs.define Row nested class for list block construction.
+def row_class(
+    schema_list: list[dict], class_name: str, is_period: bool = False, has_aux: bool = False
+) -> str:
+    """Render a Row subclass (flopy4.mf6.row.Row) for list block construction.
 
     Called as::
 
         {{ spec.period_schema | row_class("Row", True) }}
         {{ block_schema | row_class("PackagedataRow") }}
 
-    Produces a 4-space-indented ``@attrs.define`` class with typed fields and
-    an ``__iter__`` method that yields column values in schema column order.
-    Row instances can be passed anywhere nested lists are accepted -- they are
-    coerced to np.recarray in ``__attrs_post_init__`` exactly like nested lists.
+    Produces a 4-space-indented ``@attrs.define`` class whose fields carry
+    real metadata (``pk=``/``fk=``/``cellid=``/``time_series=``/``prefix=``/
+    ``tagged=``, via ``field()``) -- the class itself is the schema;
+    structure.py/unstructure.py introspect it directly (see flopy4.mf6.row).
+    No separate Schema/Column description is emitted.
 
     Required fields (no default) are declared before optional fields to
-    satisfy attrs ordering constraints. ``__iter__`` follows schema column
-    order so coercion produces the correct recarray layout.
+    satisfy attrs ordering constraints.
 
     ``is_period=True`` injects ``aux: tuple = ()`` between required value
     columns and optional columns, for packages that accept positional AUXILIARY
-    columns in their stress period recarray. Static list blocks (packagedata,
+    columns in their stress period rows. Static list blocks (packagedata,
     connectiondata, etc.) have fixed DFN schemas and never carry dynamic aux
     columns, so ``is_period`` should be False (the default) for those.
-
-    Note: this function is unchanged from the legacy-schema codegen path --
-    it operates entirely on the pre-built list[dict] schema format (see
-    filters.py's docstring / namefile-load-plan.md Phase 0.6a+0.6b), not on
-    the source DFN schema type, so it needed no changes for the dev3 migration.
     """
     if not schema_list:
         return ""
@@ -574,11 +571,50 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
         return _DFN_PY.get(col.get("dfn_type", "double"), "float")
 
     def _is_optional(col: dict) -> bool:
-        return bool(col.get("optional")) or col["role"] in ("boundname", "inline_keyword")
+        # keystring_value is always optional: some keystring arms are bare
+        # keywords with no payload at all (e.g. PRT-PRP's FIRST/LAST/ALL --
+        # confirmed via the v1 DFN, no feature-id/value field), so a
+        # required "value" would fail to parse those rows from file tokens.
+        return bool(col.get("optional")) or col["role"] in (
+            "boundname",
+            "inline_keyword",
+            "keystring_value",
+        )
 
     def _prefix_inout(col: dict) -> str:
         """MF6 inout direction implied by a row column's prefix tokens."""
         return "fileout" if "FILEOUT" in (col.get("prefix") or "").upper().split() else "filein"
+
+    def _prefix_tokens(col: dict) -> tuple:
+        """Fixed literal prefix token(s) preceding FILEIN/FILEOUT itself (e.g.
+        SSM fileinput's "SPC6", LAK tables' "TAB6") -- the FILEIN/FILEOUT
+        keyword is handled separately via inout=, not part of this tuple."""
+        parts = (col.get("prefix") or "").split()
+        return tuple(p for p in parts if p not in ("FILEIN", "FILEOUT"))
+
+    def _field_meta(col: dict) -> dict:
+        role = col["role"]
+        meta: dict = {}
+        if role == "cellid":
+            meta["cellid"] = True
+        elif role == "feature_id":
+            if col.get("fk"):
+                meta["fk"] = col["fk"]
+            else:
+                meta["pk"] = True
+        elif role == "inline_keyword":
+            meta["tagged"] = True
+        if col.get("time_series"):
+            meta["time_series"] = True
+        if _is_optional(col):
+            # Needed even for time_series fields: _n_fixed_tokens() (row.py)
+            # uses this to tell "always present" fixed columns apart from
+            # trailing columns that may be entirely absent from a given row
+            # (e.g. EVT's pxdp/petm/petm0, only written when
+            # surf_rate_specified) when inferring a variable-width cellid's
+            # element count from raw token counts.
+            meta["optional"] = True
+        return meta
 
     def _field_line(col: dict, *, optional: bool) -> str:
         # File-reference columns (a fixed MF6 token or two before a filename,
@@ -587,87 +623,57 @@ def row_class(schema_list: list[dict], class_name: str, is_period: bool = False)
         # generic dtype-based Union[float, str] fallback below.
         if col.get("prefix"):
             inout = _prefix_inout(col)
+            fixed = _prefix_tokens(col)
+            prefix_kw = f", prefix={_dq(fixed)}" if fixed else ""
             if optional:
                 return (
                     f"        {col['name']}: Optional[Path] = path(\n"
-                    f'            default=None, converter=_optional_path, inout="{inout}"\n'
+                    f'            default=None, converter=_optional_path, inout="{inout}"{prefix_kw}\n'
                     f"        )"
                 )
-            return f'        {col["name"]}: Path = path(converter=Path, inout="{inout}")'
+            return f'        {col["name"]}: Path = path(converter=Path, inout="{inout}"{prefix_kw})'
         py_type = _py_type(col)
+        meta = _field_meta(col)
+        margs = ", ".join(f"{k}={_dq(v)}" for k, v in meta.items())
         if optional:
+            if meta:
+                return f"        {col['name']}: Optional[{py_type}] = field(default=None, {margs})"
             return f"        {col['name']}: Optional[{py_type}] = None"
+        if meta:
+            return f"        {col['name']}: {py_type} = field({margs})"
         return f"        {col['name']}: {py_type}"
 
     required = [col for col in schema_list if not _is_optional(col)]
     optional = [col for col in schema_list if _is_optional(col)]
-    # Aux injection: only for period blocks. Standard stress packages (CHD,
-    # WEL, DRN, …) carry aux as positional trailing columns in the recarray
-    # whose count equals len(package.auxiliary). Keystring period packages
-    # (LAK, SFR) embed AUXILIARY as a named keyword record -- no positional aux.
-    # Static list blocks (packagedata, connectiondata, etc.) have fixed schemas
-    # and never carry dynamic aux columns regardless of package options.
-    has_positional_aux = is_period and not any(col["role"] == "keystring" for col in schema_list)
+    # Aux injection: period blocks (standard stress packages CHD, WEL, DRN,
+    # … carry aux as positional trailing columns whose count equals
+    # len(package.auxiliary); keystring period packages (LAK, SFR) embed
+    # AUXILIARY as a named keyword arm instead -- no positional aux there)
+    # and packagedata blocks specifically (has_aux=True, passed by the
+    # template only for block_name == "packagedata" -- the one static list
+    # block MF6 allows per-row aux values on; connectiondata/tables/outlets
+    # etc. have fixed schemas and never carry dynamic aux columns).
+    has_positional_aux = has_aux or (
+        is_period and not any(col["role"] == "keystring" for col in schema_list)
+    )
+
+    # aux sits between other optional columns and boundname in the real DFN
+    # token order (e.g. EVT: ..., pxdp, petm, petm0, aux, boundname) -- not
+    # necessarily right after the required columns (some packages, like EVT,
+    # have their own optional value columns before aux).
+    optional_non_boundname = [col for col in optional if col["role"] != "boundname"]
+    boundname_cols = [col for col in optional if col["role"] == "boundname"]
 
     lines = ["    @attrs.define"]
-    lines.append(f"    class {class_name}:")
+    lines.append(f"    class {class_name}(Row):")
     for col in required:
         lines.append(_field_line(col, optional=False))
+    for col in optional_non_boundname:
+        lines.append(_field_line(col, optional=True))
     if has_positional_aux:
         lines.append("        aux: tuple = ()")
-    for col in optional:
+    for col in boundname_cols:
         lines.append(_field_line(col, optional=True))
-    lines.append("")
-    lines.append("        def __iter__(self):")
-    for col in required:
-        lines.append(f"            yield self.{col['name']}")
-    if has_positional_aux:
-        lines.append("            yield from self.aux")
-    for col in optional:
-        lines.append(f"            yield self.{col['name']}")
-    return "\n".join(lines)
-
-
-def schema_class(schema_list: list[dict], class_name: str) -> str:
-    """Render a Schema subclass body for a list[dict] column schema.
-
-    Registered as the ``schema_class`` Jinja filter. Called as::
-
-        {{ spec.period_schema | schema_class("_PeriodSchema") }}
-
-    Produces a 4-space-indented class definition (suitable for class-body
-    emission in generated files) with one Column(...) attribute per column.
-    Long Column() calls are wrapped to keep lines under the 100-character
-    ruff limit.
-
-    Note: unchanged from the legacy-schema codegen path, same reason as
-    row_class above -- operates on the pre-built list[dict] format only.
-    """
-    if not schema_list:
-        return ""
-    lines = [f"    class {class_name}(Schema):"]
-    for col in schema_list:
-        name = col["name"]
-        args = [f'"{name}"', f'role="{col["role"]}"', f'dfn_type="{col.get("dfn_type", "double")}"']
-        if col.get("shape"):
-            args.append(f'shape="{col["shape"]}"')
-        if col.get("optional"):
-            args.append("optional=True")
-        if col.get("time_series"):
-            args.append("time_series=True")
-        if col.get("dtype"):
-            args.append(f'dtype="{col["dtype"]}"')
-        if col.get("prefix"):
-            args.append(f'prefix="{col["prefix"]}"')
-        single = f"        {name} = Column({', '.join(args)})"
-        if len(single) <= 100:
-            lines.append(single)
-        else:
-            # Wrap: each arg on its own line at 12-space indent.
-            lines.append(f"        {name} = Column(")
-            for arg in args:
-                lines.append(f"            {arg},")
-            lines.append("        )")
     return "\n".join(lines)
 
 

@@ -44,6 +44,14 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endfor %}
 
 {% endfor %}
+{% for block_name, schema in spec.block_schemas.items() %}
+{{ schema | row_class(block_name | capitalize + "Row", False, block_name == "packagedata") }}
+
+{% endfor %}
+{% if spec.period_schema %}
+{{ spec.period_schema | row_class("Row", True) }}
+
+{% endif %}
 {% for f in spec.fields %}
 {% if f.generatable %}
     {{ f.py_name }}: {{ f.type_annotation }} = {{ f.spec_call }}
@@ -51,32 +59,8 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     # TODO: {{ f.dfn_name }} — {{ f.skip_reason }}
 {% endif %}
 {% endfor %}
-{% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields %}
+{% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields and not spec.block_schemas and not spec.period_schema %}
     pass
-{% endif %}
-{% if spec.period_schema or spec.block_schemas %}
-
-{% for block_name, schema in spec.block_schemas.items() %}
-{{ schema | schema_class("_" + block_name | capitalize + "Schema") }}
-
-    __{{ block_name }}_schema__: ClassVar[type[Schema]] = _{{ block_name | capitalize }}Schema
-
-{{ schema | row_class(block_name | capitalize + "Row") }}
-
-{% endfor %}
-{% if spec.period_schema %}
-{{ spec.period_schema | row_class("Row", True) }}
-
-{{ spec.period_schema | schema_class("_PeriodSchema") }}
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-{% endif %}
-{% for block_name in spec.block_schemas %}
-    {{ block_name }}_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-{% endfor %}
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-
 {% endif %}
 {% if spec.period_schema or spec.block_schemas %}
 

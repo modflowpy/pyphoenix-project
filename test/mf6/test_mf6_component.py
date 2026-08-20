@@ -308,10 +308,10 @@ def test_init_big_sim():
     # SPD is a recarray with only 2 rows — no full-grid allocation
     spd = chd.stress_period_data[0]
     assert len(spd) == 2
-    assert tuple(spd["cellid"][0]) == (0, 0, 0)
-    assert float(spd["head"][0]) == 1.0
-    assert tuple(spd["cellid"][1]) == (0, 9999, 9999)
-    assert float(spd["head"][1]) == 0.0
+    assert tuple(spd[0].cellid) == (0, 0, 0)
+    assert float(spd[0].head) == 1.0
+    assert tuple(spd[1].cellid) == (0, 9999, 9999)
+    assert float(spd[1].head) == 0.0
 
     # test dictionary access/deletion
     assert gwf["npf"] is npf
@@ -382,8 +382,8 @@ def test_to_dict_fields():
 
     assert "stress_period_data" in result
     assert 0 in result["stress_period_data"]
-    assert result["stress_period_data"][0]["head"][0] == 1.0
-    assert result["stress_period_data"][0]["head"][1] == 0.0
+    assert result["stress_period_data"][0][0].head == 1.0
+    assert result["stress_period_data"][0][1].head == 0.0
 
     npf = Npf(dims=dims, k=5.0)
     result = npf.to_dict()
@@ -418,8 +418,8 @@ def test_to_dict_blocks():
     assert "print_flows" in result["options"]
     assert result["options"]["print_flows"] is True
     assert "stress_period_data" in result["period"]
-    assert result["period"]["stress_period_data"][0]["head"][0] == 1.0
-    assert result["period"]["stress_period_data"][0]["head"][1] == 0.0
+    assert result["period"]["stress_period_data"][0][0].head == 1.0
+    assert result["period"]["stress_period_data"][0][1].head == 0.0
 
     npf = Npf(dims=dims, save_flows=True, k=2.0)
     result = npf.to_dict(blocks=True)
