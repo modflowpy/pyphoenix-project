@@ -14,3 +14,9 @@ temp/
 .coverage
 flopy4/mf6/codec/reader/grammar/generated/*.lark
 mf6examples.zip.lock
+
+# Local notes/design/planning docs -- not version-controlled, kept on disk.
+CLAUDE.md
+*-plan.md
+*-gaps.md
+list-design.md
