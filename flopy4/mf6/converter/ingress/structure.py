@@ -202,7 +202,7 @@ def _binding_target_classes(child_type: type) -> tuple[type, ...]:
 
 
 def _apply_binding_terms(child: Any, terms: list) -> None:
-    """Ingress mirror of `binding.py`'s `Binding.from_component`'s
+    """Ingress mirror of `converter/binding.py`'s `Binding.from_component`'s
     `_get_binding_terms`: for `Exchange`/`Solution` targets, a binding
     row's trailing terms carry real semantic data (the two model names an
     exchange couples, or the model name(s) a solution applies to) that
@@ -259,8 +259,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
     a child is already attached, not while its siblings are still loading.
     """
-    from flopy4.mf6.binding import component_ftype
-    from flopy4.mf6.component import get_ftypes
+    from flopy4.mf6.converter.binding import component_ftype
+    from flopy4.mf6.component import lookup_ftype
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
     from flopy4.mf6.solution import Solution
@@ -269,9 +269,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     if not xatspec.children:
         return {}
 
-    ftypes = get_ftypes()
     # Model scope to prefer when resolving this class's own binding rows'
-    # ftype tokens (see get_ftypes()) -- e.g. structuring a Gwf's "packages"
+    # ftype tokens (see lookup_ftype()) -- e.g. structuring a Gwf's "packages"
     # block should resolve "DIS6" to gwf's own Dis, not gwt's/gwe's/prt's.
     # A Model class's __module__ is "flopy4.mf6.<model>" (defined directly
     # in that subpackage's __init__.py), not "...<model>.<name>" like its
@@ -322,13 +321,11 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 elif matches:
                     target_cls = matches[0]
                 else:
-                    # Fall back to the (possibly model-qualified) FTYPES
-                    # registry for abstract-typed fields (Model/Exchange/
-                    # Solution/DisBase), where the field's declared type
-                    # can't be compared to a token directly.
-                    resolved_cls = (
-                        ftypes.get(f"{model_prefix}-{token}") if model_prefix else None
-                    ) or ftypes.get(token)
+                    # Fall back to the ftype registry for abstract-typed
+                    # fields (Model/Exchange/Solution/DisBase), where the
+                    # field's declared type can't be compared to a token
+                    # directly.
+                    resolved_cls = lookup_ftype(token, prefix=model_prefix)
                     if resolved_cls is None or not any(
                         issubclass(resolved_cls, t) for t in accepted
                     ):

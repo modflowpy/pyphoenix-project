@@ -17,56 +17,80 @@ from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
 COMPONENTS: dict[str, type] = {}
-"""MF6 component registry."""
+"""MF6 component name -> component type, keyed by fully-qualified name
+(e.g. 'gwf-ic') for classes with a model prefix, or by the plain
+lowercased class name for classes without one ('simulation', 'gwf', ...).
+Use `lookup_component()` rather than indexing this directly unless the
+fully-qualified key is already known."""
 
 FTYPES: dict[str, type] = {}
-"""MF6 file-type token (lowercased, e.g. 'gwf6', 'chd6') -> component class.
-
-Built lazily on first use (see `get_ftypes()`) from `COMPONENTS`, rather than
-eagerly in `__attrs_init_subclass__`. Computing a class's ftype token needs
-`component_ftype()` from `binding.py`, and `binding.py`'s own import chain
-(Exchange/Model/Package/Solution) can itself define further concrete
-`Component` subclasses before finishing -- importing it eagerly at
-subclass-definition time reenters it mid-import and fails.
-"""
+"""MF6 file-type (lowercased, e.g. 'gwf-dis6') -> component class, keyed
+the same way as `COMPONENTS` but by ftype token instead of class name.
+Use `lookup_ftype()` rather than indexing this directly unless the
+fully-qualified key is already known."""
 
 
 def _model_prefix(cls: type) -> "str | None":
-    """The model subpackage a class lives under (e.g. 'gwf' for
-    `flopy4.mf6.gwf.dis.Dis`), or None. Same convention used for
-    `COMPONENTS`' model-qualified keys (e.g. 'gwf-ic') below."""
     parts = cls.__module__.split(".")
     if len(parts) >= 4 and parts[0] == "flopy4" and parts[1] == "mf6":
         return parts[2]
     return None
 
 
+def _qualify(name: str, prefix: "str | None") -> str:
+    return f"{prefix}-{name}" if prefix is not None else name
+
+
+def _lookup(registry: "dict[str, type]", name: str, prefix: "str | None") -> "type | None":
+    """Resolve `name` against a fully-qualified-keyed registry.
+
+    Tries, in order: `prefix` qualifying `name` (a caller that knows its
+    scope, e.g. `_resolve_bindings` resolving within a known model);
+    `name` itself, in case it's already fully qualified (the brief
+    `<model>-<component>` form DFN files use) or unprefixed to begin with
+    (`Simulation`, `Tdis`, `Model` leaves, ...); and finally a best-effort
+    scan for a single registered key ending in `-{name}` -- genuinely
+    unambiguous single-component names resolve this way, but names shared
+    by more than one model (e.g. 'ic') return `None` rather than an
+    arbitrary pick, since the registry alone can't disambiguate them.
+    """
+    if prefix is not None and (cls := registry.get(_qualify(name, prefix))) is not None:
+        return cls
+    if (cls := registry.get(name)) is not None:
+        return cls
+    suffix = f"-{name}"
+    matches = {cls for key, cls in registry.items() if key.endswith(suffix)}
+    return matches.pop() if len(matches) == 1 else None
+
+
+def lookup_component(name: str, prefix: "str | None" = None) -> "type | None":
+    """Look up a registered component class by name (see `_lookup`)."""
+    return _lookup(COMPONENTS, name.lower(), prefix)
+
+
+def lookup_ftype(token: str, prefix: "str | None" = None) -> "type | None":
+    """Look up a registered component class by ftype token (see `_lookup`)."""
+    return _lookup(get_ftypes(), token.lower(), prefix)
+
+
 def get_ftypes() -> "dict[str, type]":
-    """Build (once) and return the FTYPES registry, keyed by lowercased
-    MF6 file-type token (e.g. 'gwf6', 'chd6').
+    """Build and return the ftypes registry, keyed like `COMPONENTS` but
+    by ftype token (e.g. 'gwf-dis6') instead of class name.
 
     Some tokens aren't globally unique -- every model type has its own
     'DIS6'/'IC6'/'OC6'/... via a shared abstract base (e.g. `Dis` under
     `gwf`/`gwt`/`gwe`/`prt` all subclass the same `gwf.disbase.DisBase`),
     so type-based disambiguation alone can't tell a GWF `Dis` from a GWT
-    one. Also register a model-qualified key (e.g. 'gwf-dis6', mirroring
-    `COMPONENTS`' 'gwf-ic') for callers (`_resolve_bindings`) that know
-    which model they're resolving within; the plain token key is a
-    best-effort fallback for genuinely unambiguous tokens.
+    one -- that's what the model-qualified key is for.
     """
     if not FTYPES:
-        from flopy4.mf6.binding import component_ftype
+        from flopy4.mf6.converter.binding import component_ftype
 
         for cls in set(COMPONENTS.values()):
-            # Abstract intermediate bases (Package/Context/Model/Exchange/
-            # Solution) declare ABC as a direct base; concrete leaf classes
-            # don't. Only concrete classes have a real, loadable ftype.
             if ABC in cls.__bases__:
                 continue
             token = component_ftype(cls).lower()
-            if (prefix := _model_prefix(cls)) is not None:
-                FTYPES[f"{prefix}-{token}"] = cls
-            FTYPES.setdefault(token, cls)
+            FTYPES[_qualify(token, _model_prefix(cls))] = cls
     return FTYPES
 
 
@@ -153,13 +177,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def __attrs_init_subclass__(cls):
-        key = cls.__name__.lower()
-        COMPONENTS[key] = cls
-        # Also register a model-qualified key (e.g. "gwf-ic") for classes in a
-        # model subpackage (flopy4.mf6.<model>.<pkg>), giving deterministic
-        # per-model lookup when multiple models share a class name like "ic".
-        if (prefix := _model_prefix(cls)) is not None:
-            COMPONENTS[f"{prefix}-{key}"] = cls
+        # Keyed by fully-qualified name (e.g. "gwf-ic") for classes in a
+        # model subpackage (flopy4.mf6.<model>.<pkg>), or by the plain
+        # class name otherwise -- see `lookup_component()` for resolving
+        # a bare name like "ic" when the model scope isn't known upfront.
+        COMPONENTS[_qualify(cls.__name__.lower(), _model_prefix(cls))] = cls
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.
@@ -183,10 +205,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     def load(
         cls, path: str | PathLike, format: str = MF6, name: "str | None" = None
     ) -> "Component":
-        """Load the component, with any children already resolved and
-        attached (binding resolution -- see `structure.py`'s
-        `_resolve_bindings` -- happens during construction, inside the
-        registered loader).
+        """Load a component from a file.
 
         `name`, if given, overrides xattree's default auto-assigned name
         (e.g. a namefile binding row's pname, threaded down by a parent's

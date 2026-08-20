@@ -56,17 +56,6 @@ class WriteError(Exception):
 
 
 def _load_mf6(cls, path: Path, name: "str | None" = None) -> Component:
-    """Load MF6 format file into a component instance.
-
-    Mirrors Package.load()'s working pattern (same codec reader,
-    structure_component) rather than the generic cattrs-based `structure()`
-    below, which has no structure hook registered for the abstract
-    `Component` base and isn't functional.
-
-    `name`, if given, overrides xattree's default auto-assigned name (e.g.
-    a namefile binding row's pname, threaded down by a parent's
-    `_resolve_bindings` call when loading this component as a child).
-    """
     from flopy4.mf6.converter.ingress.structure import structure_component
 
     with open(path, "r") as fp:
@@ -79,13 +68,11 @@ def _load_mf6(cls, path: Path, name: "str | None" = None) -> Component:
 
 
 def _load_json(cls, path: Path, name: "str | None" = None) -> Component:
-    """Load JSON format file into a component instance."""
     with open(path, "r") as fp:
         return structure(load_json(fp), path)
 
 
 def _load_toml(cls, path: Path, name: "str | None" = None) -> Component:
-    """Load TOML format file into a component instance."""
     with open(path, "rb") as fp:
         return structure(load_toml(fp), path)
 
@@ -93,7 +80,6 @@ def _load_toml(cls, path: Path, name: "str | None" = None) -> Component:
 def _write_mf6(component: Component, context=None, **kwargs) -> None:
     from flopy4.mf6.write_context import WriteContext
 
-    # Use provided context or default
     ctx = context if context is not None else WriteContext.default()
 
     with open(component.path, "w") as fp:

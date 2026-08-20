@@ -8,22 +8,7 @@ from flopy4.mf6.solution import Solution
 
 
 def component_ftype(cls: type) -> str:
-    """The MF6 file-type token (e.g. ``"GWF6"``, ``"CHD6"``) for a
-    concrete `Component` subclass.
-
-    Pure function of the class, not an instance -- `Solution.slntype` is a
-    `ClassVar`, so it's readable without constructing anything.
-
-    G/A-variant package classes (``Chdg``, ``Drng``, ``Evta``, ``Ghbg``,
-    ``Rcha``, ``Rivg``, ``Welg``) share their base's namefile ftype --
-    confirmed against real MF6 source (`gwf.f90`'s package-type `select
-    case`, e.g. `case ('CHD6')`, has no `'CHDG6'`/`'RCHA6'`/etc. arm at
-    all; `chd_create` handles both variants once dispatched). A DFN-level
-    `dfn_file_name`/legacy-flopy `_package_type` of `"gwf-chdg"` describes
-    the DFN/class identity, not the namefile-level ftype token -- don't
-    infer the latter from the former; a real MF6 run rejects the
-    unabridged token with "Model package type not supported".
-    """
+    """E.g. ``"GWF6"``, ``"CHD6"``."""
     cls_name = cls.__name__
     if issubclass(cls, Exchange):
         return f"{cls_name[:3].upper()}6-{cls_name[3:].upper()}6"
@@ -36,10 +21,7 @@ def component_ftype(cls: type) -> str:
 
 @define
 class Binding:
-    """
-    An MF6 component binding: a record representation of the
-    component for writing to a parent component's name file.
-    """
+    """A serializable representation of a component."""
 
     type: str
     fname: str

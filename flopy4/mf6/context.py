@@ -51,9 +51,7 @@ class Context(Component, ABC):
     @classmethod
     def load(cls, path, format=MF6, name=None):
         """
-        Load the context component, with any children already resolved and
-        attached (binding resolution happens during construction, inside
-        the registered loader, relative to the namefile's own directory).
+        Load a context from a file.
 
         `name`, if given, overrides xattree's default auto-assigned name.
         """
