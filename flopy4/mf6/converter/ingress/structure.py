@@ -7,7 +7,7 @@ import numpy as np
 import xattree
 
 from flopy4.dimensions import DimensionProvider
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row, infer_ncelldim, parse_union_rows, row_list_type
@@ -260,7 +260,6 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
     a child is already attached, not while its siblings are still loading.
     """
-    from flopy4.mf6.component import lookup_ftype
     from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
@@ -271,8 +270,9 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
         return {}
 
     # Model scope to prefer when resolving this class's own binding rows'
-    # ftype tokens (see lookup_ftype()) -- e.g. structuring a Gwf's "packages"
-    # block should resolve "DIS6" to gwf's own Dis, not gwt's/gwe's/prt's.
+    # ftype tokens via get_ftype() below -- e.g. structuring a Gwf's
+    # "packages" block should resolve "DIS6" to gwf's own Dis, not gwt's/
+    # gwe's/prt's.
     # A Model class's __module__ is "flopy4.mf6.<model>" (defined directly
     # in that subpackage's __init__.py), not "...<model>.<name>" like its
     # child packages, so this can't reuse component.py's _model_prefix --
@@ -326,7 +326,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                     # fields (Model/Exchange/Solution/DisBase), where the
                     # field's declared type can't be compared to a token
                     # directly.
-                    resolved_cls = lookup_ftype(token, prefix=model_prefix)
+                    resolved_cls = get_ftype(token, prefix=model_prefix)
                     if resolved_cls is None or not any(
                         issubclass(resolved_cls, t) for t in accepted
                     ):

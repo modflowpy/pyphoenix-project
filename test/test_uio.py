@@ -346,15 +346,3 @@ def test_component_load_classmethod_calls_loader():
             DEFAULT_REGISTRY._loaders[(Component, MF6)] = original_loader
         else:
             del DEFAULT_REGISTRY._loaders[(Component, MF6)]
-
-
-# NOTE: test_component_load_with_children and test_context_load_with_workspace
-# used to live here, asserting that Component.load()/Context.load() manually
-# looped over a mock-loader-populated self.children, calling child.load() once
-# per child. That manual loop is gone -- binding resolution (packages/models/
-# exchanges/solutiongroup rows -> loaded, attached children) now happens
-# inside structure_component() during construction itself (see
-# flopy4/mf6/converter/ingress/structure.py's _resolve_bindings), the same
-# way any other field gets its value. See
-# test/mf6/test_mf6_namefile_load.py for real (non-mocked) coverage of that
-# path, including workspace-relative child resolution.

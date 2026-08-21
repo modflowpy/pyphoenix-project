@@ -17,21 +17,13 @@ from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
 FNAMES: "dict[str, type[Component]]" = {}
-"""MF6 component name -> component type, keyed by each class's own
-`dfn_name` -- the canonical DFN component name (e.g. 'gwf-ic', 'sim-nam').
-Codegen sets `dfn_name` on every generated class (see package.py.jinja);
-the handful of hand-written classes (Simulation, Tdis, Gwf/Gwt/Gwe/Prt,
-Dis/Disv, exchanges) declare it themselves. Classes with no `dfn_name` of
-their own -- abstract bases like Package, Context, Model, Exchange,
-Solution, DisBase -- are never registered."""
+"""MF6 component name (e.g. 'gwf-dis') -> component class."""
 
 FTYPES: "dict[str, type[Component]]" = {}
-"""MF6 file-type (lowercased, e.g. 'gwf-dis6') -> component class."""
+"""MF6 component ftype (e.g. 'gwf-dis6') -> component class."""
 
 
 def _prefix(dfn_name: str) -> "str | None":
-    """The prefix implied by a `dfn_name` (e.g. 'gwf' for 'gwf-ic'), or
-    None for a bare name with no '-' (e.g. 'ims')."""
     prefix, sep, _ = dfn_name.partition("-")
     return prefix if sep else None
 
@@ -40,50 +32,13 @@ def _qualify(name: str, prefix: "str | None") -> str:
     return f"{prefix}-{name}" if prefix is not None else name
 
 
-def _lookup(
-    registry: "dict[str, type[Component]]", name: str, prefix: "str | None"
-) -> "type[Component] | None":
-    """Resolve `name` against a fully-qualified-keyed registry.
-
-    Tries, in order: `prefix` qualifying `name` (a caller that knows its
-    scope, e.g. `_resolve_bindings` resolving within a known model);
-    `name` itself, in case it's already a full `dfn_name` (the
-    `<model>-<component>` form DFN files use, e.g. "gwf-ic") or a bare
-    name with no such prefix (e.g. "ims"); and finally a best-effort scan
-    for a single registered key ending in `-{name}` -- genuinely
-    unambiguous single-component names resolve this way, but names shared
-    by more than one model (e.g. 'ic') return `None` rather than an
-    arbitrary pick, since the registry alone can't disambiguate them.
-    """
-    if prefix is not None and (cls := registry.get(_qualify(name, prefix))) is not None:
-        return cls
-    if (cls := registry.get(name)) is not None:
-        return cls
-    suffix = f"-{name}"
-    matches = {cls for key, cls in registry.items() if key.endswith(suffix)}
-    return matches.pop() if len(matches) == 1 else None
-
-
-def lookup_component(name: str, prefix: "str | None" = None) -> "type[Component] | None":
-    """Look up a registered component class by name (see `_lookup`)."""
-    return _lookup(FNAMES, name.lower(), prefix)
-
-
-def lookup_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | None":
-    """Look up a registered component class by ftype token (see `_lookup`)."""
-    return _lookup(get_ftypes(), token.lower(), prefix)
+def get_fnames() -> "dict[str, type[Component]]":
+    """Get a map of MF6 component name (e.g. 'gwf-dis') to component class."""
+    return FNAMES
 
 
 def get_ftypes() -> "dict[str, type[Component]]":
-    """Build and return the ftypes registry, keyed like `FNAMES` but
-    by ftype token (e.g. 'gwf-dis6') instead of DFN name.
-
-    Some tokens aren't globally unique -- every model type has its own
-    'DIS6'/'IC6'/'OC6'/... via a shared abstract base (e.g. `Dis` under
-    `gwf`/`gwt`/`gwe`/`prt` all subclass the same `gwf.disbase.DisBase`),
-    so type-based disambiguation alone can't tell a GWF `Dis` from a GWT
-    one -- that's what the model-qualified key is for.
-    """
+    """Get a map of MF6 component ftype (e.g. 'gwf-dis6') to component class."""
     if not FTYPES:
         from collections import defaultdict
 
@@ -93,10 +48,6 @@ def get_ftypes() -> "dict[str, type[Component]]":
         for cls in set(FNAMES.values()):
             by_token[component_ftype(cls).lower()].append(cls)
 
-        # Qualify only where the bare token actually collides (e.g. every
-        # model has its own DIS6 via a shared abstract base) -- a token
-        # that's already unique (GWF6, TDIS6, GWF6-GWT6, ...) stays bare,
-        # even if its class's own `dfn_name` happens to carry a prefix.
         for token, classes in by_token.items():
             if len(classes) == 1:
                 FTYPES[token] = classes[0]
@@ -104,6 +55,15 @@ def get_ftypes() -> "dict[str, type[Component]]":
                 for cls in classes:
                     FTYPES[_qualify(token, _prefix(cls.dfn_name))] = cls
     return FTYPES
+
+
+def get_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | None":
+    """Look up a single ftype token (e.g. 'dis6') in get_ftypes()."""
+    ftypes = get_ftypes()
+    token = token.lower()
+    if prefix is not None and (cls := ftypes.get(f"{prefix}-{token}")) is not None:
+        return cls
+    return ftypes.get(token)
 
 
 # kw_only=True necessary so we can define optional fields here
@@ -193,11 +153,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def __attrs_init_subclass__(cls):
-        # Only register classes that declare their own `dfn_name` -- see
-        # `lookup_component()` for resolving a bare name like "ic" when
-        # the model scope isn't known upfront. Abstract bases (Package,
-        # Context, Model, Exchange, Solution, DisBase, ...) have no
-        # `dfn_name` of their own and are silently skipped.
+        # Only register classes that declare their own `dfn_name`.
+        # Abstract bases (Package, Context, Model, Exchange, Solution,
+        # DisBase, ...) have no `dfn_name` of their own and are silently
+        # skipped.
         dfn_name = cls.__dict__.get("dfn_name")
         if dfn_name is not None:
             FNAMES[dfn_name] = cls

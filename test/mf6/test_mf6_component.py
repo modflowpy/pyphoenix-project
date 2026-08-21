@@ -8,9 +8,9 @@ import pytest
 import xarray as xr
 from xarray import DataTree
 
-from flopy4.mf6.component import FNAMES, lookup_component, lookup_ftype
+from flopy4.mf6.component import FNAMES
 from flopy4.mf6.enums import NetCDFFormat
-from flopy4.mf6.gwf import Chd, Chdg, Dis, Disv, Gwf, Ic, Npf, Oc
+from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
@@ -30,16 +30,6 @@ def test_registry():
     assert FNAMES["gwf-ic"] is Ic
     assert FNAMES["gwt-ic"] is GwtIc
     assert FNAMES["gwf-oc"] is Oc
-
-    # Best-effort single-name lookup: unambiguous names resolve, names
-    # shared by more than one model (e.g. "ic") don't -- disambiguating
-    # those requires the model prefix.
-    assert lookup_component("npf") is Npf
-    assert lookup_component("ic") is None
-    assert lookup_component("ic", prefix="gwf") is Ic
-    assert lookup_component("ic", prefix="gwt") is GwtIc
-    # A fully-qualified name resolves directly, prefix or not.
-    assert lookup_component("gwf-ic") is Ic
 
 
 def test_component_ftype_ga_variants():
@@ -70,21 +60,8 @@ def test_ftypes_registry():
     ftypes = get_ftypes()
 
     assert ftypes["gwf6"] is Gwf
-    # "chd6" isn't a reliable lookup: Chd and Chdg share both the token
-    # and the model prefix (see component_ftype()'s docstring), so even
-    # the qualified key "gwf-chd6" collides and the registry keeps only
-    # one arbitrarily -- _resolve_bindings disambiguates those via
-    # _disambiguate_ga_variant instead of this registry (see
-    # test_mf6_namefile_load.py), so there's nothing meaningful to assert
-    # beyond "one of the two".
-    assert lookup_ftype("chd6") in (Chd, Chdg)
-    # "dis6" isn't globally unique either (every model type has its own Dis
-    # via a shared abstract base), but unambiguously so -- model-qualified
-    # keys disambiguate cleanly, unlike the same-model chd6 collision above.
     assert ftypes["gwf-dis6"] is GwfDis
     assert ftypes["gwt-dis6"] is GwtDis
-    assert lookup_ftype("dis6", prefix="gwf") is GwfDis
-    assert lookup_ftype("dis6") is None
 
 
 def test_init_empty_sim():
