@@ -49,20 +49,14 @@ class Context(Component, ABC):
         return self.workspace / self.filename
 
     @classmethod
-    def load(cls, path, format=MF6):
+    def load(cls, path, format=MF6, name=None):
         """
-        Load the context component and children.
+        Load a context from a file.
 
-        Children are loaded relative to the parent's workspace directory,
-        so their paths are resolved within that workspace.
+        `name`, if given, overrides xattree's default auto-assigned name.
         """
-        # Load the instance first
-        instance = cls._load(path, format=format)
-
-        # Load children within the workspace context
-        with cd(instance.workspace):
-            for child in instance.children.values():  # type: ignore
-                child.__class__.load(child.path, format=format)
+        with cd(Path(path).parent):
+            return cls._load(path, format=format, name=name)
 
     def write(self, format=MF6, context=None):
         with cd(self.workspace):

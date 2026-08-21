@@ -2,8 +2,6 @@
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
-from numpy.typing import NDArray
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
@@ -12,37 +10,19 @@ from flopy4.mf6.spec import field
 
 @attrs.define(kw_only=True, slots=False)
 class Tas(Package):
-    multi_package: ClassVar[bool] = True
+    dfn_name: ClassVar[str] = "utl-tas"
 
-    @attrs.define
-    class TimeSeriesName(Record):
-        _keyword: ClassVar[str] = "name"
-        time_series_name: str = attrs.field()
+    multi_package: ClassVar[bool] = True
 
     @attrs.define
     class InterpolationMethod(Record):
         _keyword: ClassVar[str] = "method"
         interpolation_method: str = attrs.field()
 
-    @attrs.define
-    class Sfac(Record):
-        _keyword: ClassVar[str] = "sfac"
-        sfacval: float = attrs.field()
-
-    time_series_name: Optional[TimeSeriesName] = field(
-        default=None,
-        block="attributes",
-    )
+    # TODO: time_series_namerecord — type 'record' not yet supported
     interpolation_method: Optional[InterpolationMethod] = field(
         default=None,
         block="attributes",
     )
-    sfac: Optional[Sfac] = field(
-        default=None,
-        block="attributes",
-    )
-    tas_array: NDArray[np.float64] = field(
-        default=None,
-        block="time",
-        shape=("unknown",),
-    )
+    # TODO: sfacrecord — type 'record' not yet supported
+    # TODO: tas_array — unshaped (variadic-count) array not yet supported

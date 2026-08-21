@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Ims(Solution):
+    dfn_name: ClassVar[str] = "sln-ims"
+
     slntype: ClassVar[str] = "ims"
 
     @attrs.define

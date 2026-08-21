@@ -5,6 +5,74 @@
 #
 # Remove each entry once the corresponding upstream PR merges.
 
+["gwf-lak".iconn]
+# iconn (per-lake connection sequence number, 1..nlakeconn(lakeno)) has
+# numeric_index=true in the v1 DFN -- needs 0-based Python / 1-based file
+# conversion -- but isn't picked up as pk/fk under dev3: it's not a real
+# primary key (not unique across the whole connectiondata table, only within
+# a lake) so the pk/fk backfill's structural signals don't catch it. Same
+# class of gap as the already-fixed BUY/CSUB/VSC/PRP/ATS numeric_index->pk
+# backfill (devtools a838d84), just not in that fix's original field list --
+# see devtools/todo.md 2026-08-18 entry (44 numeric_index fields total found
+# with no pk/fk in dev3, most of them like this one: local sequence/vertex/
+# connection numbers, not table-wide primary keys). Stopgap pk=True here
+# reproduces the legacy behavior (index-role column, +1 conversion at write)
+# pending an upstream fix for this broader field category.
+pk = true
+
+# columns/width/digits in the *printrecord family's formatrecord (COLUMNS n
+# WIDTH n DIGITS n <format>, e.g. gwf-oc.headprintrecord.formatrecord) are
+# each genuinely optional in real MF6 usage -- confirmed by the v1 DFN, which
+# marks them with a bare `optional` attribute (no value, e.g. gwf-oc.dfn line
+# 155: just the word "optional" alone on its line) rather than `optional
+# true`/`optional false`. dev3 has all three as optional=False -- the
+# migration doesn't handle the valueless-attribute form, defaulting it to
+# False instead of True. 30 occurrences of this bare-`optional` pattern exist
+# across 12 v1 DFN files (see devtools/todo.md 2026-08-18 entry); these 3
+# fields x 6 packages are the ones confirmed to break real (pre-existing,
+# still-relevant) tests, not an exhaustive fix of the pattern.
+["chf-oc".columns]
+optional = true
+["chf-oc".width]
+optional = true
+["chf-oc".digits]
+optional = true
+
+["gwe-oc".columns]
+optional = true
+["gwe-oc".width]
+optional = true
+["gwe-oc".digits]
+optional = true
+
+["gwf-oc".columns]
+optional = true
+["gwf-oc".width]
+optional = true
+["gwf-oc".digits]
+optional = true
+
+["gwt-oc".columns]
+optional = true
+["gwt-oc".width]
+optional = true
+["gwt-oc".digits]
+optional = true
+
+["olf-oc".columns]
+optional = true
+["olf-oc".width]
+optional = true
+["olf-oc".digits]
+optional = true
+
+["gwt-ist".columns]
+optional = true
+["gwt-ist".width]
+optional = true
+["gwt-ist".digits]
+optional = true
+
 ["gwf-ic".strt]
 # strt should default to 1.0 per MODFLOW 6 user documentation.
 # TODO: open modflow6 PR to add default_value = 1.0 to gwf-ic.dfn
@@ -185,17 +253,6 @@ longname = "number of orthogonalizations"
 # inner_rclose is tagged in MF6 IMS input (INNER_RCLOSE <value>) per MF6 IO doc and
 # example files. The upstream DFN omits 'tagged = true'; override pending upstream PR.
 tagged = true
-
-["gwf-oc".headprintrecord]
-# Nested sub-record fields lost in v2 TOML conversion (dfn2toml does not recurse
-# into records-within-records). Injected as flattened children of the parent inner
-# class. Remove if dfn2toml is updated to capture nested records.
-extra_children = [
-    {name = "columns", type = "integer", optional = true, tagged = true},
-    {name = "width",   type = "integer", optional = true, tagged = true},
-    {name = "digits",  type = "integer", optional = true, tagged = true},
-    {name = "format",  type = "string",  optional = false, tagged = false},
-]
 
 # Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
 # Each entry defines a list block with its dimension name and column definitions.

@@ -2,16 +2,23 @@
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Sfrtab(Package):
+    dfn_name: ClassVar[str] = "utl-sfrtab"
+
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class TableRow(Row):
+        xfraction: float
+        height: float
+        manfraction: Optional[float] = field(default=None, optional=True)
 
     nrow: Optional[int] = field(
         default=None,
@@ -21,33 +28,11 @@ class Sfrtab(Package):
         default=None,
         block="dimensions",
     )
-    table: Optional[np.recarray] = field(
+    table: Optional[list[TableRow]] = field(
         default=None,
         block="table",
-        schema="__table_schema__",
         auto_from="table",
     )
-
-    class _TableSchema(Schema):
-        xfraction = Column("xfraction", role="value", dfn_type="double")
-        height = Column("height", role="value", dfn_type="double")
-        manfraction = Column("manfraction", role="value", dfn_type="double")
-
-    __table_schema__: ClassVar[type[Schema]] = _TableSchema
-
-    @attrs.define
-    class TableRow:
-        xfraction: float
-        height: float
-        manfraction: float
-
-        def __iter__(self):
-            yield self.xfraction
-            yield self.height
-            yield self.manfraction
-
-    table_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 SfrtabTableRow = Sfrtab.TableRow

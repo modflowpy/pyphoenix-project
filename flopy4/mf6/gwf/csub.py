@@ -3,16 +3,41 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import FloatArrayLike, _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Csub(Package):
+    dfn_name: ClassVar[str] = "gwf-csub"
+
+    @attrs.define
+    class PackagedataRow(Row):
+        icsubno: int = field(pk=True)
+        cellid: tuple = field(cellid=True)
+        cdelay: Union[float, str] = field()
+        pcs0: float = field()
+        thick_frac: float = field()
+        rnb: float = field()
+        ssv_cc: float = field()
+        sse_cr: float = field()
+        theta: float = field()
+        kv: float = field()
+        h0: float = field()
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
+
+    @attrs.define
+    class Row(_Row):
+        cellid: tuple = field(cellid=True)
+        sig0: Union[float, str] = field(time_series=True)
+        aux: tuple = ()
+
     boundnames: bool = field(
         default=False,
         block="options",
@@ -174,31 +199,27 @@ class Csub(Package):
         block="dimensions",
         optional=True,
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
         auto_from="packagedata",
     )
     cg_ske_cr: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     cg_theta: FloatArrayLike = field(
         default=0.2,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     sgm: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
@@ -206,83 +227,16 @@ class Csub(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
         optional=True,
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    class _PackagedataSchema(Schema):
-        icsubno = Column("icsubno", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer")
-        cdelay = Column("cdelay", role="value", dfn_type="string", dtype="np.object_")
-        pcs0 = Column("pcs0", role="value", dfn_type="double")
-        thick_frac = Column("thick_frac", role="value", dfn_type="double")
-        rnb = Column("rnb", role="value", dfn_type="double")
-        ssv_cc = Column("ssv_cc", role="value", dfn_type="double")
-        sse_cr = Column("sse_cr", role="value", dfn_type="double")
-        theta = Column("theta", role="value", dfn_type="double")
-        kv = Column("kv", role="value", dfn_type="double")
-        h0 = Column("h0", role="value", dfn_type="double")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        icsubno: int
-        cellid: tuple
-        cdelay: Union[float, str]
-        pcs0: float
-        thick_frac: float
-        rnb: float
-        ssv_cc: float
-        sse_cr: float
-        theta: float
-        kv: float
-        h0: float
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.icsubno
-            yield self.cellid
-            yield self.cdelay
-            yield self.pcs0
-            yield self.thick_frac
-            yield self.rnb
-            yield self.ssv_cc
-            yield self.sse_cr
-            yield self.theta
-            yield self.kv
-            yield self.h0
-            yield self.boundname
-
-    @attrs.define
-    class Row:
-        cellid: tuple
-        sig0: Union[float, str]
-        aux: tuple = ()
-
-        def __iter__(self):
-            yield self.cellid
-            yield self.sig0
-            yield from self.aux
-
-    class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        sig0 = Column("sig0", role="value", dfn_type="double", time_series=True, dtype="np.object_")
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 CsubRow = Csub.Row

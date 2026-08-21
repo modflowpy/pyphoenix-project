@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
@@ -53,6 +53,8 @@ __all__ = [
 
 @xattree
 class Gwe(Model):
+    dfn_name: ClassVar[str] = "gwe-nam"
+
     list_: Optional[str] = field(block="options", default=None)
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)

@@ -1,38 +1,38 @@
 from abc import ABC
 from pathlib import Path
-from typing import ClassVar
 
+import attrs
 import numpy as np
 import pandas as pd
 import xarray as xr
 from xattree import xattree
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.schema import Schema
+from flopy4.mf6.row import Row, construct_row, dispatch_union_row, normalize_aux_keys, row_list_type
 from flopy4.mf6.spec import to_field_type
+
+# DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
+# full array (unrelated to the old Schema/Column row-parsing machinery).
+_DTYPE_MAP: dict = {
+    "integer": np.int64,
+    "double": np.float64,
+    "double precision": np.float64,
+    "string": np.object_,
+    "keyword": np.object_,
+}
 
 
 @xattree
 class Package(Component, ABC):
-    _DTYPE_MAP: ClassVar[dict] = {
-        "integer": np.int64,
-        "double": np.float64,
-        "double precision": np.float64,
-        "string": np.object_,
-        "keyword": np.object_,
-        "object": np.object_,
-        "np.object_": np.object_,
-        "np.int64": np.int64,
-        "np.float64": np.float64,
-    }
-
     def __attrs_post_init__(self) -> None:
         """Post-init for codegen v2 packages.
 
         Handles three concerns in order:
         1. Fix xattree name registration (concrete class name, not 'package').
-        2. Build dtypes from __*_schema__ / __period_schema__ ClassVars,
-           coerce raw SPD/block data to recarrays, auto-set maxbound.
+        2. Coerce raw list/block/period data into Row-list fields (the
+           generated field's own type annotation -- Optional[list[RowClass]]
+           or Optional[dict[int, list[RowClass]]] -- is the schema; no
+           separate Schema/Column description), auto-set maxbound/n<block>s.
         3. Broadcast scalar griddata values to their DFN shape when dims
            is supplied (e.g. IC(strt=1.0, dims={"nodes": 900})).
         """
@@ -52,106 +52,98 @@ class Package(Component, ABC):
         if self.__dict__.get("name") == "package":
             self.__dict__["name"] = type(self).__name__.lower()
 
-        # 2. Schema-driven dtype construction.
-        self._init_schemas()
+        # 2. Row-list coercion.
+        self._init_row_lists(fields)
 
         # 3. Griddata broadcasting.
         dims: dict = self.__dict__.get("dims") or {}
         if dims:
             self._broadcast_griddata(fields, dims)
 
-    def _init_schemas(self) -> None:
-        """Build dtypes from schema ClassVars; coerce raw data to recarrays."""
-        _aux_tmp = getattr(self, "auxiliary", None)
-        naux = len(_aux_tmp) if _aux_tmp is not None else 0
-        ncelldim = self._compute_ncelldim()
+    def _init_row_lists(self, fields) -> None:
+        """Coerce raw list/dict block+period data into Row-list fields;
+        auto-set maxbound / n<block>s from the resulting list lengths.
 
-        # Process block schemas (packagedata, connectiondata, etc.)
-        cls = type(self)
-        for attr_name in dir(cls):
-            if not attr_name.startswith("__") or not attr_name.endswith("_schema__"):
+        Reads/writes the field's real attribute name (f.name) always --
+        aliases (e.g. _stress_period_data's "stress_period_data") only name
+        the __init__ parameter; the instance attribute (and __dict__ key
+        object.__setattr__ writes to) is still the real name.
+        """
+        for f in fields:
+            block = f.metadata.get("block")
+            if not block:
                 continue
-            if attr_name == "__period_schema__":
+            row_cls = row_list_type(f.type)
+            if row_cls is None:
                 continue
-            block_name = attr_name[2:-9]  # strip __ and _schema__
-            schema = getattr(cls, attr_name)
-            if not (isinstance(schema, type) and issubclass(schema, Schema)):
+            raw = self.__dict__.get(f.name)
+            if raw is None:
                 continue
-            self._init_block_dtype(block_name, schema, naux, ncelldim)
 
-        # Process period schema.
-        period_schema = getattr(cls, "__period_schema__", None)
-        if period_schema is not None:
-            self._init_period_dtype(period_schema, naux, ncelldim)
-
-    def _init_block_dtype(
-        self, block_name: str, schema: type[Schema], naux: int, ncelldim: int
-    ) -> None:
-        """Build dtype for a static block (packagedata, connectiondata, etc.)."""
-        dtype_fields: list[tuple] = []
-        for col in schema.columns():
-            dt = (
-                self._DTYPE_MAP.get(col.dtype, np.object_)
-                if col.dtype
-                else self._DTYPE_MAP.get(col.dfn_type, np.object_)
-            )
-            if col.role == "cellid":
-                dtype_fields.append((col.name, np.int64, (ncelldim,)))
-            elif col.role == "feature_id":
-                dtype_fields.append((col.name, np.int64))
-            elif col.role == "boundname":
-                if getattr(self, "boundnames", False):
-                    dtype_fields.append((col.name, np.object_))
+            if block == "period" or f.metadata.get("fill_forward"):
+                coerced = {kper: self._coerce_row_list(rows, row_cls) for kper, rows in raw.items()}
+                object.__setattr__(self, f.name, coerced)
+                if coerced and getattr(self, "maxbound", None) == 0:
+                    object.__setattr__(self, "maxbound", max(len(v) for v in coerced.values()))
             else:
-                dtype_fields.append((col.name, dt))
-        if block_name == "packagedata":
-            for i in range(naux):
-                dtype_fields.append((f"aux{i}", np.object_))
-        dtype = np.dtype(dtype_fields)
-        setattr(self, f"{block_name}_dtype", dtype)
-        raw = getattr(self, block_name, None)
-        if raw is not None:
-            setattr(self, block_name, self._coerce_to_recarray(raw, dtype))
-        if getattr(self, block_name, None) is not None and getattr(self, f"n{block_name}s", 0) == 0:
-            object.__setattr__(self, f"n{block_name}s", len(getattr(self, block_name)))
+                coerced_list = self._coerce_row_list(raw, row_cls)
+                object.__setattr__(self, f.name, coerced_list)
+                if getattr(self, f"n{block}s", 0) == 0:
+                    object.__setattr__(self, f"n{block}s", len(coerced_list))
 
-    def _init_period_dtype(self, schema: type[Schema], naux: int, ncelldim: int) -> None:
-        """Build period dtype; coerce SPD to recarrays; auto-set maxbound."""
-        cols = schema.columns()
-        has_keystring = any(col.role in ("keystring", "keystring_value") for col in cols)
-        dtype_fields: list[tuple] = []
-        for col in cols:
-            if col.role == "cellid":
-                dtype_fields.append((col.name, np.int64, (ncelldim,)))
-            elif col.role in ("keystring", "keystring_value"):
-                dtype_fields.append((col.name, np.object_))
-            elif col.time_series:
-                dtype_fields.append((col.name, np.object_))
-            elif not col.optional:
-                col_dt = (
-                    self._DTYPE_MAP.get(col.dtype, np.float64)
-                    if col.dtype
-                    else self._DTYPE_MAP.get(col.dfn_type, np.float64)
-                )
-                dtype_fields.append((col.name, col_dt))
-        if not has_keystring:
-            for i in range(naux):
-                dtype_fields.append((f"aux{i}", np.object_))
-            if getattr(self, "boundnames", False):
-                dtype_fields.append(("boundname", np.object_))
-        self.period_dtype = np.dtype(dtype_fields)
-        if self._stress_period_data is not None:  # type: ignore[attr-defined]
-            object.__setattr__(
-                self,
-                "_stress_period_data",
-                {
-                    kper: self._coerce_to_recarray(rows, self.period_dtype)
-                    for kper, rows in self._stress_period_data.items()  # type: ignore[attr-defined]
-                },
-            )
-        spd = self._stress_period_data  # type: ignore[attr-defined]
-        if spd and getattr(self, "maxbound", None) == 0:
-            object.__setattr__(self, "maxbound", max(len(v) for v in spd.values()))
+    @staticmethod
+    def _coerce_row_list(data, row_cls: "type[Row] | tuple[type[Row], ...]") -> list:
+        """Convert user-supplied list/dict data to a list of Row instances.
+
+        For a plain (non-union) row_cls, accepts:
+          - list of row_cls instances  → returned as-is
+          - list of tuples/lists       → positional, matching row_cls's
+                                          own field declaration order
+          - list of dicts              → named columns
+          - dict of lists              → column-oriented {col_name: [values]}
+
+        For a keystring-union row_cls (a tuple of arm classes, e.g. LAK's
+        (LakStatusItem, LakStageItem, ...)): existing arm instances pass
+        through; tuples/lists/dicts are dispatched to the right arm by
+        their keyword token/"keyword" key, the same way file rows are (see
+        flopy4.mf6.row.dispatch_union_row) -- ambiguous columnar dict-of-
+        lists input isn't supported (no single arm to build columns from).
+        """
+        if isinstance(row_cls, tuple):
+            rows = []
+            for row in data:
+                if isinstance(row, row_cls):
+                    rows.append(row)
+                elif isinstance(row, dict):
+                    kw = str(row.get("keyword", "")).upper()
+                    arm = next(
+                        (c for c in row_cls if c.__dict__.get("_keyword", "").upper() == kw), None
+                    )
+                    if arm is not None:
+                        rows.append(arm(**{k: v for k, v in row.items() if k != "keyword"}))
+                else:
+                    tokens = list(row)
+                    arm = dispatch_union_row(tokens, row_cls)
+                    if arm is not None:
+                        rows.append(arm.from_row(tokens))
+            return rows
+        if isinstance(data, dict):
+            n = len(next(iter(data.values()))) if data else 0
+            return [
+                row_cls(**normalize_aux_keys({name: vals[i] for name, vals in data.items()}))
+                for i in range(n)
+            ]
+        rows = []
+        for row in data:
+            if isinstance(row, row_cls):
+                rows.append(row)
+            elif isinstance(row, dict):
+                rows.append(row_cls(**normalize_aux_keys(row)))
+            elif isinstance(row, (list, tuple)):
+                rows.append(construct_row(row_cls, row))
+            else:
+                rows.append(construct_row(row_cls, list(row)))
+        return rows
 
     def _broadcast_griddata(self, fields, dims: dict) -> None:
         """Expand scalar griddata defaults to full arrays when dims is supplied."""
@@ -171,7 +163,7 @@ class Package(Component, ABC):
             val = self.__dict__.get(f.name)
             if val is None:
                 continue
-            _gd_dtype = self._DTYPE_MAP.get(to_field_type(f.type), np.float64)
+            _gd_dtype = _DTYPE_MAP.get(to_field_type(f.type), np.float64)
             try:
                 resolved = []
                 for d in shape_meta:
@@ -193,30 +185,13 @@ class Package(Component, ABC):
                 default = f.default if isinstance(f.default, (int, float)) else 0
                 self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
 
-    def _compute_ncelldim(self) -> int:
-        """Return 2 for vertex grids, 3 for structured grids.
-
-        Checks dims first; falls back to the parent's .dis type if dims is absent.
-        Must be called from __attrs_post_init__ before xattree pops __dict__.
-        """
-        _dims = self.__dict__.get("dims") or {}
-        if "ncpl" in _dims and "nrow" not in _dims:
-            return 2
-        if _dims:
-            return 3
-        _parent = self.__dict__.get("parent")
-        if _parent is not None:
-            _dis = getattr(_parent, "dis", None)
-            if _dis is not None and type(_dis).__name__ == "Disv":
-                return 2
-        return 3
-
     @classmethod
     def load(  # type: ignore[override]
         cls,
         path: Path,
         dims: "dict[str, int] | None" = None,
-    ):
+        name: "str | None" = None,
+    ) -> "Package":
         """Load from an MF6 text input file.
 
         Parameters
@@ -228,13 +203,16 @@ class Package(Component, ABC):
             e.g. ``{"nlay": 3, "nodes": 900}``.  Required for griddata
             packages (NPF, IC, STO, etc.); may be omitted for list-input
             packages (WEL, DRN, etc.).
+        name :
+            Explicit component name (e.g. a namefile binding row's
+            pname), overriding xattree's default auto-assigned name.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
 
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(_raw, cls, dims=dims)
+        _pkg = structure_component(_raw, cls, dims=dims, name=name)
 
         # Pre-populate dimension cache so to_xarray()/to_dataarray() work
         # on standalone packages (not attached to a parent model).
@@ -292,12 +270,7 @@ class Package(Component, ABC):
             return pd.DataFrame()
         frames = []
         for kper in sorted(_spd):
-            arr = _spd[kper]
-            rows = {}
-            for nm in arr.dtype.names or ():
-                col = arr[nm]
-                rows[nm] = [tuple(v) for v in col] if col.ndim > 1 else col.tolist()
-            df = pd.DataFrame(rows)
+            df = pd.DataFrame([attrs.asdict(row) for row in _spd[kper]])
             df.insert(0, "kper", kper)
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -306,71 +279,41 @@ class Package(Component, ABC):
         """Set stress_period_data from a tidy DataFrame.
 
         The DataFrame must have a ``kper`` column and data columns matching
-        the period schema (as produced by ``to_dataframe()``).
+        the period Row class's own fields (as produced by ``to_dataframe()``).
         """
         if df.empty:
             self.__dict__["_stress_period_data"] = {}
             return
         if "kper" not in df.columns:
             raise ValueError("DataFrame must have a 'kper' column")
-        dtype = self.period_dtype
-        spd: dict[int, np.recarray] = {}
+        row_cls = self._period_row_cls()
+        if isinstance(row_cls, tuple):
+            raise ValueError(
+                f"{type(self).__name__}.from_dataframe() doesn't support a keystring-union "
+                "period field (multiple possible row shapes) -- construct arm instances directly."
+            )
+        spd: dict[int, list] = {}
         for kper, group in df.groupby("kper"):
             group = group.drop(columns=["kper"])
-            n = len(group)
-            arr = np.zeros(n, dtype=dtype)
-            for col_name in dtype.names or ():
-                if col_name in group.columns:
-                    col_data = group[col_name].values
-                    if dtype[col_name].shape:
-                        # Multi-dim field (cellid) — stored as tuples in DataFrame
-                        for i, val in enumerate(col_data):
-                            arr[col_name][i] = val
-                    else:
-                        arr[col_name] = col_data
-            spd[int(kper)] = arr.view(np.recarray)
+            spd[int(kper)] = [row_cls(**row) for row in group.to_dict("records")]
         self.__dict__["_stress_period_data"] = spd
+
+    def _period_row_cls(self) -> "type[Row] | tuple[type[Row], ...]":
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if f.metadata.get("block") == "period" or f.metadata.get("fill_forward"):
+                row_cls = row_list_type(f.type)
+                if row_cls is not None:
+                    return row_cls
+        raise ValueError(f"{type(self).__name__} has no period Row-list field")
 
     @property
     def stress_period_data(self):  # type: ignore[override]
-        """Stress period data as ``dict[int, np.recarray]`` keyed by 0-based kper."""
+        """Stress period data as ``dict[int, list[Row]]`` keyed by 0-based kper."""
         return self.__dict__.get("_stress_period_data")
 
     @stress_period_data.setter  # type: ignore[attr-defined, no-redef]
     def stress_period_data(self, value) -> None:  # type: ignore[override]
         self.__dict__["_stress_period_data"] = value
-
-    @staticmethod
-    def _coerce_to_recarray(data, dtype: np.dtype) -> np.recarray:
-        """Convert user-supplied list/dict data to a structured recarray.
-
-        Accepts:
-          - np.ndarray / np.recarray  → returned as-is
-          - list of tuples/lists      → row-oriented, positional matching dtype.names
-          - list of dicts             → row-oriented, named columns
-          - dict of lists             → column-oriented {col_name: [values]}
-        """
-        if isinstance(data, np.ndarray):
-            return data.view(np.recarray)
-        if isinstance(data, dict):
-            n = len(next(iter(data.values())))
-            arr = np.zeros(n, dtype=dtype)
-            for name, vals in data.items():
-                arr[name] = vals
-            return arr.view(np.recarray)
-        rows = list(data)
-        n = len(rows)
-        arr = np.zeros(n, dtype=dtype)
-        for i, row in enumerate(rows):
-            if isinstance(row, dict):
-                for name, val in row.items():
-                    arr[name][i] = val
-            else:
-                if not hasattr(row, "__getitem__"):
-                    row = list(row)
-                for j, name in enumerate(dtype.names or ()):  # type: ignore[arg-type]
-                    arr[name][i] = row[j]
-        return arr.view(np.recarray)
 
     def to_dataarray(self, field_name: str) -> "xr.DataArray":
         """Single griddata field as xr.DataArray. Stays lazy if dask-backed."""

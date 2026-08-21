@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
@@ -11,6 +11,8 @@ from flopy4.mf6.utils.grid import StructuredGrid
 
 @attrs.define(kw_only=True, slots=False)
 class Dis(DisBase):
+    dfn_name: ClassVar[str] = "prt-dis"
+
     length_units: Optional[str] = field(default=None, block="options", optional=True)
     nogrb: bool = field(default=False, block="options", optional=True)
     xorigin: float = field(default=0.0, block="options", optional=True)

@@ -8,4 +8,6 @@ from flopy4.mf6.solution import Solution
 
 @attrs.define(kw_only=True, slots=False)
 class Ems(Solution):
+    dfn_name: ClassVar[str] = "sln-ems"
+
     slntype: ClassVar[str] = "ems"

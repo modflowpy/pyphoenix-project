@@ -8,7 +8,7 @@ import pytest
 import xarray as xr
 from xarray import DataTree
 
-from flopy4.mf6.component import COMPONENTS
+from flopy4.mf6.component import FNAMES
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.gwf import Chd, Dis, Disv, Gwf, Ic, Npf, Oc
 from flopy4.mf6.ims import Ims
@@ -22,14 +22,46 @@ from flopy4.mf6.utl.ncf import Ncf
 def test_registry():
     from flopy4.mf6.gwt.ic import Ic as GwtIc
 
-    assert COMPONENTS["simulation"] is Simulation
-    assert COMPONENTS["tdis"] is Tdis
-    assert COMPONENTS["gwf"] is Gwf
+    assert FNAMES["sim-nam"] is Simulation
+    assert FNAMES["sim-tdis"] is Tdis
+    assert FNAMES["gwf-nam"] is Gwf
     # Qualified keys are deterministic regardless of import order.
-    assert COMPONENTS["gwf-npf"] is Npf
-    assert COMPONENTS["gwf-ic"] is Ic
-    assert COMPONENTS["gwt-ic"] is GwtIc
-    assert COMPONENTS["gwf-oc"] is Oc
+    assert FNAMES["gwf-npf"] is Npf
+    assert FNAMES["gwf-ic"] is Ic
+    assert FNAMES["gwt-ic"] is GwtIc
+    assert FNAMES["gwf-oc"] is Oc
+
+
+def test_component_ftype_ga_variants():
+    """G/A-variant package classes (Chdg, Drng, Evta, Ghbg, Rcha, Rivg,
+    Welg) share their base's namefile ftype -- confirmed against real MF6
+    source (gwf.f90's package-type dispatch has no 'CHDG6'/'RCHA6'/etc.
+    case at all, only 'CHD6'/'RCH6'/...; a real run rejects the unabridged
+    token with "Model package type not supported"). Legacy flopy's
+    dfn_file_name='gwf-chdg.dfn' describes the DFN/class identity, not the
+    namefile-level ftype -- don't infer the latter from the former."""
+    from flopy4.mf6.converter.binding import component_ftype
+    from flopy4.mf6.gwf.chd import Chd
+    from flopy4.mf6.gwf.chdg import Chdg
+    from flopy4.mf6.gwf.rch import Rch
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    assert component_ftype(Chd) == "CHD6"
+    assert component_ftype(Chdg) == "CHD6"
+    assert component_ftype(Rch) == "RCH6"
+    assert component_ftype(Rcha) == "RCH6"
+
+
+def test_ftypes_registry():
+    from flopy4.mf6.component import get_ftypes
+    from flopy4.mf6.gwf.dis import Dis as GwfDis
+    from flopy4.mf6.gwt.dis import Dis as GwtDis
+
+    ftypes = get_ftypes()
+
+    assert ftypes["gwf6"] is Gwf
+    assert ftypes["gwf-dis6"] is GwfDis
+    assert ftypes["gwt-dis6"] is GwtDis
 
 
 def test_init_empty_sim():
@@ -308,10 +340,10 @@ def test_init_big_sim():
     # SPD is a recarray with only 2 rows — no full-grid allocation
     spd = chd.stress_period_data[0]
     assert len(spd) == 2
-    assert tuple(spd["cellid"][0]) == (0, 0, 0)
-    assert float(spd["head"][0]) == 1.0
-    assert tuple(spd["cellid"][1]) == (0, 9999, 9999)
-    assert float(spd["head"][1]) == 0.0
+    assert tuple(spd[0].cellid) == (0, 0, 0)
+    assert float(spd[0].head) == 1.0
+    assert tuple(spd[1].cellid) == (0, 9999, 9999)
+    assert float(spd[1].head) == 0.0
 
     # test dictionary access/deletion
     assert gwf["npf"] is npf
@@ -382,8 +414,8 @@ def test_to_dict_fields():
 
     assert "stress_period_data" in result
     assert 0 in result["stress_period_data"]
-    assert result["stress_period_data"][0]["head"][0] == 1.0
-    assert result["stress_period_data"][0]["head"][1] == 0.0
+    assert result["stress_period_data"][0][0].head == 1.0
+    assert result["stress_period_data"][0][1].head == 0.0
 
     npf = Npf(dims=dims, k=5.0)
     result = npf.to_dict()
@@ -418,8 +450,8 @@ def test_to_dict_blocks():
     assert "print_flows" in result["options"]
     assert result["options"]["print_flows"] is True
     assert "stress_period_data" in result["period"]
-    assert result["period"]["stress_period_data"][0]["head"][0] == 1.0
-    assert result["period"]["stress_period_data"][0]["head"][1] == 0.0
+    assert result["period"]["stress_period_data"][0][0].head == 1.0
+    assert result["period"]["stress_period_data"][0][1].head == 0.0
 
     npf = Npf(dims=dims, save_flows=True, k=2.0)
     result = npf.to_dict(blocks=True)

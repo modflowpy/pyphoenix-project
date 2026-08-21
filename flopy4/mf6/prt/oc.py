@@ -3,26 +3,26 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
-    @attrs.define
-    class TrackTimes(Record):
-        _keyword: ClassVar[str] = "track_times"
-        times: float = attrs.field()
+    dfn_name: ClassVar[str] = "prt-oc"
 
     @attrs.define
     class TrackTimesfile(Record):
         _keyword: ClassVar[str] = "track_timesfile"
         timesfile: str = attrs.field()
+
+    @attrs.define
+    class TracktimesRow(Row):
+        time: float
 
     budget_file: Optional[Path] = path(
         default=None,
@@ -92,29 +92,15 @@ class Oc(Package):
         block="options",
         optional=True,
     )
-    track_times: Optional[TrackTimes] = field(
-        default=None,
-        block="options",
-    )
+    # TODO: track_timesrecord — type 'record' not yet supported
     track_timesfile: Optional[TrackTimesfile] = field(
         default=None,
         block="options",
-    )
-    dev_dump_event_trace: bool = field(
-        default=False,
-        block="options",
-        optional=True,
     )
     ntracktimes: Optional[int] = field(
         default=None,
         block="dimensions",
         optional=True,
-    )
-    tracktimes: Optional[np.recarray] = field(
-        default=None,
-        block="tracktimes",
-        schema="__tracktimes_schema__",
-        auto_from="tracktimes",
     )
     save_budget: Optional[dict[int, list[str]]] = field(
         default=None,
@@ -128,21 +114,11 @@ class Oc(Package):
         oc_action="print",
         oc_rtype="budget",
     )
-
-    class _TracktimesSchema(Schema):
-        time = Column("time", role="value", dfn_type="double")
-
-    __tracktimes_schema__: ClassVar[type[Schema]] = _TracktimesSchema
-
-    @attrs.define
-    class TracktimesRow:
-        time: float
-
-        def __iter__(self):
-            yield self.time
-
-    tracktimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
+    tracktimes: Optional[list[TracktimesRow]] = field(
+        default=None,
+        block="tracktimes",
+        auto_from="tracktimes",
+    )
 
 
 OcTracktimesRow = Oc.TracktimesRow

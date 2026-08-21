@@ -3,17 +3,33 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Lkt(Package):
+    dfn_name: ClassVar[str] = "gwt-lkt"
+
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class PackagedataRow(Row):
+        ifno: int = field(pk=True)
+        strt: float = field()
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
+
+    @attrs.define
+    class Row(_Row):
+        number: int = field(pk=True)
+        keyword: str = field()
+        value: Optional[object] = field(default=None, optional=True)
 
     flow_package_name: Optional[str] = field(
         default=None,
@@ -23,7 +39,6 @@ class Lkt(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     flow_package_auxiliary_name: Optional[str] = field(
@@ -91,59 +106,17 @@ class Lkt(Package):
         optional=True,
         inout="filein",
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
     )
-    # TODO: laksetting — type 'union' not yet supported
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    class _PackagedataSchema(Schema):
-        ifno = Column("ifno", role="feature_id", dfn_type="integer")
-        strt = Column("strt", role="value", dfn_type="double")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        ifno: int
-        strt: float
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.ifno
-            yield self.strt
-            yield self.boundname
-
-    @attrs.define
-    class Row:
-        ifno: int
-        keyword: str
-        value: object
-
-        def __iter__(self):
-            yield self.ifno
-            yield self.keyword
-            yield self.value
-
-    class _PeriodSchema(Schema):
-        ifno = Column("ifno", role="feature_id", dfn_type="integer")
-        keyword = Column("keyword", role="keystring", dfn_type="string")
-        value = Column("value", role="keystring_value", dfn_type="object")
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 LktRow = Lkt.Row

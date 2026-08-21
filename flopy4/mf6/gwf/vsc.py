@@ -3,16 +3,26 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Vsc(Package):
+    dfn_name: ClassVar[str] = "gwf-vsc"
+
+    @attrs.define
+    class PackagedataRow(Row):
+        iviscspec: int = field(pk=True)
+        dviscdc: float = field()
+        cviscref: float = field()
+        modelname: Union[float, str] = field()
+        auxspeciesname: Union[float, str] = field()
+        aux: tuple = ()
+
     viscref: Optional[float] = field(
         default=1.0,
         block="options",
@@ -54,44 +64,11 @@ class Vsc(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
         auto_from="packagedata",
     )
-
-    class _PackagedataSchema(Schema):
-        iviscspec = Column("iviscspec", role="feature_id", dfn_type="integer")
-        dviscdc = Column("dviscdc", role="value", dfn_type="double")
-        cviscref = Column("cviscref", role="value", dfn_type="double")
-        modelname = Column("modelname", role="value", dfn_type="string", dtype="np.object_")
-        auxspeciesname = Column(
-            "auxspeciesname",
-            role="value",
-            dfn_type="string",
-            dtype="np.object_",
-        )
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        iviscspec: int
-        dviscdc: float
-        cviscref: float
-        modelname: Union[float, str]
-        auxspeciesname: Union[float, str]
-
-        def __iter__(self):
-            yield self.iviscspec
-            yield self.dviscdc
-            yield self.cviscref
-            yield self.modelname
-            yield self.auxspeciesname
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 VscPackagedataRow = Vsc.PackagedataRow

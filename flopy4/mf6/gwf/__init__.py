@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import ClassVar, Optional, Union
 
 import attrs
 import xarray as xr
@@ -89,6 +89,8 @@ def convert_grid(value):
 
 @xattree
 class Gwf(Model):
+    dfn_name: ClassVar[str] = "gwf-nam"
+
     @define
     class NewtonOptions:
         newton: bool = field()

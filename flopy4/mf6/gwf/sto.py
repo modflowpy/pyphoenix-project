@@ -3,16 +3,23 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Sto(Package):
+    dfn_name: ClassVar[str] = "gwf-sto"
+
+    @attrs.define
+    class Row(_Row):
+        storage: str
+
     save_flows: bool = field(
         default=False,
         block="options",
@@ -45,59 +52,31 @@ class Sto(Package):
         block="options",
         optional=True,
     )
-    dev_original_specific_storage: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
-    dev_oldstorageformulation: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
     iconvert: IntArrayLike = field(
         default=0,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     ss: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
     sy: FloatArrayLike = field(
         default=0.15,
         block="griddata",
         shape=("nodes",),
-        layered=True,
         netcdf=True,
     )  # type: ignore[assignment]
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    @attrs.define
-    class Row:
-        storagestate: str
-
-        def __iter__(self):
-            yield self.storagestate
-
-    class _PeriodSchema(Schema):
-        storagestate = Column("storagestate", role="keystring", dfn_type="keyword")
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 StoRow = Sto.Row

@@ -11,6 +11,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Rcha(Package):
+    dfn_name: ClassVar[str] = "gwf-rcha"
+
     multi_package: ClassVar[bool] = True
 
     readasarrays: bool = field(
@@ -25,7 +27,6 @@ class Rcha(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(

@@ -3,28 +3,45 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Prp(Package):
-    multi_package: ClassVar[bool] = True
+    dfn_name: ClassVar[str] = "prt-prp"
 
-    @attrs.define
-    class ReleaseTimes(Record):
-        _keyword: ClassVar[str] = "release_times"
-        times: float = attrs.field()
+    multi_package: ClassVar[bool] = True
 
     @attrs.define
     class ReleaseTimesfile(Record):
         _keyword: ClassVar[str] = "release_timesfile"
         timesfile: str = attrs.field()
+
+    @attrs.define
+    class PackagedataRow(Row):
+        irptno: int = field(pk=True)
+        cellid: tuple = field(cellid=True)
+        xrpt: float = field()
+        yrpt: float = field()
+        zrpt: float = field()
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
+
+    @attrs.define
+    class ReleasetimesRow(Row):
+        time: float
+
+    @attrs.define
+    class Row(_Row):
+        keyword: str
+        value: Optional[object] = field(default=None, optional=True)
 
     boundnames: bool = field(
         default=False,
@@ -33,11 +50,6 @@ class Prp(Package):
     )
     print_input: bool = field(
         default=False,
-        block="options",
-        optional=True,
-    )
-    dev_exit_solve_method: Optional[int] = field(
-        default=None,
         block="options",
         optional=True,
     )
@@ -95,10 +107,7 @@ class Prp(Package):
         block="options",
         optional=True,
     )
-    release_times: Optional[ReleaseTimes] = field(
-        default=None,
-        block="options",
-    )
+    # TODO: release_timesrecord — type 'record' not yet supported
     release_timesfile: Optional[ReleaseTimesfile] = field(
         default=None,
         block="options",
@@ -107,10 +116,6 @@ class Prp(Package):
         default=None,
         block="options",
         optional=True,
-    )
-    dev_forceternary: bool = field(
-        default=False,
-        block="options",
     )
     release_time_tolerance: Optional[float] = field(
         default=None,
@@ -127,11 +132,6 @@ class Prp(Package):
         block="options",
         optional=True,
     )
-    dev_cycle_detection_window: Optional[int] = field(
-        default=None,
-        block="options",
-        optional=True,
-    )
     nreleasepts: Optional[int] = field(
         default=None,
         block="dimensions",
@@ -140,101 +140,23 @@ class Prp(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
         auto_from="packagedata",
     )
-    releasetimes: Optional[np.recarray] = field(
+    releasetimes: Optional[list[ReleasetimesRow]] = field(
         default=None,
         block="releasetimes",
-        schema="__releasetimes_schema__",
         auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    class _PackagedataSchema(Schema):
-        irptno = Column("irptno", role="feature_id", dfn_type="integer")
-        cellid = Column("cellid", role="cellid", dfn_type="integer")
-        xrpt = Column("xrpt", role="value", dfn_type="double")
-        yrpt = Column("yrpt", role="value", dfn_type="double")
-        zrpt = Column("zrpt", role="value", dfn_type="double")
-        boundname = Column("boundname", role="boundname", dfn_type="string")
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        irptno: int
-        cellid: tuple
-        xrpt: float
-        yrpt: float
-        zrpt: float
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.irptno
-            yield self.cellid
-            yield self.xrpt
-            yield self.yrpt
-            yield self.zrpt
-            yield self.boundname
-
-    class _ReleasetimesSchema(Schema):
-        time = Column("time", role="value", dfn_type="double")
-
-    __releasetimes_schema__: ClassVar[type[Schema]] = _ReleasetimesSchema
-
-    @attrs.define
-    class ReleasetimesRow:
-        time: float
-
-        def __iter__(self):
-            yield self.time
-
-    @attrs.define
-    class Row:
-        cellid: tuple
-        all: str
-        first: str
-        last: str
-        frequency: int
-        steps: int
-        aux: tuple = ()
-        fraction: Optional[float] = None
-
-        def __iter__(self):
-            yield self.cellid
-            yield self.all
-            yield self.first
-            yield self.last
-            yield self.frequency
-            yield self.steps
-            yield from self.aux
-            yield self.fraction
-
-    class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        all = Column("all", role="value", dfn_type="keyword")
-        first = Column("first", role="value", dfn_type="keyword")
-        last = Column("last", role="value", dfn_type="keyword")
-        frequency = Column("frequency", role="value", dfn_type="integer")
-        steps = Column("steps", role="value", dfn_type="integer")
-        fraction = Column("fraction", role="value", dfn_type="double", optional=True)
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    releasetimes_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 PrpRow = Prp.Row

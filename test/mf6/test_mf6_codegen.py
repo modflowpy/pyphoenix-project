@@ -15,12 +15,13 @@ To add a new tier:
 
 import importlib.util
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
-from modflow_devtools.dfn import Dfn, Field
+from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
 
-from flopy4.mf6.component import COMPONENTS
+from flopy4.mf6.component import FNAMES
 from flopy4.mf6.utils.codegen.filters import (
     can_expand_record,
     class_name,
@@ -31,7 +32,6 @@ from flopy4.mf6.utils.codegen.filters import (
     py_type,
     row_class,
     safe_name,
-    schema_class,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 
@@ -39,8 +39,13 @@ from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
 # Shared fixtures
 @pytest.fixture(scope="session")
 def all_dfns(dfn_path):
-    """Load all DFNs as a flat dict."""
-    return Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
+    """Load all DFNs as a flat {name: Component} dict."""
+    from modflow_devtools.dfns import LocalDfnRegistry
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
+        registry = LocalDfnRegistry(path=dfn_path)
+        return registry.spec(schema_version="2.0.0.dev3").components
 
 
 # Simple tier: Package subclasses with only scalars, arrays, and path records.
@@ -185,136 +190,78 @@ class TestFilters:
         assert safe_name(name) == expected
 
     @pytest.mark.parametrize(
-        "ftype, shape, optional, expected",
+        "field, block_name, expected",
         [
-            ("keyword", None, False, "bool"),
-            ("keyword", None, True, "bool"),  # keywords never Optional
-            ("integer", None, False, "int"),
-            ("integer", None, True, "Optional[int]"),
-            ("double", None, False, "float"),
-            ("double precision", None, False, "float"),
-            ("string", None, False, "str"),
-            ("double", "(nodes)", False, "NDArray[np.float64]"),
-            ("integer", "(nodes)", True, "Optional[NDArray[np.int64]]"),
-            ("keyword", "(nper)", True, "Optional[NDArray[np.bool_]]"),
+            (Keyword(name="x"), "options", "bool"),
+            (Keyword(name="x", optional=True), "options", "bool"),  # keywords never Optional
+            (Integer(name="x"), "options", "int"),
+            (Integer(name="x", optional=True), "options", "Optional[int]"),
+            (Double(name="x"), "options", "float"),
+            (String(name="x"), "options", "str"),
+            (Array(name="x", dtype="double", shape=["nodes"]), "options", "NDArray[np.float64]"),
+            (
+                Array(name="x", dtype="integer", shape=["nodes"], optional=True),
+                "options",
+                "Optional[NDArray[np.int64]]",
+            ),
+            (
+                Array(name="x", dtype="keyword", shape=["nper"], optional=True),
+                "options",
+                "Optional[NDArray[np.bool_]]",
+            ),
         ],
     )
-    def test_py_type(self, ftype, shape, optional, expected):
-        f = Field(name="x", type=ftype, block="options", shape=shape, optional=optional)
-        assert py_type(f) == expected
+    def test_py_type(self, field, block_name, expected):
+        assert py_type(field, block_name) == expected
 
     @pytest.mark.parametrize(
-        "ftype, shape",
+        "field",
         [
-            ("double", "(nodes)"),
-            ("integer", "(nodes)"),
-            ("keyword", "(nodes)"),
+            Array(name="x", dtype="double", shape=["nodes"]),
+            Array(name="x", dtype="integer", shape=["nodes"]),
+            Array(name="x", dtype="keyword", shape=["nodes"]),
         ],
     )
-    def test_py_type_period_array_always_optional(self, ftype, shape):
+    def test_py_type_period_array_always_optional(self, field):
         """Period arrays get Optional even when DFN marks them required."""
-        f = Field(name="x", type=ftype, block="period", shape=shape, optional=False)
-        result = py_type(f)
+        result = py_type(field, "period")
         assert result.startswith("Optional["), (
-            f"Expected Optional for period {ftype} array but got {result!r}"
+            f"Expected Optional for period array but got {result!r}"
         )
 
     @pytest.mark.parametrize(
-        "ftype, shape, generatable",
+        "field, generatable",
         [
-            ("keyword", None, True),
-            ("double", "(nodes)", True),
-            ("integer", None, True),
-            ("string", None, True),
-            ("record", None, False),  # plain record — not yet supported
-            ("recarray", None, False),
-            ("keystring", None, False),
+            (Keyword(name="x"), True),
+            (Array(name="x", dtype="double", shape=["nodes"]), True),
+            (Integer(name="x"), True),
+            (String(name="x"), True),
+            (Record(name="x", fields={"a": Integer(name="a"), "b": Integer(name="b")}), False),
         ],
     )
-    def test_is_generatable(self, ftype, shape, generatable):
-        f = Field(name="x", type=ftype, block="options", shape=shape)
-        assert is_generatable(f) == generatable
+    def test_is_generatable(self, field, generatable):
+        assert is_generatable(field) == generatable
 
     def test_is_generatable_file_record(self):
         """A record with a filein/fileout child is generatable as a path."""
-        child_in = Field(name="filein", type="keyword", block="options")
-        f = Field(
+        from modflow_devtools.dfns.schema import File
+
+        f = Record(
             name="my_filerecord",
-            type="record",
-            block="options",
-            children={"filein": child_in},
+            fields={
+                "filein": Keyword(name="filein"),
+                "my_filename": File(name="my_filename", direction="in"),
+            },
         )
         assert is_generatable(f)
-
-    def test_schema_class_empty_returns_empty_string(self):
-        assert schema_class([], "_Empty") == ""
-
-    def test_schema_class_basic_structure(self):
-        schema = [
-            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
-            {"name": "head", "role": "value", "dfn_type": "double"},
-        ]
-        result = schema_class(schema, "_PeriodSchema")
-        assert "    class _PeriodSchema(Schema):" in result
-        assert 'Column("cellid"' in result
-        assert 'role="cellid"' in result
-        assert 'dfn_type="integer"' in result
-        assert 'Column("head"' in result
-        assert 'role="value"' in result
-
-    def test_schema_class_no_column_name_alignment(self):
-        schema = [
-            {"name": "ab", "role": "value", "dfn_type": "double"},
-            {"name": "abcdef", "role": "cellid", "dfn_type": "integer"},
-        ]
-        result = schema_class(schema, "_Schema")
-        col_lines = [ln for ln in result.splitlines() if "= Column(" in ln]
-        assert len(col_lines) == 2
-        # Each name is followed immediately by ' = Column(' — no padding spaces.
-        assert "        ab = Column(" in col_lines[0]
-        assert "        abcdef = Column(" in col_lines[1]
-
-    def test_schema_class_long_line_wraps(self):
-        # A column with many optional args whose single-line form exceeds 100 chars.
-        schema = [
-            {
-                "name": "very_long_column_name_xyz",
-                "role": "value",
-                "dfn_type": "double",
-                "time_series": True,
-                "dtype": "np.object_",
-                "shape": "(ncelldim)",
-            },
-        ]
-        result = schema_class(schema, "_Schema")
-        for line in result.splitlines():
-            assert len(line) <= 100, f"Line exceeds 100 chars: {line!r}"
-
-    def test_schema_class_optional_args_emitted(self):
-        schema = [
-            {
-                "name": "col",
-                "role": "value",
-                "dfn_type": "double",
-                "optional": True,
-                "time_series": True,
-                "dtype": "np.float64",
-                "prefix": "pfx",
-                "shape": "(n)",
-            },
-        ]
-        result = schema_class(schema, "_Schema")
-        assert "optional=True" in result
-        assert "time_series=True" in result
-        assert 'dtype="np.float64"' in result
-        assert 'prefix="pfx"' in result
-        assert 'shape="(n)"' in result
 
     def test_row_class_empty_returns_empty_string(self):
         assert row_class([], "Row") == ""
 
     def test_row_class_static_block_no_aux(self):
-        # Static block Row (is_period=False default): no aux field.
+        # Static block Row (is_period=False default): no aux field. Real
+        # field() metadata (pk=/etc.) replaces the old Schema/Column lookup --
+        # the Row class itself is the schema.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
             {"name": "strt", "role": "value", "dfn_type": "double"},
@@ -322,11 +269,21 @@ class TestFilters:
         ]
         result = row_class(schema, "PackagedataRow")
         assert "@attrs.define" in result
-        assert "class PackagedataRow:" in result
-        assert "ifno: int" in result
+        assert "class PackagedataRow(Row):" in result
+        assert "ifno: int = field(pk=True)" in result
         assert "strt: float" in result
-        assert "boundname: Optional[str] = None" in result
+        assert "boundname: Optional[str] = field(default=None, optional=True)" in result
         assert "aux" not in result
+
+    def test_row_class_feature_id_with_fk_uses_fk_metadata(self):
+        # A feature_id column with a real fk target emits fk=, not pk=.
+        schema = [
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "fk": "packagedata.ifno"},
+            {"name": "iconn", "role": "feature_id", "dfn_type": "integer"},
+        ]
+        result = row_class(schema, "ConnectiondataRow")
+        assert 'ifno: int = field(fk="packagedata.ifno")' in result
+        assert "iconn: int = field(pk=True)" in result
 
     def test_row_class_period_has_aux_for_standard_stress(self):
         # Period Row (is_period=True) with no keystring: aux field present.
@@ -337,7 +294,6 @@ class TestFilters:
         ]
         result = row_class(schema, "Row", is_period=True)
         assert "aux: tuple = ()" in result
-        assert "yield from self.aux" in result
 
     def test_row_class_period_keystring_no_aux(self):
         # Period Row with keystring role: no aux even with is_period=True.
@@ -349,8 +305,8 @@ class TestFilters:
         result = row_class(schema, "Row", is_period=True)
         assert "aux" not in result
 
-    def test_row_class_iter_order_matches_schema(self):
-        # __iter__ yields required first, then optional (boundname last).
+    def test_row_class_field_order_matches_schema(self):
+        # Required fields declared in schema order, then optional.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
             {"name": "strt", "role": "value", "dfn_type": "double"},
@@ -358,24 +314,31 @@ class TestFilters:
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
         result = row_class(schema, "PackagedataRow")
-        lines = result.splitlines()
-        iter_lines = [ln.strip() for ln in lines if ln.strip().startswith("yield")]
-        assert iter_lines == [
-            "yield self.ifno",
-            "yield self.strt",
-            "yield self.nlakeconn",
-            "yield self.boundname",
-        ]
+        lines = [ln.strip() for ln in result.splitlines() if ":" in ln and "class" not in ln]
+        names = [ln.split(":")[0] for ln in lines]
+        assert names == ["ifno", "strt", "nlakeconn", "boundname"]
 
     def test_row_class_inline_keyword_optional(self):
-        # inline_keyword role → Optional[str] in Row.
+        # inline_keyword role -> Optional[str], tagged=True (same convention
+        # record.py's Record uses for optional keyword tokens).
         schema = [
             {"name": "pname", "role": "value", "dfn_type": "string", "dtype": "np.object_"},
             {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
         ]
         result = row_class(schema, "FileinputRow")
-        assert "mixed: Optional[str] = None" in result
-        assert "yield self.mixed" in result
+        assert "mixed: Optional[str] = field(default=None, tagged=True, optional=True)" in result
+
+    def test_row_class_cellid_metadata(self):
+        schema = [{"name": "cellid", "role": "cellid", "dfn_type": "integer"}]
+        result = row_class(schema, "Row", is_period=True)
+        assert "cellid: tuple = field(cellid=True)" in result
+
+    def test_row_class_time_series_metadata(self):
+        schema = [
+            {"name": "head", "role": "value", "dfn_type": "double", "time_series": True},
+        ]
+        result = row_class(schema, "Row", is_period=True)
+        assert "head: Union[float, str] = field(time_series=True)" in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs
@@ -474,14 +437,11 @@ class TestSolutionTierComponentSpec:
 
 
 # Layer 2b: List-field expansion
-def test_lak_numeric_index_autodetects_cellid(all_dfns, dfn_path):
+def test_lak_numeric_index_autodetects_cellid(all_dfns):
     """LAK packagedata/connectiondata are emitted as recarray fields with schemas."""
     if "gwf-lak" not in all_dfns:
         pytest.skip("gwf-lak not in DFN set")
-    v1_dfns = Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
-    spec = build_component_spec(
-        all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
-    )
+    spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
     # New codegen: block schemas exist for list blocks (single recarray field each)
@@ -505,7 +465,7 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     assert spec.period_schema, "MVR should have a period_schema"
     assert "_stress_period_data" in field_map
     spd_field = field_map["_stress_period_data"]
-    assert spd_field.type_annotation == "Optional[dict[int, np.recarray]]"
+    assert spd_field.type_annotation == "Optional[dict[int, list[Row]]]"
     # Packages block → single recarray field
     assert "packages" in field_map or "packages" in spec.block_schemas
 
@@ -515,13 +475,10 @@ class TestBlockPropertySpec:
     """Verify BlockPropertySpec population in build_component_spec."""
 
     @pytest.fixture
-    def lak_spec(self, all_dfns, dfn_path):
+    def lak_spec(self, all_dfns):
         if "gwf-lak" not in all_dfns:
             pytest.skip("gwf-lak not in DFN set")
-        v1_dfns = Dfn.load_all(dfn_path, schema_version="2.0.0.dev1")
-        return build_component_spec(
-            all_dfns["gwf-lak"], root=Path("/fake"), v1_dfn=v1_dfns.get("gwf-lak")
-        )
+        return build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
 
     def test_lak_block_count(self, lak_spec):
         assert len(lak_spec.block_properties) == 4
@@ -586,19 +543,13 @@ class TestBlockPropertySpec:
         assert "tab6" not in bp.attr_name_map
         assert "filein" not in bp.attr_name_map
 
-    def test_no_block_properties_without_v1(self, all_dfns):
-        if "gwf-lak" not in all_dfns:
-            pytest.skip("gwf-lak not in DFN set")
-        spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
-        assert spec.block_properties == []
-
 
 # Layer 2c: Compound record expansion
 def test_can_expand_record_all_keywords(all_dfns):
     """A record whose children are all keyword type (like cvoptions) is expandable."""
     if "gwf-npf" not in all_dfns:
         pytest.skip("gwf-npf not in DFN set")
-    cvoptions = all_dfns["gwf-npf"]["blocks"]["options"]["cvoptions"]
+    cvoptions = all_dfns["gwf-npf"].blocks["options"].fields["cvoptions"]
     assert can_expand_record(cvoptions)
 
 
@@ -608,7 +559,7 @@ def test_can_expand_record_with_positional_required_data(all_dfns):
         pytest.skip("gwf-npf not in DFN set")
     from flopy4.mf6.utils.codegen.filters import can_generate_record_class
 
-    rewet_record = all_dfns["gwf-npf"]["blocks"]["options"]["rewet_record"]
+    rewet_record = all_dfns["gwf-npf"].blocks["options"].fields["rewet_record"]
     assert not can_expand_record(rewet_record)
     assert can_generate_record_class(rewet_record)
 
@@ -619,7 +570,7 @@ def test_rcloserecord_generates_inner_class(all_dfns):
         pytest.skip("sln-ims not in DFN set")
     from flopy4.mf6.utils.codegen.filters import can_generate_record_class
 
-    rcloserecord = all_dfns["sln-ims"]["blocks"]["linear"]["rcloserecord"]
+    rcloserecord = all_dfns["sln-ims"].blocks["linear"].fields["rcloserecord"]
     assert can_generate_record_class(rcloserecord)
 
 
@@ -709,13 +660,13 @@ def test_simple_tier_generates_importable_files(tmp_path, all_dfns):
         # Snapshot COMPONENTS and sys.modules before loading so that the
         # generated class's __init_subclass__ registration doesn't leak
         # into the shared registry used by other tests.
-        components_snapshot = dict(COMPONENTS)
+        components_snapshot = dict(FNAMES)
         sys_modules_keys = set(sys.modules)
         try:
             mod_spec.loader.exec_module(mod)
         finally:
-            COMPONENTS.clear()
-            COMPONENTS.update(components_snapshot)
+            FNAMES.clear()
+            FNAMES.update(components_snapshot)
             for key in set(sys.modules) - sys_modules_keys:
                 del sys.modules[key]
 
@@ -744,13 +695,13 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
         mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
         mod = importlib.util.module_from_spec(mod_spec)
 
-        components_snapshot = dict(COMPONENTS)
+        components_snapshot = dict(FNAMES)
         sys_modules_keys = set(sys.modules)
         try:
             mod_spec.loader.exec_module(mod)
         finally:
-            COMPONENTS.clear()
-            COMPONENTS.update(components_snapshot)
+            FNAMES.clear()
+            FNAMES.update(components_snapshot)
             for key in set(sys.modules) - sys_modules_keys:
                 del sys.modules[key]
 
@@ -767,15 +718,15 @@ def _load_class_from_spec(spec, mod_name: str, expected_class: str):
     mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
     assert mod_spec is not None and mod_spec.loader is not None
     mod = importlib.util.module_from_spec(mod_spec)
-    components_snapshot = dict(COMPONENTS)
+    components_snapshot = dict(FNAMES)
     sys_modules_keys = set(sys.modules)
     try:
         mod_spec.loader.exec_module(mod)  # type: ignore[union-attr]
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
         return getattr(mod, expected_class)
     finally:
-        COMPONENTS.clear()
-        COMPONENTS.update(components_snapshot)
+        FNAMES.clear()
+        FNAMES.update(components_snapshot)
         for key in set(sys.modules) - sys_modules_keys:
             del sys.modules[key]
 

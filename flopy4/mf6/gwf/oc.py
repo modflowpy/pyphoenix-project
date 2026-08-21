@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
+    dfn_name: ClassVar[str] = "gwf-oc"
+
     @attrs.define
     class Headprint(Record):
         _keyword: ClassVar[str] = "head"

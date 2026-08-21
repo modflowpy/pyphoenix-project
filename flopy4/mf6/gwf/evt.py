@@ -3,17 +3,32 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Evt(Package):
+    dfn_name: ClassVar[str] = "gwf-evt"
+
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class Row(_Row):
+        cellid: tuple = field(cellid=True)
+        surface: Union[float, str] = field(time_series=True)
+        rate: Union[float, str] = field(time_series=True)
+        depth: Union[float, str] = field(time_series=True)
+        pxdp: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
+        petm: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
+        petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
 
     fixed_cell: bool = field(
         default=False,
@@ -23,7 +38,6 @@ class Evt(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
@@ -79,90 +93,13 @@ class Evt(Package):
         default=None,
         block="dimensions",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    @attrs.define
-    class Row:
-        cellid: tuple
-        surface: Union[float, str]
-        rate: Union[float, str]
-        depth: Union[float, str]
-        aux: tuple = ()
-        pxdp: Optional[Union[float, str]] = None
-        petm: Optional[Union[float, str]] = None
-        petm0: Optional[Union[float, str]] = None
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.cellid
-            yield self.surface
-            yield self.rate
-            yield self.depth
-            yield from self.aux
-            yield self.pxdp
-            yield self.petm
-            yield self.petm0
-            yield self.boundname
-
-    class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        surface = Column(
-            "surface",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-        rate = Column("rate", role="value", dfn_type="double", time_series=True, dtype="np.object_")
-        depth = Column(
-            "depth",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-        pxdp = Column(
-            "pxdp",
-            role="value",
-            dfn_type="double",
-            optional=True,
-            time_series=True,
-            dtype="np.object_",
-        )
-        petm = Column(
-            "petm",
-            role="value",
-            dfn_type="double",
-            optional=True,
-            time_series=True,
-            dtype="np.object_",
-        )
-        petm0 = Column(
-            "petm0",
-            role="value",
-            dfn_type="double",
-            optional=True,
-            time_series=True,
-            dtype="np.object_",
-        )
-        boundname = Column(
-            "boundname",
-            role="boundname",
-            dfn_type="string",
-            optional=True,
-            dtype="np.object_",
-        )
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 EvtRow = Evt.Row

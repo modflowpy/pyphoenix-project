@@ -2,7 +2,7 @@ from abc import ABC
 from collections.abc import MutableMapping
 from os import PathLike
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from attrs import fields
 from xattree import asdict as xattree_asdict
@@ -16,8 +16,54 @@ from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
-COMPONENTS: dict[str, type] = {}
-"""MF6 component registry."""
+FNAMES: "dict[str, type[Component]]" = {}
+"""MF6 component name (e.g. 'gwf-dis') -> component class."""
+
+FTYPES: "dict[str, type[Component]]" = {}
+"""MF6 component ftype (e.g. 'gwf-dis6') -> component class."""
+
+
+def _prefix(dfn_name: str) -> "str | None":
+    prefix, sep, _ = dfn_name.partition("-")
+    return prefix if sep else None
+
+
+def _qualify(name: str, prefix: "str | None") -> str:
+    return f"{prefix}-{name}" if prefix is not None else name
+
+
+def get_fnames() -> "dict[str, type[Component]]":
+    """Get a map of MF6 component name (e.g. 'gwf-dis') to component class."""
+    return FNAMES
+
+
+def get_ftypes() -> "dict[str, type[Component]]":
+    """Get a map of MF6 component ftype (e.g. 'gwf-dis6') to component class."""
+    if not FTYPES:
+        from collections import defaultdict
+
+        from flopy4.mf6.converter.binding import component_ftype
+
+        by_token: "dict[str, list[type[Component]]]" = defaultdict(list)
+        for cls in set(FNAMES.values()):
+            by_token[component_ftype(cls).lower()].append(cls)
+
+        for token, classes in by_token.items():
+            if len(classes) == 1:
+                FTYPES[token] = classes[0]
+            else:
+                for cls in classes:
+                    FTYPES[_qualify(token, _prefix(cls.dfn_name))] = cls
+    return FTYPES
+
+
+def get_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | None":
+    """Look up a single ftype token (e.g. 'dis6') in get_ftypes()."""
+    ftypes = get_ftypes()
+    token = token.lower()
+    if prefix is not None and (cls := ftypes.get(f"{prefix}-{token}")) is not None:
+        return cls
+    return ftypes.get(token)
 
 
 # kw_only=True necessary so we can define optional fields here
@@ -33,6 +79,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     Component inherits from DimensionRegistryMixin to provide dimension
     resolution capabilities to all MF6 components.
     """
+
+    dfn_name: ClassVar[str] = ""
+    """The component's canonical DFN name (e.g. 'gwf-ic'), set by subclasses
+    that are registered in FNAMES/FTYPES -- see the FNAMES docstring above."""
 
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
@@ -82,7 +132,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         initialization and updated when period arrays change.
         """
         # Package leaves compute maxbound in Package.__attrs_post_init__ via
-        # _init_period_dtype; skip the xattree metadata scan for them.
+        # _init_row_lists; skip the xattree metadata scan for them.
         from flopy4.mf6.package import Package
 
         if isinstance(self, Package):
@@ -103,14 +153,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def __attrs_init_subclass__(cls):
-        key = cls.__name__.lower()
-        COMPONENTS[key] = cls
-        # Also register a model-qualified key (e.g. "gwf-ic") for classes in a
-        # model subpackage (flopy4.mf6.<model>.<pkg>), giving deterministic
-        # per-model lookup when multiple models share a class name like "ic".
-        parts = cls.__module__.split(".")
-        if len(parts) >= 4 and parts[0] == "flopy4" and parts[1] == "mf6":
-            COMPONENTS[f"{parts[2]}-{key}"] = cls
+        # Only register classes that declare their own `dfn_name`.
+        # Abstract bases (Package, Context, Model, Exchange, Solution,
+        # DisBase, ...) have no `dfn_name` of their own and are silently
+        # skipped.
+        dfn_name = cls.__dict__.get("dfn_name")
+        if dfn_name is not None:
+            FNAMES[dfn_name] = cls
 
     def __getitem__(self, key):
         # We use `children` from `xattree` to implement MutableMapping.
@@ -131,11 +180,16 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         return len(self.children)  # type: ignore
 
     @classmethod
-    def load(cls, path: str | PathLike, format: str = MF6) -> None:
-        """Load the component and any children."""
-        self = cls._load(path, format=format)  # Get the instance
-        for child in self.children.values():  # type: ignore
-            child.__class__.load(child.path, format=format)
+    def load(
+        cls, path: str | PathLike, format: str = MF6, name: "str | None" = None
+    ) -> "Component":
+        """Load a component from a file.
+
+        `name`, if given, overrides xattree's default auto-assigned name
+        (e.g. a namefile binding row's pname, threaded down by a parent's
+        `_resolve_bindings` call when loading this component as a child).
+        """
+        return cls._load(path, format=format, name=name)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         """

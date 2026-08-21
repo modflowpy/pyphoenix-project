@@ -12,10 +12,16 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Oc(Package):
+    dfn_name: ClassVar[str] = "gwt-oc"
+
     @attrs.define
     class Concentrationprint(Record):
         _keyword: ClassVar[str] = "concentration"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
+        format_: str = attrs.field()
+        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
 
     budget_file: Optional[Path] = path(
         default=None,

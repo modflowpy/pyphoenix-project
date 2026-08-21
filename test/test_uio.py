@@ -6,7 +6,6 @@ from xattree import xattree
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.context import Context
 from flopy4.uio import DEFAULT_REGISTRY, IO, Loader, Registry, Writer
 
 
@@ -187,14 +186,28 @@ def test_registry_write_with_mock_writer():
 
 
 def test_load_return_type():
-    """Test that load method returns the correct type hint."""
+    """Test that load() is annotated -- and actually returns -- the loaded
+    instance, not None (Component.load() used to build `self` and then
+    discard it without returning)."""
     import inspect
 
     sig = inspect.signature(MockComponent.load)
     return_annotation = sig.return_annotation
 
-    # Check the return annotation - should be None (the value)
-    assert return_annotation is None
+    assert return_annotation is not None
+
+    original_loader = DEFAULT_REGISTRY._loaders.get((Component, MF6))
+    DEFAULT_REGISTRY._loaders[(Component, MF6)] = lambda cls, path, format=MF6, name=None: cls(
+        name="loaded"
+    )
+    try:
+        loaded = MockComponent.load(Path("/test/file.txt"), format=MF6)
+        assert isinstance(loaded, MockComponent)
+    finally:
+        if original_loader:
+            DEFAULT_REGISTRY._loaders[(Component, MF6)] = original_loader
+        else:
+            del DEFAULT_REGISTRY._loaders[(Component, MF6)]
 
 
 def test_multiple_format_registrations():
@@ -306,7 +319,7 @@ def test_component_load_classmethod_calls_loader():
     # Track whether the loader was called
     loader_calls = []
 
-    def mock_loader(cls, path, format=MF6):
+    def mock_loader(cls, path, format=MF6, name=None):
         """Mock loader that returns an instance with no children."""
         loader_calls.append({"cls": cls, "path": path, "format": format})
         # Return an instance (simulating a loaded component)
@@ -333,158 +346,3 @@ def test_component_load_classmethod_calls_loader():
             DEFAULT_REGISTRY._loaders[(Component, MF6)] = original_loader
         else:
             del DEFAULT_REGISTRY._loaders[(Component, MF6)]
-
-
-def test_component_load_with_children():
-    """
-    Test that Component.load() correctly loads children.
-    This ensures the fix allows accessing self.children in the classmethod.
-    """
-    # Save original loader
-    original_loader = DEFAULT_REGISTRY._loaders.get((Component, MF6))
-
-    # Track all load calls
-    all_loads = []
-
-    def mock_loader(cls, path, format=MF6):
-        """Mock loader that tracks calls."""
-        all_loads.append({"cls": cls, "path": str(path), "format": format})
-
-        # Create instance
-        instance = cls(name=f"loaded_{cls.__name__}")
-
-        # Simulate children only for the parent component
-        if "parent" in str(path):
-            # Add mock children that have paths
-            @xattree
-            class ChildComponent(Component):
-                name: str = "child"
-
-                def default_filename(self):
-                    return "child.txt"
-
-            # Attach a child with a path
-            child = ChildComponent(name="child1", filename="child1.txt")
-            # Children dict should exist from xattree
-            instance.children["child1"] = child
-
-        return instance
-
-    # Temporarily replace the Component loader
-    DEFAULT_REGISTRY._loaders[(Component, MF6)] = mock_loader
-
-    try:
-        # Load a component with children
-        Component.load(Path("/test/parent.txt"), format=MF6)
-
-        # Should have called loader for parent AND child
-        assert len(all_loads) == 2, f"Expected 2 loads (parent + child), got {len(all_loads)}"
-
-        # First call should be for parent
-        assert "/test/parent.txt" in all_loads[0]["path"].replace("\\", "/")
-        assert all_loads[0]["format"] == MF6
-
-        # Second call should be for child (with its relative path)
-        # Note: child path is relative to cwd, not parent's directory
-        assert "child1.txt" in all_loads[1]["path"].replace("\\", "/")
-        assert all_loads[1]["format"] == MF6
-
-    finally:
-        # Restore original loader
-        if original_loader:
-            DEFAULT_REGISTRY._loaders[(Component, MF6)] = original_loader
-        else:
-            del DEFAULT_REGISTRY._loaders[(Component, MF6)]
-
-
-def test_context_load_with_workspace():
-    """
-    Test that Context.load() uses workspace for loading children.
-
-    Context components have a workspace attribute, and children should
-    be loaded relative to that workspace, not the current directory.
-    """
-    import tempfile
-
-    # Create a test Context subclass
-    @xattree
-    class TestContext(Context):
-        """Test context component with workspace."""
-
-        name: str = "test_context"
-
-    # Save original loader
-    original_loader = DEFAULT_REGISTRY._loaders.get((Context, MF6))
-
-    # Track all load calls with their working directory
-    all_loads = []
-
-    # Create a temporary workspace directory
-    with tempfile.TemporaryDirectory() as tmpdir:
-        workspace_dir = Path(tmpdir) / "workspace"
-        workspace_dir.mkdir()
-
-        def mock_loader(cls, path, format=MF6):
-            """Mock loader that tracks calls and current directory."""
-            all_loads.append(
-                {"cls": cls, "path": str(path), "format": format, "cwd": str(Path.cwd())}
-            )
-
-            # Create instance
-            instance = cls(name=f"loaded_{cls.__name__}")
-
-            # Set workspace for parent
-            if "parent" in str(path):
-                instance.workspace = workspace_dir
-
-                # Add mock child
-                @xattree
-                class ChildComponent(Component):
-                    name: str = "child"
-
-                child = ChildComponent(name="child1", filename="child1.txt")
-                instance.children["child1"] = child
-
-            return instance
-
-        # Register loader for Context (will match TestContext via subclass)
-        DEFAULT_REGISTRY._loaders[(Context, MF6)] = mock_loader
-        # Also register for Component (for the child)
-        DEFAULT_REGISTRY._loaders[(Component, MF6)] = mock_loader
-
-        try:
-            # Load a context component with children
-            TestContext.load(Path("/test/parent.txt"), format=MF6)
-
-            # Should have called loader for parent AND child
-            assert len(all_loads) == 2, f"Expected 2 loads (parent + child), got {len(all_loads)}"
-
-            # First call should be for parent
-            assert "/test/parent.txt" in all_loads[0]["path"].replace("\\", "/")
-            assert all_loads[0]["format"] == MF6
-
-            # Second call should be for child
-            assert "child1.txt" in all_loads[1]["path"].replace("\\", "/")
-            assert all_loads[1]["format"] == MF6
-
-            # IMPORTANT: Child should be loaded with cwd = parent's workspace
-            # This is the key feature of Context.load()
-            # Resolve both paths to handle symlinks (e.g., /private/var vs /var on macOS)
-            actual_cwd = Path(all_loads[1]["cwd"]).resolve()
-            expected_cwd = workspace_dir.resolve()
-            assert actual_cwd == expected_cwd, (
-                f"Child should be loaded in parent's workspace {expected_cwd}, "
-                f"but was loaded in {actual_cwd}"
-            )
-
-        finally:
-            # Restore original loaders
-            if original_loader:
-                DEFAULT_REGISTRY._loaders[(Context, MF6)] = original_loader
-            else:
-                if (Context, MF6) in DEFAULT_REGISTRY._loaders:
-                    del DEFAULT_REGISTRY._loaders[(Context, MF6)]
-
-            # Clean up Component loader
-            if (Component, MF6) in DEFAULT_REGISTRY._loaders:
-                del DEFAULT_REGISTRY._loaders[(Component, MF6)]

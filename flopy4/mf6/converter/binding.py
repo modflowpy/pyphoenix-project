@@ -7,12 +7,21 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.solution import Solution
 
 
+def component_ftype(cls: type) -> str:
+    """E.g. ``"GWF6"``, ``"CHD6"``."""
+    cls_name = cls.__name__
+    if issubclass(cls, Exchange):
+        return f"{cls_name[:3].upper()}6-{cls_name[3:].upper()}6"
+    if issubclass(cls, Solution):
+        return f"{cls.slntype.upper()}6"  # type: ignore[attr-defined]
+    if len(cls_name) == 4 and cls_name[3] in ("g", "a"):
+        return f"{cls_name[0:3].upper()}6"
+    return f"{cls_name.upper()}6"
+
+
 @define
 class Binding:
-    """
-    An MF6 component binding: a record representation of the
-    component for writing to a parent component's name file.
-    """
+    """A serializable representation of a component."""
 
     type: str
     fname: str
@@ -26,17 +35,6 @@ class Binding:
 
     @classmethod
     def from_component(cls, component: Component) -> "Binding":
-        def _get_binding_type(component: Component) -> str:
-            cls_name = component.__class__.__name__
-            if isinstance(component, Exchange):
-                return f"{cls_name[:3].upper()}6-{cls_name[3:].upper()}6"
-            elif isinstance(component, Solution):
-                return f"{component.slntype}6"
-            else:
-                if len(cls_name) == 4 and (cls_name[3] == "g" or cls_name[3] == "a"):
-                    return f"{cls_name[0:3].upper()}6"
-                return f"{cls_name.upper()}6"
-
         def _get_binding_terms(component: Component) -> tuple[str, ...] | None:
             if isinstance(component, Exchange):
                 return (component.exgmnamea, component.exgmnameb)  # type: ignore
@@ -47,7 +45,7 @@ class Binding:
             return None
 
         return cls(
-            type=_get_binding_type(component),
+            type=component_ftype(type(component)),
             fname=component.filename or component.default_filename(),
             terms=_get_binding_terms(component),
         )

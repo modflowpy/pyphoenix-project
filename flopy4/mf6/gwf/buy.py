@@ -3,16 +3,26 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Buy(Package):
+    dfn_name: ClassVar[str] = "gwf-buy"
+
+    @attrs.define
+    class PackagedataRow(Row):
+        irhospec: int = field(pk=True)
+        drhodc: float = field()
+        crhoref: float = field()
+        modelname: Union[float, str] = field()
+        auxspeciesname: Union[float, str] = field()
+        aux: tuple = ()
+
     hhformulation_rhs: bool = field(
         default=False,
         block="options",
@@ -30,53 +40,15 @@ class Buy(Package):
         optional=True,
         inout="fileout",
     )
-    dev_efh_formulation: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-    )
     nrhospecies: Optional[int] = field(
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[np.recarray] = field(
+    packagedata: Optional[list[PackagedataRow]] = field(
         default=None,
         block="packagedata",
-        schema="__packagedata_schema__",
         auto_from="packagedata",
     )
-
-    class _PackagedataSchema(Schema):
-        irhospec = Column("irhospec", role="feature_id", dfn_type="integer")
-        drhodc = Column("drhodc", role="value", dfn_type="double")
-        crhoref = Column("crhoref", role="value", dfn_type="double")
-        modelname = Column("modelname", role="value", dfn_type="string", dtype="np.object_")
-        auxspeciesname = Column(
-            "auxspeciesname",
-            role="value",
-            dfn_type="string",
-            dtype="np.object_",
-        )
-
-    __packagedata_schema__: ClassVar[type[Schema]] = _PackagedataSchema
-
-    @attrs.define
-    class PackagedataRow:
-        irhospec: int
-        drhodc: float
-        crhoref: float
-        modelname: Union[float, str]
-        auxspeciesname: Union[float, str]
-
-        def __iter__(self):
-            yield self.irhospec
-            yield self.drhodc
-            yield self.crhoref
-            yield self.modelname
-            yield self.auxspeciesname
-
-    packagedata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 BuyPackagedataRow = Buy.PackagedataRow

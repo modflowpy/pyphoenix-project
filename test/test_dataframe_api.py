@@ -125,9 +125,9 @@ def test_stress_period_data_setter_single_field():
     df = chd.to_dataframe()
     chd.from_dataframe(df)
     spd = chd.stress_period_data
-    assert tuple(spd[0]["cellid"][0]) == (0, 0, 0)
-    assert spd[0]["head"][0] == 1.0
-    assert spd[0]["head"][1] == 2.0
+    assert tuple(spd[0][0].cellid) == (0, 0, 0)
+    assert spd[0][0].head == 1.0
+    assert spd[0][1].head == 2.0
 
 
 def test_stress_period_data_setter_multifield():
@@ -136,8 +136,8 @@ def test_stress_period_data_setter_multifield():
     df = drn.to_dataframe()
     drn.from_dataframe(df)
     spd = drn.stress_period_data
-    assert spd[0]["elev"][0] == pytest.approx(5.0)
-    assert spd[0]["cond"][1] == pytest.approx(0.02)
+    assert spd[0][0].elev == pytest.approx(5.0)
+    assert spd[0][1].cond == pytest.approx(0.02)
 
 
 def test_stress_period_data_setter_modify_existing():
@@ -146,7 +146,7 @@ def test_stress_period_data_setter_modify_existing():
     df = chd.to_dataframe()
     df.loc[0, "head"] = 99.0
     chd.from_dataframe(df)
-    assert chd.stress_period_data[0]["head"][0] == pytest.approx(99.0)
+    assert chd.stress_period_data[0][0].head == pytest.approx(99.0)
 
 
 def test_stress_period_data_setter_node_format():
@@ -158,8 +158,8 @@ def test_stress_period_data_setter_node_format():
     df = chd.to_dataframe()
     chd.from_dataframe(df)
     spd = chd.stress_period_data
-    assert tuple(spd[0]["cellid"][0]) == (0, 5)
-    assert spd[0]["head"][1] == pytest.approx(2.0)
+    assert tuple(spd[0][0].cellid) == (0, 5)
+    assert spd[0][1].head == pytest.approx(2.0)
 
 
 def test_stress_period_data_setter_partial_fields():
@@ -184,7 +184,7 @@ def test_stress_period_data_setter_structured_grid():
     chd.from_dataframe(df)
     spd = chd.stress_period_data
     assert set(spd.keys()) == {0, 1}
-    assert spd[1]["head"][0] == pytest.approx(3.0)
+    assert spd[1][0].head == pytest.approx(3.0)
 
 
 def test_stress_period_data_setter_errors():
@@ -204,8 +204,8 @@ def test_stress_period_data_setter_with_named_aux_column():
     df = wel.to_dataframe()
     wel.from_dataframe(df)
     spd = wel.stress_period_data
-    assert spd[0]["q"][0] == pytest.approx(-100.0)
-    assert float(spd[0]["aux0"][0]) == pytest.approx(35.0)
+    assert spd[0][0].q == pytest.approx(-100.0)
+    assert float(spd[0][0].aux[0]) == pytest.approx(35.0)
 
 
 def test_stress_period_data_setter_with_two_named_aux_columns():
@@ -217,5 +217,5 @@ def test_stress_period_data_setter_with_two_named_aux_columns():
     df = wel.to_dataframe()
     wel.from_dataframe(df)
     spd = wel.stress_period_data
-    assert float(spd[0]["aux0"][0]) == pytest.approx(35.0)
-    assert float(spd[0]["aux1"][0]) == pytest.approx(1025.0)
+    assert float(spd[0][0].aux[0]) == pytest.approx(35.0)
+    assert float(spd[0][0].aux[1]) == pytest.approx(1025.0)

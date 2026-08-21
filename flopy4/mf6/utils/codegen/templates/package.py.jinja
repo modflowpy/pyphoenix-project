@@ -12,10 +12,22 @@
 {% for line in spec.imports.flopy4 %}
 {{ line }}
 {% endfor %}
+{% if spec.period_schema %}
+{# The period Row class is always literally named "Row" (see row_class() in
+   filters.py) -- `class Row(Row):` doesn't resolve for mypy (the name gets
+   shadowed by the class being defined before the base expression is
+   "seen"), even though Python itself resolves it fine at runtime. This
+   alias gives that one class a distinct base name; other (block-schema)
+   row classes don't collide, so they subclass plain `Row` directly. #}
+
+_Row = Row
+{% endif %}
 
 
 @attrs.define(kw_only=True, slots=False)
 class {{ spec.class_name }}({{ spec.base_class }}):
+    dfn_name: ClassVar[str] = "{{ spec.dfn_name }}"
+
 {% if spec.multi %}
     multi_package: ClassVar[bool] = True
 
@@ -44,6 +56,14 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endfor %}
 
 {% endfor %}
+{% for block_name, schema in spec.block_schemas.items() %}
+{{ schema | row_class(block_name | capitalize + "Row", False, block_name == "packagedata") }}
+
+{% endfor %}
+{% if spec.period_schema %}
+{{ spec.period_schema | row_class("Row", True) }}
+
+{% endif %}
 {% for f in spec.fields %}
 {% if f.generatable %}
     {{ f.py_name }}: {{ f.type_annotation }} = {{ f.spec_call }}
@@ -51,33 +71,6 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     # TODO: {{ f.dfn_name }} — {{ f.skip_reason }}
 {% endif %}
 {% endfor %}
-{% if not spec.multi and not spec.slntype and not spec.inner_classes and not spec.fields %}
-    pass
-{% endif %}
-{% if spec.period_schema or spec.block_schemas %}
-
-{% for block_name, schema in spec.block_schemas.items() %}
-{{ schema | schema_class("_" + block_name | capitalize + "Schema") }}
-
-    __{{ block_name }}_schema__: ClassVar[type[Schema]] = _{{ block_name | capitalize }}Schema
-
-{{ schema | row_class(block_name | capitalize + "Row") }}
-
-{% endfor %}
-{% if spec.period_schema %}
-{{ spec.period_schema | row_class("Row", True) }}
-
-{{ spec.period_schema | schema_class("_PeriodSchema") }}
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-{% endif %}
-{% for block_name in spec.block_schemas %}
-    {{ block_name }}_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-{% endfor %}
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-
-{% endif %}
 {% if spec.period_schema or spec.block_schemas %}
 
 {% if spec.period_schema %}

@@ -2,16 +2,24 @@
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Laktab(Package):
+    dfn_name: ClassVar[str] = "utl-laktab"
+
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class TableRow(Row):
+        stage: float
+        volume: float
+        sarea: float
+        barea: Optional[float] = field(default=None, optional=True)
 
     nrow: Optional[int] = field(
         default=None,
@@ -21,36 +29,11 @@ class Laktab(Package):
         default=None,
         block="dimensions",
     )
-    table: Optional[np.recarray] = field(
+    table: Optional[list[TableRow]] = field(
         default=None,
         block="table",
-        schema="__table_schema__",
         auto_from="table",
     )
-
-    class _TableSchema(Schema):
-        stage = Column("stage", role="value", dfn_type="double")
-        volume = Column("volume", role="value", dfn_type="double")
-        sarea = Column("sarea", role="value", dfn_type="double")
-        barea = Column("barea", role="value", dfn_type="double")
-
-    __table_schema__: ClassVar[type[Schema]] = _TableSchema
-
-    @attrs.define
-    class TableRow:
-        stage: float
-        volume: float
-        sarea: float
-        barea: float
-
-        def __iter__(self):
-            yield self.stage
-            yield self.volume
-            yield self.sarea
-            yield self.barea
-
-    table_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 LaktabTableRow = Laktab.TableRow

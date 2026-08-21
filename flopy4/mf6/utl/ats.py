@@ -2,54 +2,34 @@
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 
 
 @attrs.define(kw_only=True, slots=False)
 class Ats(Package):
+    dfn_name: ClassVar[str] = "utl-ats"
+
+    @attrs.define
+    class PerioddataRow(Row):
+        iperats: int = field(pk=True)
+        dt0: float = field()
+        dtmin: float = field()
+        dtmax: float = field()
+        dtadj: float = field()
+        dtfailadj: float = field()
+
     maxats: Optional[int] = field(
         default=1,
         block="dimensions",
     )
-    perioddata: Optional[np.recarray] = field(
+    perioddata: Optional[list[PerioddataRow]] = field(
         default=None,
         block="perioddata",
-        schema="__perioddata_schema__",
+        auto_from="perioddata",
     )
-
-    class _PerioddataSchema(Schema):
-        iperats = Column("iperats", role="feature_id", dfn_type="integer")
-        dt0 = Column("dt0", role="value", dfn_type="double")
-        dtmin = Column("dtmin", role="value", dfn_type="double")
-        dtmax = Column("dtmax", role="value", dfn_type="double")
-        dtadj = Column("dtadj", role="value", dfn_type="double")
-        dtfailadj = Column("dtfailadj", role="value", dfn_type="double")
-
-    __perioddata_schema__: ClassVar[type[Schema]] = _PerioddataSchema
-
-    @attrs.define
-    class PerioddataRow:
-        iperats: int
-        dt0: float
-        dtmin: float
-        dtmax: float
-        dtadj: float
-        dtfailadj: float
-
-        def __iter__(self):
-            yield self.iperats
-            yield self.dt0
-            yield self.dtmin
-            yield self.dtmax
-            yield self.dtadj
-            yield self.dtfailadj
-
-    perioddata_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 AtsPerioddataRow = Ats.PerioddataRow

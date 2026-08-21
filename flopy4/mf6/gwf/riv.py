@@ -3,22 +3,33 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Riv(Package):
+    dfn_name: ClassVar[str] = "gwf-riv"
+
     multi_package: ClassVar[bool] = True
+
+    @attrs.define
+    class Row(_Row):
+        cellid: tuple = field(cellid=True)
+        stage: Union[float, str] = field(time_series=True)
+        cond: Union[float, str] = field(time_series=True)
+        rbot: Union[float, str] = field(time_series=True)
+        aux: tuple = ()
+        boundname: Optional[str] = field(default=None, optional=True)
 
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(
@@ -70,54 +81,13 @@ class Riv(Package):
         block="dimensions",
         auto_from="stress_period_data",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    @attrs.define
-    class Row:
-        cellid: tuple
-        stage: Union[float, str]
-        cond: Union[float, str]
-        rbot: Union[float, str]
-        aux: tuple = ()
-        boundname: Optional[str] = None
-
-        def __iter__(self):
-            yield self.cellid
-            yield self.stage
-            yield self.cond
-            yield self.rbot
-            yield from self.aux
-            yield self.boundname
-
-    class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        stage = Column(
-            "stage",
-            role="value",
-            dfn_type="double",
-            time_series=True,
-            dtype="np.object_",
-        )
-        cond = Column("cond", role="value", dfn_type="double", time_series=True, dtype="np.object_")
-        rbot = Column("rbot", role="value", dfn_type="double", time_series=True, dtype="np.object_")
-        boundname = Column(
-            "boundname",
-            role="boundname",
-            dfn_type="string",
-            optional=True,
-            dtype="np.object_",
-        )
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 RivRow = Riv.Row

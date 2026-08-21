@@ -48,6 +48,9 @@ def field(
     time_series: bool = False,
     pk: bool = False,
     fk: str | None = None,
+    cellid: bool = False,
+    tagged: bool = False,
+    prefix: tuple[str, ...] | None = None,
 ):
     """Define a codegen-v2 field: always a plain ``attrs.field()``.
 
@@ -98,6 +101,12 @@ def field(
         metadata["pk"] = True
     if fk:
         metadata["fk"] = fk
+    if cellid:
+        metadata["cellid"] = True
+    if tagged:
+        metadata["tagged"] = True
+    if prefix:
+        metadata["prefix"] = tuple(prefix)
     return attrs.field(
         default=default,
         validator=validator,
@@ -162,13 +171,23 @@ def path(
     inout: FileInOut | None = None,
     longname: str | None = None,
     optional: bool = False,
+    prefix: tuple[str, ...] | None = None,
 ):
     """Define a codegen-v2 path field: always a plain ``attrs.field()``.
+
+    ``prefix``: fixed token(s) a row-level path column emits before its own
+    FILEIN/FILEOUT+filename (e.g. LAK tables' ``TAB6``, SSM fileinput's
+    ``SPC6``) -- read by Row.to_row()/from_row() the same way any other
+    row column's prefix= is (see flopy4.mf6.row.Row). Package-level path
+    fields (options-block file records) don't need this -- there's no
+    preceding row context, just the field's own inout=.
 
     See ``field()`` — use ``xattree_path()`` instead for fields on real
     ``@xattree`` component classes.
     """
     metadata = metadata or {}
+    if prefix:
+        metadata["prefix"] = tuple(prefix)
     if block:
         metadata["block"] = block
     if inout:

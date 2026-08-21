@@ -1,6 +1,6 @@
 from abc import ABC
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 from xattree import field, xattree
 
@@ -22,7 +22,11 @@ class Exchange(Package, ABC):
 class GwfGwt(Exchange):
     """GWF-GWT flow-transport exchange (declares coupling in mfsim.nam)."""
 
+    dfn_name: ClassVar[str] = "exg-gwfgwt"
+
 
 @xattree
 class GwfGwe(Exchange):
     """GWF-GWE flow-energy exchange (declares coupling in mfsim.nam)."""
+
+    dfn_name: ClassVar[str] = "exg-gwfgwe"

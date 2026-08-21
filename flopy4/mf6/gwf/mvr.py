@@ -3,16 +3,36 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
-import numpy as np
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Column, Schema
+from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
+
+_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mvr(Package):
+    dfn_name: ClassVar[str] = "gwf-mvr"
+
+    @attrs.define
+    class PackagesRow(Row):
+        pname: Union[float, str]
+        mname: Optional[Union[float, str]] = field(default=None, optional=True)
+
+    @attrs.define
+    class Row(_Row):
+        pname1: Union[float, str]
+        id1: int
+        pname2: Union[float, str]
+        id2: int
+        mvrtype: Union[float, str]
+        value: float
+        mname1: Optional[Union[float, str]] = field(default=None, optional=True)
+        mname2: Optional[Union[float, str]] = field(default=None, optional=True)
+        aux: tuple = ()
+
     print_input: bool = field(
         default=False,
         block="options",
@@ -50,76 +70,18 @@ class Mvr(Package):
         default=None,
         block="dimensions",
     )
-    packages: Optional[np.recarray] = field(
+    packages: Optional[list[PackagesRow]] = field(
         default=None,
         block="packages",
-        schema="__packages_schema__",
         auto_from="packages",
     )
-    _stress_period_data: Optional[dict[int, np.recarray]] = field(
+    _stress_period_data: Optional[dict[int, list[Row]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
-        schema="__period_schema__",
         fill_forward=True,
     )
-
-    class _PackagesSchema(Schema):
-        mname = Column("mname", role="value", dfn_type="string", dtype="np.object_")
-        pname = Column("pname", role="value", dfn_type="string", dtype="np.object_")
-
-    __packages_schema__: ClassVar[type[Schema]] = _PackagesSchema
-
-    @attrs.define
-    class PackagesRow:
-        mname: Union[float, str]
-        pname: Union[float, str]
-
-        def __iter__(self):
-            yield self.mname
-            yield self.pname
-
-    @attrs.define
-    class Row:
-        cellid: tuple
-        pname1: str
-        id1: int
-        pname2: str
-        id2: int
-        mvrtype: str
-        value: float
-        aux: tuple = ()
-        mname1: Optional[str] = None
-        mname2: Optional[str] = None
-
-        def __iter__(self):
-            yield self.cellid
-            yield self.pname1
-            yield self.id1
-            yield self.pname2
-            yield self.id2
-            yield self.mvrtype
-            yield self.value
-            yield from self.aux
-            yield self.mname1
-            yield self.mname2
-
-    class _PeriodSchema(Schema):
-        cellid = Column("cellid", role="cellid", dfn_type="integer", shape="ncelldim")
-        mname1 = Column("mname1", role="value", dfn_type="string", optional=True)
-        pname1 = Column("pname1", role="value", dfn_type="string")
-        id1 = Column("id1", role="value", dfn_type="integer")
-        mname2 = Column("mname2", role="value", dfn_type="string", optional=True)
-        pname2 = Column("pname2", role="value", dfn_type="string")
-        id2 = Column("id2", role="value", dfn_type="integer")
-        mvrtype = Column("mvrtype", role="value", dfn_type="string")
-        value = Column("value", role="value", dfn_type="double")
-
-    __period_schema__: ClassVar[type[Schema]] = _PeriodSchema
-
-    packages_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
-    period_dtype: np.dtype = attrs.field(init=False, factory=lambda: np.dtype([]))
 
 
 MvrRow = Mvr.Row

@@ -1,4 +1,5 @@
 from os import PathLike
+from typing import ClassVar
 from warnings import warn
 
 from modflow_devtools.misc import cd, run_cmd
@@ -23,6 +24,8 @@ def convert_time(value):
 
 @xattree
 class Simulation(Context):
+    dfn_name: ClassVar[str] = "sim-nam"
+
     tdis: Tdis = field(block="timing", converter=convert_time)
     models: dict[str, Model] = field(block="models")
     exchanges: dict[str, Exchange] = field(block="exchanges")

@@ -11,6 +11,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Ghbg(Package):
+    dfn_name: ClassVar[str] = "gwf-ghbg"
+
     multi_package: ClassVar[bool] = True
 
     readarraygrid: bool = field(
@@ -20,7 +22,6 @@ class Ghbg(Package):
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
-        shape=(),
         optional=True,
     )
     auxmultname: Optional[str] = field(

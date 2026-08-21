@@ -1,11 +1,16 @@
+from abc import ABC
+from pathlib import Path
 from typing import Any, get_args
 
 import attrs
 import numpy as np
+import xattree
 
+from flopy4.dimensions import DimensionProvider
+from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
-from flopy4.mf6.schema import Schema
+from flopy4.mf6.row import Row, infer_ncelldim, parse_union_rows, row_list_type
 from flopy4.mf6.spec import to_field_type
 
 
@@ -22,205 +27,34 @@ def _inner_class_type(field_type) -> type | None:
     return None
 
 
-def _token_fits(token: Any, dtype: Any) -> bool:
-    """True if *token* is type-compatible with *dtype*.
-
-    Numeric dtypes (float64, int64, …) require a numeric token (int or float).
-    String tokens that look like numbers (e.g. '-0.4' from the grammar's word
-    rule) are also accepted for numeric dtypes.
-    Object dtype accepts any token.  Used to detect absent optional columns
-    whose token slot would otherwise consume the next column's value.
-    """
-    if dtype == object or dtype == np.object_:  # noqa: E721
-        return True
-    if isinstance(token, (int, float)):
-        return True
-    if isinstance(token, str):
-        try:
-            float(token)
-            return True
-        except ValueError:
-            return False
-    return False
-
-
-def _coerce_token(token: Any, dtype: Any) -> Any:
-    """Coerce a string token to its numeric value for numeric dtypes."""
-    if isinstance(token, str) and not (dtype == object or dtype == np.object_):  # noqa: E721
-        try:
-            if np.issubdtype(np.dtype(dtype), np.floating):
-                return float(token)
-            if np.issubdtype(np.dtype(dtype), np.integer):
-                return int(float(token))
-        except (ValueError, TypeError):
-            pass
-    return token
-
-
-_DTYPE_MAP = Package._DTYPE_MAP
-
-
-def _parse_rows_to_recarray(
+def _parse_rows(
     rows: list,
-    schema: "type[Schema]",  # type: ignore[name-defined]
+    row_cls: "type[Row] | tuple[type[Row], ...]",
     *,
     naux: int = 0,
     boundnames: bool = False,
-) -> np.recarray | None:
-    """Parse raw token rows into a np.recarray using a codegen v2 schema.
+) -> list | None:
+    """Parse raw token rows into a list of Row instances.
 
-    Columns are parsed in schema order so that schemas with multiple feature_id
-    columns (e.g. LAK connectiondata: ifno, iconn, cellid, ...) round-trip
-    correctly.  Schema roles:
-      - 'cellid'         → variable-width tuple of 1-based ints, converted to 0-based
-      - 'feature_id'     → 1-based int, converted to 0-based (multiple allowed)
-      - 'value'          → scalar numeric or object token
-      - 'boundname'      → trailing non-numeric string (always parsed last)
+    row_cls is either a single Row class (its own fields, with cellid=/pk=/
+    fk=/time_series= metadata, are the schema -- see Row.from_row) or a
+    tuple of arm classes for a keystring union field, dispatched per-row by
+    keyword token (see row.parse_union_rows). ncelldim (a variable-width
+    cellid's element count) is inferred once from the first row, same as
+    the old Schema-driven parser did -- not applicable to unions (arms with
+    a cellid field aren't a case seen in the corpus).
     """
     if not rows:
         return None
-
-    cols = schema.columns()
-    cellid_col = next((c for c in cols if c.role == "cellid"), None)
-    feature_id_cols = [c for c in cols if c.role == "feature_id"]
-    value_cols = [c for c in cols if c.role == "value"]
-    boundname_col = next((c for c in cols if c.role == "boundname"), None)
-    keystring_cols = [c for c in cols if c.role in ("keystring", "keystring_value")]
-    inline_kw_cols = [c for c in cols if c.role == "inline_keyword"]
-    # Count only value columns that are actually emitted in each row for ncelldim
-    # inference.  Columns that are optional AND not time_series are excluded from
-    # the recarray dtype by __attrs_post_init__ and therefore absent from emitted
-    # rows; counting them inflates n_fixed and under-counts ncelldim.
-    required_value_cols = [c for c in value_cols if not c.optional or c.time_series]
-    n_fixed = len(required_value_cols) + len(keystring_cols) + len(feature_id_cols)
-
-    # Infer ncelldim from the first row that has tokens
-    ncelldim = 0
-    if cellid_col:
-        first = next((r for r in rows if r), None)
-        if first:
-            last = first[-1]
-            first_has_bn = isinstance(last, str) and not _token_fits(last, np.float64)
-            ncelldim = max(1, len(first) - n_fixed - naux - (1 if first_has_bn else 0))
-
-    # Build dtype in schema order so field names align with token parse order
-    dtype_fields: list = []
-    for col in cols:
-        if col.role == "cellid":
-            dtype_fields.append(("cellid", np.int64, (ncelldim,)))
-        elif col.role == "feature_id":
-            dtype_fields.append((col.name, np.int64))
-        elif col.role == "value":
-            if col.dtype:
-                dt = _DTYPE_MAP.get(col.dtype, np.object_)
-            elif col.time_series:
-                dt = np.object_
-            else:
-                dt = _DTYPE_MAP.get(col.dfn_type, np.float64)
-            dtype_fields.append((col.name, dt))
-        elif col.role in ("keystring", "keystring_value"):
-            dtype_fields.append((col.name, np.object_))
-        elif col.role == "inline_keyword":
-            dtype_fields.append((col.name, np.object_))
-        # boundname role is appended after aux below
-    for i in range(naux):
-        dtype_fields.append((f"aux{i}", np.object_))
-    has_bn_col = boundname_col is not None and boundnames
-    if has_bn_col:
-        dtype_fields.append(("boundname", np.object_))
-    dtype = np.dtype(dtype_fields)
-
-    # Parse each row in schema order
-    records: list[tuple] = []
-    for row in rows:
-        if not row:
-            continue
-        tok_idx = 0
-        record: list = []
-
-        for col in cols:
-            if col.role == "cellid":
-                last = row[-1]
-                row_has_bn = isinstance(last, str) and not _token_fits(last, np.float64)
-                this_ncd = max(1, len(row) - n_fixed - naux - (1 if row_has_bn else 0))
-                cellid = tuple(int(row[tok_idx + j]) - 1 for j in range(this_ncd))
-                # Pad/truncate to consistent ncelldim
-                if this_ncd < ncelldim:
-                    cellid = cellid + (0,) * (ncelldim - this_ncd)
-                elif this_ncd > ncelldim:
-                    cellid = cellid[:ncelldim]
-                record.append(cellid)
-                tok_idx += this_ncd
-            elif col.role == "feature_id":
-                record.append(int(float(str(row[tok_idx]))) - 1)
-                tok_idx += 1
-            elif col.role == "value":
-                if tok_idx >= len(row):
-                    record.append(None)
-                    continue
-                if col.prefix:
-                    tok_idx += len(col.prefix.split())
-                if tok_idx >= len(row):
-                    record.append(None)
-                    continue
-                tok = row[tok_idx]
-                if col.dtype or col.time_series:
-                    try:
-                        record.append(float(tok))
-                    except (ValueError, TypeError):
-                        record.append(str(tok))
-                else:
-                    col_dtype = _DTYPE_MAP.get(col.dfn_type, np.float64)
-                    record.append(_coerce_token(tok, col_dtype))
-                tok_idx += 1
-            elif col.role in ("keystring", "keystring_value"):
-                if tok_idx >= len(row):
-                    record.append(None)
-                else:
-                    record.append(str(row[tok_idx]))
-                    tok_idx += 1
-            elif col.role == "inline_keyword":
-                kw = col.name.upper()
-                if tok_idx < len(row) and str(row[tok_idx]).upper() == kw:
-                    record.append(str(row[tok_idx]))
-                    tok_idx += 1
-                else:
-                    record.append(None)
-            # boundname role: handled after schema loop
-
-        # Aux columns
-        for i in range(naux):
-            if tok_idx < len(row):
-                try:
-                    record.append(float(row[tok_idx]))
-                except (ValueError, TypeError):
-                    record.append(row[tok_idx])
-                tok_idx += 1
-            else:
-                record.append(None)
-
-        # Boundname (final non-numeric string if present)
-        if has_bn_col:
-            if tok_idx < len(row):
-                last = row[tok_idx]
-                if isinstance(last, str) and not _token_fits(last, np.float64):
-                    record.append(str(last))
-                else:
-                    record.append(None)
-            else:
-                record.append(None)
-
-        records.append(tuple(record))
-
-    if not records:
-        return None
-
-    arr = np.zeros(len(records), dtype=dtype)
-    for i, rec in enumerate(records):
-        for j, name in enumerate(dtype.names or ()):  # type: ignore[arg-type]
-            if j < len(rec) and rec[j] is not None:
-                arr[name][i] = rec[j]
-    return arr.view(np.recarray)
+    if isinstance(row_cls, tuple):
+        return parse_union_rows(rows, row_cls, naux=naux, boundnames=boundnames)
+    ncelldim = infer_ncelldim(rows, row_cls, naux=naux)
+    result = [
+        row_cls.from_row(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
+        for row in rows
+        if row
+    ]
+    return result or None
 
 
 def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
@@ -357,7 +191,216 @@ def _parse_readarray_period_block(
     return result
 
 
-def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> Any:
+def _binding_target_classes(child_type: type) -> "tuple[type[Component], ...]":
+    """The concrete `Component` subclass(es) a xattree `Child.type` accepts.
+
+    `xattree.get_xatspec()` already unwraps `Optional`/`list`/`dict` down to
+    the child's element type -- only a bare `Union[A, B]` (e.g. a G/A-variant
+    package pair like `Union[Chd, Chdg]`) needs unwrapping here.
+    """
+    args = get_args(child_type)
+    return args if args else (child_type,)
+
+
+def _apply_binding_terms(child: Any, terms: list) -> None:
+    """Ingress mirror of `converter/binding.py`'s `Binding.from_component`'s
+    `_get_binding_terms`: for `Exchange`/`Solution` targets, a binding
+    row's trailing terms carry real semantic data (the two model names an
+    exchange couples, or the model name(s) a solution applies to) that
+    isn't recoverable from the referenced file's own content -- write it
+    back onto the loaded child. A `Model`/`Package` target's trailing term
+    is just its pname (already handled by xattree's own naming), not state
+    to set here.
+    """
+    from flopy4.mf6.exchange import Exchange
+    from flopy4.mf6.solution import Solution
+
+    if not terms:
+        return
+    if isinstance(child, Exchange):
+        if len(terms) > 0:
+            child.exgmnamea = str(terms[0])
+        if len(terms) > 1:
+            child.exgmnameb = str(terms[1])
+    elif isinstance(child, Solution):
+        child.models = [str(t) for t in terms]
+
+
+def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
+    """Pick between a base package class and its G/A-variant sibling (e.g.
+    Chd vs Chdg) when both share one namefile ftype (see
+    `component_ftype()`'s docstring) -- real MF6 decides this from a
+    READASARRAYS/READARRAYGRID option keyword inside the file itself, not
+    the namefile row, so peek the file's own text for either marker rather
+    than requiring a per-package-family keyword table (both markers are
+    used consistently, one across RCH/EVT, the other across CHD/DRN/GHB/
+    RIV/WEL).
+    """
+    text = path.read_text().upper()
+    is_variant = "READASARRAYS" in text or "READARRAYGRID" in text
+    for c in candidates:
+        suffixed = len(c.__name__) == 4 and c.__name__[-1] in ("g", "a")
+        if suffixed == is_variant:
+            return c
+    return candidates[0]
+
+
+def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, Any]:
+    """Resolve packages/models/exchanges/solutiongroup-style binding rows
+    into loaded child component instances, keyed by field name -- merged
+    into `structure_component`'s kwargs so children are attached the same
+    way manual construction already attaches them (`Gwf(dis=Dis(...))`).
+
+    Child-Component fields are found via `xattree.get_xatspec(cls).children`
+    (mirroring `unstructure.py`'s `_make_binding_blocks`, the egress side of
+    this same job), grouped by block name since several fields can share one
+    block (every `Gwf` package field shares `"packages"`). Within a block,
+    `DimensionProvider` targets (`dis`/`disv`/`disu`) are resolved first so
+    their dims can be threaded into that block's other `Package.load(...,
+    dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
+    a child is already attached, not while its siblings are still loading.
+    """
+    from flopy4.mf6.converter.binding import component_ftype
+    from flopy4.mf6.exchange import Exchange
+    from flopy4.mf6.model import Model
+    from flopy4.mf6.solution import Solution
+
+    xatspec = xattree.get_xatspec(cls)
+    if not xatspec.children:
+        return {}
+
+    # Model scope to prefer when resolving this class's own binding rows'
+    # ftype tokens via get_ftype() below -- e.g. structuring a Gwf's
+    # "packages" block should resolve "DIS6" to gwf's own Dis, not gwt's/
+    # gwe's/prt's.
+    # A Model class's __module__ is "flopy4.mf6.<model>" (defined directly
+    # in that subpackage's __init__.py), not "...<model>.<name>" like its
+    # child packages, so this can't reuse component.py's _model_prefix --
+    # a Model's own class name *is* its model prefix by convention.
+    model_prefix = cls.__name__.lower() if issubclass(cls, Model) else None
+
+    fields_by_block: dict[str, list] = {}
+    for child_name, child_spec in xatspec.children.items():
+        fields_by_block.setdefault((child_spec.metadata or {})["block"], []).append(
+            (child_name, child_spec)
+        )
+
+    kwargs: dict[str, Any] = {}
+    for block_name, field_specs in fields_by_block.items():
+        # Some binding blocks are numbered (e.g. "SOLUTIONGROUP 1", like
+        # "PERIOD 1" elsewhere) -- gather every raw block whose name matches
+        # or starts with "{block_name} ".
+        rows = [
+            row
+            for raw_name, raw_rows in raw_lower.items()
+            if raw_name == block_name or raw_name.startswith(f"{block_name} ")
+            for row in raw_rows
+        ]
+        if not rows:
+            continue
+
+        # Resolve each row's target class + owning field up front, so rows
+        # can be reordered (dims providers first) without re-parsing.
+        resolved = []
+        for row in rows:
+            if not row:
+                continue
+            token = str(row[0]).lower()
+            for child_name, child_spec in field_specs:
+                accepted = _binding_target_classes(child_spec.type)
+
+                # Concrete candidates first: compare each accepted class's
+                # own ftype directly to the row's token. G/A-variant pairs
+                # (Chd/Chdg, Rch/Rcha, ...) share one namefile ftype (real
+                # MF6 has no separate 'CHDG6' case, only 'CHD6' -- see
+                # component_ftype()'s docstring), so more than one concrete
+                # candidate can match; disambiguate from the file content.
+                concrete = [c for c in accepted if ABC not in c.__bases__]
+                matches = [c for c in concrete if component_ftype(c).lower() == token]
+                if len(matches) > 1:
+                    target_cls = _disambiguate_ga_variant(matches, workspace / str(row[1]))
+                elif matches:
+                    target_cls = matches[0]
+                else:
+                    # Fall back to the ftype registry for abstract-typed
+                    # fields (Model/Exchange/Solution/DisBase), where the
+                    # field's declared type can't be compared to a token
+                    # directly.
+                    resolved_cls = get_ftype(token, prefix=model_prefix)
+                    if resolved_cls is None or not any(
+                        issubclass(resolved_cls, t) for t in accepted
+                    ):
+                        continue
+                    target_cls = resolved_cls
+
+                resolved.append((row, target_cls, child_name, child_spec.kind))
+                break
+
+        resolved.sort(key=lambda r: 0 if issubclass(r[1], DimensionProvider) else 1)
+
+        dims: dict = {}
+        collectors: dict[str, Any] = {}
+        for row, target_cls, child_name, kind in resolved:
+            fname = str(row[1])
+            # A row's third+ terms mean different things by target kind (see
+            # _apply_binding_terms): for a plain Model/Package they're the
+            # pname; for Exchange/Solution they're real semantic data
+            # (coupled model names / applicable models), not a name to
+            # assign the loaded child itself.
+            #
+            # name= only actually takes effect for "dict"-kind children
+            # below (Simulation.models/exchanges/solutions) -- xattree
+            # reconciles a "list"-kind child's name to f"{field}{index}"
+            # and an "only"-kind child's to the field name regardless of
+            # what's passed (confirmed both at load time here and at write
+            # time: Chd(name="custom")/Ic(name="custom") get renamed
+            # "chd0"/"ic" the same way on construction already, before
+            # this code ever runs). Passed through anyway for the dict
+            # case and because it's harmless (silently ignored) otherwise,
+            # not because it's expected to matter for "list"/"only".
+            pname = (
+                str(row[2])
+                if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
+                else None
+            )
+            child = (
+                target_cls.load(workspace / fname, dims=dims, name=pname)
+                if issubclass(target_cls, Package)
+                else target_cls.load(workspace / fname, name=pname)
+            )
+            child.filename = fname
+            _apply_binding_terms(child, row[2:])
+            if isinstance(child, DimensionProvider):
+                dims = {**dims, **child.get_dims()}
+
+            if kind == "only":
+                collectors[child_name] = child
+            elif kind == "list":
+                collectors.setdefault(child_name, []).append(child)
+            elif kind == "dict":
+                # pname when there is one (matches the child's own real
+                # name, e.g. Simulation.models); row fname as a fallback
+                # for rows with no pname (e.g. solutiongroup, whose row[2:]
+                # are applicable model names, not a pname -- see pname
+                # above). This key is NOT cosmetic: xattree reconciles a
+                # dict-kind child's attached .name to match the key it's
+                # placed under, overriding whatever name= was passed to
+                # load() above.
+                collectors.setdefault(child_name, {})[pname or fname] = child
+
+        kwargs.update(collectors)
+
+    return kwargs
+
+
+def structure_component(
+    raw: dict,
+    cls: type,
+    *,
+    dims: dict | None = None,
+    workspace: Path | None = None,
+    name: str | None = None,
+) -> Any:
     """Reconstruct a component instance from a raw parsed MF6 input dict.
 
     Parameters
@@ -370,6 +413,17 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
     dims : dict, optional
         Grid dimensions (e.g. {"nlay": 3, "nodes": 675}) used to resolve
         GRIDDATA array shapes.  Required for packages with griddata fields.
+    workspace : Path, optional
+        Directory binding-shaped fields' (packages/models/exchanges/
+        solutiongroup) relative filenames are resolved against, and each
+        loaded child recursively loaded from. Required only for classes
+        that actually have such fields (see `_resolve_bindings`); unused
+        for leaf `Package` classes, which have none.
+    name : str, optional
+        Explicit component name (e.g. a namefile binding row's pname),
+        overriding xattree's default auto-assigned name. Not derivable
+        from the file's own content -- passed down by a parent's
+        `_resolve_bindings` call when loading this component as a child.
 
     Returns
     -------
@@ -377,6 +431,7 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
     """
 
     raw_lower = {k.lower(): v for k, v in raw.items()}
+    binding_kwargs = _resolve_bindings(cls, raw_lower, workspace) if workspace else {}
 
     # Index all init-eligible fields by name and alias
     all_fields = {f.name: f for f in attrs.fields(cls) if f.init is not False}
@@ -398,31 +453,37 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
-    # Identify block-schema fields (packagedata, connectiondata, partitions …)
-    block_schema_fields: dict[str, tuple] = {}  # block_name → (field, schema)
+    # Identify Row-list fields (packagedata, connectiondata, partitions …) --
+    # the field's own type annotation (Optional[list[RowClass]] or
+    # Optional[dict[int, list[RowClass]]]) is the schema; no separate
+    # Schema/Column lookup.
+    block_row_fields: dict[str, tuple] = {}  # block_name → (field, row_cls)
     oc_fields: list = []  # fields with oc_action metadata
-    period_field = None  # field for recarray stress_period_data
+    period_field = None  # field for the period Row-list
+    period_row_cls: "type[Row] | tuple[type[Row], ...] | None" = None
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
-        schema_ref = f.metadata.get("schema")
         oc_action = f.metadata.get("oc_action")
 
         if oc_action:
             oc_fields.append(f)
-        elif block == "period" and schema_ref:
+            continue
+        row_cls = row_list_type(f.type)
+        if row_cls is None:
+            continue
+        if block == "period":
             period_field = f
-        elif schema_ref and block not in ("period",):
-            schema = getattr(cls, schema_ref, None)
-            if schema is not None:
-                block_schema_fields[block] = (f, schema)
+            period_row_cls = row_cls
+        else:
+            block_row_fields[block] = (f, row_cls)
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
-        if block_name in block_schema_fields or block_name.startswith("period"):
+        if block_name in block_row_fields or block_name.startswith("period"):
             continue
         for row in rows:
             if not row:
@@ -453,15 +514,15 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
         naux = len(aux_opt) if isinstance(aux_opt, list) else 1
     boundnames = bool(kwargs.get("boundnames", False))
 
-    # ── Pass 2: block-schema blocks (packagedata, partitions …) ─────────────
-    for block_name, (f, schema) in block_schema_fields.items():
+    # ── Pass 2: block Row-list fields (packagedata, partitions …) ───────────
+    for block_name, (f, row_cls) in block_row_fields.items():
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        recarray = _parse_rows_to_recarray(rows, schema, naux=naux, boundnames=boundnames)
-        if recarray is not None:
+        row_list = _parse_rows(rows, row_cls, naux=naux, boundnames=boundnames)
+        if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
-            kwargs[init_key] = recarray
+            kwargs[init_key] = row_list
 
     # ── Pass 3: period blocks ────────────────────────────────────────────────
     kper_rows: dict[int, list] = {}
@@ -501,22 +562,18 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
             kwargs.update(collected)
 
         elif period_field is not None:
-            schema_ref = period_field.metadata.get("schema")
-            period_schema = getattr(cls, schema_ref, None) if schema_ref else None
-            if period_schema:
-                spd: dict[int, np.recarray] = {}
-                for kper, rows in sorted(kper_rows.items()):
-                    if not rows:
-                        continue
-                    recarray = _parse_rows_to_recarray(
-                        rows, period_schema, naux=naux, boundnames=boundnames
-                    )
-                    if recarray is not None:
-                        spd[kper] = recarray
-                if spd:
-                    # Use the alias (stress_period_data) as the init kwarg
-                    init_key = period_field.alias if period_field.alias else period_field.name
-                    kwargs[init_key] = spd
+            assert period_row_cls is not None  # set together with period_field above
+            spd: dict[int, list] = {}
+            for kper, rows in sorted(kper_rows.items()):
+                if not rows:
+                    continue
+                row_list = _parse_rows(rows, period_row_cls, naux=naux, boundnames=boundnames)
+                if row_list is not None:
+                    spd[kper] = row_list
+            if spd:
+                # Use the alias (stress_period_data) as the init kwarg
+                init_key = period_field.alias if period_field.alias else period_field.name
+                kwargs[init_key] = spd
 
         else:
             # ── Pass 3b: READARRAY period fields (G/A variants) ─────────────
@@ -559,5 +616,9 @@ def structure_component(raw: dict, cls: type, *, dims: dict | None = None) -> An
             }
             parsed = _parse_griddata_block(griddata_rows, gd_fields, dims)
             kwargs.update(parsed)
+
+    kwargs.update(binding_kwargs)
+    if name is not None:
+        kwargs["name"] = name
 
     return cls(**kwargs)

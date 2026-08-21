@@ -104,7 +104,7 @@ def cli_main() -> None:
     from modflow_devtools.dfns import LocalDfnRegistry
 
     registry = LocalDfnRegistry(path=Path(args.dfndir))
-    dfns = registry.spec(schema_version="2.0.0.dev1")
+    dfns = registry.spec(schema_version="2.0.0.dev3").components
 
     try:
         make(

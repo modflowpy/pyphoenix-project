@@ -17,6 +17,7 @@ from flopy4.mf6._compat import check_mf6_compatibility
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
+from flopy4.mf6.context import Context
 from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.ems import Ems
 from flopy4.mf6.enums import NetCDFFormat
@@ -54,20 +55,24 @@ class WriteError(Exception):
     pass
 
 
-def _load_mf6(cls, path: Path) -> Component:
-    """Load MF6 format file into a component instance."""
+def _load_mf6(cls, path: Path, name: "str | None" = None) -> Component:
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
     with open(path, "r") as fp:
-        return structure(load_mf6(fp), path)
+        raw = load_mf6(fp)
+    instance = structure_component(raw, cls, workspace=path.parent, name=name)
+    if isinstance(instance, Context):
+        instance.workspace = path.parent
+    instance.filename = path.name
+    return instance
 
 
-def _load_json(cls, path: Path) -> Component:
-    """Load JSON format file into a component instance."""
+def _load_json(cls, path: Path, name: "str | None" = None) -> Component:
     with open(path, "r") as fp:
         return structure(load_json(fp), path)
 
 
-def _load_toml(cls, path: Path) -> Component:
-    """Load TOML format file into a component instance."""
+def _load_toml(cls, path: Path, name: "str | None" = None) -> Component:
     with open(path, "rb") as fp:
         return structure(load_toml(fp), path)
 
@@ -75,7 +80,6 @@ def _load_toml(cls, path: Path) -> Component:
 def _write_mf6(component: Component, context=None, **kwargs) -> None:
     from flopy4.mf6.write_context import WriteContext
 
-    # Use provided context or default
     ctx = context if context is not None else WriteContext.default()
 
     with open(component.path, "w") as fp:
