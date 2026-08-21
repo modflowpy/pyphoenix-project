@@ -2427,7 +2427,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         nlakes=1,
         noutlets=1,
         boundnames=True,
-        packagedata=[(0, -0.4, nconn, "mylake", 100.0)],
+        packagedata=[(0, -0.4, nconn, 100.0, "mylake")],
         connectiondata=[
             (0, 0, (0, 0, 1), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
             (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
@@ -2629,7 +2629,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         nlakes=1,
         noutlets=1,
         boundnames=True,
-        packagedata=[(0, -0.4, nconn, "mylake", 20.0)],
+        packagedata=[(0, -0.4, nconn, 20.0, "mylake")],
         connectiondata=[
             (0, 0, (0, 0, 1), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
             (0, 1, (0, 0, 3), "HORIZONTAL", FILL_DNODATA, 10.0, 10.0, connlen, connwidth),
