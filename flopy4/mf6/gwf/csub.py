@@ -9,6 +9,8 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
+_Row = Row
+
 
 @attrs.define(kw_only=True, slots=False)
 class Csub(Package):
@@ -18,20 +20,20 @@ class Csub(Package):
     class PackagedataRow(Row):
         icsubno: int = field(pk=True)
         cellid: tuple = field(cellid=True)
-        cdelay: Union[float, str]
-        pcs0: float
-        thick_frac: float
-        rnb: float
-        ssv_cc: float
-        sse_cr: float
-        theta: float
-        kv: float
-        h0: float
+        cdelay: Union[float, str] = field()
+        pcs0: float = field()
+        thick_frac: float = field()
+        rnb: float = field()
+        ssv_cc: float = field()
+        sse_cr: float = field()
+        theta: float = field()
+        kv: float = field()
+        h0: float = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class Row(Row):
+    class Row(_Row):
         cellid: tuple = field(cellid=True)
         sig0: Union[float, str] = field(time_series=True)
         aux: tuple = ()

@@ -7,9 +7,10 @@ import numpy as np
 import xattree
 
 from flopy4.dimensions import DimensionProvider
+from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import infer_ncelldim, parse_union_rows, row_list_type
+from flopy4.mf6.row import Row, infer_ncelldim, parse_union_rows, row_list_type
 from flopy4.mf6.spec import to_field_type
 
 
@@ -28,7 +29,7 @@ def _inner_class_type(field_type) -> type | None:
 
 def _parse_rows(
     rows: list,
-    row_cls: type | tuple[type, ...],
+    row_cls: "type[Row] | tuple[type[Row], ...]",
     *,
     naux: int = 0,
     boundnames: bool = False,
@@ -190,7 +191,7 @@ def _parse_readarray_period_block(
     return result
 
 
-def _binding_target_classes(child_type: type) -> tuple[type, ...]:
+def _binding_target_classes(child_type: type) -> "tuple[type[Component], ...]":
     """The concrete `Component` subclass(es) a xattree `Child.type` accepts.
 
     `xattree.get_xatspec()` already unwraps `Optional`/`list`/`dict` down to
@@ -225,7 +226,7 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
         child.models = [str(t) for t in terms]
 
 
-def _disambiguate_ga_variant(candidates: list[type], path: Path) -> type:
+def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
     """Pick between a base package class and its G/A-variant sibling (e.g.
     Chd vs Chdg) when both share one namefile ftype (see
     `component_ftype()`'s docstring) -- real MF6 decides this from a
@@ -259,8 +260,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
     a child is already attached, not while its siblings are still loading.
     """
-    from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.component import lookup_ftype
+    from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
     from flopy4.mf6.solution import Solution
@@ -280,7 +281,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
 
     fields_by_block: dict[str, list] = {}
     for child_name, child_spec in xatspec.children.items():
-        fields_by_block.setdefault(child_spec.metadata["block"], []).append(
+        fields_by_block.setdefault((child_spec.metadata or {})["block"], []).append(
             (child_name, child_spec)
         )
 
@@ -369,7 +370,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             )
             child.filename = fname
             _apply_binding_terms(child, row[2:])
-            if issubclass(target_cls, DimensionProvider):
+            if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}
 
             if kind == "only":
@@ -459,7 +460,7 @@ def structure_component(
     block_row_fields: dict[str, tuple] = {}  # block_name → (field, row_cls)
     oc_fields: list = []  # fields with oc_action metadata
     period_field = None  # field for the period Row-list
-    period_row_cls: type | tuple[type, ...] | None = None
+    period_row_cls: "type[Row] | tuple[type[Row], ...] | None" = None
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
@@ -561,6 +562,7 @@ def structure_component(
             kwargs.update(collected)
 
         elif period_field is not None:
+            assert period_row_cls is not None  # set together with period_field above
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:

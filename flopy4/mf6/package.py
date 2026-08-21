@@ -8,7 +8,7 @@ import xarray as xr
 from xattree import xattree
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.row import construct_row, dispatch_union_row, normalize_aux_keys, row_list_type
+from flopy4.mf6.row import Row, construct_row, dispatch_union_row, normalize_aux_keys, row_list_type
 from flopy4.mf6.spec import to_field_type
 
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
@@ -81,9 +81,7 @@ class Package(Component, ABC):
                 continue
 
             if block == "period" or f.metadata.get("fill_forward"):
-                coerced = {
-                    kper: self._coerce_row_list(rows, row_cls) for kper, rows in raw.items()
-                }
+                coerced = {kper: self._coerce_row_list(rows, row_cls) for kper, rows in raw.items()}
                 object.__setattr__(self, f.name, coerced)
                 if coerced and getattr(self, "maxbound", None) == 0:
                     object.__setattr__(self, "maxbound", max(len(v) for v in coerced.values()))
@@ -94,7 +92,7 @@ class Package(Component, ABC):
                     object.__setattr__(self, f"n{block}s", len(coerced_list))
 
     @staticmethod
-    def _coerce_row_list(data, row_cls: type | tuple[type, ...]) -> list:
+    def _coerce_row_list(data, row_cls: "type[Row] | tuple[type[Row], ...]") -> list:
         """Convert user-supplied list/dict data to a list of Row instances.
 
         For a plain (non-union) row_cls, accepts:
@@ -118,7 +116,9 @@ class Package(Component, ABC):
                     rows.append(row)
                 elif isinstance(row, dict):
                     kw = str(row.get("keyword", "")).upper()
-                    arm = next((c for c in row_cls if c.__dict__.get("_keyword", "").upper() == kw), None)
+                    arm = next(
+                        (c for c in row_cls if c.__dict__.get("_keyword", "").upper() == kw), None
+                    )
                     if arm is not None:
                         rows.append(arm(**{k: v for k, v in row.items() if k != "keyword"}))
                 else:
@@ -191,7 +191,7 @@ class Package(Component, ABC):
         path: Path,
         dims: "dict[str, int] | None" = None,
         name: "str | None" = None,
-    ):
+    ) -> "Package":
         """Load from an MF6 text input file.
 
         Parameters
@@ -298,7 +298,7 @@ class Package(Component, ABC):
             spd[int(kper)] = [row_cls(**row) for row in group.to_dict("records")]
         self.__dict__["_stress_period_data"] = spd
 
-    def _period_row_cls(self) -> type:
+    def _period_row_cls(self) -> "type[Row] | tuple[type[Row], ...]":
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
             if f.metadata.get("block") == "period" or f.metadata.get("fill_forward"):
                 row_cls = row_list_type(f.type)

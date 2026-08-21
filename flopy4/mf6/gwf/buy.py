@@ -17,10 +17,10 @@ class Buy(Package):
     @attrs.define
     class PackagedataRow(Row):
         irhospec: int = field(pk=True)
-        drhodc: float
-        crhoref: float
-        modelname: Union[float, str]
-        auxspeciesname: Union[float, str]
+        drhodc: float = field()
+        crhoref: float = field()
+        modelname: Union[float, str] = field()
+        auxspeciesname: Union[float, str] = field()
         aux: tuple = ()
 
     hhformulation_rhs: bool = field(

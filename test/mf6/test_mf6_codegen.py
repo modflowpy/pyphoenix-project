@@ -326,7 +326,7 @@ class TestFilters:
             {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
         ]
         result = row_class(schema, "FileinputRow")
-        assert 'mixed: Optional[str] = field(default=None, tagged=True, optional=True)' in result
+        assert "mixed: Optional[str] = field(default=None, tagged=True, optional=True)" in result
 
     def test_row_class_cellid_metadata(self):
         schema = [{"name": "cellid", "role": "cellid", "dfn_type": "integer"}]
@@ -338,7 +338,7 @@ class TestFilters:
             {"name": "head", "role": "value", "dfn_type": "double", "time_series": True},
         ]
         result = row_class(schema, "Row", is_period=True)
-        assert 'head: Union[float, str] = field(time_series=True)' in result
+        assert "head: Union[float, str] = field(time_series=True)" in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs
@@ -542,7 +542,6 @@ class TestBlockPropertySpec:
         # tab6 and filein are prefix tokens — excluded from attr_name_map
         assert "tab6" not in bp.attr_name_map
         assert "filein" not in bp.attr_name_map
-
 
 
 # Layer 2c: Compound record expansion

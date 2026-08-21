@@ -12,6 +12,16 @@
 {% for line in spec.imports.flopy4 %}
 {{ line }}
 {% endfor %}
+{% if spec.period_schema %}
+{# The period Row class is always literally named "Row" (see row_class() in
+   filters.py) -- `class Row(Row):` doesn't resolve for mypy (the name gets
+   shadowed by the class being defined before the base expression is
+   "seen"), even though Python itself resolves it fine at runtime. This
+   alias gives that one class a distinct base name; other (block-schema)
+   row classes don't collide, so they subclass plain `Row` directly. #}
+
+_Row = Row
+{% endif %}
 
 
 @attrs.define(kw_only=True, slots=False)

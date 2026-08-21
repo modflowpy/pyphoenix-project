@@ -17,10 +17,10 @@ class Vsc(Package):
     @attrs.define
     class PackagedataRow(Row):
         iviscspec: int = field(pk=True)
-        dviscdc: float
-        cviscref: float
-        modelname: Union[float, str]
-        auxspeciesname: Union[float, str]
+        dviscdc: float = field()
+        cviscref: float = field()
+        modelname: Union[float, str] = field()
+        auxspeciesname: Union[float, str] = field()
         aux: tuple = ()
 
     viscref: Optional[float] = field(

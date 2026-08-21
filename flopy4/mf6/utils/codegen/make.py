@@ -20,9 +20,13 @@ from modflow_devtools.dfns.schema import (
     Component,
     Double,
     Integer,
-    Keyword as KeywordField,
     Record,
     String,
+)
+from modflow_devtools.dfns.schema import (
+    Keyword as KeywordField,
+)
+from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
 
@@ -30,11 +34,13 @@ from . import filters
 from .filters import ColumnSpec, FieldV3, _dq, python_repr, row_class
 from .overrides import (
     always_emit_blocks,
-    apply as apply_override,
     block_dim_override,
     extra_record_children,
     replace_list_blocks,
     replace_list_fields,
+)
+from .overrides import (
+    apply as apply_override,
 )
 
 # Pre-computed context dataclasses
@@ -301,8 +307,10 @@ def _ml_field(
 def _is_oc_style_union(item: FieldV3) -> bool:
     """True for a List whose (unwrapped) item is a Union of rtype-bearing
     Records -- the gwf/gwt/gwe/prt-oc saverecord/printrecord shape."""
-    return isinstance(item, UnionField) and bool(item.arms) and all(
-        isinstance(arm, Record) and "rtype" in arm.fields for arm in item.arms.values()
+    return (
+        isinstance(item, UnionField)
+        and bool(item.arms)
+        and all(isinstance(arm, Record) and "rtype" in arm.fields for arm in item.arms.values())
     )
 
 
@@ -355,6 +363,7 @@ def _oc_action(item: UnionField, arm_name: str) -> str:
 def _expand_oc_record_field(list_field: FieldV3) -> list[FieldSpec]:
     """Expand an OC-style period list field into per-rtype period fields."""
     item = filters.find_keystring_union(list_field)
+    assert item is not None  # caller already confirmed this is an OC-style union field
     rtypes = _oc_rtypes(item)
     specs: list[FieldSpec] = []
     for arm_name in item.arms:
@@ -483,7 +492,12 @@ def _build_inner_class_spec(f: Record, dfn_name: str) -> InnerClassSpec:
                     )
                 )
         else:
-            _type_map = {"integer": "int", "double": "float", "double precision": "float", "string": "str"}
+            _type_map = {
+                "integer": "int",
+                "double": "float",
+                "double precision": "float",
+                "string": "str",
+            }
             base_type = _type_map.get(child_type, "Any")
             type_annotation = f"Optional[{base_type}]" if is_optional else base_type
             inner_fields.append(
@@ -955,7 +969,9 @@ def build_component_spec(
                 "reader": "readarray",
                 "layered": getattr(_ra_f, "layered", False),
             }
-            _ra_base = "IntArrayLike" if getattr(_ra_f, "dtype", "") == "integer" else "FloatArrayLike"
+            _ra_base = (
+                "IntArrayLike" if getattr(_ra_f, "dtype", "") == "integer" else "FloatArrayLike"
+            )
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f.name,

@@ -9,6 +9,8 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
+_Row = Row
+
 
 @attrs.define(kw_only=True, slots=False)
 class Lkt(Package):
@@ -19,14 +21,14 @@ class Lkt(Package):
     @attrs.define
     class PackagedataRow(Row):
         ifno: int = field(pk=True)
-        strt: float
+        strt: float = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class Row(Row):
+    class Row(_Row):
         number: int = field(pk=True)
-        keyword: str
+        keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 
     flow_package_name: Optional[str] = field(

@@ -79,6 +79,7 @@ class Time(ModelTime):
         )
         nper = len(perlen)
 
+        nstp_array: np.ndarray
         if nstp is None:
             nstp_array = np.ones(nper, dtype=np.int64)
         elif np.isscalar(nstp):
@@ -90,6 +91,7 @@ class Time(ModelTime):
                     f"nstp length ({len(nstp_array)}) must match number of periods ({nper})"
                 )
 
+        tsmult_array: np.ndarray
         if tsmult is None:
             tsmult_array = np.ones(nper, dtype=np.float64)
         elif np.isscalar(tsmult):

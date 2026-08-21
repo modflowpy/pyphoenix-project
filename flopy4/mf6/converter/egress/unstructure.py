@@ -8,10 +8,10 @@ import numpy as np
 import xarray as xr
 import xattree
 
-from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
+from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type

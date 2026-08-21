@@ -45,13 +45,9 @@ class Tdis(Package):
                 for row in self.perioddata
             ]
             object.__setattr__(self, "perioddata", rows)
-            object.__setattr__(
-                self, "perlen", np.array([r.perlen for r in rows], dtype=np.float64)
-            )
+            object.__setattr__(self, "perlen", np.array([r.perlen for r in rows], dtype=np.float64))
             object.__setattr__(self, "nstp", np.array([r.nstp for r in rows], dtype=np.int64))
-            object.__setattr__(
-                self, "tsmult", np.array([r.tsmult for r in rows], dtype=np.float64)
-            )
+            object.__setattr__(self, "tsmult", np.array([r.tsmult for r in rows], dtype=np.float64))
             super().__attrs_post_init__()
             return
         nper = self.nper

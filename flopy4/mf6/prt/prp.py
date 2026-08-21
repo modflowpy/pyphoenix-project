@@ -10,6 +10,8 @@ from flopy4.mf6.record import Record
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
+_Row = Row
+
 
 @attrs.define(kw_only=True, slots=False)
 class Prp(Package):
@@ -26,9 +28,9 @@ class Prp(Package):
     class PackagedataRow(Row):
         irptno: int = field(pk=True)
         cellid: tuple = field(cellid=True)
-        xrpt: float
-        yrpt: float
-        zrpt: float
+        xrpt: float = field()
+        yrpt: float = field()
+        zrpt: float = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
@@ -37,7 +39,7 @@ class Prp(Package):
         time: float
 
     @attrs.define
-    class Row(Row):
+    class Row(_Row):
         keyword: str
         value: Optional[object] = field(default=None, optional=True)
 

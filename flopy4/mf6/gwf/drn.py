@@ -9,6 +9,8 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
+_Row = Row
+
 
 @attrs.define(kw_only=True, slots=False)
 class Drn(Package):
@@ -17,7 +19,7 @@ class Drn(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class Row(Row):
+    class Row(_Row):
         cellid: tuple = field(cellid=True)
         elev: Union[float, str] = field(time_series=True)
         cond: Union[float, str] = field(time_series=True)

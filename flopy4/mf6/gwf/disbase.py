@@ -6,8 +6,8 @@ import numpy as np
 from flopy.discretization.grid import Grid as LegacyGrid
 
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.package import Package
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
+from flopy4.mf6.package import Package
 from flopy4.mf6.write_context import WriteContext
 
 

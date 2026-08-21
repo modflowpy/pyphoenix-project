@@ -22,9 +22,11 @@ import tomllib
 from pathlib import Path
 from typing import TypeVar
 
+from modflow_devtools.dfns.schema import FieldBase
+
 _OVERRIDES_PATH = Path(__file__).parent / "dfn_overrides.toml"
 
-FieldT = TypeVar("FieldT")
+FieldT = TypeVar("FieldT", bound=FieldBase)
 
 
 def _load() -> dict[str, dict[str, dict]]:
@@ -135,5 +137,3 @@ def always_emit_blocks(dfn_name: str) -> list[str]:
     return list(
         _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("always_emit_blocks", [])
     )
-
-

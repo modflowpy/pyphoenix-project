@@ -124,7 +124,7 @@ def _n_fixed_tokens(cls: type) -> int:
     return n
 
 
-def infer_ncelldim(rows: list[list], row_cls: type, *, naux: int = 0) -> int:
+def infer_ncelldim(rows: list[list], row_cls: "type[Row]", *, naux: int = 0) -> int:
     """Infer a Row class's cellid width from the first non-empty raw row.
 
     Mirrors the token-counting the old Schema/Column-driven parser used:
@@ -349,7 +349,7 @@ class Row:
         return cls(**kwargs)
 
 
-def _unwrap_row_item(item) -> type | tuple[type, ...] | None:
+def _unwrap_row_item(item) -> "type[Row] | tuple[type[Row], ...] | None":
     """A single Row subclass, or a tuple of Row subclasses for a Union
     (keystring-arm) item type -- e.g. ``LakStatusItem | LakStageItem``."""
     if isinstance(item, type) and issubclass(item, Row):
@@ -361,7 +361,7 @@ def _unwrap_row_item(item) -> type | tuple[type, ...] | None:
     return None
 
 
-def row_list_type(field_type) -> type | tuple[type, ...] | None:
+def row_list_type(field_type) -> "type[Row] | tuple[type[Row], ...] | None":
     """If field_type is Optional[list[C]] or Optional[dict[int, list[C]]],
     return C -- or, for a Union item type (keystring arms), the tuple of arm
     classes. The generated field's own type annotation is the schema now --
@@ -380,7 +380,7 @@ def row_list_type(field_type) -> type | tuple[type, ...] | None:
     return None
 
 
-def dispatch_union_row(row: list, arm_classes: tuple[type, ...]) -> type | None:
+def dispatch_union_row(row: list, arm_classes: "tuple[type[Row], ...]") -> "type[Row] | None":
     """Find which arm class a raw token row belongs to, by locating the
     first token that matches one of the arms' _keyword tokens."""
     kw_map = {_keyword_of(c).upper(): c for c in arm_classes if _keyword_of(c)}
@@ -392,7 +392,7 @@ def dispatch_union_row(row: list, arm_classes: tuple[type, ...]) -> type | None:
 
 
 def parse_union_rows(
-    rows: list, arm_classes: tuple[type, ...], *, naux: int = 0, boundnames: bool = False
+    rows: list, arm_classes: "tuple[type[Row], ...]", *, naux: int = 0, boundnames: bool = False
 ) -> list | None:
     """Parse raw token rows into a list of Row instances, dispatching each
     row to the correct arm class by its keyword token (see

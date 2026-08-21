@@ -9,6 +9,8 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
+_Row = Row
+
 
 @attrs.define(kw_only=True, slots=False)
 class Lak(Package):
@@ -19,8 +21,8 @@ class Lak(Package):
     @attrs.define
     class PackagedataRow(Row):
         ifno: int = field(pk=True)
-        strt: float
-        nlakeconn: int
+        strt: float = field()
+        nlakeconn: int = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
@@ -29,12 +31,12 @@ class Lak(Package):
         ifno: int = field(fk="packagedata.ifno")
         iconn: int = field(pk=True)
         cellid: tuple = field(cellid=True)
-        claktype: Union[float, str]
-        bedleak: Union[float, str]
-        belev: float
-        telev: float
-        connlen: float
-        connwidth: float
+        claktype: Union[float, str] = field()
+        bedleak: Union[float, str] = field()
+        belev: float = field()
+        telev: float = field()
+        connlen: float = field()
+        connwidth: float = field()
 
     @attrs.define
     class TablesRow(Row):
@@ -46,16 +48,16 @@ class Lak(Package):
         outletno: int = field(pk=True)
         lakein: int = field(fk="packagedata.ifno")
         lakeout: int = field(fk="packagedata.ifno")
-        couttype: Union[float, str]
+        couttype: Union[float, str] = field()
         invert: Union[float, str] = field(time_series=True)
         width: Union[float, str] = field(time_series=True)
         rough: Union[float, str] = field(time_series=True)
         slope: Union[float, str] = field(time_series=True)
 
     @attrs.define
-    class Row(Row):
+    class Row(_Row):
         number: int = field(pk=True)
-        keyword: str
+        keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 
     auxiliary: Optional[list[str]] = field(

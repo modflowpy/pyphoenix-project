@@ -9,13 +9,15 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
+_Row = Row
+
 
 @attrs.define(kw_only=True, slots=False)
 class Sto(Package):
     dfn_name: ClassVar[str] = "gwf-sto"
 
     @attrs.define
-    class Row(Row):
+    class Row(_Row):
         storage: str
 
     save_flows: bool = field(

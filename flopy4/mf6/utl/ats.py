@@ -15,11 +15,11 @@ class Ats(Package):
     @attrs.define
     class PerioddataRow(Row):
         iperats: int = field(pk=True)
-        dt0: float
-        dtmin: float
-        dtmax: float
-        dtadj: float
-        dtfailadj: float
+        dt0: float = field()
+        dtmin: float = field()
+        dtmax: float = field()
+        dtadj: float = field()
+        dtfailadj: float = field()
 
     maxats: Optional[int] = field(
         default=1,

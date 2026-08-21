@@ -2,7 +2,7 @@ from abc import ABC
 from collections.abc import MutableMapping
 from os import PathLike
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from attrs import fields
 from xattree import asdict as xattree_asdict
@@ -16,7 +16,7 @@ from flopy4.mf6.utils.grid import update_maxbound
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
-FNAMES: dict[str, type] = {}
+FNAMES: "dict[str, type[Component]]" = {}
 """MF6 component name -> component type, keyed by each class's own
 `dfn_name` -- the canonical DFN component name (e.g. 'gwf-ic', 'sim-nam').
 Codegen sets `dfn_name` on every generated class (see package.py.jinja);
@@ -25,7 +25,7 @@ Dis/Disv, exchanges) declare it themselves. Classes with no `dfn_name` of
 their own -- abstract bases like Package, Context, Model, Exchange,
 Solution, DisBase -- are never registered."""
 
-FTYPES: dict[str, type] = {}
+FTYPES: "dict[str, type[Component]]" = {}
 """MF6 file-type (lowercased, e.g. 'gwf-dis6') -> component class."""
 
 
@@ -40,7 +40,9 @@ def _qualify(name: str, prefix: "str | None") -> str:
     return f"{prefix}-{name}" if prefix is not None else name
 
 
-def _lookup(registry: "dict[str, type]", name: str, prefix: "str | None") -> "type | None":
+def _lookup(
+    registry: "dict[str, type[Component]]", name: str, prefix: "str | None"
+) -> "type[Component] | None":
     """Resolve `name` against a fully-qualified-keyed registry.
 
     Tries, in order: `prefix` qualifying `name` (a caller that knows its
@@ -62,17 +64,17 @@ def _lookup(registry: "dict[str, type]", name: str, prefix: "str | None") -> "ty
     return matches.pop() if len(matches) == 1 else None
 
 
-def lookup_component(name: str, prefix: "str | None" = None) -> "type | None":
+def lookup_component(name: str, prefix: "str | None" = None) -> "type[Component] | None":
     """Look up a registered component class by name (see `_lookup`)."""
     return _lookup(FNAMES, name.lower(), prefix)
 
 
-def lookup_ftype(token: str, prefix: "str | None" = None) -> "type | None":
+def lookup_ftype(token: str, prefix: "str | None" = None) -> "type[Component] | None":
     """Look up a registered component class by ftype token (see `_lookup`)."""
     return _lookup(get_ftypes(), token.lower(), prefix)
 
 
-def get_ftypes() -> "dict[str, type]":
+def get_ftypes() -> "dict[str, type[Component]]":
     """Build and return the ftypes registry, keyed like `FNAMES` but
     by ftype token (e.g. 'gwf-dis6') instead of DFN name.
 
@@ -87,7 +89,7 @@ def get_ftypes() -> "dict[str, type]":
 
         from flopy4.mf6.converter.binding import component_ftype
 
-        by_token: "dict[str, list[type]]" = defaultdict(list)
+        by_token: "dict[str, list[type[Component]]]" = defaultdict(list)
         for cls in set(FNAMES.values()):
             by_token[component_ftype(cls).lower()].append(cls)
 
@@ -117,6 +119,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     Component inherits from DimensionRegistryMixin to provide dimension
     resolution capabilities to all MF6 components.
     """
+
+    dfn_name: ClassVar[str] = ""
+    """The component's canonical DFN name (e.g. 'gwf-ic'), set by subclasses
+    that are registered in FNAMES/FTYPES -- see the FNAMES docstring above."""
 
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore

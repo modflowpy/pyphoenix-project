@@ -17,6 +17,7 @@ import keyword
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeAlias
 
 from modflow_devtools.dfns.schema import (
     Array,
@@ -24,16 +25,24 @@ from modflow_devtools.dfns.schema import (
     Double,
     File,
     Integer,
-    Keyword as KeywordField,
-    List as ListField,
     Record,
     String,
+)
+from modflow_devtools.dfns.schema import (
+    Keyword as KeywordField,
+)
+from modflow_devtools.dfns.schema import (
+    List as ListField,
+)
+from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
 
 from .overrides import apply as apply_override
 
-FieldV3 = KeywordField | Integer | Double | String | Array | Record | UnionField | ListField | File
+FieldV3: TypeAlias = (
+    KeywordField | Integer | Double | String | Array | Record | UnionField | ListField | File
+)
 
 # DFN-level routing helpers
 
@@ -309,9 +318,7 @@ def skip_reason(f: FieldV3) -> str | None:
 # Field iteration
 
 
-def flat_fields(
-    component: Component, *, developmode: bool = False
-) -> list[tuple[str, FieldV3]]:
+def flat_fields(component: Component, *, developmode: bool = False) -> list[tuple[str, FieldV3]]:
     """Return an ordered flat list of (block_name, field) for all blocks.
 
     Unlike the legacy schema, dev3 fields don't carry their own block name --
@@ -443,6 +450,7 @@ def field_metadata(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -
         kw["auto_from"] = "stress_period_data"
     if is_file_record(f):
         child = file_child(f)
+        assert child is not None  # is_file_record() already confirmed a File child exists
         kw["inout"] = "filein" if child.direction == "in" else "fileout"
     elif is_bare_file(f):
         kw["inout"] = "filein" if f.direction == "in" else "fileout"
@@ -628,7 +636,8 @@ def row_class(
             if optional:
                 return (
                     f"        {col['name']}: Optional[Path] = path(\n"
-                    f'            default=None, converter=_optional_path, inout="{inout}"{prefix_kw}\n'
+                    f"            default=None, converter=_optional_path, "
+                    f'inout="{inout}"{prefix_kw}\n'
                     f"        )"
                 )
             return f'        {col["name"]}: Path = path(converter=Path, inout="{inout}"{prefix_kw})'
@@ -641,7 +650,16 @@ def row_class(
             return f"        {col['name']}: Optional[{py_type}] = None"
         if meta:
             return f"        {col['name']}: {py_type} = field({margs})"
-        return f"        {col['name']}: {py_type}"
+        # A bare annotation here is equivalent to field() at runtime (both
+        # mean "no default") -- but mypy's attrs plugin doesn't recognize
+        # field() (a flopy4.mf6.spec wrapper, not attrs.field itself) as a
+        # field specifier, so it can't tell field()-declared columns above
+        # (e.g. pk=/cellid=) don't actually have a default either. Left
+        # bare, that misreading makes mypy treat *this* column as a
+        # "non-default attribute after a default attribute". Always going
+        # through field() keeps every column's mypy-visible shape
+        # consistent and side-steps the false positive.
+        return f"        {col['name']}: {py_type} = field()"
 
     required = [col for col in schema_list if not _is_optional(col)]
     optional = [col for col in schema_list if _is_optional(col)]
@@ -665,7 +683,15 @@ def row_class(
     boundname_cols = [col for col in optional if col["role"] == "boundname"]
 
     lines = ["    @attrs.define"]
-    lines.append(f"    class {class_name}(Row):")
+    # class_name == "Row" (the period-block case) needs the base written as
+    # the aliased `_Row` (imported as `Row as _Row`, see make.py): plain
+    # `class Row(Row):` makes the base unresolvable to mypy (the name gets
+    # shadowed by the class being defined before the base expression is
+    # "seen"), even though Python itself resolves it fine at runtime. Other
+    # row classes (PackagedataRow, ConnectiondataRow, ...) don't collide
+    # with the import name, so they stay on plain `Row`.
+    _row_base = "_Row" if class_name == "Row" else "Row"
+    lines.append(f"    class {class_name}({_row_base}):")
     for col in required:
         lines.append(_field_line(col, optional=False))
     for col in optional_non_boundname:
