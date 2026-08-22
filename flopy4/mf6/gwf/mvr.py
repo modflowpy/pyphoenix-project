@@ -18,17 +18,17 @@ class Mvr(Package):
 
     @attrs.define
     class PackagesRow(Row):
-        pname: Union[float, str]
+        pname: Union[float, str] = field()
         mname: Optional[Union[float, str]] = field(default=None, optional=True)
 
     @attrs.define
     class Row(_Row):
-        pname1: Union[float, str]
-        id1: int
-        pname2: Union[float, str]
-        id2: int
-        mvrtype: Union[float, str]
-        value: float
+        pname1: Union[float, str] = field()
+        id1: int = field(index=True)
+        pname2: Union[float, str] = field()
+        id2: int = field(index=True)
+        mvrtype: Union[float, str] = field()
+        value: float = field()
         mname1: Optional[Union[float, str]] = field(default=None, optional=True)
         mname2: Optional[Union[float, str]] = field(default=None, optional=True)
         aux: tuple = ()

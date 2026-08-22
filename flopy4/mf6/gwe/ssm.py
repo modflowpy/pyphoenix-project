@@ -15,13 +15,13 @@ class Ssm(Package):
 
     @attrs.define
     class SourcesRow(Row):
-        pname: Union[float, str]
-        srctype: Union[float, str]
-        auxname: Union[float, str]
+        pname: Union[float, str] = field()
+        srctype: Union[float, str] = field()
+        auxname: Union[float, str] = field()
 
     @attrs.define
     class FileinputRow(Row):
-        pname: Union[float, str]
+        pname: Union[float, str] = field()
         spc6_filename: Path = path(converter=Path, inout="filein", prefix=("SPC6",))
         mixed: Optional[str] = field(default=None, tagged=True, optional=True)
 

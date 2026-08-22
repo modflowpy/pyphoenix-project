@@ -263,27 +263,34 @@ class TestFilters:
         # field() metadata (pk=/etc.) replaces the old Schema/Column lookup --
         # the Row class itself is the schema.
         schema = [
-            {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
+            {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "pk": True},
             {"name": "strt", "role": "value", "dfn_type": "double"},
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
         result = row_class(schema, "PackagedataRow")
         assert "@attrs.define" in result
         assert "class PackagedataRow(Row):" in result
-        assert "ifno: int = field(pk=True)" in result
+        assert "ifno: int = field(index=True, pk=True)" in result
         assert "strt: float" in result
         assert "boundname: Optional[str] = field(default=None, optional=True)" in result
         assert "aux" not in result
 
     def test_row_class_feature_id_with_fk_uses_fk_metadata(self):
-        # A feature_id column with a real fk target emits fk=, not pk=.
+        # A feature_id column always carries index= (it needs MF6's 0-based/
+        # 1-based conversion); one with a real fk target also carries fk=,
+        # not pk= (pk and fk are mutually exclusive relational roles).
         schema = [
-            {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "fk": "packagedata.ifno"},
-            {"name": "iconn", "role": "feature_id", "dfn_type": "integer"},
+            {
+                "name": "ifno",
+                "role": "feature_id",
+                "dfn_type": "integer",
+                "fk": "packagedata.ifno",
+            },
+            {"name": "iconn", "role": "feature_id", "dfn_type": "integer", "pk": True},
         ]
         result = row_class(schema, "ConnectiondataRow")
-        assert 'ifno: int = field(fk="packagedata.ifno")' in result
-        assert "iconn: int = field(pk=True)" in result
+        assert 'ifno: int = field(index=True, fk="packagedata.ifno")' in result
+        assert "iconn: int = field(index=True, pk=True)" in result
 
     def test_row_class_period_has_aux_for_standard_stress(self):
         # Period Row (is_period=True) with no keystring: aux field present.

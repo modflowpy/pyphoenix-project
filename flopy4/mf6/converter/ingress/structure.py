@@ -209,8 +209,8 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
     exchange couples, or the model name(s) a solution applies to) that
     isn't recoverable from the referenced file's own content -- write it
     back onto the loaded child. A `Model`/`Package` target's trailing term
-    is just its pname (already handled by xattree's own naming), not state
-    to set here.
+    is just its pname, handled by the caller (`_resolve_bindings`) via
+    `Component.pname`, not state to set here.
     """
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.solution import Solution
@@ -348,16 +348,18 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             # (coupled model names / applicable models), not a name to
             # assign the loaded child itself.
             #
-            # name= only actually takes effect for "dict"-kind children
-            # below (Simulation.models/exchanges/solutions) -- xattree
-            # reconciles a "list"-kind child's name to f"{field}{index}"
-            # and an "only"-kind child's to the field name regardless of
-            # what's passed (confirmed both at load time here and at write
-            # time: Chd(name="custom")/Ic(name="custom") get renamed
-            # "chd0"/"ic" the same way on construction already, before
-            # this code ever runs). Passed through anyway for the dict
-            # case and because it's harmless (silently ignored) otherwise,
-            # not because it's expected to matter for "list"/"only".
+            # name= (xattree's own attribute) only actually takes effect
+            # for "dict"-kind children below (Simulation.models/exchanges/
+            # solutions) -- xattree reconciles a "list"-kind child's name
+            # to f"{field}{index}" and an "only"-kind child's to the field
+            # name regardless of what's passed (confirmed both at load
+            # time here and at write time: Chd(name="custom")/
+            # Ic(name="custom") get renamed "chd0"/"ic" the same way on
+            # construction already, before this code ever runs). Passed
+            # through anyway for the dict case and because it's harmless
+            # (silently ignored) otherwise. The real pname for "list"/
+            # "only"-kind children is instead preserved via the plain,
+            # xattree-unmanaged Component.pname field, set below.
             pname = (
                 str(row[2])
                 if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
@@ -369,6 +371,12 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 else target_cls.load(workspace / fname, name=pname)
             )
             child.filename = fname
+            if pname:
+                # Plain, xattree-unmanaged field (see Component.pname) --
+                # preserves the row's real pname for "list"/"only"-kind
+                # children even though xattree itself reconciles .name to
+                # a field-derived value regardless of what's passed above.
+                child.pname = pname
             _apply_binding_terms(child, row[2:])
             if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}

@@ -20,14 +20,14 @@ class Lkt(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        ifno: int = field(pk=True)
+        ifno: int = field(index=True, pk=True)
         strt: float = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
     class Row(_Row):
-        number: int = field(pk=True)
+        number: int = field(index=True)
         keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 

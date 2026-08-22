@@ -4,7 +4,7 @@ Companion to record.py's Record: where Record is one compound value with a
 leading trigger keyword (e.g. an inner options-block record), Row is one row
 of a repeating tabular block (packagedata, connectiondata, period data, ...).
 There is no separate Schema/Column description -- a Row class's own attrs
-fields, with metadata set via field()'s pk=/fk=/cellid=/time_series=/
+fields, with metadata set via field()'s index=/pk=/fk=/cellid=/time_series=/
 prefix=/tagged= kwargs, ARE the schema. structure.py/unstructure.py
 introspect the Row class directly via attrs.fields(), the same way
 record.py's from_tokens/to_tokens already do for Record.
@@ -185,7 +185,7 @@ class Row:
     def to_row(self) -> tuple:
         """Serialize this row to an MF6 token tuple.
 
-        pk/fk fields convert back to 1-based; cellid likewise, per element.
+        index fields convert back to 1-based; cellid likewise, per element.
         If the class declares _keyword, that token is emitted immediately
         before the first non-index field (matching where MF6 places a
         keystring arm's discriminator: after any leading feature index,
@@ -204,7 +204,7 @@ class Row:
                 continue
             if f.metadata.get("cellid"):
                 row.extend(int(c) + 1 for c in val)
-            elif f.metadata.get("pk") or f.metadata.get("fk"):
+            elif f.metadata.get("index"):
                 row.append(int(val) + 1)
             elif f.metadata.get("tagged"):
                 # Inline optional keyword (e.g. MIXED): emit the token only
@@ -268,7 +268,7 @@ class Row:
                 kwargs[f.name] = cellid
                 tok_idx += ncelldim
                 return
-            if f.metadata.get("pk") or f.metadata.get("fk"):
+            if f.metadata.get("index"):
                 kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
                 tok_idx += 1
                 return

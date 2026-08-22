@@ -72,6 +72,11 @@ class Wel(Package):
         block="options",
         optional=True,
     )
+    auto_flow_reduce_auxname: Optional[str] = field(
+        default=None,
+        block="options",
+        optional=True,
+    )
     ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,

@@ -46,6 +46,7 @@ def field(
     oc_action: str | None = None,
     oc_rtype: str | None = None,
     time_series: bool = False,
+    index: bool = False,
     pk: bool = False,
     fk: str | None = None,
     cellid: bool = False,
@@ -97,6 +98,8 @@ def field(
         metadata["oc_rtype"] = oc_rtype
     if time_series:
         metadata["time_series"] = True
+    if index:
+        metadata["index"] = True
     if pk:
         metadata["pk"] = True
     if fk:

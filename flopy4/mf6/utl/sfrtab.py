@@ -16,8 +16,8 @@ class Sfrtab(Package):
 
     @attrs.define
     class TableRow(Row):
-        xfraction: float
-        height: float
+        xfraction: float = field()
+        height: float = field()
         manfraction: Optional[float] = field(default=None, optional=True)
 
     nrow: Optional[int] = field(

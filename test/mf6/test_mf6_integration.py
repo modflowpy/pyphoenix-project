@@ -1290,9 +1290,15 @@ def test_gwf_mvr(function_tmpdir):
         stress_period_data={
             0: {
                 "pname1": np.array(["wel0"], dtype=object),
-                "id1": np.array([1], dtype=np.int64),
+                # 0-based Python-side index (the first boundary in wel0/
+                # drn0's own list) -- id1/id2 are DFN numeric_index fields
+                # (gwf-mvr.dfn: "the first well has an identifier of one"),
+                # so MF6's own 1-based file convention comes from the same
+                # +1-at-write-time conversion every other index/fk column
+                # uses, not a value supplied 1-based directly.
+                "id1": np.array([0], dtype=np.int64),
                 "pname2": np.array(["drn0"], dtype=object),
-                "id2": np.array([1], dtype=np.int64),
+                "id2": np.array([0], dtype=np.int64),
                 "mvrtype": np.array(["FACTOR"], dtype=object),
                 "value": np.array([0.5]),
             }

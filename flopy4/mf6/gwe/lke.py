@@ -20,7 +20,7 @@ class Lke(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        lakeno: int = field(pk=True)
+        lakeno: int = field(index=True, pk=True)
         strt: float = field()
         ktf: float = field()
         rbthcnd: float = field()
@@ -29,7 +29,7 @@ class Lke(Package):
 
     @attrs.define
     class Row(_Row):
-        number: int = field(pk=True)
+        number: int = field(index=True)
         keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 

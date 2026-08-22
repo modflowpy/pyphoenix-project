@@ -16,7 +16,7 @@ class Vsc(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        iviscspec: int = field(pk=True)
+        iviscspec: int = field(index=True, pk=True)
         dviscdc: float = field()
         cviscref: float = field()
         modelname: Union[float, str] = field()

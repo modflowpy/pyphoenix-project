@@ -26,7 +26,7 @@ class Prp(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        irptno: int = field(pk=True)
+        irptno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         xrpt: float = field()
         yrpt: float = field()
@@ -36,11 +36,11 @@ class Prp(Package):
 
     @attrs.define
     class ReleasetimesRow(Row):
-        time: float
+        time: float = field()
 
     @attrs.define
     class Row(_Row):
-        keyword: str
+        keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 
     boundnames: bool = field(

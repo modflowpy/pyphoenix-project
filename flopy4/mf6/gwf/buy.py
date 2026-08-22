@@ -16,7 +16,7 @@ class Buy(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        irhospec: int = field(pk=True)
+        irhospec: int = field(index=True, pk=True)
         drhodc: float = field()
         crhoref: float = field()
         modelname: Union[float, str] = field()

@@ -18,7 +18,7 @@ class Csub(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        icsubno: int = field(pk=True)
+        icsubno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         cdelay: Union[float, str] = field()
         pcs0: float = field()
@@ -60,6 +60,16 @@ class Csub(Package):
     )
     beta: Optional[float] = field(
         default=4.6512e-10,
+        block="options",
+        optional=True,
+    )
+    elastic_inelastic_smoothing: bool = field(
+        default=False,
+        block="options",
+        optional=True,
+    )
+    strict_effective_stress: bool = field(
+        default=False,
         block="options",
         optional=True,
     )

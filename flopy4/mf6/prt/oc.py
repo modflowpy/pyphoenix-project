@@ -22,7 +22,7 @@ class Oc(Package):
 
     @attrs.define
     class TracktimesRow(Row):
-        time: float
+        time: float = field()
 
     budget_file: Optional[Path] = path(
         default=None,
@@ -96,6 +96,11 @@ class Oc(Package):
     track_timesfile: Optional[TrackTimesfile] = field(
         default=None,
         block="options",
+    )
+    scratch_buffer: bool = field(
+        default=False,
+        block="options",
+        optional=True,
     )
     ntracktimes: Optional[int] = field(
         default=None,

@@ -16,9 +16,9 @@ class Laktab(Package):
 
     @attrs.define
     class TableRow(Row):
-        stage: float
-        volume: float
-        sarea: float
+        stage: float = field()
+        volume: float = field()
+        sarea: float = field()
         barea: Optional[float] = field(default=None, optional=True)
 
     nrow: Optional[int] = field(

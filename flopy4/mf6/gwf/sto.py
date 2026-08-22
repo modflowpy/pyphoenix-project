@@ -18,7 +18,7 @@ class Sto(Package):
 
     @attrs.define
     class Row(_Row):
-        storage: str
+        storage: str = field()
 
     save_flows: bool = field(
         default=False,

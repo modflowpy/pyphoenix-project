@@ -20,7 +20,7 @@ class Lak(Package):
 
     @attrs.define
     class PackagedataRow(Row):
-        ifno: int = field(pk=True)
+        ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
         aux: tuple = ()
@@ -28,8 +28,8 @@ class Lak(Package):
 
     @attrs.define
     class ConnectiondataRow(Row):
-        ifno: int = field(fk="packagedata.ifno")
-        iconn: int = field(pk=True)
+        ifno: int = field(index=True, fk="packagedata.ifno")
+        iconn: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         claktype: Union[float, str] = field()
         bedleak: Union[float, str] = field()
@@ -40,14 +40,14 @@ class Lak(Package):
 
     @attrs.define
     class TablesRow(Row):
-        ifno: int = field(fk="packagedata.ifno")
+        ifno: int = field(index=True, fk="packagedata.ifno")
         tab6_filename: Path = path(converter=Path, inout="filein", prefix=("TAB6",))
 
     @attrs.define
     class OutletsRow(Row):
-        outletno: int = field(pk=True)
-        lakein: int = field(fk="packagedata.ifno")
-        lakeout: int = field(fk="packagedata.ifno")
+        outletno: int = field(index=True, pk=True)
+        lakein: int = field(index=True, fk="packagedata.ifno")
+        lakeout: int = field(index=True, fk="packagedata.ifno")
         couttype: Union[float, str] = field()
         invert: Union[float, str] = field(time_series=True)
         width: Union[float, str] = field(time_series=True)
@@ -56,7 +56,7 @@ class Lak(Package):
 
     @attrs.define
     class Row(_Row):
-        number: int = field(pk=True)
+        number: int = field(index=True)
         keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 
@@ -139,6 +139,11 @@ class Lak(Package):
     )
     surfdep: Optional[float] = field(
         default=None,
+        block="options",
+        optional=True,
+    )
+    implicit: bool = field(
+        default=False,
         block="options",
         optional=True,
     )

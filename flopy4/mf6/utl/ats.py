@@ -14,7 +14,7 @@ class Ats(Package):
 
     @attrs.define
     class PerioddataRow(Row):
-        iperats: int = field(pk=True)
+        iperats: int = field(index=True, pk=True)
         dt0: float = field()
         dtmin: float = field()
         dtmax: float = field()

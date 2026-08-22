@@ -536,8 +536,8 @@ def row_class(
         {{ block_schema | row_class("PackagedataRow") }}
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
-    real metadata (``pk=``/``fk=``/``cellid=``/``time_series=``/``prefix=``/
-    ``tagged=``, via ``field()``) -- the class itself is the schema;
+    real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
+    ``prefix=``/``tagged=``, via ``field()``) -- the class itself is the schema;
     structure.py/unstructure.py introspect it directly (see flopy4.mf6.row).
     No separate Schema/Column description is emitted.
 
@@ -606,9 +606,10 @@ def row_class(
         if role == "cellid":
             meta["cellid"] = True
         elif role == "feature_id":
+            meta["index"] = True
             if col.get("fk"):
                 meta["fk"] = col["fk"]
-            else:
+            elif col.get("pk"):
                 meta["pk"] = True
         elif role == "inline_keyword":
             meta["tagged"] = True
@@ -724,7 +725,7 @@ class ColumnSpec:
     is_cellid: bool  # shape=["ncelldim"] -- stored as object-dtype tuple attr
     is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
     is_row_keyword: bool  # optional keyword -- stored as bool attr
-    is_index: bool  # pk or fk column: 0-based index written as 1-based (+1 at write time)
+    is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
 
 
 def find_keystring_union(list_field: ListField) -> UnionField | None:
@@ -785,11 +786,15 @@ def list_columns(f: ListField, component_name: str = "") -> list[ColumnSpec]:
                 is_prefix=is_keyword and not is_optional,
                 is_row_keyword=is_keyword and is_optional,
                 # role="feature_id" implies MF6's numeric 0-based-Python/1-based-
-                # file conversion (structure.py: int(...) - 1) -- only sound for
-                # integer indices. String pk/fk (e.g. MVR's `pname`, a package
-                # *name* reference, not a numeric one) must stay role="value".
-                is_index=isinstance(col, Integer)
-                and bool(getattr(col, "pk", False) or getattr(col, "fk", None)),
+                # file conversion (structure.py: int(...) - 1). dev3's `index`
+                # attribute (split out of the old overloaded pk/fk semantics,
+                # modflow-devtools 41dca93) is now the direct, authoritative
+                # signal for this -- no longer inferred from pk/fk-ness (a
+                # string pk/fk, e.g. MVR's `pname`, a package *name* reference
+                # not a numeric one, is never `index`, so the old
+                # isinstance(col, Integer)-guarded pk-or-fk heuristic this
+                # replaced is no longer needed either).
+                is_index=bool(getattr(col, "index", False)),
             )
         )
     return result

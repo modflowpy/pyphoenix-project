@@ -157,6 +157,8 @@ def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
             entry["role"] = "feature_id"
             if getattr(f, "fk", None):
                 entry["fk"] = f.fk
+            elif getattr(f, "pk", False):
+                entry["pk"] = True
         elif col.name == "boundname":
             entry["role"] = "boundname"
             entry["dtype"] = "np.object_"
@@ -315,9 +317,11 @@ def _is_oc_style_union(item: FieldV3) -> bool:
 
 
 def _is_index(f: FieldV3) -> bool:
-    # Integer-only: a string pk/fk (e.g. a name reference) isn't a numeric
-    # index needing the 0-based/1-based conversion "feature_id" implies.
-    return isinstance(f, Integer) and bool(getattr(f, "pk", False) or getattr(f, "fk", None))
+    # dev3's `index` attribute is the direct, authoritative signal for
+    # "needs the 0-based/1-based conversion 'feature_id' implies" -- split
+    # out of the old overloaded pk/fk semantics (modflow-devtools 41dca93).
+    # A string pk/fk (e.g. a name reference) is never `index`.
+    return bool(getattr(f, "index", False))
 
 
 def _keystring_has_index(list_field: FieldV3, union: UnionField) -> bool:
