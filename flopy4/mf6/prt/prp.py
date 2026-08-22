@@ -5,12 +5,10 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -25,7 +23,7 @@ class Prp(Package):
         timesfile: str = attrs.field()
 
     @attrs.define
-    class PackagedataRow(Row):
+    class Packagedata(Item):
         irptno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         xrpt: float = field()
@@ -35,11 +33,11 @@ class Prp(Package):
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class ReleasetimesRow(Row):
+    class Releasetimes(Item):
         time: float = field()
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
 
@@ -140,17 +138,17 @@ class Prp(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
-    releasetimes: Optional[list[ReleasetimesRow]] = field(
+    releasetimes: Optional[list[Releasetimes]] = field(
         default=None,
         block="releasetimes",
         auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -158,7 +156,6 @@ class Prp(Package):
         fill_forward=True,
     )
 
-
-PrpRow = Prp.Row
-PrpPackagedataRow = Prp.PackagedataRow
-PrpReleasetimesRow = Prp.ReleasetimesRow
+PrpStressPeriodData = Prp.StressPeriodData
+PrpPackagedata = Prp.Packagedata
+PrpReleasetimes = Prp.Releasetimes

@@ -4,8 +4,8 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
 
 
@@ -14,7 +14,7 @@ class Fmi(Package):
     dfn_name: ClassVar[str] = "gwe-fmi"
 
     @attrs.define
-    class PackagedataRow(Row):
+    class Packagedata(Item):
         flowtype: Union[float, str] = field()
         fname: Path = path(converter=Path, inout="filein")
         aux: tuple = ()
@@ -29,10 +29,9 @@ class Fmi(Package):
         block="options",
         optional=True,
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
     )
 
-
-FmiPackagedataRow = Fmi.PackagedataRow
+FmiPackagedata = Fmi.Packagedata

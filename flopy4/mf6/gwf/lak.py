@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,7 +17,7 @@ class Lak(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class PackagedataRow(Row):
+    class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
@@ -27,7 +25,7 @@ class Lak(Package):
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class ConnectiondataRow(Row):
+    class Connectiondata(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
         iconn: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
@@ -39,12 +37,12 @@ class Lak(Package):
         connwidth: float = field()
 
     @attrs.define
-    class TablesRow(Row):
+    class Tables(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
         tab6_filename: Path = path(converter=Path, inout="filein", prefix=("TAB6",))
 
     @attrs.define
-    class OutletsRow(Row):
+    class Outlets(Item):
         outletno: int = field(index=True, pk=True)
         lakein: int = field(index=True, fk="packagedata.ifno")
         lakeout: int = field(index=True, fk="packagedata.ifno")
@@ -55,7 +53,7 @@ class Lak(Package):
         slope: Union[float, str] = field(time_series=True)
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         number: int = field(index=True)
         keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
@@ -179,26 +177,26 @@ class Lak(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
-    connectiondata: Optional[list[ConnectiondataRow]] = field(
+    connectiondata: Optional[list[Connectiondata]] = field(
         default=None,
         block="connectiondata",
     )
-    tables: Optional[list[TablesRow]] = field(
+    tables: Optional[list[Tables]] = field(
         default=None,
         block="tables",
         auto_from="tables",
     )
-    outlets: Optional[list[OutletsRow]] = field(
+    outlets: Optional[list[Outlets]] = field(
         default=None,
         block="outlets",
         auto_from="outlets",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -206,9 +204,8 @@ class Lak(Package):
         fill_forward=True,
     )
 
-
-LakRow = Lak.Row
-LakPackagedataRow = Lak.PackagedataRow
-LakConnectiondataRow = Lak.ConnectiondataRow
-LakTablesRow = Lak.TablesRow
-LakOutletsRow = Lak.OutletsRow
+LakStressPeriodData = Lak.StressPeriodData
+LakPackagedata = Lak.Packagedata
+LakConnectiondata = Lak.Connectiondata
+LakTables = Lak.Tables
+LakOutlets = Lak.Outlets

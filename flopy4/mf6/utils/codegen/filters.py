@@ -525,21 +525,26 @@ def python_repr(v) -> str:
     return "\n".join(lines)
 
 
-def row_class(
+def pascal_name(name: str) -> str:
+    """snake_case (or a plain lowercase word) -> PascalCase, e.g.
+    ``stress_period_data`` -> ``StressPeriodData``, ``packagedata`` ->
+    ``Packagedata``."""
+    return "".join(part.capitalize() for part in name.split("_"))
+
+
+def item_class(
     schema_list: list[dict], class_name: str, is_period: bool = False, has_aux: bool = False
 ) -> str:
-    """Render a Row subclass (flopy4.mf6.row.Row) for list block construction.
+    """Render an Item subclass (flopy4.mf6.item.Item) for list block construction.
 
     Called as::
 
-        {{ spec.period_schema | row_class("Row", True) }}
-        {{ block_schema | row_class("PackagedataRow") }}
+        {{ spec.period_schema | item_class("StressPeriodData", True) }}
+        {{ block_schema | item_class("Packagedata") }}
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
     real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
-    ``prefix=``/``tagged=``, via ``field()``) -- the class itself is the schema;
-    structure.py/unstructure.py introspect it directly (see flopy4.mf6.row).
-    No separate Schema/Column description is emitted.
+    ``prefix=``/``tagged=``, via ``field()``) -- the class itself is the schema.
 
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.
@@ -616,7 +621,7 @@ def row_class(
         if col.get("time_series"):
             meta["time_series"] = True
         if _is_optional(col):
-            # Needed even for time_series fields: _n_fixed_tokens() (row.py)
+            # Needed even for time_series fields: _n_fixed_tokens() (item.py)
             # uses this to tell "always present" fixed columns apart from
             # trailing columns that may be entirely absent from a given row
             # (e.g. EVT's pxdp/petm/petm0, only written when
@@ -684,15 +689,7 @@ def row_class(
     boundname_cols = [col for col in optional if col["role"] == "boundname"]
 
     lines = ["    @attrs.define"]
-    # class_name == "Row" (the period-block case) needs the base written as
-    # the aliased `_Row` (imported as `Row as _Row`, see make.py): plain
-    # `class Row(Row):` makes the base unresolvable to mypy (the name gets
-    # shadowed by the class being defined before the base expression is
-    # "seen"), even though Python itself resolves it fine at runtime. Other
-    # row classes (PackagedataRow, ConnectiondataRow, ...) don't collide
-    # with the import name, so they stay on plain `Row`.
-    _row_base = "_Row" if class_name == "Row" else "Row"
-    lines.append(f"    class {class_name}({_row_base}):")
+    lines.append(f"    class {class_name}(Item):")
     for col in required:
         lines.append(_field_line(col, optional=False))
     for col in optional_non_boundname:

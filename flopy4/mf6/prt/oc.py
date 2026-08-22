@@ -5,9 +5,9 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
 
 
@@ -21,7 +21,7 @@ class Oc(Package):
         timesfile: str = attrs.field()
 
     @attrs.define
-    class TracktimesRow(Row):
+    class Tracktimes(Item):
         time: float = field()
 
     budget_file: Optional[Path] = path(
@@ -119,11 +119,10 @@ class Oc(Package):
         oc_action="print",
         oc_rtype="budget",
     )
-    tracktimes: Optional[list[TracktimesRow]] = field(
+    tracktimes: Optional[list[Tracktimes]] = field(
         default=None,
         block="tracktimes",
         auto_from="tracktimes",
     )
 
-
-OcTracktimesRow = Oc.TracktimesRow
+OcTracktimes = Oc.Tracktimes

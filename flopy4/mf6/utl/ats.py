@@ -3,8 +3,8 @@ from typing import ClassVar, Optional
 
 import attrs
 
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field
 
 
@@ -13,7 +13,7 @@ class Ats(Package):
     dfn_name: ClassVar[str] = "utl-ats"
 
     @attrs.define
-    class PerioddataRow(Row):
+    class Perioddata(Item):
         iperats: int = field(index=True, pk=True)
         dt0: float = field()
         dtmin: float = field()
@@ -25,11 +25,10 @@ class Ats(Package):
         default=1,
         block="dimensions",
     )
-    perioddata: Optional[list[PerioddataRow]] = field(
+    perioddata: Optional[list[Perioddata]] = field(
         default=None,
         block="perioddata",
         auto_from="perioddata",
     )
 
-
-AtsPerioddataRow = Ats.PerioddataRow
+AtsPerioddata = Ats.Perioddata

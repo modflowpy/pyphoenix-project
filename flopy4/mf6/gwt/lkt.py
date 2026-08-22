@@ -5,11 +5,9 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,14 +17,14 @@ class Lkt(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class PackagedataRow(Row):
+    class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         number: int = field(index=True)
         keyword: str = field()
         value: Optional[object] = field(default=None, optional=True)
@@ -106,11 +104,11 @@ class Lkt(Package):
         optional=True,
         inout="filein",
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -118,6 +116,5 @@ class Lkt(Package):
         fill_forward=True,
     )
 
-
-LktRow = Lkt.Row
-LktPackagedataRow = Lkt.PackagedataRow
+LktStressPeriodData = Lkt.StressPeriodData
+LktPackagedata = Lkt.Packagedata

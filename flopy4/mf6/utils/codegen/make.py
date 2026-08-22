@@ -31,7 +31,7 @@ from modflow_devtools.dfns.schema import (
 )
 
 from . import filters
-from .filters import ColumnSpec, FieldV3, _dq, python_repr, row_class
+from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_repr
 from .overrides import (
     always_emit_blocks,
     block_dim_override,
@@ -122,7 +122,7 @@ class ComponentSpec:
 # Both static list blocks and standard (non-keystring) period blocks are
 # List[Record] under dev3 -- including a real cellid Array field for period
 # blocks, which the legacy schema had to synthesize. One function builds the
-# list[dict] "schema" (the intermediate format row_class/schema_class render)
+# list[dict] "schema" (the intermediate format item_class/schema_class render)
 # for both cases; only the surrounding FieldSpec (type annotation, block=
 # vs fill_forward= metadata) differs between them.
 
@@ -674,7 +674,7 @@ def _new_codegen_imports(
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
     has_classvar = True
-    # Union[float, str] is used by row_class() for time_series and np.object_ columns.
+    # Union[float, str] is used by item_class() for time_series and np.object_ columns.
     # Check both the period schema and all static block schemas.
     _all_schema_cols = list(period_schema or []) + [
         col for cols in (block_schemas or {}).values() for col in cols
@@ -685,13 +685,13 @@ def _new_codegen_imports(
         if col.get("role") not in ("keystring_value", "boundname") and not col.get("prefix")
     )
     # prefix= row columns (file references, e.g. LAK tables' TAB6 FILEIN)
-    # become Path fields via path() in row_class(), not Union[float, str].
+    # become Path fields via path() in item_class(), not Union[float, str].
     _row_path_cols = [col for col in _all_schema_cols if col.get("prefix")]
     has_row_path_cols = bool(_row_path_cols)
     has_optional_row_path_cols = any(col.get("optional") for col in _row_path_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
     # field(), same as any other codegen-v2 field -- checked separately from
-    # has_field_call since these live inside row_class()'s rendered text, not
+    # has_field_call since these live inside item_class()'s rendered text, not
     # in the package's own top-level field_specs.
     _row_has_field_call = any(
         col.get("role") in ("cellid", "feature_id", "inline_keyword") or col.get("time_series")
@@ -726,7 +726,7 @@ def _new_codegen_imports(
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if has_period_schema:
-        flopy4.append("from flopy4.mf6.item import Item as Row")
+        flopy4.append("from flopy4.mf6.item import Item")
     _spec_parts: list[str] = []
     if has_field_call or _row_has_field_call:
         _spec_parts.append("field")
@@ -921,8 +921,8 @@ def build_component_spec(
             )
         )
 
-    # BlockPropertySpec-driven fields: one Optional[list[RowClass]] per block.
-    # The Row class's own fields are the schema -- see row_class() -- no
+    # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block.
+    # The Item class's own fields are the schema -- see item_class() -- no
     # separate __*_schema__ ClassVar needed.
     _always_emit_set = set(always_emit_blocks(component.name))
     for bp in block_properties:
@@ -937,12 +937,12 @@ def build_component_spec(
             _meta["auto_from"] = bp.block_name
         if bp.block_name in _always_emit_set:
             _meta["always_emit"] = True
-        _row_cls_name = bp.block_name.capitalize() + "Row"
+        _item_cls_name = pascal_name(bp.block_name)
         extra_specs.append(
             FieldSpec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
-                type_annotation=f"Optional[list[{_row_cls_name}]]",
+                type_annotation=f"Optional[list[{_item_cls_name}]]",
                 spec_call=_ml_field(metadata=_meta),
                 generatable=True,
             )
@@ -955,7 +955,7 @@ def build_component_spec(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[Row]]]",
+                type_annotation="Optional[dict[int, list[StressPeriodData]]]",
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
@@ -1067,7 +1067,8 @@ def _get_env() -> jinja2.Environment:
         undefined=jinja2.StrictUndefined,
     )
     env.filters["python_repr"] = python_repr
-    env.filters["row_class"] = row_class
+    env.filters["item_class"] = item_class
+    env.filters["pascal_name"] = pascal_name
     return env
 
 

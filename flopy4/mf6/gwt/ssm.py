@@ -4,8 +4,8 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
 
 
@@ -14,13 +14,13 @@ class Ssm(Package):
     dfn_name: ClassVar[str] = "gwt-ssm"
 
     @attrs.define
-    class SourcesRow(Row):
+    class Sources(Item):
         pname: Union[float, str] = field()
         srctype: Union[float, str] = field()
         auxname: Union[float, str] = field()
 
     @attrs.define
-    class FileinputRow(Row):
+    class Fileinput(Item):
         pname: Union[float, str] = field()
         spc6_filename: Path = path(converter=Path, inout="filein", prefix=("SPC6",))
         mixed: Optional[str] = field(default=None, tagged=True, optional=True)
@@ -35,16 +35,15 @@ class Ssm(Package):
         block="options",
         optional=True,
     )
-    sources: Optional[list[SourcesRow]] = field(
+    sources: Optional[list[Sources]] = field(
         default=None,
         block="sources",
         always_emit=True,
     )
-    fileinput: Optional[list[FileinputRow]] = field(
+    fileinput: Optional[list[Fileinput]] = field(
         default=None,
         block="fileinput",
     )
 
-
-SsmSourcesRow = Ssm.SourcesRow
-SsmFileinputRow = Ssm.FileinputRow
+SsmSources = Ssm.Sources
+SsmFileinput = Ssm.Fileinput

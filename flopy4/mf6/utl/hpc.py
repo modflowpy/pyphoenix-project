@@ -3,8 +3,8 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field
 
 
@@ -13,7 +13,7 @@ class Hpc(Package):
     dfn_name: ClassVar[str] = "utl-hpc"
 
     @attrs.define
-    class PartitionsRow(Row):
+    class Partitions(Item):
         mname: Union[float, str] = field()
         mrank: int = field()
 
@@ -22,10 +22,9 @@ class Hpc(Package):
         block="options",
         optional=True,
     )
-    partitions: Optional[list[PartitionsRow]] = field(
+    partitions: Optional[list[Partitions]] = field(
         default=None,
         block="partitions",
     )
 
-
-HpcPartitionsRow = Hpc.PartitionsRow
+HpcPartitions = Hpc.Partitions

@@ -12,16 +12,6 @@
 {% for line in spec.imports.flopy4 %}
 {{ line }}
 {% endfor %}
-{% if spec.period_schema %}
-{# The period Row class is always literally named "Row" (see row_class() in
-   filters.py) -- `class Row(Row):` doesn't resolve for mypy (the name gets
-   shadowed by the class being defined before the base expression is
-   "seen"), even though Python itself resolves it fine at runtime. This
-   alias gives that one class a distinct base name; other (block-schema)
-   row classes don't collide, so they subclass plain `Row` directly. #}
-
-_Row = Row
-{% endif %}
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -57,11 +47,11 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 
 {% endfor %}
 {% for block_name, schema in spec.block_schemas.items() %}
-{{ schema | row_class(block_name | capitalize + "Row", False, block_name == "packagedata") }}
+{{ schema | item_class(block_name | pascal_name, False, block_name == "packagedata") }}
 
 {% endfor %}
 {% if spec.period_schema %}
-{{ spec.period_schema | row_class("Row", True) }}
+{{ spec.period_schema | item_class("StressPeriodData", True) }}
 
 {% endif %}
 {% for f in spec.fields %}
@@ -74,9 +64,9 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% if spec.period_schema or spec.block_schemas %}
 
 {% if spec.period_schema %}
-{{ spec.class_name }}Row = {{ spec.class_name }}.Row
+{{ spec.class_name }}StressPeriodData = {{ spec.class_name }}.StressPeriodData
 {% endif %}
 {% for block_name in spec.block_schemas %}
-{{ spec.class_name }}{{ block_name | capitalize }}Row = {{ spec.class_name }}.{{ block_name | capitalize }}Row
+{{ spec.class_name }}{{ block_name | pascal_name }} = {{ spec.class_name }}.{{ block_name | pascal_name }}
 {% endfor %}
 {% endif %}

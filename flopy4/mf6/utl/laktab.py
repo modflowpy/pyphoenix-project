@@ -3,8 +3,8 @@ from typing import ClassVar, Optional
 
 import attrs
 
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field
 
 
@@ -15,7 +15,7 @@ class Laktab(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class TableRow(Row):
+    class Table(Item):
         stage: float = field()
         volume: float = field()
         sarea: float = field()
@@ -29,11 +29,10 @@ class Laktab(Package):
         default=None,
         block="dimensions",
     )
-    table: Optional[list[TableRow]] = field(
+    table: Optional[list[Table]] = field(
         default=None,
         block="table",
         auto_from="table",
     )
 
-
-LaktabTableRow = Laktab.TableRow
+LaktabTable = Laktab.Table

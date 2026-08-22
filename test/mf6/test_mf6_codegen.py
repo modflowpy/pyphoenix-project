@@ -26,11 +26,11 @@ from flopy4.mf6.utils.codegen.filters import (
     can_expand_record,
     class_name,
     is_generatable,
+    item_class,
     model_abbr,
     module_name,
     output_path,
     py_type,
-    row_class,
     safe_name,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
@@ -255,27 +255,26 @@ class TestFilters:
         )
         assert is_generatable(f)
 
-    def test_row_class_empty_returns_empty_string(self):
-        assert row_class([], "Row") == ""
+    def test_item_class_empty_returns_empty_string(self):
+        assert item_class([], "StressPeriodData") == ""
 
-    def test_row_class_static_block_no_aux(self):
-        # Static block Row (is_period=False default): no aux field. Real
-        # field() metadata (pk=/etc.) replaces the old Schema/Column lookup --
-        # the Row class itself is the schema.
+    def test_item_class_static_block_no_aux(self):
+        # Static block item (is_period=False default): no aux field. Real
+        # field() metadata (pk=/etc.) is the schema.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "pk": True},
             {"name": "strt", "role": "value", "dfn_type": "double"},
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
-        result = row_class(schema, "PackagedataRow")
+        result = item_class(schema, "Packagedata")
         assert "@attrs.define" in result
-        assert "class PackagedataRow(Row):" in result
+        assert "class Packagedata(Item):" in result
         assert "ifno: int = field(index=True, pk=True)" in result
         assert "strt: float" in result
         assert "boundname: Optional[str] = field(default=None, optional=True)" in result
         assert "aux" not in result
 
-    def test_row_class_feature_id_with_fk_uses_fk_metadata(self):
+    def test_item_class_feature_id_with_fk_uses_fk_metadata(self):
         # A feature_id column always carries index= (it needs MF6's 0-based/
         # 1-based conversion); one with a real fk target also carries fk=,
         # not pk= (pk and fk are mutually exclusive relational roles).
@@ -288,31 +287,31 @@ class TestFilters:
             },
             {"name": "iconn", "role": "feature_id", "dfn_type": "integer", "pk": True},
         ]
-        result = row_class(schema, "ConnectiondataRow")
+        result = item_class(schema, "Connectiondata")
         assert 'ifno: int = field(index=True, fk="packagedata.ifno")' in result
         assert "iconn: int = field(index=True, pk=True)" in result
 
-    def test_row_class_period_has_aux_for_standard_stress(self):
-        # Period Row (is_period=True) with no keystring: aux field present.
+    def test_item_class_period_has_aux_for_standard_stress(self):
+        # Period item (is_period=True) with no keystring: aux field present.
         schema = [
             {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
             {"name": "head", "role": "value", "dfn_type": "double"},
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
-        result = row_class(schema, "Row", is_period=True)
+        result = item_class(schema, "StressPeriodData", is_period=True)
         assert "aux: tuple = ()" in result
 
-    def test_row_class_period_keystring_no_aux(self):
-        # Period Row with keystring role: no aux even with is_period=True.
+    def test_item_class_period_keystring_no_aux(self):
+        # Period item with keystring role: no aux even with is_period=True.
         schema = [
             {"name": "number", "role": "feature_id", "dfn_type": "integer"},
             {"name": "keyword", "role": "keystring", "dfn_type": "string"},
             {"name": "value", "role": "keystring_value", "dfn_type": "object"},
         ]
-        result = row_class(schema, "Row", is_period=True)
+        result = item_class(schema, "StressPeriodData", is_period=True)
         assert "aux" not in result
 
-    def test_row_class_field_order_matches_schema(self):
+    def test_item_class_field_order_matches_schema(self):
         # Required fields declared in schema order, then optional.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
@@ -320,31 +319,31 @@ class TestFilters:
             {"name": "nlakeconn", "role": "value", "dfn_type": "integer"},
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
-        result = row_class(schema, "PackagedataRow")
+        result = item_class(schema, "Packagedata")
         lines = [ln.strip() for ln in result.splitlines() if ":" in ln and "class" not in ln]
         names = [ln.split(":")[0] for ln in lines]
         assert names == ["ifno", "strt", "nlakeconn", "boundname"]
 
-    def test_row_class_inline_keyword_optional(self):
+    def test_item_class_inline_keyword_optional(self):
         # inline_keyword role -> Optional[str], tagged=True (same convention
         # record.py's Record uses for optional keyword tokens).
         schema = [
             {"name": "pname", "role": "value", "dfn_type": "string", "dtype": "np.object_"},
             {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
         ]
-        result = row_class(schema, "FileinputRow")
+        result = item_class(schema, "Fileinput")
         assert "mixed: Optional[str] = field(default=None, tagged=True, optional=True)" in result
 
-    def test_row_class_cellid_metadata(self):
+    def test_item_class_cellid_metadata(self):
         schema = [{"name": "cellid", "role": "cellid", "dfn_type": "integer"}]
-        result = row_class(schema, "Row", is_period=True)
+        result = item_class(schema, "StressPeriodData", is_period=True)
         assert "cellid: tuple = field(cellid=True)" in result
 
-    def test_row_class_time_series_metadata(self):
+    def test_item_class_time_series_metadata(self):
         schema = [
             {"name": "head", "role": "value", "dfn_type": "double", "time_series": True},
         ]
-        result = row_class(schema, "Row", is_period=True)
+        result = item_class(schema, "StressPeriodData", is_period=True)
         assert "head: Union[float, str] = field(time_series=True)" in result
 
 
@@ -472,7 +471,7 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     assert spec.period_schema, "MVR should have a period_schema"
     assert "_stress_period_data" in field_map
     spd_field = field_map["_stress_period_data"]
-    assert spd_field.type_annotation == "Optional[dict[int, list[Row]]]"
+    assert spd_field.type_annotation == "Optional[dict[int, list[StressPeriodData]]]"
     # Packages block → single recarray field
     assert "packages" in field_map or "packages" in spec.block_schemas
 

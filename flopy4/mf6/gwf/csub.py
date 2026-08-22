@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import FloatArrayLike, _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -17,7 +15,7 @@ class Csub(Package):
     dfn_name: ClassVar[str] = "gwf-csub"
 
     @attrs.define
-    class PackagedataRow(Row):
+    class Packagedata(Item):
         icsubno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         cdelay: Union[float, str] = field()
@@ -33,7 +31,7 @@ class Csub(Package):
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         sig0: Union[float, str] = field(time_series=True)
         aux: tuple = ()
@@ -209,7 +207,7 @@ class Csub(Package):
         block="dimensions",
         optional=True,
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
@@ -240,7 +238,7 @@ class Csub(Package):
         netcdf=True,
         optional=True,
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -248,6 +246,5 @@ class Csub(Package):
         fill_forward=True,
     )
 
-
-CsubRow = Csub.Row
-CsubPackagedataRow = Csub.PackagedataRow
+CsubStressPeriodData = Csub.StressPeriodData
+CsubPackagedata = Csub.Packagedata

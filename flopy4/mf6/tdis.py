@@ -5,7 +5,7 @@ import attrs
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from flopy4.mf6.item import Item as Row
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils.time import Time
@@ -16,7 +16,7 @@ class Tdis(Package):
     dfn_name: ClassVar[str] = "sim-tdis"
 
     @attrs.define
-    class PeriodData(Row):
+    class PeriodData(Item):
         perlen: float
         nstp: int
         tsmult: float

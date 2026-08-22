@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,7 +17,7 @@ class Evt(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         surface: Union[float, str] = field(time_series=True)
         rate: Union[float, str] = field(time_series=True)
@@ -93,7 +91,7 @@ class Evt(Package):
         default=None,
         block="dimensions",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -101,5 +99,4 @@ class Evt(Package):
         fill_forward=True,
     )
 
-
-EvtRow = Evt.Row
+EvtStressPeriodData = Evt.StressPeriodData
