@@ -63,18 +63,6 @@ def apply(dfn_name: str, f: FieldT) -> FieldT:
     return f.model_copy(update=patches)
 
 
-def extra_list_blocks(dfn_name: str) -> list[dict]:
-    """Return extra list block definitions for a DFN missing from v2 TOML conversion.
-
-    Used for list blocks dropped by dfn2toml (e.g. SSM's sources recarray, which
-    has no dimensions block and is not captured in v2 TOML).  Each dict has keys:
-    ``block``, ``dim``, and ``columns`` (list of column dicts with name/type/longname).
-    """
-    return list(
-        _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("extra_list_blocks", [])
-    )
-
-
 def replace_list_fields(dfn_name: str) -> list[dict]:
     """Return path field definitions that replace a list block in a DFN.
 
@@ -91,20 +79,6 @@ def replace_list_fields(dfn_name: str) -> list[dict]:
 def replace_list_blocks(dfn_name: str) -> set[str]:
     """Return the set of block names whose list fields are replaced in this DFN."""
     return {entry["block"] for entry in replace_list_fields(dfn_name)}
-
-
-def extra_period_fields(dfn_name: str) -> list[dict]:
-    """Return embedded-keystring period field definitions for a DFN.
-
-    Used for advanced packages (LAK, MAW, SFR) whose period block uses
-    ``feature_num KEYWORD value`` rows rather than columnar arrays.  Each
-    dict requires ``keyword`` and ``feature_dim``; ``prefix`` is optional
-    (py_name is derived as ``{prefix}_{keyword.lower()}`` when set, else
-    ``keyword.lower()``); ``dtype`` defaults to ``"double precision"``.
-    """
-    return list(
-        _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("extra_period_fields", [])
-    )
 
 
 def extra_record_children(dfn_name: str, field_name: str) -> list[dict]:

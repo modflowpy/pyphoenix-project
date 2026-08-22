@@ -14,6 +14,7 @@ from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
+from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type
 
 
@@ -250,7 +251,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif f.name == "auxiliary" and isinstance(field_value, list):
             blocks[block_name][f.name] = ("AUXILIARY",) + tuple(field_value)
 
-        elif attrs.has(type(field_value)) and "_keyword" in vars(type(field_value)):
+        elif isinstance(field_value, Record):
             # Inner-class record (e.g. Oc.Headprint)
             blocks[block_name][f.name] = field_value.to_tokens()
 
@@ -364,8 +365,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             raw_value = getattr(value, field_name, None)
             if raw_value is None:
                 continue
-            cls = type(raw_value)
-            if attrs.has(cls) and "_keyword" in vars(cls):
+            if isinstance(raw_value, Record):
                 blocks[block_name][field_name] = raw_value.to_tokens()
                 continue
 
