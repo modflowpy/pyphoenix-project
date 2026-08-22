@@ -71,13 +71,9 @@ solitary value — is narrow:
 Two classes, one inheriting the other:
 
 - **`Record`** (`flopy4/mf6/record.py`, unchanged module) — the base.
-  Carries `_keyword`/`_extra_tokens`, unified tagged/untagged field
-  emission (bare-flag *and* `NAME value` forms), and the generalized
-  optional-column budget inference for untagged trailing fields (reserving
-  zero slots by default, since plain records have no aux/boundname to
-  reserve for). Generalized union dispatch (`dispatch_union`/parse-by-keyword
-  helper) also lives here, since arms don't need to be list items — they
-  just need to share the `_keyword` convention.
+  Carries `_keyword`/`_extra_tokens` and tagged/untagged field emission
+  (bare-flag *and* `NAME value` forms). `keyword_of`/`record_fields`/
+  `_coerce` factored out as shared helpers `Item` reuses too.
 
 - **`Item(Record)`** (`flopy4/mf6/item.py`, renamed from `row.py`) — adds
   everything that's actually about being one entry in a collection:
@@ -89,10 +85,24 @@ Two classes, one inheriting the other:
   (one verb pair across both classes).
 
   The plural, list-level orchestration helpers (`infer_ncelldim`,
-  `construct_row`, `parse_union_rows`, `normalize_aux_keys`,
-  `row_list_type`) move into `item.py` as module functions operating on
+  `construct_item`, `parse_union_items`, `normalize_aux_keys`,
+  `item_list_type`) move into `item.py` as module functions operating on
   `Item` subclasses — they're about handling *many* rows at once, not a
   property of one item.
+
+  **Deviation from the original review's "target design" above**: tagged-
+  field handling and union dispatch (`dispatch_union_item`/
+  `parse_union_items`) turned out *not* to unify cleanly after all. Item's
+  codegen-generated tagged fields (e.g. LAK tables' `MIXED`) are always
+  typed `Optional[str]` storing the keyword itself as a truthy sentinel,
+  never a real bool and never value-carrying — routing them through
+  Record's type-based bool/value distinction shifted token positions and
+  broke a real roundtrip test. Item kept its own dedicated bare-flag
+  tagged-field logic; true unification would need a codegen change to
+  retype those fields as `bool`, which wasn't in scope. Union dispatch
+  likewise stayed Item-only, since no current DFN case needs a standalone
+  (non-list) keyword-discriminated `Record` union — generalizing it now
+  would be unexercised code.
 
 ### Naming changes (generated code)
 
@@ -119,53 +129,87 @@ Two classes, one inheriting the other:
 
 ## Staged rollout
 
-1. **Base classes.** Rewrite `record.py` (add unified tagged-field handling,
-   generalized budget inference, generalized union dispatch) and
-   `row.py` → `item.py` (`Item(Record)`, list-specific metadata/context,
-   renamed `to_tokens`/`from_tokens`, moved orchestration helpers). No
-   codegen changes yet. Sanity-check the new classes directly (construct a
-   few instances by hand matching real generated shapes from `lak.py`,
-   `oc.py`, `evt.py` to confirm round-trip behavior) before touching
-   generation.
+1. **Base classes — done.** `record.py` rewritten (shared `keyword_of`/
+   `record_fields`/`_coerce` helpers); `row.py` → `item.py`
+   (`Item(Record)`). Generated files' `from flopy4.mf6.row import Row`
+   mechanically repointed to `from flopy4.mf6.item import Item as Row` (no
+   shim module, no class-body changes) as a transition step; `row.py`
+   itself deleted rather than kept as a compat shim, per the "don't keep
+   unused re-export shims" rule. Two real bugs found by running the full
+   test suite (not just reasoning about it) and fixed:
+   - `_coerce`'s Union-unwrapping was too eager and forced Item's genuine
+     multi-arm `Union[float, str]` fields (e.g. LAK's `claktype`, which can
+     legitimately hold a string like `"VERTICAL"`) through float
+     conversion. Fixed: only unwrap when exactly one non-`None` arm exists
+     (i.e. `Optional[X]`), leaving true multi-arm unions raw.
+   - Item's tagged-field handling, once routed through Record's type-based
+     bool/value logic, broke `MIXED`-style flag fields (see "Deviation"
+     note above) — reverted to Item's own dedicated logic.
 
-2. **Codegen.** Update `filters.py` (`row_class()` naming — drop `Row`
-   suffix, proper PascalCase for `stress_period_data`; base-class references
-   `Row`→`Item`), `make.py` (period/block class-name derivation, import
-   selection), and `package.py.jinja` (drop the `_Row` alias block, update
-   base-class references and the final alias loop). Update
-   `test_mf6_codegen.py` expectations (it currently asserts literal
-   `PackagedataRow`/`class ... (Row):` strings — grepped and confirmed these
-   need updating, e.g. lines 259-347, 475).
+   Also fixed while here: `tdis.py` (a hand-written, non-generated file)
+   was missed by the initial glob and still imported the deleted
+   `flopy4.mf6.row`; `make.py`'s own import-selection logic
+   (`from flopy4.mf6.row import Row`) would have emitted a broken import
+   for any future `generate-classes` run.
 
-3. **Verify on representative packages.** Regenerate just enough to check by
-   hand — `gwf/lak.py` (static blocks + period keystring-union — exercises
-   `Packagedata`/`Connectiondata`/`Tables`/`Outlets`/period `Item`) and
-   `gwt/oc.py` (inner `Record` classes) — via
-   `flopy4 mf6 sync MODFLOW-ORG/modflow6@develop --no-install --verbose`
-   (the `generate-classes` pixi task). Diff against current output, confirm
-   shapes match expectations, run `test_mf6_component.py` /
-   `test_mf6_integration.py` against these two packages.
+2. **Codegen — done.** `filters.row_class` → `filters.item_class`, plus a
+   new `pascal_name()` helper (proper snake_case→PascalCase, not bare
+   `str.capitalize()`) used for both block-derived names and the
+   period-block class, which is now named `StressPeriodData` (derived from
+   the field's real public name) instead of the hardcoded literal `"Row"`.
+   The `_Row = Row` mypy-shadow alias is gone — no generated class is ever
+   literally named `Item` the way one used to collide with `Row`.
+   `test_mf6_codegen.py` updated to match (renamed tests, new literal
+   assertions). Regenerated all 63 components in one pass via
+   `pixi run generate-classes` (the CLI has no per-package scoping, so
+   stages 3/4 below collapsed into one real run rather than a staged
+   partial regen) — verified by hand-reading `lak.py` (static blocks +
+   period keystring-union) and `oc.py` (inner `Record` classes), plus a
+   full ruff/mypy/test pass across `flopy4/mf6/`. One regression caught and
+   fixed: removing the `_Row` alias block also removed the blank-line
+   separator between imports and the class definition (an unconditional
+   text block, not conditional on the removed `{% if %}`), for every
+   generated file, not just period-schema ones.
 
-4. **Full regeneration.** Run the same sync across all packages
-   (`generate-classes-preview` if new packages should also be picked up),
-   run the full test suite, fix fallout package-by-package.
+   Four hand-written files the codegen pipeline doesn't own (`tdis.py`,
+   `gwf/gwt/gwe/prt`'s `disv.py` — none carry the "autogenerated" header)
+   were skipped by the regen; renamed by hand for consistency
+   (`VerticesRow` → `Vertices`, drop the `Item as Row` import alias).
 
-5. **Cleanup sweep.** Grep for any remaining references to the old names
-   (`flopy4.mf6.row`, bare `Row` imports/usages, `*Row` class names) across
-   `flopy4/`, `test/`, and docs/docstrings (e.g. `spec.py:184` docstring
-   mentions `Row` in the `prefix=` explanation) to make sure nothing was
-   missed.
+3. **Verification — folded into step 2** (no CLI support for a
+   package-scoped regen; full regen + full test suite was the actual gate).
+
+4. **Full regeneration — done**, see step 2.
+
+5. **Cleanup sweep — done.** Repo-wide grep for `PackagedataRow` /
+   `ConnectiondataRow` / etc., `row_class`, `flopy4.mf6.row`, `_Row`, and
+   `class Row(` turned up nothing outside what was already fixed.
+   `spec.py:184`'s docstring mention was updated during stage 1.
+
+## Side work: dead-code survey
+
+While comparing Row/Record's design, did a broader pass for other
+special-casing vs. generic type-system support in codegen/converters
+(separate from this plan's scope, tracked here since it came up mid-review):
+
+- **Done**: deleted `overrides.py`'s `extra_list_blocks()`/
+  `extra_period_fields()` (zero call sites — dev3's `Union.arms` replaced
+  what they were for) and their backing `dfn_overrides.toml` data.
+  Replaced two duck-typed `attrs.has(cls) and "_keyword" in vars(cls)`
+  checks in `unstructure.py` with `isinstance(x, Record)`.
+- **Deferred**: `unstructure.py`'s `f.name == "auxiliary"` literal check
+  could instead read a metadata flag stamped at generation time (codegen's
+  `is_aux_list_field` already makes this determination once) — deferred
+  since it means touching generated field metadata, better done alongside
+  a future regen than as a standalone partial one.
+- **No action**: `can_generate_record_class`'s one-level Record-nesting
+  limit (acknowledged gap, not exercised) and the OC-vs-LAK keystring
+  union split (deliberate API ergonomics, not a technical gap).
 
 ## Open risks
 
-- `test/mf6/test_mf6_row_api.py` was already deleted in a prior commit
-  (1e56bae); no dedicated Row/Record unit test currently exists, so
-  correctness will be verified through `test_mf6_codegen.py`,
-  `test_mf6_component.py`, and `test_mf6_integration.py`. Worth considering
-  a small dedicated `test_mf6_item_record.py` once the new classes land,
-  covering the tagged-value fix and generalized union dispatch specifically
-  (neither has a current test since neither is exercised by the existing
-  corpus).
-- Any hand-written code outside the generated files that imports
-  `flopy4.mf6.row` or references `*Row` class names directly needs to be
-  caught by the cleanup grep in stage 5.
+- No dedicated Row/Record/Item unit test file exists (`test_mf6_row_api.py`
+  was deleted in a prior commit, 1e56bae) — correctness rests on
+  `test_mf6_codegen.py`, `test_mf6_component.py`, `test_mf6_integration.py`,
+  and the full regen's ruff/mypy/test pass. Worth a small dedicated test
+  file covering the two bugs found above, since neither had a test before.
