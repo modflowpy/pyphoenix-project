@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.row import Row
+from flopy4.mf6.item import Item as Row
 from flopy4.mf6.spec import field, path
 
 

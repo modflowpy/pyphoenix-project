@@ -12,8 +12,8 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type
 
 
@@ -63,14 +63,9 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
 
 
 def _rows_to_tuples(row_list: list) -> list[tuple]:
-    """Convert a list of Row instances to MF6 record tuples.
-
-    Each Row's own to_row() (see flopy4.mf6.row.Row) handles cellid/pk/fk
-    1-based conversion, inline keywords, prefix tokens, and aux/boundname
-    ordering -- the Row class's fields are the schema, nothing to look up
-    separately here.
-    """
-    return [row.to_row() for row in row_list]
+    """Convert a list of Item instances to MF6 record tuples via each
+    Item's own to_tokens()."""
+    return [row.to_tokens() for row in row_list]
 
 
 def _wrap_array(value: Any) -> xr.DataArray:
@@ -197,14 +192,14 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                         setting = " ".join(str(s) for s in setting)
                     oc_per_field.setdefault(field_key, {})[kper_int] = setting
             else:
-                # Stress-period Row list: dict[int, list[Row]]
+                # Stress-period Item list: dict[int, list[Item]]
                 for kper, row_list in field_value.items():
                     kper_int = _normalize_kper(kper)
                     if kper_int is None:
                         continue
                     rows = (
                         _rows_to_tuples(row_list)
-                        if isinstance(row_list, list) and row_list and isinstance(row_list[0], Row)
+                        if isinstance(row_list, list) and row_list and isinstance(row_list[0], Item)
                         else []
                     )
                     spd_period.setdefault(kper_int, []).extend(rows)
@@ -222,8 +217,8 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             t = _path_to_tuple(f.name, field_value, meta.get("inout", "fileout"))
             blocks[block_name][t[0].lower()] = t
 
-        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Row):
-            # packagedata / connectiondata / etc. -- list[RowClass] block
+        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
+            # packagedata / connectiondata / etc. -- list[ItemClass] block
             blocks[block_name][f.name] = _rows_to_tuples(field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):

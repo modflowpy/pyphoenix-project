@@ -726,7 +726,7 @@ def _new_codegen_imports(
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if has_period_schema:
-        flopy4.append("from flopy4.mf6.row import Row")
+        flopy4.append("from flopy4.mf6.item import Item as Row")
     _spec_parts: list[str] = []
     if has_field_call or _row_has_field_call:
         _spec_parts.append("field")

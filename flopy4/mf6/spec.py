@@ -180,9 +180,9 @@ def path(
 
     ``prefix``: fixed token(s) a row-level path column emits before its own
     FILEIN/FILEOUT+filename (e.g. LAK tables' ``TAB6``, SSM fileinput's
-    ``SPC6``) -- read by Row.to_row()/from_row() the same way any other
-    row column's prefix= is (see flopy4.mf6.row.Row). Package-level path
-    fields (options-block file records) don't need this -- there's no
+    ``SPC6``) -- read by Item.to_tokens()/from_tokens() the same way any
+    other row column's prefix= is (see flopy4.mf6.item.Item). Package-level
+    path fields (options-block file records) don't need this -- there's no
     preceding row context, just the field's own inout=.
 
     See ``field()`` — use ``xattree_path()`` instead for fields on real

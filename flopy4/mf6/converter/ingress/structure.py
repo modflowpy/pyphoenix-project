@@ -9,8 +9,8 @@ import xattree
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row, infer_ncelldim, parse_union_rows, row_list_type
 from flopy4.mf6.spec import to_field_type
 
 
@@ -29,28 +29,26 @@ def _inner_class_type(field_type) -> type | None:
 
 def _parse_rows(
     rows: list,
-    row_cls: "type[Row] | tuple[type[Row], ...]",
+    item_cls: "type[Item] | tuple[type[Item], ...]",
     *,
     naux: int = 0,
     boundnames: bool = False,
 ) -> list | None:
-    """Parse raw token rows into a list of Row instances.
+    """Parse raw token rows into a list of Item instances.
 
-    row_cls is either a single Row class (its own fields, with cellid=/pk=/
-    fk=/time_series= metadata, are the schema -- see Row.from_row) or a
-    tuple of arm classes for a keystring union field, dispatched per-row by
-    keyword token (see row.parse_union_rows). ncelldim (a variable-width
-    cellid's element count) is inferred once from the first row, same as
-    the old Schema-driven parser did -- not applicable to unions (arms with
-    a cellid field aren't a case seen in the corpus).
+    item_cls is either a single Item class or a tuple of arm classes for a
+    keystring union field, dispatched per-row by keyword token (see
+    item.parse_union_items). ncelldim (a variable-width cellid's element
+    count) is inferred once from the first row -- not applicable to unions
+    (arms with a cellid field aren't a case seen in the corpus).
     """
     if not rows:
         return None
-    if isinstance(row_cls, tuple):
-        return parse_union_rows(rows, row_cls, naux=naux, boundnames=boundnames)
-    ncelldim = infer_ncelldim(rows, row_cls, naux=naux)
+    if isinstance(item_cls, tuple):
+        return parse_union_items(rows, item_cls, naux=naux, boundnames=boundnames)
+    ncelldim = infer_ncelldim(rows, item_cls, naux=naux)
     result = [
-        row_cls.from_row(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
+        item_cls.from_tokens(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
         for row in rows
         if row
     ]
@@ -461,14 +459,13 @@ def structure_component(
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
-    # Identify Row-list fields (packagedata, connectiondata, partitions …) --
-    # the field's own type annotation (Optional[list[RowClass]] or
-    # Optional[dict[int, list[RowClass]]]) is the schema; no separate
-    # Schema/Column lookup.
-    block_row_fields: dict[str, tuple] = {}  # block_name → (field, row_cls)
+    # Identify Item-list fields (packagedata, connectiondata, partitions …) --
+    # the field's own type annotation (Optional[list[ItemClass]] or
+    # Optional[dict[int, list[ItemClass]]]) is the schema.
+    block_item_fields: dict[str, tuple] = {}  # block_name → (field, item_cls)
     oc_fields: list = []  # fields with oc_action metadata
-    period_field = None  # field for the period Row-list
-    period_row_cls: "type[Row] | tuple[type[Row], ...] | None" = None
+    period_field = None  # field for the period Item-list
+    period_item_cls: "type[Item] | tuple[type[Item], ...] | None" = None
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
@@ -477,21 +474,21 @@ def structure_component(
         if oc_action:
             oc_fields.append(f)
             continue
-        row_cls = row_list_type(f.type)
-        if row_cls is None:
+        item_cls = item_list_type(f.type)
+        if item_cls is None:
             continue
         if block == "period":
             period_field = f
-            period_row_cls = row_cls
+            period_item_cls = item_cls
         else:
-            block_row_fields[block] = (f, row_cls)
+            block_item_fields[block] = (f, item_cls)
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
-        if block_name in block_row_fields or block_name.startswith("period"):
+        if block_name in block_item_fields or block_name.startswith("period"):
             continue
         for row in rows:
             if not row:
@@ -522,12 +519,12 @@ def structure_component(
         naux = len(aux_opt) if isinstance(aux_opt, list) else 1
     boundnames = bool(kwargs.get("boundnames", False))
 
-    # ── Pass 2: block Row-list fields (packagedata, partitions …) ───────────
-    for block_name, (f, row_cls) in block_row_fields.items():
+    # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
+    for block_name, (f, item_cls) in block_item_fields.items():
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        row_list = _parse_rows(rows, row_cls, naux=naux, boundnames=boundnames)
+        row_list = _parse_rows(rows, item_cls, naux=naux, boundnames=boundnames)
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
             kwargs[init_key] = row_list
@@ -570,12 +567,12 @@ def structure_component(
             kwargs.update(collected)
 
         elif period_field is not None:
-            assert period_row_cls is not None  # set together with period_field above
+            assert period_item_cls is not None  # set together with period_field above
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
                     continue
-                row_list = _parse_rows(rows, period_row_cls, naux=naux, boundnames=boundnames)
+                row_list = _parse_rows(rows, period_item_cls, naux=naux, boundnames=boundnames)
                 if row_list is not None:
                     spd[kper] = row_list
             if spd:

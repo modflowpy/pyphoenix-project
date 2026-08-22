@@ -5,8 +5,8 @@ import attrs
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from flopy4.mf6.item import Item as Row
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils.time import Time
 
