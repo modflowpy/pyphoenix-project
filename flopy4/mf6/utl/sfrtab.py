@@ -34,4 +34,5 @@ class Sfrtab(Package):
         auto_from="table",
     )
 
+
 SfrtabTable = Sfrtab.Table

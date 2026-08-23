@@ -63,14 +63,7 @@ class Prp(Package):
         _keyword: ClassVar[str] = "fraction"
         fraction: tuple = field(default=(), array=True)
 
-    _StressPeriodDataItem = (
-        All |
-        First |
-        Last |
-        Frequency |
-        Steps |
-        Fraction
-    )
+    _StressPeriodDataItem = All | First | Last | Frequency | Steps | Fraction
 
     boundnames: bool = field(
         default=False,
@@ -186,6 +179,7 @@ class Prp(Package):
         block="period",
         fill_forward=True,
     )
+
 
 PrpPackagedata = Prp.Packagedata
 PrpReleasetimes = Prp.Releasetimes

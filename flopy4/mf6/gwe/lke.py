@@ -69,13 +69,7 @@ class Lke(Package):
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (
-        Status |
-        Temperature |
-        Rainfall |
-        Evaporation |
-        Runoff |
-        ExtInflow |
-        Auxiliary
+        Status | Temperature | Rainfall | Evaporation | Runoff | ExtInflow | Auxiliary
     )
 
     flow_package_name: Optional[str] = field(
@@ -164,6 +158,7 @@ class Lke(Package):
         block="period",
         fill_forward=True,
     )
+
 
 LkePackagedata = Lke.Packagedata
 LkeStatus = Lke.Status

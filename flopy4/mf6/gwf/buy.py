@@ -50,4 +50,5 @@ class Buy(Package):
         auto_from="packagedata",
     )
 
+
 BuyPackagedata = Buy.Packagedata

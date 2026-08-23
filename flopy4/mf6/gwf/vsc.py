@@ -70,4 +70,5 @@ class Vsc(Package):
         auto_from="packagedata",
     )
 
+
 VscPackagedata = Vsc.Packagedata

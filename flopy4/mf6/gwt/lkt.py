@@ -67,13 +67,7 @@ class Lkt(Package):
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (
-        Status |
-        Concentration |
-        Rainfall |
-        Evaporation |
-        Runoff |
-        ExtInflow |
-        Auxiliary
+        Status | Concentration | Rainfall | Evaporation | Runoff | ExtInflow | Auxiliary
     )
 
     flow_package_name: Optional[str] = field(
@@ -162,6 +156,7 @@ class Lkt(Package):
         block="period",
         fill_forward=True,
     )
+
 
 LktPackagedata = Lkt.Packagedata
 LktStatus = Lkt.Status

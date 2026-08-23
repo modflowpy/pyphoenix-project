@@ -45,5 +45,6 @@ class Ssm(Package):
         block="fileinput",
     )
 
+
 SsmSources = Ssm.Sources
 SsmFileinput = Ssm.Fileinput

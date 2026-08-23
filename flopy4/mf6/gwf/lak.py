@@ -132,19 +132,19 @@ class Lak(Package):
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (
-        Status |
-        Stage |
-        Rainfall |
-        Evaporation |
-        Runoff |
-        Inflow |
-        Withdrawal |
-        Rate |
-        Invert |
-        Width |
-        Slope |
-        Rough |
-        Auxiliary
+        Status
+        | Stage
+        | Rainfall
+        | Evaporation
+        | Runoff
+        | Inflow
+        | Withdrawal
+        | Rate
+        | Invert
+        | Width
+        | Slope
+        | Rough
+        | Auxiliary
     )
 
     auxiliary: Optional[list[str]] = field(
@@ -292,6 +292,7 @@ class Lak(Package):
         block="period",
         fill_forward=True,
     )
+
 
 LakPackagedata = Lak.Packagedata
 LakConnectiondata = Lak.Connectiondata

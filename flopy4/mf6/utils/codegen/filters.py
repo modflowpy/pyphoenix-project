@@ -675,7 +675,7 @@ def item_class(
                     f"        )"
                 )
             return (
-                f'        {col["name"]}: Path = path(converter=Path, '
+                f"        {col['name']}: Path = path(converter=Path, "
                 f'direction="{direction}"{prefix_kw})'
             )
         py_type = _py_type(col)

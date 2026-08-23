@@ -35,4 +35,5 @@ class Laktab(Package):
         auto_from="table",
     )
 
+
 LaktabTable = Laktab.Table

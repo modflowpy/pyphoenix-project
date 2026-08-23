@@ -76,4 +76,5 @@ class Sto(Package):
         fill_forward=True,
     )
 
+
 StoStressPeriodData = Sto.StressPeriodData

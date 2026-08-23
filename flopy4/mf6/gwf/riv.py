@@ -87,4 +87,5 @@ class Riv(Package):
         fill_forward=True,
     )
 
+
 RivStressPeriodData = Riv.StressPeriodData

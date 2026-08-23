@@ -27,4 +27,5 @@ class Hpc(Package):
         block="partitions",
     )
 
+
 HpcPartitions = Hpc.Partitions

@@ -177,9 +177,7 @@ def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
         elif col.is_row_keyword:
             entry["role"] = "inline_keyword"
             entry["optional"] = True
-        elif isinstance(f, UnionField) or (
-            isinstance(f, Array) and not getattr(f, "shape", None)
-        ):
+        elif isinstance(f, UnionField) or (isinstance(f, Array) and not getattr(f, "shape", None)):
             # A union nested inside a keystring-union arm (OC's ocsetting,
             # PRP's releasesetting) or a bare *unbounded* array arm (PRP's
             # STEPS n1 n2 ..., shape=[] meaning "however many follow") --
@@ -476,9 +474,7 @@ def _build_record_class_specs(
         tagged = getattr(child, "tagged", False)
 
         if isinstance(child, Record):
-            child_specs = _build_record_class_specs(
-                child, dfn_name, used_names, parent_hint=f.name
-            )
+            child_specs = _build_record_class_specs(child, dfn_name, used_names, parent_hint=f.name)
             nested_specs.extend(child_specs)
             inner_fields.append(
                 InnerClassFieldSpec(

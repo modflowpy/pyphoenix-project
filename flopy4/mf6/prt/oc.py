@@ -36,10 +36,7 @@ class Oc(Package):
         rtype: Union[float, str] = field()
         ocsetting: tuple = field(default=(), array=True)
 
-    _StressPeriodDataItem = (
-        Save |
-        Print
-    )
+    _StressPeriodDataItem = Save | Print
 
     budget_file: Optional[Path] = path(
         default=None,
@@ -136,6 +133,7 @@ class Oc(Package):
         block="period",
         fill_forward=True,
     )
+
 
 OcTracktimes = Oc.Tracktimes
 OcSave = Oc.Save
