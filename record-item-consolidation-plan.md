@@ -213,3 +213,49 @@ special-casing vs. generic type-system support in codegen/converters
   `test_mf6_codegen.py`, `test_mf6_component.py`, `test_mf6_integration.py`,
   and the full regen's ruff/mypy/test pass. Worth a small dedicated test
   file covering the two bugs found above, since neither had a test before.
+
+## Follow-up: Record composition + period keystring-union arms — done
+
+Two more pieces landed in a later pass (commit 6d081fc), going beyond the
+original Row/Record/Item scope:
+
+- **Nested Record composition.** A DFN record nested inside another (the
+  printrecord family: outer wraps `formatrecord`) composes as its own
+  class (`Concentrationprint.formatrecord: "Oc.Format"`) instead of
+  flattening the nested fields in — `can_generate_record_class` now
+  recurses arbitrarily instead of a hardcoded one-level limit. Nested-ness
+  is inferred from the field's forward-reference type annotation at
+  runtime (`Record._nested_class`, cached), not a declared flag.
+- **Period keystring-union arms are real typed classes.** LAK's
+  Status/Stage/Rate/Auxiliary/..., OC's Save/Print, PRT-PRP's
+  All/First/Last/Frequency/Steps — replacing the generic
+  `(index?, keyword, value)` placeholder that used to collapse every
+  arm's real shape into one untyped column. OC's `save_head=`/
+  `print_budget=`-style convenience constructor is gone;
+  `stress_period_data` is `dict[int, list[Save | Print | ...]]` like
+  every other keystring-union package now. A nested union within an arm
+  (OC's `ocsetting`, PRP's `releasesetting`) isn't recursively exploded
+  into further typed sub-arms — it's a new "array" field kind consuming
+  all remaining tokens as a tuple (lossless, but not richly typed).
+
+Two real bugs found and fixed via the full test suite (not just
+reasoning): (1) constructing a union-typed item from a raw user tuple
+was routing through `Item.from_tokens` (assumes 1-based file tokens),
+double-adjusting an already-0-based index — fixed with a new
+`construct_union_item()` that dispatches by keyword but builds
+positionally. (2) The new "array" field detection was initially keyed on
+`isinstance(f, Array)` alone, which also matched EVT's `pxdp`/`petm`
+(`Array(shape=["nseg-1"])`, a fixed *named* dimension) and broke their
+existing optional-column budget inference — narrowed to
+`Array(shape=[])` (genuinely unbounded) only.
+
+Also finished, unrelated but bundled in the same regen: a `path()`
+parameter rename from `inout: Literal["filein", "fileout"]` to
+`direction: Literal["in", "out"]`, found half-applied (started in a
+concurrent session, interrupted mid-way — mismatched metadata keys
+across spec.py/item.py/unstructure.py/filters.py).
+
+**Not done**: `docs/examples/*` (both `.py` and `.ipynb`) still use the
+old `save_head=`/`print_budget=` API in several places — out of scope
+for this pass (editing notebooks programmatically is a different kind of
+task); needs a follow-up sweep before those examples would still run.
