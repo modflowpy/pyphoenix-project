@@ -49,7 +49,7 @@ class Rivg(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     mover: bool = field(
         default=False,

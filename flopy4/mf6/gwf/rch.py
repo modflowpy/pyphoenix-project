@@ -63,14 +63,14 @@ class Rch(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     maxbound: Optional[int] = field(
         default=0,

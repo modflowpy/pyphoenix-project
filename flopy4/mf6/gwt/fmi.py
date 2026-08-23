@@ -16,7 +16,7 @@ class Fmi(Package):
     @attrs.define
     class Packagedata(Item):
         flowtype: Union[float, str] = field()
-        fname: Path = path(converter=Path, inout="filein")
+        fname: Path = path(converter=Path, direction="in")
         aux: tuple = ()
 
     save_flows: bool = field(

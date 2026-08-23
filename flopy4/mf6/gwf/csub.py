@@ -126,77 +126,77 @@ class Csub(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     straincg_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_elastic_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_inelastic_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_interbed_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_coarse_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     zdisplacement_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     package_convergence_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     ninterbeds: Optional[int] = field(
         default=None,

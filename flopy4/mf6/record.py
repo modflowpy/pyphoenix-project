@@ -4,9 +4,16 @@ Item (item.py) subclasses Record and adds what a table row needs beyond
 this: index/pk/fk renumbering, cellid packing, aux/boundname, and external
 parse context. Record itself has none of that -- just a keyword-tagged or
 positional compound value.
+
+A Record can also compose another Record (a DFN record nested inside
+another) rather than flattening the nested one's fields into itself --
+see _nested_class, inferred from the field's own type annotation rather
+than a declared flag, and make.py's _build_record_class_specs.
 """
 
+import sys
 import types
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Union, cast, get_args, get_origin
 
@@ -15,6 +22,36 @@ import attrs
 
 def keyword_of(cls: type) -> str:
     return vars(cls).get("_keyword", "")
+
+
+@lru_cache(maxsize=None)
+def _nested_class(cls: type, type_str: str) -> "type[Record] | None":
+    """If a field's raw type annotation (e.g. ``"Format"`` or
+    ``"Optional[Oc.Format]"``) names a Record subclass, return it; else
+    None. No declared "is this nested" flag needed -- resolvability against
+    a real Record subclass is itself the signal.
+
+    Composed record classes (see item.py's module docstring and
+    make.py's _build_record_class_specs) are generated as flat siblings
+    inside the same package class regardless of DFN nesting depth, so
+    cls's immediate enclosing class -- one level up in __qualname__ --
+    always owns the name being resolved. Resolving here (rather than at
+    class-body-execution time, via a bare or even same-enclosing-class
+    string annotation) is required because Python class bodies can't see
+    sibling names from an enclosing class scope; the qualified string form
+    (``"Oc.Format"``) exists only so mypy's own scope analysis can resolve
+    it too. Cached since to_tokens/from_tokens call this per field, often
+    repeatedly while parsing many rows.
+    """
+    name = type_str
+    if name.startswith("Optional[") and name.endswith("]"):
+        name = name[len("Optional[") : -1]
+    name = name.rsplit(".", 1)[-1]
+    obj = sys.modules[cls.__module__]
+    for part in cls.__qualname__.split(".")[:-1]:
+        obj = getattr(obj, part)
+    resolved = getattr(obj, name, None)
+    return resolved if isinstance(resolved, type) and issubclass(resolved, Record) else None
 
 
 def record_fields(cls: type) -> list[attrs.Attribute]:
@@ -95,7 +132,9 @@ class Record:
             v = getattr(self, a.name)
             if v is None:
                 continue
-            if a.metadata.get("tagged"):
+            if isinstance(v, Record):
+                tokens.extend(v.to_tokens())
+            elif a.metadata.get("tagged"):
                 tokens.extend(_tagged_tokens(a, v))
             elif isinstance(v, bool):
                 if v:
@@ -126,6 +165,24 @@ class Record:
             tokens = tokens[len(skip) :]
 
         all_fields = record_fields(cast(type, cls))
+
+        def _nested(f: attrs.Attribute) -> "type[Record] | None":
+            return _nested_class(cast(type, cls), f.type) if isinstance(f.type, str) else None
+
+        nested_fields = [f for f in all_fields if _nested(f) is not None]
+        if nested_fields:
+            # A record composed of nested record(s) has, in the current
+            # corpus, no other fields of its own once _keyword/_extra_tokens
+            # are stripped -- delegate the rest of the tokens wholesale.
+            assert len(nested_fields) == 1 and len(nested_fields) == len(all_fields), (
+                f"{cls.__name__}: exactly one nested record field, with no plain "
+                "fields of its own, is the only shape supported so far"
+            )
+            nf = nested_fields[0]
+            nested_cls = _nested(nf)
+            assert nested_cls is not None
+            return cls(**{nf.name: nested_cls.from_tokens(tokens)})
+
         tagged = {f.name.upper(): f for f in all_fields if f.metadata.get("tagged")}
         untagged = [f for f in all_fields if not f.metadata.get("tagged")]
 

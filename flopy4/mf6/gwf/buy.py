@@ -38,7 +38,7 @@ class Buy(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     nrhospecies: Optional[int] = field(
         default=None,

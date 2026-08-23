@@ -17,6 +17,7 @@ from pathlib import Path
 
 import jinja2
 from modflow_devtools.dfns.schema import (
+    Array,
     Component,
     Double,
     Integer,
@@ -66,6 +67,7 @@ class InnerClassFieldSpec:
     type_annotation: str
     tagged: bool
     optional: bool
+    nested: bool = False  # composes another generated Record class, see below
 
 
 @dataclass
@@ -96,6 +98,16 @@ class BlockPropertySpec:
 
 
 @dataclass
+class PeriodArmSpec:
+    """Pre-computed context for one keystring-union period arm's generated
+    Item class (e.g. LAK's Stage/Rate/Status, OC's Saverecord/Printrecord)."""
+
+    class_name: str
+    keyword: str  # lowercase, matches Record's _keyword convention
+    schema: list[dict]
+
+
+@dataclass
 class ComponentSpec:
     """Pre-computed context for a generated component class."""
 
@@ -110,9 +122,9 @@ class ComponentSpec:
     outpath: Path
     block_properties: list[BlockPropertySpec] = dc_field(default_factory=list)
     period_schema: list[dict] = dc_field(default_factory=list)
+    period_arms: list[PeriodArmSpec] = dc_field(default_factory=list)
     block_schemas: dict[str, list[dict]] = dc_field(default_factory=dict)
     has_maxbound: bool = False
-    has_keystring_period: bool = False
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -165,6 +177,19 @@ def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
         elif col.is_row_keyword:
             entry["role"] = "inline_keyword"
             entry["optional"] = True
+        elif isinstance(f, UnionField) or (
+            isinstance(f, Array) and not getattr(f, "shape", None)
+        ):
+            # A union nested inside a keystring-union arm (OC's ocsetting,
+            # PRP's releasesetting) or a bare *unbounded* array arm (PRP's
+            # STEPS n1 n2 ..., shape=[] meaning "however many follow") --
+            # keyword-plus-trailing-values, not a single value; consumes all
+            # remaining tokens as a tuple. A *named*-dimension array (e.g.
+            # EVT's pxdp/petm, shape=["nseg-1"]) is a fixed-length column
+            # like any other, not this catch-all -- is_cellid (shape=
+            # ["ncelldim"]) was already handled above as the other named-
+            # dimension case.
+            entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"
             entry["dtype"] = "np.object_"
@@ -190,6 +215,12 @@ def _dfn_type_str(f: FieldV3) -> str:
         return "string"
     if isinstance(f, KeywordField):
         return "keyword"
+    if isinstance(f, UnionField):
+        # A union nested inside a keystring-union arm (e.g. OC's ocsetting,
+        # PRP's releasesetting -- ALL/FIRST/LAST/FREQUENCY/STEPS) isn't
+        # itself modeled as a typed sub-union yet; represented as a single
+        # flexible value column instead (see _build_period_arm_specs).
+        return "object"
     return getattr(f, "dtype", "double")  # Array
 
 
@@ -280,7 +311,7 @@ def _ml_field(
     Produces continuation lines pre-indented at 8 spaces (args) and 4 spaces
     (closing paren) so the Jinja template can render it verbatim after
     ``    {name}: {type} = ``. ``metadata`` here is the set of ``field()``/
-    ``path()`` kwargs (block, schema, oc_action, ...), not a raw attrs
+    ``path()`` kwargs (block, schema, fill_forward, ...), not a raw attrs
     metadata dict -- codegen-v2 fields are plain attrs fields, so they go
     through the same passive-metadata constructors hand-written xattree
     classes use for their scalar fields.
@@ -301,91 +332,78 @@ def _ml_field(
     return "\n".join(lines)
 
 
-# OC-family period record expansion: List[Union[saverecord, printrecord]],
-# each arm a Record with a real `rtype` field whose `.valid` gives the
-# rtype vocabulary natively -- replaces the legacy hardcoded _OC_RTYPES table.
+def _build_period_arm_specs(
+    list_field: FieldV3, union: UnionField, component_name: str, used_names: set[str]
+) -> list[PeriodArmSpec]:
+    """Build one PeriodArmSpec per keystring-union arm, from the union's own
+    real per-arm structure (Union.arms carries real fields natively under
+    dev3) -- each arm becomes its own typed Item class, dispatched at parse
+    time by its leading keyword (see item.py's dispatch_union_item), instead
+    of the old generic (index?, keyword, value) placeholder that collapsed
+    every arm's real shape into one untyped "value" column.
 
+    Handles all three index shapes seen in the corpus generically, via a
+    shared prefix of columns prepended to every arm:
+    - OC-style: the List's item IS the union directly (no index at all).
+    - LAK-style: each arm embeds its own fk index (lakeno/outletno) as one
+      of its own fields -- no shared prefix needed, it falls out of the
+      arm's own fields.
+    - SFR/MAW-style: the union is a sibling of an outer index field (item
+      Record = {ifno, ...setting: Union}) -- shared by every arm.
 
-def _is_oc_style_union(item: FieldV3) -> bool:
-    """True for a List whose (unwrapped) item is a Union of rtype-bearing
-    Records -- the gwf/gwt/gwe/prt-oc saverecord/printrecord shape."""
-    return (
-        isinstance(item, UnionField)
-        and bool(item.arms)
-        and all(isinstance(arm, Record) and "rtype" in arm.fields for arm in item.arms.values())
-    )
-
-
-def _is_index(f: FieldV3) -> bool:
-    # dev3's `index` attribute is the direct, authoritative signal for
-    # "needs the 0-based/1-based conversion 'feature_id' implies" -- split
-    # out of the old overloaded pk/fk semantics (modflow-devtools 41dca93).
-    # A string pk/fk (e.g. a name reference) is never `index`.
-    return bool(getattr(f, "index", False))
-
-
-def _keystring_has_index(list_field: FieldV3, union: UnionField) -> bool:
-    """True if a keystring-shaped period list has a per-row feature index.
-
-    Two shapes carry one: an outer sibling index field next to the union
-    (LKE/LKT/SFR-style: item Record = {lakeno: Integer(fk=...), setting:
-    Union}), or a pk/fk field embedded in every arm (LAK-style: item Record
-    wraps the union alone, each arm starts with its own lakeno/outletno).
-    PRP's `releasesetting` (ALL/FIRST/LAST/FREQUENCY/STEPS) has neither --
-    confirmed via the v1 DFN, which declares it a bare `recarray
-    releasesetting` with no index field at all, matching MF6IO syntax with
-    no leading row number. Emitting a fabricated "number" column there would
-    be wrong, not just redundant.
+    An arm field that's itself a union (OC's ocsetting, PRP's
+    releasesetting -- ALL/FIRST/LAST/FREQUENCY/STEPS) isn't recursively
+    exploded into its own typed sub-arms; it becomes a single flexible
+    value column (see _dfn_type_str/_schema_dict_from_columns), the same
+    reduced fidelity the rest of the corpus already accepts for
+    time_series-style ambiguous values. Only the outer dispatch (which arm
+    -- SAVE vs PRINT, STAGE vs RATE, ...) needs to be real for this to
+    reflect the DFN's actual structure; that's what a user constructs and
+    dispatches on.
     """
     item = list_field.item
-    if isinstance(item, Record):
-        if any(f is not union and _is_index(f) for f in item.fields.values()):
-            return True
-    return any(
-        isinstance(arm, Record) and any(_is_index(f) for f in arm.fields.values())
-        for arm in union.arms.values()
+    shared_cols: list[tuple[str, FieldV3]] = (
+        [(n, f) for n, f in item.fields.items() if f is not union]
+        if isinstance(item, Record)
+        else []
     )
 
-
-def _oc_rtypes(item: UnionField) -> list[str]:
-    """Valid rtype strings for an OC-style union, read from the schema."""
-    rtypes: list[str] = []
-    for arm in item.arms.values():
-        for v in arm.fields["rtype"].valid or []:
-            if v not in rtypes:
-                rtypes.append(v)
-    return rtypes
-
-
-def _oc_action(item: UnionField, arm_name: str) -> str:
-    """'save' or 'print', from the arm's leading trigger keyword."""
-    arm = item.arms[arm_name]
-    trigger = next(iter(arm.fields.values()))
-    return "save" if isinstance(trigger, KeywordField) and trigger.name == "save" else "print"
-
-
-def _expand_oc_record_field(list_field: FieldV3) -> list[FieldSpec]:
-    """Expand an OC-style period list field into per-rtype period fields."""
-    item = filters.find_keystring_union(list_field)
-    assert item is not None  # caller already confirmed this is an OC-style union field
-    rtypes = _oc_rtypes(item)
-    specs: list[FieldSpec] = []
-    for arm_name in item.arms:
-        action = _oc_action(item, arm_name)
-        for rtype in rtypes:
-            py_name = f"{action}_{rtype.lower()}"
-            spec_call = _ml_field(
-                metadata={"block": "period", "oc_action": action, "oc_rtype": rtype.lower()}
+    specs: list[PeriodArmSpec] = []
+    for arm_name, arm in union.arms.items():
+        if isinstance(arm, Record):
+            # The discriminating keyword isn't always the arm's first field --
+            # LAK's auxiliaryrecord is (lakeno, auxiliary(kw), auxname, auxval),
+            # its own per-arm index leading the keyword. Find the first
+            # KeywordField anywhere; everything else (including any leading
+            # index) is a real column. A second required keyword later (e.g.
+            # SFR's cross_sectionrecord: cross_section(kw), tab6(kw), ...) is
+            # left in `rest` and becomes a per-field prefix=, not _keyword.
+            arm_fields = list(arm.fields.items())
+            kw_idx = next(
+                (i for i, (_, fld) in enumerate(arm_fields) if isinstance(fld, KeywordField)), None
             )
-            specs.append(
-                FieldSpec(
-                    dfn_name=f"{arm_name}_{rtype.lower()}",
-                    py_name=py_name,
-                    type_annotation="Optional[dict[int, list[str]]]",
-                    spec_call=spec_call,
-                    generatable=True,
-                )
-            )
+            if kw_idx is not None:
+                keyword = arm_fields[kw_idx][0]
+                rest = arm_fields[:kw_idx] + arm_fields[kw_idx + 1 :]
+            else:
+                keyword = "_".join(_strip_record_words(arm_name))
+                rest = arm_fields
+        elif isinstance(arm, KeywordField):
+            # A bare keyword arm carries no data of its own (PRP's
+            # releasesetting ALL/FIRST/LAST) -- the keyword IS the entire row.
+            keyword = "_".join(_strip_record_words(arm_name))
+            rest = []
+        else:
+            keyword = "_".join(_strip_record_words(arm_name))
+            rest = [(arm_name, arm)]
+
+        cols = filters._fields_to_columns(shared_cols + rest, component_name)
+        schema = _schema_dict_from_columns(cols)
+        class_name = pascal_name("_".join(_strip_record_words(arm_name)))
+        if class_name in used_names:
+            class_name = pascal_name("_".join(_strip_record_words(list_field.name))) + class_name
+        used_names.add(class_name)
+        specs.append(PeriodArmSpec(class_name=class_name, keyword=keyword, schema=schema))
     return specs
 
 
@@ -406,8 +424,12 @@ def _strip_record_words(name: str) -> list[str]:
     return [w for w in words if w]
 
 
-def _build_inner_class_spec(f: Record, dfn_name: str) -> InnerClassSpec:
-    """Build an InnerClassSpec for a mixed-type compound record field.
+def _build_record_class_specs(
+    f: Record, dfn_name: str, used_names: set[str], *, parent_hint: str = ""
+) -> list[InnerClassSpec]:
+    """Build InnerClassSpecs for a compound record field and any nested
+    Record children, in dependency order (nested classes first, so a later
+    class can reference an earlier one).
 
     When the first child is a keyword type it becomes the trigger token
     (``_keyword``) and is not emitted as a data field. When the first child
@@ -417,6 +439,19 @@ def _build_inner_class_spec(f: Record, dfn_name: str) -> InnerClassSpec:
     Required keyword children after the trigger are treated as fixed tokens
     (always emitted, not user-facing fields) stored in ``_extra_tokens``.
     Optional keyword children become Optional[bool] fields.
+
+    A child that's itself a Record composes as its own class (recursing
+    here) rather than flattening its fields into this one: the field gets a
+    forward-reference string type annotation (qualified with the enclosing
+    package class name, e.g. ``"Oc.Format"``, so mypy's scope analysis can
+    resolve it too), since generated inner classes render as flat siblings
+    inside the package class regardless of DFN nesting depth, and Python
+    class bodies can't see sibling names at class-body-execution time.
+    record.py's Record.from_tokens infers which fields are composed from
+    that annotation directly (via _nested_class) -- no declared flag needed.
+    `used_names` disambiguates two different fields whose nested child
+    happens to share a name (e.g. two unrelated "formatrecord" wrappers) by
+    prefixing the second with `parent_hint`.
 
     Extra children from ``dfn_overrides.toml`` (used to inject fields not yet
     representable, e.g. positional sub-record fields) are appended after the
@@ -433,6 +468,7 @@ def _build_inner_class_spec(f: Record, dfn_name: str) -> InnerClassSpec:
 
     extra_tokens: list[str] = []
     inner_fields: list[InnerClassFieldSpec] = []
+    nested_specs: list[InnerClassSpec] = []
 
     def _process_child(child: FieldV3) -> None:
         child = apply_override(dfn_name, child)
@@ -440,14 +476,19 @@ def _build_inner_class_spec(f: Record, dfn_name: str) -> InnerClassSpec:
         tagged = getattr(child, "tagged", False)
 
         if isinstance(child, Record):
-            # One level of nesting (the head/temperature/concentration/
-            # qoutflow/cim printrecord family: formatrecord wraps columns/
-            # width/digits/format) -- flatten the nested record's own fields
-            # into this same inner class rather than emitting a second class.
-            # can_generate_record_class already confirmed all grandchildren
-            # are scalar/keyword-only.
-            for nested in child.fields.values():
-                _process_child(nested)
+            child_specs = _build_record_class_specs(
+                child, dfn_name, used_names, parent_hint=f.name
+            )
+            nested_specs.extend(child_specs)
+            inner_fields.append(
+                InnerClassFieldSpec(
+                    py_name=filters.safe_name(child.name),
+                    type_annotation=child_specs[-1].class_name,  # bare; template qualifies it
+                    tagged=False,
+                    optional=is_optional,
+                    nested=True,
+                )
+            )
         elif isinstance(child, KeywordField):
             if not is_optional:
                 # Required keyword: always emitted as a fixed syntax token.
@@ -517,17 +558,21 @@ def _build_inner_class_spec(f: Record, dfn_name: str) -> InnerClassSpec:
     inner_fields.sort(key=lambda field: str(field.optional))
 
     words = _strip_record_words(f.name)
-    class_name = "".join(w.capitalize() for w in words)
+    class_name = "".join(w.capitalize() for w in words) or "Record"
+    if class_name in used_names and parent_hint:
+        class_name = "".join(w.capitalize() for w in _strip_record_words(parent_hint)) + class_name
+    used_names.add(class_name)
     extra_tokens_repr = (
         "(" + ", ".join(f'"{t}"' for t in extra_tokens) + ",)" if extra_tokens else ""
     )
-    return InnerClassSpec(
+    this_spec = InnerClassSpec(
         class_name=class_name,
         keyword=kw,
         extra_tokens=extra_tokens,
         extra_tokens_repr=extra_tokens_repr,
         fields=inner_fields,
     )
+    return nested_specs + [this_spec]
 
 
 def _period_keystring_names(component: Component) -> frozenset[str]:
@@ -651,6 +696,7 @@ def _new_codegen_imports(
     has_field_call: bool = False,
     has_path_call: bool = False,
     period_schema: list[dict] | None = None,
+    period_arms: "list[PeriodArmSpec] | None" = None,
     block_schemas: dict[str, list[dict]] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for new-codegen packages (no xattree, no spec calls)."""
@@ -668,6 +714,7 @@ def _new_codegen_imports(
         or has_inner_classes
         or has_period_schema
         or bool(block_schemas)
+        or bool(period_arms)
         or has_readarray_period
         or has_injected_paths  # injected path fields are always Optional[Path]
     )
@@ -675,10 +722,12 @@ def _new_codegen_imports(
     # ClassVar is always needed regardless of multi/slntype/inner classes.
     has_classvar = True
     # Union[float, str] is used by item_class() for time_series and np.object_ columns.
-    # Check both the period schema and all static block schemas.
-    _all_schema_cols = list(period_schema or []) + [
-        col for cols in (block_schemas or {}).values() for col in cols
-    ]
+    # Check the period schema, all static block schemas, and all period arms.
+    _all_schema_cols = (
+        list(period_schema or [])
+        + [col for cols in (block_schemas or {}).values() for col in cols]
+        + [col for arm in (period_arms or []) for col in arm.schema]
+    )
     has_union = any(
         col.get("time_series") or col.get("dtype") == "np.object_"
         for col in _all_schema_cols
@@ -789,6 +838,7 @@ def build_component_spec(
     period_specs: list[FieldSpec] = []
 
     inner_class_specs: list[InnerClassSpec] = []
+    _inner_class_names: set[str] = set()
     generatable_field_objects: list[tuple[str, FieldV3]] = []
     block_schemas: dict[str, list[dict]] = {}
     _replace_blocks = replace_list_blocks(component.name)
@@ -804,8 +854,7 @@ def build_component_spec(
     )
 
     period_schema: list[dict] = []
-    has_period_keystring = False
-    has_oc_period = False
+    period_arms: list[PeriodArmSpec] = []
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _standard_period_list: FieldV3 | None = None  # standard (non-keystring) period List field
 
@@ -817,30 +866,8 @@ def build_component_spec(
 
         if block_name == "period" and filters.is_list_field(f):
             union = filters.find_keystring_union(f)
-            if union is not None and _is_oc_style_union(union):
-                has_oc_period = True
-                extra_specs.extend(_expand_oc_record_field(f))
-            elif union is not None:
-                has_period_keystring = True
-                # Reproduces the current runtime-compatible shape: a generic
-                # (index, keyword, value) approximation. Union.arms carries
-                # real per-arm fk/type info now, but structure.py/unstructure.py
-                # only understand the flat Column/Schema role vocabulary today
-                # (see namefile-load-plan.md, Phase 0.6a+0.6b course
-                # correction, 2026-08-18) -- a faithful typed-union
-                # representation is a follow-up once Phase 0.6's Row
-                # migration lands, not this pass.
-                period_schema = []
-                if _keystring_has_index(f, union):
-                    period_schema.append(
-                        {"name": "number", "dfn_type": "integer", "role": "feature_id"}
-                    )
-                period_schema.extend(
-                    [
-                        {"name": "keyword", "dfn_type": "string", "role": "keystring"},
-                        {"name": "value", "dfn_type": "object", "role": "keystring_value"},
-                    ]
-                )
+            if union is not None:
+                period_arms = _build_period_arm_specs(f, union, component.name, _inner_class_names)
             else:
                 _standard_period_list = f
             continue
@@ -856,11 +883,10 @@ def build_component_spec(
         # but still needs the same per-period, fill-forward dict[int, ...]
         # treatment as any other period field (the whole point of a period
         # block is that its contents can differ/repeat across BEGIN PERIOD
-        # blocks). Same runtime-compatible single-column keystring shape as
-        # the LAK-style case above, just with exactly one column since there's
-        # nothing else in the block to key against.
+        # blocks). Same single-column keystring shape as the LAK-style case
+        # above, just with exactly one column since there's nothing else in
+        # the block to key against.
         if block_name == "period" and filters.is_scalar(f):
-            has_period_keystring = True
             period_schema = [{"name": f.name, "dfn_type": "keyword", "role": "keystring"}]
             continue
 
@@ -872,15 +898,16 @@ def build_component_spec(
             target = data_specs
 
         if filters.can_generate_record_class(f):
-            record_spec = _build_inner_class_spec(f, component.name)
-            inner_class_specs.append(record_spec)
+            record_specs = _build_record_class_specs(f, component.name, _inner_class_names)
+            inner_class_specs.extend(record_specs)
+            outer_spec = record_specs[-1]
             clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
             inner_spec_call = _ml_field(metadata={"block": block_name})
             target.append(
                 FieldSpec(
                     dfn_name=f.name,
                     py_name=clean_name,
-                    type_annotation=f"Optional[{record_spec.class_name}]",
+                    type_annotation=f"Optional[{outer_spec.class_name}]",
                     spec_call=inner_spec_call,
                     generatable=True,
                 )
@@ -908,8 +935,8 @@ def build_component_spec(
     for entry in replace_list_fields(component.name):
         has_injected_paths = True
         block = entry["block"]
-        inout = entry["inout"]
-        _path_meta: dict = {"block": block, "optional": True, "inout": inout}
+        direction = entry["direction"]
+        _path_meta: dict = {"block": block, "optional": True, "direction": direction}
         spec_call_str = _ml_field(metadata=_path_meta, converter="_optional_path", fn="path")
         extra_specs.append(
             FieldSpec(
@@ -948,8 +975,26 @@ def build_component_spec(
             )
         )
 
-    # Consolidate period fields into one stress_period_data field.
-    if period_schema:
+    # Consolidate period fields into one stress_period_data field. A
+    # keystring union's arms are real, separately-typed classes (period_arms)
+    # dispatched by keyword at parse time; a standard/scalar period list has
+    # one uniform row shape (period_schema), same as any static list block.
+    if period_arms:
+        # A per-package _StressPeriodDataItem alias (see the template) keeps
+        # this annotation short and readable even for LAK-sized unions
+        # (13 arms) -- one line per arm class name would blow past the
+        # line-length limit.
+        _spd_meta = {"block": "period", "fill_forward": True}
+        period_specs.append(
+            FieldSpec(
+                dfn_name="_stress_period_data",
+                py_name="_stress_period_data",
+                type_annotation="Optional[dict[int, list[_StressPeriodDataItem]]]",
+                spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
+                generatable=True,
+            )
+        )
+    elif period_schema:
         _spd_meta = {"block": "period", "fill_forward": True}
         period_specs.append(
             FieldSpec(
@@ -1017,7 +1062,7 @@ def build_component_spec(
         multi=multi,
         slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
-        has_period_schema=bool(period_schema) or bool(block_schemas),
+        has_period_schema=bool(period_schema) or bool(block_schemas) or bool(period_arms),
         has_path=(
             any(filters.is_file_record(f) for _, f in generatable_field_objects)
             or has_injected_paths
@@ -1029,6 +1074,7 @@ def build_component_spec(
         has_path_call=_has_path_call,
         has_readarray_period=bool(_readarray_period_fields),
         period_schema=period_schema,
+        period_arms=period_arms,
         block_schemas=block_schemas,
     )
 
@@ -1044,9 +1090,9 @@ def build_component_spec(
         outpath=filters.output_path(component.name, root),
         block_properties=block_properties,
         period_schema=period_schema,
+        period_arms=period_arms,
         block_schemas=block_schemas,
         has_maxbound=has_maxbound,
-        has_keystring_period=has_period_keystring or has_oc_period,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

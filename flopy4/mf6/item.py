@@ -54,29 +54,33 @@ def _has_boundname_field(cls: type) -> bool:
 
 def construct_item(item_cls: type, values) -> "Item":
     """Build an Item from a flat positional tuple, e.g. ``(cellid, q, 35.0)``
-    for one aux variable. Everything from the aux field's position onward is
-    aux, except a trailing string when the class also has boundname (always
-    declared last) -- a string there unambiguously isn't a numeric aux value.
+    for one aux variable, or ``("HEAD", "FREQUENCY", 2)`` for OC's Save
+    (rtype, ocsetting). Everything from the aux/array field's position
+    onward collects into that one field's tuple, except a trailing string
+    when the class also has boundname (always declared last) -- a string
+    there unambiguously isn't a numeric aux value.
     """
     fields = record_fields(item_cls)
-    aux_idx = next((i for i, f in enumerate(fields) if f.name == "aux"), None)
+    tuple_idx = next(
+        (i for i, f in enumerate(fields) if f.name == "aux" or f.metadata.get("array")), None
+    )
     values = list(values)
-    if aux_idx is None:
+    if tuple_idx is None:
         return item_cls(*values)
     boundname_val = None
     if (
         fields
         and fields[-1].name == "boundname"
-        and len(values) > aux_idx
+        and len(values) > tuple_idx
         and isinstance(values[-1], str)
     ):
         boundname_val = values[-1]
         values = values[:-1]
-    before = values[:aux_idx]
-    aux_vals = tuple(values[aux_idx:])
+    before = values[:tuple_idx]
+    tuple_vals = tuple(values[tuple_idx:])
     if boundname_val is not None:
-        return item_cls(*before, aux_vals, boundname=boundname_val)
-    return item_cls(*before, aux_vals)
+        return item_cls(*before, tuple_vals, boundname=boundname_val)
+    return item_cls(*before, tuple_vals)
 
 
 def _n_fixed_tokens(cls: type) -> int:
@@ -89,7 +93,7 @@ def _n_fixed_tokens(cls: type) -> int:
         if f.metadata.get("optional"):
             continue
         n += 1 + len(f.metadata.get("prefix", ()))
-        if f.metadata.get("inout"):
+        if f.metadata.get("direction"):
             n += 1
     return n
 
@@ -145,6 +149,11 @@ class Item(Record):
                 row.extend(int(c) + 1 for c in val)
             elif f.metadata.get("index"):
                 row.append(int(val) + 1)
+            elif f.metadata.get("array"):
+                if not keyword_emitted:
+                    row.append(keyword.upper())
+                    keyword_emitted = True
+                row.extend(val)
             elif f.metadata.get("tagged"):
                 if not keyword_emitted:
                     row.append(keyword.upper())
@@ -157,8 +166,8 @@ class Item(Record):
                     keyword_emitted = True
                 if prefix := f.metadata.get("prefix"):
                     row.extend(prefix)
-                if inout := f.metadata.get("inout"):
-                    row.append("FILEOUT" if inout == "fileout" else "FILEIN")
+                if direction := f.metadata.get("direction"):
+                    row.append("FILEOUT" if direction == "out" else "FILEIN")
                 row.append(str(val) if isinstance(val, Path) else val)
         if not keyword_emitted:
             row.append(keyword.upper())
@@ -206,7 +215,7 @@ class Item(Record):
                 keyword_skipped = True
             if prefix := f.metadata.get("prefix"):
                 tok_idx += len(prefix)
-            if f.metadata.get("inout"):
+            if f.metadata.get("direction"):
                 tok_idx += 1
             if tok_idx >= n:
                 return
@@ -215,11 +224,13 @@ class Item(Record):
 
         def width(f: attrs.Attribute) -> int:
             w = 1 + len(f.metadata.get("prefix", ()))
-            if f.metadata.get("inout"):
+            if f.metadata.get("direction"):
                 w += 1
             return w
 
         main_fields = [f for f in fields if f.name not in ("aux", "boundname")]
+        array_fields = [f for f in main_fields if f.metadata.get("array")]
+        main_fields = [f for f in main_fields if not f.metadata.get("array")]
         required_fields = [f for f in main_fields if not f.metadata.get("optional")]
         optional_fields = [f for f in main_fields if f.metadata.get("optional")]
 
@@ -257,7 +268,28 @@ class Item(Record):
             budget_idx += 1
             if present:
                 consume(f)
-        if not keyword_skipped:
+
+        if array_fields:
+            # Consumes everything left up to aux/boundname's own reserved
+            # slots -- a keyword-plus-trailing-values setting (OC/PRP's
+            # ocsetting/releasesetting: bare ALL/FIRST/LAST, "FREQUENCY n",
+            # or "STEPS n1 n2 ..."), coerced numeric-or-string per token
+            # like aux (see below) since the arity and type aren't fixed.
+            if not keyword_skipped:
+                tok_idx += 1
+                keyword_skipped = True
+            f = array_fields[0]
+            end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
+            vals = []
+            while tok_idx < end:
+                tok = tokens[tok_idx]
+                try:
+                    vals.append(float(tok))
+                except (ValueError, TypeError):
+                    vals.append(tok)
+                tok_idx += 1
+            kwargs[f.name] = tuple(vals)
+        elif not keyword_skipped:
             tok_idx += 1
 
         if has_aux:
@@ -316,6 +348,28 @@ def dispatch_union_item(item: list, arm_classes: "tuple[type[Item], ...]") -> "t
         if arm_cls is not None:
             return arm_cls
     return None
+
+
+def construct_union_item(values, arm_classes: "tuple[type[Item], ...]") -> "Item | None":
+    """Build an Item from a flat user-supplied positional tuple for a
+    keystring-union field, e.g. ``(0, "STATUS", "ACTIVE")``.
+
+    Dispatches to the right arm by keyword token, same as dispatch_union_item,
+    then drops that token and builds the rest positionally via construct_item
+    -- unlike parse_union_items/from_tokens, the remaining values are already
+    Python-side (a 0-based int, a real float, ...), not raw 1-based/string
+    file tokens, so they must NOT go through from_tokens's index/type
+    conversion a second time.
+    """
+    values = list(values)
+    arm_cls = dispatch_union_item(values, arm_classes)
+    if arm_cls is None:
+        return None
+    kw = keyword_of(arm_cls).upper()
+    kw_idx = next((i for i, v in enumerate(values) if str(v).upper() == kw), None)
+    if kw_idx is not None:
+        values = values[:kw_idx] + values[kw_idx + 1 :]
+    return construct_item(arm_cls, values)
 
 
 def parse_union_items(

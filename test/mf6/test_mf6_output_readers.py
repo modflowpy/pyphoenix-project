@@ -55,8 +55,7 @@ def dis_model_output(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        save_head=["last"],
-        save_budget=["last"],
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
 
     sim.write()
@@ -157,8 +156,7 @@ def disv_model_output(function_tmpdir):
         parent=gwf,
         budget_file=f"{gwf_name}.cbc",
         head_file=f"{gwf_name}.hds",
-        save_head=["last"],
-        save_budget=["last"],
+        stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
 
     sim.write()

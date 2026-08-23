@@ -271,9 +271,9 @@ always_emit_blocks = ["sources"]
 # Replacing the columnar list expansion with three individual Optional[Path] fields
 # matches the hand-written fmi.py and the actual MF6 input semantics.
 replace_list_fields = [
-    {block = "packagedata", name = "gwfhead",   inout = "filein", longname = "gwf head file"},
-    {block = "packagedata", name = "gwfbudget", inout = "filein", longname = "gwf budget file"},
-    {block = "packagedata", name = "gwfspdis",  inout = "filein", longname = "gwf spdis file"},
+    {block = "packagedata", name = "gwfhead",   direction = "in", longname = "gwf head file"},
+    {block = "packagedata", name = "gwfbudget", direction = "in", longname = "gwf budget file"},
+    {block = "packagedata", name = "gwfspdis",  direction = "in", longname = "gwf spdis file"},
 ]
 
 [_package_extras."gwt-lkt"]

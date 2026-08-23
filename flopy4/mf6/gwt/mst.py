@@ -38,7 +38,7 @@ class Mst(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     export_array_ascii: bool = field(
         default=False,

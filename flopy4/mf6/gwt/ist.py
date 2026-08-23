@@ -17,13 +17,18 @@ class Ist(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class Cimprint(Record):
-        _keyword: ClassVar[str] = "cim"
-        _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
+    class Format(Record):
+        _keyword: ClassVar[str] = ""
         format_: str = attrs.field()
         columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
         width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
         digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+
+    @attrs.define
+    class Cimprint(Record):
+        _keyword: ClassVar[str] = "cim"
+        _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
+        formatrecord: "Ist.Format" = attrs.field()
 
     save_flows: bool = field(
         default=False,
@@ -35,14 +40,14 @@ class Ist(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     sorption: Optional[str] = field(
         default=None,
@@ -64,7 +69,7 @@ class Ist(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     cimprint: Optional[Cimprint] = field(
         default=None,
@@ -75,7 +80,7 @@ class Ist(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     export_array_ascii: bool = field(
         default=False,

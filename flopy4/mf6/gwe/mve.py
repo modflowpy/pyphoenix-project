@@ -33,12 +33,12 @@ class Mve(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )

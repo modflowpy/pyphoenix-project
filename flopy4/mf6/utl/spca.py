@@ -29,7 +29,7 @@ class Spca(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     concentration: Optional[FloatArrayLike] = field(
         default=None,

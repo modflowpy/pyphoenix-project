@@ -34,7 +34,11 @@ class {{ spec.class_name }}({{ spec.base_class }}):
         _extra_tokens: ClassVar[tuple[str, ...]] = {{ rec.extra_tokens_repr }}
 {% endif %}
 {% for f in rec.fields %}
-{% if f.tagged and f.optional %}
+{% if f.nested and f.optional %}
+        {{ f.py_name }}: "Optional[{{ spec.class_name }}.{{ f.type_annotation }}]" = attrs.field(default=None)
+{% elif f.nested %}
+        {{ f.py_name }}: "{{ spec.class_name }}.{{ f.type_annotation }}" = attrs.field()
+{% elif f.tagged and f.optional %}
         {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(default=None, metadata={"tagged": True})
 {% elif f.tagged %}
         {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(metadata={"tagged": True})
@@ -54,6 +58,18 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {{ spec.period_schema | item_class("StressPeriodData", True) }}
 
 {% endif %}
+{% for arm in spec.period_arms %}
+{{ arm.schema | item_class(arm.class_name, False, False, arm.keyword) }}
+
+{% endfor %}
+{% if spec.period_arms %}
+    _StressPeriodDataItem = (
+{% for arm in spec.period_arms %}
+        {{ arm.class_name }}{{ " |" if not loop.last }}
+{% endfor %}
+    )
+
+{% endif %}
 {% for f in spec.fields %}
 {% if f.generatable %}
     {{ f.py_name }}: {{ f.type_annotation }} = {{ f.spec_call }}
@@ -61,12 +77,15 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     # TODO: {{ f.dfn_name }} — {{ f.skip_reason }}
 {% endif %}
 {% endfor %}
-{% if spec.period_schema or spec.block_schemas %}
+{% if spec.period_schema or spec.block_schemas or spec.period_arms %}
 
 {% if spec.period_schema %}
 {{ spec.class_name }}StressPeriodData = {{ spec.class_name }}.StressPeriodData
 {% endif %}
 {% for block_name in spec.block_schemas %}
 {{ spec.class_name }}{{ block_name | pascal_name }} = {{ spec.class_name }}.{{ block_name | pascal_name }}
+{% endfor %}
+{% for arm in spec.period_arms %}
+{{ spec.class_name }}{{ arm.class_name }} = {{ spec.class_name }}.{{ arm.class_name }}
 {% endfor %}
 {% endif %}

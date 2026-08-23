@@ -87,7 +87,9 @@ TRANSPORT_TIER = {
     "gwt-ist": ("Ist", "Package", "gwt"),
 }
 
-# Tier 1a: OC record expansion — saverecord/printrecord → per-rtype NDArray[np.str_] fields.
+# Tier 1a: OC period keystring union — saverecord/printrecord arms become
+# real typed Save/Print classes composed into stress_period_data, the same
+# generic mechanism LAK/SFR/MAW use for their own period keystring settings.
 # Each tuple is (class_name, base_class, model_prefix).
 OC_TIER = {
     "gwt-oc": ("Oc", "Package", "gwt"),
@@ -779,9 +781,10 @@ def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
         assert spec.outpath == tmp_path / subdir / f"{expected_class.lower()}.py"
         cls = _load_class_from_spec(spec, f"_codegen_test_oc.{dfn_name}", expected_class)
         assert issubclass(cls, Package)
-        # Verify at least one OC period field was generated
-        oc_fields = [f for f in spec.fields if f.py_name.startswith(("save_", "print_"))]
-        assert oc_fields, f"{dfn_name} should have save_/print_ period fields"
+        # Verify the OC period arms (Save/Print, real typed classes) were generated
+        assert spec.period_arms, f"{dfn_name} should have period_arms (Save/Print)"
+        arm_names = {arm.class_name for arm in spec.period_arms}
+        assert {"Save", "Print"} <= arm_names, f"{dfn_name} should have Save/Print arm classes"
 
 
 def test_utl_tier_generates_importable_files(tmp_path, all_dfns):

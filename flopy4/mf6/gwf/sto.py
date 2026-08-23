@@ -38,7 +38,7 @@ class Sto(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     export_array_ascii: bool = field(
         default=False,

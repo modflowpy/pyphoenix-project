@@ -54,7 +54,7 @@ class Welg(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     flow_reduction_length: bool = field(
         default=False,
@@ -66,7 +66,7 @@ class Welg(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     mover: bool = field(
         default=False,

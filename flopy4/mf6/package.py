@@ -11,7 +11,7 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.item import (
     Item,
     construct_item,
-    dispatch_union_item,
+    construct_union_item,
     item_list_type,
     normalize_aux_keys,
 )
@@ -109,11 +109,13 @@ class Package(Component, ABC):
           - dict of lists              → column-oriented {col_name: [values]}
 
         For a keystring-union item_cls (a tuple of arm classes, e.g. LAK's
-        (LakStatusItem, LakStageItem, ...)): existing arm instances pass
-        through; tuples/lists/dicts are dispatched to the right arm by
-        their keyword token/"keyword" key (see
-        flopy4.mf6.item.dispatch_union_item) -- ambiguous columnar dict-of-
-        lists input isn't supported (no single arm to build columns from).
+        (LakStatus, LakStage, ...)): existing arm instances pass through;
+        tuples/lists are dispatched to the right arm by their keyword token
+        and built positionally (see flopy4.mf6.item.construct_union_item --
+        NOT from_tokens, since these values are already Python-side, not
+        raw 1-based/string file tokens); dicts are dispatched by a
+        "keyword" key. Ambiguous columnar dict-of-lists input isn't
+        supported (no single arm to build columns from).
         """
         if isinstance(item_cls, tuple):
             items = []
@@ -128,10 +130,9 @@ class Package(Component, ABC):
                     if arm is not None:
                         items.append(arm(**{k: v for k, v in row.items() if k != "keyword"}))
                 else:
-                    tokens = list(row)
-                    arm = dispatch_union_item(tokens, item_cls)
-                    if arm is not None:
-                        items.append(arm.from_tokens(tokens))
+                    item = construct_union_item(row, item_cls)
+                    if item is not None:
+                        items.append(item)
             return items
         if isinstance(data, dict):
             n = len(next(iter(data.values()))) if data else 0

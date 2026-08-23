@@ -22,7 +22,7 @@ class Ssm(Package):
     @attrs.define
     class Fileinput(Item):
         pname: Union[float, str] = field()
-        spc6_filename: Path = path(converter=Path, inout="filein", prefix=("SPC6",))
+        spc6_filename: Path = path(converter=Path, direction="in", prefix=("SPC6",))
         mixed: Optional[str] = field(default=None, tagged=True, optional=True)
 
     print_flows: bool = field(

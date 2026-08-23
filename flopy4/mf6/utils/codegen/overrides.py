@@ -69,7 +69,7 @@ def replace_list_fields(dfn_name: str) -> list[dict]:
     Used when a packagedata block has heterogeneous rows (e.g. prt-fmi's
     GWFHEAD/GWFBUDGET/GWFSPDIS rows) that are more naturally represented as
     individual Optional[Path] fields than as columnar arrays.  Each dict has
-    keys: ``block``, ``name``, ``inout``, and ``longname``.
+    keys: ``block``, ``name``, ``direction``, and ``longname``.
     """
     return list(
         _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("replace_list_fields", [])

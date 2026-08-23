@@ -23,26 +23,26 @@ class Fmi(Package):
         converter=_optional_path,
         block="packagedata",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     gwfbudget: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="packagedata",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     gwfspdis: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="packagedata",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     gwfgrid: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="packagedata",
         optional=True,
-        inout="filein",
+        direction="in",
     )

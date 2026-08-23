@@ -90,19 +90,23 @@ def test_dumps_oc():
         dims={"nper": 1},
         budget_file="test.bud",
         head_file="test.hds",
-        save_head={0: "all"},
-        save_budget={0: "all"},
-        print_head={0: "all"},
-        print_budget={0: "all"},
+        stress_period_data={
+            0: [
+                ("SAVE", "HEAD", "ALL"),
+                ("SAVE", "BUDGET", "ALL"),
+                ("PRINT", "HEAD", "ALL"),
+                ("PRINT", "BUDGET", "ALL"),
+            ]
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
     print("OC dump:")
     print(dumped)
-    assert "SAVE HEAD all" in dumped
-    assert "SAVE BUDGET all" in dumped
-    assert "PRINT HEAD all" in dumped
-    assert "PRINT BUDGET all" in dumped
+    assert "SAVE HEAD ALL" in dumped
+    assert "SAVE BUDGET ALL" in dumped
+    assert "PRINT HEAD ALL" in dumped
+    assert "PRINT BUDGET ALL" in dumped
     assert dumped
 
     loaded = loads(dumped)
@@ -117,17 +121,21 @@ def test_dumps_oc2():
         dims={"nper": 1},
         budget_file="test.bud",
         head_file="test.hds",
-        save_head={0: "last"},
-        save_budget={0: "first"},
-        print_head={0: "first"},
+        stress_period_data={
+            0: [
+                ("SAVE", "HEAD", "LAST"),
+                ("SAVE", "BUDGET", "FIRST"),
+                ("PRINT", "HEAD", "FIRST"),
+            ]
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
     print("OC dump:")
     print(dumped)
-    assert "SAVE HEAD last" in dumped
-    assert "SAVE BUDGET first" in dumped
-    assert "PRINT HEAD first" in dumped
+    assert "SAVE HEAD LAST" in dumped
+    assert "SAVE BUDGET FIRST" in dumped
+    assert "PRINT HEAD FIRST" in dumped
     assert dumped
 
     loaded = loads(dumped)
@@ -756,21 +764,23 @@ def test_dumps_zero_field_exg():
 
 
 def test_dumps_gwt_oc_per_period():
-    """gwt-oc save/print fields write SAVE CONCENTRATION and SAVE BUDGET per period."""
+    """gwt-oc stress_period_data writes SAVE CONCENTRATION and SAVE BUDGET per period."""
     from flopy4.mf6.gwt.oc import Oc
 
     oc = Oc(
         dims={"nper": 2},
         budget_file="gwt.bud",
         concentration_file="gwt.conc",
-        save_concentration={0: "last", 1: "all"},
-        save_budget={0: "last"},
+        stress_period_data={
+            0: [("SAVE", "CONCENTRATION", "LAST"), ("SAVE", "BUDGET", "LAST")],
+            1: [("SAVE", "CONCENTRATION", "ALL")],
+        },
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
-    assert "SAVE CONCENTRATION last" in dumped
-    assert "SAVE CONCENTRATION all" in dumped
-    assert "SAVE BUDGET last" in dumped
+    assert "SAVE CONCENTRATION LAST" in dumped
+    assert "SAVE CONCENTRATION ALL" in dumped
+    assert "SAVE BUDGET LAST" in dumped
 
 
 def test_dumps_gwt_oc_wildcard():
@@ -780,13 +790,12 @@ def test_dumps_gwt_oc_wildcard():
     oc = Oc(
         budget_file="gwt.bud",
         concentration_file="gwt.conc",
-        save_concentration={"*": "last"},
-        save_budget={"*": "all"},
+        stress_period_data={"*": [("SAVE", "CONCENTRATION", "LAST"), ("SAVE", "BUDGET", "ALL")]},
     )
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
-    assert "SAVE CONCENTRATION last" in dumped
-    assert "SAVE BUDGET all" in dumped
+    assert "SAVE CONCENTRATION LAST" in dumped
+    assert "SAVE BUDGET ALL" in dumped
 
 
 def test_dumps_prt_prp_release_setting():
@@ -795,9 +804,8 @@ def test_dumps_prt_prp_release_setting():
     PRP's `releasesetting` keystring union has no per-row index (unlike LAK/
     LKE/SFR) -- the v1 DFN declares it a bare `recarray releasesetting` with
     no feature-id column, and dev3 confirms no arm carries a pk/fk field, so
-    rows are plain (keyword, value) pairs (see make.py's
-    _keystring_has_index). "frequency" carries an Integer payload; "first" is
-    a bare keyword with no payload (value=None).
+    rows are typed per-arm classes: `Frequency` carries an Integer payload;
+    `First` is a bare keyword with no payload at all.
     """
     from flopy4.mf6.prt.prp import Prp
 
@@ -805,7 +813,7 @@ def test_dumps_prt_prp_release_setting():
         dims={"nper": 2},
         stress_period_data={
             0: [("FREQUENCY", 2)],
-            1: [("FIRST", None)],
+            1: [("FIRST",)],
         },
     )
 
@@ -824,7 +832,7 @@ def test_prt_prp_period_roundtrip():
         dims={"nper": 2},
         stress_period_data={
             0: [("FREQUENCY", 2)],
-            1: [("FIRST", None)],
+            1: [("FIRST",)],
         },
     )
     text = dumps(unstructure_component(prp))
@@ -837,12 +845,12 @@ def test_prt_prp_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 1
-    assert p0[0].keyword == "FREQUENCY"
-    assert float(p0[0].value) == pytest.approx(2)
+    assert isinstance(p0[0], Prp.Frequency)
+    assert p0[0].frequency == 2
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1[0].keyword == "FIRST"
+    assert isinstance(p1[0], Prp.First)
 
 
 # ---------------------------------------------------------------------------
@@ -867,17 +875,21 @@ def test_oc_period_string_int_keys():
     from flopy4.mf6.gwf import Oc
 
     dims = {"nper": 3}
-    # integer keys
-    oc_int = Oc(dims=dims, save_budget={0: "all", 1: "last"})
-    # string-int keys
-    oc_str = Oc(dims=dims, save_budget={"0": "all", "1": "last"})
+    oc_int = Oc(
+        dims=dims,
+        stress_period_data={0: [("SAVE", "BUDGET", "ALL")], 1: [("SAVE", "BUDGET", "LAST")]},
+    )
+    oc_str = Oc(
+        dims=dims,
+        stress_period_data={"0": [("SAVE", "BUDGET", "ALL")], "1": [("SAVE", "BUDGET", "LAST")]},
+    )
 
     pb_int = _period_blocks(oc_int)
     pb_str = _period_blocks(oc_str)
 
     assert pb_int == pb_str
-    assert pb_int["period 1"]["save budget"] == "all"
-    assert pb_int["period 2"]["save budget"] == "last"
+    assert pb_int["period 1"]["period"] == [("SAVE", "BUDGET", "ALL")]
+    assert pb_int["period 2"]["period"] == [("SAVE", "BUDGET", "LAST")]
     # No fill-forward: period 3 was not specified so it produces no block.
     assert "period 3" not in pb_int
 
@@ -887,15 +899,15 @@ def test_oc_period_wildcard_fillforward():
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        save_head={0: "all", 1: "all", 2: "all", 3: "all"},
-        save_budget={0: "last", 1: "last", 2: "last", 3: "last"},
+        stress_period_data={
+            i: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "LAST")] for i in range(4)
+        },
     )
     pb = _period_blocks(oc)
 
     assert len(pb) == 4
     for i in range(1, 5):
-        assert pb[f"period {i}"]["save head"] == "all"
-        assert pb[f"period {i}"]["save budget"] == "last"
+        assert pb[f"period {i}"]["period"] == [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "LAST")]
 
 
 def test_oc_period_steps_syntax():
@@ -904,35 +916,43 @@ def test_oc_period_steps_syntax():
 
     oc = Oc(
         dims={"nper": 2},
-        save_budget={0: "STEPS 1 3 5"},
-        print_budget={0: "STEPS 1", 1: "last"},
+        stress_period_data={
+            0: [("SAVE", "BUDGET", "STEPS", 1, 3, 5), ("PRINT", "BUDGET", "STEPS", 1)],
+            1: [("PRINT", "BUDGET", "LAST")],
+        },
     )
     pb = _period_blocks(oc)
 
-    assert pb["period 1"]["save budget"] == "STEPS 1 3 5"
-    assert pb["period 1"]["print budget"] == "STEPS 1"
-    assert "save budget" not in pb["period 2"]  # no fill-forward: period 2 not specified
-    assert pb["period 2"]["print budget"] == "last"
+    assert ("SAVE", "BUDGET", "STEPS", 1, 3, 5) in pb["period 1"]["period"]
+    assert ("PRINT", "BUDGET", "STEPS", 1) in pb["period 1"]["period"]
+    # no fill-forward: period 2 doesn't re-emit SAVE BUDGET
+    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 2"]["period"])
+    assert ("PRINT", "BUDGET", "LAST") in pb["period 2"]["period"]
 
 
 def test_oc_period_stop_sentinel():
-    """Empty string '' stop sentinel is skipped; unspecified periods produce no entry."""
+    """Omitting a setting from a later period's list is how it "stops" --
+    no special empty-string sentinel needed under stress_period_data, unlike
+    the old per-rtype dict API. Matches every other stress-period-data
+    package's semantics: each kper's list is exactly what gets written."""
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        save_head={0: "all", 1: "all", 2: "all"},
-        save_budget={0: "STEPS 1", 1: ""},  # "" stop sentinel skipped
+        stress_period_data={
+            0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "STEPS", 1)],
+            1: [("SAVE", "HEAD", "ALL")],
+            2: [("SAVE", "HEAD", "ALL")],
+        },
     )
     pb = _period_blocks(oc)
 
     assert len(pb) == 3
     for i in range(1, 4):
-        assert pb[f"period {i}"]["save head"] == "all"
+        assert ("SAVE", "HEAD", "ALL") in pb[f"period {i}"]["period"]
 
-    # Only period 1 has save_budget; "" sentinel and unspecified periods omit it
-    assert pb["period 1"]["save budget"] == "STEPS 1"
-    assert "save budget" not in pb["period 2"]
-    assert "save budget" not in pb["period 3"]
+    assert ("SAVE", "BUDGET", "STEPS", 1) in pb["period 1"]["period"]
+    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 2"]["period"])
+    assert not any(t[:2] == ("SAVE", "BUDGET") for t in pb["period 3"]["period"])
 
 
 def test_oc_period_mixed_keys_no_silent_drop():
@@ -941,13 +961,17 @@ def test_oc_period_mixed_keys_no_silent_drop():
 
     oc = Oc(
         dims={"nper": 3},
-        save_head={"0": "first", 1: "last", 2: "all"},
+        stress_period_data={
+            "0": [("SAVE", "HEAD", "FIRST")],
+            1: [("SAVE", "HEAD", "LAST")],
+            2: [("SAVE", "HEAD", "ALL")],
+        },
     )
     pb = _period_blocks(oc)
 
-    assert pb["period 1"]["save head"] == "first"
-    assert pb["period 2"]["save head"] == "last"
-    assert pb["period 3"]["save head"] == "all"
+    assert ("SAVE", "HEAD", "FIRST") in pb["period 1"]["period"]
+    assert ("SAVE", "HEAD", "LAST") in pb["period 2"]["period"]
+    assert ("SAVE", "HEAD", "ALL") in pb["period 3"]["period"]
 
 
 def test_oc_dumps_steps_in_output():
@@ -957,15 +981,20 @@ def test_oc_dumps_steps_in_output():
     oc = Oc(
         budget_file="t.bud",
         head_file="t.hds",
-        save_head={0: "all", 1: "all"},
-        save_budget={0: "STEPS 1 5"},
-        print_budget={0: "last", 1: "last"},
+        stress_period_data={
+            0: [
+                ("SAVE", "HEAD", "ALL"),
+                ("SAVE", "BUDGET", "STEPS", 1, 5),
+                ("PRINT", "BUDGET", "LAST"),
+            ],
+            1: [("SAVE", "HEAD", "ALL"), ("PRINT", "BUDGET", "LAST")],
+        },
     )
     dumped = dumps(COMPONENT_CONVERTER.unstructure(oc))
 
-    assert "SAVE HEAD all" in dumped
+    assert "SAVE HEAD ALL" in dumped
     assert "SAVE BUDGET STEPS 1 5" in dumped
-    assert "PRINT BUDGET last" in dumped
+    assert "PRINT BUDGET LAST" in dumped
     # Period 2 must not re-emit SAVE BUDGET
     lines = dumped.splitlines()
     period2_start = next(i for i, l in enumerate(lines) if "BEGIN PERIOD 2" in l)
@@ -978,15 +1007,18 @@ def test_oc_period_frequency():
     from flopy4.mf6.gwf import Oc
 
     oc = Oc(
-        save_head={0: "FREQUENCY 2", 1: "FREQUENCY 2", 2: "FREQUENCY 2"},
-        save_budget={0: "all"},
+        stress_period_data={
+            0: [("SAVE", "HEAD", "FREQUENCY", 2), ("SAVE", "BUDGET", "ALL")],
+            1: [("SAVE", "HEAD", "FREQUENCY", 2)],
+            2: [("SAVE", "HEAD", "FREQUENCY", 2)],
+        },
     )
     pb = _period_blocks(oc)
 
-    assert pb["period 1"]["save head"] == "FREQUENCY 2"
-    assert pb["period 2"]["save head"] == "FREQUENCY 2"
-    assert pb["period 3"]["save head"] == "FREQUENCY 2"
-    assert pb["period 1"]["save budget"] == "all"
+    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 1"]["period"]
+    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 2"]["period"]
+    assert ("SAVE", "HEAD", "FREQUENCY", 2) in pb["period 3"]["period"]
+    assert ("SAVE", "BUDGET", "ALL") in pb["period 1"]["period"]
 
 
 # ---------------------------------------------------------------------------
@@ -1356,10 +1388,10 @@ def test_headprint_from_tokens_full_string():
     from flopy4.mf6.gwf.oc import Oc
 
     hp = Oc.Headprint.from_tokens("HEAD PRINT_FORMAT COLUMNS 10 WIDTH 12 DIGITS 6 exponential")
-    assert hp.format_ == "exponential"
-    assert hp.columns == 10
-    assert hp.width == 12
-    assert hp.digits == 6
+    assert hp.formatrecord.format_ == "exponential"
+    assert hp.formatrecord.columns == 10
+    assert hp.formatrecord.width == 12
+    assert hp.formatrecord.digits == 6
 
 
 def test_headprint_from_tokens_no_prefix():
@@ -1367,10 +1399,10 @@ def test_headprint_from_tokens_no_prefix():
     from flopy4.mf6.gwf.oc import Oc
 
     hp = Oc.Headprint.from_tokens("COLUMNS 10 WIDTH 12 DIGITS 6 exponential")
-    assert hp.format_ == "exponential"
-    assert hp.columns == 10
-    assert hp.width == 12
-    assert hp.digits == 6
+    assert hp.formatrecord.format_ == "exponential"
+    assert hp.formatrecord.columns == 10
+    assert hp.formatrecord.width == 12
+    assert hp.formatrecord.digits == 6
 
 
 def test_headprint_from_tokens_format_only():
@@ -1378,10 +1410,10 @@ def test_headprint_from_tokens_format_only():
     from flopy4.mf6.gwf.oc import Oc
 
     hp = Oc.Headprint.from_tokens("exponential")
-    assert hp.format_ == "exponential"
-    assert hp.columns is None
-    assert hp.width is None
-    assert hp.digits is None
+    assert hp.formatrecord.format_ == "exponential"
+    assert hp.formatrecord.columns is None
+    assert hp.formatrecord.width is None
+    assert hp.formatrecord.digits is None
 
 
 def test_headprint_from_tokens_list():
@@ -1389,10 +1421,10 @@ def test_headprint_from_tokens_list():
     from flopy4.mf6.gwf.oc import Oc
 
     hp = Oc.Headprint.from_tokens(["COLUMNS", "10", "exponential"])
-    assert hp.format_ == "exponential"
-    assert hp.columns == 10
-    assert hp.width is None
-    assert hp.digits is None
+    assert hp.formatrecord.format_ == "exponential"
+    assert hp.formatrecord.columns == 10
+    assert hp.formatrecord.width is None
+    assert hp.formatrecord.digits is None
 
 
 def test_headprint_from_tokens_tagged_types():
@@ -1400,11 +1432,11 @@ def test_headprint_from_tokens_tagged_types():
     from flopy4.mf6.gwf.oc import Oc
 
     hp = Oc.Headprint.from_tokens("WIDTH 15 DIGITS 4 fixed")
-    assert isinstance(hp.width, int)
-    assert hp.width == 15
-    assert isinstance(hp.digits, int)
-    assert hp.digits == 4
-    assert hp.columns is None
+    assert isinstance(hp.formatrecord.width, int)
+    assert hp.formatrecord.width == 15
+    assert isinstance(hp.formatrecord.digits, int)
+    assert hp.formatrecord.digits == 4
+    assert hp.formatrecord.columns is None
 
 
 def test_rclose_from_tokens_with_keyword():
@@ -1765,35 +1797,28 @@ def test_lak_keystring_period_roundtrip():
     # Period 0: 4 rows
     p0 = spd[0]
     assert len(p0) == 4
-    assert p0[0].number == 0  # 0-based feature id
-    assert p0[0].keyword == "STATUS"
-    assert p0[0].value == "ACTIVE"
-    assert p0[1].number == 0
-    assert p0[1].keyword == "RAINFALL"
-    assert float(p0[1].value) == pytest.approx(0.1)
-    assert p0[2].number == 1
-    assert p0[2].keyword == "STATUS"
-    assert p0[2].value == "CONSTANT"
-    assert p0[3].number == 1
-    assert p0[3].keyword == "STAGE"
-    assert float(p0[3].value) == pytest.approx(5.0)
+    assert isinstance(p0[0], Lak.Status) and p0[0].lakeno == 0  # 0-based feature id
+    assert p0[0].status == "ACTIVE"
+    assert isinstance(p0[1], Lak.Rainfall) and p0[1].lakeno == 0
+    assert float(p0[1].rainfall) == pytest.approx(0.1)
+    assert isinstance(p0[2], Lak.Status) and p0[2].lakeno == 1
+    assert p0[2].status == "CONSTANT"
+    assert isinstance(p0[3], Lak.Stage) and p0[3].lakeno == 1
+    assert float(p0[3].stage) == pytest.approx(5.0)
 
     # Period 1: 1 row
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1[0].number == 0
-    assert p1[0].keyword == "STATUS"
-    assert p1[0].value == "INACTIVE"
+    assert isinstance(p1[0], Lak.Status) and p1[0].lakeno == 0
+    assert p1[0].status == "INACTIVE"
 
     # Period 2: 2 rows
     p2 = spd[2]
     assert len(p2) == 2
-    assert p2[0].number == 0
-    assert p2[0].keyword == "STATUS"
-    assert p2[0].value == "ACTIVE"
-    assert p2[1].number == 1
-    assert p2[1].keyword == "WITHDRAWAL"
-    assert float(p2[1].value) == pytest.approx(100.0)
+    assert isinstance(p2[0], Lak.Status) and p2[0].lakeno == 0
+    assert p2[0].status == "ACTIVE"
+    assert isinstance(p2[1], Lak.Withdrawal) and p2[1].lakeno == 1
+    assert float(p2[1].withdrawal) == pytest.approx(100.0)
 
 
 # ---------------------------------------------------------------------------
@@ -1988,21 +2013,17 @@ def test_lkt_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 3
-    assert p0[0].number == 0
-    assert p0[0].keyword == "STATUS"
-    assert p0[0].value == "ACTIVE"
-    assert p0[1].number == 1
-    assert p0[1].keyword == "STATUS"
-    assert p0[1].value == "CONSTANT"
-    assert p0[2].number == 0
-    assert p0[2].keyword == "CONCENTRATION"
-    assert float(p0[2].value) == pytest.approx(10.0)
+    assert isinstance(p0[0], Lkt.Status) and p0[0].ifno == 0
+    assert p0[0].status == "ACTIVE"
+    assert isinstance(p0[1], Lkt.Status) and p0[1].ifno == 1
+    assert p0[1].status == "CONSTANT"
+    assert isinstance(p0[2], Lkt.Concentration) and p0[2].ifno == 0
+    assert float(p0[2].concentration) == pytest.approx(10.0)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1[0].number == 0
-    assert p1[0].keyword == "STATUS"
-    assert p1[0].value == "INACTIVE"
+    assert isinstance(p1[0], Lkt.Status) and p1[0].ifno == 0
+    assert p1[0].status == "INACTIVE"
 
 
 def test_lkt_packagedata_roundtrip():
@@ -2103,21 +2124,17 @@ def test_lke_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 3
-    assert p0[0].number == 0
-    assert p0[0].keyword == "STATUS"
-    assert p0[0].value == "ACTIVE"
-    assert p0[1].number == 1
-    assert p0[1].keyword == "STATUS"
-    assert p0[1].value == "CONSTANT"
-    assert p0[2].number == 0
-    assert p0[2].keyword == "TEMPERATURE"
-    assert float(p0[2].value) == pytest.approx(18.5)
+    assert isinstance(p0[0], Lke.Status) and p0[0].lakeno == 0
+    assert p0[0].status == "ACTIVE"
+    assert isinstance(p0[1], Lke.Status) and p0[1].lakeno == 1
+    assert p0[1].status == "CONSTANT"
+    assert isinstance(p0[2], Lke.Temperature) and p0[2].lakeno == 0
+    assert float(p0[2].temperature) == pytest.approx(18.5)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert p1[0].number == 0
-    assert p1[0].keyword == "STATUS"
-    assert p1[0].value == "INACTIVE"
+    assert isinstance(p1[0], Lke.Status) and p1[0].lakeno == 0
+    assert p1[0].status == "INACTIVE"
 
 
 def test_lke_packagedata_roundtrip():

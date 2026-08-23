@@ -463,17 +463,11 @@ def structure_component(
     # the field's own type annotation (Optional[list[ItemClass]] or
     # Optional[dict[int, list[ItemClass]]]) is the schema.
     block_item_fields: dict[str, tuple] = {}  # block_name → (field, item_cls)
-    oc_fields: list = []  # fields with oc_action metadata
     period_field = None  # field for the period Item-list
     period_item_cls: "type[Item] | tuple[type[Item], ...] | None" = None
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
-        oc_action = f.metadata.get("oc_action")
-
-        if oc_action:
-            oc_fields.append(f)
-            continue
         item_cls = item_list_type(f.type)
         if item_cls is None:
             continue
@@ -544,29 +538,7 @@ def structure_component(
         kper_rows[kper] = rows
 
     if kper_rows:
-        if oc_fields:
-            # OC-style: rows like [ACTION, RTYPE, SETTING …]
-            # Map (action, rtype) → field name
-            oc_map: dict[tuple[str, str], str] = {}
-            for f in oc_fields:
-                action = f.metadata["oc_action"].lower()
-                rtype = f.metadata["oc_rtype"].lower()
-                oc_map[(action, rtype)] = f.alias if f.alias else f.name
-
-            collected: dict[str, dict[int, str]] = {}
-            for kper, rows in sorted(kper_rows.items()):
-                for row in rows:
-                    if len(row) < 2:
-                        continue
-                    action = str(row[0]).lower()
-                    rtype = str(row[1]).lower()
-                    field_key = oc_map.get((action, rtype))
-                    if field_key:
-                        setting = " ".join(str(t) for t in row[2:]) if len(row) > 2 else "all"
-                        collected.setdefault(field_key, {})[kper] = setting
-            kwargs.update(collected)
-
-        elif period_field is not None:
+        if period_field is not None:
             assert period_item_cls is not None  # set together with period_field above
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):

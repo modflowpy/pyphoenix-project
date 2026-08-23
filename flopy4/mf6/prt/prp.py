@@ -37,9 +37,40 @@ class Prp(Package):
         time: float = field()
 
     @attrs.define
-    class StressPeriodData(Item):
-        keyword: str = field()
-        value: Optional[object] = field(default=None, optional=True)
+    class All(Item):
+        _keyword: ClassVar[str] = "all"
+
+    @attrs.define
+    class First(Item):
+        _keyword: ClassVar[str] = "first"
+
+    @attrs.define
+    class Last(Item):
+        _keyword: ClassVar[str] = "last"
+
+    @attrs.define
+    class Frequency(Item):
+        _keyword: ClassVar[str] = "frequency"
+        frequency: int = field()
+
+    @attrs.define
+    class Steps(Item):
+        _keyword: ClassVar[str] = "steps"
+        steps: tuple = field(default=(), array=True)
+
+    @attrs.define
+    class Fraction(Item):
+        _keyword: ClassVar[str] = "fraction"
+        fraction: tuple = field(default=(), array=True)
+
+    _StressPeriodDataItem = (
+        All |
+        First |
+        Last |
+        Frequency |
+        Steps |
+        Fraction
+    )
 
     boundnames: bool = field(
         default=False,
@@ -71,14 +102,14 @@ class Prp(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     trackcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     stoptime: Optional[float] = field(
         default=None,
@@ -148,7 +179,7 @@ class Prp(Package):
         block="releasetimes",
         auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -156,6 +187,11 @@ class Prp(Package):
         fill_forward=True,
     )
 
-PrpStressPeriodData = Prp.StressPeriodData
 PrpPackagedata = Prp.Packagedata
 PrpReleasetimes = Prp.Releasetimes
+PrpAll = Prp.All
+PrpFirst = Prp.First
+PrpLast = Prp.Last
+PrpFrequency = Prp.Frequency
+PrpSteps = Prp.Steps
+PrpFraction = Prp.Fraction

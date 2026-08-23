@@ -54,8 +54,7 @@ def written_sim(tmp_path):
     gwf.oc = Oc(
         budget_file=f"{gwf.name}.bud",
         head_file=f"{gwf.name}.hds",
-        save_head={0: "all"},
-        save_budget={0: "all"},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     sim.write()
     return workspace

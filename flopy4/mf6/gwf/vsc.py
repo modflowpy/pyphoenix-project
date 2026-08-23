@@ -58,7 +58,7 @@ class Vsc(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     nviscspecies: Optional[int] = field(
         default=None,
