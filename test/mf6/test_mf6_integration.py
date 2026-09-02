@@ -1775,17 +1775,17 @@ def test_gwf_oc_period_variations(function_tmpdir):
     correct CBC record counts.
 
     Uses a minimal 3-period, 1-layer, 3x3 model with:
-    - period 0: SAVE BUDGET STEPS 1 (budget only at step 1), SAVE HEAD ALL
-      (MF6 continues "SAVE HEAD ALL" into later periods on its own once set,
-      the same way any OC setting persists until explicitly changed).
-    - period 1: an explicit empty period block (stress_period_data[1] = []),
-      closing out the STEPS 1 budget setting so it doesn't continue into
-      periods 2/3 -- the new representation's equivalent of the old
-      per-rtype dict API's "" stop sentinel, expressed as "explicitly write
-      an empty period" rather than a special sentinel value.
+    - period 0: SAVE HEAD ALL + SAVE BUDGET STEPS 1 (budget only at step 1).
+    - period 1: SAVE HEAD ALL only -- a fresh period block that drops the
+      STEPS 1 budget setting so it doesn't continue into periods 2/3, the
+      new representation's equivalent of the old per-rtype dict API's "" stop
+      sentinel. MF6 OC persists settings at whole-period-block granularity,
+      not per line: an explicit period block replaces the previous block's
+      settings entirely, so SAVE HEAD ALL must be repeated here for head to
+      keep being saved (it then carries forward to period 2 on its own).
 
-    Asserts the CBC has exactly 1 FLOW-JA-FACE record (closing period 1 halts
-    the budget setting) and the HDS has records for all three periods.
+    Asserts the CBC has exactly 1 FLOW-JA-FACE record (the period 1 block
+    halts the budget setting) and the HDS has records for all three periods.
     """
     from flopy4.mf6.utils import open_cbc, open_hds
 
@@ -1824,7 +1824,7 @@ def test_gwf_oc_period_variations(function_tmpdir):
         head_file=f"{gwf_name}.hds",
         stress_period_data={
             0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "STEPS", 1)],
-            1: [],
+            1: [("SAVE", "HEAD", "ALL")],
         },
         dims={"nper": nper},
     )
