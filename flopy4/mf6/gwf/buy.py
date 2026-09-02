@@ -5,8 +5,8 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
 
 
@@ -15,8 +15,8 @@ class Buy(Package):
     dfn_name: ClassVar[str] = "gwf-buy"
 
     @attrs.define
-    class PackagedataRow(Row):
-        irhospec: int = field(pk=True)
+    class Packagedata(Item):
+        irhospec: int = field(index=True, pk=True)
         drhodc: float = field()
         crhoref: float = field()
         modelname: Union[float, str] = field()
@@ -38,17 +38,17 @@ class Buy(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     nrhospecies: Optional[int] = field(
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
 
 
-BuyPackagedataRow = Buy.PackagedataRow
+BuyPackagedata = Buy.Packagedata

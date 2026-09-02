@@ -49,7 +49,7 @@ class Chdg(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     export_array_netcdf: bool = field(
         default=False,

@@ -28,7 +28,7 @@ class Dis(DisBase):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     ncf: Optional[Ncf] = attrs.field(default=None)
     nlay: int = field(default=1, block="dimensions")

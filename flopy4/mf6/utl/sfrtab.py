@@ -3,8 +3,8 @@ from typing import ClassVar, Optional
 
 import attrs
 
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field
 
 
@@ -15,9 +15,9 @@ class Sfrtab(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class TableRow(Row):
-        xfraction: float
-        height: float
+    class Table(Item):
+        xfraction: float = field()
+        height: float = field()
         manfraction: Optional[float] = field(default=None, optional=True)
 
     nrow: Optional[int] = field(
@@ -28,11 +28,11 @@ class Sfrtab(Package):
         default=None,
         block="dimensions",
     )
-    table: Optional[list[TableRow]] = field(
+    table: Optional[list[Table]] = field(
         default=None,
         block="table",
         auto_from="table",
     )
 
 
-SfrtabTableRow = Sfrtab.TableRow
+SfrtabTable = Sfrtab.Table

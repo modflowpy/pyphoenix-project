@@ -12,12 +12,13 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
-from flopy4.mf6.spec import FileInOut, block_sort_key, blocks_dict, to_field_type
+from flopy4.mf6.record import Record
+from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
 
-def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
+def _path_to_tuple(name: str, value: Path, direction: FileDirection) -> tuple[str, ...]:
     for suffix in ("_input_file", "_filerecord", "_file"):
         if name.endswith(suffix):
             prefix = name[: -len(suffix)]
@@ -25,8 +26,8 @@ def _path_to_tuple(name: str, value: Path, inout: FileInOut) -> tuple[str, ...]:
     else:
         prefix = name
     t = [prefix.upper()]
-    if inout:
-        t.append(inout.upper())
+    if direction:
+        t.append("FILEOUT" if direction == "out" else "FILEIN")
     t.append(str(value))
     return tuple(t)
 
@@ -63,14 +64,9 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
 
 
 def _rows_to_tuples(row_list: list) -> list[tuple]:
-    """Convert a list of Row instances to MF6 record tuples.
-
-    Each Row's own to_row() (see flopy4.mf6.row.Row) handles cellid/pk/fk
-    1-based conversion, inline keywords, prefix tokens, and aux/boundname
-    ordering -- the Row class's fields are the schema, nothing to look up
-    separately here.
-    """
-    return [row.to_row() for row in row_list]
+    """Convert a list of Item instances to MF6 record tuples via each
+    Item's own to_tokens()."""
+    return [row.to_tokens() for row in row_list]
 
 
 def _wrap_array(value: Any) -> xr.DataArray:
@@ -121,8 +117,6 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     blocks: dict[str, dict[str, Any]] = {}
     # Block names that must appear in output even when empty (e.g. SSM SOURCES).
     always_emit_set: set[str] = set()
-    # OC-style period fields: {field_key: {kper: setting}} (including "" stop sentinels)
-    oc_per_field: dict[str, dict[int, str]] = {}
     # Stress-period recarray fields: {kper: [(cellid, val, ...), ...]}
     spd_period: dict[int, list[tuple]] = {}
     # READARRAY period fields (G/A variants): {kper: {field_name: xr.DataArray}}
@@ -177,37 +171,19 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                         da = xr.DataArray(layer_slice)
                     readarray_period.setdefault(kper, {})[f.name] = da
                 continue
-            if isinstance(field_value, (list, tuple)) and meta.get("oc_action"):
-                field_value = {0: field_value}
             if not isinstance(field_value, dict):
                 continue
-            if meta.get("oc_action"):
-                # OC-style: collect per-field settings (including "" stop sentinels).
-                # Processing is deferred to after all fields are collected so that
-                # fill-forward state can be computed correctly when stop sentinels
-                # cancel one field but other fields should continue.
-                action = meta["oc_action"].lower()
-                rtype = meta["oc_rtype"].lower()
-                field_key = f"{action} {rtype}"
-                for kper_raw, setting in field_value.items():
-                    kper_int = _normalize_kper(kper_raw)
-                    if kper_int is None:
-                        continue
-                    if isinstance(setting, (list, tuple)):
-                        setting = " ".join(str(s) for s in setting)
-                    oc_per_field.setdefault(field_key, {})[kper_int] = setting
-            else:
-                # Stress-period Row list: dict[int, list[Row]]
-                for kper, row_list in field_value.items():
-                    kper_int = _normalize_kper(kper)
-                    if kper_int is None:
-                        continue
-                    rows = (
-                        _rows_to_tuples(row_list)
-                        if isinstance(row_list, list) and row_list and isinstance(row_list[0], Row)
-                        else []
-                    )
-                    spd_period.setdefault(kper_int, []).extend(rows)
+            # Stress-period Item list: dict[int, list[Item]]
+            for kper, row_list in field_value.items():
+                kper_int = _normalize_kper(kper)
+                if kper_int is None:
+                    continue
+                rows = (
+                    _rows_to_tuples(row_list)
+                    if isinstance(row_list, list) and row_list and isinstance(row_list[0], Item)
+                    else []
+                )
+                spd_period.setdefault(kper_int, []).extend(rows)
             continue
 
         # ── Non-period blocks ───────────────────────────────────────────────────
@@ -218,12 +194,12 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             if field_value:
                 blocks[block_name][f.name] = field_value
 
-        elif meta.get("inout") and isinstance(field_value, Path):
-            t = _path_to_tuple(f.name, field_value, meta.get("inout", "fileout"))
+        elif meta.get("direction") and isinstance(field_value, Path):
+            t = _path_to_tuple(f.name, field_value, meta.get("direction", "out"))
             blocks[block_name][t[0].lower()] = t
 
-        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Row):
-            # packagedata / connectiondata / etc. -- list[RowClass] block
+        elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
+            # packagedata / connectiondata / etc. -- list[ItemClass] block
             blocks[block_name][f.name] = _rows_to_tuples(field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
@@ -255,7 +231,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif f.name == "auxiliary" and isinstance(field_value, list):
             blocks[block_name][f.name] = ("AUXILIARY",) + tuple(field_value)
 
-        elif attrs.has(type(field_value)) and "_keyword" in vars(type(field_value)):
+        elif isinstance(field_value, Record):
             # Inner-class record (e.g. Oc.Headprint)
             blocks[block_name][f.name] = field_value.to_tokens()
 
@@ -267,55 +243,10 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif dfn_type == "string" and field_value:
             blocks[block_name][f.name] = field_value
 
-    # All kpers where any OC field has an explicit setting (including "" stop sentinels).
-    oc_explicit_kpers: set[int] = set()
-    for fk_settings in oc_per_field.values():
-        oc_explicit_kpers.update(fk_settings.keys())
-
-    # Build oc_period: for each explicit kper include fields with an explicit
-    # non-empty setting. "" is a stop sentinel that cancels that field's
-    # fill-forward. When a kper has any stop sentinel we must emit a PERIOD
-    # block; include fill-forward values for still-active non-stopped fields so
-    # the emitted block doesn't silently reset them in MF6.
-    oc_period: dict[int, dict[str, str]] = {}
-    oc_is_stop: set[int] = set()  # kpers that have at least one stop sentinel
-    ff_state: dict[str, str] = {}  # currently active fill-forward values
-    for kper in sorted(oc_explicit_kpers):
-        block_oc: dict[str, str] = {}
-        stopped_fields: set[str] = set()
-        for field_key, fk_settings in oc_per_field.items():
-            if kper not in fk_settings:
-                continue
-            v = fk_settings[kper]
-            if not v:
-                oc_is_stop.add(kper)
-                stopped_fields.add(field_key)
-            else:
-                block_oc[field_key] = v
-                ff_state[field_key] = v
-        if kper in oc_is_stop:
-            # Include fill-forward values for fields that are still active so
-            # the required PERIOD block doesn't reset them in MF6.
-            for field_key, ff_val in list(ff_state.items()):
-                if field_key not in stopped_fields and field_key not in block_oc:
-                    block_oc[field_key] = ff_val
-            for field_key in stopped_fields:
-                ff_state.pop(field_key, None)
-        oc_period[kper] = block_oc
-
-    # Assemble period blocks: OC scalar fields + recarray rows, in kper order
-    all_kpers = set(oc_period.keys()) | set(spd_period.keys())
-    for kper in sorted(all_kpers):
+    # Assemble period blocks (stress-period Item rows), in kper order.
+    for kper in sorted(spd_period.keys()):
         key = f"period {kper + 1}"
-        block: dict[str, Any] = {}
-        if kper in oc_period:
-            block.update(oc_period[kper])
-        if kper in spd_period:
-            block["period"] = spd_period[kper]
-        if block or kper in oc_is_stop:
-            blocks[key] = block
-            if kper in oc_is_stop and not block:
-                always_emit_set.add(key)
+        blocks[key] = {"period": spd_period[kper]}
 
     # READARRAY period blocks (G/A variants): each kper gets its own period block.
     # Fields where every value is FILL_DNODATA are skipped; if no fields remain
@@ -369,8 +300,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             raw_value = getattr(value, field_name, None)
             if raw_value is None:
                 continue
-            cls = type(raw_value)
-            if attrs.has(cls) and "_keyword" in vars(cls):
+            if isinstance(raw_value, Record):
                 blocks[block_name][field_name] = raw_value.to_tokens()
                 continue
 
@@ -385,7 +315,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                     field_spec = xatspec.attrs[field_name]
                     field_meta = getattr(field_spec, "metadata", {})
                     t = _path_to_tuple(
-                        field_name, field_value, inout=field_meta.get("inout", "fileout")
+                        field_name, field_value, direction=field_meta.get("direction", "out")
                     )
                     blocks[block_name][t[0]] = t
                 case datetime():

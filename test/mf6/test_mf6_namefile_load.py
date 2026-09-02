@@ -54,8 +54,7 @@ def written_sim(tmp_path):
     gwf.oc = Oc(
         budget_file=f"{gwf.name}.bud",
         head_file=f"{gwf.name}.hds",
-        save_head={0: "all"},
-        save_budget={0: "all"},
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     )
     sim.write()
     return workspace
@@ -125,14 +124,18 @@ def test_load_gwf_directly(written_sim):
 
 def test_load_preserves_model_pname(tmp_path):
     """A dict-kind binding field (Simulation.models/exchanges/solutions)
-    round-trips a custom pname -- xattree reconciles a dict child's name
-    to the key it's attached under, so the namefile row's pname (not the
-    referenced file's name, which the row's pname needn't match) has to
-    become that key. Scalar/list package fields (dis, chd, ...) can't
-    round-trip a custom pname the same way: xattree reconciles those to a
-    field-derived name regardless of what's passed, confirmed true even
-    for the original write (not something this fix could or should
-    change -- it's xattree's own child-attachment convention)."""
+    round-trips a custom pname via xattree's own `.name` -- xattree
+    reconciles a dict child's name to the key it's attached under, so the
+    namefile row's pname (not the referenced file's name, which the row's
+    pname needn't match) has to become that key. List/only-kind package
+    fields (dis, chd, ...) can't round-trip a custom pname through `.name`
+    the same way: xattree reconciles those to a field-derived name
+    regardless of what's passed, confirmed true even for the original
+    write (not something this fix could or should change -- it's
+    xattree's own child-attachment convention). See
+    `test_load_preserves_list_package_pname` below for how those still
+    round-trip a pname -- through the separate, xattree-unmanaged
+    `Component.pname` field, not `.name`."""
     import numpy as np
     from flopy.discretization.structuredgrid import StructuredGrid
 
@@ -156,6 +159,31 @@ def test_load_preserves_model_pname(tmp_path):
     assert list(loaded.models.keys()) == ["a_custom_model_name"]
     gwf = loaded.models["a_custom_model_name"]
     assert gwf.name == "a_custom_model_name"
+
+
+def test_load_preserves_list_package_pname(written_sim):
+    """A list-kind package field's real pname (a namefile packages-block
+    row's third term) survives a load -> write round trip via
+    `Component.pname`, a plain field xattree doesn't manage or reconcile
+    -- even though xattree's own `.name` attribute still gets reconciled
+    to a field-derived value ("chd0") regardless, same as always. Without
+    `Component.pname`, a hand-given pname like "boundary_west" below
+    would silently become "chd0" on the very first write after loading.
+    """
+    nam_path = written_sim / "mymodel.nam"
+    nam_path.write_text(
+        nam_path.read_text().replace("CHD6 mymodel.chd chd0", "CHD6 mymodel.chd boundary_west")
+    )
+
+    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models.values()))
+    chd = gwf.chd[0]
+    assert isinstance(chd, Chd)
+    assert chd.pname == "boundary_west"
+    assert chd.name == "chd0"  # xattree's own reconciliation, unaffected
+
+    gwf.write()
+    rewritten = (written_sim / "mymodel.nam").read_text()
+    assert "CHD6 mymodel.chd boundary_west" in rewritten
 
 
 def test_load_disambiguates_ga_variant(tmp_path):

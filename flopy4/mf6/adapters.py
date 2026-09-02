@@ -259,7 +259,9 @@ class Flopy3Package(PackageInterface):
         # Codegen v2: stress-period recarray packages (CHD, DRN, etc.)
         if getattr(self._package, "_stress_period_data", None) is not None:
             return True
-        # Codegen v2: OC-style period fields (save_head, save_budget, etc.)
+        # Codegen v2: any other "period"-block field (covers OC's own
+        # _stress_period_data too, redundantly with the check above -- kept
+        # as a generic fallback for any period field shape).
         import attrs as _attrs
 
         try:

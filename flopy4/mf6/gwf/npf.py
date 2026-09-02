@@ -98,7 +98,7 @@ class Npf(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     export_array_ascii: bool = field(
         default=False,
@@ -110,17 +110,19 @@ class Npf(Package):
         block="options",
         optional=True,
     )
-    icelltype: IntArrayLike = field(
+    icelltype: Optional[IntArrayLike] = field(
         default=0,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        optional=True,
     )  # type: ignore[assignment]
-    k: FloatArrayLike = field(
+    k: Optional[FloatArrayLike] = field(
         default=1.0,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        optional=True,
     )  # type: ignore[assignment]
     k22: Optional[FloatArrayLike] = field(
         default=None,

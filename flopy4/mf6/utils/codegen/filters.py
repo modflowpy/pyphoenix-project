@@ -14,6 +14,7 @@ migration history and the reasoning behind specific choices below.
 
 import builtins
 import keyword
+import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -243,40 +244,40 @@ def _is_expandable_child(child: FieldV3) -> bool:
     return isinstance(child, KeywordField)
 
 
+def _record_child_supported(c: FieldV3) -> bool:
+    """True if a record child is a scalar/keyword, or a Record whose own
+    children are (recursively) supported -- arbitrarily deep, since nested
+    Records now compose as their own classes (make.py's
+    _build_record_class_specs) rather than needing to flatten into a fixed
+    depth. Lists and unions still fall back to TODO."""
+    if isinstance(c, _RECORD_CLASS_SCALAR_TYPES + (KeywordField,)):
+        return True
+    if isinstance(c, Record) and c.fields:
+        return all(_record_child_supported(gc) for gc in c.fields.values())
+    return False
+
+
 def can_generate_record_class(f: FieldV3) -> bool:
     """True when a compound record should be rendered as an inner attrs class.
 
-    All non-file records whose children are entirely scalars and/or keywords
-    become inner attrs classes. The first keyword child (if any) is the
-    trigger token (``_keyword``); remaining keyword children become
-    ``Optional[bool]`` fields so related options stay grouped.
+    All non-file records whose children are entirely scalars, keywords, and/or
+    nested records (of supported shape, see _record_child_supported) become
+    inner attrs classes. The first keyword child (if any) is the trigger
+    token (``_keyword``); remaining keyword children become ``Optional[bool]``
+    fields so related options stay grouped. A child that is itself a Record
+    becomes its own composed class rather than being flattened in (the
+    `head/temperature/concentration/qoutflow/cim` printrecord family: outer
+    record composes `formatrecord: Record{columns, width, digits, format}`).
 
     All-keyword records with only one child (a lone flag keyword) are left to
     :func:`can_expand_record` -- a bare bool field is cleaner there than an
     empty inner class. Records with unsupported child types (list, union)
-    fall back to TODO comments. A child that is itself a Record is supported
-    one level deep, provided *its* children are all scalar/keyword too (the
-    `head/temperature/concentration/qoutflow/cim` printrecord family: outer
-    record wraps `formatrecord: Record{columns, width, digits, format}`) --
-    its fields are flattened into the same inner class (see
-    make.py._build_inner_class_spec). Deeper nesting falls back to TODO.
+    fall back to TODO comments.
     """
     if not isinstance(f, Record) or is_file_record(f) or not f.fields:
         return False
     children = list(f.fields.values())
-
-    def _supported(c: FieldV3) -> bool:
-        if isinstance(c, _RECORD_CLASS_SCALAR_TYPES + (KeywordField,)):
-            return True
-        if isinstance(c, Record) and c.fields:
-            return all(
-                isinstance(gc, _RECORD_CLASS_SCALAR_TYPES + (KeywordField,))
-                for gc in c.fields.values()
-            )
-        return False
-
-    all_supported = all(_supported(c) for c in children)
-    if not all_supported:
+    if not all(_record_child_supported(c) for c in children):
         return False
     has_scalar = any(isinstance(c, _RECORD_CLASS_SCALAR_TYPES) for c in children)
     # All-keyword records need at least 2 children (trigger + modifier) to
@@ -451,9 +452,9 @@ def field_metadata(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -
     if is_file_record(f):
         child = file_child(f)
         assert child is not None  # is_file_record() already confirmed a File child exists
-        kw["inout"] = "filein" if child.direction == "in" else "fileout"
+        kw["direction"] = child.direction
     elif is_bare_file(f):
-        kw["inout"] = "filein" if f.direction == "in" else "fileout"
+        kw["direction"] = f.direction
     return kw
 
 
@@ -525,21 +526,34 @@ def python_repr(v) -> str:
     return "\n".join(lines)
 
 
-def row_class(
-    schema_list: list[dict], class_name: str, is_period: bool = False, has_aux: bool = False
+def pascal_name(name: str) -> str:
+    """snake_case, hyphenated, or a plain lowercase word -> PascalCase, e.g.
+    ``stress_period_data`` -> ``StressPeriodData``, ``packagedata`` ->
+    ``Packagedata``, ``ext-inflow`` (a real MF6 keystring keyword, LKT/LKE)
+    -> ``ExtInflow``. Only "_"/"-" split words -- the wire keyword itself
+    (unlike the class name) keeps its original separator, since a hyphen is
+    fine inside a Python string but not an identifier."""
+    return "".join(part.capitalize() for part in re.split(r"[_-]", name))
+
+
+def item_class(
+    schema_list: list[dict],
+    class_name: str,
+    is_period: bool = False,
+    has_aux: bool = False,
+    keyword: str = "",
 ) -> str:
-    """Render a Row subclass (flopy4.mf6.row.Row) for list block construction.
+    """Render an Item subclass (flopy4.mf6.item.Item) for list block construction.
 
     Called as::
 
-        {{ spec.period_schema | row_class("Row", True) }}
-        {{ block_schema | row_class("PackagedataRow") }}
+        {{ spec.period_schema | item_class("StressPeriodData", True) }}
+        {{ block_schema | item_class("Packagedata") }}
+        {{ arm_schema | item_class("Status", keyword="STATUS") }}
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
-    real metadata (``pk=``/``fk=``/``cellid=``/``time_series=``/``prefix=``/
-    ``tagged=``, via ``field()``) -- the class itself is the schema;
-    structure.py/unstructure.py introspect it directly (see flopy4.mf6.row).
-    No separate Schema/Column description is emitted.
+    real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
+    ``prefix=``/``tagged=``, via ``field()``) -- the class itself is the schema.
 
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.
@@ -549,8 +563,16 @@ def row_class(
     columns in their stress period rows. Static list blocks (packagedata,
     connectiondata, etc.) have fixed DFN schemas and never carry dynamic aux
     columns, so ``is_period`` should be False (the default) for those.
+
+    ``keyword``, when given, is one arm of a keystring-union period field
+    (e.g. LAK's STAGE/RATE/STATUS settings, OC's SAVE/PRINT records) --
+    emitted as ``_keyword`` so flopy4.mf6.item.dispatch_union_item can pick
+    the right arm class for a raw row by its leading token. An arm can be a
+    bare keyword with no data of its own (e.g. PRP's releasesetting ALL/
+    FIRST/LAST) -- schema_list is then empty, but the class itself (just
+    _keyword) is still real and must still be emitted.
     """
-    if not schema_list:
+    if not schema_list and not keyword:
         return ""
 
     _DFN_PY: dict[str, str] = {
@@ -574,6 +596,8 @@ def row_class(
             return "object"
         if role == "boundname":
             return "str"
+        if role == "array":
+            return "tuple"
         if col.get("time_series") or col.get("dtype") == "np.object_":
             return "Union[float, str]"
         return _DFN_PY.get(col.get("dfn_type", "double"), "float")
@@ -587,16 +611,17 @@ def row_class(
             "boundname",
             "inline_keyword",
             "keystring_value",
+            "array",
         )
 
-    def _prefix_inout(col: dict) -> str:
-        """MF6 inout direction implied by a row column's prefix tokens."""
-        return "fileout" if "FILEOUT" in (col.get("prefix") or "").upper().split() else "filein"
+    def _prefix_direction(col: dict) -> str:
+        """MF6 file direction implied by a row column's prefix tokens."""
+        return "out" if "FILEOUT" in (col.get("prefix") or "").upper().split() else "in"
 
     def _prefix_tokens(col: dict) -> tuple:
         """Fixed literal prefix token(s) preceding FILEIN/FILEOUT itself (e.g.
         SSM fileinput's "SPC6", LAK tables' "TAB6") -- the FILEIN/FILEOUT
-        keyword is handled separately via inout=, not part of this tuple."""
+        keyword is handled separately via direction=, not part of this tuple."""
         parts = (col.get("prefix") or "").split()
         return tuple(p for p in parts if p not in ("FILEIN", "FILEOUT"))
 
@@ -606,16 +631,19 @@ def row_class(
         if role == "cellid":
             meta["cellid"] = True
         elif role == "feature_id":
+            meta["index"] = True
             if col.get("fk"):
                 meta["fk"] = col["fk"]
-            else:
+            elif col.get("pk"):
                 meta["pk"] = True
         elif role == "inline_keyword":
             meta["tagged"] = True
+        elif role == "array":
+            meta["array"] = True
         if col.get("time_series"):
             meta["time_series"] = True
         if _is_optional(col):
-            # Needed even for time_series fields: _n_fixed_tokens() (row.py)
+            # Needed even for time_series fields: _n_fixed_tokens() (item.py)
             # uses this to tell "always present" fixed columns apart from
             # trailing columns that may be entirely absent from a given row
             # (e.g. EVT's pxdp/petm/petm0, only written when
@@ -625,22 +653,31 @@ def row_class(
         return meta
 
     def _field_line(col: dict, *, optional: bool) -> str:
+        if col["role"] == "array":
+            # Consumes all remaining tokens as a tuple (see item.py's
+            # from_tokens/to_tokens "array" metadata handling) -- a
+            # keyword-plus-trailing-values setting whose arity/type isn't
+            # fixed (OC/PRP's ocsetting/releasesetting), not a single value.
+            return f"        {col['name']}: tuple = field(default=(), array=True)"
         # File-reference columns (a fixed MF6 token or two before a filename,
         # e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields built via the
         # same path() convention used for Package-level file fields, not the
         # generic dtype-based Union[float, str] fallback below.
         if col.get("prefix"):
-            inout = _prefix_inout(col)
+            direction = _prefix_direction(col)
             fixed = _prefix_tokens(col)
             prefix_kw = f", prefix={_dq(fixed)}" if fixed else ""
             if optional:
                 return (
                     f"        {col['name']}: Optional[Path] = path(\n"
                     f"            default=None, converter=_optional_path, "
-                    f'inout="{inout}"{prefix_kw}\n'
+                    f'direction="{direction}"{prefix_kw}\n'
                     f"        )"
                 )
-            return f'        {col["name"]}: Path = path(converter=Path, inout="{inout}"{prefix_kw})'
+            return (
+                f"        {col['name']}: Path = path(converter=Path, "
+                f'direction="{direction}"{prefix_kw})'
+            )
         py_type = _py_type(col)
         meta = _field_meta(col)
         margs = ", ".join(f"{k}={_dq(v)}" for k, v in meta.items())
@@ -683,15 +720,9 @@ def row_class(
     boundname_cols = [col for col in optional if col["role"] == "boundname"]
 
     lines = ["    @attrs.define"]
-    # class_name == "Row" (the period-block case) needs the base written as
-    # the aliased `_Row` (imported as `Row as _Row`, see make.py): plain
-    # `class Row(Row):` makes the base unresolvable to mypy (the name gets
-    # shadowed by the class being defined before the base expression is
-    # "seen"), even though Python itself resolves it fine at runtime. Other
-    # row classes (PackagedataRow, ConnectiondataRow, ...) don't collide
-    # with the import name, so they stay on plain `Row`.
-    _row_base = "_Row" if class_name == "Row" else "Row"
-    lines.append(f"    class {class_name}({_row_base}):")
+    lines.append(f"    class {class_name}(Item):")
+    if keyword:
+        lines.append(f'        _keyword: ClassVar[str] = "{keyword}"')
     for col in required:
         lines.append(_field_line(col, optional=False))
     for col in optional_non_boundname:
@@ -724,7 +755,7 @@ class ColumnSpec:
     is_cellid: bool  # shape=["ncelldim"] -- stored as object-dtype tuple attr
     is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
     is_row_keyword: bool  # optional keyword -- stored as bool attr
-    is_index: bool  # pk or fk column: 0-based index written as 1-based (+1 at write time)
+    is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
 
 
 def find_keystring_union(list_field: ListField) -> UnionField | None:
@@ -755,6 +786,47 @@ def find_keystring_union(list_field: ListField) -> UnionField | None:
     return None
 
 
+def _fields_to_columns(
+    fields: "list[tuple[str, FieldV3]]", component_name: str = ""
+) -> list[ColumnSpec]:
+    """Build ColumnSpecs from an ordered (name, field) sequence -- the shared
+    core of list_columns (a List[Record]'s own item fields) and
+    make.py's keystring-union arm processing (a Union arm's fields, once its
+    own leading keyword, if any, is split off as the arm's _keyword).
+
+    ``safe_name`` sanitizes the column name (e.g. LKT/LKE's hyphenated
+    "ext-inflow" arm -> "ext_inflow") since it becomes a Python attribute
+    name here -- unlike a class's own _keyword string, which keeps its
+    original spelling (it's compared against a raw wire token, not used as
+    an identifier).
+    """
+    result = []
+    for col_name, raw_col in fields:
+        col = apply_override(component_name, raw_col) if component_name else raw_col
+        is_keyword = isinstance(col, KeywordField)
+        is_optional = col.optional
+        result.append(
+            ColumnSpec(
+                name=safe_name(col_name),
+                field=col,
+                is_cellid=isinstance(col, Array) and list(col.shape or []) == ["ncelldim"],
+                is_prefix=is_keyword and not is_optional,
+                is_row_keyword=is_keyword and is_optional,
+                # role="feature_id" implies MF6's numeric 0-based-Python/1-based-
+                # file conversion (structure.py: int(...) - 1). dev3's `index`
+                # attribute (split out of the old overloaded pk/fk semantics,
+                # modflow-devtools 41dca93) is now the direct, authoritative
+                # signal for this -- no longer inferred from pk/fk-ness (a
+                # string pk/fk, e.g. MVR's `pname`, a package *name* reference
+                # not a numeric one, is never `index`, so the old
+                # isinstance(col, Integer)-guarded pk-or-fk heuristic this
+                # replaced is no longer needed either).
+                is_index=bool(getattr(col, "index", False)),
+            )
+        )
+    return result
+
+
 def list_columns(f: ListField, component_name: str = "") -> list[ColumnSpec]:
     """Return the leaf column specs of a dev3 List[Record] field, in order.
 
@@ -772,27 +844,7 @@ def list_columns(f: ListField, component_name: str = "") -> list[ColumnSpec]:
     item = f.item
     if not isinstance(item, Record):
         return []
-    result = []
-    for col_name, raw_col in item.fields.items():
-        col = apply_override(component_name, raw_col) if component_name else raw_col
-        is_keyword = isinstance(col, KeywordField)
-        is_optional = col.optional
-        result.append(
-            ColumnSpec(
-                name=col_name,
-                field=col,
-                is_cellid=isinstance(col, Array) and list(col.shape or []) == ["ncelldim"],
-                is_prefix=is_keyword and not is_optional,
-                is_row_keyword=is_keyword and is_optional,
-                # role="feature_id" implies MF6's numeric 0-based-Python/1-based-
-                # file conversion (structure.py: int(...) - 1) -- only sound for
-                # integer indices. String pk/fk (e.g. MVR's `pname`, a package
-                # *name* reference, not a numeric one) must stay role="value".
-                is_index=isinstance(col, Integer)
-                and bool(getattr(col, "pk", False) or getattr(col, "fk", None)),
-            )
-        )
-    return result
+    return _fields_to_columns(list(item.fields.items()), component_name)
 
 
 def is_keystring_list(f: ListField) -> bool:

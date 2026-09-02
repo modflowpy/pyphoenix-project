@@ -148,8 +148,7 @@ rch = flopy4.mf6.gwf.Rch(
 oc = flopy4.mf6.gwf.Oc(
     budget_file="gwf.bud",
     head_file="gwf.hds",
-    save_head={0: "all"},
-    save_budget={0: "all"},
+    stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
     dims=dims,
 )
 

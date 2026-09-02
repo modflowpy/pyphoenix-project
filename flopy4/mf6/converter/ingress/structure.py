@@ -9,8 +9,8 @@ import xattree
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row, infer_ncelldim, parse_union_rows, row_list_type
 from flopy4.mf6.spec import to_field_type
 
 
@@ -29,28 +29,26 @@ def _inner_class_type(field_type) -> type | None:
 
 def _parse_rows(
     rows: list,
-    row_cls: "type[Row] | tuple[type[Row], ...]",
+    item_cls: "type[Item] | tuple[type[Item], ...]",
     *,
     naux: int = 0,
     boundnames: bool = False,
 ) -> list | None:
-    """Parse raw token rows into a list of Row instances.
+    """Parse raw token rows into a list of Item instances.
 
-    row_cls is either a single Row class (its own fields, with cellid=/pk=/
-    fk=/time_series= metadata, are the schema -- see Row.from_row) or a
-    tuple of arm classes for a keystring union field, dispatched per-row by
-    keyword token (see row.parse_union_rows). ncelldim (a variable-width
-    cellid's element count) is inferred once from the first row, same as
-    the old Schema-driven parser did -- not applicable to unions (arms with
-    a cellid field aren't a case seen in the corpus).
+    item_cls is either a single Item class or a tuple of arm classes for a
+    keystring union field, dispatched per-row by keyword token (see
+    item.parse_union_items). ncelldim (a variable-width cellid's element
+    count) is inferred once from the first row -- not applicable to unions
+    (arms with a cellid field aren't a case seen in the corpus).
     """
     if not rows:
         return None
-    if isinstance(row_cls, tuple):
-        return parse_union_rows(rows, row_cls, naux=naux, boundnames=boundnames)
-    ncelldim = infer_ncelldim(rows, row_cls, naux=naux)
+    if isinstance(item_cls, tuple):
+        return parse_union_items(rows, item_cls, naux=naux, boundnames=boundnames)
+    ncelldim = infer_ncelldim(rows, item_cls, naux=naux)
     result = [
-        row_cls.from_row(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
+        item_cls.from_tokens(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
         for row in rows
         if row
     ]
@@ -209,8 +207,8 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
     exchange couples, or the model name(s) a solution applies to) that
     isn't recoverable from the referenced file's own content -- write it
     back onto the loaded child. A `Model`/`Package` target's trailing term
-    is just its pname (already handled by xattree's own naming), not state
-    to set here.
+    is just its pname, handled by the caller (`_resolve_bindings`) via
+    `Component.pname`, not state to set here.
     """
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.solution import Solution
@@ -348,16 +346,18 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             # (coupled model names / applicable models), not a name to
             # assign the loaded child itself.
             #
-            # name= only actually takes effect for "dict"-kind children
-            # below (Simulation.models/exchanges/solutions) -- xattree
-            # reconciles a "list"-kind child's name to f"{field}{index}"
-            # and an "only"-kind child's to the field name regardless of
-            # what's passed (confirmed both at load time here and at write
-            # time: Chd(name="custom")/Ic(name="custom") get renamed
-            # "chd0"/"ic" the same way on construction already, before
-            # this code ever runs). Passed through anyway for the dict
-            # case and because it's harmless (silently ignored) otherwise,
-            # not because it's expected to matter for "list"/"only".
+            # name= (xattree's own attribute) only actually takes effect
+            # for "dict"-kind children below (Simulation.models/exchanges/
+            # solutions) -- xattree reconciles a "list"-kind child's name
+            # to f"{field}{index}" and an "only"-kind child's to the field
+            # name regardless of what's passed (confirmed both at load
+            # time here and at write time: Chd(name="custom")/
+            # Ic(name="custom") get renamed "chd0"/"ic" the same way on
+            # construction already, before this code ever runs). Passed
+            # through anyway for the dict case and because it's harmless
+            # (silently ignored) otherwise. The real pname for "list"/
+            # "only"-kind children is instead preserved via the plain,
+            # xattree-unmanaged Component.pname field, set below.
             pname = (
                 str(row[2])
                 if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
@@ -369,6 +369,12 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 else target_cls.load(workspace / fname, name=pname)
             )
             child.filename = fname
+            if pname:
+                # Plain, xattree-unmanaged field (see Component.pname) --
+                # preserves the row's real pname for "list"/"only"-kind
+                # children even though xattree itself reconciles .name to
+                # a field-derived value regardless of what's passed above.
+                child.pname = pname
             _apply_binding_terms(child, row[2:])
             if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}
@@ -453,37 +459,30 @@ def structure_component(
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
-    # Identify Row-list fields (packagedata, connectiondata, partitions …) --
-    # the field's own type annotation (Optional[list[RowClass]] or
-    # Optional[dict[int, list[RowClass]]]) is the schema; no separate
-    # Schema/Column lookup.
-    block_row_fields: dict[str, tuple] = {}  # block_name → (field, row_cls)
-    oc_fields: list = []  # fields with oc_action metadata
-    period_field = None  # field for the period Row-list
-    period_row_cls: "type[Row] | tuple[type[Row], ...] | None" = None
+    # Identify Item-list fields (packagedata, connectiondata, partitions …) --
+    # the field's own type annotation (Optional[list[ItemClass]] or
+    # Optional[dict[int, list[ItemClass]]]) is the schema.
+    block_item_fields: dict[str, tuple] = {}  # block_name → (field, item_cls)
+    period_field = None  # field for the period Item-list
+    period_item_cls: "type[Item] | tuple[type[Item], ...] | None" = None
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
-        oc_action = f.metadata.get("oc_action")
-
-        if oc_action:
-            oc_fields.append(f)
-            continue
-        row_cls = row_list_type(f.type)
-        if row_cls is None:
+        item_cls = item_list_type(f.type)
+        if item_cls is None:
             continue
         if block == "period":
             period_field = f
-            period_row_cls = row_cls
+            period_item_cls = item_cls
         else:
-            block_row_fields[block] = (f, row_cls)
+            block_item_fields[block] = (f, item_cls)
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
-        if block_name in block_row_fields or block_name.startswith("period"):
+        if block_name in block_item_fields or block_name.startswith("period"):
             continue
         for row in rows:
             if not row:
@@ -514,12 +513,12 @@ def structure_component(
         naux = len(aux_opt) if isinstance(aux_opt, list) else 1
     boundnames = bool(kwargs.get("boundnames", False))
 
-    # ── Pass 2: block Row-list fields (packagedata, partitions …) ───────────
-    for block_name, (f, row_cls) in block_row_fields.items():
+    # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
+    for block_name, (f, item_cls) in block_item_fields.items():
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        row_list = _parse_rows(rows, row_cls, naux=naux, boundnames=boundnames)
+        row_list = _parse_rows(rows, item_cls, naux=naux, boundnames=boundnames)
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
             kwargs[init_key] = row_list
@@ -539,35 +538,13 @@ def structure_component(
         kper_rows[kper] = rows
 
     if kper_rows:
-        if oc_fields:
-            # OC-style: rows like [ACTION, RTYPE, SETTING …]
-            # Map (action, rtype) → field name
-            oc_map: dict[tuple[str, str], str] = {}
-            for f in oc_fields:
-                action = f.metadata["oc_action"].lower()
-                rtype = f.metadata["oc_rtype"].lower()
-                oc_map[(action, rtype)] = f.alias if f.alias else f.name
-
-            collected: dict[str, dict[int, str]] = {}
-            for kper, rows in sorted(kper_rows.items()):
-                for row in rows:
-                    if len(row) < 2:
-                        continue
-                    action = str(row[0]).lower()
-                    rtype = str(row[1]).lower()
-                    field_key = oc_map.get((action, rtype))
-                    if field_key:
-                        setting = " ".join(str(t) for t in row[2:]) if len(row) > 2 else "all"
-                        collected.setdefault(field_key, {})[kper] = setting
-            kwargs.update(collected)
-
-        elif period_field is not None:
-            assert period_row_cls is not None  # set together with period_field above
+        if period_field is not None:
+            assert period_item_cls is not None  # set together with period_field above
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
                     continue
-                row_list = _parse_rows(rows, period_row_cls, naux=naux, boundnames=boundnames)
+                row_list = _parse_rows(rows, period_item_cls, naux=naux, boundnames=boundnames)
                 if row_list is not None:
                     spd[kper] = row_list
             if spd:

@@ -599,9 +599,14 @@ wel_sampleQ = flopy4.mf6.gwf.Wel(
 oc = flopy4.mf6.gwf.Oc(
     budget_file=Path("ff.cbc"),
     head_file=Path("ff.hds"),
-    save_head={"0": "all", 1: "all"},
-    save_budget={"0": "STEPS 1"},
-    print_budget={"0": "STEPS 1 15", 1: "last"},
+    stress_period_data={
+        0: [
+            ("SAVE", "HEAD", "ALL"),
+            ("SAVE", "BUDGET", "STEPS", 1),
+            ("PRINT", "BUDGET", "STEPS", 1, 15),
+        ],
+        1: [("SAVE", "HEAD", "ALL"), ("PRINT", "BUDGET", "LAST")],
+    },
     dims=dims,
 )
 

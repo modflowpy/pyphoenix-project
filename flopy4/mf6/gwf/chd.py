@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,7 +17,7 @@ class Chd(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         head: Union[float, str] = field(time_series=True)
         aux: tuple = ()
@@ -60,21 +58,21 @@ class Chd(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
         auto_from="stress_period_data",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -83,4 +81,4 @@ class Chd(Package):
     )
 
 
-ChdRow = Chd.Row
+ChdStressPeriodData = Chd.StressPeriodData

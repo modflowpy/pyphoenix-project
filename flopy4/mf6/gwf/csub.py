@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import FloatArrayLike, _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -17,8 +15,8 @@ class Csub(Package):
     dfn_name: ClassVar[str] = "gwf-csub"
 
     @attrs.define
-    class PackagedataRow(Row):
-        icsubno: int = field(pk=True)
+    class Packagedata(Item):
+        icsubno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         cdelay: Union[float, str] = field()
         pcs0: float = field()
@@ -33,7 +31,7 @@ class Csub(Package):
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class Row(_Row):
+    class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         sig0: Union[float, str] = field(time_series=True)
         aux: tuple = ()
@@ -60,6 +58,16 @@ class Csub(Package):
     )
     beta: Optional[float] = field(
         default=4.6512e-10,
+        block="options",
+        optional=True,
+    )
+    elastic_inelastic_smoothing: bool = field(
+        default=False,
+        block="options",
+        optional=True,
+    )
+    strict_effective_stress: bool = field(
+        default=False,
         block="options",
         optional=True,
     )
@@ -118,77 +126,77 @@ class Csub(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     straincg_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_elastic_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_inelastic_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_interbed_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     compaction_coarse_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     zdisplacement_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     package_convergence_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     ninterbeds: Optional[int] = field(
         default=None,
@@ -199,7 +207,7 @@ class Csub(Package):
         block="dimensions",
         optional=True,
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
@@ -230,7 +238,7 @@ class Csub(Package):
         netcdf=True,
         optional=True,
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -239,5 +247,5 @@ class Csub(Package):
     )
 
 
-CsubRow = Csub.Row
-CsubPackagedataRow = Csub.PackagedataRow
+CsubStressPeriodData = Csub.StressPeriodData
+CsubPackagedata = Csub.Packagedata

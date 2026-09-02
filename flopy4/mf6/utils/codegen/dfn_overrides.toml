@@ -271,53 +271,15 @@ always_emit_blocks = ["sources"]
 # Replacing the columnar list expansion with three individual Optional[Path] fields
 # matches the hand-written fmi.py and the actual MF6 input semantics.
 replace_list_fields = [
-    {block = "packagedata", name = "gwfhead",   inout = "filein", longname = "gwf head file"},
-    {block = "packagedata", name = "gwfbudget", inout = "filein", longname = "gwf budget file"},
-    {block = "packagedata", name = "gwfspdis",  inout = "filein", longname = "gwf spdis file"},
+    {block = "packagedata", name = "gwfhead",   direction = "in", longname = "gwf head file"},
+    {block = "packagedata", name = "gwfbudget", direction = "in", longname = "gwf budget file"},
+    {block = "packagedata", name = "gwfspdis",  direction = "in", longname = "gwf spdis file"},
 ]
 
 [_package_extras."gwt-lkt"]
 # nlakes comes from the paired gwf-lak model; gwt-lkt has no DIMENSIONS block.
 packagedata_dim = "nlakes"
-extra_period_fields = [
-    {keyword = "STATUS",        feature_dim = "nlakes", dtype = "string"},
-    {keyword = "CONCENTRATION", feature_dim = "nlakes"},
-    {keyword = "RAINFALL",      feature_dim = "nlakes"},
-    {keyword = "EVAPORATION",   feature_dim = "nlakes"},
-    {keyword = "RUNOFF",        feature_dim = "nlakes"},
-    {keyword = "EXT-INFLOW",    feature_dim = "nlakes"},
-]
 
 [_package_extras."gwe-lke"]
 # nlakes comes from the paired gwf-lak model; gwe-lke has no DIMENSIONS block.
 packagedata_dim = "nlakes"
-extra_period_fields = [
-    {keyword = "STATUS",      feature_dim = "nlakes", dtype = "string"},
-    {keyword = "TEMPERATURE", feature_dim = "nlakes"},
-    {keyword = "RAINFALL",    feature_dim = "nlakes"},
-    {keyword = "EVAPORATION", feature_dim = "nlakes"},
-    {keyword = "RUNOFF",      feature_dim = "nlakes"},
-    {keyword = "EXT-INFLOW",  feature_dim = "nlakes"},
-]
-
-[_package_extras."gwf-lak"]
-# packagedata/connectiondata/tables/outlets list blocks are auto-detected from
-# the v1 DFN via v1_list_block_names in _build_block_property_specs (no extra_list_blocks needed).
-extra_period_fields = [
-    # Lake keyword fields — shape (nper, nlakes); always bare keyword name
-    {keyword = "STATUS",      feature_dim = "nlakes",   dtype = "string"},
-    {keyword = "STAGE",       feature_dim = "nlakes"},
-    {keyword = "RAINFALL",    feature_dim = "nlakes"},
-    {keyword = "EVAPORATION", feature_dim = "nlakes"},
-    {keyword = "RUNOFF",      feature_dim = "nlakes"},
-    {keyword = "INFLOW",      feature_dim = "nlakes"},
-    {keyword = "WITHDRAWAL",  feature_dim = "nlakes"},
-    # Outlet keyword fields — shape (nper, noutlets); always bare keyword name
-    # Note: INVERT/WIDTH/SLOPE/ROUGH also appear as outlets packagedata columns;
-    # those static columns get outlets_ prefix (collision_names with reserved period names).
-    {keyword = "RATE",        feature_dim = "noutlets"},
-    {keyword = "INVERT",      feature_dim = "noutlets"},
-    {keyword = "WIDTH",       feature_dim = "noutlets"},
-    {keyword = "SLOPE",       feature_dim = "noutlets"},
-    {keyword = "ROUGH",       feature_dim = "noutlets"},
-]

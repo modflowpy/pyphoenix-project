@@ -90,6 +90,21 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     filename: str | None = field(default=None)
     """The name of the component's input file."""
 
+    pname: str | None = field(default=None)
+    """The component's requested name, independent of xattree's own
+    `.name` attribute. For "dict"-kind children (Simulation.models/
+    exchanges/solutions), xattree reconciles `.name` to match the dict
+    key a child is attached under, so an explicit name sticks and this
+    field is redundant. For "list"-kind (Chd, Wel, ...) and "only"-kind
+    (Dis, Ic, Npf, ...) children, xattree always reconciles `.name` to a
+    field-derived value (`f"{field}{index}"` / the field name) regardless
+    of what's passed to the constructor -- changing that is a change to
+    xattree's own child-attachment convention, out of scope here. This
+    field is a plain, xattree-unmanaged escape hatch for that case: a
+    namefile binding row's real pname (see `_resolve_bindings`), or a
+    name set directly by a caller, that round-trips through
+    write/load/write even though `.name` itself can't hold it."""
+
     @property
     def path(self) -> Path:
         """The path to the component's input file."""

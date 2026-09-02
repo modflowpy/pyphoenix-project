@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.row import Row
+from flopy4.mf6.item import Item
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils.grid import VertexGrid
 
@@ -23,7 +23,7 @@ class Disv(DisBase):
         icvert: tuple[int, ...] = attrs.field()
 
     @attrs.define
-    class VerticesRow(Row):
+    class Vertices(Item):
         iv: int
         xv: float
         yv: float
@@ -62,7 +62,7 @@ class Disv(DisBase):
     iv: Optional[NDArray[np.int64]] = attrs.field(default=None)
     xv: Optional[NDArray[np.float64]] = attrs.field(default=None)
     yv: Optional[NDArray[np.float64]] = attrs.field(default=None)
-    vertices: Optional[list[VerticesRow]] = field(default=None, block="vertices")
+    vertices: Optional[list[Vertices]] = field(default=None, block="vertices")
     cell2ddata: Optional[list] = attrs.field(default=None)
     cell2d: Optional[list] = field(default=None, init=False, block="cell2d")
 
@@ -75,7 +75,7 @@ class Disv(DisBase):
             object.__setattr__(self, "yv", np.asarray(self.yv, dtype=np.float64))
         if self.iv is not None and self.xv is not None and (self.yv is not None):
             rows = [
-                self.VerticesRow(iv=int(iv) + 1, xv=float(xv), yv=float(yv))
+                self.Vertices(iv=int(iv) + 1, xv=float(xv), yv=float(yv))
                 for iv, xv, yv in zip(self.iv, self.xv, self.yv)
             ]
             object.__setattr__(self, "vertices", rows)

@@ -5,11 +5,9 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -17,8 +15,8 @@ class Sto(Package):
     dfn_name: ClassVar[str] = "gwf-sto"
 
     @attrs.define
-    class Row(_Row):
-        storage: str
+    class StressPeriodData(Item):
+        storage: str = field()
 
     save_flows: bool = field(
         default=False,
@@ -40,7 +38,7 @@ class Sto(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     export_array_ascii: bool = field(
         default=False,
@@ -70,7 +68,7 @@ class Sto(Package):
         shape=("nodes",),
         netcdf=True,
     )  # type: ignore[assignment]
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -79,4 +77,4 @@ class Sto(Package):
     )
 
 
-StoRow = Sto.Row
+StoStressPeriodData = Sto.StressPeriodData

@@ -115,8 +115,7 @@ def main():
         oc = flopy4.mf6.gwf.Oc(
             budget_file=Path("test1005.cbc"),
             head_file=Path("test1005.hds"),
-            save_head={0: "last"},
-            save_budget={0: "last"},
+            stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
             dims=dims,
         )
         return dis, ic, npf, sto, oc

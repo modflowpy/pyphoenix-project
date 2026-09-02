@@ -11,6 +11,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Api(Package):
+    dfn_name: ClassVar[str] = "gwf-api"
+
     multi_package: ClassVar[bool] = True
 
     boundnames: bool = field(
@@ -38,7 +40,7 @@ class Api(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     mover: bool = field(
         default=False,

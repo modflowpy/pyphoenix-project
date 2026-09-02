@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -17,18 +15,18 @@ class Mvr(Package):
     dfn_name: ClassVar[str] = "gwf-mvr"
 
     @attrs.define
-    class PackagesRow(Row):
-        pname: Union[float, str]
+    class Packages(Item):
+        pname: Union[float, str] = field()
         mname: Optional[Union[float, str]] = field(default=None, optional=True)
 
     @attrs.define
-    class Row(_Row):
-        pname1: Union[float, str]
-        id1: int
-        pname2: Union[float, str]
-        id2: int
-        mvrtype: Union[float, str]
-        value: float
+    class StressPeriodData(Item):
+        pname1: Union[float, str] = field()
+        id1: int = field(index=True)
+        pname2: Union[float, str] = field()
+        id2: int = field(index=True)
+        mvrtype: Union[float, str] = field()
+        value: float = field()
         mname1: Optional[Union[float, str]] = field(default=None, optional=True)
         mname2: Optional[Union[float, str]] = field(default=None, optional=True)
         aux: tuple = ()
@@ -53,14 +51,14 @@ class Mvr(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     maxmvr: Optional[int] = field(
         default=None,
@@ -70,12 +68,12 @@ class Mvr(Package):
         default=None,
         block="dimensions",
     )
-    packages: Optional[list[PackagesRow]] = field(
+    packages: Optional[list[Packages]] = field(
         default=None,
         block="packages",
         auto_from="packages",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -84,5 +82,5 @@ class Mvr(Package):
     )
 
 
-MvrRow = Mvr.Row
-MvrPackagesRow = Mvr.PackagesRow
+MvrStressPeriodData = Mvr.StressPeriodData
+MvrPackages = Mvr.Packages

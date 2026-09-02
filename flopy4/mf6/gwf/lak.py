@@ -5,11 +5,9 @@ from typing import ClassVar, Optional, Union
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,17 +17,17 @@ class Lak(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
-    class PackagedataRow(Row):
-        ifno: int = field(pk=True)
+    class Packagedata(Item):
+        ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class ConnectiondataRow(Row):
-        ifno: int = field(fk="packagedata.ifno")
-        iconn: int = field(pk=True)
+    class Connectiondata(Item):
+        ifno: int = field(index=True, fk="packagedata.ifno")
+        iconn: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         claktype: Union[float, str] = field()
         bedleak: Union[float, str] = field()
@@ -39,15 +37,15 @@ class Lak(Package):
         connwidth: float = field()
 
     @attrs.define
-    class TablesRow(Row):
-        ifno: int = field(fk="packagedata.ifno")
-        tab6_filename: Path = path(converter=Path, inout="filein", prefix=("TAB6",))
+    class Tables(Item):
+        ifno: int = field(index=True, fk="packagedata.ifno")
+        tab6_filename: Path = path(converter=Path, direction="in", prefix=("TAB6",))
 
     @attrs.define
-    class OutletsRow(Row):
-        outletno: int = field(pk=True)
-        lakein: int = field(fk="packagedata.ifno")
-        lakeout: int = field(fk="packagedata.ifno")
+    class Outlets(Item):
+        outletno: int = field(index=True, pk=True)
+        lakein: int = field(index=True, fk="packagedata.ifno")
+        lakeout: int = field(index=True, fk="packagedata.ifno")
         couttype: Union[float, str] = field()
         invert: Union[float, str] = field(time_series=True)
         width: Union[float, str] = field(time_series=True)
@@ -55,10 +53,99 @@ class Lak(Package):
         slope: Union[float, str] = field(time_series=True)
 
     @attrs.define
-    class Row(_Row):
-        number: int = field(pk=True)
-        keyword: str = field()
-        value: Optional[object] = field(default=None, optional=True)
+    class Status(Item):
+        _keyword: ClassVar[str] = "status"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        status: Union[float, str] = field()
+
+    @attrs.define
+    class Stage(Item):
+        _keyword: ClassVar[str] = "stage"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        stage: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Rainfall(Item):
+        _keyword: ClassVar[str] = "rainfall"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        rainfall: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Evaporation(Item):
+        _keyword: ClassVar[str] = "evaporation"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        evaporation: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Runoff(Item):
+        _keyword: ClassVar[str] = "runoff"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        runoff: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Inflow(Item):
+        _keyword: ClassVar[str] = "inflow"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        inflow: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Withdrawal(Item):
+        _keyword: ClassVar[str] = "withdrawal"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        withdrawal: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Rate(Item):
+        _keyword: ClassVar[str] = "rate"
+        outletno: int = field(index=True, fk="outlets.outletno")
+        rate: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Invert(Item):
+        _keyword: ClassVar[str] = "invert"
+        outletno: int = field(index=True, fk="outlets.outletno")
+        invert: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Width(Item):
+        _keyword: ClassVar[str] = "width"
+        outletno: int = field(index=True, fk="outlets.outletno")
+        width: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Slope(Item):
+        _keyword: ClassVar[str] = "slope"
+        outletno: int = field(index=True, fk="outlets.outletno")
+        slope: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Rough(Item):
+        _keyword: ClassVar[str] = "rough"
+        outletno: int = field(index=True, fk="outlets.outletno")
+        rough: Union[float, str] = field(time_series=True)
+
+    @attrs.define
+    class Auxiliary(Item):
+        _keyword: ClassVar[str] = "auxiliary"
+        lakeno: int = field(index=True, fk="packagedata.ifno")
+        auxname: Union[float, str] = field()
+        auxval: Union[float, str] = field(time_series=True)
+
+    _StressPeriodDataItem = (
+        Status
+        | Stage
+        | Rainfall
+        | Evaporation
+        | Runoff
+        | Inflow
+        | Withdrawal
+        | Rate
+        | Invert
+        | Width
+        | Slope
+        | Rough
+        | Auxiliary
+    )
 
     auxiliary: Optional[list[str]] = field(
         default=None,
@@ -95,42 +182,42 @@ class Lak(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     budget_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     package_convergence_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     ts_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     obs_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="filein",
+        direction="in",
     )
     mover: bool = field(
         default=False,
@@ -139,6 +226,11 @@ class Lak(Package):
     )
     surfdep: Optional[float] = field(
         default=None,
+        block="options",
+        optional=True,
+    )
+    implicit: bool = field(
+        default=False,
         block="options",
         optional=True,
     )
@@ -174,26 +266,26 @@ class Lak(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
-    connectiondata: Optional[list[ConnectiondataRow]] = field(
+    connectiondata: Optional[list[Connectiondata]] = field(
         default=None,
         block="connectiondata",
     )
-    tables: Optional[list[TablesRow]] = field(
+    tables: Optional[list[Tables]] = field(
         default=None,
         block="tables",
         auto_from="tables",
     )
-    outlets: Optional[list[OutletsRow]] = field(
+    outlets: Optional[list[Outlets]] = field(
         default=None,
         block="outlets",
         auto_from="outlets",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -202,8 +294,20 @@ class Lak(Package):
     )
 
 
-LakRow = Lak.Row
-LakPackagedataRow = Lak.PackagedataRow
-LakConnectiondataRow = Lak.ConnectiondataRow
-LakTablesRow = Lak.TablesRow
-LakOutletsRow = Lak.OutletsRow
+LakPackagedata = Lak.Packagedata
+LakConnectiondata = Lak.Connectiondata
+LakTables = Lak.Tables
+LakOutlets = Lak.Outlets
+LakStatus = Lak.Status
+LakStage = Lak.Stage
+LakRainfall = Lak.Rainfall
+LakEvaporation = Lak.Evaporation
+LakRunoff = Lak.Runoff
+LakInflow = Lak.Inflow
+LakWithdrawal = Lak.Withdrawal
+LakRate = Lak.Rate
+LakInvert = Lak.Invert
+LakWidth = Lak.Width
+LakSlope = Lak.Slope
+LakRough = Lak.Rough
+LakAuxiliary = Lak.Auxiliary

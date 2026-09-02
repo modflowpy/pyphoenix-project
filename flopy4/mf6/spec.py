@@ -43,14 +43,14 @@ def field(
     auto_from: str | None = None,
     fill_forward: bool = False,
     reader: str | None = None,
-    oc_action: str | None = None,
-    oc_rtype: str | None = None,
     time_series: bool = False,
+    index: bool = False,
     pk: bool = False,
     fk: str | None = None,
     cellid: bool = False,
     tagged: bool = False,
     prefix: tuple[str, ...] | None = None,
+    array: bool = False,
 ):
     """Define a codegen-v2 field: always a plain ``attrs.field()``.
 
@@ -91,12 +91,10 @@ def field(
         metadata["fill_forward"] = True
     if reader:
         metadata["reader"] = reader
-    if oc_action:
-        metadata["oc_action"] = oc_action
-    if oc_rtype:
-        metadata["oc_rtype"] = oc_rtype
     if time_series:
         metadata["time_series"] = True
+    if index:
+        metadata["index"] = True
     if pk:
         metadata["pk"] = True
     if fk:
@@ -107,6 +105,8 @@ def field(
         metadata["tagged"] = True
     if prefix:
         metadata["prefix"] = tuple(prefix)
+    if array:
+        metadata["array"] = True
     return attrs.field(
         default=default,
         validator=validator,
@@ -155,7 +155,7 @@ def xattree_field(
     )
 
 
-FileInOut = Literal[None, "filein", "fileout"]
+FileDirection = Literal[None, "in", "out"]
 
 
 def path(
@@ -168,7 +168,7 @@ def path(
     metadata=None,
     on_setattr=None,
     block: str | None = None,
-    inout: FileInOut | None = None,
+    direction: FileDirection | None = None,
     longname: str | None = None,
     optional: bool = False,
     prefix: tuple[str, ...] | None = None,
@@ -177,10 +177,10 @@ def path(
 
     ``prefix``: fixed token(s) a row-level path column emits before its own
     FILEIN/FILEOUT+filename (e.g. LAK tables' ``TAB6``, SSM fileinput's
-    ``SPC6``) -- read by Row.to_row()/from_row() the same way any other
-    row column's prefix= is (see flopy4.mf6.row.Row). Package-level path
-    fields (options-block file records) don't need this -- there's no
-    preceding row context, just the field's own inout=.
+    ``SPC6``) -- read by Item.to_tokens()/from_tokens() the same way any
+    other row column's prefix= is (see flopy4.mf6.item.Item). Package-level
+    path fields (options-block file records) don't need this -- there's no
+    preceding row context, just the field's own direction=.
 
     See ``field()`` — use ``xattree_path()`` instead for fields on real
     ``@xattree`` component classes.
@@ -190,8 +190,8 @@ def path(
         metadata["prefix"] = tuple(prefix)
     if block:
         metadata["block"] = block
-    if inout:
-        metadata["inout"] = inout
+    if direction:
+        metadata["direction"] = direction
     if longname:
         metadata["longname"] = longname
     if optional:
@@ -218,7 +218,7 @@ def xattree_path(
     metadata=None,
     on_setattr=None,
     block: str | None = None,
-    inout: FileInOut | None = None,
+    direction: FileDirection | None = None,
     longname: str | None = None,
 ):
     """Define a path field on a real ``@xattree``-decorated component class.
@@ -226,12 +226,12 @@ def xattree_path(
     See ``field()`` for why this is a separate function rather than a shared
     one that infers which case applies.
     """
-    if block or inout or longname:
+    if block or direction or longname:
         metadata = metadata or {}
         if block:
             metadata["block"] = block
-        if inout:
-            metadata["inout"] = inout
+        if direction:
+            metadata["direction"] = direction
         if longname:
             metadata["longname"] = longname
     return flopy_field(

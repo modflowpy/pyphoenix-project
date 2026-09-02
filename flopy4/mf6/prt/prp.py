@@ -5,12 +5,10 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6._types import _optional_path
+from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.row import Row
 from flopy4.mf6.spec import field, path
-
-_Row = Row
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -25,8 +23,8 @@ class Prp(Package):
         timesfile: str = attrs.field()
 
     @attrs.define
-    class PackagedataRow(Row):
-        irptno: int = field(pk=True)
+    class Packagedata(Item):
+        irptno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
         xrpt: float = field()
         yrpt: float = field()
@@ -35,13 +33,37 @@ class Prp(Package):
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
-    class ReleasetimesRow(Row):
-        time: float
+    class Releasetimes(Item):
+        time: float = field()
 
     @attrs.define
-    class Row(_Row):
-        keyword: str
-        value: Optional[object] = field(default=None, optional=True)
+    class All(Item):
+        _keyword: ClassVar[str] = "all"
+
+    @attrs.define
+    class First(Item):
+        _keyword: ClassVar[str] = "first"
+
+    @attrs.define
+    class Last(Item):
+        _keyword: ClassVar[str] = "last"
+
+    @attrs.define
+    class Frequency(Item):
+        _keyword: ClassVar[str] = "frequency"
+        frequency: int = field()
+
+    @attrs.define
+    class Steps(Item):
+        _keyword: ClassVar[str] = "steps"
+        steps: tuple = field(default=(), array=True)
+
+    @attrs.define
+    class Fraction(Item):
+        _keyword: ClassVar[str] = "fraction"
+        fraction: tuple = field(default=(), array=True)
+
+    _StressPeriodDataItem = All | First | Last | Frequency | Steps | Fraction
 
     boundnames: bool = field(
         default=False,
@@ -73,14 +95,14 @@ class Prp(Package):
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     trackcsv_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
         block="options",
         optional=True,
-        inout="fileout",
+        direction="out",
     )
     stoptime: Optional[float] = field(
         default=None,
@@ -140,17 +162,17 @@ class Prp(Package):
         default=None,
         block="dimensions",
     )
-    packagedata: Optional[list[PackagedataRow]] = field(
+    packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
-    releasetimes: Optional[list[ReleasetimesRow]] = field(
+    releasetimes: Optional[list[Releasetimes]] = field(
         default=None,
         block="releasetimes",
         auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, list[Row]]] = field(
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -159,6 +181,11 @@ class Prp(Package):
     )
 
 
-PrpRow = Prp.Row
-PrpPackagedataRow = Prp.PackagedataRow
-PrpReleasetimesRow = Prp.ReleasetimesRow
+PrpPackagedata = Prp.Packagedata
+PrpReleasetimes = Prp.Releasetimes
+PrpAll = Prp.All
+PrpFirst = Prp.First
+PrpLast = Prp.Last
+PrpFrequency = Prp.Frequency
+PrpSteps = Prp.Steps
+PrpFraction = Prp.Fraction
