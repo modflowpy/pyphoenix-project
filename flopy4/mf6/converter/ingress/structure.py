@@ -33,6 +33,7 @@ def _parse_rows(
     *,
     naux: int = 0,
     boundnames: bool = False,
+    dims: "dict | None" = None,
 ) -> list | None:
     """Parse raw token rows into a list of Item instances.
 
@@ -40,13 +41,15 @@ def _parse_rows(
     keystring union field, dispatched per-row by keyword token (see
     item.parse_union_items). ncelldim (a variable-width cellid's element
     count) is inferred once from the first row -- not applicable to unions
-    (arms with a cellid field aren't a case seen in the corpus).
+    (arms with a cellid field aren't a case seen in the corpus). Prefers
+    `dims` (unambiguous: 3/2/1 for DIS/DISV/DISU) over counting row tokens
+    when available -- see `item.infer_ncelldim`.
     """
     if not rows:
         return None
     if isinstance(item_cls, tuple):
         return parse_union_items(rows, item_cls, naux=naux, boundnames=boundnames)
-    ncelldim = infer_ncelldim(rows, item_cls, naux=naux)
+    ncelldim = infer_ncelldim(rows, item_cls, naux=naux, dims=dims)
     result = [
         item_cls.from_tokens(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
         for row in rows
@@ -55,11 +58,137 @@ def _parse_rows(
     return result or None
 
 
-def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
+def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.ndarray:
+    """Read an ``OPEN/CLOSE <fname> [(BINARY)] [FACTOR <f>] [IPRN <i>]``
+    griddata control record's referenced file.
+
+    Binary arrays aren't supported yet (not seen in the corpus so far) --
+    raised explicitly rather than silently misparsed. Otherwise the
+    referenced file is a plain numeric array, whitespace- or (seen in one
+    fixture family) comma-separated with no spaces at all, optionally
+    scaled by FACTOR.
+    """
+    tokens = [str(t) for t in vrow[1:]]
+    if not tokens:
+        raise ValueError("OPEN/CLOSE control record missing a filename")
+    fname = tokens[0]
+    if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
+        raise ValueError(f"OPEN/CLOSE {fname}: BINARY arrays are not supported yet")
+    if workspace is None:
+        raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
+
+    text = (workspace / fname).read_text().replace(",", " ")
+    values = np.array(text.split(), dtype=dtype)
+    for j, tok in enumerate(tokens[1:], start=1):
+        if tok.upper() == "FACTOR" and j + 1 < len(tokens):
+            factor = tokens[j + 1]
+            values = values * (int(factor) if dtype == np.int64 else float(factor))
+            break
+    return values
+
+
+def _resolve_open_close_rows(rows: list, workspace: "Path | None") -> list:
+    """A period/list block's row data can itself be OPEN/CLOSE-redirected
+    to an external file instead of written inline -- MF6 syntax:
+    ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> / END PERIOD 1``. Same keyword as
+    griddata's OPEN/CLOSE control record, but a different mechanism: the
+    referenced file holds list rows, not a flat numeric array, so it's
+    parsed the same way an inline block's own content would be (wrapped in
+    a synthetic block and run back through the block/token grammar) rather
+    than through `_read_open_close_values`.
+
+    Detects that shape -- a block whose *only* content is one OPEN/CLOSE
+    row -- and returns the referenced file's rows in its place; otherwise
+    returns `rows` unchanged.
+    """
+    if len(rows) != 1 or not rows[0] or str(rows[0][0]).upper() != "OPEN/CLOSE":
+        return rows
+    row = rows[0]
+    if len(row) < 2:
+        raise ValueError("OPEN/CLOSE control record missing a filename")
+    fname = str(row[1])
+    if workspace is None:
+        raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
+
+    from flopy4.mf6.codec.reader import loads as _codec_loads
+
+    text = (workspace / fname).read_text()
+    wrapped = _codec_loads(f"BEGIN DATA\n{text}\nEND DATA\n")
+    return wrapped.get("DATA", [])
+
+
+def _numeric_prefix(row: list) -> list:
+    """Tokens from the start of `row` up to (not including) the first
+    non-numeric one. Real INTERNAL/bare-data-row array data is purely
+    numeric; a trailing inline annotation -- e.g. a "row 1" remark seen
+    on some fixtures, one per data line, as many lines as the array has
+    -- always starts with a non-numeric word, so stopping there drops
+    the annotation without needing to know each line's real data width
+    up front (unlike a single trailing annotation on the array's last
+    line only, `_read_control_record`'s final `values[:length]` slice
+    already handles that case)."""
+    out = []
+    for tok in row:
+        if not isinstance(tok, (int, float)):
+            try:
+                float(tok)
+            except (TypeError, ValueError):
+                break
+        out.append(tok)
+    return out
+
+
+def _read_control_record(
+    rows: list, i: int, workspace: "Path | None", dtype, length: int
+) -> "tuple[np.ndarray, int]":
+    """Read one CONSTANT/INTERNAL/OPEN-CLOSE array control record starting
+    at ``rows[i]``, shared by griddata (`_parse_griddata_block`) and
+    READARRAY period (`_parse_readarray_period_block`) array ingress.
+
+    Always returns a full ``length``-element ``ndarray`` (CONSTANT
+    broadcasts here rather than leaving that to the caller) plus the next
+    row index to resume from. INTERNAL's (and a bare, keyword-less data
+    row's) values commonly wrap across multiple physical lines for a large
+    array -- each is one row here -- so both keep consuming rows until
+    ``length`` values are collected, rather than assuming exactly one row.
+    """
+    vrow = rows[i]
+    kind = str(vrow[0]).upper() if vrow else ""
+    if kind == "CONSTANT":
+        v = int(vrow[1]) if dtype == np.int64 else float(vrow[1])
+        return np.full(length, v, dtype=dtype), i + 1
+    if kind == "OPEN/CLOSE":
+        return _read_open_close_values(vrow, workspace, dtype), i + 1
+    j = i + 1 if kind == "INTERNAL" else i
+    values: list = []
+    while len(values) < length and j < len(rows):
+        values.extend(_numeric_prefix(rows[j]))
+        j += 1
+    return np.array(values[:length], dtype=dtype), j
+
+
+def _griddata_flat_length(f, dims: dict, default: int) -> int:
+    """Target length for a non-layered griddata field's flat array --
+    e.g. DIS's `delr`/`delc` are `(ncol,)`/`(nrow,)`, not `(nodes,)`. Falls
+    back to `default` (the grid's total node count) when the field's
+    declared shape dimension isn't resolvable from `dims`.
+    """
+    shape_meta = f.metadata.get("shape")
+    if shape_meta:
+        dim_name = shape_meta[-1] if isinstance(shape_meta, (tuple, list)) else shape_meta
+        if dim_name in dims:
+            return dims[dim_name]
+    return default
+
+
+def _parse_griddata_block(
+    rows: list, fields_by_name: dict, dims: dict, workspace: "Path | None" = None
+) -> dict:
     """Parse GRIDDATA token rows into {field_name: np.ndarray}.
 
-    Token rows alternate: [field_name, ?LAYERED] then value row(s).
-    CONSTANT broadcasts to shape; LAYERED expects one value row per layer.
+    Token rows alternate: [field_name, ?LAYERED] then one control record
+    per layer (LAYERED) or a single one otherwise -- CONSTANT/INTERNAL/
+    OPEN-CLOSE, per `_read_control_record`.
     """
     result: dict = {}
     nlay = dims.get("nlay", 1)
@@ -80,54 +209,81 @@ def _parse_griddata_block(rows: list, fields_by_name: dict, dims: dict) -> dict:
             i += 1
             continue
 
-        is_int = to_field_type(f.type) == "integer"
+        dtype = np.int64 if to_field_type(f.type) == "integer" else np.float64
         layered = any(str(t).upper() == "LAYERED" for t in row[1:])
         i += 1
 
         if layered:
+            # Read as many per-layer control records as are actually there,
+            # rather than assuming exactly `nlay` -- some real-world files
+            # (mf5to15-converted ones observed so far) tag a field LAYERED
+            # with fewer rows than nlay (e.g. a single-row TOP); trusting
+            # nlay blindly would consume the next field's name row as if
+            # it were layer data. Stops at the first row that isn't a
+            # recognized control record -- i.e. the next field's row.
+            #
+            # Per-record length is min(ncpl, target): correct for a truly
+            # per-layer field (botm/idomain, shape=(nodes,), target > ncpl)
+            # *and* for a field tagged LAYERED despite not truly being one
+            # (delr/delc/top, shape=(ncol,)/(nrow,)/(ncpl,), target <=
+            # ncpl) -- using ncpl unconditionally there would read far more
+            # values than the field's one real record has, consuming
+            # however many subsequent lines (including the next field's
+            # own name row) it takes to reach ncpl values.
+            target = _griddata_flat_length(f, dims, nodes)
+            record_len = min(ncpl, target) if target else ncpl
             layers = []
-            for _ in range(nlay):
-                if i >= len(rows):
-                    break
+            while i < len(rows):
                 vrow = rows[i]
-                i += 1
-                if vrow and str(vrow[0]).upper() == "CONSTANT":
-                    v = int(vrow[1]) if is_int else float(vrow[1])
-                    layers.append(np.full(ncpl, v))
-                else:
-                    if vrow and str(vrow[0]).upper() == "INTERNAL":
-                        if i >= len(rows):
-                            break
-                        vrow = rows[i]
-                        i += 1
-                    layers.append(np.array(vrow, dtype=np.int64 if is_int else np.float64))
-            result[f.name] = np.concatenate(layers).astype(np.int64 if is_int else np.float64)
+                if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
+                    break
+                value, i = _read_control_record(rows, i, workspace, dtype, record_len)
+                layers.append(value)
+            if layers:
+                # A single-record LAYERED field (see above) is really a
+                # plain target-shaped array duplicated across nlay --
+                # broadcast to it rather than leaving it short
+                # (concatenating fewer than nlay records would).
+                stacked = np.concatenate(layers).astype(dtype)
+                if stacked.size < target and stacked.size and target % stacked.size == 0:
+                    stacked = np.tile(stacked, target // stacked.size)
+                result[f.name] = stacked
         else:
             if i >= len(rows):
                 break
-            vrow = rows[i]
-            i += 1
-            if vrow and str(vrow[0]).upper() == "CONSTANT":
-                v = int(vrow[1]) if is_int else float(vrow[1])
-                result[f.name] = np.full(nodes, v, dtype=np.int64 if is_int else np.float64)
-            else:
-                if vrow and str(vrow[0]).upper() == "INTERNAL":
-                    if i >= len(rows):
-                        break
-                    vrow = rows[i]
-                    i += 1
-                result[f.name] = np.array(vrow, dtype=np.int64 if is_int else np.float64)
+            length = _griddata_flat_length(f, dims, nodes)
+            value, i = _read_control_record(rows, i, workspace, dtype, length)
+            result[f.name] = value
 
     return result
 
 
+def _self_dims_from_kwargs(kwargs: dict) -> dict:
+    """Derive grid dimensions from a component's own just-parsed DIMENSIONS
+    block (already in `kwargs` from Pass 1) -- needed when structuring a
+    `DimensionProvider` itself (Dis/Disv/...): its GRIDDATA block has to be
+    parsed before an instance -- and thus `get_dims()` -- exists, and
+    before it's registered as a sibling dims source for anyone else. A
+    no-op ({}) for any other class, which simply has none of these fields.
+    """
+    keys = ("nlay", "nrow", "ncol", "ncpl", "nvert", "nodes")
+    local = {k: kwargs[k] for k in keys if isinstance(kwargs.get(k), int)}
+    if "ncpl" not in local and "nrow" in local and "ncol" in local:
+        local["ncpl"] = local["nrow"] * local["ncol"]
+    if "nodes" not in local and "nlay" in local and "ncpl" in local:
+        local["nodes"] = local["nlay"] * local["ncpl"]
+    return local
+
+
 def _parse_readarray_period_block(
-    rows: list, ra_fields: dict, dims: dict
+    rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
 ) -> "dict[str, np.ndarray]":
     """Parse one READARRAY period block (rows from a BEGIN PERIOD N block).
 
     Returns {field_name: ndarray} shaped (ncpl,) for non-layered fields
-    or (nlay, ncpl) for layered fields.
+    or (nlay, ncpl) for layered fields. Control records (CONSTANT/
+    INTERNAL/OPEN-CLOSE) are the same vocabulary as griddata blocks -- see
+    `_read_control_record`, shared with `_parse_griddata_block`.
     """
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
@@ -142,49 +298,62 @@ def _parse_readarray_period_block(
             continue
         key = str(row[0]).lower()
         f = ra_fields.get(key)
-        if f is None:
-            i += 1
+        i += 1
+
+        # A field can be sourced from a named time-array-series instead of
+        # literal data -- "RECHARGE TIMEARRAYSERIES <name>" -- rather than
+        # a CONSTANT/INTERNAL/OPEN-CLOSE control record following on its
+        # own row. Not resolved to real values yet (would need reading and
+        # time-interpolating the referenced .tas file); just consume this
+        # one row and move on, rather than misreading the *next* row as
+        # this field's data.
+        if any(str(t).upper() in ("TIMEARRAYSERIES", "TAS6") for t in row[1:]):
             continue
+
+        if f is None:
+            # Unrecognized field name -- e.g. a per-period AUXILIARY-named
+            # array (RCHA/EVTA-style: `AUXILIARY <name>` in OPTIONS lets
+            # `<name>` appear as its own array field in the period block,
+            # keyed dynamically, so it's not one of `ra_fields`'s declared
+            # class fields). Still consume its control-record data so it
+            # doesn't get mistaken for the *next* real field's row; just
+            # don't store it (not resolved to a real array yet either).
+            is_layered_unknown = any(str(t).upper() == "LAYERED" for t in row[1:])
+            if is_layered_unknown:
+                while i < len(rows):
+                    vrow = rows[i]
+                    if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
+                        break
+                    _, i = _read_control_record(rows, i, workspace, np.float64, ncpl)
+            elif i < len(rows):
+                _, i = _read_control_record(rows, i, workspace, np.float64, ncpl)
+            continue
+
         is_int = to_field_type(f.type) == "integer"
         is_layered = f.metadata.get("layered", False) or any(
             str(t).upper() == "LAYERED" for t in row[1:]
         )
-        i += 1
         dtype = np.int64 if is_int else np.float64
 
         if is_layered:
+            # Same "read what's actually there, don't assume exactly nlay
+            # rows" lookahead as _parse_griddata_block's LAYERED branch.
             layers = []
-            for _ in range(nlay):
-                if i >= len(rows):
-                    break
+            while i < len(rows):
                 vrow = rows[i]
-                i += 1
-                if vrow and str(vrow[0]).upper() == "CONSTANT":
-                    v = int(vrow[1]) if is_int else float(vrow[1])
-                    layers.append(np.full(ncpl, v, dtype=dtype))
-                else:
-                    if vrow and str(vrow[0]).upper() == "INTERNAL":
-                        if i >= len(rows):
-                            break
-                        vrow = rows[i]
-                        i += 1
-                    layers.append(np.array(vrow, dtype=dtype))
-            result[f.name] = np.stack(layers)  # (nlay, ncpl)
+                if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
+                    break
+                value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
+                layers.append(value)
+            if layers:
+                if len(layers) < nlay:
+                    layers = (layers * nlay)[:nlay]
+                result[f.name] = np.stack(layers)  # (nlay, ncpl)
         else:
             if i >= len(rows):
                 break
-            vrow = rows[i]
-            i += 1
-            if vrow and str(vrow[0]).upper() == "CONSTANT":
-                v = int(vrow[1]) if is_int else float(vrow[1])
-                result[f.name] = np.full(ncpl, v, dtype=dtype)
-            else:
-                if vrow and str(vrow[0]).upper() == "INTERNAL":
-                    if i >= len(rows):
-                        break
-                    vrow = rows[i]
-                    i += 1
-                result[f.name] = np.array(vrow, dtype=dtype)
+            value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
+            result[f.name] = value
 
     return result
 
@@ -482,7 +651,11 @@ def structure_component(
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
-        if block_name in block_item_fields or block_name.startswith("period"):
+        if (
+            block_name in block_item_fields
+            or block_name.startswith("period")
+            or block_name == "griddata"
+        ):
             continue
         for row in rows:
             if not row:
@@ -513,12 +686,19 @@ def structure_component(
         naux = len(aux_opt) if isinstance(aux_opt, list) else 1
     boundnames = bool(kwargs.get("boundnames", False))
 
+    # Prefer grid dims (unambiguous) over row-width guessing for a
+    # variable-width cellid's element count -- see item.infer_ncelldim.
+    # Same "self dims, since a DimensionProvider has none threaded to it
+    # yet" fallback as Pass 4's griddata parsing.
+    effective_dims = dims or _self_dims_from_kwargs(kwargs)
+
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        row_list = _parse_rows(rows, item_cls, naux=naux, boundnames=boundnames)
+        rows = _resolve_open_close_rows(rows, workspace)
+        row_list = _parse_rows(rows, item_cls, naux=naux, boundnames=boundnames, dims=effective_dims)
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
             kwargs[init_key] = row_list
@@ -544,7 +724,10 @@ def structure_component(
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
                     continue
-                row_list = _parse_rows(rows, period_item_cls, naux=naux, boundnames=boundnames)
+                rows = _resolve_open_close_rows(rows, workspace)
+                row_list = _parse_rows(
+                    rows, period_item_cls, naux=naux, boundnames=boundnames, dims=effective_dims
+                )
                 if row_list is not None:
                     spd[kper] = row_list
             if spd:
@@ -577,21 +760,28 @@ def structure_component(
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
                         continue
-                    parsed = _parse_readarray_period_block(rows, ra_fields, dims)
+                    parsed = _parse_readarray_period_block(rows, ra_fields, dims, workspace)
                     for fname, arr in parsed.items():
                         accum[fname][kper] = arr
                 kwargs.update(accum)
 
     # ── Pass 4: griddata block ────────────────────────────────────────────────
-    if dims:
-        griddata_rows = raw_lower.get("griddata", [])
-        if griddata_rows:
+    griddata_rows = raw_lower.get("griddata", [])
+    if griddata_rows:
+        # A DimensionProvider (Dis/Disv/...) has no external `dims` the
+        # first time it's loaded -- it *is* the dims source. Its own
+        # GRIDDATA block still needs shapes, derived from the DIMENSIONS
+        # block Pass 1 already parsed into kwargs above. A no-op ({}) for
+        # any other class, which just falls through to the `dims` param
+        # threaded from an already-loaded sibling (unchanged behavior).
+        effective_dims = dims or _self_dims_from_kwargs(kwargs)
+        if effective_dims:
             gd_fields = {
                 f.name: f
                 for f in attrs.fields(cls)
                 if f.metadata.get("block") == "griddata" and f.init is not False
             }
-            parsed = _parse_griddata_block(griddata_rows, gd_fields, dims)
+            parsed = _parse_griddata_block(griddata_rows, gd_fields, effective_dims, workspace)
             kwargs.update(parsed)
 
     kwargs.update(binding_kwargs)

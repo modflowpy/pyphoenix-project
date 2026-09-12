@@ -98,11 +98,37 @@ def _n_fixed_tokens(cls: type) -> int:
     return n
 
 
-def infer_ncelldim(items: list[list], item_cls: "type[Item]", *, naux: int = 0) -> int:
-    """Infer an Item class's cellid width from the first non-empty raw item:
-    total tokens minus fixed columns minus aux minus a trailing boundname."""
+def ncelldim_from_dims(dims: "dict | None") -> "int | None":
+    """Cellid element count implied by grid dimensions -- 3 for a
+    structured (DIS) grid, 2 for vertex (DISV), 1 for unstructured (DISU).
+    `None` if `dims` doesn't clearly say (or wasn't supplied), meaning the
+    caller should fall back to inferring it from row width instead."""
+    if not dims:
+        return None
+    if "nrow" in dims and "ncol" in dims:
+        return 3
+    if "ncpl" in dims:
+        return 2
+    if "nodes" in dims:
+        return 1
+    return None
+
+
+def infer_ncelldim(
+    items: list[list], item_cls: "type[Item]", *, naux: int = 0, dims: "dict | None" = None
+) -> int:
+    """Infer an Item class's cellid width, preferring grid dimensions
+    (unambiguous) when available. Falls back to counting the first
+    non-empty raw item's tokens -- total minus fixed columns minus aux
+    minus a trailing boundname -- when `dims` isn't supplied or doesn't
+    say; this heuristic overcounts if the row itself carries an extra
+    trailing token the current Item class doesn't model (e.g. a field
+    dropped from a newer DFN revision than the fixture predates)."""
     if _cellid_field(item_cls) is None:
         return 0
+    from_dims = ncelldim_from_dims(dims)
+    if from_dims is not None:
+        return from_dims
     first = next((r for r in items if r), None)
     if not first:
         return 0

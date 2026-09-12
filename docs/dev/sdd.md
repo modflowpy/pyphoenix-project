@@ -200,32 +200,30 @@ The writer handles several MF6-specific concerns:
 
 ##### Reader
 
-The reader in `flopy4.mf6.codec.reader` uses [Lark](https://lark-parser.readthedocs.io/) to parse MF6 input files. Parsing is implemented in two stages: a parser generates a parse tree from input text, then a transformer converts the tree to Python data structures.
+The reader in `flopy4.mf6.codec.reader` uses [Lark](https://lark-parser.readthedocs.io/) to parse MF6 input files. Loading a component is a pipeline: parse text into a block/token structure, then reconstruct a typed component instance from it.
 
-The reader currently provides two grammar/transformer pairs:
+**Parsing**: A minimal *basic* grammar recognizes only block structure &mdash; blocks delimited by `BEGIN <name>` / `END <name>`, each containing lines of whitespace-separated tokens (words and numbers). `BasicTransformer` yields a `{BLOCK_NAME: [token_row, ...]}` mapping. This grammar is component-agnostic, so one parser handles every input file.
 
-**Basic grammar**: A minimal grammar recognizing only the block structure of MF6 input files. Blocks are delimited by `BEGIN <name>` and `END <name>` markers and contain lines of whitespace-separated tokens (words and numbers). The corresponding transformer simply yields blocks as lists of lines, each a list of tokens.
+**Structuring**: `converter.ingress.structure` reconstructs a component from the parsed block mapping, using the component class's `attrs` field metadata as the specification:
 
-**Typed grammar**: A type-aware grammar with rules for specific MF6 constructs:
-- Array control records: `CONSTANT`, `INTERNAL`, `OPEN/CLOSE` with modifiers (`FACTOR`, `IPRN`, `BINARY`)
-- Layered arrays: `LAYERED` keyword preceding multiple array control records
-- NetCDF arrays: `NETCDF` keyword
-- Numeric types: integers and doubles
-- Strings: quoted strings and bare words
-- Lists and records: whitespace-delimited values
+- Blocks map to fields by name; field metadata identifies each field's kind (scalar, keyword, array, record, list).
+- List and record blocks are parsed into typed `Item` / `Record` objects (one class per row shape), resolving cellid width, `AUXILIARY` columns, and boundnames.
+- `GRIDDATA` and READARRAY period blocks are parsed into `xarray.DataArray`s, honoring `CONSTANT` / `INTERNAL` / `OPEN/CLOSE` control records, the `LAYERED` keyword, and `NETCDF` references, then shaped against the resolved grid dimensions.
+- File-record fields (`path()`) resolve their referenced paths relative to the input file.
 
-A grammar inheriting from and using the typed base grammar can then be generated for each component.
+**Dimension resolution**: Array shapes need grid dimensions that live in a *sibling* package (`dis` / `disv` / `disu`) or in `tdis`. Dimensions are threaded through structuring as a plain dict: when resolving a namefile's package list, `DimensionProvider` children are loaded first so their dimensions are available to the griddata/period blocks of every sibling loaded afterward.
 
-A typed transformer can use the DFN specification to identify fields by keyword, and can handle data types properly, for instance creating `xarray.DataArray` objects for array fields and handling external file references.
+**Binding resolution**: MF6 namefiles reference child components with binding rows, e.g.
 
-This "push knowledge into the parser" approach
+```
+BEGIN MODELS
+  gwf6  model.nam  modelname
+END MODELS
+```
 
-- creates more structured parse trees
-- reduces post-parsing transformation complexity
-- speeds up validation
-- generates better error messages
+The structurer maps the type token (`gwf6`) to a component class and recursively calls its `load()`. Because this is recursive, a single `Simulation.load()` traverses and loads the entire component tree &mdash; simulation, temporal discretization, each model and its packages, exchanges, and solutions &mdash; in one pass. `Gwf.load()` (or any model/package `load()`) works standalone the same way.
 
-After parsing and transformation, a `cattrs` converter structures the resulting dicts into components.
+A *typed* per-component grammar system also exists: `dfn2lark` generates a Lark grammar for each component (with rules for array control records, layered arrays, records, and structured list rows) from the DFN spec. Pushing structure into the grammar this way promises better parse trees and error messages, but it is not yet on the default load path &mdash; the basic-grammar-plus-`structure` pipeline above is what `load()` uses today.
 
 ### Output
 

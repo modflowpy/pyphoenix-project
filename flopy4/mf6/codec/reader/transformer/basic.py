@@ -17,6 +17,15 @@ class BasicTransformer(Transformer):
             if not isinstance(item, dict):
                 continue
             block_name = next(iter(item.keys()))
+            # A block name repeating in one file is already an anomaly --
+            # real MF6 input has at most one of each (period/solutiongroup
+            # blocks are told apart by their own number, part of the name).
+            # Seen once in the corpus: two complete, alternative versions
+            # of one package concatenated (an apparent conversion leftover)
+            # -- keep the first, since a later duplicate has looked more
+            # like stray content than the intended one every time so far.
+            if block_name in blocks:
+                continue
             blocks[block_name] = next(iter(item.values()))
         return blocks
 
@@ -30,7 +39,7 @@ class BasicTransformer(Transformer):
         return items[0] if items else []
 
     def line(self, items: list[Any]) -> list[Any]:
-        return items[1:]
+        return items
 
     def item(self, items: list[Any]) -> str | float | int:
         return items[0]
