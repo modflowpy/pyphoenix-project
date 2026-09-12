@@ -1,3 +1,4 @@
+import struct
 from abc import ABC
 from pathlib import Path
 from typing import Any, get_args
@@ -58,12 +59,43 @@ def _parse_rows(
     return result or None
 
 
+# One MF6 binary-array record: KSTP, KPER (int4 each), PERTIM, TOTIM
+# (float8 each), TEXT (16-byte label), NCOL, NROW, ILAY (int4 each) -- 52
+# bytes total. Same layout flopy4's own binary head-output reader
+# (`utils/heads_reader.py::read_hds_timestep`, "f.seek(52, 1)  # skip
+# kstp, kper, pertime") already decodes; MF6 has used one binary
+# 2D-array record format for both real and integer arrays since
+# MODFLOW-2005 (u2drel/u2dint), for output and OPEN/CLOSE (BINARY) input
+# alike -- the data portion follows immediately, NROW*NCOL values, real
+# arrays double-precision (matching MF6's own double-precision solver and
+# head-output convention) and integer arrays 4-byte.
+_BINARY_ARRAY_HEADER = struct.Struct("<iidd16siii")
+
+
+def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
+    """Read one MF6 binary-array record (header + NROW*NCOL values) from
+    an OPEN/CLOSE (BINARY)-referenced file. See `_BINARY_ARRAY_HEADER`.
+    """
+    with path.open("rb") as fh:
+        header = fh.read(_BINARY_ARRAY_HEADER.size)
+        if len(header) < _BINARY_ARRAY_HEADER.size:
+            raise ValueError(f"{path}: too short for an MF6 binary-array header")
+        *_, ncol, nrow, _ilay = _BINARY_ARRAY_HEADER.unpack(header)
+        file_dtype = np.int32 if dtype == np.int64 else np.float64
+        values = np.fromfile(fh, dtype=file_dtype, count=nrow * ncol)
+    if values.size != nrow * ncol:
+        raise ValueError(f"{path}: expected {nrow * ncol} values (NROW={nrow}, NCOL={ncol}), got {values.size}")
+    return values.astype(dtype)
+
+
 def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.ndarray:
     """Read an ``OPEN/CLOSE <fname> [(BINARY)] [FACTOR <f>] [IPRN <i>]``
     griddata control record's referenced file.
 
-    Binary arrays aren't supported yet (not seen in the corpus so far) --
-    raised explicitly rather than silently misparsed. Otherwise the
+    Not seen in the corpus (0/242 models use OPEN/CLOSE ... (BINARY) for
+    an input array) so this path is unverified against a real fixture --
+    based on the binary-array record format flopy4's own head-output
+    reader already relies on, per `_BINARY_ARRAY_HEADER`. Otherwise the
     referenced file is a plain numeric array, whitespace- or (seen in one
     fixture family) comma-separated with no spaces at all, optionally
     scaled by FACTOR.
@@ -72,13 +104,16 @@ def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.n
     if not tokens:
         raise ValueError("OPEN/CLOSE control record missing a filename")
     fname = tokens[0]
-    if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
-        raise ValueError(f"OPEN/CLOSE {fname}: BINARY arrays are not supported yet")
     if workspace is None:
         raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
+    path = workspace / fname
 
-    text = (workspace / fname).read_text().replace(",", " ")
-    values = np.array(text.split(), dtype=dtype)
+    if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
+        values = _read_binary_array_values(path, dtype)
+    else:
+        text = path.read_text().replace(",", " ")
+        values = np.array(text.split(), dtype=dtype)
+
     for j, tok in enumerate(tokens[1:], start=1):
         if tok.upper() == "FACTOR" and j + 1 < len(tokens):
             factor = tokens[j + 1]
