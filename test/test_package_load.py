@@ -246,7 +246,9 @@ def test_chdg_period_ingress_layered(chdg_file):
 # ---------------------------------------------------------------------------
 
 
-def _write_binary_array(path: Path, values: np.ndarray, nrow: int, ncol: int, ilay: int = 1) -> None:
+def _write_binary_array(
+    path: Path, values: np.ndarray, nrow: int, ncol: int, ilay: int = 1
+) -> None:
     """Write one MF6 binary-array record: the same 52-byte header
     (KSTP, KPER, PERTIM, TOTIM, TEXT, NCOL, NROW, ILAY) flopy4's own
     `utils/heads_reader.py` decodes from MF6's binary head output,

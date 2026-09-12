@@ -84,7 +84,9 @@ def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
         file_dtype = np.int32 if dtype == np.int64 else np.float64
         values = np.fromfile(fh, dtype=file_dtype, count=nrow * ncol)
     if values.size != nrow * ncol:
-        raise ValueError(f"{path}: expected {nrow * ncol} values (NROW={nrow}, NCOL={ncol}), got {values.size}")
+        raise ValueError(
+            f"{path}: expected {nrow * ncol} values (NROW={nrow}, NCOL={ncol}), got {values.size}"
+        )
     return values.astype(dtype)
 
 
@@ -369,7 +371,11 @@ def _parse_readarray_period_block(
             if is_layered_unknown:
                 while i < len(rows):
                     vrow = rows[i]
-                    if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
+                    if not vrow or str(vrow[0]).upper() not in (
+                        "CONSTANT",
+                        "INTERNAL",
+                        "OPEN/CLOSE",
+                    ):
                         break
                     _, i = _read_control_record(rows, i, workspace, np.float64, ncpl)
             elif i < len(rows):
@@ -745,7 +751,9 @@ def structure_component(
         if not rows:
             continue
         rows = _resolve_open_close_rows(rows, workspace)
-        row_list = _parse_rows(rows, item_cls, naux=naux, boundnames=boundnames, dims=effective_dims)
+        row_list = _parse_rows(
+            rows, item_cls, naux=naux, boundnames=boundnames, dims=effective_dims
+        )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
             kwargs[init_key] = row_list
