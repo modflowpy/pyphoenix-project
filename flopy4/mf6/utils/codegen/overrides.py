@@ -22,11 +22,11 @@ import tomllib
 from pathlib import Path
 from typing import TypeVar
 
-from modflow_devtools.dfns.schema import FieldBase
+from modflow_devtools.dfns.schema import InputFieldBase
 
 _OVERRIDES_PATH = Path(__file__).parent / "dfn_overrides.toml"
 
-FieldT = TypeVar("FieldT", bound=FieldBase)
+FieldT = TypeVar("FieldT", bound=InputFieldBase)
 
 
 def _load() -> dict[str, dict[str, dict]]:
