@@ -364,3 +364,44 @@ def test_dis_griddata_open_close_binary_layered(tmp_path):
 
     dis = Dis.load(dis_file)
     assert np.array_equal(np.asarray(dis.botm), np.concatenate([layer1, layer2]))
+
+
+def test_dis_griddata_open_close_quoted_filename(tmp_path):
+    """A single-quoted OPEN/CLOSE filename resolves to the real file,
+    quotes stripped -- flopy3's own writer quotes filenames this way
+    (confirmed against modflow6/autotest's test_gwf_utl01_binaryinput.py
+    output: `OPEN/CLOSE 'top.bin' ...`), for both the binary and
+    plain-text array path. (Double quotes aren't a confirmed MF6/flopy3
+    convention and the basic grammar doesn't tokenize `"` at all, so
+    aren't exercised here.)"""
+    from flopy4.mf6.gwf.dis import Dis
+
+    top_values = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    _write_binary_array(tmp_path / "top.bin", top_values, nrow=2, ncol=3)
+    (tmp_path / "botm.txt").write_text("0.0 0.0 0.0 0.0 0.0 0.0")
+    dis_file = tmp_path / "model.dis"
+    dis_file.write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+            END OPTIONS
+            BEGIN DIMENSIONS
+              NLAY 1
+              NROW 2
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                CONSTANT 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                OPEN/CLOSE 'top.bin' (BINARY)
+              BOTM
+                OPEN/CLOSE 'botm.txt'
+            END GRIDDATA
+        """)
+    )
+
+    dis = Dis.load(dis_file)
+    assert np.array_equal(np.asarray(dis.top), top_values)
+    assert np.array_equal(np.asarray(dis.botm), np.zeros(6))

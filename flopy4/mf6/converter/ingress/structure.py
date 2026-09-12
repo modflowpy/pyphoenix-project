@@ -88,6 +88,18 @@ def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
     return values.astype(dtype)
 
 
+def _strip_quotes(fname: str) -> str:
+    """MF6 (and flopy3's own writer, confirmed against its
+    `test_gwf_utl01_binaryinput.py`: writes ``OPEN/CLOSE 'top.bin' ...``)
+    allows an OPEN/CLOSE filename to be single- or double-quoted; `word`'s
+    tokenizer keeps the quote characters as part of the token since they're
+    valid filename characters on their own. Strip one matching pair from
+    the ends, if present."""
+    if len(fname) >= 2 and fname[0] == fname[-1] and fname[0] in ("'", '"'):
+        return fname[1:-1]
+    return fname
+
+
 def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.ndarray:
     """Read an ``OPEN/CLOSE <fname> [(BINARY)] [FACTOR <f>] [IPRN <i>]``
     griddata control record's referenced file.
@@ -103,7 +115,7 @@ def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.n
     tokens = [str(t) for t in vrow[1:]]
     if not tokens:
         raise ValueError("OPEN/CLOSE control record missing a filename")
-    fname = tokens[0]
+    fname = _strip_quotes(tokens[0])
     if workspace is None:
         raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
     path = workspace / fname
@@ -141,7 +153,7 @@ def _resolve_open_close_rows(rows: list, workspace: "Path | None") -> list:
     row = rows[0]
     if len(row) < 2:
         raise ValueError("OPEN/CLOSE control record missing a filename")
-    fname = str(row[1])
+    fname = _strip_quotes(str(row[1]))
     if workspace is None:
         raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
 
