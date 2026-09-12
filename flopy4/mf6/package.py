@@ -219,7 +219,7 @@ class Package(Component, ABC):
 
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(_raw, cls, dims=dims, name=name)
+        _pkg = structure_component(_raw, cls, dims=dims, workspace=path.parent, name=name)
 
         # Pre-populate dimension cache so to_xarray()/to_dataarray() work
         # on standalone packages (not attached to a parent model).

@@ -1,13 +1,13 @@
-start: [WS] [_NL*] (block [[WS] _NL*])+ [WS]
-block: "begin"i block_name _NL _list "end"i block_name _NL+
+start: [_NL*] (block [_NL*])*
+block: "begin"i block_name _NL _list "end"i block_name [_NL+]
 block_name: CNAME [INT]
 _list: line*
-line: [WS] item+ _NL+
+line: item* _NL+
 item: word | NUMBER
-word: /[a-zA-Z0-9._'~,+-\\(\\)]+/
+word: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+COMMA: ","
 
 %import common.NEWLINE -> _NL
-%import common.WS
 %import common.WS_INLINE
 %import common.CNAME
 %import common.WORD
@@ -18,3 +18,4 @@ word: /[a-zA-Z0-9._'~,+-\\(\\)]+/
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA

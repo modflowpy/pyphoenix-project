@@ -237,3 +237,173 @@ def test_chdg_period_ingress_layered(chdg_file):
     assert np.all(chd.head[0, 1] == FILL_DNODATA)
     # period 1: all FILL_DNODATA (CONSTANT fill)
     assert np.all(chd.head[1] == FILL_DNODATA)
+
+
+# ---------------------------------------------------------------------------
+# GRIDDATA: OPEN/CLOSE (BINARY) -- no corpus fixture exercises this (checked:
+# 0/242 real modflow-devtools models use it), so these write a synthetic
+# MF6-format binary-array file themselves rather than relying on a found one.
+# ---------------------------------------------------------------------------
+
+
+def _write_binary_array(
+    path: Path, values: np.ndarray, nrow: int, ncol: int, ilay: int = 1
+) -> None:
+    """Write one MF6 binary-array record: the same 52-byte header
+    (KSTP, KPER, PERTIM, TOTIM, TEXT, NCOL, NROW, ILAY) flopy4's own
+    `utils/heads_reader.py` decodes from MF6's binary head output,
+    followed by the NROW*NCOL data values."""
+    import struct
+
+    header = struct.pack("<iidd16siii", 1, 1, 1.0, 1.0, b"ARRAY".ljust(16), ncol, nrow, ilay)
+    with open(path, "wb") as f:
+        f.write(header)
+        values.tofile(f)
+
+
+def test_dis_griddata_open_close_binary_real(tmp_path):
+    """A GRIDDATA field OPEN/CLOSE-referencing a (BINARY) file loads the
+    exact double-precision values the file contains."""
+    from flopy4.mf6.gwf.dis import Dis
+
+    top_values = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    _write_binary_array(tmp_path / "top.bin", top_values, nrow=2, ncol=3)
+    dis_file = tmp_path / "model.dis"
+    dis_file.write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+            END OPTIONS
+            BEGIN DIMENSIONS
+              NLAY 1
+              NROW 2
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                CONSTANT 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                OPEN/CLOSE top.bin (BINARY)
+              BOTM
+                CONSTANT 0.0
+            END GRIDDATA
+        """)
+    )
+
+    dis = Dis.load(dis_file)
+    assert np.array_equal(np.asarray(dis.top), top_values)
+
+
+def test_dis_griddata_open_close_binary_integer_with_factor(tmp_path):
+    """An integer GRIDDATA field reads 4-byte ints from the binary file and
+    still applies FACTOR scaling, same as the text OPEN/CLOSE path."""
+    from flopy4.mf6.gwf.dis import Dis
+
+    idomain_values = np.array([1, 1, 0, 1, 1, 1], dtype=np.int32)
+    _write_binary_array(tmp_path / "idomain.bin", idomain_values, nrow=2, ncol=3)
+    dis_file = tmp_path / "model.dis"
+    dis_file.write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+            END OPTIONS
+            BEGIN DIMENSIONS
+              NLAY 1
+              NROW 2
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                CONSTANT 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                CONSTANT 1.0
+              BOTM
+                CONSTANT 0.0
+              IDOMAIN
+                OPEN/CLOSE idomain.bin (BINARY) FACTOR 2
+            END GRIDDATA
+        """)
+    )
+
+    dis = Dis.load(dis_file)
+    assert np.array_equal(np.asarray(dis.idomain), idomain_values * 2)
+
+
+def test_dis_griddata_open_close_binary_layered(tmp_path):
+    """A LAYERED griddata field's per-layer OPEN/CLOSE (BINARY) records are
+    each read and concatenated, matching the text-INTERNAL LAYERED path."""
+    from flopy4.mf6.gwf.dis import Dis
+
+    layer1 = np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0])
+    layer2 = np.array([-2.0, -2.0, -2.0, -2.0, -2.0, -2.0])
+    _write_binary_array(tmp_path / "botm1.bin", layer1, nrow=2, ncol=3, ilay=1)
+    _write_binary_array(tmp_path / "botm2.bin", layer2, nrow=2, ncol=3, ilay=2)
+    dis_file = tmp_path / "model.dis"
+    dis_file.write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+            END OPTIONS
+            BEGIN DIMENSIONS
+              NLAY 2
+              NROW 2
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                CONSTANT 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                CONSTANT 0.0
+              BOTM LAYERED
+                OPEN/CLOSE botm1.bin (BINARY)
+                OPEN/CLOSE botm2.bin (BINARY)
+            END GRIDDATA
+        """)
+    )
+
+    dis = Dis.load(dis_file)
+    assert np.array_equal(np.asarray(dis.botm), np.concatenate([layer1, layer2]))
+
+
+def test_dis_griddata_open_close_quoted_filename(tmp_path):
+    """A single-quoted OPEN/CLOSE filename resolves to the real file,
+    quotes stripped -- flopy3's own writer quotes filenames this way
+    (confirmed against modflow6/autotest's test_gwf_utl01_binaryinput.py
+    output: `OPEN/CLOSE 'top.bin' ...`), for both the binary and
+    plain-text array path. (Double quotes aren't a confirmed MF6/flopy3
+    convention and the basic grammar doesn't tokenize `"` at all, so
+    aren't exercised here.)"""
+    from flopy4.mf6.gwf.dis import Dis
+
+    top_values = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    _write_binary_array(tmp_path / "top.bin", top_values, nrow=2, ncol=3)
+    (tmp_path / "botm.txt").write_text("0.0 0.0 0.0 0.0 0.0 0.0")
+    dis_file = tmp_path / "model.dis"
+    dis_file.write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+            END OPTIONS
+            BEGIN DIMENSIONS
+              NLAY 1
+              NROW 2
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                CONSTANT 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                OPEN/CLOSE 'top.bin' (BINARY)
+              BOTM
+                OPEN/CLOSE 'botm.txt'
+            END GRIDDATA
+        """)
+    )
+
+    dis = Dis.load(dis_file)
+    assert np.array_equal(np.asarray(dis.top), top_values)
+    assert np.array_equal(np.asarray(dis.botm), np.zeros(6))
