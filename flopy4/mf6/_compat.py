@@ -4,16 +4,17 @@ import subprocess
 import warnings
 
 _VERSION_RE = re.compile(r"(?:version\s+|mf6:\s+)([\d]+\.[\d]+\.[\d]+(?:\.\S+)?)", re.I)
+_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+")
 
 
 def _query_mf6_version(exe: str) -> str | None:
     try:
         out = subprocess.check_output([exe, "-v"], text=True, stderr=subprocess.STDOUT)
         m = _VERSION_RE.search(out)
-        v = m.group(1) if m else None
-        if v is None:
-            return v
-        return v.rpartition("+")[0]  # TODO how to handle vcs tag section?
+        if m is None:
+            return None
+        # Drop any trailing "+<vcs tag>" build-metadata section.
+        return m.group(1).partition("+")[0]
     except Exception:
         return None
 
@@ -32,13 +33,17 @@ def check_mf6_compatibility(exe: str | None = None) -> None:
     """
     from flopy4.mf6._contract import MF6_VERSION
 
-    # Skip if version is unknown or a branch name rather than a semver tag.
     if not MF6_VERSION or MF6_VERSION == "unknown":
         warnings.warn(
             "flopy4.mf6 is synced to an unknown MF6 version. Run `flopy4 mf6 sync` to re-sync.",
             UserWarning,
             stacklevel=3,
         )
+        return
+
+    # Skip if synced to a branch name rather than a semver tag: there is
+    # no meaningful version to compare a discovered binary against.
+    if not _SEMVER_RE.match(MF6_VERSION):
         return
 
     if exe is None:
