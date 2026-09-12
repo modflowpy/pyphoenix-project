@@ -36,7 +36,6 @@ from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_r
 from .overrides import (
     always_emit_blocks,
     block_dim_override,
-    extra_record_children,
     replace_list_blocks,
     replace_list_fields,
 )
@@ -450,10 +449,6 @@ def _build_record_class_specs(
     `used_names` disambiguates two different fields whose nested child
     happens to share a name (e.g. two unrelated "formatrecord" wrappers) by
     prefixing the second with `parent_hint`.
-
-    Extra children from ``dfn_overrides.toml`` (used to inject fields not yet
-    representable, e.g. positional sub-record fields) are appended after the
-    direct children. All fields are sorted required-first to satisfy attrs.
     """
     children = list(f.fields.values())
     first = children[0]
@@ -513,42 +508,6 @@ def _build_record_class_specs(
 
     for child in data_children:
         _process_child(child)
-
-    for child_dict in extra_record_children(dfn_name, f.name):
-        # Extra children are still plain dicts in dfn_overrides.toml (not
-        # pydantic fields) -- handled directly rather than routed through
-        # _process_child, which expects a real Field object.
-        is_optional = child_dict.get("optional", False)
-        child_type = child_dict.get("type", "string")
-        if child_type == "keyword":
-            if not is_optional:
-                extra_tokens.append(child_dict["name"].upper())
-            else:
-                inner_fields.append(
-                    InnerClassFieldSpec(
-                        py_name=filters.safe_name(child_dict["name"]),
-                        type_annotation="Optional[bool]",
-                        tagged=child_dict.get("tagged", False),
-                        optional=True,
-                    )
-                )
-        else:
-            _type_map = {
-                "integer": "int",
-                "double": "float",
-                "double precision": "float",
-                "string": "str",
-            }
-            base_type = _type_map.get(child_type, "Any")
-            type_annotation = f"Optional[{base_type}]" if is_optional else base_type
-            inner_fields.append(
-                InnerClassFieldSpec(
-                    py_name=filters.safe_name(child_dict["name"]),
-                    type_annotation=type_annotation,
-                    tagged=child_dict.get("tagged", False),
-                    optional=is_optional,
-                )
-            )
 
     # attrs requires fields with defaults to follow fields without defaults.
     inner_fields.sort(key=lambda field: str(field.optional))
