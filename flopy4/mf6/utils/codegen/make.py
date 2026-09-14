@@ -876,19 +876,26 @@ def build_component_spec(
         _meta: dict = {"block": bp.block_name}
         if bp.dim_is_dfn_declared:
             _meta["auto_from"] = bp.block_name
-        # A block whose DFN marks it required (optional=false) AND whose row
-        # count has no real DIMENSIONS-declared dim (dim_is_dfn_declared)
-        # must still appear in the written file even with zero rows -- MF6
-        # errors if it's absent entirely (e.g. SSM SOURCES, which is a bare
-        # uncounted recarray). A required block gated by a real dim (LAK
-        # TABLES/OUTLETS, counted by ntables/noutlets) is the opposite: MF6's
-        # Fortran reader only looks for it when that dim is nonzero, so
-        # writing it out empty breaks parsing (confirmed via
+        # A block must still appear in the written file even with zero rows
+        # if MF6 requires its header to be present regardless of row count
+        # (e.g. SSM SOURCES) -- as opposed to a block that must be *omitted*
+        # entirely when empty (e.g. LAK TABLES/OUTLETS, gated by ntables/
+        # noutlets being nonzero; writing them out empty breaks parsing, per
         # test_gwf_lak_status: "Looking for BEGIN PERIOD iper. Found BEGIN
-        # TABLES instead."). Derived directly from the schema; no override
-        # needed.
+        # TABLES instead."). This is a real MF6 runtime fact that only the
+        # Fortran source encodes -- Block.write_if_empty (modflow-devtools
+        # PR #357) is the authoritative signal. No modflow6 DFN sets the
+        # underlying tag directly yet, but devtools' migration now forces it
+        # for gwt-ssm/gwe-ssm's SOURCES as a stopgap fixup (PR #358) -- so
+        # this is genuinely live for those two, not just wired for later.
+        # The `or` fallback (required + no real DIMENSIONS-declared row
+        # count) covers everything else (gwt-lkt/gwe-lke packagedata, LAK
+        # connectiondata) where write_if_empty isn't set anywhere yet; drop
+        # it once modflow6 (or a devtools fixup) covers those too.
         _block = (component.blocks or {}).get(bp.block_name)
-        if _block is not None and not _block.optional and not bp.dim_is_dfn_declared:
+        if _block is not None and (
+            _block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared)
+        ):
             _meta["always_emit"] = True
         _item_cls_name = pascal_name(bp.block_name)
         extra_specs.append(
