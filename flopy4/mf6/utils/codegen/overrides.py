@@ -59,25 +59,3 @@ def apply(dfn_name: str, f: FieldT) -> FieldT:
     if not patches:
         return f
     return f.model_copy(update=patches)
-
-
-def block_dim_override(dfn_name: str, block_name: str) -> str | None:
-    """Return an explicit dim name for a block, or None to use auto-resolution.
-
-    Used when a DFN has no DIMENSIONS block but the correct dim comes from a
-    coupled package (e.g. gwt-lkt/gwe-lke packagedata rows are indexed by
-    nlakes from the paired gwf-lak).
-    """
-    key = f"{block_name}_dim"
-    return _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get(key)
-
-
-def always_emit_blocks(dfn_name: str) -> list[str]:
-    """Return block names that must be emitted even when no data is set.
-
-    Used for blocks like SSM SOURCES that MF6 requires to be present in the
-    input file even when empty (otherwise MF6 raises an error on read).
-    """
-    return list(
-        _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("always_emit_blocks", [])
-    )

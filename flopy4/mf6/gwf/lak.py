@@ -274,6 +274,7 @@ class Lak(Package):
     connectiondata: Optional[list[Connectiondata]] = field(
         default=None,
         block="connectiondata",
+        always_emit=True,
     )
     tables: Optional[list[Tables]] = field(
         default=None,

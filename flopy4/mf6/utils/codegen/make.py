@@ -34,10 +34,6 @@ from modflow_devtools.dfns.schema import (
 from . import filters
 from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_repr
 from .overrides import (
-    always_emit_blocks,
-    block_dim_override,
-)
-from .overrides import (
     apply as apply_override,
 )
 
@@ -595,8 +591,7 @@ def _build_block_property_specs(
         elif lf.shape and "maxbound" in lf.shape and dfn_dims:
             maxbound_blocks.append(block_name)
         else:
-            override = block_dim_override(component.name, block_name)
-            dim_resolutions[block_name] = (override or f"n{block_name}", False)
+            dim_resolutions[block_name] = (f"n{block_name}", False)
 
     unclaimed = [d for d in dfn_dims_ordered if d not in claimed_dims]
     for block_name in maxbound_blocks:
@@ -877,7 +872,6 @@ def build_component_spec(
     # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block.
     # The Item class's own fields are the schema -- see item_class() -- no
     # separate __*_schema__ ClassVar needed.
-    _always_emit_set = set(always_emit_blocks(component.name))
     for bp in block_properties:
         if not bp.columns:
             continue
@@ -888,7 +882,19 @@ def build_component_spec(
         _meta: dict = {"block": bp.block_name}
         if bp.dim_is_dfn_declared:
             _meta["auto_from"] = bp.block_name
-        if bp.block_name in _always_emit_set:
+        # A block whose DFN marks it required (optional=false) AND whose row
+        # count has no real DIMENSIONS-declared dim (dim_is_dfn_declared)
+        # must still appear in the written file even with zero rows -- MF6
+        # errors if it's absent entirely (e.g. SSM SOURCES, which is a bare
+        # uncounted recarray). A required block gated by a real dim (LAK
+        # TABLES/OUTLETS, counted by ntables/noutlets) is the opposite: MF6's
+        # Fortran reader only looks for it when that dim is nonzero, so
+        # writing it out empty breaks parsing (confirmed via
+        # test_gwf_lak_status: "Looking for BEGIN PERIOD iper. Found BEGIN
+        # TABLES instead."). Derived directly from the schema; no override
+        # needed.
+        _block = (component.blocks or {}).get(bp.block_name)
+        if _block is not None and not _block.optional and not bp.dim_is_dfn_declared:
             _meta["always_emit"] = True
         _item_cls_name = pascal_name(bp.block_name)
         extra_specs.append(
