@@ -33,9 +33,6 @@ from modflow_devtools.dfns.schema import (
 
 from . import filters
 from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_repr
-from .overrides import (
-    apply as apply_override,
-)
 
 # Pre-computed context dataclasses
 
@@ -324,7 +321,7 @@ def _ml_field(
 
 
 def _build_period_arm_specs(
-    list_field: FieldV3, union: UnionField, component_name: str, used_names: set[str]
+    list_field: FieldV3, union: UnionField, used_names: set[str]
 ) -> list[PeriodArmSpec]:
     """Build one PeriodArmSpec per keystring-union arm, from the union's own
     real per-arm structure (Union.arms carries real fields natively under
@@ -388,7 +385,7 @@ def _build_period_arm_specs(
             keyword = "_".join(_strip_record_words(arm_name))
             rest = [(arm_name, arm)]
 
-        cols = filters._fields_to_columns(shared_cols + rest, component_name)
+        cols = filters._fields_to_columns(shared_cols + rest)
         schema = _schema_dict_from_columns(cols)
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -458,7 +455,6 @@ def _build_record_class_specs(
     nested_specs: list[InnerClassSpec] = []
 
     def _process_child(child: FieldV3) -> None:
-        child = apply_override(dfn_name, child)
         is_optional = child.optional
         tagged = getattr(child, "tagged", False)
 
@@ -573,9 +569,7 @@ def _build_block_property_specs(
                 list_fields_map[block_name] = f
                 break
 
-    col_schemas = {
-        block: filters.list_columns(f, component.name) for block, f in list_fields_map.items()
-    }
+    col_schemas = {block: filters.list_columns(f) for block, f in list_fields_map.items()}
     collisions = filters.collision_names(col_schemas, reserved=reserved_names)
 
     # Resolve which DFN dimension scalar each block maps to.
@@ -806,7 +800,7 @@ def build_component_spec(
         if block_name == "period" and filters.is_list_field(f):
             union = filters.find_keystring_union(f)
             if union is not None:
-                period_arms = _build_period_arm_specs(f, union, component.name, _inner_class_names)
+                period_arms = _build_period_arm_specs(f, union, _inner_class_names)
             else:
                 _standard_period_list = f
             continue
@@ -866,7 +860,7 @@ def build_component_spec(
     # as a static list block (dev3 already carries a real cellid field), just
     # wrapped as a repeating dict[int, ...] field instead of a flat one.
     if _standard_period_list is not None:
-        cols = filters.list_columns(_standard_period_list, component.name)
+        cols = filters.list_columns(_standard_period_list)
         period_schema = _schema_dict_from_columns(cols)
 
     # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block.

@@ -1,8 +1,0 @@
-# Local DFN field overrides pending upstream modflow6 repository PRs.
-#
-# Format: ["<dfn-name>".<field-name>]
-#           <FieldV2-attribute> = <value>
-#
-# Remove each entry once the corresponding upstream PR merges.
-#
-# Currently empty -- see git history for prior entries and their resolutions.
