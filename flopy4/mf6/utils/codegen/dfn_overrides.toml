@@ -38,12 +38,16 @@ default = true
 # chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
 description = "is the chunk size for the face dimension in a NETCDF_MESH2D output file. Must be used in combination with the chunk_time parameter to have an effect."
 
-# Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
-# Each entry defines a list block with its dimension name and column definitions.
+# Package-level overrides: real MF6 runtime/structural facts the DFN schema
+# has no way to express, not stopgaps for an upstream data gap. These are not
+# expected to be removable once some upstream PR merges -- see each entry.
 
 [_package_extras."gwt-ssm"]
-# SOURCES block must always be present in SSM input even when empty.
-# MF6 raises an error if the block is absent entirely.
+# SOURCES is a genuinely required block (IDM required=.true. in
+# src/Idm/gwt-ssmidm.f90, matching optional=false in the DFN) -- MF6 errors
+# if it's absent even when there's no source data to write. There's no DFN
+# concept of "required block, but still write it out with zero rows," so
+# this can't be derived from the schema; permanent.
 always_emit_blocks = ["sources"]
 
 [_package_extras."gwe-ssm"]
@@ -51,9 +55,11 @@ always_emit_blocks = ["sources"]
 always_emit_blocks = ["sources"]
 
 [_package_extras."gwt-lkt"]
-# nlakes comes from the paired gwf-lak model; gwt-lkt has no DIMENSIONS block.
+# nlakes comes from the paired gwf-lak model; gwt-lkt has no DIMENSIONS block
+# of its own and devtools' schema has no cross-package dimension reference
+# mechanism (packagedata.shape is simply []) -- permanent until one exists.
 packagedata_dim = "nlakes"
 
 [_package_extras."gwe-lke"]
-# nlakes comes from the paired gwf-lak model; gwe-lke has no DIMENSIONS block.
+# same as gwt-lkt (paired with gwf-lak)
 packagedata_dim = "nlakes"
