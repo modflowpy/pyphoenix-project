@@ -116,7 +116,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
     # Block names that must appear in output even when empty (e.g. SSM SOURCES).
-    always_emit_set: set[str] = set()
+    write_if_empty_set: set[str] = set()
     # Stress-period recarray fields: {kper: [(cellid, val, ...), ...]}
     spd_period: dict[int, list[tuple]] = {}
     # READARRAY period fields (G/A variants): {kper: {field_name: xr.DataArray}}
@@ -132,8 +132,8 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         if not block_name:
             continue
 
-        if meta.get("always_emit"):
-            always_emit_set.add(block_name)
+        if meta.get("write_if_empty"):
+            write_if_empty_set.add(block_name)
             blocks.setdefault(block_name, {})
 
         # Private alias fields (e.g. _stress_period_data) → access via public name
@@ -264,7 +264,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     return {
         name: block
         for name, block in sorted(blocks.items(), key=block_sort_key)
-        if block or name in always_emit_set
+        if block or name in write_if_empty_set
     }
 
 

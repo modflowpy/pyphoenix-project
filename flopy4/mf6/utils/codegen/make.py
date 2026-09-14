@@ -896,7 +896,7 @@ def build_component_spec(
         if _block is not None and (
             _block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared)
         ):
-            _meta["always_emit"] = True
+            _meta["write_if_empty"] = True
         _item_cls_name = pascal_name(bp.block_name)
         extra_specs.append(
             FieldSpec(
