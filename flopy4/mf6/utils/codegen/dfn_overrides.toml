@@ -5,21 +5,6 @@
 #
 # Remove each entry once the corresponding upstream PR merges.
 
-["gwf-lak".iconn]
-# iconn (per-lake connection sequence number, 1..nlakeconn(lakeno)) has
-# numeric_index=true in the v1 DFN -- needs 0-based Python / 1-based file
-# conversion -- but isn't picked up as pk/fk under dev3: it's not a real
-# primary key (not unique across the whole connectiondata table, only within
-# a lake) so the pk/fk backfill's structural signals don't catch it. Same
-# class of gap as the already-fixed BUY/CSUB/VSC/PRP/ATS numeric_index->pk
-# backfill (devtools a838d84), just not in that fix's original field list --
-# see devtools/todo.md 2026-08-18 entry (44 numeric_index fields total found
-# with no pk/fk in dev3, most of them like this one: local sequence/vertex/
-# connection numbers, not table-wide primary keys). Stopgap pk=True here
-# reproduces the legacy behavior (index-role column, +1 conversion at write)
-# pending an upstream fix for this broader field category.
-pk = true
-
 ["gwf-ic".strt]
 # strt should default to 1.0 per MODFLOW 6 user documentation.
 # TODO: open modflow6 PR to add default_value = 1.0 to gwf-ic.dfn
@@ -34,21 +19,6 @@ default = 0
 # k should default to 1.0 per MODFLOW 6 user documentation.
 # TODO: open modflow6 PR to add default_value = 1.0 to gwf-npf.dfn
 default = 1.0
-
-["gwf-npf".wetfct]
-# wetfct is tagged in MF6 input (WETFCT <value>) per MF6 IO doc p.50 and user examples.
-# The upstream DFN omits 'tagged = true'; override pending upstream PR.
-tagged = true
-
-["gwf-npf".iwetit]
-# iwetit is tagged in MF6 input (IWETIT <value>) per MF6 IO doc p.50.
-# The upstream DFN omits 'tagged = true'; override pending upstream PR.
-tagged = true
-
-["gwf-npf".ihdwet]
-# ihdwet is tagged in MF6 input (IHDWET <value>) per MF6 IO doc p.50.
-# The upstream DFN omits 'tagged = true'; override pending upstream PR.
-tagged = true
 
 ["gwf-sto".iconvert]
 # iconvert should default to 0 (confined) per MODFLOW 6 user documentation.
@@ -94,11 +64,6 @@ default = true
 ["utl-ncf".chunk_face]
 # chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
 description = "is the chunk size for the face dimension in a NETCDF_MESH2D output file. Must be used in combination with the chunk_time parameter to have an effect."
-
-["sln-ims".inner_rclose]
-# inner_rclose is tagged in MF6 IMS input (INNER_RCLOSE <value>) per MF6 IO doc and
-# example files. The upstream DFN omits 'tagged = true'; override pending upstream PR.
-tagged = true
 
 # Package-level overrides: extra blocks entirely missing from v2 TOML conversion.
 # Each entry defines a list block with its dimension name and column definitions.

@@ -27,7 +27,7 @@ class Lak(Package):
     @attrs.define
     class Connectiondata(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        iconn: int = field(index=True, pk=True)
+        iconn: int = field(index=True)
         cellid: tuple = field(cellid=True)
         claktype: Union[float, str] = field()
         bedleak: Union[float, str] = field()
