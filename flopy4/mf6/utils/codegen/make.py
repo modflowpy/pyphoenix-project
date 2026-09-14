@@ -660,7 +660,9 @@ def _new_codegen_imports(
         and block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
         for block_name, f in generatable_fields
     )
-    has_file_records = any(filters.is_file_record(f) for _, f in generatable_fields)
+    has_file_records = any(
+        filters.is_file_record(f) or filters.is_bare_file(f) for _, f in generatable_fields
+    )
     has_optional = (
         any(
             (f.optional and not isinstance(f, KeywordField)) or filters.is_period_array(f, bn)
@@ -1019,7 +1021,10 @@ def build_component_spec(
         has_inner_classes=has_inner_classes,
         has_period_schema=bool(period_schema) or bool(block_schemas) or bool(period_arms),
         has_path=(
-            any(filters.is_file_record(f) for _, f in generatable_field_objects)
+            any(
+                filters.is_file_record(f) or filters.is_bare_file(f)
+                for _, f in generatable_field_objects
+            )
             or has_injected_paths
         ),
         needs_int_arraylike=_needs_int_arraylike,
