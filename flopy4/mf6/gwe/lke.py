@@ -150,6 +150,7 @@ class Lke(Package):
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
+        write_if_empty=True,
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",

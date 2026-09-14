@@ -39,7 +39,7 @@ def field(
     optional: bool = False,
     netcdf: bool | None = None,
     schema: str | None = None,
-    always_emit: bool = False,
+    write_if_empty: bool = False,
     auto_from: str | None = None,
     fill_forward: bool = False,
     reader: str | None = None,
@@ -83,8 +83,8 @@ def field(
         metadata["netcdf"] = True
     if schema:
         metadata["schema"] = schema
-    if always_emit:
-        metadata["always_emit"] = True
+    if write_if_empty:
+        metadata["write_if_empty"] = True
     if auto_from:
         metadata["auto_from"] = auto_from
     if fill_forward:

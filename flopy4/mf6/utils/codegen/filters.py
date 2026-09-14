@@ -39,8 +39,6 @@ from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
 
-from .overrides import apply as apply_override
-
 FieldV3: TypeAlias = (
     KeywordField | Integer | Double | String | Array | Record | UnionField | ListField | File
 )
@@ -338,7 +336,6 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
     result: list[tuple[str, FieldV3]] = []
     for block_name, block in (component.blocks or {}).items():
         for f in block.fields.values():
-            f = apply_override(component.name, f)
             if f.developmode and not developmode:
                 continue
             result.append((block_name, f))
@@ -786,9 +783,7 @@ def find_keystring_union(list_field: ListField) -> UnionField | None:
     return None
 
 
-def _fields_to_columns(
-    fields: "list[tuple[str, FieldV3]]", component_name: str = ""
-) -> list[ColumnSpec]:
+def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
     """Build ColumnSpecs from an ordered (name, field) sequence -- the shared
     core of list_columns (a List[Record]'s own item fields) and
     make.py's keystring-union arm processing (a Union arm's fields, once its
@@ -801,8 +796,7 @@ def _fields_to_columns(
     an identifier).
     """
     result = []
-    for col_name, raw_col in fields:
-        col = apply_override(component_name, raw_col) if component_name else raw_col
+    for col_name, col in fields:
         is_keyword = isinstance(col, KeywordField)
         is_optional = col.optional
         result.append(
@@ -827,24 +821,18 @@ def _fields_to_columns(
     return result
 
 
-def list_columns(f: ListField, component_name: str = "") -> list[ColumnSpec]:
+def list_columns(f: ListField) -> list[ColumnSpec]:
     """Return the leaf column specs of a dev3 List[Record] field, in order.
 
     Returns [] for keystring-shaped lists (see find_keystring_union) -- those
     are handled separately (see make.py's keystring period handling).
-
-    ``component_name`` applies dfn_overrides.toml patches to list columns --
-    unlike top-level block fields (patched in flat_fields), columns nested
-    inside a List's item Record aren't reached by that walk, so this is the
-    only place a list-column override (e.g. a temporary pk=True stopgap for
-    a numeric_index field devtools hasn't backfilled yet) takes effect.
     """
     if find_keystring_union(f) is not None:
         return []
     item = f.item
     if not isinstance(item, Record):
         return []
-    return _fields_to_columns(list(item.fields.items()), component_name)
+    return _fields_to_columns(list(item.fields.items()))
 
 
 def is_keystring_list(f: ListField) -> bool:

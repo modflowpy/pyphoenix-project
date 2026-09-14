@@ -38,7 +38,7 @@ class Ssm(Package):
     sources: Optional[list[Sources]] = field(
         default=None,
         block="sources",
-        always_emit=True,
+        write_if_empty=True,
     )
     fileinput: Optional[list[Fileinput]] = field(
         default=None,
