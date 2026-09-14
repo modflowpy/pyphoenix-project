@@ -5,10 +5,6 @@
 #
 # Remove each entry once the corresponding upstream PR merges.
 
-["utl-ncf".chunk_face]
-# chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
-description = "is the chunk size for the face dimension in a NETCDF_MESH2D output file. Must be used in combination with the chunk_time parameter to have an effect."
-
 # Package-level overrides: real MF6 runtime/structural facts the DFN schema
 # has no way to express, not stopgaps for an upstream data gap. These are not
 # expected to be removable once some upstream PR merges -- see each entry.
