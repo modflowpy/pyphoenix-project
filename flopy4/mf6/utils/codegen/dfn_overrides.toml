@@ -5,35 +5,6 @@
 #
 # Remove each entry once the corresponding upstream PR merges.
 
-["gwf-rcha".readasarrays]
-# readasarrays default migrates as the string "true" instead of the bool
-# True -- modflow-devtools bug in default_value parsing for keyword fields
-# (ast.literal_eval only accepts capitalized True/False; DFN convention
-# writes it lowercase). Fixed in modflow-devtools (branch fix-keyword-default,
-# not yet merged/adopted here). Remove once flopy4 re-syncs against a
-# devtools release containing that fix.
-default = true
-
-["gwf-evta".readasarrays]
-# same devtools bug as gwf-rcha.readasarrays
-default = true
-
-["gwf-chdg".readarraygrid]
-# same devtools bug as gwf-rcha.readasarrays
-default = true
-
-["gwf-drng".readarraygrid]
-# same devtools bug as gwf-rcha.readasarrays
-default = true
-
-["gwf-welg".readarraygrid]
-# same devtools bug as gwf-rcha.readasarrays
-default = true
-
-["gwf-ghbg".readarraygrid]
-# same devtools bug as gwf-rcha.readasarrays
-default = true
-
 ["utl-ncf".chunk_face]
 # chunk_* fields are integers, not keywords; fix "is the keyword used to provide".
 description = "is the chunk size for the face dimension in a NETCDF_MESH2D output file. Must be used in combination with the chunk_time parameter to have an effect."
