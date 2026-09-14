@@ -32,13 +32,6 @@ class Fmi(Package):
         optional=True,
         direction="in",
     )
-    gwfspdis: Optional[Path] = path(
-        default=None,
-        converter=_optional_path,
-        block="packagedata",
-        optional=True,
-        direction="in",
-    )
     gwfgrid: Optional[Path] = path(
         default=None,
         converter=_optional_path,

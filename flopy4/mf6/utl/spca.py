@@ -16,7 +16,7 @@ class Spca(Package):
     multi_package: ClassVar[bool] = True
 
     readasarrays: bool = field(
-        default="true",
+        default=True,
         block="options",
     )
     print_input: bool = field(
