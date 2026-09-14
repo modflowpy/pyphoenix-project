@@ -61,24 +61,6 @@ def apply(dfn_name: str, f: FieldT) -> FieldT:
     return f.model_copy(update=patches)
 
 
-def replace_list_fields(dfn_name: str) -> list[dict]:
-    """Return path field definitions that replace a list block in a DFN.
-
-    Used when a packagedata block has heterogeneous rows (e.g. prt-fmi's
-    GWFHEAD/GWFBUDGET/GWFSPDIS rows) that are more naturally represented as
-    individual Optional[Path] fields than as columnar arrays.  Each dict has
-    keys: ``block``, ``name``, ``direction``, and ``longname``.
-    """
-    return list(
-        _OVERRIDES.get("_package_extras", {}).get(dfn_name, {}).get("replace_list_fields", [])
-    )
-
-
-def replace_list_blocks(dfn_name: str) -> set[str]:
-    """Return the set of block names whose list fields are replaced in this DFN."""
-    return {entry["block"] for entry in replace_list_fields(dfn_name)}
-
-
 def block_dim_override(dfn_name: str, block_name: str) -> str | None:
     """Return an explicit dim name for a block, or None to use auto-resolution.
 

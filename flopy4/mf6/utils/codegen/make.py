@@ -36,8 +36,6 @@ from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_r
 from .overrides import (
     always_emit_blocks,
     block_dim_override,
-    replace_list_blocks,
-    replace_list_fields,
 )
 from .overrides import (
     apply as apply_override,
@@ -559,8 +557,6 @@ def _period_keystring_names(component: Component) -> frozenset[str]:
 def _build_block_property_specs(
     component: Component,
     *,
-    extra_blocks: set[str],
-    replace_blocks: set[str],
     reserved_names: frozenset[str] = frozenset(),
 ) -> tuple[list[BlockPropertySpec], set[str]]:
     """Compute BlockPropertySpec for all static (non-period) list blocks.
@@ -574,7 +570,7 @@ def _build_block_property_specs(
 
     list_fields_map: dict[str, FieldV3] = {}
     for block_name, block in (component.blocks or {}).items():
-        if block_name == "period" or block_name in extra_blocks or block_name in replace_blocks:
+        if block_name == "period":
             continue
         for f in block.fields.values():
             if filters.is_list_field(f) and not filters.is_keystring_list(f):
@@ -643,11 +639,9 @@ def _new_codegen_imports(
     slntype: bool = False,
     has_inner_classes: bool = False,
     has_period_schema: bool = False,
-    has_path: bool = False,
     has_readarray_period: bool = False,
     needs_int_arraylike: bool = False,
     needs_float_arraylike: bool = False,
-    has_injected_paths: bool = False,
     has_field_call: bool = False,
     has_path_call: bool = False,
     period_schema: list[dict] | None = None,
@@ -673,7 +667,6 @@ def _new_codegen_imports(
         or bool(block_schemas)
         or bool(period_arms)
         or has_readarray_period
-        or has_injected_paths  # injected path fields are always Optional[Path]
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
@@ -706,7 +699,7 @@ def _new_codegen_imports(
     )
 
     stdlib: list[str] = []
-    if has_path or has_injected_paths or has_file_records or has_row_path_cols:
+    if has_file_records or has_row_path_cols:
         stdlib.append("from pathlib import Path")
     typing_parts: list[str] = []
     if has_classvar:
@@ -745,7 +738,7 @@ def _new_codegen_imports(
         _types_parts.append("IntArrayLike")
     if needs_float_arraylike:
         _types_parts.append("FloatArrayLike")
-    if has_file_records or has_injected_paths or has_optional_row_path_cols:
+    if has_file_records or has_optional_row_path_cols:
         _types_parts.append("_optional_path")
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
@@ -786,7 +779,7 @@ def build_component_spec(
     # fields in DFN block order without hard-coding block names in any sort key.
     #
     #   prefix_specs  — options + dimensions (from DFN)
-    #   extra_specs   — injected list blocks / path replacements (from dfn_overrides)
+    #   extra_specs   — BlockPropertySpec-driven list fields (static list blocks)
     #   data_specs    — remaining DFN data blocks (e.g. outlets)
     #   period_specs  — period fields
     prefix_specs: list[FieldSpec] = []
@@ -798,15 +791,11 @@ def build_component_spec(
     _inner_class_names: set[str] = set()
     generatable_field_objects: list[tuple[str, FieldV3]] = []
     block_schemas: dict[str, list[dict]] = {}
-    _replace_blocks = replace_list_blocks(component.name)
-    _extra_blocks: set[str] = set()  # extra_list_blocks mechanism no longer needed (see below)
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
     block_properties, _bp_block_names = _build_block_property_specs(
         component,
-        extra_blocks=_extra_blocks,
-        replace_blocks=_replace_blocks,
         reserved_names=_period_keystring_names(component),
     )
 
@@ -816,8 +805,6 @@ def build_component_spec(
     _standard_period_list: FieldV3 | None = None  # standard (non-keystring) period List field
 
     for block_name, f in all_fields:
-        if filters.is_list_field(f) and block_name in (_replace_blocks | _extra_blocks):
-            continue
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
 
@@ -886,24 +873,6 @@ def build_component_spec(
     if _standard_period_list is not None:
         cols = filters.list_columns(_standard_period_list, component.name)
         period_schema = _schema_dict_from_columns(cols)
-
-    # Inject path fields that replace heterogeneous list blocks (e.g. prt-fmi packagedata).
-    has_injected_paths = False
-    for entry in replace_list_fields(component.name):
-        has_injected_paths = True
-        block = entry["block"]
-        direction = entry["direction"]
-        _path_meta: dict = {"block": block, "optional": True, "direction": direction}
-        spec_call_str = _ml_field(metadata=_path_meta, converter="_optional_path", fn="path")
-        extra_specs.append(
-            FieldSpec(
-                dfn_name=entry["name"],
-                py_name=filters.safe_name(entry["name"]),
-                type_annotation="Optional[Path]",
-                spec_call=spec_call_str,
-                generatable=True,
-            )
-        )
 
     # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block.
     # The Item class's own fields are the schema -- see item_class() -- no
@@ -1020,16 +989,8 @@ def build_component_spec(
         slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
         has_period_schema=bool(period_schema) or bool(block_schemas) or bool(period_arms),
-        has_path=(
-            any(
-                filters.is_file_record(f) or filters.is_bare_file(f)
-                for _, f in generatable_field_objects
-            )
-            or has_injected_paths
-        ),
         needs_int_arraylike=_needs_int_arraylike,
         needs_float_arraylike=_needs_float_arraylike,
-        has_injected_paths=has_injected_paths,
         has_field_call=_has_field_call,
         has_path_call=_has_path_call,
         has_readarray_period=bool(_readarray_period_fields),
