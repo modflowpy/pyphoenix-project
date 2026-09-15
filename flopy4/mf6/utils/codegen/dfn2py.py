@@ -31,8 +31,9 @@ _SKIP = {
     "prt-dis",
     # time discretization (hand-written tdis.py)
     "sim-tdis",
-    # hand-written: wkt/crs_wkt field type overrides + Ncf.from_grid()
-    # factory, in NcfBase (utl/ncf_base.py), matching the DisBase pattern.
+    # hand-written: wkt/crs_wkt field type overrides, in NcfBase
+    # (utl/ncf_base.py); Ncf.from_grid() factory stays on the concrete
+    # class, matching the DisBase pattern.
     "utl-ncf",
 }
 
