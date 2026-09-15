@@ -1,5 +1,8 @@
 """Tests for flopy4.mf6.utils.netcdf_postprocess."""
 
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -219,3 +222,50 @@ def test_postprocess_structured_nc_fallback_no_bnds(tmp_path):
     assert gt[3] == pytest.approx(650.0)  # y origin (top edge)
     assert gt[5] == pytest.approx(-100.0)  # dy
     ds2.close()
+
+
+def _run_ncfix(*args):
+    """Invoke ncfix via the module entry point so it works before pip install."""
+    return subprocess.run(
+        [sys.executable, "-m", "flopy4.mf6.utils.netcdf_postprocess", *args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_ncfix_cli_structured(tmp_path):
+    src = tmp_path / "structured.nc"
+    _write_minimal_structured_nc(src)
+    dst = tmp_path / "fixed.nc"
+    result = _run_ncfix(str(src), "-o", str(dst), "--mode", "structured")
+    assert result.returncode == 0, result.stderr
+
+    ds = xr.open_dataset(dst, mask_and_scale=False)
+    assert "GeoTransform" in ds["projection"].attrs
+    assert "crs_wkt" in ds["projection"].attrs
+    ds.close()
+
+
+def test_ncfix_cli_mesh_explicit_mode(tmp_path):
+    src = tmp_path / "out.nc"
+    _write_minimal_mesh_nc(src)
+    result = _run_ncfix(str(src), "--mode", "mesh", "--verbose")
+    assert result.returncode == 0, result.stderr
+    assert "wrote:" in result.stdout
+
+    ds = xr.open_dataset(src, mask_and_scale=False)
+    assert "crs_wkt" in ds["projection"].attrs
+    ds.close()
+
+
+def test_ncfix_cli_auto_detect_structured(tmp_path):
+    """Auto-detect falls back to structured when no UGRID markers are present."""
+    src = tmp_path / "out.nc"
+    _write_minimal_structured_nc(src)
+    result = _run_ncfix(str(src), "--verbose")
+    assert result.returncode == 0, result.stderr
+    assert "wrote:" in result.stdout
+
+    ds = xr.open_dataset(src, mask_and_scale=False)
+    assert "GeoTransform" in ds["projection"].attrs
+    ds.close()
