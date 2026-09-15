@@ -714,6 +714,32 @@ def test_structured_projection_gdal_attrs(structured_grid, modeltime):
     assert proj.attrs["spatial_ref"].startswith("PROJCS["), "spatial_ref must be WKT1"
 
 
+def test_structured_projection_geotransform_rotated_matches_mf6(modeltime):
+    """GeoTransform for a rotated grid must match MF6's DisNCStructured.f90 formula exactly.
+
+    Reference values from a real mf6 run: nrow=3, ncol=4, delr=100, delc=150,
+    xorigin=573000, yorigin=4100000, angrot=25 degrees.
+    """
+    grid = StructuredGrid.uniform(
+        nlay=1,
+        nrow=3,
+        ncol=4,
+        delr=100.0,
+        delc=150.0,
+        top=10.0,
+        thickness=10.0,
+        xoff=573000.0,
+        yoff=4100000.0,
+        angrot=25.0,
+        crs="EPSG:26911",
+    )
+    ds = grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    gt = [float(v) for v in ds["projection"].attrs["GeoTransform"].split()]
+
+    gt_mf6 = [572809.822, 90.6307787, 63.3927393, 4100407.84, 42.2618262, -135.946168]
+    assert np.allclose(gt, gt_mf6, rtol=1e-6), f"GeoTransform mismatch vs MF6: {gt} != {gt_mf6}"
+
+
 def test_mesh_dis_no_gdal_attrs(structured_grid, modeltime):
     """GeoTransform and spatial_ref must NOT appear on the mesh (UGRID) projection variable.
 

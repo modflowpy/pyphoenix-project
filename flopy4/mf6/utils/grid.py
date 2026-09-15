@@ -760,23 +760,27 @@ class StructuredGrid(LegacyStructuredGrid):
             # in GDAL-based tools (QGIS, ArcGIS Pro via GDAL). MF6 ignores them.
             # Note: GDAL reads GeoTransform from the grid_mapping variable, not
             # from global attrs — NC_GLOBAL#GeoTransform is ignored for extent.
-            # Derive effective pixel sizes from the actual grid bounds so that
-            # variable-spacing grids get the correct bounding box in GDAL.
-            # Using x[1]-x[0] only works for uniform grids; outer cells in
-            # Frenchman-Flat-style grids are much coarser than interior cells.
-            _x_left = float(x_bnds[0][0])
-            _x_right = float(x_bnds[-1][1])
-            _y_top = float(y_bnds[0][1])
-            _y_bot = float(y_bnds[-1][0])
-            _dx_eff = (_x_right - _x_left) / len(xc)
-            _dy_eff = (_y_bot - _y_top) / len(yc)  # negative for north-up
+            # Rotation-aware: GDAL's affine model supports planar rotation via
+            # the GT[2]/GT[4] shear terms, independent of the x/y coordinate
+            # arrays -- unlike x/y (true CF dimension coordinates, which cannot
+            # represent a rotated position without becoming 2D auxiliary
+            # coordinates), GeoTransform is computed directly from
+            # xoffset/yoffset/angrot/delr/delc, matching MF6's own
+            # DisNCStructured.f90 formula exactly. Reduces to the unrotated
+            # case when angrot == 0. dx/dy are effective (average) pixel sizes
+            # over the full grid extent -- a GDAL limitation for
+            # variable-spacing grids, not specific to this derivation.
+            _ang = np.radians(self.angrot or 0.0)
+            _dx_eff = float(np.sum(self.delr)) / len(xc)
+            _dy_eff = -float(np.sum(self.delc)) / len(yc)  # negative for north-up
+            _sum_delc = float(np.sum(self.delc))
             _gt = [
-                _x_left,  # upper-left x
-                _dx_eff,  # effective x pixel size
-                0.0,
-                _y_top,  # upper-left y
-                0.0,
-                _dy_eff,  # effective y pixel size (negative for north-up)
+                self.xoffset - _sum_delc * np.sin(_ang),
+                _dx_eff * np.cos(_ang),
+                -_dy_eff * np.sin(_ang),
+                self.yoffset + _sum_delc * np.cos(_ang),
+                _dx_eff * np.sin(_ang),
+                _dy_eff * np.cos(_ang),
             ]
             ds["projection"].attrs["GeoTransform"] = " ".join(str(v) for v in _gt)
             ds["projection"].attrs["spatial_ref"] = _wkt1
