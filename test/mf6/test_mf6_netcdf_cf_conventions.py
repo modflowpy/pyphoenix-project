@@ -164,6 +164,18 @@ def test_mesh_dis_data_var_location_attr(structured_grid):
     assert ds[var].attrs.get("location") == "face", "location attr missing on data variable"
 
 
+def test_mesh_dis_data_var_mesh_location_attrs_no_crs():
+    """mesh/location/coordinates on face data vars are unconditional, not CRS-dependent."""
+    grid = StructuredGrid.uniform(
+        nlay=2, nrow=3, ncol=3, delr=100.0, delc=100.0, top=10.0, thickness=5.0
+    )
+    ds = _mesh_param_ds(grid, gridtype="structured", ncpl=9)
+    var = "npf_k_l1"
+    assert ds[var].attrs.get("mesh") == "mesh"
+    assert ds[var].attrs.get("location") == "face"
+    assert ds[var].attrs.get("coordinates") == "mesh_face_x mesh_face_y"
+
+
 def test_mesh_disv_topology_variable(vertex_grid, modeltime):
     """Mesh topology variable must be present with cf_role = mesh_topology."""
     ds = vertex_grid.to_xarray(modeltime=modeltime)

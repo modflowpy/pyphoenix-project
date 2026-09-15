@@ -25,7 +25,6 @@ from flopy4.version import __version__
 def _cf_var_attrs(dims: list[str], mesh: str | None, grid) -> dict:
     """Return {"attrs": {...}, "encoding": {...}} for a NetCDF data variable.
 
-    coordinates goes in encoding because xarray strips it from attrs during to_netcdf().
     In mesh context x/y are abstract row/col indices, not geographic — only nmesh_face
     vars get coordinates linking. In structured context x/y ARE geographic.
     """
@@ -35,10 +34,10 @@ def _cf_var_attrs(dims: list[str], mesh: str | None, grid) -> dict:
 
     if has_crs:
         attrs["grid_mapping"] = "projection"
-        if "nmesh_face" in dims:
-            attrs["coordinates"] = "mesh_face_x mesh_face_y"
-            attrs["mesh"] = "mesh"
-            attrs["location"] = "face"
+    if "nmesh_face" in dims:
+        attrs["coordinates"] = "mesh_face_x mesh_face_y"
+        attrs["mesh"] = "mesh"
+        attrs["location"] = "face"
 
     return {"attrs": attrs, "encoding": encoding}
 
