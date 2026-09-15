@@ -565,6 +565,21 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["layer"].attrs["axis"] = "Z"
         ds["layer"].encoding["_FillValue"] = None
 
+        # z_l1, z_l2, ...: per-layer cell center elevation, always written.
+        # Split per layer because face-indexed variables have no layer
+        # dimension to reference a combined z(layer, nmesh_face) (CF-1.13 5.2).
+        _z = self._coords["z"].values
+        for k in range(self.nlay):
+            _varname = f"z_l{k + 1}"
+            ds = ds.assign({_varname: (["nmesh_face"], _z[k].flatten())})
+            if _units is not None:
+                ds[_varname].attrs["units"] = _units
+            ds[_varname].attrs["standard_name"] = "altitude"
+            ds[_varname].attrs["positive"] = "up"
+            ds[_varname].attrs["long_name"] = f"cell center elevation (layer {k + 1})"
+            ds[_varname].attrs["layer"] = k + 1
+            ds[_varname].encoding["_FillValue"] = None
+
         # mesh container variable
         ds = ds.assign({"mesh": ([], np.int64(1))})
         ds["mesh"].attrs["cf_role"] = "mesh_topology"
@@ -658,7 +673,6 @@ class StructuredGrid(LegacyStructuredGrid):
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
-        # z = [float(x) for x in range(1, self.nlay + 1)]
 
         # set coordinate var bounds
         x_bnds = []
@@ -721,6 +735,16 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["layer"].encoding["_FillValue"] = None
         ds["x_bnds"].encoding["_FillValue"] = None
         ds["y_bnds"].encoding["_FillValue"] = None
+
+        # z: cell center elevation, distinct from the discrete layer index.
+        # Always written, independent of CRS/NCF configuration.
+        ds = ds.assign({"z": (["layer", "y", "x"], self._coords["z"].values)})
+        if _units is not None:
+            ds["z"].attrs["units"] = _units
+        ds["z"].attrs["standard_name"] = "altitude"
+        ds["z"].attrs["positive"] = "up"
+        ds["z"].attrs["long_name"] = "cell center elevation"
+        ds["z"].encoding["_FillValue"] = None
 
         # Write projection variable whenever CRS is available.
         # Lat/lon auxiliary coordinates are intentionally omitted: GDAL-based
@@ -1219,6 +1243,21 @@ class VertexGrid(LegacyVertexGrid):
             ds["layer"].attrs["positive"] = "down"
             ds["layer"].attrs["axis"] = "Z"
             ds["layer"].encoding["_FillValue"] = None
+
+            # z_l1, z_l2, ...: per-layer cell center elevation, always written.
+            # Split per layer because face-indexed variables have no layer
+            # dimension to reference a combined z(layer, nmesh_face) (CF-1.13 5.2).
+            _z = self._coords["z"].values
+            for k in range(self.nlay):
+                _varname = f"z_l{k + 1}"
+                ds = ds.assign({_varname: (["nmesh_face"], _z[k])})
+                if _units is not None:
+                    ds[_varname].attrs["units"] = _units
+                ds[_varname].attrs["standard_name"] = "altitude"
+                ds[_varname].attrs["positive"] = "up"
+                ds[_varname].attrs["long_name"] = f"cell center elevation (layer {k + 1})"
+                ds[_varname].attrs["layer"] = k + 1
+                ds[_varname].encoding["_FillValue"] = None
 
             # mesh container variable
             ds = ds.assign({"mesh": ([], np.int64(1))})

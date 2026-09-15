@@ -22,11 +22,15 @@ from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
 
 
-def _cf_var_attrs(dims: list[str], mesh: str | None, grid) -> dict:
+def _cf_var_attrs(dims: list[str], mesh: str | None, grid, layer: int | None = None) -> dict:
     """Return {"attrs": {...}, "encoding": {...}} for a NetCDF data variable.
 
     In mesh context x/y are abstract row/col indices, not geographic — only nmesh_face
     vars get coordinates linking. In structured context x/y ARE geographic.
+
+    layer is the 1-based layer number for a per-layer variable, or None
+    otherwise. z_l{layer} is appended to coordinates only when set -- the
+    only case it shares nmesh_face with the variable (CF-1.13 5.2).
     """
     attrs: dict[str, str] = {}
     encoding: dict[str, object] = {}
@@ -35,7 +39,10 @@ def _cf_var_attrs(dims: list[str], mesh: str | None, grid) -> dict:
     if has_crs:
         attrs["grid_mapping"] = "projection"
     if "nmesh_face" in dims:
-        attrs["coordinates"] = "mesh_face_x mesh_face_y"
+        if layer:
+            attrs["coordinates"] = f"mesh_face_x mesh_face_y z_l{layer}"
+        else:
+            attrs["coordinates"] = "mesh_face_x mesh_face_y"
         attrs["mesh"] = "mesh"
         attrs["location"] = "face"
 
@@ -700,6 +707,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
             [str(d) for d in ds[varname].dims],
             mesh,
             self._context.get("grid"),
+            layer=meta["attrs"].get("layer"),
         )
         ds[varname].attrs.update(cf["attrs"])
         ds[varname].encoding.update(cf["encoding"])

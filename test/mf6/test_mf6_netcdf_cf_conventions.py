@@ -173,7 +173,7 @@ def test_mesh_dis_data_var_mesh_location_attrs_no_crs():
     var = "npf_k_l1"
     assert ds[var].attrs.get("mesh") == "mesh"
     assert ds[var].attrs.get("location") == "face"
-    assert ds[var].attrs.get("coordinates") == "mesh_face_x mesh_face_y"
+    assert ds[var].attrs.get("coordinates") == "mesh_face_x mesh_face_y z_l1"
 
 
 def test_mesh_disv_topology_variable(vertex_grid, modeltime):
@@ -240,6 +240,52 @@ def test_mesh_disv_layer_coord(vertex_grid, modeltime):
     assert list(ds["layer"].values) == [1, 2]
     assert ds["layer"].attrs.get("axis") == "Z"
     assert ds["layer"].attrs.get("positive") == "down"
+
+
+def test_structured_dis_z_coord(structured_grid, modeltime):
+    """z must be a (layer, y, x) cell-center elevation auxiliary coordinate.
+
+    structured_grid: top=10.0, thickness=5.0 -> botm=[5.0, 0.0], so layer 1
+    z = (10+5)/2 = 7.5, layer 2 z = (5+0)/2 = 2.5.
+    """
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    assert "z" in ds, "z coordinate missing from structured dataset"
+    assert ds["z"].dims == ("layer", "y", "x")
+    assert ds["z"].attrs.get("standard_name") == "altitude"
+    assert ds["z"].attrs.get("positive") == "up"
+    assert ds["z"].attrs.get("long_name") == "cell center elevation"
+    assert np.allclose(ds["z"].isel(layer=0).values, 7.5)
+    assert np.allclose(ds["z"].isel(layer=1).values, 2.5)
+    assert ds["z"].encoding.get("_FillValue") is None
+
+
+def test_mesh_dis_z_coord(structured_grid, modeltime):
+    """z_l1, z_l2, ... must be per-layer cell-center elevation coordinates on nmesh_face."""
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
+    for k, expected in ((1, 7.5), (2, 2.5)):
+        var = f"z_l{k}"
+        assert var in ds, f"{var} missing from layered-mesh dataset"
+        assert ds[var].dims == ("nmesh_face",)
+        assert ds[var].attrs.get("standard_name") == "altitude"
+        assert ds[var].attrs.get("positive") == "up"
+        assert ds[var].attrs.get("long_name") == f"cell center elevation (layer {k})"
+        assert ds[var].attrs.get("layer") == k
+        assert np.allclose(ds[var].values, expected)
+        assert ds[var].encoding.get("_FillValue") is None
+
+
+def test_mesh_disv_z_coord(vertex_grid, modeltime):
+    """z_l1, z_l2, ... must be per-layer cell-center elevation coordinates for DISV too."""
+    ds = vertex_grid.to_xarray(modeltime=modeltime)
+    for k in (1, 2):
+        var = f"z_l{k}"
+        assert var in ds, f"{var} missing from layered-mesh DISV dataset"
+        assert ds[var].dims == ("nmesh_face",)
+        assert ds[var].attrs.get("standard_name") == "altitude"
+        assert ds[var].attrs.get("positive") == "up"
+        assert ds[var].attrs.get("long_name") == f"cell center elevation (layer {k})"
+        assert ds[var].attrs.get("layer") == k
+        assert ds[var].encoding.get("_FillValue") is None
 
 
 def test_mesh_dis_face_nodes_fill_in_encoding(structured_grid, modeltime):
