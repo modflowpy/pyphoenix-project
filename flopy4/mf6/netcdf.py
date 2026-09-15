@@ -1,5 +1,6 @@
 import abc
 from os import PathLike
+from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -72,13 +73,14 @@ def multi_package(package_name: str) -> bool:
 
 
 def get_spec(package_name: str):
-    """Return an xatspec-compatible object for a codegen v2 package."""
+    """Return a `_PackageSpec` describing a package's netcdf-relevant array fields."""
     cls = _pkgclass(package_name)
-    return _CodegenV2Spec(cls)
+    return _PackageSpec(cls)
 
 
-class _CodegenV2Spec:
-    """XatSpec-compatible adapter for codegen v2 packages (attrs + block metadata)."""
+class _PackageSpec:
+    """Summarizes a package's netcdf-relevant array fields (dtype, dims,
+    metadata) from its attrs field metadata (block, shape, layered, ...)."""
 
     _DTYPE_MAP = _PKG_DTYPE_MAP
 
@@ -105,7 +107,7 @@ class _CodegenV2Spec:
                     normalized = ("nper",) + normalized
 
                 self.dtype = np.dtype(
-                    _CodegenV2Spec._DTYPE_MAP.get(to_field_type(f.type), np.float64)
+                    _PackageSpec._DTYPE_MAP.get(to_field_type(f.type), np.float64)
                 )
                 self.dims = normalized
                 self.metadata = {
@@ -126,7 +128,7 @@ class _CodegenV2Spec:
 
 
 def _field_shape(package_name: str, field_name: str) -> tuple | None:
-    """Return shape tuple for a field, supporting both xattree and codegen v2."""
+    """Return the shape tuple for one of a package's netcdf-relevant array fields."""
     spec = get_spec(package_name)
     arr = spec.arrays.get(field_name)
     if arr is None:
@@ -210,8 +212,6 @@ class NetCDFModel(BaseModel, NetCDFInput):
     ):
         if not hasattr(model, "name"):
             raise ValueError("model must have a 'name' attribute")
-        if not hasattr(model, "data"):
-            raise ValueError("model must have a 'data' attribute")
 
         modeltype = model.__class__.__name__.lower()
         attrs = {"title": f"{model.name.upper()} model input"}
@@ -221,12 +221,11 @@ class NetCDFModel(BaseModel, NetCDFInput):
         if netcdf_format == NetCDFFormat.LAYERED_MESH:
             attrs["mesh"] = NetCDFFormat.LAYERED_MESH.value
 
-        for c in model.children:  # type: ignore
-            package = model.children[c]  # type: ignore
+        for package in model._children.values():
             packagetype = package.__class__.__name__.lower()
             distype = packagetype if packagetype.startswith("dis") else distype
             # TODO: auxiliary
-            p = {
+            p: dict[str, Any] = {
                 "package_name": package.name,
                 "package_type": f"{modeltype}-{packagetype}",
                 "params": [],
@@ -269,17 +268,17 @@ class NetCDFModel(BaseModel, NetCDFInput):
         # Resolve nper from time arg, simulation tdis, or model's data dims.
         if time is not None:
             _nper = time.nper
-        elif model.parent is not None and hasattr(model.parent, "tdis"):  # type: ignore[attr-defined]
-            _nper = model.parent.tdis.nper  # type: ignore[attr-defined]
+        elif model._parent is not None and hasattr(model._parent, "tdis"):  # type: ignore[attr-defined]
+            _nper = model._parent.tdis.nper  # type: ignore[attr-defined]
         else:
-            # Try walking up via xattree parent to find tdis
+            # Try walking up via _parent to find tdis
             _nper = 1
-            _p = getattr(model, "parent", None)
+            _p = getattr(model, "_parent", None)
             while _p is not None:
                 if hasattr(_p, "tdis") and hasattr(_p.tdis, "nper"):
                     _nper = _p.tdis.nper  # type: ignore[attr-defined]
                     break
-                _p = getattr(_p, "parent", None)
+                _p = getattr(_p, "_parent", None)
 
         dims = [
             _nper,

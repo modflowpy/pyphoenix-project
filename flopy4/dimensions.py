@@ -102,9 +102,9 @@ class DimensionResolverMixin:
 
     @property
     def _dimension_cache(self) -> dict:
-        # Lazily initialize in __dict__ directly to bypass xattree's __setattr__.
-        # __attrs_post_init__ is not reliably called via super() for xattree classes,
-        # so eager init in post_init is not guaranteed.
+        # Lazily initialize in __dict__ directly rather than as a real attrs
+        # field: avoids needing a mutable-default Factory, and doesn't
+        # depend on __attrs_post_init__ chaining order across mixins.
         if "_dimension_cache" not in self.__dict__:
             self.__dict__["_dimension_cache"] = {}
         return self.__dict__["_dimension_cache"]
@@ -172,9 +172,9 @@ class DimensionResolverMixin:
                 continue
 
             # Check parent
-            if hasattr(self, "parent") and self.parent is not None:
-                if hasattr(self.parent, "resolve_dims"):
-                    parent_result = self.parent.resolve_dims(dim_name)
+            if hasattr(self, "_parent") and self._parent is not None:
+                if hasattr(self._parent, "resolve_dims"):
+                    parent_result = self._parent.resolve_dims(dim_name)
                     if dim_name in parent_result:
                         value = parent_result[dim_name]
                         self._dimension_cache[dim_name] = value
@@ -211,9 +211,9 @@ class DimensionResolverMixin:
         dim_sources: dict[str, str] = {}
 
         # Parent dims (lower priority)
-        if hasattr(self, "parent") and self.parent is not None:
-            if hasattr(self.parent, "resolve_dims"):
-                parent_dims = self.parent.resolve_dims()
+        if hasattr(self, "_parent") and self._parent is not None:
+            if hasattr(self._parent, "resolve_dims"):
+                parent_dims = self._parent.resolve_dims()
                 resolved_dims.update(parent_dims)
                 for dim_name in parent_dims:
                     dim_sources[dim_name] = "parent"
@@ -276,10 +276,10 @@ def validate_dimension_resolution(component) -> list[str]:
         if hasattr(field, "metadata") and field.metadata and "dims" in field.metadata:
             dims_needed = field.metadata["dims"]
             # Check if this component has a parent and can resolve dimensions
-            if hasattr(component, "parent") and component.parent:
-                if hasattr(component.parent, "resolve_dims"):
+            if hasattr(component, "_parent") and component._parent:
+                if hasattr(component._parent, "resolve_dims"):
                     for dim in dims_needed:
-                        result = component.parent.resolve_dims(dim)
+                        result = component._parent.resolve_dims(dim)
                         if dim not in result:
                             errors.append(
                                 f"{type(component).__name__}.{field.name} needs dimension '{dim}' "

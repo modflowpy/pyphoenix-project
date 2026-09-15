@@ -2,12 +2,11 @@ from abc import ABC
 from typing import ClassVar
 
 import attrs
-from xattree import xattree
 
 from flopy4.mf6.package import Package
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Solution(Package, ABC):
     slntype: ClassVar[str] = "sln"
     models: list[str] = attrs.field(default=attrs.Factory(list))

@@ -157,7 +157,7 @@ class TestChdComponent:
     """Test structure_array with Chd component (stress period data)."""
 
     def test_chd_with_dict_format(self):
-        """Test CHD with stress_period_data dict format (codegen v2 API)."""
+        """Test CHD with stress_period_data dict format."""
         chd = Chd(
             stress_period_data={0: [((0, 0, 0), 1.0), ((0, 9, 9), 0.0)]},
         )
@@ -178,7 +178,7 @@ class TestChdComponent:
             },
         )
 
-        # Both periods are stored; no in-memory fill-forward in codegen v2
+        # Both periods are stored; no in-memory fill-forward
         assert set(chd._stress_period_data.keys()) == {0, 5}
         assert float(chd._stress_period_data[0][0].head) == 1.0
         assert float(chd._stress_period_data[5][0].head) == 2.0
@@ -188,7 +188,7 @@ class TestRchComponent:
     """Test structure_array with Rch component (recharge)."""
 
     def test_rch_with_stress_period_data(self):
-        """Test RCH with codegen v2 stress_period_data API (explicit cellid tuples)."""
+        """Test RCH stress_period_data API (explicit cellid tuples)."""
         rch = Rch(
             stress_period_data={
                 0: [((0, 0, 0), 0.004), ((0, 9, 9), 0.004)],
@@ -254,7 +254,7 @@ class TestEdgeCases:
         assert ic.strt.shape == (100,)
 
     def test_mixed_dict_value_types(self):
-        """Test stress_period_data with multiple periods and cellids (codegen v2 API)."""
+        """Test stress_period_data with multiple periods and cellids."""
         chd = Chd(
             stress_period_data={
                 0: [((0, 0, 0), 1.0)],
@@ -269,7 +269,7 @@ class TestEdgeCases:
 
 
 class TestDataFrameIntegration:
-    """Test to_dataframe() output from codegen v2 stress period packages."""
+    """Test to_dataframe() output from stress period packages."""
 
     def test_to_dataframe_chd_multi_period(self):
         """Test that to_dataframe() returns correct tidy DataFrame for multi-period CHD."""

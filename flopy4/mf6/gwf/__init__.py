@@ -8,7 +8,6 @@ from attrs import define
 from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
-from xattree import xattree
 
 from flopy4.mf6.gwf.buy import Buy
 from flopy4.mf6.gwf.chd import Chd
@@ -37,8 +36,7 @@ from flopy4.mf6.gwf.vsc import Vsc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.gwf.welg import Welg
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import xattree_field as field
-from flopy4.mf6.spec import xattree_path as path
+from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 
@@ -87,7 +85,7 @@ def convert_grid(value):
     raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Gwf(Model):
     dfn_name: ClassVar[str] = "gwf-nam"
 
@@ -169,17 +167,17 @@ class Gwf(Model):
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
     buy: Buy | None = field(block="packages", default=None)
-    chd: list[Union[Chd, Chdg]] = field(block="packages")
-    drn: list[Union[Drn, Drng]] = field(block="packages")
-    evt: list[Union[Evt, Evta]] = field(block="packages")
-    ghb: list[Union[Ghb, Ghbg]] = field(block="packages")
-    rch: list[Union[Rch, Rcha]] = field(block="packages")
-    riv: list[Union[Riv, Rivg]] = field(block="packages")
-    csub: list[Csub] = field(block="packages")
-    lak: list[Lak] = field(block="packages")
+    chd: list[Union[Chd, Chdg]] = field(block="packages", default=attrs.Factory(list))
+    drn: list[Union[Drn, Drng]] = field(block="packages", default=attrs.Factory(list))
+    evt: list[Union[Evt, Evta]] = field(block="packages", default=attrs.Factory(list))
+    ghb: list[Union[Ghb, Ghbg]] = field(block="packages", default=attrs.Factory(list))
+    rch: list[Union[Rch, Rcha]] = field(block="packages", default=attrs.Factory(list))
+    riv: list[Union[Riv, Rivg]] = field(block="packages", default=attrs.Factory(list))
+    csub: list[Csub] = field(block="packages", default=attrs.Factory(list))
+    lak: list[Lak] = field(block="packages", default=attrs.Factory(list))
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
-    wel: list[Union[Wel, Welg]] = field(block="packages")
+    wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )

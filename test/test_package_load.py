@@ -1,4 +1,4 @@
-"""Tests for eager loading of codegen v2 packages via ``Package.load(path, dims)``.
+"""Tests for eager loading of packages via ``Package.load(path, dims)``.
 
 ``dims_from_grb(grb_path)`` resolves grid dimensions from a binary grid file
 so any package can be loaded without manually constructing the dims dict.

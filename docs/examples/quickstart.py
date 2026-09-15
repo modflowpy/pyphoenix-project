@@ -7,7 +7,7 @@
 #
 # Quickstart example:
 # * define a `Simulation` and attach packages using the `parent=` API
-# * inspect package data through the `.data` accessor and xarray `.sel()`
+# * inspect package data via `stress_period_data` and `to_dataarray()`
 # * read binary head and budget output via `gwf.output`
 # * produce a filled-contour + quiver plot with matplotlib
 
@@ -58,9 +58,9 @@ grid = StructuredGrid(
 
 # `Ims` (iterative solver) is registered with the simulation via
 # `parent=sim`; `models=[gwf_name]` links it to the named flow model.
-# Single-instance codegen v2 packages (IC, NPF, OC) are attached via
-# attribute assignment (`gwf.ic = ...`) rather than `parent=gwf` because
-# xattree only registers list-type children through the constructor kwarg.
+# Single-instance packages (IC, NPF, OC) are attached via attribute
+# assignment (`gwf.ic = ...`) here; `parent=gwf` at construction (as CHD
+# uses below) works equivalently for these too.
 
 sim = Simulation(name=name, workspace=workspace, tdis=time)
 gwf_name = "mymodel"
@@ -102,17 +102,16 @@ sim.run(verbose=True)
 
 # ### Verify package data
 
-# Each package exposes its input through `.data`, an xarray Dataset.
-# Stress-period integer keys are coordinates; `.sel(kper=0)` selects
-# period 0.  Inactive cell slots contain `3e30` (MODFLOW's no-data value).
+# List-based period data (CHD, OC) is accessible directly via
+# `stress_period_data`, a `dict[kper, list[Item]]` of the rows given at
+# construction. Griddata arrays (DIS) are accessible via `to_dataarray()`,
+# which reshapes the flat stored array to named dims (layer, y, x).
 
-# TODO(Phase2): restore xarray .data assertions once _PackageLean is in place
-# assert chd.data["head"][0, 0] == 1.0
-# assert chd.data.head.sel(kper=0)[99] == 0.0
-# assert np.allclose(chd.data.head[:, 1:99], np.full(98, 3e30))
-# assert gwf.dis.data.botm.sel(lay=0, col=0, row=0) == 0.0
-# assert oc.data["save_head"][0] == "all"
-# assert oc.data.save_head.sel(kper=0) == "all"
+assert chd.stress_period_data[0][0].head == 1.0
+assert chd.stress_period_data[0][1].head == 0.0
+assert gwf.dis.to_dataarray("botm").sel(layer=0, y=0, x=0) == 0.0
+assert gwf.oc.stress_period_data[0][0].rtype == "HEAD"
+assert gwf.oc.stress_period_data[0][0].ocsetting == ("ALL",)
 
 # ### Read results
 #

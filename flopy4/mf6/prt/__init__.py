@@ -1,8 +1,8 @@
 from typing import ClassVar, Optional
 
+import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
-from xattree import xattree
 
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.model import Model
@@ -12,7 +12,7 @@ from flopy4.mf6.prt.fmi import Fmi
 from flopy4.mf6.prt.mip import Mip
 from flopy4.mf6.prt.oc import Oc
 from flopy4.mf6.prt.prp import Prp
-from flopy4.mf6.spec import xattree_field as field
+from flopy4.mf6.spec import field
 
 
 def convert_grid(value):
@@ -36,7 +36,7 @@ __all__ = [
 ]
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Prt(Model):
     dfn_name: ClassVar[str] = "prt-nam"
 
@@ -48,7 +48,7 @@ class Prt(Model):
     fmi: Fmi | None = field(block="packages", default=None)
     mip: Mip | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
-    prp: list[Prp] = field(block="packages")
+    prp: list[Prp] = field(block="packages", default=attrs.Factory(list))
 
     @property
     def grid(self):

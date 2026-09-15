@@ -1,14 +1,9 @@
 """Tests for stress_period_data / to_dataframe() API.
 
-Codegen v2 packages (Chd, Drn, Wel, …) expose:
+Stress-period packages (Chd, Drn, Wel, …) expose:
   - ``stress_period_data`` property returning ``Optional[dict[int, np.recarray]]``
   - ``to_dataframe()`` returning a tidy DataFrame with ``kper``, ``cellid``
     (tuple column), and field value columns (head, q, elev, cond, …)
-
-Tests that require the old xattree ``stress_period_data`` getter/setter
-(DataFrame with flat ``node`` or ``layer``/``row``/``col`` columns), the
-DataFrame setter, structured-parent integration, or G/A variant array
-packages are individually skipped with a TODO note.
 """
 
 import pandas as pd

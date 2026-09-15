@@ -452,7 +452,7 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns):
     spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # New codegen: block schemas exist for list blocks (single recarray field each)
+    # Block schemas exist for list blocks (single recarray field each)
     assert "packagedata" in spec.block_schemas
     assert "connectiondata" in spec.block_schemas
     assert "packagedata" in field_map
@@ -469,7 +469,7 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     spec = build_component_spec(all_dfns["gwf-mvr"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # New codegen: period data → single _stress_period_data field with period schema
+    # Period data -> single _stress_period_data field with period schema
     assert spec.period_schema, "MVR should have a period_schema"
     assert "_stress_period_data" in field_map
     spd_field = field_map["_stress_period_data"]

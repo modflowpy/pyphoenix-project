@@ -1,7 +1,9 @@
 import re
-from typing import Optional
+import types
+from typing import Optional, Union, get_args, get_origin
 from warnings import warn
 
+import attrs
 import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization.grid import Grid
@@ -10,8 +12,8 @@ from flopy.export.utils import model_export, package_export
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
-from xattree import Xattribute, get_xatspec
 
+from flopy4.attrs_xarray import attrs_to_dataset
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 
@@ -21,6 +23,36 @@ def _to_numpy(val):
     if hasattr(val, "data") and hasattr(val, "dims"):
         return val.data  # xr.DataArray
     return np.asarray(val) if val is not None else val
+
+
+# The only runtime types Flopy3Data's data_type/dtype/array properties
+# know how to dispatch on.
+_LEAF_TYPES = (bool, int, float, str, np.ndarray)
+
+
+def _resolve_leaf_type(annotation) -> "type | None":
+    """Unwrap `Optional[...]` and a parameterized generic (e.g.
+    `NDArray[np.float64]`) down to the concrete runtime type
+    `Flopy3Data` dispatches on (`bool`/`int`/`float`/`str`/`np.ndarray`).
+
+    Returns `None` for anything else (a nested attrs/Component type,
+    `Path`, `datetime`, `Record`, a bare `dict`/`list` period field, ...)
+    -- those aren't representable as a single flopy3 `Data` leaf.
+    """
+    tp = annotation
+    if tp is None:
+        return None
+    origin = get_origin(tp)
+    if origin in (Union, types.UnionType):
+        args = [a for a in get_args(tp) if a is not type(None)]
+        if len(args) != 1:
+            return None
+        tp = args[0]
+        origin = get_origin(tp)
+    resolved = origin if origin is not None else tp
+    if isinstance(resolved, type) and issubclass(resolved, _LEAF_TYPES):
+        return resolved
+    return None
 
 
 class Flopy3Model(ModelInterface):
@@ -62,10 +94,12 @@ class Flopy3Model(ModelInterface):
                 self._grid = model.dis.to_grid()
                 self._grid.legacy = True
 
-        if hasattr(model, "children"):
-            for c in model.children:
+        if hasattr(model, "_children"):
+            for package in model._children.values():
+                if not isinstance(package, Package):
+                    continue
                 p_fp3 = Flopy3Package(
-                    package=model.children[c],
+                    package=package,
                     model=self,
                     modeltime=modeltime,
                 )
@@ -173,11 +207,7 @@ class Flopy3Package(PackageInterface):
     ):
         self._model = model
         self._package = package
-        if hasattr(package, "data"):
-            self._data = package.data
-        else:
-            raise Exception("Input package has no data")
-        self._spec = get_xatspec(type(package)).flat
+        self._dataset = attrs_to_dataset(package)
         if modelgrid:
             self._grid = modelgrid
         elif model:
@@ -187,46 +217,45 @@ class Flopy3Package(PackageInterface):
         self._time = modeltime
         self._dlist = list()
 
-        for a in self._data.attrs:
-            if a == "host":
-                continue
-            if (
-                self._data.attrs[a] is not None
-                and a in self._spec
-                and self._spec[a].type is not None
-            ):
-                d_fp3 = Flopy3Data(
-                    data=self._data.attrs[a],
-                    spec=self._spec[a],
-                    name=a,
-                    modelname=self.parent,
-                    modelgrid=self._grid,
-                    modeltime=modeltime,
-                )
-                self.__dict__[f"{a}"] = d_fp3
-                self._dlist.append(d_fp3)
+        field_by_name = {f.name: f for f in attrs.fields(type(package))}
 
-        for v in self._data.data_vars:
-            if (
-                self._data.data_vars[v] is not None
-                and v in self._spec
-                and self._spec[v].type is not None
-            ):
-                d_fp3 = Flopy3Data(
-                    data=self._data.data_vars[v],
-                    spec=self._spec[v],
-                    name=v,
-                    modelname=self.parent,
-                    modelgrid=self._grid,
-                    modeltime=modeltime,
-                )
-                self.__dict__[f"{v}"] = d_fp3
-                self._dlist.append(d_fp3)
+        for a, value in self._dataset.attrs.items():
+            field = field_by_name.get(a)
+            if field is None or value is None:
+                continue
+            leaf_type = _resolve_leaf_type(field.type)
+            if leaf_type is None:
+                continue
+            d_fp3 = Flopy3Data(
+                data=value,
+                leaf_type=leaf_type,
+                name=a,
+                modelname=self.parent,
+                modelgrid=self._grid,
+                modeltime=modeltime,
+            )
+            self.__dict__[f"{a}"] = d_fp3
+            self._dlist.append(d_fp3)
+
+        for v, data_array in self._dataset.data_vars.items():
+            field = field_by_name.get(v)
+            if field is None:
+                continue
+            d_fp3 = Flopy3Data(
+                data=data_array,
+                leaf_type=np.ndarray,
+                name=str(v),
+                modelname=self.parent,
+                modelgrid=self._grid,
+                modeltime=modeltime,
+            )
+            self.__dict__[f"{v}"] = d_fp3
+            self._dlist.append(d_fp3)
 
     @property
     def name(self):
         # or upper() or title()
-        return self._data.name
+        return self._package.name
 
     @name.setter
     def name(self, name):
@@ -244,7 +273,7 @@ class Flopy3Package(PackageInterface):
 
     @property
     def package_type(self):
-        return re.sub(r"\d+$", "", self._data.name).upper()
+        return re.sub(r"\d+$", "", self._package.name).upper()
 
     @property
     def data_list(self):
@@ -256,24 +285,21 @@ class Flopy3Package(PackageInterface):
 
     @property
     def has_stress_period_data(self):
-        # Codegen v2: stress-period recarray packages (CHD, DRN, etc.)
+        # Stress-period recarray packages (CHD, DRN, etc.)
         if getattr(self._package, "_stress_period_data", None) is not None:
             return True
-        # Codegen v2: any other "period"-block field (covers OC's own
+        # Any other "period"-block field (covers OC's own
         # _stress_period_data too, redundantly with the check above -- kept
         # as a generic fallback for any period field shape).
-        import attrs as _attrs
-
         try:
-            for f in _attrs.fields(type(self._package)):
+            for f in attrs.fields(type(self._package)):
                 if f.metadata.get("block") == "period":
                     attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
                     if getattr(self._package, attr_name, None) is not None:
                         return True
-        except _attrs.exceptions.NotAnAttrsClassError:
+        except attrs.exceptions.NotAnAttrsClassError:
             pass
-        # Legacy xattree: nper in dims
-        return "nper" in self._data.dims
+        return "nper" in self._dataset.dims
 
     def check(self, f=None, verbose=True, level=1, checktype=None):
         """
@@ -292,22 +318,21 @@ class Flopy3Data(DataInterface):
     def __init__(
         self,
         data,
-        spec: Xattribute,
+        leaf_type: type,
         name: Optional[str] = None,
         modelname: Optional[str] = None,
         modelgrid: Optional[Grid] = None,
         modeltime: Optional[ModelTime] = None,
     ):
         assert data is not None
-        assert spec is not None
-        assert spec.type is not None
-        assert hasattr(spec.type, "__name__")
+        assert leaf_type is not None
+        assert hasattr(leaf_type, "__name__")
         self._name = name
         self._modelname = modelname
         self._grid = modelgrid
         self._time = modeltime
         self._data = data
-        self._spec = spec
+        self._leaf_type = leaf_type
 
     # class DataType(Enum):
     #    array2d = 1 #  e.g. nrow, ncol
@@ -321,8 +346,8 @@ class Flopy3Data(DataInterface):
     # TODO: how to handle transient data, list input
     @property
     def data_type(self):
-        match self._spec.type.__name__:
-            case "bool" | "float" | "integer":
+        match self._leaf_type.__name__:
+            case "bool" | "float" | "integer" | "int" | "str":
                 return DataType.scalar
             case "ndarray":
                 if "nper" in self._data.dims:
@@ -343,22 +368,22 @@ class Flopy3Data(DataInterface):
                         return DataType.array3d
             # TODO: boundname, auxvar arrays of strings?
             case _:
-                warn(f"UNMATCHED data_type {self._name}: {self._spec.type.__name__}", UserWarning)
+                warn(f"UNMATCHED data_type {self._name}: {self._leaf_type.__name__}", UserWarning)
 
     @property
     def dtype(self):
-        if self._spec.type.__name__ == "ndarray":
+        if self._leaf_type.__name__ == "ndarray":
             if self._data.data.dtype == np.dtype("float64"):
                 return np.float64
             elif self._data.data.dtype == np.dtype("int64"):
                 return np.int64
             elif self._data.data.dtype == np.dtype("int32"):
                 return np.int32
-        return self._spec.type.__name__
+        return self._leaf_type.__name__
 
     @property
     def array(self):
-        if self._spec.type.__name__ == "ndarray":
+        if self._leaf_type.__name__ == "ndarray":
             if "nodes" in self._data.dims:
                 if "nper" in self._data.dims:
                     shape = (

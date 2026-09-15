@@ -77,6 +77,19 @@ class {{ spec.class_name }}({{ spec.base_class }}):
     # TODO: {{ f.dfn_name }} — {{ f.skip_reason }}
 {% endif %}
 {% endfor %}
+{% for cf in spec.computed_fields %}
+
+    @property
+    def {{ cf.py_name }}(self) -> int:
+        """Maximum number of active entries in any stress period.
+
+        Computed live from `{{ cf.source_field }}`'s row counts -- not
+        stored or independently settable.
+        """
+        if not self.{{ cf.source_field }}:
+            return 0
+        return max(len(v) for v in self.{{ cf.source_field }}.values())
+{% endfor %}
 {% if spec.period_schema or spec.block_schemas or spec.period_arms %}
 
 {% if spec.period_schema %}

@@ -5,7 +5,6 @@ from typing import Any, get_args
 
 import attrs
 import numpy as np
-import xattree
 
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
@@ -411,17 +410,6 @@ def _parse_readarray_period_block(
     return result
 
 
-def _binding_target_classes(child_type: type) -> "tuple[type[Component], ...]":
-    """The concrete `Component` subclass(es) a xattree `Child.type` accepts.
-
-    `xattree.get_xatspec()` already unwraps `Optional`/`list`/`dict` down to
-    the child's element type -- only a bare `Union[A, B]` (e.g. a G/A-variant
-    package pair like `Union[Chd, Chdg]`) needs unwrapping here.
-    """
-    args = get_args(child_type)
-    return args if args else (child_type,)
-
-
 def _apply_binding_terms(child: Any, terms: list) -> None:
     """Ingress mirror of `converter/binding.py`'s `Binding.from_component`'s
     `_get_binding_terms`: for `Exchange`/`Solution` targets, a binding
@@ -429,8 +417,9 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
     exchange couples, or the model name(s) a solution applies to) that
     isn't recoverable from the referenced file's own content -- write it
     back onto the loaded child. A `Model`/`Package` target's trailing term
-    is just its pname, handled by the caller (`_resolve_bindings`) via
-    `Component.pname`, not state to set here.
+    is just its pname, already passed as `name=` and applied by the
+    caller (`_resolve_bindings`) at construction time, not state to set
+    here.
     """
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.solution import Solution
@@ -471,7 +460,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     into `structure_component`'s kwargs so children are attached the same
     way manual construction already attaches them (`Gwf(dis=Dis(...))`).
 
-    Child-Component fields are found via `xattree.get_xatspec(cls).children`
+    Child-Component fields are found via `child_field_candidates()`
     (mirroring `unstructure.py`'s `_make_binding_blocks`, the egress side of
     this same job), grouped by block name since several fields can share one
     block (every `Gwf` package field shares `"packages"`). Within a block,
@@ -480,14 +469,11 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
     a child is already attached, not while its siblings are still loading.
     """
+    from flopy4.attrs_xarray import child_field_candidates
     from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
     from flopy4.mf6.solution import Solution
-
-    xatspec = xattree.get_xatspec(cls)
-    if not xatspec.children:
-        return {}
 
     # Model scope to prefer when resolving this class's own binding rows'
     # ftype tokens via get_ftype() below -- e.g. structuring a Gwf's
@@ -500,10 +486,18 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     model_prefix = cls.__name__.lower() if issubclass(cls, Model) else None
 
     fields_by_block: dict[str, list] = {}
-    for child_name, child_spec in xatspec.children.items():
-        fields_by_block.setdefault((child_spec.metadata or {})["block"], []).append(
-            (child_name, child_spec)
-        )
+    for f in attrs.fields(cls):  # type: ignore[arg-type]
+        spec = child_field_candidates(f)
+        if spec is None:
+            continue
+        block_name = f.metadata.get("block")
+        if block_name is None:
+            continue
+        kind, candidates = spec
+        fields_by_block.setdefault(block_name, []).append((f.name, kind, candidates))
+
+    if not fields_by_block:
+        return {}
 
     kwargs: dict[str, Any] = {}
     for block_name, field_specs in fields_by_block.items():
@@ -526,9 +520,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             if not row:
                 continue
             token = str(row[0]).lower()
-            for child_name, child_spec in field_specs:
-                accepted = _binding_target_classes(child_spec.type)
-
+            for child_name, kind, accepted in field_specs:
                 # Concrete candidates first: compare each accepted class's
                 # own ftype directly to the row's token. G/A-variant pairs
                 # (Chd/Chdg, Rch/Rcha, ...) share one namefile ftype (real
@@ -553,7 +545,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                         continue
                     target_cls = resolved_cls
 
-                resolved.append((row, target_cls, child_name, child_spec.kind))
+                resolved.append((row, target_cls, child_name, kind))
                 break
 
         resolved.sort(key=lambda r: 0 if issubclass(r[1], DimensionProvider) else 1)
@@ -564,22 +556,10 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             fname = str(row[1])
             # A row's third+ terms mean different things by target kind (see
             # _apply_binding_terms): for a plain Model/Package they're the
-            # pname; for Exchange/Solution they're real semantic data
-            # (coupled model names / applicable models), not a name to
-            # assign the loaded child itself.
-            #
-            # name= (xattree's own attribute) only actually takes effect
-            # for "dict"-kind children below (Simulation.models/exchanges/
-            # solutions) -- xattree reconciles a "list"-kind child's name
-            # to f"{field}{index}" and an "only"-kind child's to the field
-            # name regardless of what's passed (confirmed both at load
-            # time here and at write time: Chd(name="custom")/
-            # Ic(name="custom") get renamed "chd0"/"ic" the same way on
-            # construction already, before this code ever runs). Passed
-            # through anyway for the dict case and because it's harmless
-            # (silently ignored) otherwise. The real pname for "list"/
-            # "only"-kind children is instead preserved via the plain,
-            # xattree-unmanaged Component.pname field, set below.
+            # pname, passed through as name= and preserved directly on
+            # xattree's own .name attribute; for Exchange/Solution they're
+            # real semantic data (coupled model names / applicable models),
+            # not a name to assign the loaded child itself.
             pname = (
                 str(row[2])
                 if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
@@ -591,12 +571,6 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 else target_cls.load(workspace / fname, name=pname)
             )
             child.filename = fname
-            if pname:
-                # Plain, xattree-unmanaged field (see Component.pname) --
-                # preserves the row's real pname for "list"/"only"-kind
-                # children even though xattree itself reconciles .name to
-                # a field-derived value regardless of what's passed above.
-                child.pname = pname
             _apply_binding_terms(child, row[2:])
             if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}

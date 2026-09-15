@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from xarray import DataTree
 
 from flopy4.mf6.component import FNAMES
 from flopy4.mf6.enums import NetCDFFormat
@@ -92,13 +91,12 @@ def test_init_gwf_explicit_dims():
         dims=dims,
     )
 
-    assert isinstance(gwf.data, DataTree)
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # codegen v2: k broadcast to array via dims; npf.data.k not stored in DataTree
+    # k broadcast to array via dims
     assert np.array_equal(npf.k, np.ones(4))
 
 
@@ -123,35 +121,28 @@ def test_init_gwf_from_grid_context():
             chd=[chd],
         )
 
-    assert isinstance(gwf.data, DataTree)
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    assert gwf.data.dis is dis.data
-    assert gwf.data.ic is ic.data
-    assert gwf.data.oc is oc.data
-    assert gwf.data.npf is npf.data
     assert np.array_equal(npf.k, np.ones(4))
-    assert np.array_equal(npf.data.k, np.ones(4))
 
 
 def test_init_gwf_dis_first():
     dis = Dis()
     gwf = Gwf(dis=dis)
     ic = Ic(parent=gwf)
-    oc = Oc(parent=gwf, strict=False)
+    oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, strict=False)
+    chd = Chd(parent=gwf)
 
-    assert isinstance(gwf.data, DataTree)
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # codegen v2: k is a scalar default; parent-aware expansion removed with xattree
+    # k is a scalar default here -- no parent dims given to broadcast against
     assert npf.k == 1.0
 
 
@@ -159,17 +150,16 @@ def test_init_gwf_disv_first():
     dis = Disv(nlay=1, ncpl=4)
     gwf = Gwf(dis=dis)
     ic = Ic(parent=gwf)
-    oc = Oc(parent=gwf, strict=False)
+    oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, strict=False)
+    chd = Chd(parent=gwf)
 
-    assert isinstance(gwf.data, DataTree)
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # codegen v2: k is a scalar default; parent-aware expansion removed with xattree
+    # k is a scalar default here -- no parent dims given to broadcast against
     assert npf.k == 1.0
 
 
@@ -178,17 +168,16 @@ def test_init_gwf_dis_first_with_grid():
     gwf = Gwf(dis=grid)
     dis = gwf.dis
     ic = Ic(parent=gwf)
-    oc = Oc(parent=gwf, strict=False)
+    oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, strict=False)
+    chd = Chd(parent=gwf)
 
-    assert isinstance(gwf.data, DataTree)
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # codegen v2: k is a scalar default; parent-aware expansion removed with xattree
+    # k is a scalar default here -- no parent dims given to broadcast against
     assert npf.k == 1.0
 
 
@@ -235,17 +224,16 @@ def test_init_gwf_disv_first_with_grid(vgrid):
     gwf = Gwf(dis=grid)
     dis = gwf.dis
     ic = Ic(parent=gwf)
-    oc = Oc(parent=gwf, strict=False)
+    oc = Oc(parent=gwf)
     npf = Npf(parent=gwf)
-    chd = Chd(parent=gwf, strict=False)
+    chd = Chd(parent=gwf)
 
-    assert isinstance(gwf.data, DataTree)
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # codegen v2: k is a scalar default; parent-aware expansion removed with xattree
+    # k is a scalar default here -- no parent dims given to broadcast against
     assert npf.k == 1.0
 
 
@@ -299,15 +287,14 @@ def test_init_sim_explicit_dims():
 
     assert sim.tdis is tdis
     assert sim.models["gwf"] is gwf
-    assert isinstance(sim.data, DataTree)
-    assert sim.data.tdis is tdis.data
-    assert sim.data.gwf is gwf.data
+    assert sim._children["tdis"] is tdis
+    assert sim._children["gwf"] is gwf
     assert gwf.dis is dis
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # codegen v2: k stored in attrs, not in xattree DataTree; use to_xarray() for Dataset access
+    # k is stored as a plain attrs field; use to_xarray() for Dataset access
     assert np.array_equal(sim.models["gwf"].npf.k, np.ones(100))
     assert np.array_equal(sim.models["gwf"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
 
@@ -327,8 +314,7 @@ def test_init_big_sim():
     )
 
     assert sim.models["gwf"] is gwf
-    assert isinstance(sim.data, DataTree)
-    assert sim.data.gwf is gwf.data
+    assert sim._children["gwf"] is gwf
     assert gwf.ic is ic
     assert gwf.oc is oc
     assert gwf.npf is npf
@@ -1498,7 +1484,7 @@ def test_ncf_from_grid_wkt_version2(function_tmpdir):
 
 
 # ---------------------------------------------------------------------------
-# to_xarray / to_dataarray on codegen v2 packages (Phase 4)
+# to_xarray / to_dataarray
 # ---------------------------------------------------------------------------
 
 
@@ -1546,9 +1532,9 @@ def test_to_dataarray_lazy_dask():
 def test_npf_to_xarray_via_parent_chain():
     """Npf.to_xarray() resolves dims via the parent model's dis.get_dims().
 
-    This tests the core DataTree gap fix: codegen v2 packages call resolve_dims()
-    which traverses gwf → dis.get_dims() to learn nlay/nrow/ncol without needing
-    a grid object to be passed explicitly.
+    Packages call resolve_dims(), which traverses gwf -> dis.get_dims() to
+    learn nlay/nrow/ncol without needing a grid object to be passed
+    explicitly.
     """
     dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}
     dis = Dis(dims=dims, nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=0.0, botm=-1.0)
@@ -1710,3 +1696,66 @@ def test_prt_convert_grid_vertex(vgrid):
     assert isinstance(prt.dis, PrtDisv)
     assert prt.dis.ncpl == vgrid["ncpl"]
     assert isinstance(prt.grid, VertexGrid)
+
+
+def test_explicit_parent_top_down():
+    """Component._parent, populated for top-down construction (a child
+    passed as a constructor kwarg) by the parent's own
+    _set_child_parents(), independent of xattree's own `.parent` field/
+    resolution."""
+    dis = Dis(nlay=2, nrow=3, ncol=3)
+    gwf = Gwf(dis=dis)
+    assert dis._parent is gwf
+    assert gwf._parent is None
+
+
+def test_explicit_parent_bottom_up_non_package():
+    """The bottom-up (`parent=`) half of _parent tracking works for a
+    non-Package component (Model/Context/Component's own chain), whose
+    own __attrs_post_init__ chains to Component's."""
+    sim = Simulation()
+    gwf = Gwf(parent=sim, name="gwf")
+    assert gwf._parent is sim
+
+
+def test_explicit_parent_bottom_up_package():
+    """The bottom-up (`parent=`) half of `_parent` tracking also works
+    for a Package subclass, which requires Package.__attrs_post_init__
+    to chain to Component.__attrs_post_init__ via super() -- see that
+    method's own docstring for why the chaining order matters.
+    """
+    gwf = Gwf()
+    ic = Ic(parent=gwf)
+    assert ic.parent is gwf  # the `parent` property just reads `_parent`
+    assert ic._parent is gwf
+    assert gwf.ic is ic  # attached into the migrated field too
+
+
+def test_parent_setter_reattach():
+    """Assigning `.parent` after construction moves the component to a
+    new parent: detaches from the old parent's field, attaches into the
+    matching field on the new one, and updates `_parent` on both ends.
+    """
+    gwf1 = Gwf()
+    gwf2 = Gwf()
+    ic = Ic(parent=gwf1)
+    assert gwf1.ic is ic
+
+    ic.parent = gwf2
+    assert ic.parent is gwf2
+    assert ic._parent is gwf2
+    assert gwf2.ic is ic
+    assert gwf1.ic is None
+
+
+def test_parent_setter_detach():
+    """Assigning `.parent = None` detaches a component from its parent
+    entirely, clearing the field that held it."""
+    gwf = Gwf()
+    ic = Ic(parent=gwf)
+    assert gwf.ic is ic
+
+    ic.parent = None
+    assert ic.parent is None
+    assert ic._parent is None
+    assert gwf.ic is None

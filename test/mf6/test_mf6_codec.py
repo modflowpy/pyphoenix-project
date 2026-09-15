@@ -1191,10 +1191,10 @@ def test_gwe_ssm_empty_sources_block_present():
 
 
 def test_ims_required_fields_enforced():
-    """IMS construction with required fields works; codegen v2 uses default=None not TypeError."""
+    """IMS construction with required fields works; fields default=None, not TypeError."""
     from flopy4.mf6.ims import Ims
 
-    # codegen v2 uses default=None for all fields, so Ims() doesn't raise TypeError
+    # Every field defaults to None, so Ims() doesn't raise TypeError
     ims_empty = Ims()
     assert ims_empty.outer_dvclose is None
 
@@ -2625,8 +2625,8 @@ def test_evt_period_aux_roundtrip():
     """EVT aux column round-trips through dumps/loads/structure_component.
 
     EVT is list-based: aux is a trailing inline column in each period row.
-    Construct using the codegen v2 dict-row API to avoid positional ambiguity
-    with optional columns (pxdp/petm/petm0).
+    Construct using the dict-row API to avoid positional ambiguity with
+    optional columns (pxdp/petm/petm0).
     """
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component

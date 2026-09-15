@@ -130,9 +130,6 @@ def test_flopy3_model(tmp_path):
     gwf3.plot(filename_base=bpth)
 
 
-@pytest.mark.skip(
-    reason="Flopy3Package.data_list uses xattree introspection; Dis is now codegen v2"
-)
 def test_flopy3_package(tmp_path):
     from flopy.mbase import ModelInterface
     from flopy.pakbase import PackageInterface
@@ -225,11 +222,23 @@ def test_flopy3_package(tmp_path):
     assert not dis3.has_stress_period_data
 
     # package data
+    # Flopy3Package.data_list is built from attrs_to_dataset(dis): every
+    # non-None scalar field first (dataset-level .attrs, in declaration
+    # order), then every array field (.data_vars, in declaration order) --
+    # not a curated flopy3-only subset. See attrs_to_dataset()'s own
+    # docstring (flopy4/attrs_xarray.py) for the scalar/array split rule.
     data_list = [
+        "name",
+        "ncpl",
+        "nvert",
+        "nodes",
         "nogrb",
         "xorigin",
         "yorigin",
-        # "export_array_netcdf",
+        "export_array_netcdf",
+        "nlay",
+        "ncol",
+        "nrow",
         "delr",
         "delc",
         "top",

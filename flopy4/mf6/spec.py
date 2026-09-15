@@ -15,10 +15,6 @@ from attrs import NOTHING, Attribute
 from modflow_devtools.dfn.schema import Field, FieldType
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
-from flopy4.spec import array as flopy_array
-from flopy4.spec import coord as flopy_coord
-from flopy4.spec import dim as flopy_dim
-from flopy4.spec import field as flopy_field
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 
@@ -52,20 +48,7 @@ def field(
     prefix: tuple[str, ...] | None = None,
     array: bool = False,
 ):
-    """Define a codegen-v2 field: always a plain ``attrs.field()``.
-
-    Codegen-v2 packages (``Package`` subclasses, hand-written or generated)
-    are plain attrs classes, not ``@xattree``-decorated. Use
-    ``xattree_field()`` instead for fields on real ``@xattree`` component
-    classes (``Model``, ``Simulation``, ``Gwf``, ...) — routing one of
-    *those* through plain ``attrs.field()``, or a codegen-v2 field through
-    ``xattree_field()``, would be wrong either way: ``_get_xatspec()``
-    recomputes from ``attrs.fields(cls)`` for whatever class is asked about,
-    so a stray xattree marker on a non-decorated class's field would be
-    treated as real xattree state and moved in/out of a DataTree that
-    doesn't otherwise track it, corrupting ``Package``'s plain
-    ``__dict__``-based field storage.
-    """
+    """Define a field: always a plain ``attrs.field()``."""
     metadata = metadata or {}
     if block:
         metadata["block"] = block
@@ -120,41 +103,6 @@ def field(
     )
 
 
-def xattree_field(
-    default=NOTHING,
-    validator=None,
-    converter=None,
-    repr=True,
-    eq=True,
-    init=True,
-    metadata=None,
-    on_setattr=None,
-    block: str | None = None,
-    longname: str | None = None,
-):
-    """Define a field on a real ``@xattree``-decorated component class.
-
-    See ``field()`` for why this is a separate function rather than a shared
-    one that infers which case applies.
-    """
-    if block or longname:
-        metadata = metadata or {}
-        if block:
-            metadata["block"] = block
-        if longname:
-            metadata["longname"] = longname
-    return flopy_field(
-        default=default,
-        validator=validator,
-        converter=converter,
-        repr=repr,
-        eq=eq,
-        init=init,
-        on_setattr=on_setattr,
-        metadata=metadata,
-    )
-
-
 FileDirection = Literal[None, "in", "out"]
 
 
@@ -173,7 +121,7 @@ def path(
     optional: bool = False,
     prefix: tuple[str, ...] | None = None,
 ):
-    """Define a codegen-v2 path field: always a plain ``attrs.field()``.
+    """Define a path field: always a plain ``attrs.field()``.
 
     ``prefix``: fixed token(s) a row-level path column emits before its own
     FILEIN/FILEOUT+filename (e.g. LAK tables' ``TAB6``, SSM fileinput's
@@ -181,9 +129,6 @@ def path(
     other row column's prefix= is (see flopy4.mf6.item.Item). Package-level
     path fields (options-block file records) don't need this -- there's no
     preceding row context, just the field's own direction=.
-
-    See ``field()`` — use ``xattree_path()`` instead for fields on real
-    ``@xattree`` component classes.
     """
     metadata = metadata or {}
     if prefix:
@@ -204,204 +149,6 @@ def path(
         eq=eq,
         init=init,
         on_setattr=on_setattr,
-        metadata=metadata,
-    )
-
-
-def xattree_path(
-    default=NOTHING,
-    validator=None,
-    converter=None,
-    repr=True,
-    eq=True,
-    init=True,
-    metadata=None,
-    on_setattr=None,
-    block: str | None = None,
-    direction: FileDirection | None = None,
-    longname: str | None = None,
-):
-    """Define a path field on a real ``@xattree``-decorated component class.
-
-    See ``field()`` for why this is a separate function rather than a shared
-    one that infers which case applies.
-    """
-    if block or direction or longname:
-        metadata = metadata or {}
-        if block:
-            metadata["block"] = block
-        if direction:
-            metadata["direction"] = direction
-        if longname:
-            metadata["longname"] = longname
-    return flopy_field(
-        default=default,
-        validator=validator,
-        converter=converter,
-        repr=repr,
-        eq=eq,
-        init=init,
-        on_setattr=on_setattr,
-        metadata=metadata,
-    )
-
-
-def dim(
-    scope=None,
-    coord: bool | str = True,
-    default=NOTHING,
-    repr=True,
-    eq=True,
-    init=True,
-    metadata=None,
-    block: str | None = None,
-    longname: str | None = None,
-):
-    """Define a dimension field."""
-    if block or longname:
-        metadata = metadata or {}
-        if block:
-            metadata["block"] = block
-        if longname:
-            metadata["longname"] = longname
-    return flopy_dim(
-        scope=scope,
-        coord=coord,
-        default=default,
-        repr=repr,
-        eq=eq,
-        init=init,
-        metadata=metadata,
-    )
-
-
-def coord(
-    scope=None,
-    default=NOTHING,
-    repr=True,
-    eq=True,
-    metadata=None,
-    block: str | None = None,
-    longname: str | None = None,
-):
-    """Define a coordinate field."""
-    if block or longname:
-        metadata = metadata or {}
-        if block:
-            metadata["block"] = block
-        if longname:
-            metadata["longname"] = longname
-    return flopy_coord(
-        scope=scope,
-        default=default,
-        repr=repr,
-        eq=eq,
-        metadata=metadata,
-    )
-
-
-def array(
-    dtype: np.dtype | str | type | None = None,
-    dims=None,
-    default=NOTHING,
-    validator=None,
-    converter=None,
-    repr=True,
-    eq=None,
-    metadata=None,
-    on_setattr=None,
-    block: str | None = None,
-    netcdf: bool | None = None,
-    longname: str | None = None,
-    prefix: tuple[str, ...] | None = None,
-    row_keyword: bool | str = False,
-    cellid: bool = False,
-):
-    """Define an array field."""
-    if block or netcdf or longname or prefix or row_keyword or cellid:
-        metadata = metadata or {}
-        if block:
-            metadata["block"] = block
-        if netcdf:
-            metadata["netcdf"] = netcdf
-        if longname:
-            metadata["longname"] = longname
-        if prefix:
-            metadata["prefix"] = tuple(prefix)
-        if row_keyword:
-            metadata["row_keyword"] = row_keyword
-        if cellid:
-            metadata["cellid"] = True
-    return flopy_array(
-        dtype=dtype,
-        dims=dims,
-        default=default,
-        validator=validator,
-        converter=converter,
-        repr=repr,
-        eq=eq,
-        on_setattr=on_setattr,
-        metadata=metadata,
-    )
-
-
-def embedded_keystring(
-    keyword: str,
-    feature_dim: str,
-    dtype: np.dtype | str | type | None = None,
-    default=None,
-    block: str | None = None,
-    longname: str | None = None,
-    converter=None,
-):
-    """Define a 2D period field for embedded keystring output (e.g. LAK, MAW).
-
-    Values indexed by (nper, feature_dim) emit rows:
-        ``feature_num KEYWORD value``
-    one row per non-fill entry.  Fill is FILL_DNODATA for numeric fields
-    and None for object fields.
-    """
-    metadata: dict = {
-        "embedded_keystring": True,
-        "keyword": keyword,
-    }
-    if block:
-        metadata["block"] = block
-    if longname:
-        metadata["longname"] = longname
-    return flopy_array(
-        dtype=dtype if dtype is not None else np.float64,
-        dims=("nper", feature_dim),
-        default=default,
-        converter=converter,
-        metadata=metadata,
-    )
-
-
-def keystring(
-    default=None,
-    block: str | None = None,
-    dims: tuple = ("nper",),
-    longname: str | None = None,
-    converter=None,
-):
-    """Define a period output-control keystring field.
-
-    Values are strings representing a valid ocsetting alternative,
-    e.g. 'ALL', 'LAST', 'STEPS 1 3', 'FREQUENCY 2'.  The 'keystring'
-    metadata key distinguishes these from plain string arrays so the
-    egress writer can route them through the correct serialiser.
-    """
-    metadata: dict = {"keystring": True}
-    if block:
-        metadata["block"] = block
-    if longname:
-        metadata["longname"] = longname
-    return flopy_array(
-        dtype=np.dtypes.StringDType(),
-        dims=dims,
-        default=default,
-        converter=converter,
         metadata=metadata,
     )
 

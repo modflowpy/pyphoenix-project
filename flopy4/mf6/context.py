@@ -1,12 +1,12 @@
 from abc import ABC
 from pathlib import Path
 
+import attrs
 from modflow_devtools.misc import cd
-from xattree import xattree
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import xattree_field as field
+from flopy4.mf6.spec import field
 from flopy4.utils import to_path
 
 
@@ -23,23 +23,27 @@ def update_child_attr(instance, attribute, new_value):
         The new_value (unchanged)
     """
 
-    for child in instance.children.values():  # type: ignore
+    for child in instance._children.values():
         if hasattr(child, attribute.name):
             setattr(child, attribute.name, new_value)
 
     return new_value
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Context(Component, ABC):
     workspace: Path = field(default=None, converter=to_path, on_setattr=update_child_attr)
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
+        # By the time this runs, `super().__attrs_post_init__()`
+        # (Component's) has already resolved `_parent`/`.parent` for both
+        # top-down and bottom-up construction (see `Component._parent`'s
+        # docstring).
         if self.workspace is None:
             self.workspace = (
-                self.parent.workspace
-                if self.parent and hasattr(self.parent, "workspace")
+                self._parent.workspace
+                if self._parent and hasattr(self._parent, "workspace")
                 else Path.cwd()
             )
 
@@ -53,7 +57,7 @@ class Context(Component, ABC):
         """
         Load a context from a file.
 
-        `name`, if given, overrides xattree's default auto-assigned name.
+        `name`, if given, overrides the default auto-assigned name.
         """
         with cd(Path(path).parent):
             return cls._load(path, format=format, name=name)
@@ -63,16 +67,12 @@ class Context(Component, ABC):
             super().write(format=format, context=context)
 
     def to_xarray(self):
-        """DataTree for this context, with codegen v2 child packages populated."""
-        tree = self.data  # type: ignore
-        patches = self._collect_child_griddata_datasets()
-        if not patches:
-            return tree
+        """DataTree for this context and its full child hierarchy.
 
-        result = tree.copy(deep=True)
-        for name, ds in patches.items():
-            try:
-                result[name].update(ds)
-            except Exception:
-                pass
-        return result
+        Built directly from live attribute values via flopy4.attrs_xarray's
+        attrs_to_datatree. Each child node, leaf packages included, is
+        built from its own fields directly, so griddata appears natively.
+        """
+        from flopy4.attrs_xarray import attrs_to_datatree
+
+        return attrs_to_datatree(self)

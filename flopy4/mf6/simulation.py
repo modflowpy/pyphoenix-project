@@ -2,14 +2,14 @@ from os import PathLike
 from typing import ClassVar
 from warnings import warn
 
+import attrs
 from modflow_devtools.misc import cd, run_cmd
-from xattree import xattree
 
 from flopy4.mf6.context import Context, update_child_attr
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import xattree_field as field
+from flopy4.mf6.spec import field
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.time import Time
 
@@ -22,14 +22,14 @@ def convert_time(value):
     raise TypeError(f"Expected Time or Tdis, got {type(value)}")
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Simulation(Context):
     dfn_name: ClassVar[str] = "sim-nam"
 
-    tdis: Tdis = field(block="timing", converter=convert_time)
-    models: dict[str, Model] = field(block="models")
-    exchanges: dict[str, Exchange] = field(block="exchanges")
-    solutions: dict[str, Solution] = field(block="solutiongroup")
+    tdis: Tdis = field(block="timing", converter=convert_time, default=attrs.Factory(Tdis))
+    models: dict[str, Model] = field(block="models", default=attrs.Factory(dict))
+    exchanges: dict[str, Exchange] = field(block="exchanges", default=attrs.Factory(dict))
+    solutions: dict[str, Solution] = field(block="solutiongroup", default=attrs.Factory(dict))
 
     def default_filename(self) -> str:
         return "mfsim.nam"

@@ -35,7 +35,6 @@ classifiers = [
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git",
-    "xattree @ git+https://github.com/wpbonelli/xattree.git",
     "attrs>=25.4.0,<26",
     "cattrs>=25.3.0,<26",
     "flopy>=3.9.5,<4",
@@ -100,7 +99,6 @@ line-length = 100
 target-version = "py311"
 include = ["pyproject.toml", "flopy4/**/*.py", "test/**/*.py", "docs/**/*.py"]
 extend-include = ["docs/**/*.ipynb"]
-exclude = ["flopy4/ispec/*.py"]
 
 [tool.ruff.lint]
 select = [
