@@ -321,7 +321,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
         meta = self.model_dump(by_alias=True)
 
         if self._grid is not None and self._time is not None:  # type: ignore
-            conventions = "CF-1.11"  # type: ignore
+            conventions = "CF-1.13"  # type: ignore
             if meta["attrs"]["mesh"] is not None:
                 conventions = f"{conventions} UGRID-1.0"
             _fmt = (

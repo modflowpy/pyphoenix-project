@@ -1,10 +1,10 @@
 """
-Verify CF-1.11 and UGRID-1.0 attribute compliance on flopy4-generated
+Verify CF-1.13 and UGRID-1.0 attribute compliance on flopy4-generated
 NetCDF input datasets for each supported grid/format combination:
 
-  - Structured DIS  (CF-1.11, NetCDFFormat.STRUCTURED)
-  - Layered Mesh DIS  (CF-1.11 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via StructuredGrid)
-  - Layered Mesh DISV (CF-1.11 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via VertexGrid)
+  - Structured DIS  (CF-1.13, NetCDFFormat.STRUCTURED)
+  - Layered Mesh DIS  (CF-1.13 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via StructuredGrid)
+  - Layered Mesh DISV (CF-1.13 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via VertexGrid)
 
 These are unit-level tests that exercise grid.to_xarray() and
 NetCDFParam.to_xarray() directly — no MODFLOW 6 simulation required.
@@ -99,7 +99,7 @@ def test_structured_dis_projection_variable(structured_grid, modeltime):
 
 
 def test_structured_dis_crs_wkt_attrs(structured_grid, modeltime):
-    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.13)."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
     proj = ds["projection"]
     assert "crs_wkt" in proj.attrs, "crs_wkt missing from projection variable"
@@ -135,7 +135,7 @@ def test_mesh_dis_topology_variable(structured_grid, modeltime):
 
 
 def test_mesh_dis_projection_crs_attrs(structured_grid, modeltime):
-    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.13)."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
     assert "projection" in ds
     proj = ds["projection"]
@@ -184,7 +184,7 @@ def test_mesh_disv_topology_variable(vertex_grid, modeltime):
 
 
 def test_mesh_disv_projection_crs_attrs(vertex_grid, modeltime):
-    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.13)."""
     ds = vertex_grid.to_xarray(modeltime=modeltime)
     assert "projection" in ds
     proj = ds["projection"]
@@ -558,7 +558,7 @@ def test_structured_global_attrs(structured_grid, flopy4_time):
     ds = _model_ds(structured_grid, flopy4_time, gridtype="structured")
     assert ds.attrs.get("modflow_grid") == "structured"
     assert ds.attrs.get("modflow_model") == "gwf6: testmodel"
-    assert ds.attrs.get("Conventions") == "CF-1.11"
+    assert ds.attrs.get("Conventions") == "CF-1.13"
     assert "mesh" not in ds.attrs, "mesh global attr must be absent for structured format"
 
 
@@ -567,7 +567,7 @@ def test_mesh_dis_global_attrs(structured_grid, flopy4_time):
     ds = _model_ds(structured_grid, flopy4_time, gridtype="structured", mesh="layered")
     assert ds.attrs.get("modflow_grid") == "structured"
     assert ds.attrs.get("modflow_model") == "gwf6: testmodel"
-    assert ds.attrs.get("Conventions") == "CF-1.11 UGRID-1.0"
+    assert ds.attrs.get("Conventions") == "CF-1.13 UGRID-1.0"
     assert ds.attrs.get("mesh") == "layered", "mesh global attr must be 'layered' (lowercase)"
 
 
@@ -575,7 +575,7 @@ def test_mesh_disv_global_attrs(vertex_grid, flopy4_time):
     """modflow_grid must be 'vertex' and Conventions must include UGRID for DISV layered mesh."""
     ds = _model_ds(vertex_grid, flopy4_time, gridtype="vertex", mesh="layered")
     assert ds.attrs.get("modflow_grid") == "vertex"
-    assert ds.attrs.get("Conventions") == "CF-1.11 UGRID-1.0"
+    assert ds.attrs.get("Conventions") == "CF-1.13 UGRID-1.0"
     assert ds.attrs.get("mesh") == "layered", "mesh global attr must be 'layered' (lowercase)"
 
 
