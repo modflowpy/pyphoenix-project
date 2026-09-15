@@ -1389,6 +1389,8 @@ def test_ncf_from_grid_layered_mesh(function_tmpdir):
     assert ncf.wkt is not None
     assert "NAD83" in ncf.wkt or "WGS 84" in ncf.wkt or "UTM" in ncf.wkt
     assert '"' in ncf.wkt
+    assert ncf.crs_wkt is not None
+    assert ncf.crs_wkt.startswith("PROJCRS")
 
     ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
     ncf.write()
@@ -1402,6 +1404,7 @@ def test_ncf_from_grid_no_crs():
     with pytest.warns(UserWarning, match="no CRS"):
         ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
     assert ncf.wkt is None
+    assert ncf.crs_wkt is None
 
 
 def test_ncf_from_grid_structured(function_tmpdir):
@@ -1422,6 +1425,8 @@ def test_ncf_from_grid_structured(function_tmpdir):
     ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
     assert ncf.wkt is not None
     assert "26911" in ncf.wkt
+    assert ncf.crs_wkt is not None
+    assert ncf.crs_wkt.startswith("PROJCRS")
     assert ncf.latitude is None
     assert ncf.longitude is None
 
@@ -1443,6 +1448,7 @@ def test_ncf_from_grid_latlon(function_tmpdir):
     )
     ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED, latlon=True)
     assert ncf.wkt is None
+    assert ncf.crs_wkt is None
     assert ncf.latitude is not None
     assert ncf.longitude is not None
     assert ncf.ncpl == nrow * ncol
@@ -1472,12 +1478,13 @@ def test_ncf_from_grid_latlon_no_crs(function_tmpdir):
         ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED, latlon=True)
     assert any("CRS" in str(warning.message) or "latlon" in str(warning.message) for warning in w)
     assert ncf.wkt is None
+    assert ncf.crs_wkt is None
     assert ncf.latitude is None
     assert ncf.longitude is None
 
 
-def test_ncf_from_grid_wkt_version2(function_tmpdir):
-    """Ncf.from_grid(..., wkt_version=2) embeds a WKT2 string."""
+def test_ncf_from_grid_sets_both_wkt_versions(function_tmpdir):
+    """Ncf.from_grid() always sets both wkt (WKT1) and crs_wkt (WKT2)."""
     grid = StructuredGrid(
         nlay=1,
         nrow=2,
@@ -1490,11 +1497,14 @@ def test_ncf_from_grid_wkt_version2(function_tmpdir):
         yoff=4100000.0,
         crs="EPSG:26911",
     )
-    ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED, wkt_version=2)
+    ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
     assert ncf.wkt is not None
     assert "26911" in ncf.wkt
-    # WKT2 uses PROJCRS keyword; WKT1 uses PROJCS
-    assert ncf.wkt.startswith("PROJCRS")
+    # WKT1 uses PROJCS keyword; WKT2 uses PROJCRS
+    assert ncf.wkt.startswith("PROJCS")
+    assert ncf.crs_wkt is not None
+    assert "26911" in ncf.crs_wkt
+    assert ncf.crs_wkt.startswith("PROJCRS")
 
 
 # ---------------------------------------------------------------------------

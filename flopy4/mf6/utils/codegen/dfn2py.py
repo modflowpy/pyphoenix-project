@@ -31,9 +31,8 @@ _SKIP = {
     "prt-dis",
     # time discretization (hand-written tdis.py)
     "sim-tdis",
-    # hand-written: wkt field type override + Ncf.from_grid() factory.
-    # TODO: move factory to NcfBase (utl/ncf_base.py) so codegen can own utl/ncf.py,
-    # matching the DisBase pattern used for discretization packages.
+    # hand-written: wkt/crs_wkt field type overrides + Ncf.from_grid()
+    # factory, in NcfBase (utl/ncf_base.py), matching the DisBase pattern.
     "utl-ncf",
 }
 
