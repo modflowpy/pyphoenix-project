@@ -902,18 +902,17 @@ def test_mesh_dis_face_coord_attrs(structured_grid, modeltime):
     assert ds["mesh_face_y"].attrs.get("grid_mapping") == "projection"
 
 
-def test_mesh_dis_face_bounds_fill_in_encoding(structured_grid, modeltime):
-    """mesh_face_xbnds/ybnds _FillValue must be FILL_FLOAT64 in encoding (DIS path).
+def test_mesh_dis_face_bounds_no_fill_attr(structured_grid, modeltime):
+    """mesh_face_xbnds/ybnds must not declare a _FillValue attribute (DIS path).
 
-    These are padded float arrays where padding slots must use NF90_FILL_DOUBLE
-    so CF validators and masking tools correctly identify them. xarray's default
-    for float64 is NaN which is not a valid CF fill value.
+    Matches MF6 (MeshNCModel.f90): padding slots hold NF90_FILL_DOUBLE in the
+    data itself, but the attribute is never declared on these variables.
     """
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
     assert "_FillValue" not in ds["mesh_face_xbnds"].attrs
     assert "_FillValue" not in ds["mesh_face_ybnds"].attrs
-    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") == FILL_FLOAT64
-    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") == FILL_FLOAT64
+    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") is None
+    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") is None
 
 
 def test_mesh_disv_node_coord_attrs(vertex_grid, modeltime):
@@ -939,13 +938,41 @@ def test_mesh_disv_face_coord_attrs(vertex_grid, modeltime):
     assert ds["mesh_face_y"].attrs.get("grid_mapping") == "projection"
 
 
-def test_mesh_disv_face_bounds_fill_in_encoding(vertex_grid, modeltime):
-    """mesh_face_xbnds/ybnds _FillValue must be FILL_FLOAT64 in encoding (DISV path)."""
+def test_mesh_disv_face_bounds_no_fill_attr(vertex_grid, modeltime):
+    """mesh_face_xbnds/ybnds must not declare a _FillValue attribute (DISV path)."""
     ds = vertex_grid.to_xarray(modeltime=modeltime)
     assert "_FillValue" not in ds["mesh_face_xbnds"].attrs
     assert "_FillValue" not in ds["mesh_face_ybnds"].attrs
-    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") == FILL_FLOAT64
-    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") == FILL_FLOAT64
+    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") is None
+    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") is None
+
+
+def test_mesh_disv_face_bounds_padding_value(modeltime):
+    """Padding slots (cells with fewer vertices than max) must hold FILL_FLOAT64
+    in the actual data, matching MF6's NF90_FILL_DOUBLE -- even though neither
+    system declares a _FillValue attribute for it (see the no_fill_attr tests).
+    """
+    # 1 quad (4 verts) + 1 triangle (3 verts): exercises real padding.
+    vertices = [
+        [0, 0.0, 100.0],
+        [1, 100.0, 100.0],
+        [2, 200.0, 100.0],
+        [3, 0.0, 0.0],
+        [4, 100.0, 0.0],
+        [5, 200.0, 0.0],
+    ]
+    cell2d = [
+        [0, 50.0, 50.0, 0, 1, 4, 3],
+        [1, 150.0, 66.7, 1, 2, 5],
+    ]
+    grid = VertexGrid(nlay=1, ncpl=2, vertices=vertices, cell2d=cell2d, crs=CRS)
+    ds = grid.to_xarray(modeltime=modeltime)
+    assert ds.sizes["max_nmesh_face_nodes"] == 4
+    # triangle (face index 1) has one padding slot
+    assert ds["mesh_face_xbnds"].values[1, -1] == FILL_FLOAT64
+    assert ds["mesh_face_ybnds"].values[1, -1] == FILL_FLOAT64
+    # quad (face index 0) is fully populated, no padding
+    assert not np.any(ds["mesh_face_xbnds"].values[0] == FILL_FLOAT64)
 
 
 def test_mesh_disv_face_bounds_padding_data_values(vertex_grid_mixed_poly, modeltime):
@@ -1029,6 +1056,71 @@ def test_mesh_dis_int_param_fill_value(structured_grid):
     """Integer GRIDDATA params in layered-mesh DIS format must use FILL_INT64."""
     ds = _structured_param_ds(structured_grid, name="icelltype", mesh="layered", layer=1)
     assert ds["npf_icelltype_l1"].encoding.get("_FillValue") == FILL_INT64
+
+
+def test_from_model_int_param_dtype():
+    """NetCDFModel.from_model() (the real end-to-end path, not the lower-level
+    NetCDFParam helper above) must preserve integer dtype for integer GRIDDATA
+    params, not silently cast them to float64.
+    """
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf
+    from flopy4.mf6.utils.time import Time
+
+    dis = Dis(nlay=1, nrow=1, ncol=3, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(dis=dis, name="m")
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=1, k=1.0)
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.STRUCTURED, time=time)
+    ds = nc_model.to_xarray()
+    assert np.issubdtype(ds["npf_icelltype"].dtype, np.integer), (
+        f"icelltype must be integer-typed, got {ds['npf_icelltype'].dtype}"
+    )
+    assert np.issubdtype(ds["npf_k"].dtype, np.floating), (
+        f"k must remain float-typed, got {ds['npf_k'].dtype}"
+    )
+
+
+def test_from_model_structured_layer_coordinates_z():
+    """Structured per-layer (layer, y, x) fields must link to the z auxiliary
+    coordinate via a `coordinates="z"` attribute, matching MF6's own
+    DisNCStructured.f90 output; a non-layered (y, x) field like dis_top must
+    not, since it has no per-layer elevation to link to.
+    """
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf
+    from flopy4.mf6.utils.time import Time
+
+    dis = Dis(nlay=2, nrow=1, ncol=3, delr=1.0, delc=1.0, top=10.0, botm=[5.0, 0.0])
+    gwf = Gwf(dis=dis, name="rch")
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=1, k=1.0)
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.STRUCTURED, time=time)
+    ds = nc_model.to_xarray()
+    assert ds["npf_k"].attrs.get("coordinates") == "z"
+    assert ds["npf_icelltype"].attrs.get("coordinates") == "z"
+    assert ds["dis_botm"].attrs.get("coordinates") == "z"
+    assert "coordinates" not in ds["dis_top"].attrs
+
+
+def test_from_model_title():
+    """title must match MF6's own model-type-specific convention (NCModel.f90),
+    preserving the model name's original casing -- not blanket-lowercased.
+    """
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf
+    from flopy4.mf6.utils.time import Time
+
+    dis = Dis(nlay=1, nrow=1, ncol=3, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(dis=dis, name="rch")
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=1, k=1.0)
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.STRUCTURED, time=time)
+    ds = nc_model.to_xarray()
+    assert ds.attrs.get("title") == "RCH hydraulic head array input"
 
 
 # modflow_input attribute format

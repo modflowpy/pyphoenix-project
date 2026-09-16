@@ -627,8 +627,11 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
         ds["mesh_face_y"].encoding["_FillValue"] = None
-        ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
-        ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
+        # No explicit _FillValue attribute: matches MF6 (MeshNCModel.f90), which
+        # pads with NF90_FILL_DOUBLE in the data itself but never declares the
+        # attribute on mesh_face_xbnds/ybnds.
+        ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+        ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
         # mesh face nodes
         var_d = {
@@ -1306,8 +1309,11 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
             ds["mesh_face_y"].encoding["_FillValue"] = None
-            ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
-            ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
+            # No explicit _FillValue attribute: matches MF6 (MeshNCModel.f90), which
+            # pads with NF90_FILL_DOUBLE in the data itself but never declares the
+            # attribute on mesh_face_xbnds/ybnds.
+            ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+            ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
             # mesh face nodes
             var_d = {
