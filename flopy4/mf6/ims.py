@@ -31,11 +31,13 @@ class Ims(Solution):
         default=None,
         block="options",
         optional=True,
+        longname="print option",
     )
     complexity: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="solver complexity",
     )
     csv_output_file: Optional[Path] = path(
         default=None,
@@ -66,82 +68,102 @@ class Ims(Solution):
         default=None,
         block="options",
         optional=True,
+        longname="fraction of outer maximum used with ats",
     )
     outer_hclose: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="head change criterion",
     )
     outer_dvclose: float = field(
         default=None,
         block="nonlinear",
+        longname="dependent-variable change criterion",
     )
     outer_rclosebnd: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="boundary package flow residual tolerance",
     )
     outer_maximum: int = field(
         default=None,
         block="nonlinear",
+        longname="outer maximum iterations",
     )
     under_relaxation: Optional[str] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="under relaxation scheme",
     )
     under_relaxation_gamma: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname=(
+            "relaxation factor for SIMPLE or the history or memory term factor for the Cooley and "
+            "delta-bar-delta algorithms"
+        ),
     )
     under_relaxation_theta: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="under relaxation reduction factor",
     )
     under_relaxation_kappa: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="under relaxation increment for the learning rate",
     )
     under_relaxation_momentum: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="fraction of past history changes that is added as a momentum term",
     )
     backtracking_number: Optional[int] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="maximum number of backtracking iterations",
     )
     backtracking_tolerance: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="tolerance for residual change that is allowed for residual reduction",
     )
     backtracking_reduction_factor: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="reduction in step size used for residual reduction computations",
     )
     backtracking_residual_limit: Optional[float] = field(
         default=None,
         block="nonlinear",
         optional=True,
+        longname="limit to which the residual is reduced with backtracking",
     )
     inner_maximum: int = field(
         default=None,
         block="linear",
+        longname="maximum number of inner iterations",
     )
     inner_hclose: Optional[float] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="head change tolerance",
     )
     inner_dvclose: float = field(
         default=None,
         block="linear",
+        longname="dependent-variable change tolerance",
     )
     rclose: Optional[Rclose] = field(
         default=None,
@@ -150,34 +172,41 @@ class Ims(Solution):
     linear_acceleration: str = field(
         default=None,
         block="linear",
+        longname="linear acceleration method",
     )
     relaxation_factor: Optional[float] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="relaxation factor used by ILU factorization",
     )
     preconditioner_levels: Optional[int] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="level of fill for ILU decomposition",
     )
     preconditioner_drop_tolerance: Optional[float] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="drop tolerance used to drop preconditioner terms",
     )
     number_orthogonalizations: Optional[int] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="number of orthogonalizations",
     )
     scaling_method: Optional[str] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="matrix scaling approach",
     )
     reordering_method: Optional[str] = field(
         default=None,
         block="linear",
         optional=True,
+        longname="matrix reordering approach",
     )

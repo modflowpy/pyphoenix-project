@@ -16,56 +16,67 @@ class Est(Package):
         default=False,
         block="options",
         optional=True,
+        longname="save calculated flows to budget file",
     )
     zero_order_decay_water: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="activate zero-order decay in aqueous phase",
     )
     zero_order_decay_solid: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="activate zero-order decay in solid phase",
     )
     density_water: Optional[float] = field(
         default=1000.0,
         block="options",
         optional=True,
+        longname="density of water",
     )
     heat_capacity_water: Optional[float] = field(
         default=4184.0,
         block="options",
         optional=True,
+        longname="heat capacity of water",
     )
     latent_heat_vaporization: Optional[float] = field(
         default=2453500.0,
         block="options",
         optional=True,
+        longname="latent heat of vaporization",
     )
     porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        longname="porosity",
     )
     decay_water: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         optional=True,
+        longname="aqueous phase decay rate coefficient",
     )
     decay_solid: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         optional=True,
+        longname="solid phase decay rate coefficient",
     )
     heat_capacity_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        longname="heat capacity of the aquifer material",
     )
     density_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        longname="density of aquifer material",
     )

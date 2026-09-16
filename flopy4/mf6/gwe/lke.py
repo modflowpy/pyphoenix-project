@@ -76,16 +76,19 @@ class Lke(Package):
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify name of corresponding flow package",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     flow_package_auxiliary_name: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify name of temperature auxiliary variable in flow package",
     )
     boundnames: bool = field(
         default=False,
@@ -96,21 +99,25 @@ class Lke(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_temperature: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated temperatures to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save lake flows to budget file",
     )
     temperature_file: Optional[Path] = path(
         default=None,

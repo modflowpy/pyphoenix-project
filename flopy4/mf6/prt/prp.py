@@ -74,21 +74,25 @@ class Prp(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     exit_solve_tolerance: Optional[float] = field(
         default=1e-05,
         block="options",
         optional=True,
+        longname="exit solve tolerance",
     )
     local_z: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="whether to use local z coordinates",
     )
     extend_tracking: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="whether to extend tracking beyond the end of the simulation",
     )
     track_file: Optional[Path] = path(
         default=None,
@@ -108,26 +112,31 @@ class Prp(Package):
         default=None,
         block="options",
         optional=True,
+        longname="stop time",
     )
     stoptraveltime: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="stop travel time",
     )
     stop_at_weak_sink: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="stop at weak sink",
     )
     istopzone: Optional[int] = field(
         default=None,
         block="options",
         optional=True,
+        longname="stop zone number",
     )
     drape: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="drape",
     )
     # TODO: release_timesrecord — type 'record' not yet supported
     release_timesfile: Optional[ReleaseTimesfile] = field(
@@ -138,29 +147,35 @@ class Prp(Package):
         default=None,
         block="options",
         optional=True,
+        longname="what to do in dry-but-active cells",
     )
     release_time_tolerance: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="release time coincidence tolerance",
     )
     release_time_frequency: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="release time frequency",
     )
     coordinate_check_method: Optional[str] = field(
         default="eager",
         block="options",
         optional=True,
+        longname="coordinate checking method",
     )
     nreleasepts: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of particle release points",
     )
     nreleasetimes: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of particle release times",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,

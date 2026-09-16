@@ -18,36 +18,43 @@ class Rcha(Package):
     readasarrays: bool = field(
         default=True,
         block="options",
+        longname="use array-based input",
     )
     fixed_cell: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="if cell is dry do not apply recharge to underlying cell",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="name of auxiliary variable for multiplier",
     )
     print_input: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print recharge rates to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save RCHA flows to budget file",
     )
     tas_file: Optional[Path] = path(
         default=None,
@@ -67,6 +74,7 @@ class Rcha(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     irch: Optional[IntArrayLike] = field(
         default=None,

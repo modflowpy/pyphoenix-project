@@ -17,21 +17,25 @@ class Mst(Package):
         default=False,
         block="options",
         optional=True,
+        longname="save calculated flows to budget file",
     )
     first_order_decay: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="activate first-order decay",
     )
     zero_order_decay: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="activate zero-order decay",
     )
     sorption: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="activate sorption",
     )
     sorbate_file: Optional[Path] = path(
         default=None,
@@ -44,17 +48,20 @@ class Mst(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="porosity",
     )
     decay: Optional[FloatArrayLike] = field(
         default=None,
@@ -62,6 +69,7 @@ class Mst(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="aqueous phase decay rate coefficient",
     )
     decay_sorbed: Optional[FloatArrayLike] = field(
         default=None,
@@ -69,6 +77,7 @@ class Mst(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="sorbed phase decay rate coefficient",
     )
     bulk_density: Optional[FloatArrayLike] = field(
         default=None,
@@ -76,6 +85,7 @@ class Mst(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="bulk density",
     )
     distcoef: Optional[FloatArrayLike] = field(
         default=None,
@@ -83,6 +93,7 @@ class Mst(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="distribution coefficient",
     )
     sp2: Optional[FloatArrayLike] = field(
         default=None,
@@ -90,4 +101,5 @@ class Mst(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="second sorption parameter",
     )

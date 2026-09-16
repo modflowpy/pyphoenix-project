@@ -35,21 +35,25 @@ class Npf(Package):
         default=False,
         block="options",
         optional=True,
+        longname="keyword to save NPF flows",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to print NPF flows to listing file",
     )
     alternative_cell_averaging: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="conductance weighting option",
     )
     thickstrt: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to activate THICKSTRT option",
     )
     cvoptions: Optional[Cvoptions] = field(
         default=None,
@@ -59,6 +63,7 @@ class Npf(Package):
         default=False,
         block="options",
         optional=True,
+        longname="keyword to activate PERCHED option",
     )
     rewet: Optional[Rewet] = field(
         default=None,
@@ -72,26 +77,31 @@ class Npf(Package):
         default=False,
         block="options",
         optional=True,
+        longname="keyword to activate HIGHEST_CELL_SATURATION option",
     )
     save_specific_discharge: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to save specific discharge",
     )
     save_saturation: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to save saturation",
     )
     k22overk: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate that specified K22 is a ratio",
     )
     k33overk: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate that specified K33 is a ratio",
     )
     tvk_file: Optional[Path] = path(
         default=None,
@@ -104,11 +114,13 @@ class Npf(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     icelltype: Optional[IntArrayLike] = field(
         default=0,
@@ -116,6 +128,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="confined or convertible indicator",
     )  # type: ignore[assignment]
     k: Optional[FloatArrayLike] = field(
         default=1.0,
@@ -123,6 +136,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="hydraulic conductivity (L/T)",
     )  # type: ignore[assignment]
     k22: Optional[FloatArrayLike] = field(
         default=None,
@@ -130,6 +144,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="hydraulic conductivity of second ellipsoid axis",
     )
     k33: Optional[FloatArrayLike] = field(
         default=None,
@@ -137,6 +152,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="hydraulic conductivity of third ellipsoid axis (L/T)",
     )
     angle1: Optional[FloatArrayLike] = field(
         default=None,
@@ -144,6 +160,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="first anisotropy rotation angle (degrees)",
     )
     angle2: Optional[FloatArrayLike] = field(
         default=None,
@@ -151,6 +168,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="second anisotropy rotation angle (degrees)",
     )
     angle3: Optional[FloatArrayLike] = field(
         default=None,
@@ -158,6 +176,7 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="third anisotropy rotation angle (degrees)",
     )
     wetdry: Optional[FloatArrayLike] = field(
         default=None,
@@ -165,4 +184,5 @@ class Npf(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="wetdry threshold and factor",
     )

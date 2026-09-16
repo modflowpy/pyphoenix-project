@@ -51,6 +51,7 @@ class Disv(DisBase):
     nvert: int = field(default=0, block="dimensions")
     top: NDArray[np.float64] = field(
         default=None,
+        longname="model top elevation",
         block="griddata",
         shape=("ncpl",),
         layered=False,
@@ -58,6 +59,7 @@ class Disv(DisBase):
     )
     botm: NDArray[np.float64] = field(
         default=None,
+        longname="model bottom elevation",
         block="griddata",
         shape=("nodes",),
         layered=True,
@@ -65,6 +67,7 @@ class Disv(DisBase):
     )
     idomain: Optional[NDArray[np.int64]] = field(
         default=None,
+        longname="idomain existence array",
         block="griddata",
         shape=("nodes",),
         layered=True,

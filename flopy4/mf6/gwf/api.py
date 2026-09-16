@@ -24,16 +24,19 @@ class Api(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save api flows to budget file",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -50,4 +53,5 @@ class Api(Package):
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
+        longname="maximum number of user-defined api boundaries",
     )

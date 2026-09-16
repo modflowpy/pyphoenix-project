@@ -34,6 +34,7 @@ class Ist(Package):
         default=False,
         block="options",
         optional=True,
+        longname="save calculated flows to budget file",
     )
     budget_file: Optional[Path] = path(
         default=None,
@@ -53,16 +54,19 @@ class Ist(Package):
         default=None,
         block="options",
         optional=True,
+        longname="activate sorption",
     )
     first_order_decay: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="activate first-order decay",
     )
     zero_order_decay: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="activate zero-order decay",
     )
     cim_file: Optional[Path] = path(
         default=None,
@@ -86,29 +90,34 @@ class Ist(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="porosity of the immobile domain",
     )
     volfrac: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="volume fraction of this immobile domain",
     )
     zetaim: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="mass transfer rate coefficient between the mobile and immobile domains",
     )
     cim: Optional[FloatArrayLike] = field(
         default=None,
@@ -116,6 +125,7 @@ class Ist(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="initial concentration of the immobile domain",
     )
     decay: Optional[FloatArrayLike] = field(
         default=None,
@@ -123,6 +133,7 @@ class Ist(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="first rate coefficient",
     )
     decay_sorbed: Optional[FloatArrayLike] = field(
         default=None,
@@ -130,6 +141,7 @@ class Ist(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="second rate coefficient",
     )
     bulk_density: Optional[FloatArrayLike] = field(
         default=None,
@@ -137,6 +149,7 @@ class Ist(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="bulk density",
     )
     distcoef: Optional[FloatArrayLike] = field(
         default=None,
@@ -144,6 +157,7 @@ class Ist(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="distribution coefficient",
     )
     sp2: Optional[FloatArrayLike] = field(
         default=None,
@@ -151,4 +165,5 @@ class Ist(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="second sorption parameter",
     )

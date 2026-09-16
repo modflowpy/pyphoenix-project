@@ -17,6 +17,7 @@ class Fmi(Package):
         default=False,
         block="options",
         optional=True,
+        longname="save cell-by-cell flows to budget file",
     )
     gwfhead: Optional[Path] = path(
         default=None,
@@ -24,6 +25,7 @@ class Fmi(Package):
         block="packagedata",
         optional=True,
         direction="in",
+        longname="gwf head file",
     )
     gwfbudget: Optional[Path] = path(
         default=None,
@@ -31,6 +33,7 @@ class Fmi(Package):
         block="packagedata",
         optional=True,
         direction="in",
+        longname="gwf budget file",
     )
     gwfgrid: Optional[Path] = path(
         default=None,
@@ -38,4 +41,5 @@ class Fmi(Package):
         block="packagedata",
         optional=True,
         direction="in",
+        longname="gwf grid file",
     )

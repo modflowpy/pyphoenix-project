@@ -16,15 +16,18 @@ class Ic(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     strt: FloatArrayLike = field(
         default=0.0,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="starting concentration",
     )  # type: ignore[assignment]

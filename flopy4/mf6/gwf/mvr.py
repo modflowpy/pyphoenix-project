@@ -35,16 +35,19 @@ class Mvr(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     modelnames: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="precede all package names with model names",
     )
     budget_file: Optional[Path] = path(
         default=None,
@@ -63,10 +66,12 @@ class Mvr(Package):
     maxmvr: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="maximum number of movers",
     )
     maxpackages: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of packages to be used with the mover",
     )
     packages: Optional[list[Packages]] = field(
         default=None,

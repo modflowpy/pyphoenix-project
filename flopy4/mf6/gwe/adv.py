@@ -15,9 +15,11 @@ class Adv(Package):
         default=None,
         block="options",
         optional=True,
+        longname="advective scheme",
     )
     ats_percel: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="fractional cell distance used for time step calculation",
     )

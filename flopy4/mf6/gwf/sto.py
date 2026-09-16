@@ -22,16 +22,19 @@ class Sto(Package):
         default=False,
         block="options",
         optional=True,
+        longname="keyword to save NPF flows",
     )
     storagecoefficient: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate SS is read as storage coefficient",
     )
     ss_confined_only: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate specific storage only applied under confined conditions",
     )
     tvs_file: Optional[Path] = path(
         default=None,
@@ -44,29 +47,34 @@ class Sto(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     iconvert: IntArrayLike = field(
         default=0,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="convertible indicator",
     )  # type: ignore[assignment]
     ss: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="specific storage",
     )  # type: ignore[assignment]
     sy: FloatArrayLike = field(
         default=0.15,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="specific yield",
     )  # type: ignore[assignment]
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",

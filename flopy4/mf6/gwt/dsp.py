@@ -16,21 +16,25 @@ class Dsp(Package):
         default=False,
         block="options",
         optional=True,
+        longname="deactivate xt3d",
     )
     xt3d_rhs: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="xt3d on right-hand side",
     )
     export_array_ascii: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     export_array_netcdf: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     diffc: Optional[FloatArrayLike] = field(
         default=None,
@@ -38,6 +42,7 @@ class Dsp(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="effective molecular diffusion coefficient",
     )
     alh: Optional[FloatArrayLike] = field(
         default=None,
@@ -45,6 +50,7 @@ class Dsp(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="longitudinal dispersivity in horizontal direction",
     )
     alv: Optional[FloatArrayLike] = field(
         default=None,
@@ -52,6 +58,7 @@ class Dsp(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="longitudinal dispersivity in vertical direction",
     )
     ath1: Optional[FloatArrayLike] = field(
         default=None,
@@ -59,6 +66,7 @@ class Dsp(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="transverse dispersivity in horizontal direction",
     )
     ath2: Optional[FloatArrayLike] = field(
         default=None,
@@ -66,6 +74,7 @@ class Dsp(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="transverse dispersivity in horizontal direction",
     )
     atv: Optional[FloatArrayLike] = field(
         default=None,
@@ -73,4 +82,5 @@ class Dsp(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="transverse dispersivity when flow is in vertical direction",
     )

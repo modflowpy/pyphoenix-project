@@ -25,6 +25,7 @@ class Dis(DisBase):
     nrow: int = field(default=2, block="dimensions")
     delr: NDArray[np.float64] = field(
         default=1.0,
+        longname="spacing along a row",
         block="griddata",
         shape=("ncol",),
         layered=False,
@@ -32,6 +33,7 @@ class Dis(DisBase):
     )
     delc: NDArray[np.float64] = field(
         default=1.0,
+        longname="spacing along a column",
         block="griddata",
         shape=("nrow",),
         layered=False,
@@ -39,6 +41,7 @@ class Dis(DisBase):
     )
     top: NDArray[np.float64] = field(
         default=1.0,
+        longname="cell top elevation",
         block="griddata",
         shape=("ncpl",),
         layered=False,
@@ -46,6 +49,7 @@ class Dis(DisBase):
     )
     botm: NDArray[np.float64] = field(
         default=0.0,
+        longname="cell bottom elevation",
         block="griddata",
         shape=("nodes",),
         layered=True,
@@ -53,6 +57,7 @@ class Dis(DisBase):
     )
     idomain: Optional[NDArray[np.int64]] = field(
         default=1,
+        longname="idomain existence array",
         block="griddata",
         shape=("nodes",),
         layered=True,
