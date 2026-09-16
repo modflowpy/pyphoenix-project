@@ -115,15 +115,10 @@ def has_dimensions_block(component: Component) -> bool:
     """True if the component has a dimensions block with a 'maxbound' field.
 
     Combined with a real Item-list period field (see
-    `build_component_spec`'s `_maxbound_is_computed`), this drives emitting
-    `maxbound` as a computed read-only property instead of a stored field --
-    it's always exactly `max(len(v) for v in stress_period_data.values())`,
-    so there's nothing to keep in sync. A G-variant package (CHDG, DRNG, …)
-    has a 'maxbound' field too, but its period data is a READARRAY grid, not
-    a row list, so nothing to derive a count from -- stays a plain, settable
-    field. Packages like MVR/BUY/VSC have user-specified dimension scalars
-    (maxmvr, maxpackages, nrhospecies) that must NOT get this treatment
-    either -- they don't have a 'maxbound' field at all.
+    `build_component_spec`'s `_maxbound_is_computed`), drives emitting
+    `maxbound` as a computed read-only property instead of a stored field.
+    A G-variant package (CHDG, DRNG, …) also has 'maxbound', but its period
+    data is a READARRAY grid, not a row list to count -- stays a plain field.
     """
     block = (component.blocks or {}).get("dimensions")
     return block is not None and "maxbound" in block.fields

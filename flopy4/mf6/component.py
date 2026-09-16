@@ -166,38 +166,18 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     child; otherwise this default stands."""
 
     _parent: Any = field(default=None, repr=False, eq=False)
-    """Explicit parent back-reference -- the actual source of truth for
-    "who is this component's parent", for both the top-down
-    (`Gwf(dis=Dis(...))`) and bottom-up (`Dis(parent=gwf)`) construction
-    patterns. Named with a leading underscore so attrs' private-attribute
-    convention strips it for the generated `__init__` parameter -- the
-    constructor keyword stays plain `parent=` (e.g. `Ic(parent=gwf)`) even
-    though the field itself is `_parent`.
+    """Parent back-reference -- source of truth for "who is this
+    component's parent", top-down (`Gwf(dis=Dis(...))`) and bottom-up
+    (`Dis(parent=gwf)`) alike. Leading underscore triggers attrs' private-
+    attribute convention, so the constructor keyword stays `parent=` even
+    though the field is `_parent`. Typed `Any` so `child_field_candidates()`
+    (type-annotation based) doesn't mistake it for a real child field.
 
-    Typed `Any` deliberately: `child_field_candidates()` is purely
-    type-annotation based, and a `"Component | None"` annotation here
-    would make it mistake this for a real child field.
-
-    Populated by two complementary hooks in __attrs_post_init__ (see
-    that method's docstring), and kept current afterward by the `parent`
-    property's setter below:
-    - _set_child_parents() (parent-side): stamps `_parent` on every
-      Component-typed field already populated by the time this
-      component's own post-init runs -- covers top-down construction
-      (`Gwf(dis=Dis(...))`).
-    - _attach_to_parent_field() (child-side): for a child constructed
-      with `parent=` directly (bottom-up, e.g. `Ic(parent=gwf)`), finds
-      the matching field on the parent, attaches into it, and stamps
-      `_parent` there.
-
-    Excluded by name (alongside `Output.parent`, an unrelated field on a
-    different, non-Component class -- see its own docstring) from
-    `to_dict()`'s `attrs.asdict()` recursion in the same way: a live,
-    non-`None` `.parent` would otherwise be a genuine reference cycle
-    (`dis.parent is gwf` and `gwf.dis is dis` at the same time), and
-    `attrs.asdict()`'s recursion, unlike `child_field_candidates()`,
-    doesn't know to treat a field specially just because it's typed
-    `Any`.
+    Populated by `_set_child_parents()` (top-down) and
+    `_attach_to_parent_field()` (bottom-up), and kept current by
+    `parent`'s setter below. Excluded by name from `to_dict()`'s
+    `attrs.asdict()` recursion (alongside the unrelated `Output.parent`)
+    since a live `.parent` would otherwise be a reference cycle.
     """
 
     dims: dict = field(default=attrs.Factory(dict), repr=False, eq=False)
@@ -252,27 +232,18 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         are small, so there's no need for the complexity of cache
         invalidation.
 
-        Re-runs `_set_child_parents()` first (idempotent -- see its own
-        docstring) so every reader of `_children` -- `write()`,
-        `NetCDFModel.from_model()`, `_make_binding_blocks()`, `to_dict()`,
-        etc. -- sees correctly-named, parent-stamped children regardless
-        of how they were attached. This matters specifically for a child
-        list/dict reassigned via plain attribute set after construction
-        (e.g. `gwf.wel = [welg_crt, welg_leak, welg_sampleQ]`), which --
-        unlike construction-time attach or `__setitem__` -- never runs
-        `_set_child_parents()` on its own, leaving siblings at their
-        shared class-name `.name` default. That collides in the MF6
-        namefile, where `.name` becomes the PNAME (`Binding.from_component()`
-        in converter/binding.py); some MF6 builds tolerate the resulting
-        duplicate registration, others hard-fail. Fixing this here, at the
-        single common read path, rather than in each individual consumer,
-        also avoids an ordering hazard: a consumer that reads `.name` to
-        build a separate artifact (e.g. a NetCDF input file) before
-        `write()` runs would otherwise see a *different* (stale) name
-        than what ends up in the actual MF6 input files.
+        Re-runs `_set_child_parents()` first (idempotent) so every reader
+        sees correctly-named children even if a list/dict field was
+        reassigned via plain attribute set (`gwf.wel = [...]`) rather than
+        construction or `__setitem__` -- the one case that otherwise skips
+        naming, leaving siblings collided on the shared class-name default
+        (which becomes the MF6 PNAME on write, e.g. `Binding.from_component()`
+        -- some MF6 builds tolerate the resulting duplicate registration,
+        others don't). Centralized here, rather than in each consumer
+        (`write()`, `NetCDFModel.from_model()`, ...), so nothing can read a
+        stale name depending on call order.
 
-        Detects child fields via `flopy4.attrs_xarray.child_field_candidates()`
-        (type-annotation based).
+        Detects child fields via `flopy4.attrs_xarray.child_field_candidates()`.
         """
         from flopy4.attrs_xarray import child_field_candidates
 

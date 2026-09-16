@@ -80,10 +80,7 @@ class Package(Component, ABC):
     def _init_item_lists(self, fields) -> None:
         """Coerce raw list/dict block+period data into Item-list fields;
         auto-set n<block>s from the resulting list lengths. `maxbound`
-        (where applicable) is a computed property instead -- see the
-        generated class's own `maxbound` property, always
-        `max(len(v) for v in stress_period_data.values())` live, not a
-        stored value this method needs to set.
+        (where applicable) is a computed property instead, not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name

@@ -773,12 +773,8 @@ def build_component_spec(
     all_fields = filters.flat_fields(component, developmode=developmode)
 
     has_maxbound = filters.has_dimensions_block(component)
-    # maxbound only becomes a computed property (see ComputedFieldSpec) when
-    # there's a real Item-list period field to derive it from -- G-variant
-    # packages (CHDG, DRNG, …) declare a 'maxbound' dimensions field too, but
-    # their period data is a READARRAY grid, not a row list, so there's
-    # nothing to derive a row count from; their maxbound stays a plain,
-    # user-settable field.
+    # maxbound becomes a computed property only with a real Item-list period
+    # field to derive it from (see has_dimensions_block's docstring).
     _has_list_period = any(
         block_name == "period" and filters.is_list_field(f) for block_name, f in all_fields
     )
