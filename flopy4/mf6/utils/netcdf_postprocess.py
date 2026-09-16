@@ -1,14 +1,16 @@
 """Post-processing utilities to bring MF6 output NC files into CF/CRS parity
 with flopy4 input NC files.
 
-MF6 writes a ``projection`` variable but omits some attributes required for
-full CF-1.11 compliance and GDAL-based tool support.
+MF6 6.8.0+ already writes ``crs_wkt``/``grid_mapping_name`` (mesh) and
+``wkt``/``crs_wkt``/``grid_mapping``/``grid_mapping_name`` (structured) --
+this module is then a no-op bridge for those.  Two things it still does:
 
-- **Mesh output**: missing ``crs_wkt`` and ``grid_mapping_name``.
-- **Structured output**: missing ``wkt``, ``grid_mapping_name``, and the GDAL
-  georeferencing attributes (``GeoTransform`` / ``spatial_ref``) needed for
-  correct placement in QGIS and other GDAL-based tools.  ArcGIS Pro does not
-  require these attributes — it reads ``crs_wkt`` directly from raw MF6 output.
+- **Legacy pre-6.8.0 files**: backfill missing ``wkt``/``crs_wkt``/
+  ``grid_mapping_name``, and fix ``crs_wkt`` holding WKT1 instead of WKT2
+  (a real bug present through 6.7.0, fixed in 6.8.0).
+- **Structured output, any current release**: add ``GeoTransform`` and
+  ``spatial_ref`` for GDAL-based tools (QGIS) -- not yet in any MF6
+  release.  ArcGIS Pro reads ``crs_wkt`` directly and doesn't need this.
 
 Usage::
 
@@ -33,8 +35,8 @@ import xarray as xr
 def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     """Add ``crs_wkt`` and ``grid_mapping_name`` to the ``projection`` variable.
 
-    MF6 mesh output already writes ``wkt``; this brings the variable into full
-    CF-1.11 parity with flopy4 input files.
+    No-op on MF6 6.8.0+, which already writes both. Bridges legacy
+    pre-6.8.0 files that only have ``wkt``.
     """
     if "projection" not in ds:
         return ds
@@ -53,7 +55,7 @@ def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     crs = ProjCRS.from_wkt(wkt)
     cf = crs.to_cf()
 
-    # wkt on mesh output is WKT1; crs_wkt must be WKT2 per CF-1.11
+    # wkt on mesh output is WKT1; crs_wkt must be WKT2 per CF-1.13
     ds["projection"].attrs.setdefault("crs_wkt", crs.to_wkt(WktVersion.WKT2_2019))
     gmn = cf.get("grid_mapping_name")
     if gmn:
@@ -63,11 +65,9 @@ def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
 
 
 def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
-    """Add ``wkt``, ``grid_mapping_name``, ``GeoTransform``, and ``spatial_ref``
-    to the ``projection`` variable of an MF6 structured output NC file.
-
-    MF6 structured output already writes ``crs_wkt`` and ``grid_mapping`` on
-    x/y/head; this adds the remaining attrs needed for GDAL-based tools.
+    """Add ``wkt``/``grid_mapping_name`` (legacy bridge), fix ``crs_wkt``
+    (legacy bug), and add ``GeoTransform``/``spatial_ref`` (still needed --
+    not yet in any released MF6) to the ``projection`` variable.
     """
     if "projection" not in ds:
         return ds
@@ -86,7 +86,8 @@ def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     crs = ProjCRS.from_wkt(wkt)
     cf = crs.to_cf()
 
-    # MF6 structured output writes WKT1 to crs_wkt; overwrite with WKT2 per CF-1.11.
+    # Pre-6.8.0 MF6 wrote WKT1 to crs_wkt (bug, fixed in 6.8.0); overwrite
+    # unconditionally -- idempotent on already-correct 6.8.0+ files.
     # wkt and spatial_ref remain WKT1 for GDAL/legacy-tool compatibility.
     _wkt1 = crs.to_wkt(WktVersion.WKT1_GDAL)
     _wkt2 = crs.to_wkt(WktVersion.WKT2_2019)
@@ -133,11 +134,10 @@ def postprocess_mesh_nc(
     path: Union[str, Path],
     out: Union[str, Path, None] = None,
 ) -> Path:
-    """Post-process an MF6 UGRID/mesh output NC file for CF-1.11 compliance.
+    """Post-process an MF6 UGRID/mesh output NC file for CF-1.13 compliance.
 
-    Adds the missing ``crs_wkt`` and ``grid_mapping_name`` attributes to the
-    ``projection`` variable so the file matches the conventions written by
-    flopy4 for input files.
+    Backfills ``crs_wkt`` and ``grid_mapping_name`` on the ``projection``
+    variable for legacy pre-6.8.0 files; a no-op on 6.8.0+.
 
     Parameters
     ----------
@@ -168,14 +168,12 @@ def postprocess_structured_nc(
     path: Union[str, Path],
     out: Union[str, Path, None] = None,
 ) -> Path:
-    """Post-process an MF6 CF-structured output NC file for full CF-1.11 and
-    GDAL compliance.
+    """Post-process an MF6 CF-structured output NC file for CF-1.13/GDAL compliance.
 
-    Adds the missing ``wkt``, ``grid_mapping_name``, ``GeoTransform``, and
-    ``spatial_ref`` attributes to the ``projection`` variable so the file
-    matches the conventions written by flopy4 for input files and is correctly
-    placed by QGIS and other GDAL-based tools.  ArcGIS Pro reads ``crs_wkt``
-    directly from raw MF6 output and does not require this post-processing.
+    Backfills ``wkt``/``grid_mapping_name`` (legacy pre-6.8.0 bridge, no-op on
+    6.8.0+) and adds ``GeoTransform``/``spatial_ref`` (still needed on any
+    current release) for QGIS/GDAL placement.  ArcGIS Pro reads ``crs_wkt``
+    directly and doesn't need this.
 
     Parameters
     ----------
@@ -213,7 +211,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog="ncfix",
         description=(
-            "Post-process an MF6 output NetCDF file to add missing CF-1.11 / GDAL "
+            "Post-process an MF6 output NetCDF file to add missing CF-1.13 / GDAL "
             "attributes to the projection variable."
         ),
     )

@@ -116,6 +116,7 @@ ignore = [
 
 [project.scripts]
 flopy4 = "flopy4.cli:main"
+ncfix = "flopy4.mf6.utils.netcdf_postprocess:main"
 
 [project.entry-points.flopy4]
 plot = "flopy4.singledispatch.plot_int"

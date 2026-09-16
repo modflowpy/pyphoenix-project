@@ -563,6 +563,21 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["layer"].attrs["axis"] = "Z"
         ds["layer"].encoding["_FillValue"] = None
 
+        # z_l1, z_l2, ...: per-layer cell center elevation, always written.
+        # Split per layer because face-indexed variables have no layer
+        # dimension to reference a combined z(layer, nmesh_face) (CF-1.13 5.2).
+        _z = self._coords["z"].values
+        for k in range(self.nlay):
+            _varname = f"z_l{k + 1}"
+            ds = ds.assign({_varname: (["nmesh_face"], _z[k].flatten())})
+            if _units is not None:
+                ds[_varname].attrs["units"] = _units
+            ds[_varname].attrs["standard_name"] = "altitude"
+            ds[_varname].attrs["positive"] = "up"
+            ds[_varname].attrs["long_name"] = f"cell center elevation (layer {k + 1})"
+            ds[_varname].attrs["layer"] = k + 1
+            ds[_varname].encoding["_FillValue"] = None
+
         # mesh container variable
         ds = ds.assign({"mesh": ([], np.int64(1))})
         ds["mesh"].attrs["cf_role"] = "mesh_topology"
@@ -610,8 +625,11 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
         ds["mesh_face_y"].encoding["_FillValue"] = None
-        ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
-        ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
+        # No explicit _FillValue attribute: matches MF6 (MeshNCModel.f90), which
+        # pads with NF90_FILL_DOUBLE in the data itself but never declares the
+        # attribute on mesh_face_xbnds/ybnds.
+        ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+        ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
         # mesh face nodes
         var_d = {
@@ -656,7 +674,6 @@ class StructuredGrid(LegacyStructuredGrid):
 
         xc = self.xoffset + self.xycenters[0]
         yc = self.yoffset + self.xycenters[1]
-        # z = [float(x) for x in range(1, self.nlay + 1)]
 
         # set coordinate var bounds
         x_bnds = []
@@ -720,6 +737,16 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["x_bnds"].encoding["_FillValue"] = None
         ds["y_bnds"].encoding["_FillValue"] = None
 
+        # z: cell center elevation, distinct from the discrete layer index.
+        # Always written, independent of CRS/NCF configuration.
+        ds = ds.assign({"z": (["layer", "y", "x"], self._coords["z"].values)})
+        if _units is not None:
+            ds["z"].attrs["units"] = _units
+        ds["z"].attrs["standard_name"] = "altitude"
+        ds["z"].attrs["positive"] = "up"
+        ds["z"].attrs["long_name"] = "cell center elevation"
+        ds["z"].encoding["_FillValue"] = None
+
         # Write projection variable whenever CRS is available.
         # Lat/lon auxiliary coordinates are intentionally omitted: GDAL-based
         # tools (QGIS, ArcGIS) misplace projected rasters when 2D lat/lon arrays
@@ -758,23 +785,27 @@ class StructuredGrid(LegacyStructuredGrid):
             # in GDAL-based tools (QGIS, ArcGIS Pro via GDAL). MF6 ignores them.
             # Note: GDAL reads GeoTransform from the grid_mapping variable, not
             # from global attrs — NC_GLOBAL#GeoTransform is ignored for extent.
-            # Derive effective pixel sizes from the actual grid bounds so that
-            # variable-spacing grids get the correct bounding box in GDAL.
-            # Using x[1]-x[0] only works for uniform grids; outer cells in
-            # Frenchman-Flat-style grids are much coarser than interior cells.
-            _x_left = float(x_bnds[0][0])
-            _x_right = float(x_bnds[-1][1])
-            _y_top = float(y_bnds[0][1])
-            _y_bot = float(y_bnds[-1][0])
-            _dx_eff = (_x_right - _x_left) / len(xc)
-            _dy_eff = (_y_bot - _y_top) / len(yc)  # negative for north-up
+            # Rotation-aware: GDAL's affine model supports planar rotation via
+            # the GT[2]/GT[4] shear terms, independent of the x/y coordinate
+            # arrays -- unlike x/y (true CF dimension coordinates, which cannot
+            # represent a rotated position without becoming 2D auxiliary
+            # coordinates), GeoTransform is computed directly from
+            # xoffset/yoffset/angrot/delr/delc, matching MF6's own
+            # DisNCStructured.f90 formula exactly. Reduces to the unrotated
+            # case when angrot == 0. dx/dy are effective (average) pixel sizes
+            # over the full grid extent -- a GDAL limitation for
+            # variable-spacing grids, not specific to this derivation.
+            _ang = np.radians(self.angrot or 0.0)
+            _dx_eff = float(np.sum(self.delr)) / len(xc)
+            _dy_eff = -float(np.sum(self.delc)) / len(yc)  # negative for north-up
+            _sum_delc = float(np.sum(self.delc))
             _gt = [
-                _x_left,  # upper-left x
-                _dx_eff,  # effective x pixel size
-                0.0,
-                _y_top,  # upper-left y
-                0.0,
-                _dy_eff,  # effective y pixel size (negative for north-up)
+                self.xoffset - _sum_delc * np.sin(_ang),
+                _dx_eff * np.cos(_ang),
+                -_dy_eff * np.sin(_ang),
+                self.yoffset + _sum_delc * np.cos(_ang),
+                _dx_eff * np.sin(_ang),
+                _dy_eff * np.cos(_ang),
             ]
             ds["projection"].attrs["GeoTransform"] = " ".join(str(v) for v in _gt)
             ds["projection"].attrs["spatial_ref"] = _wkt1
@@ -1214,6 +1245,21 @@ class VertexGrid(LegacyVertexGrid):
             ds["layer"].attrs["axis"] = "Z"
             ds["layer"].encoding["_FillValue"] = None
 
+            # z_l1, z_l2, ...: per-layer cell center elevation, always written.
+            # Split per layer because face-indexed variables have no layer
+            # dimension to reference a combined z(layer, nmesh_face) (CF-1.13 5.2).
+            _z = self._coords["z"].values
+            for k in range(self.nlay):
+                _varname = f"z_l{k + 1}"
+                ds = ds.assign({_varname: (["nmesh_face"], _z[k])})
+                if _units is not None:
+                    ds[_varname].attrs["units"] = _units
+                ds[_varname].attrs["standard_name"] = "altitude"
+                ds[_varname].attrs["positive"] = "up"
+                ds[_varname].attrs["long_name"] = f"cell center elevation (layer {k + 1})"
+                ds[_varname].attrs["layer"] = k + 1
+                ds[_varname].encoding["_FillValue"] = None
+
             # mesh container variable
             ds = ds.assign({"mesh": ([], np.int64(1))})
             ds["mesh"].attrs["cf_role"] = "mesh_topology"
@@ -1261,8 +1307,11 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
             ds["mesh_face_y"].encoding["_FillValue"] = None
-            ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
-            ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
+            # No explicit _FillValue attribute: matches MF6 (MeshNCModel.f90), which
+            # pads with NF90_FILL_DOUBLE in the data itself but never declares the
+            # attribute on mesh_face_xbnds/ybnds.
+            ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+            ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
             # mesh face nodes
             var_d = {
