@@ -1264,7 +1264,7 @@ def test_gwf_mvr(function_tmpdir):
         head_file=f"{gwf_name}.hds",
         stress_period_data={0: [("SAVE", "HEAD", "LAST"), ("SAVE", "BUDGET", "LAST")]},
     )
-    # xattree appends the 0-based index for list-typed children, so Chd/Wel/Drn
+    # Auto-naming appends the 0-based index for list-typed children, so Chd/Wel/Drn
     # get auto-names chd0/wel0/drn0. Explicit name= would be mangled (e.g. "wel-1" -> "wel-10").
     chd = Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 5.0], [(0, 0, 9), 5.0]]})
     # mover=True writes MOVER keyword to OPTIONS block so MF6 allocates IMOVER
@@ -1275,7 +1275,7 @@ def test_gwf_mvr(function_tmpdir):
         stress_period_data={0: [[(0, 0, 4), 4.0, 100.0]]},
     )
 
-    # MVR PACKAGES block lists participating packages by auto-assigned xattree name.
+    # MVR PACKAGES block lists participating packages by auto-assigned name.
     # PERIOD block uses object-dtype string arrays (pname1, pname2, mvrtype) which
     # require the is_tabular check in _unstructure_block_param to be written correctly.
     mvr = Mvr(
@@ -1908,7 +1908,7 @@ def test_gwt_ssm_sources(function_tmpdir):
         stress_period_data={0: [[(0, 0, 0), 1.0, 1.0], [(0, 0, ncol - 1), 0.0, 0.0]]},
         name="chd-1",
     )
-    # xattree appends a zero-based counter to the name; use chd.name to get the
+    # Auto-naming appends a zero-based counter to the name; use chd.name to get the
     # registered name (e.g. "chd-10") so SSM sources can reference it correctly.
     chd_registered_name = chd.name
 
@@ -2248,7 +2248,7 @@ def test_gwt_lkt01(function_tmpdir):
         },
         name="LAK-1",
     )
-    # xattree renames list-kind children: "LAK-1" + index 0 = "LAK-10".
+    # Auto-naming renames list-kind children: "LAK-1" + index 0 = "LAK-10".
     # Use lak.name so flow_package_name always matches the PNAME written to the nam file.
 
     # GWF-GWT exchange

@@ -556,10 +556,10 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
             fname = str(row[1])
             # A row's third+ terms mean different things by target kind (see
             # _apply_binding_terms): for a plain Model/Package they're the
-            # pname, passed through as name= and preserved directly on
-            # xattree's own .name attribute; for Exchange/Solution they're
-            # real semantic data (coupled model names / applicable models),
-            # not a name to assign the loaded child itself.
+            # pname, passed through as name= and preserved directly on the
+            # loaded child's own .name attribute; for Exchange/Solution
+            # they're real semantic data (coupled model names / applicable
+            # models), not a name to assign the loaded child itself.
             pname = (
                 str(row[2])
                 if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
@@ -584,10 +584,10 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 # name, e.g. Simulation.models); row fname as a fallback
                 # for rows with no pname (e.g. solutiongroup, whose row[2:]
                 # are applicable model names, not a pname -- see pname
-                # above). This key is NOT cosmetic: xattree reconciles a
-                # dict-kind child's attached .name to match the key it's
-                # placed under, overriding whatever name= was passed to
-                # load() above.
+                # above). This key is NOT cosmetic: child attachment
+                # reconciles a dict-kind child's .name to match the key
+                # it's placed under, overriding whatever name= was passed
+                # to load() above (see Component._attach_to_parent_field).
                 collectors.setdefault(child_name, {})[pname or fname] = child
 
         kwargs.update(collectors)
@@ -623,9 +623,10 @@ def structure_component(
         for leaf `Package` classes, which have none.
     name : str, optional
         Explicit component name (e.g. a namefile binding row's pname),
-        overriding xattree's default auto-assigned name. Not derivable
-        from the file's own content -- passed down by a parent's
-        `_resolve_bindings` call when loading this component as a child.
+        overriding the component's default auto-assigned name. Not
+        derivable from the file's own content -- passed down by a
+        parent's `_resolve_bindings` call when loading this component
+        as a child.
 
     Returns
     -------

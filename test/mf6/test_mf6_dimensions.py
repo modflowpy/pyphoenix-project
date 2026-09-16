@@ -133,11 +133,6 @@ class TestComponentIntegration:
 
     def test_package_delegates_to_parent_model(self):
         """Test that packages can resolve dimensions from parent model."""
-        # NOTE: This test is simplified for Phase 2 (xattree coexistence)
-        # In Phase 2, packages that require dimension resolution during construction
-        # (e.g., IC with array fields) can't be easily tested because xattree sets
-        # parents after construction. This will work properly in Phase 3.
-
         from flopy4.mf6.gwf import Gwf
         from flopy4.mf6.gwf.dis import Dis
 
@@ -190,7 +185,7 @@ class TestComponentIntegration:
         tdis = Tdis(nper=10)
         dis = Dis(nlay=3, nrow=10, ncol=20)
         gwf = Gwf(name="test", dis=dis)
-        # Construct Simulation with models dict - xattree will set parent automatically
+        # Construct Simulation with models dict - parent is set automatically
         sim = Simulation(name="test", tdis=tdis, models={"test": gwf})
 
         # Model should access its own grid dimensions
