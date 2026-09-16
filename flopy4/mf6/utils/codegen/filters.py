@@ -114,10 +114,11 @@ def has_period_block(component: Component) -> bool:
 def has_dimensions_block(component: Component) -> bool:
     """True if the component has a dimensions block with a 'maxbound' field.
 
-    Only packages with a field literally named 'maxbound' use the
-    auto-computed pattern (init=False, on_setattr=update_maxbound).
-    Packages like MVR/BUY/VSC have user-specified dimension scalars
-    (maxmvr, maxpackages, nrhospecies) that must NOT be init=False.
+    Combined with a real Item-list period field (see
+    `build_component_spec`'s `_maxbound_is_computed`), drives emitting
+    `maxbound` as a computed read-only property instead of a stored field.
+    A G-variant package (CHDG, DRNG, …) also has 'maxbound', but its period
+    data is a READARRAY grid, not a row list to count -- stays a plain field.
     """
     block = (component.blocks or {}).get("dimensions")
     return block is not None and "maxbound" in block.fields
@@ -425,15 +426,15 @@ def _default_repr(f: FieldV3) -> str:
     return repr(default)
 
 
-# New-codegen field call strings
+# Field call strings
 
 
-def field_metadata(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -> dict:
-    """Build the ``field()``/``path()`` spec-call kwargs for a field (new codegen path).
+def field_metadata(f: FieldV3, block_name: str) -> dict:
+    """Build the ``field()``/``path()`` spec-call kwargs for a field.
 
-    Codegen-v2 packages are plain attrs classes (not ``@xattree``-decorated), so
-    these calls carry passive metadata read by the codec and conversion methods
-    at call time rather than real xattree array/dim/coord structure.
+    These calls carry passive metadata (shape, block, etc.) read by the
+    codec and conversion methods at call time, rather than any structure
+    resolved up front at class-definition time.
     """
     kw: dict = {"block": block_name}
     if shape := getattr(f, "shape", None):
@@ -444,8 +445,6 @@ def field_metadata(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -
         kw["time_series"] = True
     if f.optional:
         kw["optional"] = True
-    if block_name == "dimensions" and f.name == "maxbound" and has_maxbound:
-        kw["auto_from"] = "stress_period_data"
     if is_file_record(f):
         child = file_child(f)
         assert child is not None  # is_file_record() already confirmed a File child exists
@@ -470,15 +469,17 @@ def _dq(v) -> str:
     return repr(v)
 
 
-def field_call(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -> str:
+def field_call(f: FieldV3, block_name: str) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
-    kw = field_metadata(f, block_name, has_maxbound=has_maxbound)
-    # maxbound is auto-computed from stress_period_data at write time; default 0.
+    kw = field_metadata(f, block_name)
+    # A G-variant package's maxbound (see build_component_spec's
+    # _maxbound_is_computed) is still a plain field, not a computed
+    # property -- defaults to 0 like the computed version would.
     if block_name == "dimensions" and f.name == "maxbound":
         default = "0"
     else:

@@ -149,8 +149,8 @@ class TestComponentIntegration:
         assert gwf.resolve_dims("nlay") == {"nlay": 3}
         assert gwf.resolve_dims("nodes") == {"nodes": 600}
 
-        # Verify parent was set by xattree (use 'is' for identity, not '==' for equality)
-        assert dis.parent is gwf
+        # Use 'is' for identity, not '==' for equality.
+        assert dis._parent is gwf
 
     def test_dimension_caching_in_real_components(self):
         """Test that dimension caching works with real components."""

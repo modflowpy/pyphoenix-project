@@ -5,7 +5,6 @@ import attrs
 import numpy as np
 import pandas as pd
 import xarray as xr
-from xattree import xattree
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.item import (
@@ -28,45 +27,60 @@ _DTYPE_MAP: dict = {
 }
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
     def __attrs_post_init__(self) -> None:
-        """Post-init for codegen v2 packages.
+        """Post-init for Package subclasses.
 
         Handles three concerns in order:
-        1. Fix xattree name registration (concrete class name, not 'package').
-        2. Coerce raw list/block/period data into Item-list fields, and
-           auto-set maxbound/n<block>s.
-        3. Broadcast scalar griddata values to their DFN shape when dims
+        1. Coerce raw list/block/period data into Item-list fields, and
+           auto-set n<block>s.
+        2. Broadcast scalar griddata values to their DFN shape when dims
            is supplied (e.g. IC(strt=1.0, dims={"nodes": 900})).
+        3. Chain to Component.__attrs_post_init__() via super() -- LAST,
+           after 1-2, in every exit path (including the two early
+           returns below). Several of a package's own fields (e.g.
+           griddata arrays default to a bare scalar/dict until step 2
+           broadcasts them) aren't in their final shape until steps 1-2
+           finish, and Component.__attrs_post_init__() (via
+           DimensionResolverMixin's chain and _set_child_parents(),
+           which walks every attrs field) reads them -- so chaining
+           before they're finalized breaks griddata broadcasting and
+           dims resolution. Matches the ordering DisBase/Dis already use
+           for their own __attrs_post_init__ chaining (super() called
+           last, after their own field setup).
         """
         import attrs as _attrs
 
-        # Detect schema-driven (codegen v2 style) fields by presence of 'block'
-        # in field metadata. Package subclasses with no such fields (rare) just
-        # no-op through the rest of this method.
+        # Detect schema-driven fields by presence of 'block' in field metadata.
+        # Package subclasses with no fields of their own (e.g. the
+        # Gwfgwe/Gwfgwt/Gwfprt exchange leaves in flopy4/mf6/exg/ -- just
+        # dfn_name, no declared fields) no-op through the rest of this method.
         try:
             fields = _attrs.fields(type(self))  # type: ignore[arg-type]
         except _attrs.exceptions.NotAnAttrsClassError:
+            super().__attrs_post_init__()
             return
         if not any(f.metadata.get("block") is not None for f in fields):
+            super().__attrs_post_init__()
             return
 
-        # 1. Fix xattree name registration.
-        if self.__dict__.get("name") == "package":
-            self.__dict__["name"] = type(self).__name__.lower()
-
-        # 2. Item-list coercion.
+        # 1. Item-list coercion.
         self._init_item_lists(fields)
 
-        # 3. Griddata broadcasting.
+        # 2. Griddata broadcasting.
         dims: dict = self.__dict__.get("dims") or {}
         if dims:
             self._broadcast_griddata(fields, dims)
 
+        # 3. Chain to Component's own post-init -- see docstring above for
+        # why this must run last, not first.
+        super().__attrs_post_init__()
+
     def _init_item_lists(self, fields) -> None:
         """Coerce raw list/dict block+period data into Item-list fields;
-        auto-set maxbound / n<block>s from the resulting list lengths.
+        auto-set n<block>s from the resulting list lengths. `maxbound`
+        (where applicable) is a computed property instead, not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -89,8 +103,6 @@ class Package(Component, ABC):
                     kper: self._coerce_item_list(rows, item_cls) for kper, rows in raw.items()
                 }
                 object.__setattr__(self, f.name, coerced)
-                if coerced and getattr(self, "maxbound", None) == 0:
-                    object.__setattr__(self, "maxbound", max(len(v) for v in coerced.values()))
             else:
                 coerced_list = self._coerce_item_list(raw, item_cls)
                 object.__setattr__(self, f.name, coerced_list)
@@ -212,7 +224,7 @@ class Package(Component, ABC):
             packages (WEL, DRN, etc.).
         name :
             Explicit component name (e.g. a namefile binding row's
-            pname), overriding xattree's default auto-assigned name.
+            pname), overriding the default auto-assigned name.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
@@ -229,7 +241,7 @@ class Package(Component, ABC):
         return _pkg
 
     def default_filename(self) -> str:
-        name = self.parent.name if self.parent else self.name  # type: ignore
+        name = self._parent.name if self._parent else self.name  # type: ignore
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
@@ -250,11 +262,12 @@ class Package(Component, ABC):
         except _attrs.exceptions.NotAnAttrsClassError:
             return super().to_dict(blocks=blocks, strict=strict)
 
-        # Check if this is a codegen v2 class
+        # Fall back for a Package subclass with no schema-driven fields of
+        # its own (e.g. the exchange leaves in flopy4/mf6/exg/).
         if not any(f.metadata.get("block") for f in all_fields):
             return super().to_dict(blocks=blocks, strict=strict)
 
-        _exclude = {"name", "parent", "dims", "filename", "workspace", "strict"}
+        _exclude = {"name", "parent", "_parent", "dims", "filename", "workspace", "strict"}
         result: dict = {}
         for f in all_fields:
             if f.name in _exclude or f.init is False:
@@ -348,9 +361,9 @@ class Package(Component, ABC):
         """All set griddata (or period-array) fields as xr.Dataset.
 
         Stays lazy if dask-backed. For packages with no array fields this
-        falls through to ``Component.to_xarray()`` which returns the xattree
-        DataTree dataset (empty for codegen v2 packages — see §9.2 of
-        dask1.scope.md).
+        falls through to ``Component.to_xarray()``, which returns whatever
+        ``attrs_to_dataset()`` finds -- empty for a package with no
+        griddata fields of its own.
         """
         import attrs as _attrs
 

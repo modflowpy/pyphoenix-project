@@ -6,8 +6,8 @@ import attrs
 import numpy as np
 import xarray as xr
 from numpy.typing import NDArray
-from xattree import Scalar
 
+from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_DNODATA
 
 ArrayHow = Literal[

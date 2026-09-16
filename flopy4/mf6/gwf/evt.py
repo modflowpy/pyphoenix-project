@@ -82,11 +82,6 @@ class Evt(Package):
         block="options",
         optional=True,
     )
-    maxbound: Optional[int] = field(
-        default=0,
-        block="dimensions",
-        auto_from="stress_period_data",
-    )
     nseg: Optional[int] = field(
         default=None,
         block="dimensions",
@@ -98,6 +93,17 @@ class Evt(Package):
         block="period",
         fill_forward=True,
     )
+
+    @property
+    def maxbound(self) -> int:
+        """Maximum number of active entries in any stress period.
+
+        Computed live from `stress_period_data`'s row counts -- not
+        stored or independently settable.
+        """
+        if not self.stress_period_data:
+            return 0
+        return max(len(v) for v in self.stress_period_data.values())
 
 
 EvtStressPeriodData = Evt.StressPeriodData

@@ -127,15 +127,9 @@ def test_load_preserves_model_pname(tmp_path):
     round-trips a custom pname via xattree's own `.name` -- xattree
     reconciles a dict child's name to the key it's attached under, so the
     namefile row's pname (not the referenced file's name, which the row's
-    pname needn't match) has to become that key. List/only-kind package
-    fields (dis, chd, ...) can't round-trip a custom pname through `.name`
-    the same way: xattree reconciles those to a field-derived name
-    regardless of what's passed, confirmed true even for the original
-    write (not something this fix could or should change -- it's
-    xattree's own child-attachment convention). See
-    `test_load_preserves_list_package_pname` below for how those still
-    round-trip a pname -- through the separate, xattree-unmanaged
-    `Component.pname` field, not `.name`."""
+    pname needn't match) has to become that key. See
+    `test_load_preserves_list_package_pname` below for the equivalent
+    round trip on a list-kind package field."""
     import numpy as np
     from flopy.discretization.structuredgrid import StructuredGrid
 
@@ -163,12 +157,8 @@ def test_load_preserves_model_pname(tmp_path):
 
 def test_load_preserves_list_package_pname(written_sim):
     """A list-kind package field's real pname (a namefile packages-block
-    row's third term) survives a load -> write round trip via
-    `Component.pname`, a plain field xattree doesn't manage or reconcile
-    -- even though xattree's own `.name` attribute still gets reconciled
-    to a field-derived value ("chd0") regardless, same as always. Without
-    `Component.pname`, a hand-given pname like "boundary_west" below
-    would silently become "chd0" on the very first write after loading.
+    row's third term) survives a load -> write round trip: xattree's own
+    `.name` preserves an explicitly-given name directly.
     """
     nam_path = written_sim / "mymodel.nam"
     nam_path.write_text(
@@ -178,8 +168,7 @@ def test_load_preserves_list_package_pname(written_sim):
     gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models.values()))
     chd = gwf.chd[0]
     assert isinstance(chd, Chd)
-    assert chd.pname == "boundary_west"
-    assert chd.name == "chd0"  # xattree's own reconciliation, unaffected
+    assert chd.name == "boundary_west"
 
     gwf.write()
     rewritten = (written_sim / "mymodel.nam").read_text()

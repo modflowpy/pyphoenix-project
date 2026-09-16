@@ -41,12 +41,7 @@ class Binding:
             elif isinstance(component, Solution):
                 return tuple(component.models)
             elif isinstance(component, (Model, Package)):
-                # pname (an xattree-unmanaged field, see Component.pname)
-                # preserves an explicit/loaded name that xattree's own
-                # .name reconciliation can't hold for "list"/"only"-kind
-                # children; falls back to .name (the common case, and
-                # what dict-kind children already reconcile correctly).
-                return (component.pname or component.name,)  # type: ignore
+                return (component.name,)  # type: ignore
             return None
 
         return cls(

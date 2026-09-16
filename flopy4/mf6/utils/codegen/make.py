@@ -98,6 +98,18 @@ class PeriodArmSpec:
 
 
 @dataclass
+class ComputedFieldSpec:
+    """Pre-computed context for a read-only computed property, replacing a
+    stored attrs field entirely -- e.g. ``maxbound``, derived live from
+    ``stress_period_data``'s row counts rather than stored and kept in
+    sync by hand (see ``build_component_spec``'s ``_maxbound_is_computed``
+    for when this applies)."""
+
+    py_name: str
+    source_field: str
+
+
+@dataclass
 class ComponentSpec:
     """Pre-computed context for a generated component class."""
 
@@ -114,7 +126,7 @@ class ComponentSpec:
     period_schema: list[dict] = dc_field(default_factory=list)
     period_arms: list[PeriodArmSpec] = dc_field(default_factory=list)
     block_schemas: dict[str, list[dict]] = dc_field(default_factory=dict)
-    has_maxbound: bool = False
+    computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -215,7 +227,7 @@ def _dfn_type_str(f: FieldV3) -> str:
 # Context builders
 
 
-def _build_field_spec(f: FieldV3, block_name: str, *, has_maxbound: bool = False) -> FieldSpec:
+def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -226,7 +238,7 @@ def _build_field_spec(f: FieldV3, block_name: str, *, has_maxbound: bool = False
     else:
         py_name = filters.safe_name(f.name)
     if generatable:
-        spec_call_str = filters.field_call(f, block_name, has_maxbound=has_maxbound)
+        spec_call_str = filters.field_call(f, block_name)
     else:
         spec_call_str = ""
     return FieldSpec(
@@ -239,9 +251,7 @@ def _build_field_spec(f: FieldV3, block_name: str, *, has_maxbound: bool = False
     )
 
 
-def _expand_record_field(
-    f: Record, block_name: str, *, has_maxbound: bool = False
-) -> tuple[list[FieldSpec], list[FieldV3]]:
+def _expand_record_field(f: Record, block_name: str) -> tuple[list[FieldSpec], list[FieldV3]]:
     """Expand a compound record into FieldSpecs for its generatable children.
 
     Returns (field_specs, generatable_child_fields). field_specs contains one
@@ -262,7 +272,7 @@ def _expand_record_field(
     specs: list[FieldSpec] = []
     gen_fields: list[FieldV3] = []
     for child in expandable:
-        spec = _build_field_spec(child, block_name, has_maxbound=has_maxbound)
+        spec = _build_field_spec(child, block_name)
         specs.append(spec)
         if spec.generatable:
             gen_fields.append(child)
@@ -300,9 +310,9 @@ def _ml_field(
     (closing paren) so the Jinja template can render it verbatim after
     ``    {name}: {type} = ``. ``metadata`` here is the set of ``field()``/
     ``path()`` kwargs (block, schema, fill_forward, ...), not a raw attrs
-    metadata dict -- codegen-v2 fields are plain attrs fields, so they go
-    through the same passive-metadata constructors hand-written xattree
-    classes use for their scalar fields.
+    metadata dict -- generated fields are plain attrs fields, so they go
+    through the same passive-metadata constructors hand-written classes
+    use for their scalar fields.
     """
     lines = [f"{fn}("]
     if alias is not None:
@@ -620,7 +630,7 @@ def _build_block_property_specs(
     return specs, block_names
 
 
-def _new_codegen_imports(
+def _generated_imports(
     generatable_fields: list[tuple[str, FieldV3]],
     *,
     base_class: str = "Package",
@@ -637,7 +647,7 @@ def _new_codegen_imports(
     period_arms: "list[PeriodArmSpec] | None" = None,
     block_schemas: dict[str, list[dict]] | None = None,
 ) -> dict[str, list[str]]:
-    """Compute import lines for new-codegen packages (no xattree, no spec calls)."""
+    """Compute import lines for generated packages."""
     has_array = any(
         (filters.is_array(f) or filters.is_keyword_array(f))
         and block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
@@ -678,7 +688,7 @@ def _new_codegen_imports(
     has_row_path_cols = bool(_row_path_cols)
     has_optional_row_path_cols = any(col.get("optional") for col in _row_path_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
-    # field(), same as any other codegen-v2 field -- checked separately from
+    # field(), same as any other generated field -- checked separately from
     # has_field_call since these live inside item_class()'s rendered text, not
     # in the package's own top-level field_specs.
     _row_has_field_call = any(
@@ -763,6 +773,12 @@ def build_component_spec(
     all_fields = filters.flat_fields(component, developmode=developmode)
 
     has_maxbound = filters.has_dimensions_block(component)
+    # maxbound becomes a computed property only with a real Item-list period
+    # field to derive it from (see has_dimensions_block's docstring).
+    _has_list_period = any(
+        block_name == "period" and filters.is_list_field(f) for block_name, f in all_fields
+    )
+    _maxbound_is_computed = has_maxbound and _has_list_period
 
     # Fields are collected into four ordered buckets so the generated class has
     # fields in DFN block order without hard-coding block names in any sort key.
@@ -823,6 +839,11 @@ def build_component_spec(
             period_schema = [{"name": f.name, "dfn_type": "keyword", "role": "keystring"}]
             continue
 
+        # maxbound: emitted as a computed property (see computed_field_specs
+        # below), not a stored field -- skip normal field-building entirely.
+        if block_name == "dimensions" and f.name == "maxbound" and _maxbound_is_computed:
+            continue
+
         if block_name in ("options", "dimensions"):
             target = prefix_specs
         elif block_name == "period":
@@ -847,11 +868,11 @@ def build_component_spec(
             )
             generatable_field_objects.append((block_name, f))
         elif filters.can_expand_record(f):
-            specs, gen_fields = _expand_record_field(f, block_name, has_maxbound=has_maxbound)
+            specs, gen_fields = _expand_record_field(f, block_name)
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
         else:
-            spec = _build_field_spec(f, block_name, has_maxbound=has_maxbound)
+            spec = _build_field_spec(f, block_name)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
@@ -989,7 +1010,7 @@ def build_component_spec(
         fs.generatable and fs.spec_call.startswith("field(") for fs in field_specs
     )
     _has_path_call = any(fs.generatable and fs.spec_call.startswith("path(") for fs in field_specs)
-    imports = _new_codegen_imports(
+    imports = _generated_imports(
         generatable_field_objects,
         base_class=base,
         multi=multi,
@@ -1006,6 +1027,12 @@ def build_component_spec(
         block_schemas=block_schemas,
     )
 
+    computed_field_specs = (
+        [ComputedFieldSpec(py_name="maxbound", source_field="stress_period_data")]
+        if _maxbound_is_computed
+        else []
+    )
+
     return ComponentSpec(
         dfn_name=component.name,
         class_name=filters.class_name(component.name),
@@ -1020,7 +1047,7 @@ def build_component_spec(
         period_schema=period_schema,
         period_arms=period_arms,
         block_schemas=block_schemas,
-        has_maxbound=has_maxbound,
+        computed_fields=computed_field_specs,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

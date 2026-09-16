@@ -74,11 +74,6 @@ class Riv(Package):
         block="options",
         optional=True,
     )
-    maxbound: Optional[int] = field(
-        default=0,
-        block="dimensions",
-        auto_from="stress_period_data",
-    )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
@@ -86,6 +81,17 @@ class Riv(Package):
         block="period",
         fill_forward=True,
     )
+
+    @property
+    def maxbound(self) -> int:
+        """Maximum number of active entries in any stress period.
+
+        Computed live from `stress_period_data`'s row counts -- not
+        stored or independently settable.
+        """
+        if not self.stress_period_data:
+            return 0
+        return max(len(v) for v in self.stress_period_data.values())
 
 
 RivStressPeriodData = Riv.StressPeriodData

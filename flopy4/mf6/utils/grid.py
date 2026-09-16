@@ -2,16 +2,14 @@ import collections
 from typing import Any
 
 import numpy as np
-import sparse
 import xarray as xr
 import xugrid as xu
-from attrs import fields
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 from flopy.discretization import VertexGrid as LegacyVertexGrid
 from xarray.core.indexes import PandasIndex
-from xattree import Scalar
 
-from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
+from flopy4.mf6._types import Scalar
+from flopy4.mf6.constants import FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 
 
@@ -1406,60 +1404,6 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
             coords["dy"] = ("y", dy)
     coords["layer"] = np.arange(1, grid.nlay + 1)
     return coords
-
-
-def update_maxbound(instance, attribute, new_value):
-    """
-    Generalized function to update maxbound when period block arrays change.
-
-    This function automatically finds all period block arrays in the instance
-    and calculates maxbound based on the maximum number of non-default values
-    across all arrays.
-
-    Args:
-        instance: The package instance
-        attribute: The attribute being set (from attrs on_setattr)
-        new_value: The new value being set
-
-    Returns:
-        The new_value (unchanged)
-    """
-
-    period_arrays = []
-    instance_fields = fields(instance.__class__)
-    for f in instance_fields:
-        if (
-            f.metadata
-            and f.metadata.get("block") == "period"
-            and f.metadata.get("xattree", {}).get("dims")
-        ):
-            period_arrays.append(f.name)
-
-    maxbound_values = []
-    for array_name in period_arrays:
-        if attribute and attribute.name == array_name:
-            array_val = new_value
-        else:
-            array_val = getattr(instance, array_name, None)
-
-        if array_val is not None:
-            if isinstance(array_val.data, sparse.SparseArray):
-                # densify if the array is sparse
-                array_data = array_val.data.todense()
-            else:
-                # handle memoryview and other array-likes
-                array_data = np.asarray(array_val.data)
-
-            if array_data.dtype.kind in ["U", "S"]:  # String arrays
-                non_default_count = len(np.where(array_data != "")[0])
-            else:  # Numeric arrays
-                non_default_count = len(np.where(array_data != FILL_DNODATA)[0])
-
-            maxbound_values.append(non_default_count)
-    if maxbound_values:
-        instance.maxbound = max(maxbound_values)
-
-    return new_value
 
 
 def dims_from_grb(grb_path) -> dict:

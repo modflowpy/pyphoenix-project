@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
+import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
-from xattree import xattree
 
 from flopy4.mf6.gwe.adv import Adv
 from flopy4.mf6.gwe.cnd import Cnd
@@ -19,8 +19,7 @@ from flopy4.mf6.gwe.oc import Oc
 from flopy4.mf6.gwe.ssm import Ssm
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import xattree_field as field
-from flopy4.mf6.spec import xattree_path as path
+from flopy4.mf6.spec import field, path
 from flopy4.utils import to_path
 
 
@@ -51,7 +50,7 @@ __all__ = [
 ]
 
 
-@xattree
+@attrs.define(kw_only=True, slots=False)
 class Gwe(Model):
     dfn_name: ClassVar[str] = "gwe-nam"
 
@@ -75,9 +74,9 @@ class Gwe(Model):
     adv: Adv | None = field(block="packages", default=None)
     cnd: Cnd | None = field(block="packages", default=None)
     est: Est | None = field(block="packages", default=None)
-    ctp: list[Ctp] = field(block="packages")
-    esl: list[Esl] = field(block="packages")
-    lke: list[Lke] = field(block="packages")
+    ctp: list[Ctp] = field(block="packages", default=attrs.Factory(list))
+    esl: list[Esl] = field(block="packages", default=attrs.Factory(list))
+    lke: list[Lke] = field(block="packages", default=attrs.Factory(list))
     ssm: Ssm | None = field(block="packages", default=None)
     mve: Mve | None = field(block="packages", default=None)
 

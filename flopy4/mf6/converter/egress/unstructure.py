@@ -6,8 +6,8 @@ from typing import Any
 import attrs
 import numpy as np
 import xarray as xr
-import xattree
 
+from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
@@ -37,12 +37,17 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
         return {}
 
     blocks = {}  # type: ignore
-    xatspec = xattree.get_xatspec(type(value))
 
-    for child_name, child_spec in xatspec.children.items():
+    for f in attrs.fields(type(value)):  # type: ignore[arg-type]
+        if child_field_candidates(f) is None:
+            continue
+        child_name = f.name
         if (child := getattr(value, child_name, None)) is None:
             continue
-        if (block_name := child_spec.metadata["block"]) not in blocks:  # type: ignore
+        block_name = f.metadata.get("block")
+        if block_name is None:
+            continue
+        if block_name not in blocks:
             blocks[block_name] = {}
         match child:
             case Component():
@@ -243,6 +248,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif dfn_type == "string" and field_value:
             blocks[block_name][f.name] = field_value
 
+    # `maxbound` is a computed property on some generated classes (see
+    # make.py's ComputedFieldSpec), not a real attrs field -- attrs.fields()
+    # above never sees it, so inject it into the dimensions block directly.
+    # Skipping when 0 matches the plain-field case's auto_from behavior above.
+    if isinstance(getattr(cls, "maxbound", None), property):
+        maxbound = value.maxbound  # type: ignore[attr-defined]
+        if maxbound:
+            blocks.setdefault("dimensions", {})["maxbound"] = maxbound
+
     # Assemble period blocks (stress-period Item rows), in kper order.
     for kper in sorted(spd_period.keys()):
         key = f"period {kper + 1}"
@@ -279,8 +293,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     """Unstructure a xattree component (Gwf, Simulation, etc.)."""
     blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
-    xatspec = xattree.get_xatspec(type(value))
-    data = xattree.asdict(value)
+    fields_by_name = {f.name: f for f in attrs.fields(type(value))}  # type: ignore[arg-type]
 
     # create child component binding blocks
     blocks.update(_make_binding_blocks(value))
@@ -291,11 +304,14 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
 
         for field_name in block.keys():
             # Skip child components already processed as bindings
-            if isinstance(value, Context) and field_name in xatspec.children:
-                child_spec = xatspec.children[field_name]
-                if hasattr(child_spec, "metadata") and "block" in child_spec.metadata:  # type: ignore
-                    if child_spec.metadata["block"] == block_name:  # type: ignore
-                        continue
+            field = fields_by_name.get(field_name)
+            if (
+                isinstance(value, Context)
+                and field is not None
+                and child_field_candidates(field) is not None
+                and field.metadata.get("block") == block_name
+            ):
+                continue
 
             raw_value = getattr(value, field_name, None)
             if raw_value is None:
@@ -305,18 +321,15 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                 continue
 
             # Dispatch on field value type
-            match field_value := data[field_name]:
+            match field_value := raw_value:
                 case None:
                     continue
                 case bool():
                     if field_value:
                         blocks[block_name][field_name] = field_value
                 case Path():
-                    field_spec = xatspec.attrs[field_name]
-                    field_meta = getattr(field_spec, "metadata", {})
-                    t = _path_to_tuple(
-                        field_name, field_value, direction=field_meta.get("direction", "out")
-                    )
+                    direction = field.metadata.get("direction", "out") if field else "out"
+                    t = _path_to_tuple(field_name, field_value, direction=direction)  # type: ignore[arg-type]
                     blocks[block_name][t[0]] = t
                 case datetime():
                     blocks[block_name][field_name] = field_value.isoformat()
