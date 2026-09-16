@@ -101,7 +101,7 @@ This allows some static structural validation, so invalid arrangements are visib
 
 Dictionary behavior can be bolted on by implementing `MutableMapping`.
 
-The initial prototype of the product uses a [temporary approach](https://github.com/wpbonelli/xattree) which proxies an `xarray.DataTree` through `attrs` attributes, and mixes several other concerns, including parent/child relationships and array dimension registration/inheritance. These concerns will ultimately be separated.
+Parent/child relationships, array dimension registration/inheritance, and `xarray` conversion are each handled by their own explicit protocol/mixin rather than a single class decorator that manages all of them implicitly.
 
 ### Xarray conversion
 

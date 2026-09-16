@@ -117,7 +117,7 @@ def _normalize_kper(kper: Any) -> int | None:
 
 
 def _unstructure_package(value: Package) -> dict[str, Any]:
-    """Unstructure a package (attrs-based, non-xattree)."""
+    """Unstructure a leaf package into its raw block dict."""
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
     # Block names that must appear in output even when empty (e.g. SSM SOURCES).
@@ -283,14 +283,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
-    # temporary; TODO unify once xattree is fully gone
+    # TODO unify _unstructure_package/_unstructure_component into one path
     if isinstance(value, Package):
         return _unstructure_package(value)
     return _unstructure_component(value)
 
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
-    """Unstructure a xattree component (Gwf, Simulation, etc.)."""
+    """Unstructure an internal-node component (Gwf, Simulation, etc.) with
+    attrs-typed child fields, including its child binding blocks."""
     blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
     fields_by_name = {f.name: f for f in attrs.fields(type(value))}  # type: ignore[arg-type]

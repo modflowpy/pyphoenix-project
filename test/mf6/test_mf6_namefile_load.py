@@ -124,10 +124,10 @@ def test_load_gwf_directly(written_sim):
 
 def test_load_preserves_model_pname(tmp_path):
     """A dict-kind binding field (Simulation.models/exchanges/solutions)
-    round-trips a custom pname via xattree's own `.name` -- xattree
-    reconciles a dict child's name to the key it's attached under, so the
-    namefile row's pname (not the referenced file's name, which the row's
-    pname needn't match) has to become that key. See
+    round-trips a custom pname via the child's own `.name` -- child
+    attachment reconciles a dict child's name to the key it's attached
+    under, so the namefile row's pname (not the referenced file's name,
+    which the row's pname needn't match) has to become that key. See
     `test_load_preserves_list_package_pname` below for the equivalent
     round trip on a list-kind package field."""
     import numpy as np
@@ -157,7 +157,7 @@ def test_load_preserves_model_pname(tmp_path):
 
 def test_load_preserves_list_package_pname(written_sim):
     """A list-kind package field's real pname (a namefile packages-block
-    row's third term) survives a load -> write round trip: xattree's own
+    row's third term) survives a load -> write round trip: the child's own
     `.name` preserves an explicitly-given name directly.
     """
     nam_path = written_sim / "mymodel.nam"

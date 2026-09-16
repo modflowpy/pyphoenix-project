@@ -73,14 +73,13 @@ def _is_default_child_name(child: "Component") -> bool:
 def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Component") -> str:
     """Resolve the name `child` should be attached under (stored as its
     own `.name`), given the set of names already claimed by any of the
-    parent's other children (`used`) -- for a migrated (plain) field,
-    the replacement for xattree's own (fixed) `_resolve_child_name`.
+    parent's other children (`used`).
 
     An explicitly-given name sticks as-is, raising on a collision. An
     unnamed "only"-kind child gets the field's own name; an unnamed
     "list"-kind child gets `f"{field_name}{i}"`, grouped by field, not
-    the child's own concrete class -- deliberately matches xattree's own
-    fixed behavior, including for a base/grid-array field pair like
+    the child's own concrete class -- including for a base/grid-array
+    field pair like
     `chd: list[Union[Chd, Chdg]]` sharing one sequence, since both arms
     share one real MF6 namefile ftype (see `converter/binding.py`'s
     `component_ftype()`). "dict"-kind isn't handled here -- its name is

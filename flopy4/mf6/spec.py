@@ -1,5 +1,5 @@
 """
-Wrap `xattree` and `attrs` specification utilities for MF6.
+Wrap `attrs` specification utilities for MF6.
 These include field decorators and introspection functions.
 """
 
@@ -12,7 +12,7 @@ from typing import Literal, Union, get_args, get_origin
 import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
-from modflow_devtools.dfn.schema import Field, FieldType
+from modflow_devtools.dfn.schema import FieldType
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.spec import fields_dict as flopy_fields_dict
@@ -264,53 +264,6 @@ def to_field_type(t: type) -> FieldType:
         # TODO handle arrays
         case _:
             return "record"
-
-
-def get_field_type(attribute: Attribute) -> FieldType:
-    """
-    Get a `xattree` field's type as defined by the MODFLOW 6 input
-    definition language:
-    https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types
-
-    The type of the field is determined from `xattree` metadata.
-    """
-    if (xatmeta := attribute.metadata.get("xattree", None)) is None:
-        raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no xattree metadata.")
-    match xatmeta["kind"]:
-        case "child":
-            return "list"  # Child components become tabular bindings
-        case "array":
-            return "array"
-        case "coord":
-            return "array"
-        case "dim":
-            return "integer"
-        case "attr":
-            if (t := attribute.type) is None:
-                raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no type.")
-            return to_field_type(t)
-    raise ValueError(f"Could not map {attribute.name} to a valid MF6 type.")
-
-
-def to_field(attribute: Attribute) -> Field:
-    """
-    Convert a `xattree` field specification to a field as defined by the
-    MODFLOW 6 input definition language:
-    https://modflow6.readthedocs.io/en/stable/_dev/dfn.html#variable-types.
-    """
-    if (xatmeta := attribute.metadata.get("xattree", None)) is None:
-        raise ValueError(f"Attribute {attribute.name} in {attribute.name} has no xattree metadata.")
-    return Field(
-        name=attribute.name,
-        type=get_field_type(attribute),
-        shape=xatmeta.get("dims", None),
-        block=attribute.metadata.get("block", None),
-        default=attribute.default,
-        netcdf=attribute.metadata.get("netcdf", None),
-        children={k: to_field(v) for k, v in fields_dict(attribute.type)}  # type: ignore
-        if attribute.metadata.get("kind", None) == "child"  # type: ignore
-        else None,  # type: ignore
-    )
 
 
 def block_sort_key(item) -> int:

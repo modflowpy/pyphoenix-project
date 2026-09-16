@@ -1711,8 +1711,7 @@ def test_prt_convert_grid_vertex(vgrid):
 def test_explicit_parent_top_down():
     """Component._parent, populated for top-down construction (a child
     passed as a constructor kwarg) by the parent's own
-    _set_child_parents(), independent of xattree's own `.parent` field/
-    resolution."""
+    _set_child_parents()."""
     dis = Dis(nlay=2, nrow=3, ncol=3)
     gwf = Gwf(dis=dis)
     assert dis._parent is gwf

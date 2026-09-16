@@ -749,7 +749,7 @@ def test_dumps_tas_inner_classes():
 def test_dumps_zero_field_exg():
     """Zero-field exchange classes (gwfprt, gwfgwe, gwfgwt) instantiate and unstructure
     to empty dicts, producing no output — the pass-only class body must not interfere
-    with xattree or the converter.
+    with the converter.
     """
     from flopy4.mf6.exg.gwfgwe import Gwfgwe
     from flopy4.mf6.exg.gwfgwt import Gwfgwt

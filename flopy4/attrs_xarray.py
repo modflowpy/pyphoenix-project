@@ -163,8 +163,8 @@ def attrs_to_datatree(obj, _ancestors: frozenset = frozenset()) -> xr.DataTree:
     one child node per entry, named by its dict key or
     ``f"{field_name}{index}"`` respectively.
 
-    A back-reference field pointing back up the tree (e.g. xattree's own
-    injected `parent` attribute) is detected by object identity against
+    A back-reference field pointing back up the tree (e.g. `Component`'s
+    own `_parent` attribute) is detected by object identity against
     the current recursion's ancestor chain and skipped rather than
     followed -- otherwise a parent/child pair recurses infinitely. A
     non-ancestor object appearing more than once in the graph is not
@@ -229,9 +229,8 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
     annotation, or a type/collection-element that resolves to no
     attrs-decorated candidate at all.
 
-    Kind is `"only"`, `"list"`, or `"dict"` -- xattree's own vocabulary,
-    since this exists to replace `xattree.get_xatspec(cls).children`
-    reads in `flopy4/mf6/converter/`.
+    Kind is `"only"`, `"list"`, or `"dict"`, matching the child-collection
+    vocabulary used throughout `flopy4/mf6/converter/`.
     """
     tp = field.type
     if tp is None or isinstance(tp, str):
