@@ -67,6 +67,7 @@ class Chdg(Package):
         default=0,
         block="dimensions",
         optional=True,
+        auto_from="stress_period_data",
         longname="maximum number of constant head cells in any stress period",
     )
     head: Optional[FloatArrayLike] = field(

@@ -429,7 +429,7 @@ def _default_repr(f: FieldV3) -> str:
 # Field call strings
 
 
-def field_metadata(f: FieldV3, block_name: str) -> dict:
+def field_metadata(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> dict:
     """Build the ``field()``/``path()`` spec-call kwargs for a field.
 
     These calls carry passive metadata (shape, block, etc.) read by the
@@ -451,6 +451,10 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         kw["direction"] = child.direction
     elif is_bare_file(f):
         kw["direction"] = f.direction
+    if plain_maxbound:
+        # Tells unstructure.py to omit MAXBOUND when it's still at the
+        # unset default (0) instead of writing an invalid MAXBOUND=0.
+        kw["auto_from"] = "stress_period_data"
     if longname := getattr(f, "longname", None):
         # DFN longname text escapes underscores for LaTeX rendering (e.g.
         # AUTO\_FLOW\_REDUCE); harmless in the .dfn but `\_` isn't a valid
@@ -505,14 +509,14 @@ def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
     return f"{pad}{k}=(\n{body}\n{pad}),"
 
 
-def field_call(f: FieldV3, block_name: str) -> str:
+def field_call(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
-    kw = field_metadata(f, block_name)
+    kw = field_metadata(f, block_name, plain_maxbound=plain_maxbound)
     # A G-variant package's maxbound (see build_component_spec's
     # _maxbound_is_computed) is still a plain field, not a computed
     # property -- defaults to 0 like the computed version would.

@@ -72,6 +72,7 @@ class Rivg(Package):
         default=0,
         block="dimensions",
         optional=True,
+        auto_from="stress_period_data",
         longname="maximum number of river cells in any stress period",
     )
     stage: Optional[FloatArrayLike] = field(

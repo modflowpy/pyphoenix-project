@@ -227,7 +227,7 @@ def _dfn_type_str(f: FieldV3) -> str:
 # Context builders
 
 
-def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
+def _build_field_spec(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -238,7 +238,7 @@ def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     else:
         py_name = filters.safe_name(f.name)
     if generatable:
-        spec_call_str = filters.field_call(f, block_name)
+        spec_call_str = filters.field_call(f, block_name, plain_maxbound=plain_maxbound)
     else:
         spec_call_str = ""
     return FieldSpec(
@@ -779,6 +779,20 @@ def build_component_spec(
         block_name == "period" and filters.is_list_field(f) for block_name, f in all_fields
     )
     _maxbound_is_computed = has_maxbound and _has_list_period
+    # G-variant packages (CHDG, DRNG, WELG, RIVG, GHBG) have maxbound but no
+    # row list to compute it from -- their period data is a READARRAY grid
+    # instead. Distinct from e.g. API's maxbound, which is a plain
+    # user-specified dimension (no period block at all) and must stay a
+    # real required field, not silently omittable.
+    # True only for G-variant packages (CHDG, DRNG, WELG, RIVG, GHBG):
+    # maxbound is a plain, optional field rather than a computed property.
+    _has_readarray_period = any(
+        block_name == "period" and filters.is_period_array(f, block_name)
+        for block_name, f in all_fields
+    )
+    _maxbound_is_plain_optional = (
+        has_maxbound and not _maxbound_is_computed and _has_readarray_period
+    )
 
     # Fields are collected into four ordered buckets so the generated class has
     # fields in DFN block order without hard-coding block names in any sort key.
@@ -872,7 +886,10 @@ def build_component_spec(
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
         else:
-            spec = _build_field_spec(f, block_name)
+            _plain_maxbound = (
+                block_name == "dimensions" and f.name == "maxbound" and _maxbound_is_plain_optional
+            )
+            spec = _build_field_spec(f, block_name, plain_maxbound=_plain_maxbound)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))

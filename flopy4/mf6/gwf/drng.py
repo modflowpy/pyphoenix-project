@@ -78,6 +78,7 @@ class Drng(Package):
         default=0,
         block="dimensions",
         optional=True,
+        auto_from="stress_period_data",
         longname="maximum number of drain cells in any stress period",
     )
     elev: Optional[FloatArrayLike] = field(
