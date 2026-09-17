@@ -111,7 +111,7 @@ assert chd.stress_period_data[0][0].head == 1.0
 assert chd.stress_period_data[0][1].head == 0.0
 assert gwf.dis.to_dataarray("botm").sel(layer=0, y=0, x=0) == 0.0
 assert gwf.oc.stress_period_data[0][0].rtype == "HEAD"
-assert gwf.oc.stress_period_data[0][0].ocsetting == ("ALL",)
+assert isinstance(gwf.oc.stress_period_data[0][0].ocsetting, Oc.All)
 
 # ### Read results
 #

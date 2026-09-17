@@ -25,16 +25,38 @@ class Oc(Package):
         time: float = field()
 
     @attrs.define
+    class All(Item):
+        _keyword: ClassVar[str] = "all"
+
+    @attrs.define
+    class First(Item):
+        _keyword: ClassVar[str] = "first"
+
+    @attrs.define
+    class Last(Item):
+        _keyword: ClassVar[str] = "last"
+
+    @attrs.define
+    class Frequency(Item):
+        _keyword: ClassVar[str] = "frequency"
+        frequency: int = field()
+
+    @attrs.define
+    class Steps(Item):
+        _keyword: ClassVar[str] = "steps"
+        steps: tuple = field(default=(), array=True)
+
+    @attrs.define
     class Save(Item):
         _keyword: ClassVar[str] = "save"
         rtype: Union[float, str] = field()
-        ocsetting: tuple = field(default=(), array=True)
+        ocsetting: "Oc.All | Oc.First | Oc.Last | Oc.Frequency | Oc.Steps" = field()
 
     @attrs.define
     class Print(Item):
         _keyword: ClassVar[str] = "print"
         rtype: Union[float, str] = field()
-        ocsetting: tuple = field(default=(), array=True)
+        ocsetting: "Oc.All | Oc.First | Oc.Last | Oc.Frequency | Oc.Steps" = field()
 
     _StressPeriodDataItem = Save | Print
 
@@ -136,5 +158,10 @@ class Oc(Package):
 
 
 OcTracktimes = Oc.Tracktimes
+OcAll = Oc.All
+OcFirst = Oc.First
+OcLast = Oc.Last
+OcFrequency = Oc.Frequency
+OcSteps = Oc.Steps
 OcSave = Oc.Save
 OcPrint = Oc.Print

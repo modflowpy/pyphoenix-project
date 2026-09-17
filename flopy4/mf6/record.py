@@ -24,6 +24,28 @@ def keyword_of(cls: type) -> str:
     return vars(cls).get("_keyword", "")
 
 
+def _resolve_sibling_class(cls: type, name: str) -> Any | None:
+    """Resolve a bare (already-unqualified) sibling class name against
+    `cls`'s enclosing class -- one level up in `__qualname__`, where every
+    generated flat-sibling class (composed Records, keystring-union arms)
+    actually lives regardless of DFN nesting depth. Returns whatever
+    attribute is found (or None), with no type check of its own -- callers
+    (`_nested_class` here, `item.py`'s `_nested_union_classes`) each apply
+    their own subclass check, since they resolve against different base
+    classes (`Record` vs `Item`).
+
+    Resolving here (rather than at class-body-execution time, via a bare
+    or even same-enclosing-class string annotation) is required because
+    Python class bodies can't see sibling names from an enclosing class
+    scope; the qualified string form (``"Oc.Format"``) exists only so
+    mypy's own scope analysis can resolve it too.
+    """
+    obj = sys.modules[cls.__module__]
+    for part in cls.__qualname__.split(".")[:-1]:
+        obj = getattr(obj, part)
+    return getattr(obj, name, None)
+
+
 @lru_cache(maxsize=None)
 def _nested_class(cls: type, type_str: str) -> "type[Record] | None":
     """If a field's raw type annotation (e.g. ``"Format"`` or
@@ -33,24 +55,15 @@ def _nested_class(cls: type, type_str: str) -> "type[Record] | None":
 
     Composed record classes (see item.py's module docstring and
     make.py's _build_record_class_specs) are generated as flat siblings
-    inside the same package class regardless of DFN nesting depth, so
-    cls's immediate enclosing class -- one level up in __qualname__ --
-    always owns the name being resolved. Resolving here (rather than at
-    class-body-execution time, via a bare or even same-enclosing-class
-    string annotation) is required because Python class bodies can't see
-    sibling names from an enclosing class scope; the qualified string form
-    (``"Oc.Format"``) exists only so mypy's own scope analysis can resolve
-    it too. Cached since to_tokens/from_tokens call this per field, often
-    repeatedly while parsing many rows.
+    inside the same package class regardless of DFN nesting depth (see
+    _resolve_sibling_class). Cached since to_tokens/from_tokens call this
+    per field, often repeatedly while parsing many rows.
     """
     name = type_str
     if name.startswith("Optional[") and name.endswith("]"):
         name = name[len("Optional[") : -1]
     name = name.rsplit(".", 1)[-1]
-    obj = sys.modules[cls.__module__]
-    for part in cls.__qualname__.split(".")[:-1]:
-        obj = getattr(obj, part)
-    resolved = getattr(obj, name, None)
+    resolved = _resolve_sibling_class(cls, name)
     return resolved if isinstance(resolved, type) and issubclass(resolved, Record) else None
 
 

@@ -90,11 +90,20 @@ class BlockPropertySpec:
 @dataclass
 class PeriodArmSpec:
     """Pre-computed context for one keystring-union period arm's generated
-    Item class (e.g. LAK's Stage/Rate/Status, OC's Saverecord/Printrecord)."""
+    Item class (e.g. LAK's Stage/Rate/Status, OC's Saverecord/Printrecord).
+
+    ``top_level`` is False for an arm built by recursing into another
+    arm's own union-typed field (e.g. OC's ocsetting: All/First/Last/
+    Frequency/Steps) -- such an arm is still emitted as a flat sibling
+    class, but must NOT be folded into the component's outer
+    ``_StressPeriodDataItem`` dispatch union, which stays exactly the set
+    of arms dispatched directly off the period list's own rows.
+    """
 
     class_name: str
     keyword: str  # lowercase, matches Record's _keyword convention
     schema: list[dict]
+    top_level: bool = True
 
 
 @dataclass
@@ -141,7 +150,9 @@ class ComponentSpec:
 # vs fill_forward= metadata) differs between them.
 
 
-def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
+def _schema_dict_from_columns(
+    columns: list[ColumnSpec], nested_arm_classes: "dict[str, list[str]] | None" = None
+) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
     is_prefix columns (non-optional tagged keywords, e.g. FILEIN, SPC6) are
@@ -149,7 +160,13 @@ def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
     codec can emit the fixed token(s) before the value. is_row_keyword columns
     (optional keywords, e.g. MIXED) get role 'inline_keyword'. aux columns are
     excluded -- appended dynamically in __attrs_post_init__.
+
+    ``nested_arm_classes``, when given, maps a column name to the sibling
+    arm class names already built for it (see ``_build_arm_specs_from_union``)
+    -- such a column gets ``role="nested_union"`` instead of falling through
+    to the generic untyped-union ``role="array"`` case below.
     """
+    nested_arm_classes = nested_arm_classes or {}
     schema = []
     pending_prefix: list[str] = []
     for col in columns:
@@ -179,16 +196,23 @@ def _schema_dict_from_columns(columns: list[ColumnSpec]) -> list[dict]:
         elif col.is_row_keyword:
             entry["role"] = "inline_keyword"
             entry["optional"] = True
+        elif isinstance(f, UnionField) and col.name in nested_arm_classes:
+            # A union nested inside a keystring-union arm (OC's ocsetting)
+            # whose own arms were already built recursively (see
+            # _build_arm_specs_from_union) -- typed dispatch, not a raw
+            # tuple.
+            entry["role"] = "nested_union"
+            entry["arm_classes"] = nested_arm_classes[col.name]
         elif isinstance(f, UnionField) or (isinstance(f, Array) and not getattr(f, "shape", None)):
-            # A union nested inside a keystring-union arm (OC's ocsetting,
-            # PRP's releasesetting) or a bare *unbounded* array arm (PRP's
-            # STEPS n1 n2 ..., shape=[] meaning "however many follow") --
-            # keyword-plus-trailing-values, not a single value; consumes all
-            # remaining tokens as a tuple. A *named*-dimension array (e.g.
-            # EVT's pxdp/petm, shape=["nseg-1"]) is a fixed-length column
-            # like any other, not this catch-all -- is_cellid (shape=
-            # ["ncelldim"]) was already handled above as the other named-
-            # dimension case.
+            # A union nested inside a keystring-union arm that wasn't (or
+            # couldn't be) recursively expanded above, or a bare
+            # *unbounded* array arm (PRP's STEPS n1 n2 ..., shape=[]
+            # meaning "however many follow") -- keyword-plus-trailing-values,
+            # not a single value; consumes all remaining tokens as a tuple.
+            # A *named*-dimension array (e.g. EVT's pxdp/petm, shape=
+            # ["nseg-1"]) is a fixed-length column like any other, not this
+            # catch-all -- is_cellid (shape=["ncelldim"]) was already
+            # handled above as the other named-dimension case.
             entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"
@@ -216,10 +240,11 @@ def _dfn_type_str(f: FieldV3) -> str:
     if isinstance(f, KeywordField):
         return "keyword"
     if isinstance(f, UnionField):
-        # A union nested inside a keystring-union arm (e.g. OC's ocsetting,
-        # PRP's releasesetting -- ALL/FIRST/LAST/FREQUENCY/STEPS) isn't
-        # itself modeled as a typed sub-union yet; represented as a single
-        # flexible value column instead (see _build_period_arm_specs).
+        # Called unconditionally for every column in _schema_dict_from_columns,
+        # including a nested-union column that gets role="nested_union"
+        # there (see _build_arm_specs_from_union) -- this "object" dfn_type
+        # is unused in that case, since filters.py's nested_union branch
+        # never consults it.
         return "object"
     return getattr(f, "dtype", "double")  # Array
 
@@ -340,6 +365,32 @@ def _build_period_arm_specs(
     of the old generic (index?, keyword, value) placeholder that collapsed
     every arm's real shape into one untyped "value" column.
 
+    Thin entry point: computes the shared-prefix columns from the outer
+    List's own item shape, then delegates to `_build_arm_specs_from_union`,
+    which does the actual (recursive) per-arm work.
+    """
+    item = list_field.item
+    shared_cols: list[tuple[str, FieldV3]] = (
+        [(n, f) for n, f in item.fields.items() if f is not union]
+        if isinstance(item, Record)
+        else []
+    )
+    return _build_arm_specs_from_union(
+        union, used_names, {}, shared_cols, name_hint=list_field.name
+    )
+
+
+def _build_arm_specs_from_union(
+    union: UnionField,
+    used_names: set[str],
+    nested_union_cache: "dict[tuple[str, ...], list[PeriodArmSpec]]",
+    shared_cols: "list[tuple[str, FieldV3]]" = (),
+    *,
+    name_hint: str = "",
+    top_level: bool = True,
+) -> list[PeriodArmSpec]:
+    """Build one PeriodArmSpec per arm of `union`.
+
     Handles all three index shapes seen in the corpus generically, via a
     shared prefix of columns prepended to every arm:
     - OC-style: the List's item IS the union directly (no index at all).
@@ -349,23 +400,24 @@ def _build_period_arm_specs(
     - SFR/MAW-style: the union is a sibling of an outer index field (item
       Record = {ifno, ...setting: Union}) -- shared by every arm.
 
-    An arm field that's itself a union (OC's ocsetting, PRP's
-    releasesetting -- ALL/FIRST/LAST/FREQUENCY/STEPS) isn't recursively
-    exploded into its own typed sub-arms; it becomes a single flexible
-    value column (see _dfn_type_str/_schema_dict_from_columns), the same
-    reduced fidelity the rest of the corpus already accepts for
-    time_series-style ambiguous values. Only the outer dispatch (which arm
-    -- SAVE vs PRINT, STAGE vs RATE, ...) needs to be real for this to
-    reflect the DFN's actual structure; that's what a user constructs and
-    dispatches on.
-    """
-    item = list_field.item
-    shared_cols: list[tuple[str, FieldV3]] = (
-        [(n, f) for n, f in item.fields.items() if f is not union]
-        if isinstance(item, Record)
-        else []
-    )
+    An arm field that's itself a union (OC's ocsetting -- ALL/FIRST/LAST/
+    FREQUENCY/STEPS) is recursively exploded into its own typed sub-arms by
+    calling this function again (`top_level=False`), the same way PRP's
+    structurally-identical `releasesetting` is handled at the top level --
+    one convention, not two. The DFN schema doesn't cap union nesting depth
+    at one level (a Union's arm may be a Record, whose own fields may
+    include another Union), so this recurses generically rather than
+    special-casing a single extra level.
 
+    `nested_union_cache`, shared across this whole call tree (top-level
+    call and every recursive call), is keyed by a nested union's own
+    arm-name set. It exists because DFN parsing builds each Record arm's
+    fields independently -- OC's `saverecord.ocsetting` and
+    `printrecord.ocsetting` are two distinct `Union` objects with identical
+    arms, not one shared object -- so without the cache, the second
+    occurrence would rebuild and rename a duplicate set of classes
+    (`PrintrecordAll` etc.) instead of reusing the first's.
+    """
     specs: list[PeriodArmSpec] = []
     for arm_name, arm in union.arms.items():
         if isinstance(arm, Record):
@@ -395,13 +447,31 @@ def _build_period_arm_specs(
             keyword = "_".join(_strip_record_words(arm_name))
             rest = [(arm_name, arm)]
 
-        cols = filters._fields_to_columns(shared_cols + rest)
-        schema = _schema_dict_from_columns(cols)
+        nested_arm_classes: dict[str, list[str]] = {}
+        for field_name, fld in rest:
+            if not isinstance(fld, UnionField):
+                continue
+            cache_key = tuple(sorted(fld.arms.keys()))
+            cached = nested_union_cache.get(cache_key)
+            if cached is None:
+                cached = _build_arm_specs_from_union(
+                    fld, used_names, nested_union_cache, name_hint=field_name, top_level=False
+                )
+                nested_union_cache[cache_key] = cached
+                specs.extend(cached)
+            nested_arm_classes[field_name] = [s.class_name for s in cached]
+
+        cols = filters._fields_to_columns(list(shared_cols) + rest)
+        schema = _schema_dict_from_columns(cols, nested_arm_classes)
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
-            class_name = pascal_name("_".join(_strip_record_words(list_field.name))) + class_name
+            class_name = pascal_name("_".join(_strip_record_words(name_hint))) + class_name
         used_names.add(class_name)
-        specs.append(PeriodArmSpec(class_name=class_name, keyword=keyword, schema=schema))
+        specs.append(
+            PeriodArmSpec(
+                class_name=class_name, keyword=keyword, schema=schema, top_level=top_level
+            )
+        )
     return specs
 
 

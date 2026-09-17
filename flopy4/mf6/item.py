@@ -14,12 +14,13 @@ by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Union, get_args, get_origin
 
 import attrs
 
-from flopy4.mf6.record import Record, _coerce, keyword_of, record_fields
+from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class, keyword_of, record_fields
 
 _AUX_KEY_RE = re.compile(r"^aux(\d+)$")
 
@@ -52,32 +53,71 @@ def _has_boundname_field(cls: type) -> bool:
     return any(f.name == "boundname" for f in record_fields(cls))
 
 
+@lru_cache(maxsize=None)
+def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] | None":
+    """If a field's raw type annotation is a `` | ``-joined forward
+    reference to sibling Item classes (e.g. ``"Oc.All | Oc.First | Oc.Last
+    | Oc.Frequency | Oc.Steps"``, see make.py's _build_arm_specs_from_union
+    / filters.py's item_class), return the tuple of resolved classes; else
+    None. No declared "is this a nested union" flag needed -- resolvability
+    against real Item subclasses is itself the signal, same philosophy as
+    record.py's _nested_class for the single-nested-Record-field case.
+
+    Cached since to_tokens/from_tokens call this per field, often
+    repeatedly while parsing many rows.
+    """
+    names = [part.strip().rsplit(".", 1)[-1] for part in type_str.split(" | ")]
+    if len(names) < 2:
+        return None
+    resolved = [_resolve_sibling_class(cls, name) for name in names]
+    if any(not (isinstance(r, type) and issubclass(r, Item)) for r in resolved):
+        return None
+    return tuple(resolved)
+
+
 def construct_item(item_cls: type, values) -> "Item":
     """Build an Item from a flat positional tuple, e.g. ``(cellid, q, 35.0)``
     for one aux variable, or ``("HEAD", "FREQUENCY", 2)`` for OC's Save
-    (rtype, ocsetting). Everything from the aux/array field's position
-    onward collects into that one field's tuple, except a trailing string
-    when the class also has boundname (always declared last) -- a string
-    there unambiguously isn't a numeric aux value.
+    (rtype, ocsetting). Everything from the aux/array/nested-union field's
+    position onward collects into that one field's value, except a
+    trailing string when the class also has boundname (always declared
+    last) -- a string there unambiguously isn't a numeric aux value.
     """
     fields = record_fields(item_cls)
     tuple_idx = next(
-        (i for i, f in enumerate(fields) if f.name == "aux" or f.metadata.get("array")), None
+        (
+            i
+            for i, f in enumerate(fields)
+            if f.name == "aux"
+            or f.metadata.get("array")
+            or (isinstance(f.type, str) and _nested_union_classes(item_cls, f.type) is not None)
+        ),
+        None,
     )
     values = list(values)
     if tuple_idx is None:
         return item_cls(*values)
+    nested_field = fields[tuple_idx]
+    arm_classes = (
+        _nested_union_classes(item_cls, nested_field.type)
+        if isinstance(nested_field.type, str)
+        else None
+    )
     boundname_val = None
     if (
         fields
         and fields[-1].name == "boundname"
         and len(values) > tuple_idx
         and isinstance(values[-1], str)
+        and arm_classes is None
     ):
         boundname_val = values[-1]
         values = values[:-1]
     before = values[:tuple_idx]
-    tuple_vals = tuple(values[tuple_idx:])
+    trailing = values[tuple_idx:]
+    tuple_vals = (
+        construct_union_item(trailing, arm_classes) if arm_classes is not None else tuple(trailing)
+    )
     if boundname_val is not None:
         return item_cls(*before, tuple_vals, boundname=boundname_val)
     return item_cls(*before, tuple_vals)
@@ -186,6 +226,19 @@ class Item(Record):
                     keyword_emitted = True
                 if val:
                     row.append(f.name.upper())
+            elif isinstance(val, Record):
+                # A nested keystring-union field (OC's ocsetting) -- val is
+                # already the resolved arm instance (Oc.Steps, ...); it
+                # knows how to serialize itself. No declared flag needed,
+                # same "resolvability is the signal" philosophy as
+                # _nested_union_classes/_nested_class -- but here we
+                # already have the value, not just its type annotation, so
+                # a plain isinstance check on the value suffices (matches
+                # Record.to_tokens's own nested-Record handling).
+                if not keyword_emitted:
+                    row.append(keyword.upper())
+                    keyword_emitted = True
+                row.extend(val.to_tokens())
             else:
                 if not keyword_emitted:
                     row.append(keyword.upper())
@@ -255,6 +308,12 @@ class Item(Record):
             return w
 
         main_fields = [f for f in fields if f.name not in ("aux", "boundname")]
+        nested_union_fields = [
+            f
+            for f in main_fields
+            if isinstance(f.type, str) and _nested_union_classes(cls, f.type) is not None
+        ]
+        main_fields = [f for f in main_fields if f not in nested_union_fields]
         array_fields = [f for f in main_fields if f.metadata.get("array")]
         main_fields = [f for f in main_fields if not f.metadata.get("array")]
         required_fields = [f for f in main_fields if not f.metadata.get("optional")]
@@ -297,10 +356,10 @@ class Item(Record):
 
         if array_fields:
             # Consumes everything left up to aux/boundname's own reserved
-            # slots -- a keyword-plus-trailing-values setting (OC/PRP's
-            # ocsetting/releasesetting: bare ALL/FIRST/LAST, "FREQUENCY n",
-            # or "STEPS n1 n2 ..."), coerced numeric-or-string per token
-            # like aux (see below) since the arity and type aren't fixed.
+            # slots -- a keyword-plus-trailing-values setting (PRP's
+            # Steps.steps/Fraction's leaf field: "n1 n2 ..."), coerced
+            # numeric-or-string per token like aux (see below) since the
+            # arity and type aren't fixed.
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
@@ -315,6 +374,27 @@ class Item(Record):
                     vals.append(tok)
                 tok_idx += 1
             kwargs[f.name] = tuple(vals)
+        elif nested_union_fields:
+            # A nested keystring-union field (OC's ocsetting: ALL/FIRST/
+            # LAST/FREQUENCY n/STEPS n1 n2 ...) -- consumes everything left
+            # up to aux/boundname's own reserved slots, same span logic as
+            # the array-field case above, but dispatches and parses a real
+            # typed arm instance instead of collecting a raw tuple.
+            if not keyword_skipped:
+                tok_idx += 1
+                keyword_skipped = True
+            f = nested_union_fields[0]
+            arm_classes = _nested_union_classes(cls, f.type)
+            end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
+            nested_tokens = list(tokens[tok_idx:end])
+            arm_cls = dispatch_union_item(nested_tokens, arm_classes)
+            if arm_cls is None:
+                raise ValueError(
+                    f"{cls.__name__}.{f.name}: no matching arm in {arm_classes} "
+                    f"for tokens {nested_tokens}"
+                )
+            kwargs[f.name] = arm_cls.from_tokens(nested_tokens)
+            tok_idx = end
         elif not keyword_skipped:
             tok_idx += 1
 
