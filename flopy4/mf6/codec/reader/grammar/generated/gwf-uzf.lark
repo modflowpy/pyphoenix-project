@@ -12,25 +12,29 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block | packagedata_block | period_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 block_index: integer
-options_fields: ((auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | wc_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_no_final_check | simulate_et | linear_gwet | square_gwet | simulate_gwseep | unsat_etwc | unsat_etae) _NL*)*
-dimensions_fields: ((nuzfcells | ntrailwaves | nwavesets) _NL*)*
-packagedata_fields: ((packagedatadata) _NL*)*
-period_fields: ((stress_period_data) _NL*)*
+options_fields: ((auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | wc_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_no_final_check | simulate_et | linear_gwet | square_gwet | simulate_gwseep | unsat_etwc | unsat_etae | open_close_redirect) _NL*)*
+dimensions_fields: ((nuzfcells | ntrailwaves | nwavesets | open_close_redirect) _NL*)*
+packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
+period_fields: ((stress_period_data | open_close_redirect) _NL*)*
 auxiliary: "auxiliary"i word+ [_remark] _NL
 auxmultname: "auxmultname"i string
 boundnames: "boundnames"i  [_remark] _NL

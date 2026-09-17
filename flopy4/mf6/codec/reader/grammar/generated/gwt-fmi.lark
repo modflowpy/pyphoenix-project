@@ -12,20 +12,24 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | packagedata_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
-options_fields: ((save_flows | flow_imbalance_correction) _NL*)*
-packagedata_fields: ((packagedatadata) _NL*)*
+options_fields: ((save_flows | flow_imbalance_correction | open_close_redirect) _NL*)*
+packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
 save_flows: "save_flows"i  [_remark] _NL
 flow_imbalance_correction: "flow_imbalance_correction"i  [_remark] _NL
 packagedatadata: record+

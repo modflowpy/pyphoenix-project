@@ -1,15 +1,36 @@
 from modflow_devtools.dfns.schema import Array, InputField, Keyword, Union
 
 
-def valid_as_union(field: InputField) -> InputField:
+def valid_as_union(field: InputField, block_name: str | None = None) -> InputField:
     """Turn a ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
     STEADY-STATE/TRANSIENT) into a keyword union with one arm per value, so
     it reuses the existing union grammar/dispatch instead of a second path.
+
+    Whether the field's own name must precede the chosen value in real files
+    (e.g. NPF's "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (STO's bare
+    "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix -- confirmed against a
+    real fixture) is *not* reliably given by ``field.tagged``: several of
+    these fields (including STO's ``storage``) are synthesized by
+    ``modflow_devtools``'s own DFN migration step from a pair of bare
+    ``Keyword`` fields (see its ``_collapse_sto_keywords``), which builds the
+    replacement ``String`` without setting ``tagged`` at all -- it silently
+    picks up the class default (``True``) regardless of real syntax. Real
+    per-block-field DFN entries never declare ``tagged`` for these fields
+    either, so there's no upstream signal to trust either way. The one
+    correlation confirmed across every case checked in the real corpus:
+    PERIOD-block valid-restricted fields are bare per-step selectors (like
+    the record-level keystrings, e.g. OC's ocsetting), while every other
+    block's valid-restricted fields are prefixed options -- so block context,
+    not ``field.tagged``, decides.
     """
     valid = getattr(field, "valid", None)
     if not valid:
         return field
-    return Union(name=field.name, arms={str(v): Keyword(name=str(v)) for v in valid})
+    return Union(
+        name=field.name,
+        tagged=block_name != "period",
+        arms={str(v): Keyword(name=str(v)) for v in valid},
+    )
 
 
 def field_type(field: InputField) -> str:

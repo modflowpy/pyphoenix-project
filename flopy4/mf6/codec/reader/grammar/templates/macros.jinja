@@ -17,7 +17,13 @@
 {% macro nested_record(field_name, field) -%}
 {{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
 {%- set child_type = child|record_child_type -%}
-{%- if child.type == 'keyword' -%}
+{%- if child.type == 'keyword' and child.optional -%}
+{# A record's optional Keyword child (e.g. NPF's xt3doptions -- "xt3d rhs",
+   where "rhs" is `optional true`) is routinely omitted in real files --
+   confirmed against a real fixture ("XT3D" alone, no trailing "RHS"). This
+   was previously always rendered mandatory regardless of `.optional`. #}
+["{{ child.name }}"i]
+{%- elif child.type == 'keyword' -%}
 "{{ child.name }}"i
 {%- elif child.type == 'union' or child.type == 'record' -%}
 {{ child_name|to_rule_name }}
@@ -45,10 +51,20 @@
 {%- endmacro %}
 
 {% macro union_field(field_name, field) -%}
-{{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
+{# The alternation must be parenthesized before appending `[_remark] _NL` --
+   `|` binds looser than concatenation, so an unparenthesized "A | B | C
+   [_remark] _NL" only requires the line ending after the *last* arm. A
+   `tagged true` union (e.g. NPF's alternative_cell_averaging, confirmed via
+   valid_as_union) additionally needs its own field-name keyword prefixed --
+   real files write "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC", not a bare
+   "LOGARITHMIC" -- unlike an untagged keystring (e.g. ocsetting's ALL/
+   FIRST/LAST), where the chosen value's own keyword is the whole field. #}
+{{ field_name|to_rule_name }}: {% if field.tagged %}"{{ field.name }}"i ({% endif -%}
+{%- for child_name, child in field.children.items() -%}
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}
 {%- if not loop.last %} | {% endif -%}
-{%- endfor %} [_remark] _NL
+{%- endfor -%}
+{%- if field.tagged %}){% endif %} [_remark] _NL
 
 {% for child_name, child in field.children.items() -%}
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
@@ -69,6 +85,16 @@
    line -- confirmed against the real DFN source -- not a numeric
    CONSTANT/INTERNAL/OPEN-CLOSE grid array like every other Array field. #}
 {{ field_name|to_rule_name }}: "{{ field.name }}"i word+ [_remark] _NL
+{%- elif field_type == 'array' and field.name|lower == 'aux' -%}
+{# The DFN's "aux" field is a documentation placeholder for READASARRAYS-
+   style packages (e.g. RCHA) -- real files write the *user-declared*
+   AUXILIARY variable name as the field's own keyword instead of a literal
+   "AUX" (confirmed against a real fixture: AUXILIARY MYRCHMULT in OPTIONS,
+   then a bare "MYRCHMULT" array field in PERIOD, never "AUX"). That name is
+   only known at options-parse time, not grammar-generation time, so accept
+   any word here rather than a fixed literal -- still bound to the "aux"
+   rule name so the transformer's field lookup keeps working. #}
+{{ field_name|to_rule_name }}: word [_remark] [_NL] {{ field_type }}
 {%- elif field_type == 'array' -%}
 {# Real files write an array field's name alone on its own line about as
    often as on the same line as its CONSTANT/INTERNAL/OPEN-CLOSE value
@@ -123,17 +149,23 @@
    tolerate a blank or comment-only line (SH_COMMENT is ignored, but its
    own trailing line ending still needs consuming) between two fields --
    confirmed needed against real fixtures with a stray "#" comment line
-   between GRIDDATA array fields. #}
+   between GRIDDATA array fields.
+
+   Any block's entire content may also be redirected to an external file
+   via a bare "OPEN/CLOSE <file>" line in place of its usual fields --
+   confirmed against real fixtures for both a PERIOD block (an OC package)
+   and a DIMENSIONS block (a DISV package). Actually reading that file's
+   rows is out of this pass's scope (same as griddata/array-field OPEN/
+   CLOSE), but per the plan's own carve-out, an unknown-but-syntactically-
+   plausible line must not hard-fail the whole block's parse -- so the
+   alternative is accepted structurally here and simply dropped by the
+   transformer (see `__default__`'s tuple-only field collection), same
+   disposition as the AUXILIARY dynamic-name fallback. #}
 {%- macro field_list(block_name, fields, recarray_name) -%}
+{%- set alts = fields|map('to_rule_name')|list -%}
 {%- if recarray_name -%}
-{{ block_name }}_fields: ((
-{%- for field_name in fields %}{{ field_name|to_rule_name }} | {% endfor -%}
-{{ recarray_name }}) _NL*)*
-{%- else -%}
-{{ block_name }}_fields: ((
-{%- for field_name in fields %}
-{{- field_name|to_rule_name }}{% if not loop.last %} | {% endif %}
-{%- endfor -%}
-) _NL*)*
+{%- set _ = alts.append(recarray_name) -%}
 {%- endif -%}
+{%- set _ = alts.append('open_close_redirect') -%}
+{{ block_name }}_fields: (({{ alts|join(' | ') }}) _NL*)*
 {%- endmacro %}

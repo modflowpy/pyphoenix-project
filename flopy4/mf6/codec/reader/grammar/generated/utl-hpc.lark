@@ -12,20 +12,24 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | partitions_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 partitions_block: "begin"i "partitions"i [_remark] _NL _NL* partitions_fields _NL* "end"i "partitions"i
-options_fields: ((print_table | dev_log_mpi) _NL*)*
-partitions_fields: ((partitionsdata) _NL*)*
+options_fields: ((print_table | dev_log_mpi | open_close_redirect) _NL*)*
+partitions_fields: ((partitionsdata | open_close_redirect) _NL*)*
 print_table: "print_table"i  [_remark] _NL
 dev_log_mpi: "dev_log_mpi"i  [_remark] _NL
 partitionsdata: record+

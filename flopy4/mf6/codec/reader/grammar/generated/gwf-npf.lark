@@ -12,33 +12,37 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | griddata_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((save_flows | print_flows | alternative_cell_averaging | thickstrt | cvoptions | perched | rewet_record | xt3doptions | highest_cell_saturation | save_specific_discharge | save_saturation | k22overk | k33overk | tvk_filerecord | export_array_ascii | export_array_netcdf | dev_no_newton | dev_omega) _NL*)*
-griddata_fields: ((icelltype | k | k22 | k33 | angle1 | angle2 | angle3 | wetdry) _NL*)*
+options_fields: ((save_flows | print_flows | alternative_cell_averaging | thickstrt | cvoptions | perched | rewet_record | xt3doptions | highest_cell_saturation | save_specific_discharge | save_saturation | k22overk | k33overk | tvk_filerecord | export_array_ascii | export_array_netcdf | dev_no_newton | dev_omega | open_close_redirect) _NL*)*
+griddata_fields: ((icelltype | k | k22 | k33 | angle1 | angle2 | angle3 | wetdry | open_close_redirect) _NL*)*
 save_flows: "save_flows"i  [_remark] _NL
 print_flows: "print_flows"i  [_remark] _NL
-alternative_cell_averaging: alternative_cell_averaging_logarithmic | alternative_cell_averaging_amt_lmk | alternative_cell_averaging_amt_hmk [_remark] _NL
+alternative_cell_averaging: "alternative_cell_averaging"i (alternative_cell_averaging_logarithmic | alternative_cell_averaging_amt_lmk | alternative_cell_averaging_amt_hmk) [_remark] _NL
 
 alternative_cell_averaging_logarithmic: "logarithmic"i
 alternative_cell_averaging_amt_lmk: "amt-lmk"i
 alternative_cell_averaging_amt_hmk: "amt-hmk"i
 
 thickstrt: "thickstrt"i  [_remark] _NL
-cvoptions: "variablecv"i "dewatered"i [_remark] _NL
+cvoptions: "variablecv"i ["dewatered"i] [_remark] _NL
 perched: "perched"i  [_remark] _NL
 rewet_record: "rewet"i "wetfct"i double "iwetit"i integer "ihdwet"i integer [_remark] _NL
-xt3doptions: "xt3d"i "rhs"i [_remark] _NL
+xt3doptions: "xt3d"i ["rhs"i] [_remark] _NL
 highest_cell_saturation: "highest_cell_saturation"i  [_remark] _NL
 save_specific_discharge: "save_specific_discharge"i  [_remark] _NL
 save_saturation: "save_saturation"i  [_remark] _NL

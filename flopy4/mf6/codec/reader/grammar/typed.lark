@@ -8,10 +8,14 @@ layered_array: layered [netcdf] readarray+
 layered: "layered"i [_remark] _NL
 netcdf: "netcdf"i
 readarray: control [data]
-control: constant | internal | external
-constant: "constant"i double [_remark] _NL
+control: constant | internal | external | timearrayseries
+// CONSTANT accepts a trailing IPRN flag too, just like INTERNAL/EXTERNAL --
+// confirmed against a real fixture ("CONSTANT 1 IPRN 5"), previously only
+// modeled on INTERNAL/EXTERNAL.
+constant: "constant"i double [iprn] [_remark] _NL
 internal: "internal"i [factor] [iprn] [_remark] _NL
 external: "open/close"i filename [factor] [binary] [iprn] [_remark] _NL
+timearrayseries: "timearrayseries"i word [_remark] _NL
 factor: "factor"i double
 iprn: "iprn"i integer
 binary: "(binary)"i
@@ -20,10 +24,29 @@ data: _data_line+
 _data_line: double+ [_remark] _NL
 record: token+ _NL
 token: number | word
-word: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+word: WORD_STR
+// Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
+// pure-digit string always lexes as a number where both could match --
+// confirmed necessary, not just tidiness: without it, a state that's
+// legitimately reachable from both an `integer+`-repeating rule and an
+// unrelated rule ending in a bare `word` (e.g. OC's formatrecord) can get
+// its LALR states merged, and the contextual lexer then sometimes resolves
+// the ambiguous digit token to WORD_STR in a state that has no action for
+// it at all -- a hard parse failure, not just a wrong parse.
+WORD_STR.-1: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 _token: word | number
-_REMARK: /\S+/
+// Excludes "," (not just whitespace) so a remark can never out-length a
+// COMMA-separated data run with no surrounding spaces (confirmed against a
+// real fixture: TDIS's "1.00000000,1,1.00000000" -- maximal munch always
+// prefers the longer match regardless of priority, so an unbounded \S+
+// remark starting right at the first comma would swallow the remaining
+// comma-joined values whole instead of letting COMMA (%ignore'd) separate
+// them). A remark containing commas (e.g. a "PERLEN,NSTP,TSMULT" label)
+// still works: it just lexes as several _REMARK tokens joined by ignored
+// commas, and `_remark: _REMARK+` accepts any run of them.
+_REMARK.-1: /[^\s,]+/
 _remark: _REMARK+
+open_close_redirect: "open/close"i filename [_remark] _NL
 
 %import common.NEWLINE -> _NL
 %import common.WS_INLINE

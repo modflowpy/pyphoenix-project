@@ -12,22 +12,26 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block | griddata_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((wkt | crs_wkt | deflate | shuffle | chunk_time | chunk_face | chunk_z | chunk_y | chunk_x | modflow6_attr_off) _NL*)*
-dimensions_fields: ((ncpl) _NL*)*
-griddata_fields: ((latitude | longitude) _NL*)*
+options_fields: ((wkt | crs_wkt | deflate | shuffle | chunk_time | chunk_face | chunk_z | chunk_y | chunk_x | modflow6_attr_off | open_close_redirect) _NL*)*
+dimensions_fields: ((ncpl | open_close_redirect) _NL*)*
+griddata_fields: ((latitude | longitude | open_close_redirect) _NL*)*
 wkt: "wkt"i string
 crs_wkt: "crs_wkt"i string
 deflate: "deflate"i integer [_remark] _NL

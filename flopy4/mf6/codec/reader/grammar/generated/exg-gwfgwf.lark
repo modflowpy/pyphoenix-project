@@ -12,34 +12,38 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block | exchangedata_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 exchangedata_block: "begin"i "exchangedata"i [_remark] _NL _NL* exchangedata_fields _NL* "end"i "exchangedata"i
-options_fields: ((auxiliary | boundnames | print_input | print_flows | save_flows | cell_averaging | cvoptions | newton | xt3d | gnc_filerecord | mvr_filerecord | obs_filerecord | dev_interfacemodel_on) _NL*)*
-dimensions_fields: ((nexg) _NL*)*
-exchangedata_fields: ((exchangedatadata) _NL*)*
+options_fields: ((auxiliary | boundnames | print_input | print_flows | save_flows | cell_averaging | cvoptions | newton | xt3d | gnc_filerecord | mvr_filerecord | obs_filerecord | dev_interfacemodel_on | open_close_redirect) _NL*)*
+dimensions_fields: ((nexg | open_close_redirect) _NL*)*
+exchangedata_fields: ((exchangedatadata | open_close_redirect) _NL*)*
 auxiliary: "auxiliary"i word+ [_remark] _NL
 boundnames: "boundnames"i  [_remark] _NL
 print_input: "print_input"i  [_remark] _NL
 print_flows: "print_flows"i  [_remark] _NL
 save_flows: "save_flows"i  [_remark] _NL
-cell_averaging: cell_averaging_harmonic | cell_averaging_logarithmic | cell_averaging_amt_lmk [_remark] _NL
+cell_averaging: "cell_averaging"i (cell_averaging_harmonic | cell_averaging_logarithmic | cell_averaging_amt_lmk) [_remark] _NL
 
 cell_averaging_harmonic: "harmonic"i
 cell_averaging_logarithmic: "logarithmic"i
 cell_averaging_amt_lmk: "amt-lmk"i
 
-cvoptions: "variablecv"i "dewatered"i [_remark] _NL
+cvoptions: "variablecv"i ["dewatered"i] [_remark] _NL
 newton: "newton"i  [_remark] _NL
 xt3d: "xt3d"i  [_remark] _NL
 gnc_filerecord: "gnc6"i "filein"i word [_remark] _NL

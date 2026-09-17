@@ -12,23 +12,27 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block | period_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 block_index: integer
-options_fields: ((readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | auto_flow_reduce | afrcsv_filerecord | flow_reduction_length | obs_filerecord | mover | export_array_netcdf) _NL*)*
-dimensions_fields: ((maxbound) _NL*)*
-period_fields: ((q | aux) _NL*)*
+options_fields: ((readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | auto_flow_reduce | afrcsv_filerecord | flow_reduction_length | obs_filerecord | mover | export_array_netcdf | open_close_redirect) _NL*)*
+dimensions_fields: ((maxbound | open_close_redirect) _NL*)*
+period_fields: ((q | aux | open_close_redirect) _NL*)*
 readarraygrid: "readarraygrid"i  [_remark] _NL
 auxiliary: "auxiliary"i word+ [_remark] _NL
 auxmultname: "auxmultname"i string
@@ -43,4 +47,4 @@ mover: "mover"i  [_remark] _NL
 export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
 maxbound: "maxbound"i integer [_remark] _NL
 q: "q"i [_remark] [_NL] array
-aux: "aux"i [_remark] [_NL] array
+aux: word [_remark] [_NL] array

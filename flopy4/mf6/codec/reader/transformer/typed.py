@@ -101,7 +101,11 @@ class TypedTransformer(Transformer):
         return items[0]
 
     def constant(self, items: list[Any]) -> dict[str, Any]:
-        return {"type": "constant", "value": items[0]}
+        result = {"type": "constant", "value": items[0]}
+        for item in items[1:]:
+            if item is not None:
+                result.update(item)
+        return result
 
     def internal(self, items: list[Any]) -> dict[str, Any]:
         result = {"type": "internal"}
@@ -116,6 +120,9 @@ class TypedTransformer(Transformer):
             if item is not None:
                 result.update(item)
         return result
+
+    def timearrayseries(self, items: list[Any]) -> dict[str, Any]:
+        return {"type": "timearrayseries", "value": items[0]}
 
     def factor(self, items: list[Any]) -> dict[str, float]:
         return {"factor": items[0]}

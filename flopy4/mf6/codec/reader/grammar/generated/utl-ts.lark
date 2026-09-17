@@ -12,25 +12,29 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: attributes_block | timeseries_block
+
 attributes_block: "begin"i "attributes"i [_remark] _NL _NL* attributes_fields _NL* "end"i "attributes"i
 timeseries_block: "begin"i "timeseries"i [_remark] _NL _NL* timeseries_fields _NL* "end"i "timeseries"i
-attributes_fields: ((time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | method | interpolation_method_single | sfacrecord | sfacrecord_single | sfac) _NL*)*
-timeseries_fields: ((timeseriesdata) _NL*)*
+attributes_fields: ((time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | method | interpolation_method_single | sfacrecord | sfacrecord_single | sfac | open_close_redirect) _NL*)*
+timeseries_fields: ((timeseriesdata | open_close_redirect) _NL*)*
 time_series_namerecord: "names"i array [_remark] _NL
 interpolation_methodrecord: "methods"i array [_remark] _NL
 interpolation_methodrecord_single:  [_remark] _NL
 method: "method"i  [_remark] _NL
-interpolation_method_single: interpolation_method_single_stepwise | interpolation_method_single_linear | interpolation_method_single_linearend [_remark] _NL
+interpolation_method_single: "interpolation_method_single"i (interpolation_method_single_stepwise | interpolation_method_single_linear | interpolation_method_single_linearend) [_remark] _NL
 
 interpolation_method_single_stepwise: "stepwise"i
 interpolation_method_single_linear: "linear"i

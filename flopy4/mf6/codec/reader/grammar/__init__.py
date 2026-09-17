@@ -43,7 +43,7 @@ def _get_template_data(blocks) -> tuple[list[dict], dict[str, object], dict[str,
         standalone_fields = []
 
         for field_name, field in block.fields.items():
-            field = filters.valid_as_union(field)
+            field = filters.valid_as_union(field, block_name=block_name)
             if isinstance(field, List):
                 if isinstance(field.item, Union):
                     for arm_name, arm in field.item.arms.items():

@@ -12,20 +12,24 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-options_fields: ((boundnames | print_input | print_flows | save_flows | obs_filerecord | mover) _NL*)*
-dimensions_fields: ((maxbound) _NL*)*
+options_fields: ((boundnames | print_input | print_flows | save_flows | obs_filerecord | mover | open_close_redirect) _NL*)*
+dimensions_fields: ((maxbound | open_close_redirect) _NL*)*
 boundnames: "boundnames"i  [_remark] _NL
 print_input: "print_input"i  [_remark] _NL
 print_flows: "print_flows"i  [_remark] _NL

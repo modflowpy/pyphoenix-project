@@ -12,16 +12,20 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block | packagedata_block | connectiondata_block | angledata_block | period_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
@@ -29,12 +33,12 @@ connectiondata_block: "begin"i "connectiondata"i [_remark] _NL _NL* connectionda
 angledata_block: "begin"i "angledata"i [_remark] _NL _NL* angledata_fields _NL* "end"i "angledata"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 block_index: integer
-options_fields: ((auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | non_vertical_wells | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover | dev_peaceman_effective_radius) _NL*)*
-dimensions_fields: ((nmawwells) _NL*)*
-packagedata_fields: ((packagedatadata) _NL*)*
-connectiondata_fields: ((connectiondatadata) _NL*)*
-angledata_fields: ((angledatadata) _NL*)*
-period_fields: ((stress_period_data) _NL*)*
+options_fields: ((auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | non_vertical_wells | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover | dev_peaceman_effective_radius | open_close_redirect) _NL*)*
+dimensions_fields: ((nmawwells | open_close_redirect) _NL*)*
+packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
+connectiondata_fields: ((connectiondatadata | open_close_redirect) _NL*)*
+angledata_fields: ((angledatadata | open_close_redirect) _NL*)*
+period_fields: ((stress_period_data | open_close_redirect) _NL*)*
 auxiliary: "auxiliary"i word+ [_remark] _NL
 boundnames: "boundnames"i  [_remark] _NL
 print_input: "print_input"i  [_remark] _NL

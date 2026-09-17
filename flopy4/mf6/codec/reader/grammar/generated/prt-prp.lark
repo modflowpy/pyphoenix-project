@@ -12,27 +12,31 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
 start: _NL* (block _NL*)*
 block: options_block | dimensions_block | packagedata_block | releasetimes_block | period_block
+
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 releasetimes_block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes_fields _NL* "end"i "releasetimes"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 block_index: integer
-options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window) _NL*)*
-dimensions_fields: ((nreleasepts | nreleasetimes) _NL*)*
-packagedata_fields: ((packagedatadata) _NL*)*
-releasetimes_fields: ((releasetimesdata) _NL*)*
-period_fields: ((all | first | last | frequency | steps | fraction) _NL*)*
+options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window | open_close_redirect) _NL*)*
+dimensions_fields: ((nreleasepts | nreleasetimes | open_close_redirect) _NL*)*
+packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
+releasetimes_fields: ((releasetimesdata | open_close_redirect) _NL*)*
+period_fields: ((all | first | last | frequency | steps | fraction | open_close_redirect) _NL*)*
 boundnames: "boundnames"i  [_remark] _NL
 print_input: "print_input"i  [_remark] _NL
 dev_exit_solve_method: "dev_exit_solve_method"i integer [_remark] _NL
@@ -48,7 +52,7 @@ istopzone: "istopzone"i integer [_remark] _NL
 drape: "drape"i  [_remark] _NL
 release_timesrecord: "release_times"i array [_remark] _NL
 release_timesfilerecord: "release_timesfile"i word [_remark] _NL
-dry_tracking_method: dry_tracking_method_drop | dry_tracking_method_stop | dry_tracking_method_stay [_remark] _NL
+dry_tracking_method: "dry_tracking_method"i (dry_tracking_method_drop | dry_tracking_method_stop | dry_tracking_method_stay) [_remark] _NL
 
 dry_tracking_method_drop: "drop"i
 dry_tracking_method_stop: "stop"i
@@ -57,7 +61,7 @@ dry_tracking_method_stay: "stay"i
 dev_forceternary: "dev_forceternary"i  [_remark] _NL
 release_time_tolerance: "release_time_tolerance"i double [_remark] _NL
 release_time_frequency: "release_time_frequency"i double [_remark] _NL
-coordinate_check_method: coordinate_check_method_none | coordinate_check_method_eager [_remark] _NL
+coordinate_check_method: "coordinate_check_method"i (coordinate_check_method_none | coordinate_check_method_eager) [_remark] _NL
 
 coordinate_check_method_none: "none"i
 coordinate_check_method_eager: "eager"i

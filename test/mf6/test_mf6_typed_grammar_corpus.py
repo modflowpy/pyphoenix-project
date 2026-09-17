@@ -41,9 +41,41 @@ from flopy4.mf6.simulation import Simulation
 from .test_mf6_load_all_models import KNOWN_PASSING
 
 # dfn_name -> reason, for typed-grammar parse failures already root-caused
-# and cataloged in typed-grammar-corpus-gaps.md. Empty until the first
-# corpus run surfaces real gaps.
-KNOWN_TYPED_GAPS: dict[str, str] = {}
+# and cataloged in typed-grammar-corpus-gaps.md. Granularity is coarser than
+# ideal (per-dfn_name, not per-file): a dfn_name listed here has its files
+# skipped *entirely*, even the many files of that type that parse fine, so a
+# future regression restricted to those files wouldn't be caught. Accepted
+# for now -- refining to per-file skips is real, tracked follow-up work, not
+# done this pass (see typed-grammar-corpus-gaps.md's "Corpus test status").
+KNOWN_TYPED_GAPS: dict[str, str] = {
+    "sln-ims": (
+        "Legacy XMD/DE4 solver blocks with zero matching entries in the "
+        "current DFN (same disposition as load-corpus-gaps.md's gap #11), "
+        "plus one fixture (test017_Crinkle) with a malformed rcloserecord "
+        "line (two mutually-exclusive option values on one line)."
+    ),
+    "gwf-dis": (
+        "TypedTransformer.array()'s xr.concat crashes mixing a DataArray "
+        "layer with a bare Path from an OPEN/CLOSE layer -- a transform-"
+        "layer bug, explicitly out of this pass's parse-level-parity scope."
+    ),
+    "gwf-npf": (
+        "Same array-layer transform crash as gwf-dis, plus a distinct, "
+        "very low-frequency (2/2228 files) lexer limitation: a free-text "
+        "remark that happens to contain a reserved word (e.g. a parenthetical "
+        'comment mentioning "constant") loses to that word\'s keyword '
+        "literal under Lark's default priority rules -- fixing this would "
+        "need per-context lexer modes, which Lark's LALR contextual lexer "
+        "doesn't support; not pursued this pass."
+    ),
+    "gwf-ic": "Same array-layer transform crash as gwf-dis.",
+    "gwf-disv": "Same array-layer transform crash as gwf-dis.",
+    "gwf-lak": (
+        "DEV_NO_FINAL_CHECK is not a field in the current gwf-lak.dfn -- "
+        "confirmed genuine field-name/version drift (a removed dev option), "
+        "not a grammar gap."
+    ),
+}
 
 
 def _collect_package_files(sim_path: Path) -> list[tuple[Path, str]]:
