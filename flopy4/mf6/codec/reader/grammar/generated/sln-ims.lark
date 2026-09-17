@@ -33,7 +33,7 @@ complexity: "complexity"i string
 csv_output_filerecord: "csv_output"i "fileout"i word [_remark] _NL
 csv_outer_output_filerecord: "csv_outer_output"i "fileout"i word [_remark] _NL
 csv_inner_output_filerecord: "csv_inner_output"i "fileout"i word [_remark] _NL
-no_ptcrecord: "no_ptc"i word [_remark] _NL
+no_ptcrecord: "no_ptc"i [word] [_remark] _NL
 ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double [_remark] _NL
 dev_ptc: "dev_ptc"i  [_remark] _NL
 dev_ptc_output_filerecord: "dev_ptc_output"i "fileout"i word [_remark] _NL
@@ -56,7 +56,7 @@ backtracking_residual_limit: "backtracking_residual_limit"i double [_remark] _NL
 inner_maximum: "inner_maximum"i integer [_remark] _NL
 inner_hclose: "inner_hclose"i double [_remark] _NL
 inner_dvclose: "inner_dvclose"i double [_remark] _NL
-rcloserecord: "inner_rclose"i double word [_remark] _NL
+rcloserecord: "inner_rclose"i double [word] [_remark] _NL
 linear_acceleration: "linear_acceleration"i string
 relaxation_factor: "relaxation_factor"i double [_remark] _NL
 preconditioner_levels: "preconditioner_levels"i integer [_remark] _NL

@@ -51,4 +51,4 @@ decay_sorbed: "decay_sorbed"i [_remark] [_NL] array
 bulk_density: "bulk_density"i [_remark] [_NL] array
 distcoef: "distcoef"i [_remark] [_NL] array
 sp2: "sp2"i [_remark] [_NL] array
-formatrecord: "columns"i integer "width"i integer "digits"i integer word
+formatrecord: ["columns"i integer] ["width"i integer] ["digits"i integer] word

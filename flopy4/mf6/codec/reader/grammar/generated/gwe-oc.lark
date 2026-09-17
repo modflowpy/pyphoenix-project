@@ -33,7 +33,7 @@ temperature_filerecord: "temperature"i "fileout"i word [_remark] _NL
 temperatureprintrecord: "temperature"i "print_format"i formatrecord [_remark] _NL
 saverecord: "save"i word ocsetting [_remark] _NL
 printrecord: "print"i word ocsetting [_remark] _NL
-formatrecord: "columns"i integer "width"i integer "digits"i integer word
+formatrecord: ["columns"i integer] ["width"i integer] ["digits"i integer] word
 ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
 ocsetting_all: "all"i
 ocsetting_first: "first"i

@@ -23,12 +23,20 @@
 {{ child_name|to_rule_name }}
 {%- elif child.type == 'file' -%}
 "file{{ child.direction }}"i word
-{%- elif child.tagged -%}
+{%- elif child.tagged and child.optional -%}
 {# A `tagged true` scalar child (e.g. formatrecord's columns/width/digits,
    confirmed against the real DFN) is preceded by its own keyword label
    in real files ("COLUMNS 15", not a bare "15") -- unlike an untagged
-   scalar (formatrecord's own `format`, e.g. "GENERAL"). #}
+   scalar (formatrecord's own `format`, e.g. "GENERAL"). `optional true`
+   (confirmed for columns/width/digits, and for IMS's `rclose_option`
+   below) means real files routinely omit it entirely -- most fixtures
+   checked for sln-ims's rcloserecord never write the trailing STRICT/
+   L2NORM_RCLOSE/RELATIVE_RCLOSE option at all. #}
+["{{ child.name }}"i {{ child_type }}]
+{%- elif child.tagged -%}
 "{{ child.name }}"i {{ child_type }}
+{%- elif child.optional -%}
+[{{ child_type }}]
 {%- else -%}
 {{ child_type }}
 {%- endif -%}
