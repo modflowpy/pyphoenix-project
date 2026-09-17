@@ -22,7 +22,8 @@ period_block: "begin"i "period"i block_index period_fields "end"i "period"i bloc
 block_index: integer
 options_fields: (print_input | ts_filerecord)*
 dimensions_fields: (maxbound)*
-period_fields: ()*
+period_fields: (stress_period_data)*
 print_input: "print_input"i 
 ts_filerecord: "ts6"i "filein"i word
 maxbound: "maxbound"i integer
+stress_period_data: record+

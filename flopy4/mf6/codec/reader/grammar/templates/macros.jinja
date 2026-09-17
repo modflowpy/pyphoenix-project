@@ -5,8 +5,10 @@
 {%- set child_type = child|record_child_type -%}
 {%- if child.type == 'keyword' -%}
 "{{ child.name }}"i
-{%- elif child.type == 'union' -%}
+{%- elif child.type == 'union' or child.type == 'record' -%}
 {{ child_name|to_rule_name }}
+{%- elif child.type == 'file' -%}
+"file{{ child.direction }}"i word
 {%- else -%}
 {{ child_type }}
 {%- endif -%}
@@ -19,17 +21,25 @@
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}
 {%- if not loop.last %} | {% endif -%}
 {%- endfor %}
+
 {% for child_name, child in field.children.items() -%}
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
 "{{ child.name }}"i
+{%- elif child.type == 'array' -%}
+"{{ child.name }}"i {{ child.dtype }}+
 {%- else -%}
 "{{ child.name }}"i {{ child.type }}
 {%- endif %}
+
 {% endfor -%}
 {%- endmacro %}
 
 {% macro simple_field(field_name, field, field_type) -%}
 {{ field_name|to_rule_name }}: "{{ field.name }}"i {{ field_type }}
+{%- endmacro %}
+
+{% macro file_field(field_name, field) -%}
+{{ field_name|to_rule_name }}: "{{ field.name }}"i "file{{ field.direction }}"i word
 {%- endmacro %}
 
 {% macro nested_union(child_name, child) -%}
@@ -41,8 +51,10 @@
 {% for opt_name, opt in child.children.items() -%}
 {{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}: {% if opt.type == 'keyword' -%}
 "{{ opt.name }}"i
+{%- elif opt.type == 'array' -%}
+"{{ opt.name }}"i {{ opt.dtype }}+
 {%- else -%}
-"{{ opt.name }}"i {{ opt.type }}{% if opt.shape %}+{% endif %}
+"{{ opt.name }}"i {{ opt.type }}
 {%- endif %}
 
 {% endfor -%}

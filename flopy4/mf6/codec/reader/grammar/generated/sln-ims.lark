@@ -19,7 +19,7 @@ block: options_block | nonlinear_block | linear_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 nonlinear_block: "begin"i "nonlinear"i nonlinear_fields "end"i "nonlinear"i
 linear_block: "begin"i "linear"i linear_fields "end"i "linear"i
-options_fields: (print_option | complexity | csv_output_filerecord | csv_outer_output_filerecord | csv_inner_output_filerecord | no_ptcrecord | ats_outer_maximum_fraction)*
+options_fields: (print_option | complexity | csv_output_filerecord | csv_outer_output_filerecord | csv_inner_output_filerecord | no_ptcrecord | ats_outer_maximum_fraction | dev_ptc | dev_ptc_output_filerecord | dev_ptc_option | dev_ptc_exponent | dev_ptc_del0)*
 nonlinear_fields: (outer_hclose | outer_dvclose | outer_rclosebnd | outer_maximum | under_relaxation | under_relaxation_gamma | under_relaxation_theta | under_relaxation_kappa | under_relaxation_momentum | backtracking_number | backtracking_tolerance | backtracking_reduction_factor | backtracking_residual_limit)*
 linear_fields: (inner_maximum | inner_hclose | inner_dvclose | rcloserecord | linear_acceleration | relaxation_factor | preconditioner_levels | preconditioner_drop_tolerance | number_orthogonalizations | scaling_method | reordering_method)*
 print_option: "print_option"i string
@@ -29,6 +29,11 @@ csv_outer_output_filerecord: "csv_outer_output"i "fileout"i word
 csv_inner_output_filerecord: "csv_inner_output"i "fileout"i word
 no_ptcrecord: "no_ptc"i word
 ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double
+dev_ptc: "dev_ptc"i 
+dev_ptc_output_filerecord: "dev_ptc_output"i "fileout"i word
+dev_ptc_option: "dev_ptc_option"i 
+dev_ptc_exponent: "dev_ptc_exponent"i double
+dev_ptc_del0: "dev_ptc_del0"i double
 outer_hclose: "outer_hclose"i double
 outer_dvclose: "outer_dvclose"i double
 outer_rclosebnd: "outer_rclosebnd"i double

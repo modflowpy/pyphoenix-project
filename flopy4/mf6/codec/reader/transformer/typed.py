@@ -4,21 +4,32 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfn import Dfn, get_fields
+from modflow_devtools.dfns.schema import Component, Keyword, Record, Union
 
+from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
 from flopy4.utils import parse_number
 
 
 class TypedTransformer(Transformer):
     """Type-aware transformer for MF6 input files."""
 
-    def __init__(self, visit_tokens=False, dfn: Dfn = None):
+    def __init__(self, visit_tokens=False, dfn: Component | None = None):
         super().__init__(visit_tokens)
         self.dfn = dfn
-        self.blocks = dfn["blocks"] if dfn else None
-        self.fields = get_fields(dfn) if dfn else None
-        # Create a flattened fields dict that includes nested fields
-        self._flat_fields = self._flatten_fields(self.fields) if self.fields else None
+        self.blocks = dfn.blocks if dfn else None
+        # Component.get_fields(recurse=True) already descends through
+        # Record/Union/List children and returns a flat, ordered multi-dict
+        # of every field (including nested ones) -- the same thing this
+        # class used to hand-roll via a separate _flatten_fields() pass.
+        # valid_as_union() normalizes a valid=-restricted scalar (e.g. STO's
+        # "storage") into a synthetic keyword union, matching the same
+        # normalization the grammar generator applies -- see
+        # flopy4.mf6.codec.reader.grammar._get_template_data.
+        self._flat_fields = (
+            {name: valid_as_union(f) for name, f in dict(dfn.get_fields(recurse=True)).items()}
+            if dfn
+            else None
+        )
 
     def __getattr__(self, name):
         """Handle typed__ prefixed methods by delegating to the unprefixed version."""
@@ -27,20 +38,6 @@ class TypedTransformer(Transformer):
             if hasattr(self, unprefixed):
                 return getattr(self, unprefixed)
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-
-    def _flatten_fields(self, fields: dict) -> dict:
-        """Recursively flatten fields dict to include children of records and unions."""
-        flat = dict(fields)  # Start with top-level fields
-        for field in fields.values():
-            if "children" in field and field["children"]:
-                # Add children fields
-                for child_name, child_field in field["children"].items():
-                    flat[child_name] = child_field
-                    # Recursively flatten nested children
-                    if "children" in child_field and child_field["children"]:
-                        nested_flat = self._flatten_fields(child_field["children"])
-                        flat.update(nested_flat)
-        return flat
 
     def start(self, items: list[Any]) -> dict:
         """Collect and merge blocks, handling indexed blocks specially."""
@@ -270,14 +267,13 @@ class TypedTransformer(Transformer):
             field_name, alternative_name = parts
             if (parent_field := self._flat_fields.get(field_name, None)) is not None:
                 if (
-                    parent_field["type"] == "union"
-                    and "children" in parent_field
-                    and parent_field["children"]
-                    and alternative_name in parent_field["children"]
+                    isinstance(parent_field, Union)
+                    and parent_field.children
+                    and alternative_name in parent_field.children
                 ):
                     # This is a union alternative
-                    alt_field = parent_field["children"][alternative_name]
-                    if alt_field["type"] == "keyword":
+                    alt_field = parent_field.children[alternative_name]
+                    if isinstance(alt_field, Keyword):
                         # Keyword alternatives return just the alternative name
                         return alternative_name
                     else:
@@ -289,17 +285,17 @@ class TypedTransformer(Transformer):
             # Try with hyphens instead of underscores (reverse of to_rule_name)
             field = self._flat_fields.get(data.replace("_", "-"), None)
         if field is not None:
-            if field["type"] == "keyword":
+            if isinstance(field, Keyword):
                 return data, True
-            elif field["type"] == "record" and "children" in field and field["children"]:
+            elif isinstance(field, Record) and field.children:
                 # Transform record fields into dicts with child field names as keys
                 # Keyword children are literals in the grammar and don't appear in children list
                 # Only non-keyword children appear in the children list
                 record_dict = {}
                 non_keyword_children = [
                     (name, child)
-                    for name, child in field["children"].items()
-                    if child["type"] != "keyword"
+                    for name, child in field.children.items()
+                    if not isinstance(child, Keyword)
                 ]
                 for i, (child_name, child_field) in enumerate(non_keyword_children):
                     if i < len(children):
@@ -309,7 +305,7 @@ class TypedTransformer(Transformer):
                         else:
                             record_dict[child_name] = children[i]
                 return data, record_dict
-            elif field["type"] == "union" and "children" in field and field["children"]:
+            elif isinstance(field, Union) and field.children:
                 # For union fields, return the transformed child
                 # The parser will have selected one alternative
                 return data, children[0] if len(children) == 1 else children

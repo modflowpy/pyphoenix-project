@@ -15,23 +15,40 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | tables_block | connectiondata_block | outlets_block
+block: options_block | dimensions_block | packagedata_block | connectiondata_block | tables_block | outlets_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
-tables_block: "begin"i "tables"i tables_fields "end"i "tables"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+tables_block: "begin"i "tables"i tables_fields "end"i "tables"i
 outlets_block: "begin"i "outlets"i outlets_fields "end"i "outlets"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
-options_fields: (obs_filerecord | mover | surfdep | maximum_iterations | maximum_stage_change | time_conversion | length_conversion)*
+options_fields: (auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_force_fallback | dev_groundwater_head_conductance | dev_maximum_outlet_depth | surfdep | implicit | maximum_iterations | maximum_stage_change | time_conversion | length_conversion)*
 dimensions_fields: (nlakes | noutlets | ntables)*
-period_fields: ()*
-tables_fields: (tables)*
-connectiondata_fields: (connectiondata)*
-outlets_fields: (outlets)*
-obs_filerecord: "obs6"i word
+packagedata_fields: (packagedatadata)*
+connectiondata_fields: (connectiondatadata)*
+tables_fields: (tablesdata)*
+outlets_fields: (outletsdata)*
+period_fields: (stress_period_data)*
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_stage: "print_stage"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+stage_filerecord: "stage"i "fileout"i word
+budget_filerecord: "budget"i "fileout"i word
+budgetcsv_filerecord: "budgetcsv"i "fileout"i word
+package_convergence_filerecord: "package_convergence"i "fileout"i word
+ts_filerecord: "ts6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 
+dev_force_fallback: "dev_force_fallback"i 
+dev_groundwater_head_conductance: "dev_groundwater_head_conductance"i 
+dev_maximum_outlet_depth: "dev_maximum_outlet_depth"i double
 surfdep: "surfdep"i double
+implicit: "implicit"i 
 maximum_iterations: "maximum_iterations"i integer
 maximum_stage_change: "maximum_stage_change"i double
 time_conversion: "time_conversion"i double
@@ -39,6 +56,8 @@ length_conversion: "length_conversion"i double
 nlakes: "nlakes"i integer
 noutlets: "noutlets"i integer
 ntables: "ntables"i integer
-tables: "tables"i list
-connectiondata: "connectiondata"i list
-outlets: "outlets"i list
+packagedatadata: record+
+connectiondatadata: record+
+tablesdata: record+
+outletsdata: record+
+stress_period_data: record+

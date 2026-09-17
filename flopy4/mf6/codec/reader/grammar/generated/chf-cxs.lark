@@ -22,10 +22,10 @@ packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedat
 crosssectiondata_block: "begin"i "crosssectiondata"i crosssectiondata_fields "end"i "crosssectiondata"i
 options_fields: (print_input)*
 dimensions_fields: (nsections | npoints)*
-packagedata_fields: (packagedata)*
-crosssectiondata_fields: (crosssectiondata)*
+packagedata_fields: (packagedatadata)*
+crosssectiondata_fields: (crosssectiondatadata)*
 print_input: "print_input"i 
 nsections: "nsections"i integer
 npoints: "npoints"i integer
-packagedata: "packagedata"i list
-crosssectiondata: "crosssectiondata"i list
+packagedatadata: record+
+crosssectiondatadata: record+

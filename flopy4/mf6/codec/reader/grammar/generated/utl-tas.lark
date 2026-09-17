@@ -17,10 +17,11 @@
 start: block*
 block: attributes_block | time_block
 attributes_block: "begin"i "attributes"i attributes_fields "end"i "attributes"i
-time_block: "begin"i "time"i time_fields "end"i "time"i
+time_block: "begin"i "time"i block_index time_fields "end"i "time"i block_index
+block_index: integer
 attributes_fields: (time_series_namerecord | interpolation_methodrecord | sfacrecord)*
 time_fields: (tas_array)*
-time_series_namerecord: "name"i word
+time_series_namerecord: "name"i array
 interpolation_methodrecord: "method"i word
-sfacrecord: "sfac"i double
+sfacrecord: "sfac"i array
 tas_array: "tas_array"i array

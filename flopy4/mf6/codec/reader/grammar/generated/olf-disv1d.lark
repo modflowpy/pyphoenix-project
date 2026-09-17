@@ -24,8 +24,8 @@ cell2d_block: "begin"i "cell2d"i cell2d_fields "end"i "cell2d"i
 options_fields: (length_units | nogrb | grb_filerecord | xorigin | yorigin | angrot | export_array_ascii | crs)*
 dimensions_fields: (nodes | nvert)*
 griddata_fields: (length | width | bottom | idomain)*
-vertices_fields: (vertices)*
-cell2d_fields: (cell2d)*
+vertices_fields: (verticesdata)*
+cell2d_fields: (cell2ddata)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
 grb_filerecord: "grb6"i "fileout"i word
@@ -33,12 +33,12 @@ xorigin: "xorigin"i double
 yorigin: "yorigin"i double
 angrot: "angrot"i double
 export_array_ascii: "export_array_ascii"i 
-crs: "crs"i array
+crs: "crs"i string
 nodes: "nodes"i integer
 nvert: "nvert"i integer
 length: "length"i array
 width: "width"i array
 bottom: "bottom"i array
 idomain: "idomain"i array
-vertices: "vertices"i list
-cell2d: "cell2d"i list
+verticesdata: record+
+cell2ddata: record+

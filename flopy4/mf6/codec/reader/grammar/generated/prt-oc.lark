@@ -15,16 +15,16 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | tracktimes_block
+block: options_block | dimensions_block | tracktimes_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 tracktimes_block: "begin"i "tracktimes"i tracktimes_fields "end"i "tracktimes"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
-options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_subfeature_exit | track_timestep | track_terminate | track_weaksink | track_usertime | track_dropped | track_timesrecord | track_timesfilerecord | dev_dump_event_trace)*
+options_fields: (budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_subfeature_exit | track_timestep | track_terminate | track_weaksink | track_usertime | track_dropped | track_timesrecord | track_timesfilerecord | dev_dump_event_trace | scratch_buffer)*
 dimensions_fields: (ntracktimes)*
+tracktimes_fields: (tracktimesdata)*
 period_fields: (saverecord | printrecord)*
-tracktimes_fields: (tracktimes)*
 budget_filerecord: "budget"i "fileout"i word
 budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 track_filerecord: "track"i "fileout"i word
@@ -37,13 +37,13 @@ track_terminate: "track_terminate"i
 track_weaksink: "track_weaksink"i 
 track_usertime: "track_usertime"i 
 track_dropped: "track_dropped"i 
-track_timesrecord: "track_times"i double
+track_timesrecord: "track_times"i array
 track_timesfilerecord: "track_timesfile"i word
 dev_dump_event_trace: "dev_dump_event_trace"i 
+scratch_buffer: "scratch_buffer"i 
 ntracktimes: "ntracktimes"i integer
 saverecord: "save"i word ocsetting
 printrecord: "print"i word ocsetting
-tracktimes: "tracktimes"i list
 ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
 ocsetting_all: "all"i
 ocsetting_first: "first"i
@@ -51,3 +51,4 @@ ocsetting_last: "last"i
 ocsetting_frequency: "frequency"i integer
 ocsetting_steps: "steps"i integer+
 
+tracktimesdata: record+

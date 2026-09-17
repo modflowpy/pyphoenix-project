@@ -15,13 +15,27 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | period_block
+block: options_block | packagedata_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
-options_fields: (budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord)*
-period_fields: ()*
+options_fields: (flow_package_name | auxiliary | flow_package_auxiliary_name | boundnames | print_input | print_temperature | print_flows | save_flows | temperature_filerecord | budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord | dev_nonexpanding_matrix)*
+packagedata_fields: (packagedatadata)*
+period_fields: (stress_period_data)*
+flow_package_name: "flow_package_name"i string
+auxiliary: "auxiliary"i array
+flow_package_auxiliary_name: "flow_package_auxiliary_name"i string
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_temperature: "print_temperature"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+temperature_filerecord: "temperature"i "fileout"i word
 budget_filerecord: "budget"i "fileout"i word
 budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 ts_filerecord: "ts6"i "filein"i word
 obs_filerecord: "obs6"i "filein"i word
+dev_nonexpanding_matrix: "dev_nonexpanding_matrix"i 
+packagedatadata: record+
+stress_period_data: record+

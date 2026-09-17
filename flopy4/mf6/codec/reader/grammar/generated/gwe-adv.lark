@@ -18,5 +18,9 @@ start: block*
 block: options_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 options_fields: (scheme | ats_percel)*
-scheme: "scheme"i string
+scheme: scheme_central | scheme_upstream | scheme_tvd
+scheme_central: "central"i
+scheme_upstream: "upstream"i
+scheme_tvd: "tvd"i
+
 ats_percel: "ats_percel"i double

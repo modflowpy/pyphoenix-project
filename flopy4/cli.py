@@ -93,12 +93,12 @@ def _cmd_sync(args: argparse.Namespace) -> None:
             registry.sync()
         except Exception:
             # dfns.zip not yet a release asset; fetch from the git tree instead.
-            from modflow_devtools.dfn import get_dfns
+            from modflow_devtools.dfns import fetch_dfns
 
             owner_repo, tag = release_id.split("@", 1)
             owner, repo = owner_repo.split("/")
             registry.cache_path.mkdir(parents=True, exist_ok=True)
-            get_dfns(owner=owner, repo=repo, ref=tag, outdir=registry.cache_path)
+            fetch_dfns(owner=owner, repo=repo, ref=tag, outdir=registry.cache_path)
 
     def _write_contract(outdir: Path, mf6_version: str) -> None:
         (outdir / "_contract.py").write_text(

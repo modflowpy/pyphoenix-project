@@ -12,10 +12,11 @@ from typing import Literal, Union, get_args, get_origin
 import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
-from modflow_devtools.dfn.schema import FieldType
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.spec import fields_dict as flopy_fields_dict
+
+FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
 
 def field(

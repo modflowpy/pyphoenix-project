@@ -1,9 +1,10 @@
 """Filters shared by both reader and writer."""
 
-from typing import Any
+from typing import Any, Literal
 
 import xarray as xr
-from modflow_devtools.dfn.schema import FieldType
+
+FieldType = Literal["keyword", "integer", "double", "string", "record", "array", "list"]
 
 
 def field_type(value: Any) -> FieldType:

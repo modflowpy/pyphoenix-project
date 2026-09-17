@@ -21,10 +21,10 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 options_fields: (hhformulation_rhs | denseref | density_filerecord | dev_efh_formulation)*
 dimensions_fields: (nrhospecies)*
-packagedata_fields: (packagedata)*
+packagedata_fields: (packagedatadata)*
 hhformulation_rhs: "hhformulation_rhs"i 
 denseref: "denseref"i double
 density_filerecord: "density"i "fileout"i word
 dev_efh_formulation: "dev_efh_formulation"i 
 nrhospecies: "nrhospecies"i integer
-packagedata: "packagedata"i list
+packagedatadata: record+
