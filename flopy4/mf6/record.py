@@ -24,33 +24,39 @@ def keyword_of(cls: type) -> str:
     return vars(cls).get("_keyword", "")
 
 
+def _resolve_sibling_class(cls: type, name: str) -> Any | None:
+    """Resolve a bare sibling class name one level up from `cls` in
+    `__qualname__`, where every generated flat-sibling class (composed
+    Records, keystring-union arms) lives regardless of DFN nesting depth.
+    No type check here -- callers (`_nested_class`, item.py's
+    `_nested_union_classes`) apply their own, against different base
+    classes.
+
+    Must resolve at runtime: a class body can't see sibling names from an
+    enclosing scope, which is why the qualified string form
+    (``"Oc.Format"``) exists at all -- purely for mypy.
+    """
+    obj = sys.modules[cls.__module__]
+    for part in cls.__qualname__.split(".")[:-1]:
+        obj = getattr(obj, part)
+    return getattr(obj, name, None)
+
+
 @lru_cache(maxsize=None)
 def _nested_class(cls: type, type_str: str) -> "type[Record] | None":
     """If a field's raw type annotation (e.g. ``"Format"`` or
     ``"Optional[Oc.Format]"``) names a Record subclass, return it; else
-    None. No declared "is this nested" flag needed -- resolvability against
-    a real Record subclass is itself the signal.
+    None. Resolvability against a real Record subclass is itself the
+    signal -- no declared "is this nested" flag needed.
 
-    Composed record classes (see item.py's module docstring and
-    make.py's _build_record_class_specs) are generated as flat siblings
-    inside the same package class regardless of DFN nesting depth, so
-    cls's immediate enclosing class -- one level up in __qualname__ --
-    always owns the name being resolved. Resolving here (rather than at
-    class-body-execution time, via a bare or even same-enclosing-class
-    string annotation) is required because Python class bodies can't see
-    sibling names from an enclosing class scope; the qualified string form
-    (``"Oc.Format"``) exists only so mypy's own scope analysis can resolve
-    it too. Cached since to_tokens/from_tokens call this per field, often
+    Cached since to_tokens/from_tokens call this per field, often
     repeatedly while parsing many rows.
     """
     name = type_str
     if name.startswith("Optional[") and name.endswith("]"):
         name = name[len("Optional[") : -1]
     name = name.rsplit(".", 1)[-1]
-    obj = sys.modules[cls.__module__]
-    for part in cls.__qualname__.split(".")[:-1]:
-        obj = getattr(obj, part)
-    resolved = getattr(obj, name, None)
+    resolved = _resolve_sibling_class(cls, name)
     return resolved if isinstance(resolved, type) and issubclass(resolved, Record) else None
 
 

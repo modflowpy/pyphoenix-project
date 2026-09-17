@@ -51,20 +51,21 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 
 {% endfor %}
 {% for block_name, schema in spec.block_schemas.items() %}
-{{ schema | item_class(block_name | pascal_name, False, block_name == "packagedata") }}
+{{ schema | item_class(block_name | pascal_name, False, block_name == "packagedata", package_class_name=spec.class_name) }}
 
 {% endfor %}
 {% if spec.period_schema %}
-{{ spec.period_schema | item_class("StressPeriodData", True) }}
+{{ spec.period_schema | item_class("StressPeriodData", True, package_class_name=spec.class_name) }}
 
 {% endif %}
 {% for arm in spec.period_arms %}
-{{ arm.schema | item_class(arm.class_name, False, False, arm.keyword) }}
+{{ arm.schema | item_class(arm.class_name, False, False, arm.keyword, package_class_name=spec.class_name) }}
 
 {% endfor %}
-{% if spec.period_arms %}
+{% set top_level_arms = spec.period_arms | selectattr("top_level") | list %}
+{% if top_level_arms %}
     _StressPeriodDataItem = (
-{% for arm in spec.period_arms %}
+{% for arm in top_level_arms %}
         {{ arm.class_name }}{{ " |" if not loop.last }}
 {% endfor %}
     )

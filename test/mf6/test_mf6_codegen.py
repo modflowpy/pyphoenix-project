@@ -783,8 +783,20 @@ def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
         assert issubclass(cls, Package)
         # Verify the OC period arms (Save/Print, real typed classes) were generated
         assert spec.period_arms, f"{dfn_name} should have period_arms (Save/Print)"
-        arm_names = {arm.class_name for arm in spec.period_arms}
-        assert {"Save", "Print"} <= arm_names, f"{dfn_name} should have Save/Print arm classes"
+        arm_names = [arm.class_name for arm in spec.period_arms]
+        assert {"Save", "Print"} <= set(arm_names), f"{dfn_name} should have Save/Print arm classes"
+        # ocsetting's own arms (All/First/Last/Frequency/Steps) must be built
+        # exactly once (shared by Save.ocsetting and Print.ocsetting, not
+        # duplicated as e.g. SaverecordAll/PrintrecordAll -- see
+        # make.py's _build_arm_specs_from_union nested_union_cache) and must
+        # NOT be folded into the top-level Save|Print dispatch union.
+        assert arm_names.count("All") == 1, f"{dfn_name}: ocsetting arms must not be duplicated"
+        top_level_names = {arm.class_name for arm in spec.period_arms if arm.top_level}
+        assert top_level_names == {"Save", "Print"}, (
+            f"{dfn_name}: only Save/Print may be top_level (dispatch union) arms"
+        )
+        nested_names = {arm.class_name for arm in spec.period_arms if not arm.top_level}
+        assert nested_names == {"All", "First", "Last", "Frequency", "Steps"}
 
 
 def test_utl_tier_generates_importable_files(tmp_path, all_dfns):
