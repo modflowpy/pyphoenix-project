@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -6,6 +7,7 @@ import xarray as xr
 from lark import Token, Transformer
 from modflow_devtools.dfns.schema import Component, Keyword, Record, Union
 
+from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
 from flopy4.utils import parse_number
 
@@ -217,9 +219,15 @@ class TypedTransformer(Transformer):
         if self.blocks is None or self._flat_fields is None:
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
-            # See if this is an indexed block (period blocks have 3 children: index, fields, index
-            if len(children) == 3 and isinstance(children[0], int) and isinstance(children[2], int):
-                # Indexed block: [index, fields, index]
+            # Indexed block: [index, fields, closing index]. The closing
+            # index is optional in the grammar (most real files write a bare
+            # "END <name>", not repeating the number) -- Lark fills the
+            # omitted slot with None rather than dropping it.
+            if (
+                len(children) == 3
+                and isinstance(children[0], int)
+                and (children[2] is None or isinstance(children[2], int))
+            ):
                 block_index = children[0]
                 fields_data = children[1]
                 return {block_name: {block_index: fields_data}}
@@ -308,3 +316,9 @@ class TypedTransformer(Transformer):
                 # (arrays have already been transformed by the array method)
                 return data, children[0] if len(children) == 1 else children
         return super().__default__(data, children, meta)
+
+
+@lru_cache(maxsize=None)
+def get_typed_transformer(name: str, dfn_path: str | None = None) -> TypedTransformer:
+    """Cached ``TypedTransformer`` factory, one instance per component type."""
+    return TypedTransformer(dfn=get_component_dfn(name, dfn_path=dfn_path))

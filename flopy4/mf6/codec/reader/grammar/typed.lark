@@ -1,29 +1,31 @@
 integer: SIGNED_INT | INT
 double: SIGNED_NUMBER | NUMBER
 number: SIGNED_NUMBER | NUMBER
-string: ESCAPED_STRING | (_token+ NEWLINE)
+string: (ESCAPED_STRING | _token+) _NL
 array: (single_array | layered_array)
 single_array: [netcdf] readarray
 layered_array: layered [netcdf] readarray+
-layered: "layered"i
+layered: "layered"i [_remark] _NL
 netcdf: "netcdf"i
 readarray: control [data]
 control: constant | internal | external
-constant: "constant"i double
-internal: "internal"i [factor] [iprn]
-external: "open/close"i filename [factor] [binary] [iprn]
+constant: "constant"i double [_remark] _NL
+internal: "internal"i [factor] [iprn] [_remark] _NL
+external: "open/close"i filename [factor] [binary] [iprn] [_remark] _NL
 factor: "factor"i double
 iprn: "iprn"i integer
 binary: "(binary)"i
 filename: ESCAPED_STRING | word
-data: double+
-record: token+ NEWLINE
+data: _data_line+
+_data_line: double+ [_remark] _NL
+record: token+ _NL
 token: number | word
-word: /(?!(?i:begin|end))[a-zA-Z0-9._'~,+-\\(\\)]+/
+word: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 _token: word | number
+_REMARK: /\S+/
+_remark: _REMARK+
 
-%import common.NEWLINE
-%import common.WS
+%import common.NEWLINE -> _NL
 %import common.WS_INLINE
 %import common.CNAME
 %import common.WORD
@@ -34,5 +36,7 @@ _token: word | number
 %import common.SIGNED_NUMBER
 %import common.SIGNED_INT
 
-%ignore WS
+COMMA: ","
+%ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA

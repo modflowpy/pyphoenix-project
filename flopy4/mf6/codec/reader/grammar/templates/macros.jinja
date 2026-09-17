@@ -1,6 +1,20 @@
-{# Field rendering macros #}
+{# Field rendering macros.
+
+   A field whose value rule already consumes its own trailing line ending
+   internally (array -- via constant/internal/external/data's own `_NL`;
+   string -- via its own `_NL`) must NOT get a second one appended here, or
+   the grammar would require two newlines where the real file only has one.
+   Every other value type doesn't self-terminate, so the *top-level*
+   variant of its macro appends `[_remark] _NL`. A field referenced inline
+   from its parent's own single-line rule (a nested record/union child)
+   must never append a line ending itself -- that's what `nested_record`/
+   `nested_union` are for, as opposed to `record_field`/`union_field`. #}
 
 {% macro record_field(field_name, field) -%}
+{{ nested_record(field_name, field) }} [_remark] _NL
+{%- endmacro %}
+
+{% macro nested_record(field_name, field) -%}
 {{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
 {%- set child_type = child|record_child_type -%}
 {%- if child.type == 'keyword' -%}
@@ -9,6 +23,12 @@
 {{ child_name|to_rule_name }}
 {%- elif child.type == 'file' -%}
 "file{{ child.direction }}"i word
+{%- elif child.tagged -%}
+{# A `tagged true` scalar child (e.g. formatrecord's columns/width/digits,
+   confirmed against the real DFN) is preceded by its own keyword label
+   in real files ("COLUMNS 15", not a bare "15") -- unlike an untagged
+   scalar (formatrecord's own `format`, e.g. "GENERAL"). #}
+"{{ child.name }}"i {{ child_type }}
 {%- else -%}
 {{ child_type }}
 {%- endif -%}
@@ -20,7 +40,7 @@
 {{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}
 {%- if not loop.last %} | {% endif -%}
-{%- endfor %}
+{%- endfor %} [_remark] _NL
 
 {% for child_name, child in field.children.items() -%}
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
@@ -35,11 +55,26 @@
 {%- endmacro %}
 
 {% macro simple_field(field_name, field, field_type) -%}
+{%- if field_type == 'array' and field.dtype == 'string' -%}
+{# A string-dtype "array" (e.g. AUXILIARY's list of aux names, `type
+   string, shape (naux)` in the DFN) is really just a run of names on one
+   line -- confirmed against the real DFN source -- not a numeric
+   CONSTANT/INTERNAL/OPEN-CLOSE grid array like every other Array field. #}
+{{ field_name|to_rule_name }}: "{{ field.name }}"i word+ [_remark] _NL
+{%- elif field_type == 'array' -%}
+{# Real files write an array field's name alone on its own line about as
+   often as on the same line as its CONSTANT/INTERNAL/OPEN-CLOSE value
+   (e.g. STO's "ss" -- confirmed directly against a real fixture) -- the
+   line break between name and value is optional either way. #}
+{{ field_name|to_rule_name }}: "{{ field.name }}"i [_remark] [_NL] {{ field_type }}
+{%- else -%}
 {{ field_name|to_rule_name }}: "{{ field.name }}"i {{ field_type }}
+{%- if field_type != 'string' %} [_remark] _NL{% endif -%}
+{%- endif -%}
 {%- endmacro %}
 
 {% macro file_field(field_name, field) -%}
-{{ field_name|to_rule_name }}: "{{ field.name }}"i "file{{ field.direction }}"i word
+{{ field_name|to_rule_name }}: "{{ field.name }}"i "file{{ field.direction }}"i word [_remark] _NL
 {%- endmacro %}
 
 {% macro nested_union(child_name, child) -%}
@@ -60,26 +95,37 @@
 {% endfor -%}
 {%- endmacro %}
 
-{# Block definition macro #}
+{# Block definition macro. Newlines are significant (see the header note in
+   component.lark.jinja), so the BEGIN line's own line ending must be
+   consumed explicitly before the block's fields start, and a run of blank
+   lines before END is tolerated defensively (mirrors basic.lark). #}
 {%- macro block_def(block_name, has_index) -%}
 {%- if has_index -%}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i block_index {{ block_name }}_fields "end"i "{{ block_name }}"i block_index
+{# Real corpus files overwhelmingly close an indexed block as bare
+   "END <name>", not repeating the index -- confirmed ~91% (1503/1651)
+   across a random corpus sample. The trailing index is still accepted
+   when present (the remaining ~9%). #}
+{{ block_name }}_block: "begin"i "{{ block_name }}"i block_index [_remark] _NL _NL* {{ block_name }}_fields _NL* "end"i "{{ block_name }}"i [block_index]
 {%- else -%}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i {{ block_name }}_fields "end"i "{{ block_name }}"i
+{{ block_name }}_block: "begin"i "{{ block_name }}"i [_remark] _NL _NL* {{ block_name }}_fields _NL* "end"i "{{ block_name }}"i
 {%- endif -%}
 {%- endmacro %}
 
-{# Field list macro #}
+{# Field list macro. Each field alternative is followed by `_NL*` to
+   tolerate a blank or comment-only line (SH_COMMENT is ignored, but its
+   own trailing line ending still needs consuming) between two fields --
+   confirmed needed against real fixtures with a stray "#" comment line
+   between GRIDDATA array fields. #}
 {%- macro field_list(block_name, fields, recarray_name) -%}
 {%- if recarray_name -%}
-{{ block_name }}_fields: (
+{{ block_name }}_fields: ((
 {%- for field_name in fields %}{{ field_name|to_rule_name }} | {% endfor -%}
-{{ recarray_name }})*
+{{ recarray_name }}) _NL*)*
 {%- else -%}
-{{ block_name }}_fields: (
+{{ block_name }}_fields: ((
 {%- for field_name in fields %}
 {{- field_name|to_rule_name }}{% if not loop.last %} | {% endif %}
 {%- endfor -%}
-)*
+) _NL*)*
 {%- endif -%}
 {%- endmacro %}

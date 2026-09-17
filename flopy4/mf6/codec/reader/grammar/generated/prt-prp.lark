@@ -1,5 +1,10 @@
 // Auto-generated grammar for MF6 PRT-PRP
 
+// Newlines are significant here (only inline whitespace is ignored) -- see
+// typed.lark's own header note for why: a blanket "%ignore" that swallows
+// newlines can't reliably delimit list/record rows or bound a trailing
+// per-line remark, since an ignored whitespace run always maximal-munches
+// past a bare newline whenever the following line is indented.
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
@@ -7,61 +12,64 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
-%import typed.NEWLINE -> NEWLINE
-%import common.WS
+%import typed._NL -> _NL
+%import typed._remark -> _remark
+%import common.WS_INLINE
 %import common.SH_COMMENT
 
-%ignore WS
+%ignore WS_INLINE
 %ignore SH_COMMENT
 
-start: block*
+start: _NL* (block _NL*)*
 block: options_block | dimensions_block | packagedata_block | releasetimes_block | period_block
-options_block: "begin"i "options"i options_fields "end"i "options"i
-dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
-releasetimes_block: "begin"i "releasetimes"i releasetimes_fields "end"i "releasetimes"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
+dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
+packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
+releasetimes_block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes_fields _NL* "end"i "releasetimes"i
+period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 block_index: integer
-options_fields: (boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window)*
-dimensions_fields: (nreleasepts | nreleasetimes)*
-packagedata_fields: (packagedatadata)*
-releasetimes_fields: (releasetimesdata)*
-period_fields: (all | first | last | frequency | steps | fraction)*
-boundnames: "boundnames"i 
-print_input: "print_input"i 
-dev_exit_solve_method: "dev_exit_solve_method"i integer
-exit_solve_tolerance: "exit_solve_tolerance"i double
-local_z: "local_z"i 
-extend_tracking: "extend_tracking"i 
-track_filerecord: "track"i "fileout"i word
-trackcsv_filerecord: "trackcsv"i "fileout"i word
-stoptime: "stoptime"i double
-stoptraveltime: "stoptraveltime"i double
-stop_at_weak_sink: "stop_at_weak_sink"i 
-istopzone: "istopzone"i integer
-drape: "drape"i 
-release_timesrecord: "release_times"i array
-release_timesfilerecord: "release_timesfile"i word
-dry_tracking_method: dry_tracking_method_drop | dry_tracking_method_stop | dry_tracking_method_stay
+options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window) _NL*)*
+dimensions_fields: ((nreleasepts | nreleasetimes) _NL*)*
+packagedata_fields: ((packagedatadata) _NL*)*
+releasetimes_fields: ((releasetimesdata) _NL*)*
+period_fields: ((all | first | last | frequency | steps | fraction) _NL*)*
+boundnames: "boundnames"i  [_remark] _NL
+print_input: "print_input"i  [_remark] _NL
+dev_exit_solve_method: "dev_exit_solve_method"i integer [_remark] _NL
+exit_solve_tolerance: "exit_solve_tolerance"i double [_remark] _NL
+local_z: "local_z"i  [_remark] _NL
+extend_tracking: "extend_tracking"i  [_remark] _NL
+track_filerecord: "track"i "fileout"i word [_remark] _NL
+trackcsv_filerecord: "trackcsv"i "fileout"i word [_remark] _NL
+stoptime: "stoptime"i double [_remark] _NL
+stoptraveltime: "stoptraveltime"i double [_remark] _NL
+stop_at_weak_sink: "stop_at_weak_sink"i  [_remark] _NL
+istopzone: "istopzone"i integer [_remark] _NL
+drape: "drape"i  [_remark] _NL
+release_timesrecord: "release_times"i array [_remark] _NL
+release_timesfilerecord: "release_timesfile"i word [_remark] _NL
+dry_tracking_method: dry_tracking_method_drop | dry_tracking_method_stop | dry_tracking_method_stay [_remark] _NL
+
 dry_tracking_method_drop: "drop"i
 dry_tracking_method_stop: "stop"i
 dry_tracking_method_stay: "stay"i
 
-dev_forceternary: "dev_forceternary"i 
-release_time_tolerance: "release_time_tolerance"i double
-release_time_frequency: "release_time_frequency"i double
-coordinate_check_method: coordinate_check_method_none | coordinate_check_method_eager
+dev_forceternary: "dev_forceternary"i  [_remark] _NL
+release_time_tolerance: "release_time_tolerance"i double [_remark] _NL
+release_time_frequency: "release_time_frequency"i double [_remark] _NL
+coordinate_check_method: coordinate_check_method_none | coordinate_check_method_eager [_remark] _NL
+
 coordinate_check_method_none: "none"i
 coordinate_check_method_eager: "eager"i
 
-dev_cycle_detection_window: "dev_cycle_detection_window"i integer
-nreleasepts: "nreleasepts"i integer
-nreleasetimes: "nreleasetimes"i integer
-all: "all"i 
-first: "first"i 
-last: "last"i 
-frequency: "frequency"i integer
-steps: "steps"i integer+
-fraction: "fraction"i double+
+dev_cycle_detection_window: "dev_cycle_detection_window"i integer [_remark] _NL
+nreleasepts: "nreleasepts"i integer [_remark] _NL
+nreleasetimes: "nreleasetimes"i integer [_remark] _NL
+all: "all"i  [_remark] _NL
+first: "first"i  [_remark] _NL
+last: "last"i  [_remark] _NL
+frequency: "frequency"i integer [_remark] _NL
+steps: "steps"i integer+ [_remark] _NL
+fraction: "fraction"i double+ [_remark] _NL
 packagedatadata: record+
 releasetimesdata: record+
