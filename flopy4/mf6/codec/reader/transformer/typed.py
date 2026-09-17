@@ -17,14 +17,8 @@ class TypedTransformer(Transformer):
         super().__init__(visit_tokens)
         self.dfn = dfn
         self.blocks = dfn.blocks if dfn else None
-        # Component.get_fields(recurse=True) already descends through
-        # Record/Union/List children and returns a flat, ordered multi-dict
-        # of every field (including nested ones) -- the same thing this
-        # class used to hand-roll via a separate _flatten_fields() pass.
-        # valid_as_union() normalizes a valid=-restricted scalar (e.g. STO's
-        # "storage") into a synthetic keyword union, matching the same
-        # normalization the grammar generator applies -- see
-        # flopy4.mf6.codec.reader.grammar._get_template_data.
+        # get_fields(recurse=True) replaces the old hand-rolled
+        # _flatten_fields() descent through Record/Union/List children.
         self._flat_fields = (
             {name: valid_as_union(f) for name, f in dict(dfn.get_fields(recurse=True)).items()}
             if dfn

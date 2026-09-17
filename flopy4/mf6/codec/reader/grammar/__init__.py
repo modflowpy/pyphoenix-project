@@ -24,30 +24,14 @@ def _get_env():
 def _get_template_data(blocks) -> tuple[list[dict], dict[str, object], dict[str, str]]:
     """Build per-block, per-field jinja context from a Component's blocks.
 
-    A block's ``List`` field (at most one, enforced by the schema's own
-    validator) is the only case needing special handling:
-
-    - ``List(item=Record)`` (e.g. WEL/CHD's ``stress_period_data``) becomes a
-      generic ``<recarray_name>: record+`` rule -- the untyped ``record``
-      terminal from ``typed.lark`` already accepts any token-per-line row, so
-      the item's own columns don't need individual grammar rules.
-    - ``List(item=Union)`` (e.g. OC's ``output``, PRP's ``perioddata``) has no
-      recarray indirection at all: each arm is spliced into the block's own
-      field list and rendered exactly like any other top-level record/union
-      field, matching the existing dispatch-by-leading-keyword grammar. A
-      scalar/array arm (PRP's ``all``/``frequency``/``steps``, as opposed to
-      OC's record-typed ``saverecord``/``printrecord``) needs its rendered
-      type precomputed here rather than left to the generic ``field_type``
-      filter: an ``Array`` arm here means "one or more trailing values on
-      this line" (e.g. ``STEPS 1 3 5``), not a full griddata-style control
-      block, which is what the generic filter would otherwise produce for
-      any other ``Array`` field.
-
-    Every field also passes through ``filters.valid_as_union`` first: a
-    ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
-    ``STEADY-STATE``/``TRANSIENT``) is normalized into a synthetic keyword
-    union so it renders (and, in ``TypedTransformer``, dispatches) exactly
-    like any other keystring union.
+    A block's ``List`` field (at most one) is the only special case: a
+    ``List(item=Record)`` (e.g. WEL's ``stress_period_data``) becomes a
+    generic ``record+`` recarray rule; a ``List(item=Union)`` (OC's
+    ``output``, PRP's ``perioddata``) has no recarray indirection -- its
+    arms are spliced into the block's own field list directly. An Array arm
+    there (PRP's ``steps``) needs its type precomputed as ``field_type``
+    would otherwise use full griddata-array syntax instead of "N trailing
+    values". Every field also passes through ``filters.valid_as_union``.
     """
     all_blocks = []
     all_fields = {}

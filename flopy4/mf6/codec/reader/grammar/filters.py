@@ -2,15 +2,9 @@ from modflow_devtools.dfns.schema import Array, InputField, Keyword, Union
 
 
 def valid_as_union(field: InputField) -> InputField:
-    """Normalize a ``valid=``-constrained scalar into a synthetic keyword union.
-
-    A ``String``/``Integer`` field restricted to a fixed set of literal
-    values (e.g. STO's ``storage`` field: one of ``STEADY-STATE``/
-    ``TRANSIENT``) is, for grammar/transform purposes, structurally
-    identical to a keystring union of ``Keyword`` arms -- even though the
-    dev3 schema doesn't model it as a real ``Union``. Reuses the existing
-    dispatch-by-rule-name union machinery instead of adding a second,
-    parallel mechanism just for this case.
+    """Turn a ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
+    STEADY-STATE/TRANSIENT) into a keyword union with one arm per value, so
+    it reuses the existing union grammar/dispatch instead of a second path.
     """
     valid = getattr(field, "valid", None)
     if not valid:
