@@ -550,12 +550,9 @@ def item_class(
         {{ block_schema | item_class("Packagedata") }}
         {{ arm_schema | item_class("Status", keyword="STATUS") }}
 
-    ``package_class_name``, the enclosing package's own generated class
-    name (e.g. ``"Oc"``), is only needed when `schema_list` contains a
-    ``role="nested_union"`` column -- it's rendered as the qualifier for
-    that field's forward-reference union annotation (``"Oc.All |
-    Oc.First | ..."``), the same forward-ref-by-sibling-name convention
-    used for a single nested `Record` field.
+    ``package_class_name`` (e.g. ``"Oc"``) is only needed for a
+    ``role="nested_union"`` column -- it qualifies that field's
+    forward-reference union annotation (``"Oc.All | Oc.First | ..."``).
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
     real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
@@ -660,20 +657,15 @@ def item_class(
 
     def _field_line(col: dict, *, optional: bool) -> str:
         if col["role"] == "nested_union":
-            # A union nested inside this arm's own fields (OC's ocsetting)
-            # whose arms were already built as sibling classes on the
-            # enclosing package (see make.py's _build_arm_specs_from_union)
-            # -- a required forward-ref union-of-classes annotation, the
-            # same convention _nested_class uses for a single nested
-            # Record field, generalized to several sibling classes.
+            # Union nested inside this arm (OC's ocsetting), arms already
+            # built as sibling classes (see make.py's
+            # _build_arm_specs_from_union) -- forward-ref union annotation.
             arms = " | ".join(f"{package_class_name}.{c}" for c in col["arm_classes"])
             return f'        {col["name"]}: "{arms}" = field()'
         if col["role"] == "array":
-            # Consumes all remaining tokens as a tuple (see item.py's
-            # from_tokens/to_tokens "array" metadata handling) -- a
+            # Consumes all remaining tokens as a tuple -- a
             # keyword-plus-trailing-values setting whose arity/type isn't
-            # fixed (PRP's Steps.steps/Fraction's leaf field), not a single
-            # value.
+            # fixed (PRP's Steps.steps/Fraction's leaf field).
             return f"        {col['name']}: tuple = field(default=(), array=True)"
         # File-reference columns (a fixed MF6 token or two before a filename,
         # e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields built via the

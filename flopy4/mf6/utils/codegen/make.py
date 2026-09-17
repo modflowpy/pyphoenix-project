@@ -93,11 +93,9 @@ class PeriodArmSpec:
     Item class (e.g. LAK's Stage/Rate/Status, OC's Saverecord/Printrecord).
 
     ``top_level`` is False for an arm built by recursing into another
-    arm's own union-typed field (e.g. OC's ocsetting: All/First/Last/
-    Frequency/Steps) -- such an arm is still emitted as a flat sibling
-    class, but must NOT be folded into the component's outer
-    ``_StressPeriodDataItem`` dispatch union, which stays exactly the set
-    of arms dispatched directly off the period list's own rows.
+    arm's own union-typed field (e.g. OC's ocsetting) -- still emitted as
+    a flat sibling class, but excluded from the outer
+    ``_StressPeriodDataItem`` dispatch union.
     """
 
     class_name: str
@@ -161,10 +159,10 @@ def _schema_dict_from_columns(
     (optional keywords, e.g. MIXED) get role 'inline_keyword'. aux columns are
     excluded -- appended dynamically in __attrs_post_init__.
 
-    ``nested_arm_classes``, when given, maps a column name to the sibling
-    arm class names already built for it (see ``_build_arm_specs_from_union``)
-    -- such a column gets ``role="nested_union"`` instead of falling through
-    to the generic untyped-union ``role="array"`` case below.
+    ``nested_arm_classes``, when given, maps a column name to sibling arm
+    class names already built for it (see ``_build_arm_specs_from_union``)
+    -- such a column gets ``role="nested_union"`` instead of the generic
+    untyped-union ``role="array"`` below.
     """
     nested_arm_classes = nested_arm_classes or {}
     schema = []
@@ -197,22 +195,16 @@ def _schema_dict_from_columns(
             entry["role"] = "inline_keyword"
             entry["optional"] = True
         elif isinstance(f, UnionField) and col.name in nested_arm_classes:
-            # A union nested inside a keystring-union arm (OC's ocsetting)
-            # whose own arms were already built recursively (see
-            # _build_arm_specs_from_union) -- typed dispatch, not a raw
-            # tuple.
+            # Nested union already expanded into typed arms (OC's
+            # ocsetting) -- see _build_arm_specs_from_union.
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
         elif isinstance(f, UnionField) or (isinstance(f, Array) and not getattr(f, "shape", None)):
-            # A union nested inside a keystring-union arm that wasn't (or
-            # couldn't be) recursively expanded above, or a bare
-            # *unbounded* array arm (PRP's STEPS n1 n2 ..., shape=[]
-            # meaning "however many follow") -- keyword-plus-trailing-values,
-            # not a single value; consumes all remaining tokens as a tuple.
-            # A *named*-dimension array (e.g. EVT's pxdp/petm, shape=
-            # ["nseg-1"]) is a fixed-length column like any other, not this
-            # catch-all -- is_cellid (shape=["ncelldim"]) was already
-            # handled above as the other named-dimension case.
+            # A nested union not (or not yet) expanded above, or a bare
+            # *unbounded* array arm (PRP's STEPS n1 n2 ..., shape=[]) --
+            # keyword-plus-trailing-values, consumes all remaining tokens
+            # as a tuple. A *named*-dimension array (e.g. EVT's pxdp/petm)
+            # is a fixed-length column instead; is_cellid was handled above.
             entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"
@@ -240,11 +232,8 @@ def _dfn_type_str(f: FieldV3) -> str:
     if isinstance(f, KeywordField):
         return "keyword"
     if isinstance(f, UnionField):
-        # Called unconditionally for every column in _schema_dict_from_columns,
-        # including a nested-union column that gets role="nested_union"
-        # there (see _build_arm_specs_from_union) -- this "object" dfn_type
-        # is unused in that case, since filters.py's nested_union branch
-        # never consults it.
+        # Unused for a role="nested_union" column -- filters.py's
+        # nested_union branch never consults dfn_type.
         return "object"
     return getattr(f, "dtype", "double")  # Array
 
@@ -384,7 +373,7 @@ def _build_arm_specs_from_union(
     union: UnionField,
     used_names: set[str],
     nested_union_cache: "dict[tuple[str, ...], list[PeriodArmSpec]]",
-    shared_cols: "list[tuple[str, FieldV3]]" = (),
+    shared_cols: "list[tuple[str, FieldV3]]" = [],
     *,
     name_hint: str = "",
     top_level: bool = True,
@@ -400,23 +389,17 @@ def _build_arm_specs_from_union(
     - SFR/MAW-style: the union is a sibling of an outer index field (item
       Record = {ifno, ...setting: Union}) -- shared by every arm.
 
-    An arm field that's itself a union (OC's ocsetting -- ALL/FIRST/LAST/
-    FREQUENCY/STEPS) is recursively exploded into its own typed sub-arms by
-    calling this function again (`top_level=False`), the same way PRP's
-    structurally-identical `releasesetting` is handled at the top level --
-    one convention, not two. The DFN schema doesn't cap union nesting depth
-    at one level (a Union's arm may be a Record, whose own fields may
-    include another Union), so this recurses generically rather than
-    special-casing a single extra level.
+    An arm field that's itself a union (OC's ocsetting) is recursively
+    exploded into its own typed sub-arms via a recursive call
+    (`top_level=False`) -- the DFN schema doesn't cap union nesting depth,
+    so this handles arbitrary depth rather than special-casing one level.
 
-    `nested_union_cache`, shared across this whole call tree (top-level
-    call and every recursive call), is keyed by a nested union's own
-    arm-name set. It exists because DFN parsing builds each Record arm's
-    fields independently -- OC's `saverecord.ocsetting` and
-    `printrecord.ocsetting` are two distinct `Union` objects with identical
-    arms, not one shared object -- so without the cache, the second
-    occurrence would rebuild and rename a duplicate set of classes
-    (`PrintrecordAll` etc.) instead of reusing the first's.
+    `nested_union_cache` (shared across the whole call tree) is keyed by a
+    nested union's arm-name set, since DFN parsing builds each Record
+    arm's fields independently -- OC's `saverecord.ocsetting` and
+    `printrecord.ocsetting` are distinct `Union` objects with identical
+    arms, and without the cache the second occurrence would rebuild and
+    rename a duplicate set of classes instead of reusing the first's.
     """
     specs: list[PeriodArmSpec] = []
     for arm_name, arm in union.arms.items():

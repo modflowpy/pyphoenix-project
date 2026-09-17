@@ -25,20 +25,16 @@ def keyword_of(cls: type) -> str:
 
 
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
-    """Resolve a bare (already-unqualified) sibling class name against
-    `cls`'s enclosing class -- one level up in `__qualname__`, where every
-    generated flat-sibling class (composed Records, keystring-union arms)
-    actually lives regardless of DFN nesting depth. Returns whatever
-    attribute is found (or None), with no type check of its own -- callers
-    (`_nested_class` here, `item.py`'s `_nested_union_classes`) each apply
-    their own subclass check, since they resolve against different base
-    classes (`Record` vs `Item`).
+    """Resolve a bare sibling class name one level up from `cls` in
+    `__qualname__`, where every generated flat-sibling class (composed
+    Records, keystring-union arms) lives regardless of DFN nesting depth.
+    No type check here -- callers (`_nested_class`, item.py's
+    `_nested_union_classes`) apply their own, against different base
+    classes.
 
-    Resolving here (rather than at class-body-execution time, via a bare
-    or even same-enclosing-class string annotation) is required because
-    Python class bodies can't see sibling names from an enclosing class
-    scope; the qualified string form (``"Oc.Format"``) exists only so
-    mypy's own scope analysis can resolve it too.
+    Must resolve at runtime: a class body can't see sibling names from an
+    enclosing scope, which is why the qualified string form
+    (``"Oc.Format"``) exists at all -- purely for mypy.
     """
     obj = sys.modules[cls.__module__]
     for part in cls.__qualname__.split(".")[:-1]:
@@ -50,14 +46,11 @@ def _resolve_sibling_class(cls: type, name: str) -> Any | None:
 def _nested_class(cls: type, type_str: str) -> "type[Record] | None":
     """If a field's raw type annotation (e.g. ``"Format"`` or
     ``"Optional[Oc.Format]"``) names a Record subclass, return it; else
-    None. No declared "is this nested" flag needed -- resolvability against
-    a real Record subclass is itself the signal.
+    None. Resolvability against a real Record subclass is itself the
+    signal -- no declared "is this nested" flag needed.
 
-    Composed record classes (see item.py's module docstring and
-    make.py's _build_record_class_specs) are generated as flat siblings
-    inside the same package class regardless of DFN nesting depth (see
-    _resolve_sibling_class). Cached since to_tokens/from_tokens call this
-    per field, often repeatedly while parsing many rows.
+    Cached since to_tokens/from_tokens call this per field, often
+    repeatedly while parsing many rows.
     """
     name = type_str
     if name.startswith("Optional[") and name.endswith("]"):

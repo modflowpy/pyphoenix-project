@@ -16,7 +16,7 @@ by its own leading keyword token (STATUS/STAGE/RATE/...).
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Union, cast, get_args, get_origin
 
 import attrs
 
@@ -56,12 +56,10 @@ def _has_boundname_field(cls: type) -> bool:
 @lru_cache(maxsize=None)
 def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] | None":
     """If a field's raw type annotation is a `` | ``-joined forward
-    reference to sibling Item classes (e.g. ``"Oc.All | Oc.First | Oc.Last
-    | Oc.Frequency | Oc.Steps"``, see make.py's _build_arm_specs_from_union
-    / filters.py's item_class), return the tuple of resolved classes; else
-    None. No declared "is this a nested union" flag needed -- resolvability
-    against real Item subclasses is itself the signal, same philosophy as
-    record.py's _nested_class for the single-nested-Record-field case.
+    reference to sibling Item classes (e.g. ``"Oc.All | Oc.First | ..."``,
+    see make.py's _build_arm_specs_from_union), return the tuple of
+    resolved classes; else None. Resolvability is itself the signal, same
+    as record.py's _nested_class.
 
     Cached since to_tokens/from_tokens call this per field, often
     repeatedly while parsing many rows.
@@ -72,7 +70,15 @@ def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] |
     resolved = [_resolve_sibling_class(cls, name) for name in names]
     if any(not (isinstance(r, type) and issubclass(r, Item)) for r in resolved):
         return None
-    return tuple(resolved)
+    return tuple(cast("list[type[Item]]", resolved))
+
+
+def _field_type_str(f: attrs.Attribute) -> "str | None":
+    """attrs stubs type `Attribute.type` as `type | None`, but attrs
+    actually stores the raw annotation there -- a string for a forward
+    reference (every nested-sibling-union field). None otherwise."""
+    t: Any = f.type
+    return t if isinstance(t, str) else None
 
 
 def construct_item(item_cls: type, values) -> "Item":
@@ -90,7 +96,10 @@ def construct_item(item_cls: type, values) -> "Item":
             for i, f in enumerate(fields)
             if f.name == "aux"
             or f.metadata.get("array")
-            or (isinstance(f.type, str) and _nested_union_classes(item_cls, f.type) is not None)
+            or (
+                (t := _field_type_str(f)) is not None
+                and _nested_union_classes(item_cls, t) is not None
+            )
         ),
         None,
     )
@@ -98,9 +107,10 @@ def construct_item(item_cls: type, values) -> "Item":
     if tuple_idx is None:
         return item_cls(*values)
     nested_field = fields[tuple_idx]
+    nested_field_type = _field_type_str(nested_field)
     arm_classes = (
-        _nested_union_classes(item_cls, nested_field.type)
-        if isinstance(nested_field.type, str)
+        _nested_union_classes(item_cls, nested_field_type)
+        if nested_field_type is not None
         else None
     )
     boundname_val = None
@@ -227,14 +237,9 @@ class Item(Record):
                 if val:
                     row.append(f.name.upper())
             elif isinstance(val, Record):
-                # A nested keystring-union field (OC's ocsetting) -- val is
-                # already the resolved arm instance (Oc.Steps, ...); it
-                # knows how to serialize itself. No declared flag needed,
-                # same "resolvability is the signal" philosophy as
-                # _nested_union_classes/_nested_class -- but here we
-                # already have the value, not just its type annotation, so
-                # a plain isinstance check on the value suffices (matches
-                # Record.to_tokens's own nested-Record handling).
+                # Nested keystring-union field (OC's ocsetting) -- val is
+                # already the resolved arm instance and knows how to
+                # serialize itself.
                 if not keyword_emitted:
                     row.append(keyword.upper())
                     keyword_emitted = True
@@ -311,7 +316,9 @@ class Item(Record):
         nested_union_fields = [
             f
             for f in main_fields
-            if isinstance(f.type, str) and _nested_union_classes(cls, f.type) is not None
+            if (t := _field_type_str(f)) is not None
+            # mypy false positive: type[Item] vs. Hashable (lru_cache arg)
+            and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
         ]
         main_fields = [f for f in main_fields if f not in nested_union_fields]
         array_fields = [f for f in main_fields if f.metadata.get("array")]
@@ -375,16 +382,17 @@ class Item(Record):
                 tok_idx += 1
             kwargs[f.name] = tuple(vals)
         elif nested_union_fields:
-            # A nested keystring-union field (OC's ocsetting: ALL/FIRST/
-            # LAST/FREQUENCY n/STEPS n1 n2 ...) -- consumes everything left
-            # up to aux/boundname's own reserved slots, same span logic as
-            # the array-field case above, but dispatches and parses a real
-            # typed arm instance instead of collecting a raw tuple.
+            # Nested keystring-union field (OC's ocsetting) -- same span
+            # logic as array_fields above, but dispatches a typed arm
+            # instance instead of collecting a raw tuple.
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
             f = nested_union_fields[0]
-            arm_classes = _nested_union_classes(cls, f.type)
+            nested_field_type = _field_type_str(f)
+            assert nested_field_type is not None
+            arm_classes = _nested_union_classes(cls, nested_field_type)  # type: ignore[arg-type]
+            assert arm_classes is not None
             end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
             nested_tokens = list(tokens[tok_idx:end])
             arm_cls = dispatch_union_item(nested_tokens, arm_classes)
