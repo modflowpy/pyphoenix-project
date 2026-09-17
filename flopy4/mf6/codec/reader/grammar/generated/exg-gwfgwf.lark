@@ -21,13 +21,17 @@ dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
 exchangedata_block: "begin"i "exchangedata"i exchangedata_fields "end"i "exchangedata"i
 options_fields: (auxiliary | boundnames | print_input | print_flows | save_flows | cell_averaging | cvoptions | newton | xt3d | gnc_filerecord | mvr_filerecord | obs_filerecord | dev_interfacemodel_on)*
 dimensions_fields: (nexg)*
-exchangedata_fields: (exchangedata)*
+exchangedata_fields: (exchangedatadata)*
 auxiliary: "auxiliary"i array
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 save_flows: "save_flows"i 
-cell_averaging: "cell_averaging"i string
+cell_averaging: cell_averaging_harmonic | cell_averaging_logarithmic | cell_averaging_amt_lmk
+cell_averaging_harmonic: "harmonic"i
+cell_averaging_logarithmic: "logarithmic"i
+cell_averaging_amt_lmk: "amt-lmk"i
+
 cvoptions: "variablecv"i "dewatered"i
 newton: "newton"i 
 xt3d: "xt3d"i 
@@ -36,4 +40,4 @@ mvr_filerecord: "mvr6"i "filein"i word
 obs_filerecord: "obs6"i "filein"i word
 dev_interfacemodel_on: "dev_interfacemodel_on"i 
 nexg: "nexg"i integer
-exchangedata: "exchangedata"i list
+exchangedatadata: record+

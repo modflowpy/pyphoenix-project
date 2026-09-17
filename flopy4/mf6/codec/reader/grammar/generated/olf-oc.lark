@@ -25,9 +25,10 @@ budget_filerecord: "budget"i "fileout"i word
 budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 qoutflow_filerecord: "qoutflow"i "fileout"i word
 stage_filerecord: "stage"i "fileout"i word
-qoutflowprintrecord: "qoutflow"i "print_format"i
+qoutflowprintrecord: "qoutflow"i "print_format"i formatrecord
 saverecord: "save"i word ocsetting
 printrecord: "print"i word ocsetting
+formatrecord: integer integer integer word
 ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
 ocsetting_all: "all"i
 ocsetting_first: "first"i

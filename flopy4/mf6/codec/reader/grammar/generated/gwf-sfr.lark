@@ -15,21 +15,38 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | crosssections_block | connectiondata_block | initialstages_block
+block: options_block | dimensions_block | packagedata_block | crosssections_block | connectiondata_block | diversions_block | initialstages_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 crosssections_block: "begin"i "crosssections"i crosssections_fields "end"i "crosssections"i
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+diversions_block: "begin"i "diversions"i diversions_fields "end"i "diversions"i
 initialstages_block: "begin"i "initialstages"i initialstages_fields "end"i "initialstages"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
-options_fields: (obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight)*
+options_fields: (storage | ats_courant | auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight | dev_no_check)*
 dimensions_fields: (nreaches)*
-period_fields: ()*
-crosssections_fields: (crosssections)*
-connectiondata_fields: (connectiondata)*
-initialstages_fields: (initialstages)*
-obs_filerecord: "obs6"i word
+packagedata_fields: (packagedatadata)*
+crosssections_fields: (crosssectionsdata)*
+connectiondata_fields: (connectiondatadata)*
+diversions_fields: (diversionsdata)*
+initialstages_fields: (initialstagesdata)*
+period_fields: (stress_period_data)*
+storage: "storage"i 
+ats_courant: "ats_courant"i double
+auxiliary: "auxiliary"i array
+boundnames: "boundnames"i 
+print_input: "print_input"i 
+print_stage: "print_stage"i 
+print_flows: "print_flows"i 
+save_flows: "save_flows"i 
+stage_filerecord: "stage"i "fileout"i word
+budget_filerecord: "budget"i "fileout"i word
+budgetcsv_filerecord: "budgetcsv"i "fileout"i word
+package_convergence_filerecord: "package_convergence"i "fileout"i word
+ts_filerecord: "ts6"i "filein"i word
+obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 
 maximum_picard_iterations: "maximum_picard_iterations"i integer
 maximum_iterations: "maximum_iterations"i integer
@@ -38,7 +55,11 @@ unit_conversion: "unit_conversion"i double
 length_conversion: "length_conversion"i double
 time_conversion: "time_conversion"i double
 dev_storage_weight: "dev_storage_weight"i double
+dev_no_check: "dev_no_check"i 
 nreaches: "nreaches"i integer
-crosssections: "crosssections"i list
-connectiondata: "connectiondata"i list
-initialstages: "initialstages"i list
+packagedatadata: record+
+crosssectionsdata: record+
+connectiondatadata: record+
+diversionsdata: record+
+initialstagesdata: record+
+stress_period_data: record+

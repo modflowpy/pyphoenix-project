@@ -24,9 +24,10 @@ period_fields: (saverecord | printrecord)*
 budget_filerecord: "budget"i "fileout"i word
 budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 head_filerecord: "head"i "fileout"i word
-headprintrecord: "head"i "print_format"i
+headprintrecord: "head"i "print_format"i formatrecord
 saverecord: "save"i word ocsetting
 printrecord: "print"i word ocsetting
+formatrecord: integer integer integer word
 ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
 ocsetting_all: "all"i
 ocsetting_first: "first"i

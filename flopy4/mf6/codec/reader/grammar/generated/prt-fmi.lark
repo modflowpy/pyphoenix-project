@@ -19,6 +19,8 @@ block: options_block | packagedata_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 options_fields: (save_flows)*
-packagedata_fields: (packagedata)*
+packagedata_fields: (gwfhead | gwfbudget | gwfgrid)*
 save_flows: "save_flows"i 
-packagedata: "packagedata"i list
+gwfhead: "gwfhead"i "filein"i word
+gwfbudget: "gwfbudget"i "filein"i word
+gwfgrid: "gwfgrid"i "filein"i word

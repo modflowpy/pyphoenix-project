@@ -22,7 +22,7 @@ period_block: "begin"i "period"i block_index period_fields "end"i "period"i bloc
 block_index: integer
 options_fields: (readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | obs_filerecord | mover | export_array_netcdf)*
 dimensions_fields: (maxbound)*
-period_fields: (stress_period_data)*
+period_fields: (bhead | cond | aux)*
 readarraygrid: "readarraygrid"i 
 auxiliary: "auxiliary"i array
 auxmultname: "auxmultname"i string
@@ -33,4 +33,6 @@ obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 
 export_array_netcdf: "export_array_netcdf"i 
 maxbound: "maxbound"i integer
-stress_period_data: record+
+bhead: "bhead"i array
+cond: "cond"i array
+aux: "aux"i array

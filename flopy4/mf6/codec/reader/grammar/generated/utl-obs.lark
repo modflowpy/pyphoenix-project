@@ -17,9 +17,10 @@
 start: block*
 block: options_block | continuous_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
-continuous_block: "begin"i "continuous"i continuous_fields "end"i "continuous"i
+continuous_block: "begin"i "continuous"i block_index continuous_fields "end"i "continuous"i block_index
+block_index: integer
 options_fields: (digits | print_input)*
-continuous_fields: (continuous)*
+continuous_fields: (continuousdata)*
 digits: "digits"i integer
 print_input: "print_input"i 
-continuous: "continuous"i list
+continuousdata: record+

@@ -19,13 +19,17 @@ block: attributes_block | timeseries_block
 attributes_block: "begin"i "attributes"i attributes_fields "end"i "attributes"i
 timeseries_block: "begin"i "timeseries"i timeseries_fields "end"i "timeseries"i
 attributes_fields: (time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | method | interpolation_method_single | sfacrecord | sfacrecord_single | sfac)*
-timeseries_fields: (timeseries)*
-time_series_namerecord: "names"i word
-interpolation_methodrecord: "methods"i word
+timeseries_fields: (timeseriesdata)*
+time_series_namerecord: "names"i array
+interpolation_methodrecord: "methods"i array
 interpolation_methodrecord_single: 
 method: "method"i 
-interpolation_method_single: "interpolation_method_single"i string
-sfacrecord: "sfacs"i double
-sfacrecord_single: double
+interpolation_method_single: interpolation_method_single_stepwise | interpolation_method_single_linear | interpolation_method_single_linearend
+interpolation_method_single_stepwise: "stepwise"i
+interpolation_method_single_linear: "linear"i
+interpolation_method_single_linearend: "linearend"i
+
+sfacrecord: "sfacs"i array
+sfacrecord_single: array
 sfac: "sfac"i 
-timeseries: "timeseries"i list
+timeseriesdata: record+

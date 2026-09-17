@@ -1,50 +1,48 @@
 import pytest
-from modflow_devtools.dfn import Dfn, Field
-from packaging.version import Version
+from modflow_devtools.dfns.schema import (
+    Array,
+    Block,
+    Double,
+    Integer,
+    Keyword,
+    List,
+    Package,
+    Record,
+    String,
+    Union,
+)
 
 from flopy4.mf6.codec.reader.grammar import make_grammar, make_grammars
 
 
 @pytest.fixture
 def minimal_dfn():
-    """Create a minimal DFN for testing."""
-    return Dfn(
-        schema_version=Version("2.0.0"),
+    """Create a minimal component for testing."""
+    return Package(
         name="test-component",
         blocks={
-            "options": {
-                "test_field": Field(
-                    name="test_field",
-                    type="keyword",
-                    block="options",
-                )
-            }
+            "options": Block(
+                name="options",
+                fields={"test_field": Keyword(name="test_field")},
+            )
         },
     )
 
 
 @pytest.fixture
 def simple_dfn():
-    """Create a simple DFN with various field types."""
-    return Dfn(
-        schema_version=Version("2.0.0"),
+    """Create a simple component with various field types."""
+    return Package(
         name="gwf-test",
         blocks={
-            "options": {
-                "export_ascii": Field(
-                    name="export_array_ascii",
-                    type="keyword",
-                    block="options",
-                )
-            },
-            "griddata": {
-                "strt": Field(
-                    name="strt",
-                    type="double",
-                    block="griddata",
-                    shape="(nodes)",
-                )
-            },
+            "options": Block(
+                name="options",
+                fields={"export_ascii": Keyword(name="export_array_ascii")},
+            ),
+            "griddata": Block(
+                name="griddata",
+                fields={"strt": Array(name="strt", dtype="double", shape=["nodes"])},
+            ),
         },
     )
 
@@ -84,34 +82,16 @@ def test_make_all_grammars(tmp_path):
     outdir = tmp_path / "new_directory"
     assert not outdir.exists()
 
-    dfns = {
-        "test1": Dfn(
-            schema_version=Version("2.0.0"),
-            name="test1",
-            blocks={},
-        )
-    }
+    dfns = {"test1": Package(name="test1", blocks={})}
 
     make_grammars(dfns, outdir)
     assert outdir.exists()
     assert outdir.is_dir()
 
     dfns = {
-        "comp1": Dfn(
-            schema_version=Version("2.0.0"),
-            name="comp1",
-            blocks={},
-        ),
-        "comp2": Dfn(
-            schema_version=Version("2.0.0"),
-            name="comp2",
-            blocks={},
-        ),
-        "comp3": Dfn(
-            schema_version=Version("2.0.0"),
-            name="comp3",
-            blocks={},
-        ),
+        "comp1": Package(name="comp1", blocks={}),
+        "comp2": Package(name="comp2", blocks={}),
+        "comp3": Package(name="comp3", blocks={}),
     }
 
     make_grammars(dfns, tmp_path)
@@ -141,31 +121,30 @@ def test_make_grammar_overwrites_existing(tmp_path, minimal_dfn):
 
 
 def test_make_grammar_with_period_block(tmp_path):
-    dfn = Dfn(
-        schema_version=Version("2.0.0"),
+    dfn = Package(
         name="gwf-test",
         blocks={
-            "options": {
-                "print_input": Field(
-                    name="print_input",
-                    type="keyword",
-                    block="options",
-                )
-            },
-            "period": {
-                "q": Field(
-                    name="q",
-                    type="double",
-                    block="period",
-                    shape="(nper, nnodes)",
-                ),
-                "aux": Field(
-                    name="aux",
-                    type="double",
-                    block="period",
-                    shape="(nper, nnodes, naux)",
-                ),
-            },
+            "options": Block(
+                name="options",
+                fields={"print_input": Keyword(name="print_input")},
+            ),
+            "period": Block(
+                name="period",
+                header=Integer(name="iper"),
+                fields={
+                    "stress_period_data": List(
+                        name="stress_period_data",
+                        shape=["maxbound"],
+                        item=Record(
+                            name="stress_period_data",
+                            fields={
+                                "q": Double(name="q"),
+                                "aux": Double(name="aux"),
+                            },
+                        ),
+                    )
+                },
+            ),
         },
     )
 
@@ -187,21 +166,27 @@ def test_make_grammar_with_period_block(tmp_path):
     # stress_period_data should accept numbers and strings, one row per line
     assert "stress_period_data:" in content
     stress_period_data_line = [l for l in lines if l.strip().startswith("stress_period_data:")][0]
+    assert "record" in stress_period_data_line
 
 
 def test_make_grammar_with_named_subfields(tmp_path):
-    dfn = Dfn(
-        schema_version=Version("2.0.0"),
+    dfn = Package(
         name="gwf-rch",
         blocks={
-            "period": {
-                "recharge": Field(
-                    name="recharge",
-                    type="double",
-                    block="period",
-                    shape="(nper, nnodes)",
-                ),
-            },
+            "period": Block(
+                name="period",
+                header=Integer(name="iper"),
+                fields={
+                    "stress_period_data": List(
+                        name="stress_period_data",
+                        shape=["maxbound"],
+                        item=Record(
+                            name="stress_period_data",
+                            fields={"recharge": Double(name="recharge")},
+                        ),
+                    )
+                },
+            ),
         },
     )
 
@@ -220,31 +205,38 @@ def test_make_grammar_with_named_subfields(tmp_path):
 
 def test_make_grammar_with_oc_style_records(tmp_path):
     """Test grammar generation for OC-style records with union fields."""
-    dfn = Dfn(
-        schema_version=Version("2.0.0"),
+    dfn = Package(
         name="gwf-oc",
         blocks={
-            "period": {
-                "saverecord": Field(
-                    name="saverecord",
-                    type="record",
-                    block="period",
-                    children={
-                        "save": Field(name="save", type="keyword", block="period"),
-                        "rtype": Field(name="rtype", type="string", block="period"),
-                        "ocsetting": Field(
-                            name="ocsetting",
-                            type="union",
-                            block="period",
-                            children={
-                                "all": Field(name="all", type="keyword", block="period"),
-                                "first": Field(name="first", type="keyword", block="period"),
-                                "last": Field(name="last", type="keyword", block="period"),
+            "period": Block(
+                name="period",
+                header=Integer(name="iper"),
+                fields={
+                    "output": List(
+                        name="output",
+                        item=Union(
+                            name="output",
+                            arms={
+                                "saverecord": Record(
+                                    name="saverecord",
+                                    fields={
+                                        "save": Keyword(name="save"),
+                                        "rtype": String(name="rtype"),
+                                        "ocsetting": Union(
+                                            name="ocsetting",
+                                            arms={
+                                                "all": Keyword(name="all"),
+                                                "first": Keyword(name="first"),
+                                                "last": Keyword(name="last"),
+                                            },
+                                        ),
+                                    },
+                                ),
                             },
                         ),
-                    },
-                )
-            }
+                    )
+                },
+            )
         },
     )
 

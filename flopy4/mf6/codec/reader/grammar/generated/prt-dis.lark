@@ -30,7 +30,7 @@ yorigin: "yorigin"i double
 angrot: "angrot"i double
 export_array_ascii: "export_array_ascii"i 
 export_array_netcdf: "export_array_netcdf"i 
-crs: "crs"i array
+crs: "crs"i string
 ncf_filerecord: "ncf6"i "filein"i word
 nlay: "nlay"i integer
 nrow: "nrow"i integer

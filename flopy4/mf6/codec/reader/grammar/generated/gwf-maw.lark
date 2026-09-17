@@ -15,16 +15,21 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | connectiondata_block
+block: options_block | dimensions_block | packagedata_block | connectiondata_block | angledata_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
+packagedata_block: "begin"i "packagedata"i packagedata_fields "end"i "packagedata"i
 connectiondata_block: "begin"i "connectiondata"i connectiondata_fields "end"i "connectiondata"i
+angledata_block: "begin"i "angledata"i angledata_fields "end"i "angledata"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
-options_fields: (boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover)*
+options_fields: (auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | non_vertical_wells | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover | dev_peaceman_effective_radius)*
 dimensions_fields: (nmawwells)*
-period_fields: ()*
-connectiondata_fields: (connectiondata)*
+packagedata_fields: (packagedatadata)*
+connectiondata_fields: (connectiondatadata)*
+angledata_fields: (angledatadata)*
+period_fields: (stress_period_data)*
+auxiliary: "auxiliary"i array
 boundnames: "boundnames"i 
 print_input: "print_input"i 
 print_head: "print_head"i 
@@ -35,6 +40,7 @@ budget_filerecord: "budget"i "fileout"i word
 budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 no_well_storage: "no_well_storage"i 
 flow_correction: "flow_correction"i 
+non_vertical_wells: "non_vertical_wells"i 
 flowing_wells: "flowing_wells"i 
 shutdown_theta: "shutdown_theta"i double
 shutdown_kappa: "shutdown_kappa"i double
@@ -42,5 +48,9 @@ mfrcsv_filerecord: "maw_flow_reduce_csv"i "fileout"i word
 ts_filerecord: "ts6"i "filein"i word
 obs_filerecord: "obs6"i "filein"i word
 mover: "mover"i 
+dev_peaceman_effective_radius: "dev_peaceman_effective_radius"i 
 nmawwells: "nmawwells"i integer
-connectiondata: "connectiondata"i list
+packagedatadata: record+
+connectiondatadata: record+
+angledatadata: record+
+stress_period_data: record+

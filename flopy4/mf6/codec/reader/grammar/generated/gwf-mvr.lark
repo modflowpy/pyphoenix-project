@@ -15,16 +15,16 @@
 %ignore SH_COMMENT
 
 start: block*
-block: options_block | dimensions_block | period_block | packages_block
+block: options_block | dimensions_block | packages_block | period_block
 options_block: "begin"i "options"i options_fields "end"i "options"i
 dimensions_block: "begin"i "dimensions"i dimensions_fields "end"i "dimensions"i
-period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 packages_block: "begin"i "packages"i packages_fields "end"i "packages"i
+period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
 options_fields: (print_input | print_flows | modelnames | budget_filerecord | budgetcsv_filerecord)*
 dimensions_fields: (maxmvr | maxpackages)*
+packages_fields: (packagesdata)*
 period_fields: (stress_period_data)*
-packages_fields: (packages)*
 print_input: "print_input"i 
 print_flows: "print_flows"i 
 modelnames: "modelnames"i 
@@ -32,5 +32,5 @@ budget_filerecord: "budget"i "fileout"i word
 budgetcsv_filerecord: "budgetcsv"i "fileout"i word
 maxmvr: "maxmvr"i integer
 maxpackages: "maxpackages"i integer
-packages: "packages"i list
+packagesdata: record+
 stress_period_data: record+

@@ -22,7 +22,11 @@ options_fields: (save_flows | print_flows | alternative_cell_averaging | thickst
 griddata_fields: (icelltype | k | k22 | k33 | angle1 | angle2 | angle3 | wetdry)*
 save_flows: "save_flows"i 
 print_flows: "print_flows"i 
-alternative_cell_averaging: "alternative_cell_averaging"i string
+alternative_cell_averaging: alternative_cell_averaging_logarithmic | alternative_cell_averaging_amt_lmk | alternative_cell_averaging_amt_hmk
+alternative_cell_averaging_logarithmic: "logarithmic"i
+alternative_cell_averaging_amt_lmk: "amt-lmk"i
+alternative_cell_averaging_amt_hmk: "amt-hmk"i
+
 thickstrt: "thickstrt"i 
 cvoptions: "variablecv"i "dewatered"i
 perched: "perched"i 

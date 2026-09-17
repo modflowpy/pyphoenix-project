@@ -26,8 +26,8 @@ options_fields: (length_units | nogrb | grb_filerecord | xorigin | yorigin | ang
 dimensions_fields: (nodes | nja | nvert)*
 griddata_fields: (top | bot | area | idomain)*
 connectiondata_fields: (iac | ja | ihc | cl12 | hwva | angldegx)*
-vertices_fields: (vertices)*
-cell2d_fields: (cell2d)*
+vertices_fields: (verticesdata)*
+cell2d_fields: (cell2ddata)*
 length_units: "length_units"i string
 nogrb: "nogrb"i 
 grb_filerecord: "grb6"i "fileout"i word
@@ -36,7 +36,7 @@ yorigin: "yorigin"i double
 angrot: "angrot"i double
 vertical_offset_tolerance: "vertical_offset_tolerance"i double
 export_array_ascii: "export_array_ascii"i 
-crs: "crs"i array
+crs: "crs"i string
 nodes: "nodes"i integer
 nja: "nja"i integer
 nvert: "nvert"i integer
@@ -50,5 +50,5 @@ ihc: "ihc"i array
 cl12: "cl12"i array
 hwva: "hwva"i array
 angldegx: "angldegx"i array
-vertices: "vertices"i list
-cell2d: "cell2d"i list
+verticesdata: record+
+cell2ddata: record+

@@ -40,11 +40,13 @@ block_index: integer
 {% for field_name in block.standalone_fields -%}
 {% if field_name not in generated_rules -%}
 {% set field = fields[field_name] -%}
-{% set field_type = field|field_type -%}
+{% set field_type = field_type_overrides.get(field_name) or (field|field_type) -%}
 {% if field.type == 'record' and field.children is not none -%}
 {{ m.record_field(field_name, field) }}
 {% elif field.type == 'union' and field.children is not none -%}
 {{ m.union_field(field_name, field) }}
+{% elif field.type == 'file' -%}
+{{ m.file_field(field_name, field) }}
 {% else -%}
 {{ m.simple_field(field_name, field, field_type) }}
 {% endif -%}
@@ -59,6 +61,9 @@ block_index: integer
 {% for child_name, child in field.children.items() -%}
 {% if child.type == 'union' and child_name not in unions_generated -%}
 {{ m.nested_union(child_name, child) }}
+{% set _ = unions_generated.append(child_name) -%}
+{% elif child.type == 'record' and child.children is not none and child_name not in unions_generated -%}
+{{ m.record_field(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% endif -%}
 {% endfor -%}

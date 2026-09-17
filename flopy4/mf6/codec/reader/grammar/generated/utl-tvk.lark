@@ -20,6 +20,7 @@ options_block: "begin"i "options"i options_fields "end"i "options"i
 period_block: "begin"i "period"i block_index period_fields "end"i "period"i block_index
 block_index: integer
 options_fields: (print_input | ts_filerecord)*
-period_fields: ()*
+period_fields: (stress_period_data)*
 print_input: "print_input"i 
 ts_filerecord: "ts6"i "filein"i word
+stress_period_data: record+
