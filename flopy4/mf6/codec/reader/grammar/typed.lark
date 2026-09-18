@@ -1,3 +1,9 @@
+// Newlines are significant here (only inline whitespace and COMMA are
+// %ignore'd, not NEWLINE) -- a blanket "%ignore" that swallowed newlines
+// couldn't reliably delimit list/record rows or bound a trailing per-line
+// remark, since an ignored whitespace run always maximal-munches past a
+// bare newline whenever the following line is indented.
+
 integer: SIGNED_INT | INT
 double: SIGNED_NUMBER | NUMBER
 number: SIGNED_NUMBER | NUMBER
@@ -47,20 +53,6 @@ _token: word | number
 _REMARK.-1: /[^\s,]+/
 _remark: _REMARK+
 open_close_redirect: "open/close"i filename [_remark] _NL
-
-// Fallback for a whole block whose name isn't in the current DFN at all --
-// e.g. sln-ims's legacy "BEGIN XMD"/"BEGIN DE4" solver blocks, confirmed
-// zero matching block entries in the current DFN (pre-MF6 solver options
-// with no current equivalent). Mirrors open_close_redirect's carve-out: an
-// unrecognized block name still parses structurally (content swallowed
-// verbatim, line by line) and is simply dropped by the transformer, rather
-// than hard-failing the whole file's parse. Only engages when the block
-// name doesn't match any of a component's own known block-name literals --
-// those are their own higher-priority string terminals and always win the
-// lexer's tie-break over this generic `word` fallback.
-unknown_block: "begin"i word [_remark] _NL _unknown_block_body "end"i word [_remark]
-_unknown_block_body: (_UNKNOWN_LINE _NL | _NL)*
-_UNKNOWN_LINE.-2: /(?!(?i:end\b))[^\n]+/
 
 %import common.NEWLINE -> _NL
 %import common.WS_INLINE

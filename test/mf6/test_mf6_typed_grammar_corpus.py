@@ -1,31 +1,10 @@
 """Corpus smoke test: parse every real package file the basic loader already
 handles with its typed, per-component grammar too.
 
-Reuses `test_mf6_load_all_models.py`'s `KNOWN_PASSING` corpus (models whose
-`Simulation.load()` -- the *basic*, untyped loader -- already completes end
-to end) as a source of real, known-good MF6 input text. For each such model,
-transiently wraps `Package.load` to capture every child package file it
-resolves along with its DFN name (`Package.dfn_name`, e.g. "gwf-wel"), then
-re-parses that same file's raw text through the *typed* grammar
-(`flopy4.mf6.codec.reader.loads_typed`). The wrapped call still runs the real
-`Package.load` underneath -- this only observes what gets resolved, it
-doesn't change the basic-path result for this test run.
-
-Unlike `test_mf6_load_all_models.py`'s per-model `xfail`, granularity here is
-naturally per-*file* (one model exercises several different package types),
-which doesn't fit that file's one-mark-per-parametrized-item idiom. Instead:
-a failure for a dfn_name listed in `KNOWN_TYPED_GAPS` (documented in
-`typed-grammar-corpus-gaps.md`, one entry per root cause, mirroring
-`load-corpus-gaps.md`'s methodology) is tolerated; any *other* dfn_name's
-file failing to parse is a hard failure -- either a new, uncataloged gap, or
-a regression in one already thought fixed.
-
-Explicitly out of scope (see the plan this test was written under): this
-only checks that the typed grammar *parses* the file -- it does not attempt
-to transform/structure the result the way `structure_component()` does for
-the basic path (dims-aware array reshaping, OPEN/CLOSE row redirection,
-AUXILIARY/TIMEARRAYSERIES dynamic fields). Parity here means parse-level
-parity only.
+Granularity is per-dfn_name (see `KNOWN_TYPED_GAPS`); a failure not listed
+there is a hard failure -- either a new gap or a regression. Parity here is
+parse-level only: this doesn't check the transform/structure step (see
+`typed-grammar-corpus-gaps.md` and the plan this test was written under).
 """
 
 from pathlib import Path
@@ -53,9 +32,11 @@ KNOWN_TYPED_GAPS: dict[str, str] = {
         "test044_lakebotfill_dev) write two option values on one line for "
         "a field the current DFN defines as a single scalar (e.g. "
         "'preconditioner_levels 0 7') -- a fixture-authoring artifact from "
-        "an old MODFLOW-2005/NWT conversion tool, not a grammar gap. "
-        "Legacy BEGIN XMD/DE4 solver blocks (no current DFN equivalent) "
-        "parse fine via the generic unknown_block fallback."
+        "an old MODFLOW-2005/NWT conversion tool, not a grammar gap. The "
+        "rest use legacy BEGIN XMD/DE4 solver blocks with no equivalent in "
+        "the current DFN; an unrecognized block name is a parse error by "
+        "design (see typed-grammar-corpus-gaps.md), so these are expected "
+        "failures, not a gap to close."
     ),
     "gwf-npf": (
         "2 files with a free-text remark that happens to contain a "
