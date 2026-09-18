@@ -7,21 +7,29 @@ def valid_as_union(field: InputField, block_name: str | None = None) -> InputFie
     it reuses the existing union grammar/dispatch instead of a second path.
 
     Whether the field's own name must precede the chosen value in real files
-    (e.g. NPF's "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (STO's bare
-    "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix -- confirmed against a
-    real fixture) is *not* reliably given by ``field.tagged``: several of
-    these fields (including STO's ``storage``) are synthesized by
+    (e.g. NPF's "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (*-STO's
+    bare "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix -- confirmed
+    against a real fixture) is *not* reliably given by ``field.tagged`` for
+    *-STO's ``storage`` specifically: it's synthesized by
     ``modflow_devtools``'s own DFN migration step from a pair of bare
     ``Keyword`` fields (see its ``_collapse_sto_keywords``), which builds the
     replacement ``String`` without setting ``tagged`` at all -- it silently
-    picks up the class default (``True``) regardless of real syntax. Real
-    per-block-field DFN entries never declare ``tagged`` for these fields
-    either, so there's no upstream signal to trust either way. The one
-    correlation confirmed across every case checked in the real corpus:
-    PERIOD-block valid-restricted fields are bare per-step selectors (like
-    the record-level keystrings, e.g. OC's ocsetting), while every other
-    block's valid-restricted fields are prefixed options -- so block context,
-    not ``field.tagged``, decides.
+    picks up the class default (``True``) regardless of real syntax (tracked
+    upstream: modflow-devtools todo.md, "STO's synthesized `storage` field
+    defaults to tagged=True"). Every *other* real ``valid=``-restricted field
+    checked in the current corpus (``rtype``, ``slntype``, ``scheme``,
+    ``alternative_cell_averaging``, ``sorption``, ``thermal_formulation``,
+    ``dry_tracking_method``, ``coordinate_check_method``, ``cell_averaging``,
+    ``adv_scheme``) already has a correct ``tagged`` value straight from the
+    real DFN source -- either explicitly declared (``rtype``/``slntype`` both
+    have a literal ``tagged false`` line) or correctly defaulting to
+    ``True`` when omitted (every OPTIONS-block one checked). ``storage`` is
+    the only field in the current spec where the block-context heuristic
+    below (PERIOD-block valid-restricted fields are bare per-step selectors,
+    every other block's are prefixed options) actually overrides
+    ``field.tagged`` -- so once the upstream fix lands, this heuristic can
+    likely be dropped in favor of trusting ``field.tagged`` directly (kept
+    for now since the installed ``modflow_devtools`` still has the bug).
     """
     valid = getattr(field, "valid", None)
     if not valid:
