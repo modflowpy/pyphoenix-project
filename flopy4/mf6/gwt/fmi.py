@@ -23,11 +23,13 @@ class Fmi(Package):
         default=False,
         block="options",
         optional=True,
+        longname="save calculated flow imbalance correction to budget file",
     )
     flow_imbalance_correction: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="correct for flow imbalance",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,

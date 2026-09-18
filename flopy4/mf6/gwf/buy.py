@@ -27,11 +27,13 @@ class Buy(Package):
         default=False,
         block="options",
         optional=True,
+        longname="hh formulation on right-hand side",
     )
     denseref: Optional[float] = field(
         default=1000.0,
         block="options",
         optional=True,
+        longname="reference density",
     )
     density_file: Optional[Path] = path(
         default=None,
@@ -43,6 +45,7 @@ class Buy(Package):
     nrhospecies: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of species used in density equation of state",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,

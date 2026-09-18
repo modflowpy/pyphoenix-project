@@ -16,21 +16,25 @@ class Mip(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to layered ascii files.",
     )
     porosity: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        longname="porosity",
     )
     retfactor: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         optional=True,
+        longname="retardation factor",
     )
     izone: Optional[IntArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
         optional=True,
+        longname="zone number",
     )

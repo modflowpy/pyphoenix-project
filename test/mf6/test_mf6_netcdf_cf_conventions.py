@@ -959,6 +959,23 @@ def test_mesh_dis_int_param_fill_value(structured_grid):
     assert ds["npf_icelltype_l1"].encoding.get("_FillValue") == FILL_INT64
 
 
+def test_structured_param_long_name(structured_grid):
+    """long_name must be the real DFN longname text (not the field name), and
+    must preserve its original casing -- matching MF6's own output exactly,
+    not blanket-lowercased by attrs-dict validation.
+    """
+    ds = _structured_param_ds(structured_grid, name="k")
+    assert ds["npf_k"].attrs.get("long_name") == "hydraulic conductivity (L/T)"
+    ds = _structured_param_ds(structured_grid, name="icelltype")
+    assert ds["npf_icelltype"].attrs.get("long_name") == "confined or convertible indicator"
+
+
+def test_mesh_dis_param_long_name(structured_grid):
+    """long_name must carry through correctly for layered-mesh DIS face variables too."""
+    ds = _structured_param_ds(structured_grid, name="k", mesh="layered", layer=1)
+    assert ds["npf_k_l1"].attrs.get("long_name") == "hydraulic conductivity (L/T) layer 1"
+
+
 # modflow_input attribute format
 def test_structured_param_modflow_input(structured_grid):
     """modflow_input must follow 'modelname/packagename/paramname' format (all lowercase)."""

@@ -17,16 +17,19 @@ class Mve(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save MVE flows to budget file",
     )
     budget_file: Optional[Path] = path(
         default=None,

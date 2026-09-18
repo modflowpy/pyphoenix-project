@@ -18,11 +18,13 @@ class Spca(Package):
     readasarrays: bool = field(
         default=True,
         block="options",
+        longname="use array-based input",
     )
     print_input: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     tas_file: Optional[Path] = path(
         default=None,

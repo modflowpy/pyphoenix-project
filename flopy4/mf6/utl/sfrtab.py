@@ -23,10 +23,12 @@ class Sfrtab(Package):
     nrow: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of table rows",
     )
     ncol: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of table columns",
     )
     table: Optional[list[Table]] = field(
         default=None,

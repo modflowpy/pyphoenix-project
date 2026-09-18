@@ -27,31 +27,37 @@ class Vsc(Package):
         default=1.0,
         block="options",
         optional=True,
+        longname="reference viscosity",
     )
     temperature_species_name: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="auxspeciesname that corresponds to temperature",
     )
     thermal_formulation: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify viscosity formulation for the temperature species",
     )
     thermal_a2: Optional[float] = field(
         default=10.0,
         block="options",
         optional=True,
+        longname="coefficient used in nonlinear viscosity function",
     )
     thermal_a3: Optional[float] = field(
         default=248.37,
         block="options",
         optional=True,
+        longname="coefficient used in nonlinear viscosity function",
     )
     thermal_a4: Optional[float] = field(
         default=133.15,
         block="options",
         optional=True,
+        longname="coefficient used in nonlinear viscosity function",
     )
     viscosity_file: Optional[Path] = path(
         default=None,
@@ -63,6 +69,7 @@ class Vsc(Package):
     nviscspecies: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of species used in viscosity equation of state",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,

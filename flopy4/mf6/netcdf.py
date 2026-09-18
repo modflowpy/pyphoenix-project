@@ -110,7 +110,7 @@ class _PackageSpec:
                 )
                 self.dims = normalized
                 self.metadata = {
-                    "longname": f.name,
+                    "longname": f.metadata.get("longname", f.name),
                     "block": f.metadata.get("block", ""),
                     "netcdf": True,
                 }
@@ -750,7 +750,12 @@ class NetCDFParam(BaseModel, NetCDFInput):
         """
         validate parameter attributes dictionary
         """
+        # long_name is free-text from the DFN (e.g. "hydraulic conductivity
+        # (L/T)") and must keep its original casing, matching MF6.
+        long_name = v.get("long_name")
         v = lower(v)
+        if long_name is not None:
+            v["long_name"] = long_name
         param = info.data.get("name")
         mesh = info.context.get("mesh")  # type: ignore
         shape = info.data.get("shape")

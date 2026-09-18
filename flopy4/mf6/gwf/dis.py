@@ -36,6 +36,7 @@ class Dis(DisBase):
     nrow: int = field(default=2, block="dimensions")
     delr: NDArray[np.float64] = field(
         default=1.0,
+        longname="spacing along a row",
         block="griddata",
         shape=("ncol",),
         layered=False,
@@ -43,6 +44,7 @@ class Dis(DisBase):
     )
     delc: NDArray[np.float64] = field(
         default=1.0,
+        longname="spacing along a column",
         block="griddata",
         shape=("nrow",),
         layered=False,
@@ -50,6 +52,7 @@ class Dis(DisBase):
     )
     top: NDArray[np.float64] = field(
         default=1.0,
+        longname="cell top elevation",
         block="griddata",
         shape=("ncpl",),
         layered=False,
@@ -57,13 +60,19 @@ class Dis(DisBase):
     )
     botm: NDArray[np.float64] = field(
         default=0.0,
+        longname="cell bottom elevation",
         block="griddata",
         shape=("nodes",),
         layered=True,
         netcdf=True,
     )
     idomain: Optional[NDArray[np.int64]] = field(
-        default=1, block="griddata", shape=("nodes",), layered=True, netcdf=True
+        default=1,
+        block="griddata",
+        shape=("nodes",),
+        layered=True,
+        netcdf=True,
+        longname="idomain existence array",
     )
 
     def __attrs_post_init__(self):

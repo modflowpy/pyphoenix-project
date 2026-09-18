@@ -32,16 +32,19 @@ class Evt(Package):
         default=False,
         block="options",
         optional=True,
+        longname="if cell is dry do not apply evapotranspiration to underlying cell",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="name of auxiliary variable for multiplier",
     )
     boundnames: bool = field(
         default=False,
@@ -52,16 +55,19 @@ class Evt(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print evapotranspiration rates to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save evapotranspiration rates to budget file",
     )
     ts_file: Optional[Path] = path(
         default=None,
@@ -81,10 +87,12 @@ class Evt(Package):
         default=False,
         block="options",
         optional=True,
+        longname="specify proportion of evapotranspiration rate at ET surface",
     )
     nseg: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of ET segments",
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",

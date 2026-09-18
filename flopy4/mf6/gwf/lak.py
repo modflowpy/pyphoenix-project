@@ -151,6 +151,7 @@ class Lak(Package):
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     boundnames: bool = field(
         default=False,
@@ -161,21 +162,25 @@ class Lak(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_stage: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated stages to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save lake flows to budget file",
     )
     stage_file: Optional[Path] = path(
         default=None,
@@ -228,43 +233,52 @@ class Lak(Package):
         default=None,
         block="options",
         optional=True,
+        longname="surface depression depth",
     )
     implicit: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="solve lake stage in the groundwater flow matrix",
     )
     maximum_iterations: Optional[int] = field(
         default=None,
         block="options",
         optional=True,
+        longname="LAK Newton-Raphson iterations",
     )
     maximum_stage_change: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="stage closure tolerance",
     )
     time_conversion: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="time conversion factor",
     )
     length_conversion: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="length conversion factor",
     )
     nlakes: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of lakes",
     )
     noutlets: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of outlets",
     )
     ntables: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of tables",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,

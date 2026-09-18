@@ -18,36 +18,43 @@ class Welg(Package):
     readarraygrid: bool = field(
         default=True,
         block="options",
+        longname="use array-based grid input",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="name of auxiliary variable for multiplier",
     )
     print_input: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save well flows to budget file",
     )
     auto_flow_reduce: Optional[float] = field(
         default=None,
         block="options",
         optional=True,
+        longname="cell fractional thickness for reduced pumping",
     )
     afrcsv_file: Optional[Path] = path(
         default=None,
@@ -60,6 +67,7 @@ class Welg(Package):
         default=False,
         block="options",
         optional=True,
+        longname="flow reduction length keyword",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -77,12 +85,14 @@ class Welg(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
         optional=True,
         auto_from="stress_period_data",
+        longname="maximum number of wells in any stress period",
     )
     q: Optional[FloatArrayLike] = field(
         default=None,

@@ -18,31 +18,37 @@ class Rivg(Package):
     readarraygrid: bool = field(
         default=True,
         block="options",
+        longname="use array-based grid input",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="name of auxiliary variable for multiplier",
     )
     print_input: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save RIV flows to budget file",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -60,12 +66,14 @@ class Rivg(Package):
         default=False,
         block="options",
         optional=True,
+        longname="export array variables to netcdf output files.",
     )
     maxbound: Optional[int] = field(
         default=0,
         block="dimensions",
         optional=True,
         auto_from="stress_period_data",
+        longname="maximum number of river cells in any stress period",
     )
     stage: Optional[FloatArrayLike] = field(
         default=None,

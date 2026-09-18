@@ -92,41 +92,49 @@ class Oc(Package):
         default=False,
         block="options",
         optional=True,
+        longname="track release",
     )
     track_exit: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track domain exits",
     )
     track_subfeature_exit: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track cell exits",
     )
     track_timestep: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track timestep ends",
     )
     track_terminate: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track termination",
     )
     track_weaksink: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track weaksink exits",
     )
     track_usertime: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track user-specified times",
     )
     track_dropped: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="track drops to water table",
     )
     # TODO: track_timesrecord — type 'record' not yet supported
     track_timesfile: Optional[TrackTimesfile] = field(
@@ -137,11 +145,13 @@ class Oc(Package):
         default=False,
         block="options",
         optional=True,
+        longname="buffer track events in scratch file instead of memory",
     )
     ntracktimes: Optional[int] = field(
         default=None,
         block="dimensions",
         optional=True,
+        longname="number of particle tracking times",
     )
     tracktimes: Optional[list[Tracktimes]] = field(
         default=None,

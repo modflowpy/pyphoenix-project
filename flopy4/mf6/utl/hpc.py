@@ -21,6 +21,7 @@ class Hpc(Package):
         default=False,
         block="options",
         optional=True,
+        longname="model print table to listing file",
     )
     partitions: Optional[list[Partitions]] = field(
         default=None,

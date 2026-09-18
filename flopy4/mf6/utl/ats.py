@@ -24,6 +24,7 @@ class Ats(Package):
     maxats: Optional[int] = field(
         default=1,
         block="dimensions",
+        longname="number of ATS periods",
     )
     perioddata: Optional[list[Perioddata]] = field(
         default=None,

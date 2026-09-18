@@ -429,7 +429,7 @@ def _default_repr(f: FieldV3) -> str:
 # Field call strings
 
 
-def field_metadata(f: FieldV3, block_name: str) -> dict:
+def field_metadata(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> dict:
     """Build the ``field()``/``path()`` spec-call kwargs for a field.
 
     These calls carry passive metadata (shape, block, etc.) read by the
@@ -451,6 +451,15 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         kw["direction"] = child.direction
     elif is_bare_file(f):
         kw["direction"] = f.direction
+    if plain_maxbound:
+        # Tells unstructure.py to omit MAXBOUND when it's still at the
+        # unset default (0) instead of writing an invalid MAXBOUND=0.
+        kw["auto_from"] = "stress_period_data"
+    if longname := getattr(f, "longname", None):
+        # DFN longname text escapes underscores for LaTeX rendering (e.g.
+        # AUTO\_FLOW\_REDUCE); harmless in the .dfn but `\_` isn't a valid
+        # Python string escape, so strip it before embedding as a literal.
+        kw["longname"] = longname.replace("\\_", "_")
     return kw
 
 
@@ -469,14 +478,45 @@ def _dq(v) -> str:
     return repr(v)
 
 
-def field_call(f: FieldV3, block_name: str) -> str:
+def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
+    """Render one field()/path() kwarg line, wrapping long string values across
+    adjacent literals (standard Python string concatenation) so the line
+    respects the 100-char limit -- ruff/black can't split a string literal
+    on their own, so long DFN longname text needs this done explicitly.
+    """
+    pad = " " * indent
+    line = f"{pad}{k}={_dq(v)},"
+    if len(line) <= 100 or not isinstance(v, str):
+        return line
+    inner_pad = " " * (indent + 4)
+    max_width = 96 - len(inner_pad)
+    words = v.split(" ")
+    chunks: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if current and len(candidate) > max_width:
+            chunks.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    body = "\n".join(
+        f'{inner_pad}"{c} "' if i < len(chunks) - 1 else f'{inner_pad}"{c}"'
+        for i, c in enumerate(chunks)
+    )
+    return f"{pad}{k}=(\n{body}\n{pad}),"
+
+
+def field_call(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
-    kw = field_metadata(f, block_name)
+    kw = field_metadata(f, block_name, plain_maxbound=plain_maxbound)
     # A G-variant package's maxbound (see build_component_spec's
     # _maxbound_is_computed) is still a plain field, not a computed
     # property -- defaults to 0 like the computed version would.
@@ -497,7 +537,7 @@ def field_call(f: FieldV3, block_name: str) -> str:
     if is_file_record(f) or is_bare_file(f):
         lines.append("        converter=_optional_path,")
     for k, v in kw.items():
-        lines.append(f"        {k}={_dq(v)},")
+        lines.append(_wrap_kwarg_line(k, v))
     lines.append(f"    ){type_ignore}")
     return "\n".join(lines)
 

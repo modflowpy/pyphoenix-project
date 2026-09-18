@@ -45,81 +45,103 @@ class Csub(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to save CSUB flows",
     )
     gammaw: Optional[float] = field(
         default=9806.65,
         block="options",
         optional=True,
+        longname="unit weight of water",
     )
     beta: Optional[float] = field(
         default=4.6512e-10,
         block="options",
         optional=True,
+        longname="compressibility of water",
     )
     elastic_inelastic_smoothing: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="elastic to inelastic smoothing",
     )
     strict_effective_stress: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="terminate on negative effective stress",
     )
     head_based: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate the head-based formulation will be used",
     )
     initial_preconsolidation_head: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate that preconsolidation heads will be specified",
     )
     ndelaycells: Optional[int] = field(
         default=None,
         block="options",
         optional=True,
+        longname="number of interbed cell nodes",
     )
     compression_indices: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate CR and CC are read instead of SSE and SSV",
     )
     update_material_properties: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate material properties can change during the simulations",
     )
     cell_fraction: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate cell fraction interbed thickness",
     )
     specified_initial_interbed_state: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate that absolute initial states will be specified",
     )
     specified_initial_preconsolidation_stress: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname=(
+            "keyword to indicate that absolute initial preconsolidation stresses (head) will be "
+            "specified"
+        ),
     )
     specified_initial_delay_head: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="keyword to indicate that absolute initial delay bed heads will be specified",
     )
     effective_stress_lag: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname=(
+            "keyword to indicate that specific storage will be calculate using the effective "
+            "stress from the previous time step"
+        ),
     )
     strainib_file: Optional[Path] = path(
         default=None,
@@ -201,11 +223,13 @@ class Csub(Package):
     ninterbeds: Optional[int] = field(
         default=None,
         block="dimensions",
+        longname="number of CSUB interbed systems",
     )
     maxsig0: Optional[int] = field(
         default=None,
         block="dimensions",
         optional=True,
+        longname="maximum number of stress offset cells",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
@@ -217,12 +241,14 @@ class Csub(Package):
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="elastic coarse specific storage",
     )  # type: ignore[assignment]
     cg_theta: FloatArrayLike = field(
         default=0.2,
         block="griddata",
         shape=("nodes",),
         netcdf=True,
+        longname="initial coarse-grained material porosity",
     )  # type: ignore[assignment]
     sgm: Optional[FloatArrayLike] = field(
         default=None,
@@ -230,6 +256,7 @@ class Csub(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="specific gravity of moist sediments",
     )
     sgs: Optional[FloatArrayLike] = field(
         default=None,
@@ -237,6 +264,7 @@ class Csub(Package):
         shape=("nodes",),
         netcdf=True,
         optional=True,
+        longname="specific gravity of saturated sediments",
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",

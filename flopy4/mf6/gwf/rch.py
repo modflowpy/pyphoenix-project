@@ -27,16 +27,19 @@ class Rch(Package):
         default=False,
         block="options",
         optional=True,
+        longname="if cell is dry do not apply recharge to underlying cell",
     )
     auxiliary: Optional[list[str]] = field(
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="name of auxiliary variable for multiplier",
     )
     boundnames: bool = field(
         default=False,
@@ -47,16 +50,19 @@ class Rch(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print recharge rates to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save recharge to budget file",
     )
     ts_file: Optional[Path] = path(
         default=None,

@@ -29,11 +29,13 @@ class Ssm(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save calculated flows to budget file",
     )
     sources: Optional[list[Sources]] = field(
         default=None,

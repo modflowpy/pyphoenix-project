@@ -27,11 +27,13 @@ class Ctp(Package):
         default=None,
         block="options",
         optional=True,
+        longname="keyword to specify aux variables",
     )
     auxmultname: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="name of auxiliary variable for multiplier",
     )
     boundnames: bool = field(
         default=False,
@@ -42,16 +44,19 @@ class Ctp(Package):
         default=False,
         block="options",
         optional=True,
+        longname="print input to listing file",
     )
     print_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="print calculated flows to listing file",
     )
     save_flows: bool = field(
         default=False,
         block="options",
         optional=True,
+        longname="save constant temperature flows to budget file",
     )
     ts_file: Optional[Path] = path(
         default=None,
