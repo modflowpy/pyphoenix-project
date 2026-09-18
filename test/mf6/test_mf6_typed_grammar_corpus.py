@@ -49,27 +49,22 @@ from .test_mf6_load_all_models import KNOWN_PASSING
 # done this pass (see typed-grammar-corpus-gaps.md's "Corpus test status").
 KNOWN_TYPED_GAPS: dict[str, str] = {
     "sln-ims": (
-        "Legacy XMD/DE4 solver blocks with zero matching entries in the "
-        "current DFN (same disposition as load-corpus-gaps.md's gap #11), "
-        "plus one fixture (test017_Crinkle) with a malformed rcloserecord "
-        "line (two mutually-exclusive option values on one line)."
-    ),
-    "gwf-dis": (
-        "TypedTransformer.array()'s xr.concat crashes mixing a DataArray "
-        "layer with a bare Path from an OPEN/CLOSE layer -- a transform-"
-        "layer bug, explicitly out of this pass's parse-level-parity scope."
+        "2 legacy mf5to6-converted fixtures (test017_Crinkle, "
+        "test044_lakebotfill_dev) write two option values on one line for "
+        "a field the current DFN defines as a single scalar (e.g. "
+        "'preconditioner_levels 0 7') -- a fixture-authoring artifact from "
+        "an old MODFLOW-2005/NWT conversion tool, not a grammar gap. "
+        "Legacy BEGIN XMD/DE4 solver blocks (no current DFN equivalent) "
+        "parse fine via the generic unknown_block fallback."
     ),
     "gwf-npf": (
-        "Same array-layer transform crash as gwf-dis, plus a distinct, "
-        "very low-frequency (2/2228 files) lexer limitation: a free-text "
-        "remark that happens to contain a reserved word (e.g. a parenthetical "
-        'comment mentioning "constant") loses to that word\'s keyword '
-        "literal under Lark's default priority rules -- fixing this would "
-        "need per-context lexer modes, which Lark's LALR contextual lexer "
-        "doesn't support; not pursued this pass."
+        "2 files with a free-text remark that happens to contain a "
+        'reserved word (e.g. a parenthetical comment mentioning "constant") '
+        "-- it loses to that word's keyword literal under Lark's default "
+        "priority rules. Fixing this would need per-context lexer modes, "
+        "which Lark's LALR contextual lexer doesn't support; very low "
+        "frequency (2/2228 files), not pursued this pass."
     ),
-    "gwf-ic": "Same array-layer transform crash as gwf-dis.",
-    "gwf-disv": "Same array-layer transform crash as gwf-dis.",
     "gwf-lak": (
         "DEV_NO_FINAL_CHECK is not a field in the current gwf-lak.dfn -- "
         "confirmed genuine field-name/version drift (a removed dev option), "

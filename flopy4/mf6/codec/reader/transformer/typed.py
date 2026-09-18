@@ -63,10 +63,19 @@ class TypedTransformer(Transformer):
     def array(self, items: list[Any]) -> dict:
         arrs = items[0]
         if isinstance(arrs, list):
-            data = xr.concat([arr["data"] for arr in arrs if "data" in arr], dim="layer")
+            # A LAYERED array can mix CONSTANT/INTERNAL layers (real
+            # DataArrays, already resolved by try_create_dataarray) with an
+            # OPEN/CLOSE layer (left as a bare Path -- resolving it needs
+            # workspace access, out of this pass's parse-level-parity scope).
+            # xr.concat can't mix DataArray and Path, so only concat what's
+            # actually concatenable; each layer's raw value (DataArray or
+            # Path) is preserved in "layers" rather than crashing the parse.
+            dataarrays = [arr["data"] for arr in arrs if isinstance(arr.get("data"), xr.DataArray)]
+            data = xr.concat(dataarrays, dim="layer") if dataarrays else None
             return {
                 "control": [arr["control"] for arr in arrs if "control" in arr],
                 "data": data,
+                "layers": [arr.get("data") for arr in arrs],
                 "attrs": {k: v for k, v in arrs[0].items() if k not in ["data"]},
                 "dims": {"layer": len(arrs)},
             }
