@@ -59,7 +59,7 @@ def test_make_grammar_creates_file(tmp_path, minimal_dfn):
     # Grammar imports typed rules from typed.lark
     assert "%import typed.integer -> integer" in content
     assert "%import typed.double -> double" in content
-    assert "start: block*" in content
+    assert "start: _NL* (block _NL*)*" in content
     assert "options_block" in content
 
 
@@ -221,7 +221,7 @@ def test_make_grammar_with_oc_style_records(tmp_path):
                                     name="saverecord",
                                     fields={
                                         "save": Keyword(name="save"),
-                                        "rtype": String(name="rtype"),
+                                        "rtype": String(name="rtype", tagged=False),
                                         "ocsetting": Union(
                                             name="ocsetting",
                                             arms={

@@ -5,11 +5,28 @@ def valid_as_union(field: InputField) -> InputField:
     """Turn a ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
     STEADY-STATE/TRANSIENT) into a keyword union with one arm per value, so
     it reuses the existing union grammar/dispatch instead of a second path.
+
+    Trusts ``field.tagged`` directly for whether the field's own name must
+    precede the chosen value in real files (e.g. NPF's
+    "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (*-STO's bare
+    "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix). This previously needed
+    a PERIOD-block-vs-not heuristic instead, because *-STO's ``storage`` is
+    synthesized by ``modflow_devtools``'s DFN migration (``_collapse_sto_keywords``)
+    without setting ``tagged``, silently defaulting to ``True`` regardless of
+    real syntax. Fixed upstream (modflow-devtools#tagged-sto-storage,
+    ``migrate_to_v2_0_0_dev2.py``'s ``_collapse_sto_keywords`` now passes
+    ``tagged=False``) -- confirmed every other real ``valid=``-restricted
+    field already had a correct ``tagged`` value from the DFN source, so
+    ``storage`` was the only case the heuristic was covering.
     """
     valid = getattr(field, "valid", None)
     if not valid:
         return field
-    return Union(name=field.name, arms={str(v): Keyword(name=str(v)) for v in valid})
+    return Union(
+        name=field.name,
+        tagged=field.tagged,
+        arms={str(v): Keyword(name=str(v)) for v in valid},
+    )
 
 
 def field_type(field: InputField) -> str:

@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 
 from lark import Lark
@@ -12,6 +13,7 @@ def get_basic_parser() -> Lark:
         return Lark(f.read(), parser=_LALR, debug=True)
 
 
+@lru_cache(maxsize=None)
 def get_typed_parser(name: str) -> Lark:
     grammar_path = _GRAMMAR_MODULE / "generated" / f"{name}.lark"
     if not grammar_path.exists():

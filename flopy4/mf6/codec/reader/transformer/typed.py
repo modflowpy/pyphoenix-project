@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -6,6 +7,7 @@ import xarray as xr
 from lark import Token, Transformer
 from modflow_devtools.dfns.schema import Component, Keyword, Record, Union
 
+from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
 from flopy4.utils import parse_number
 
@@ -61,10 +63,19 @@ class TypedTransformer(Transformer):
     def array(self, items: list[Any]) -> dict:
         arrs = items[0]
         if isinstance(arrs, list):
-            data = xr.concat([arr["data"] for arr in arrs if "data" in arr], dim="layer")
+            # A LAYERED array can mix CONSTANT/INTERNAL layers (real
+            # DataArrays, already resolved by try_create_dataarray) with an
+            # OPEN/CLOSE layer (left as a bare Path -- resolving it needs
+            # workspace access, out of this pass's parse-level-parity scope).
+            # xr.concat can't mix DataArray and Path, so only concat what's
+            # actually concatenable; each layer's raw value (DataArray or
+            # Path) is preserved in "layers" rather than crashing the parse.
+            dataarrays = [arr["data"] for arr in arrs if isinstance(arr.get("data"), xr.DataArray)]
+            data = xr.concat(dataarrays, dim="layer") if dataarrays else None
             return {
                 "control": [arr["control"] for arr in arrs if "control" in arr],
                 "data": data,
+                "layers": [arr.get("data") for arr in arrs],
                 "attrs": {k: v for k, v in arrs[0].items() if k not in ["data"]},
                 "dims": {"layer": len(arrs)},
             }
@@ -99,7 +110,11 @@ class TypedTransformer(Transformer):
         return items[0]
 
     def constant(self, items: list[Any]) -> dict[str, Any]:
-        return {"type": "constant", "value": items[0]}
+        result = {"type": "constant", "value": items[0]}
+        for item in items[1:]:
+            if item is not None:
+                result.update(item)
+        return result
 
     def internal(self, items: list[Any]) -> dict[str, Any]:
         result = {"type": "internal"}
@@ -114,6 +129,9 @@ class TypedTransformer(Transformer):
             if item is not None:
                 result.update(item)
         return result
+
+    def timearrayseries(self, items: list[Any]) -> dict[str, Any]:
+        return {"type": "timearrayseries", "value": items[0]}
 
     def factor(self, items: list[Any]) -> dict[str, float]:
         return {"factor": items[0]}
@@ -217,9 +235,15 @@ class TypedTransformer(Transformer):
         if self.blocks is None or self._flat_fields is None:
             return super().__default__(data, children, meta)
         if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
-            # See if this is an indexed block (period blocks have 3 children: index, fields, index
-            if len(children) == 3 and isinstance(children[0], int) and isinstance(children[2], int):
-                # Indexed block: [index, fields, index]
+            # Indexed block: [index, fields, closing index]. The closing
+            # index is optional in the grammar (most real files write a bare
+            # "END <name>", not repeating the number) -- Lark fills the
+            # omitted slot with None rather than dropping it.
+            if (
+                len(children) == 3
+                and isinstance(children[0], int)
+                and (children[2] is None or isinstance(children[2], int))
+            ):
                 block_index = children[0]
                 fields_data = children[1]
                 return {block_name: {block_index: fields_data}}
@@ -308,3 +332,9 @@ class TypedTransformer(Transformer):
                 # (arrays have already been transformed by the array method)
                 return data, children[0] if len(children) == 1 else children
         return super().__default__(data, children, meta)
+
+
+@lru_cache(maxsize=None)
+def get_typed_transformer(name: str, dfn_path: str | None = None) -> TypedTransformer:
+    """Cached ``TypedTransformer`` factory, one instance per component type."""
+    return TypedTransformer(dfn=get_component_dfn(name, dfn_path=dfn_path))

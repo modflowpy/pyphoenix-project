@@ -1,6 +1,6 @@
 {% import 'macros.jinja' as m %}
-// Auto-generated grammar for MF6 {{ name|upper }}
-
+// Auto-generated grammar for MF6 {{ name|upper }} -- see typed.lark's own
+// header note for why newlines are significant here.
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
@@ -8,18 +8,33 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
-%import typed.NEWLINE -> NEWLINE
-%import common.WS
+%import typed.open_close_redirect -> open_close_redirect
+%import typed._NL -> _NL
+%import typed._remark -> _remark
+%import typed.COMMA -> COMMA
+%import common.WS_INLINE
 %import common.SH_COMMENT
 
-%ignore WS
+%ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
-start: block*
-block: {% for block in blocks %}
-{{- block.name }}_block
-{%- if not loop.last %} | {% endif %}
-{%- endfor %}
+{% set ns = namespace(alts=[]) -%}
+{% for block in blocks -%}
+{% set ns.alts = ns.alts + [block.name ~ '_block'] -%}
+{% endfor -%}
+{% set block_alts = ns.alts|join(' | ') -%}
+{# A `block:` rule with no alternatives (a component with zero blocks, e.g.
+   exg-gwfgwt.dfn -- confirmed genuinely empty, just a header comment, no
+   input file content of its own) would be nullable, and a nullable rule
+   inside `start`'s own `*` repetition creates a Reduce/Reduce collision at
+   grammar-construction time (the LALR automaton can't tell an empty
+   `block` match apart from `start` simply being done). A plain-text
+   literal that can never occur in real input keeps the rule well-formed
+   but non-nullable (no escape sequences here -- an embedded raw NUL byte
+   from a `\x00`-style escape trips Lark's own literal-eval). #}
+start: _NL* (block _NL*)*
+block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 
 {% for block in blocks -%}
 {{ m.block_def(block.name, block.has_index) }}
@@ -63,7 +78,7 @@ block_index: integer
 {{ m.nested_union(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% elif child.type == 'record' and child.children is not none and child_name not in unions_generated -%}
-{{ m.record_field(child_name, child) }}
+{{ m.nested_record(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% endif -%}
 {% endfor -%}

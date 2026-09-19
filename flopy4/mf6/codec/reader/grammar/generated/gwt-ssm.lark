@@ -1,5 +1,5 @@
-// Auto-generated grammar for MF6 GWT-SSM
-
+// Auto-generated grammar for MF6 GWT-SSM -- see typed.lark's own
+// header note for why newlines are significant here.
 %import typed.integer -> integer
 %import typed.double -> double
 %import typed.number -> number
@@ -7,22 +7,27 @@
 %import typed.word -> word
 %import typed.array -> array
 %import typed.record -> record
-%import typed.NEWLINE -> NEWLINE
-%import common.WS
+%import typed.open_close_redirect -> open_close_redirect
+%import typed._NL -> _NL
+%import typed._remark -> _remark
+%import typed.COMMA -> COMMA
+%import common.WS_INLINE
 %import common.SH_COMMENT
 
-%ignore WS
+%ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore COMMA
 
-start: block*
+start: _NL* (block _NL*)*
 block: options_block | sources_block | fileinput_block
-options_block: "begin"i "options"i options_fields "end"i "options"i
-sources_block: "begin"i "sources"i sources_fields "end"i "sources"i
-fileinput_block: "begin"i "fileinput"i fileinput_fields "end"i "fileinput"i
-options_fields: (print_flows | save_flows)*
-sources_fields: (sourcesdata)*
-fileinput_fields: (fileinputdata)*
-print_flows: "print_flows"i 
-save_flows: "save_flows"i 
+
+options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
+sources_block: "begin"i "sources"i [_remark] _NL _NL* sources_fields _NL* "end"i "sources"i
+fileinput_block: "begin"i "fileinput"i [_remark] _NL _NL* fileinput_fields _NL* "end"i "fileinput"i
+options_fields: ((print_flows | save_flows | open_close_redirect) _NL*)*
+sources_fields: ((sourcesdata | open_close_redirect) _NL*)*
+fileinput_fields: ((fileinputdata | open_close_redirect) _NL*)*
+print_flows: "print_flows"i  [_remark] _NL
+save_flows: "save_flows"i  [_remark] _NL
 sourcesdata: record+
 fileinputdata: record+

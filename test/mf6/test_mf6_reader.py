@@ -27,9 +27,24 @@ BASE_GRAMMAR_PATH = (
 )
 
 
+class _NormalizingLark:
+    """Wraps a Lark parser to strip the leading/trailing blank lines that
+    triple-quoted test fixtures carry -- real newlines are now significant
+    (see typed.lark's header note), so a stray leading blank line before
+    the real content, or a missing final newline, would otherwise fail to
+    parse for reasons that have nothing to do with what each test checks.
+    """
+
+    def __init__(self, lark: Lark):
+        self._lark = lark
+
+    def parse(self, text: str, *args, **kwargs):
+        return self._lark.parse(text.strip() + "\n", *args, **kwargs)
+
+
 def typed_parser(grammar: str):
     with open(BASE_GRAMMAR_PATH, "r") as f:
-        return Lark(grammar + os.linesep + f.read(), parser="lalr", debug=True)
+        return _NormalizingLark(Lark(grammar + os.linesep + f.read(), parser="lalr", debug=True))
 
 
 def test_parse_internal_array():
@@ -269,16 +284,16 @@ def test_transform_full_component():
         },
     )
     grammar = """
-start: block*
+start: _NL* (block _NL*)*
 block: options_block | arrays_block
-options_block: "begin"i "options"i options_fields "end"i "options"i
-arrays_block: "begin"i "arrays"i arrays_fields "end"i "arrays"i
+options_block: "begin"i "options"i _NL options_fields "end"i "options"i
+arrays_block: "begin"i "arrays"i _NL arrays_fields "end"i "arrays"i
 options_fields: (r2d2 | b | c | p)*
 arrays_fields: (x | y | z)*
-r2d2: "r2d2"i // keyword
+r2d2: "r2d2"i _NL // keyword
 b: "b"i string
-c: "c"i integer
-p: "p"i double
+c: "c"i integer _NL
+p: "p"i double _NL
 x: "x"i array
 y: "y"i array
 z: "z"i array
@@ -295,7 +310,8 @@ BEGIN OPTIONS
 END OPTIONS
 BEGIN ARRAYS
     X CONSTANT 1.0
-    Y INTERNAL 4.0 5.0 6.0
+    Y INTERNAL
+      4.0 5.0 6.0
     Z OPEN/CLOSE "data/z.dat" FACTOR 1.0 (BINARY)
 END ARRAYS
 """)
