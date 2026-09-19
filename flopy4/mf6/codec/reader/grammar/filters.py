@@ -1,42 +1,30 @@
 from modflow_devtools.dfns.schema import Array, InputField, Keyword, Union
 
 
-def valid_as_union(field: InputField, block_name: str | None = None) -> InputField:
+def valid_as_union(field: InputField) -> InputField:
     """Turn a ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
     STEADY-STATE/TRANSIENT) into a keyword union with one arm per value, so
     it reuses the existing union grammar/dispatch instead of a second path.
 
-    Whether the field's own name must precede the chosen value in real files
-    (e.g. NPF's "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (*-STO's
-    bare "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix -- confirmed
-    against a real fixture) is *not* reliably given by ``field.tagged`` for
-    *-STO's ``storage`` specifically: it's synthesized by
-    ``modflow_devtools``'s own DFN migration step from a pair of bare
-    ``Keyword`` fields (see its ``_collapse_sto_keywords``), which builds the
-    replacement ``String`` without setting ``tagged`` at all -- it silently
-    picks up the class default (``True``) regardless of real syntax (tracked
-    upstream: modflow-devtools todo.md, "STO's synthesized `storage` field
-    defaults to tagged=True"). Every *other* real ``valid=``-restricted field
-    checked in the current corpus (``rtype``, ``slntype``, ``scheme``,
-    ``alternative_cell_averaging``, ``sorption``, ``thermal_formulation``,
-    ``dry_tracking_method``, ``coordinate_check_method``, ``cell_averaging``,
-    ``adv_scheme``) already has a correct ``tagged`` value straight from the
-    real DFN source -- either explicitly declared (``rtype``/``slntype`` both
-    have a literal ``tagged false`` line) or correctly defaulting to
-    ``True`` when omitted (every OPTIONS-block one checked). ``storage`` is
-    the only field in the current spec where the block-context heuristic
-    below (PERIOD-block valid-restricted fields are bare per-step selectors,
-    every other block's are prefixed options) actually overrides
-    ``field.tagged`` -- so once the upstream fix lands, this heuristic can
-    likely be dropped in favor of trusting ``field.tagged`` directly (kept
-    for now since the installed ``modflow_devtools`` still has the bug).
+    Trusts ``field.tagged`` directly for whether the field's own name must
+    precede the chosen value in real files (e.g. NPF's
+    "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (*-STO's bare
+    "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix). This previously needed
+    a PERIOD-block-vs-not heuristic instead, because *-STO's ``storage`` is
+    synthesized by ``modflow_devtools``'s DFN migration (``_collapse_sto_keywords``)
+    without setting ``tagged``, silently defaulting to ``True`` regardless of
+    real syntax. Fixed upstream (modflow-devtools#tagged-sto-storage,
+    ``migrate_to_v2_0_0_dev2.py``'s ``_collapse_sto_keywords`` now passes
+    ``tagged=False``) -- confirmed every other real ``valid=``-restricted
+    field already had a correct ``tagged`` value from the DFN source, so
+    ``storage`` was the only case the heuristic was covering.
     """
     valid = getattr(field, "valid", None)
     if not valid:
         return field
     return Union(
         name=field.name,
-        tagged=block_name != "period",
+        tagged=field.tagged,
         arms={str(v): Keyword(name=str(v)) for v in valid},
     )
 

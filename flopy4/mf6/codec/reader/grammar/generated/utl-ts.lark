@@ -29,7 +29,7 @@ time_series_namerecord: "names"i array [_remark] _NL
 interpolation_methodrecord: "methods"i array [_remark] _NL
 interpolation_methodrecord_single:  [_remark] _NL
 method: "method"i  [_remark] _NL
-interpolation_method_single: "interpolation_method_single"i (interpolation_method_single_stepwise | interpolation_method_single_linear | interpolation_method_single_linearend) [_remark] _NL
+interpolation_method_single: interpolation_method_single_stepwise | interpolation_method_single_linear | interpolation_method_single_linearend [_remark] _NL
 
 interpolation_method_single_stepwise: "stepwise"i
 interpolation_method_single_linear: "linear"i

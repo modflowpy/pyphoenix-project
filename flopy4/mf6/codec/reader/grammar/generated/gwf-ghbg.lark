@@ -26,7 +26,7 @@ dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _N
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 block_index: integer
 options_fields: ((readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | obs_filerecord | mover | export_array_netcdf | open_close_redirect) _NL*)*
-dimensions_fields: ((maxbound | open_close_redirect) _NL*)*
+dimensions_fields: ((open_close_redirect) _NL*)*
 period_fields: ((bhead | cond | aux | open_close_redirect) _NL*)*
 readarraygrid: "readarraygrid"i  [_remark] _NL
 auxiliary: "auxiliary"i word+ [_remark] _NL
@@ -37,7 +37,6 @@ save_flows: "save_flows"i  [_remark] _NL
 obs_filerecord: "obs6"i "filein"i word [_remark] _NL
 mover: "mover"i  [_remark] _NL
 export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
-maxbound: "maxbound"i integer [_remark] _NL
 bhead: "bhead"i [_remark] [_NL] array
 cond: "cond"i [_remark] [_NL] array
 aux: word [_remark] [_NL] array
