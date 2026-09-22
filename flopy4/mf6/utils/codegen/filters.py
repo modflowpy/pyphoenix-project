@@ -452,8 +452,7 @@ def field_metadata(f: FieldV3, block_name: str, *, plain_maxbound: bool = False)
     elif is_bare_file(f):
         kw["direction"] = f.direction
     if plain_maxbound:
-        # Tells unstructure.py to omit MAXBOUND when it's still at the
-        # unset default (0) instead of writing an invalid MAXBOUND=0.
+        # Omit MAXBOUND when unset (0) instead of writing an invalid MAXBOUND=0.
         kw["auto_from"] = "stress_period_data"
     if longname := getattr(f, "longname", None):
         # DFN longname text escapes underscores for LaTeX rendering (e.g.

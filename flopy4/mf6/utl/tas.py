@@ -2,6 +2,8 @@
 from typing import ClassVar, Optional
 
 import attrs
+import numpy as np
+from numpy.typing import NDArray
 
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
@@ -25,4 +27,8 @@ class Tas(Package):
         block="attributes",
     )
     # TODO: sfacrecord — type 'record' not yet supported
-    # TODO: tas_array — unshaped (variadic-count) array not yet supported
+    tas_array: NDArray[np.float64] = field(
+        default=None,
+        block="time",
+        shape=("ncpl",),
+    )
