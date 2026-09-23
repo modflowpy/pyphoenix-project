@@ -78,7 +78,7 @@ def _is_default_child_name(child: "Component") -> bool:
     """Whether `child`'s current `.name` is still at its class-name
     default (see `Component.name`'s own field docstring), i.e. no
     explicit name was ever given."""
-    return child.name == type(child).__name__.lower()  # type: ignore[attr-defined]
+    return child.name == type(child).__name__.lower()
 
 
 def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Component") -> str:
@@ -99,12 +99,11 @@ def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Co
     if kind not in ("only", "list"):
         raise TypeError(f"Bad child collection kind '{kind}'")
     if not _is_default_child_name(child):
-        if child.name in used:  # type: ignore[attr-defined]
+        if child.name in used:
             raise ValueError(
-                f"Child name '{child.name}' collides with an existing child "  # type: ignore[attr-defined]
-                "on the same parent."
+                f"Child name '{child.name}' collides with an existing child on the same parent."
             )
-        return child.name  # type: ignore[attr-defined]
+        return child.name
     if kind == "only":
         return field_name
     i = 0
@@ -165,14 +164,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     filename: Optional[str] = Field(default=None)
     """The name of the component's input file."""
 
-    name: Optional[str] = Field(default=None)
-    """The component's own identity/tag name. `None` until `__post_init__`
-    defaults it to the *actual* runtime class's lowercased name -- not
-    whichever class in the hierarchy happens to declare this field -- so a
-    `Package` leaf (e.g. `Ic`, never separately subclassed for this field)
-    still gets "ic", not "package". (Pydantic's `default_factory` can't see
-    the instance, so this is filled in by `__post_init__` rather than a
-    declarative default.) Overridden explicitly by
+    name: str = Field(default="", validate_default=True)
+    """The component's own identity/tag name. Defaults to the *actual*
+    runtime class's lowercased name -- not whichever class in the hierarchy
+    happens to declare this field -- so a `Package` leaf (e.g. `Ic`, never
+    separately subclassed for this field) still gets "ic", not "package".
+    See `_default_name`. Overridden explicitly by
     `_resolve_child_name()`/`_attach_to_parent_field()` when a component is
     attached as a named child; otherwise this default stands."""
 
@@ -200,6 +197,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     `Ic(dims={"nodes": 900})`). Construction-only: passed through the
     `__post_init__` chain to `Package.__post_init__`, which broadcasts
     scalar griddata to full shape, and not stored on the instance."""
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _default_name(cls, v: Any) -> str:
+        """Default `name` to the runtime class's lowercased name. `cls` is
+        the class actually being constructed, so this is subclass-aware;
+        `validate_default=True` makes it run when `name` isn't given."""
+        return v or cls.__name__.lower()
 
     @field_validator("*", mode="before")
     @classmethod
@@ -245,7 +250,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if old is value:
             return
         if old is not None:
-            del old[self.name]  # type: ignore[attr-defined]
+            del old[self.name]
         self._parent = None
         if value is not None:
             self._parent = value
@@ -324,14 +329,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if kind == "only":
                 if isinstance(value, Component):
                     value.__dict__["_parent"] = self
-                    value.name = _resolve_child_name(used, kind, name, value)  # type: ignore[attr-defined]
-                    used.add(value.name)  # type: ignore[attr-defined]
+                    value.name = _resolve_child_name(used, kind, name, value)
+                    used.add(value.name)
             elif kind == "list":
                 for child in value:
                     if isinstance(child, Component):
                         child.__dict__["_parent"] = self
-                        child.name = _resolve_child_name(used, kind, name, child)  # type: ignore[attr-defined]
-                        used.add(child.name)  # type: ignore[attr-defined]
+                        child.name = _resolve_child_name(used, kind, name, child)
+                        used.add(child.name)
             elif kind == "dict":
                 for key, child in value.items():
                     if isinstance(child, Component):
@@ -341,8 +346,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                                 f"Child name '{key}' collides with an "
                                 "existing child on the same parent."
                             )
-                        child.name = key  # type: ignore[attr-defined]
-                        used.add(child.name)  # type: ignore[attr-defined]
+                        child.name = key
+                        used.add(child.name)
 
     @property
     def path(self) -> Path:
@@ -371,10 +376,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         `dims` is the `dims` InitVar; only `Package` uses it, so it isn't
         passed further up the chain.
 
-        Defaults `.name` from the runtime class (see the field's own
-        docstring), then runs the two `_parent`-tracking hooks (see
-        `_parent`'s docstring): stamps
-        `_parent` on this component's own already-populated children
+        Runs the two `_parent`-tracking hooks (see `_parent`'s docstring):
+        stamps `_parent` on this component's own already-populated children
         (top-down construction), and -- if this component's own `_parent`
         was given directly as `parent=`, i.e. bottom-up construction --
         attaches `self` into the matching field on it and resolves its
@@ -383,8 +386,6 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # Chain to parent classes (including DimensionRegistryMixin)
         if hasattr(super(), "__post_init__"):
             super().__post_init__()  # type: ignore[misc]
-        if self.name is None:
-            self.name = type(self).__name__.lower()
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
         self._set_child_parents()
@@ -405,19 +406,19 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if match is None:
             return
         target_name, kind = match
-        used = {c.name for c in parent._children.values()}  # type: ignore[attr-defined]
+        used = {c.name for c in parent._children.values()}
         if kind == "only":
-            self.name = _resolve_child_name(used, kind, target_name, self)  # type: ignore[attr-defined]
+            self.name = _resolve_child_name(used, kind, target_name, self)
             setattr(parent, target_name, self)
         elif kind == "list":
-            self.name = _resolve_child_name(used, kind, target_name, self)  # type: ignore[attr-defined]
+            self.name = _resolve_child_name(used, kind, target_name, self)
             getattr(parent, target_name).append(self)
         elif kind == "dict":
             # No positional auto-key to fall back on for an unnamed child,
             # unlike "only"/"list" -- see `_set_child_parents`'s "dict"
             # branch: the child's own `.name` (explicit, or its
             # class-name default) is the key.
-            key = self.name  # type: ignore[attr-defined]
+            key = self.name
             if key in used:
                 raise ValueError(
                     f"Child name '{key}' collides with an existing child on the same parent."
@@ -460,21 +461,21 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             kind, _ = spec
             current = getattr(self, name, None)
             if kind == "only":
-                if isinstance(current, Component) and current.name == key:  # type: ignore[attr-defined]
-                    value.name = key  # type: ignore[attr-defined]
+                if isinstance(current, Component) and current.name == key:
+                    value.name = key
                     value.__dict__["_parent"] = self
                     setattr(self, name, value)
                     return
             elif kind == "list":
                 for i, child in enumerate(current or []):
-                    if isinstance(child, Component) and child.name == key:  # type: ignore[attr-defined]
-                        value.name = key  # type: ignore[attr-defined]
+                    if isinstance(child, Component) and child.name == key:
+                        value.name = key
                         value.__dict__["_parent"] = self
                         current[i] = value
                         return
             elif kind == "dict":
                 if current and key in current:
-                    value.name = key  # type: ignore[attr-defined]
+                    value.name = key
                     value.__dict__["_parent"] = self
                     current[key] = value
                     return
@@ -484,7 +485,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             raise TypeError(f"No field on {type(self).__name__} accepts a {type(value).__name__}")
         target_name, kind = match
         value.__dict__["_parent"] = self
-        value.name = key  # type: ignore[attr-defined]
+        value.name = key
         if kind == "only":
             setattr(self, target_name, value)
         elif kind == "list":
@@ -504,12 +505,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             kind, _ = spec
             value = getattr(self, name, None)
             if kind == "only":
-                if isinstance(value, Component) and value.name == key:  # type: ignore[attr-defined]
+                if isinstance(value, Component) and value.name == key:
                     setattr(self, name, None)
                     return
             elif kind == "list":
                 for i, child in enumerate(value or []):
-                    if isinstance(child, Component) and child.name == key:  # type: ignore[attr-defined]
+                    if isinstance(child, Component) and child.name == key:
                         del value[i]
                         return
             elif kind == "dict":

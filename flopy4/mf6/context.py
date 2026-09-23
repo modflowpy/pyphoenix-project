@@ -20,17 +20,22 @@ class Context(Component, ABC):
     _workspace: Any = Field(default=None, alias="workspace", repr=False)
 
     @property
-    def workspace(self) -> Optional[Path]:
+    def workspace(self) -> Path:
+        """The directory this context's files live in. Given at
+        construction, or resolved by `__post_init__` from the parent's
+        workspace or the current directory."""
+        if self._workspace is None:
+            raise RuntimeError(f"{type(self).__name__}.workspace is not resolved yet")
         return self._workspace
 
     @workspace.setter
     def workspace(self, value) -> None:
         """Coerce `value` to a `Path`, then propagate it to every child
-        that has its own `workspace` attribute."""
+        `Context`."""
         value = to_path(value)
         self._workspace = value
         for child in self._children.values():
-            if hasattr(child, "workspace"):
+            if isinstance(child, Context):
                 child.workspace = value
 
     def __post_init__(self, dims: Optional[dict] = None):
@@ -38,11 +43,9 @@ class Context(Component, ABC):
         # By the time this runs, `super().__post_init__()` (Component's)
         # has already resolved `_parent`/`.parent` for both top-down and
         # bottom-up construction (see `Component._parent`'s docstring).
-        if self.workspace is None:
+        if self._workspace is None:
             self.workspace = (
-                self._parent.workspace
-                if self._parent and hasattr(self._parent, "workspace")
-                else Path.cwd()
+                self._parent.workspace if isinstance(self._parent, Context) else Path.cwd()
             )
 
     @property
