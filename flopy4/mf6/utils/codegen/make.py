@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from dataclasses import field as dc_field
 from os import PathLike
 from pathlib import Path
+from typing import Any
 
 import jinja2
 from modflow_devtools.dfns.schema import (
@@ -953,7 +954,7 @@ def build_component_spec(
             _repeating_array_base = (
                 "IntArrayLike" if getattr(f, "dtype", "") == "integer" else "FloatArrayLike"
             )
-            _repeating_block_meta = {"block": block_name}
+            _repeating_block_meta: dict[str, Any] = {"block": block_name}
             if getattr(f, "shape", None):
                 _repeating_block_meta["shape"] = tuple(f.shape)
             if getattr(f, "tagged", True):
