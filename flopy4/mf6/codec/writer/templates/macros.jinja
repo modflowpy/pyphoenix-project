@@ -53,7 +53,7 @@
 {{ (2 * inset) ~ chunk|array2string(context.float_precision) }}
 {%- endfor %}
 {% elif how == "external" %}
-OPEN/CLOSE {{ value }}
+OPEN/CLOSE {{ value|quote_if_needed }}
 {% endif %}
 {% endif %}
 {% endmacro %}

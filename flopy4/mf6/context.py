@@ -50,7 +50,7 @@ class Context(Component, ABC):
 
     @property
     def path(self) -> Path:
-        self.filename = self.filename or self.default_filename()
+        self.filename = self.filename or Path(self.default_filename())
         return self.workspace / self.filename
 
     @classmethod

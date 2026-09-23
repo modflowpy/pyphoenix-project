@@ -67,7 +67,7 @@ class DisBase(Package):
         ncf = getattr(self, "ncf", None)
         if ncf is not None:
             if getattr(self, "ncf6_filerecord", None) is None and ncf.filename is not None:
-                setattr(self, "ncf6_filerecord", Path(Path(ncf.filename).name))
+                setattr(self, "ncf6_filerecord", Path(ncf.filename.name))
         super().write(format=format, context=context)
         if ncf is not None:
             # NCF lat/lon coordinate arrays require full float64 precision.

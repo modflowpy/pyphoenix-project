@@ -539,7 +539,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 if issubclass(target_cls, Package)
                 else target_cls.load(workspace / fname, name=pname)
             )
-            child.filename = fname
+            child.filename = Path(fname)
             _apply_binding_terms(child, row[2:])
             if isinstance(child, DimensionProvider):
                 dims = {**dims, **child.get_dims()}

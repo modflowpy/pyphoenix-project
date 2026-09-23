@@ -161,8 +161,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: Optional[str] = Field(default=None)
-    """The name of the component's input file."""
+    filename: Optional[Path] = Field(default=None)
+    """The component's input file, relative to the workspace (a `str` is
+    accepted and converted). Written to name files with POSIX separators."""
 
     name: str = Field(default="", validate_default=True)
     """The component's own identity/tag name. Defaults to the *actual*
@@ -352,7 +353,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     @property
     def path(self) -> Path:
         """The path to the component's input file."""
-        self.filename = self.filename or self.default_filename()
+        self.filename = self.filename or Path(self.default_filename())
         return Path.cwd() / self.filename
 
     def default_filename(self) -> str:
@@ -554,7 +555,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # name as this component's filename stem, if it has one. an
         # actual solution is to auto-set the filename when children
         # are attached to parents.
-        self.filename = self.filename or self.default_filename()
+        self.filename = self.filename or Path(self.default_filename())
 
         # Determine active context: provided > current > default
         active_context = context or WriteContext.current()

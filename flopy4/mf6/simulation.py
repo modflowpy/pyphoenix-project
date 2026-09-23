@@ -1,4 +1,5 @@
 from os import PathLike
+from pathlib import Path
 from typing import ClassVar, Optional
 from warnings import warn
 
@@ -36,13 +37,13 @@ class Simulation(Context):
 
     def __post_init__(self, dims: Optional[dict] = None):
         super().__post_init__(dims)
-        if self.filename != "mfsim.nam":
+        if self.filename != Path("mfsim.nam"):
             if self.filename is not None:
                 warn(
                     "Simulation filename must be 'mfsim.nam'.",
                     UserWarning,
                 )
-            self.filename = "mfsim.nam"
+            self.filename = Path("mfsim.nam")
         # Re-propagate workspace to Simulation's own children (models/
         # exchanges/solutions/tdis) -- Context.__post_init__ (already run,
         # via super() above) only saw whatever was attached at ITS point

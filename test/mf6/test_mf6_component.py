@@ -536,7 +536,7 @@ def test_to_xarray_on_context(function_tmpdir):
     assert isinstance(dt, xr.DataTree)
     assert isinstance(dt.kper, xr.DataArray)
     assert np.array_equal(dt.kper, [0])
-    assert dt.attrs["filename"] == "mfsim.nam"
+    assert dt.attrs["filename"] == Path("mfsim.nam")
     assert dt.attrs["workspace"] == Path(function_tmpdir)
 
 
@@ -1774,3 +1774,29 @@ def test_eq_ignores_dims_and_parent():
     assert Ims(dims={"nodes": 3}) == Ims(dims={"nodes": 4})
     assert Ims(parent=Simulation()) == Ims()
     assert Ims(inner_maximum=10) != Ims(inner_maximum=20)
+
+
+def test_filename_is_path():
+    """`filename` accepts a str or Path, is stored as a Path, and goes into
+    the name file with POSIX separators."""
+    from pathlib import PureWindowsPath
+
+    from flopy4.mf6.codec.writer.filters import quote_if_needed
+    from flopy4.mf6.converter.binding import Binding
+
+    ic = Ic(filename="gwf.ic")
+    assert ic.filename == Path("gwf.ic")
+    ic.filename = Path("sub") / "gwf.ic"
+    assert Binding.from_component(ic).fname == "sub/gwf.ic"
+    assert quote_if_needed(PureWindowsPath("sub\\gwf.ic")) == "sub/gwf.ic"
+
+
+def test_external_array_path_is_posix():
+    """An external array's OPEN/CLOSE path is written with POSIX separators."""
+    from pathlib import PureWindowsPath
+
+    from flopy4.mf6.codec.writer import _JINJA_ENV
+
+    macros = _JINJA_ENV.get_template("macros.jinja").module
+    out = str(macros.array("top", PureWindowsPath("data\\top.dat"), how="external"))  # type: ignore[attr-defined]
+    assert "OPEN/CLOSE data/top.dat" in out

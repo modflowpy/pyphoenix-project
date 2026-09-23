@@ -703,7 +703,7 @@ sim.workspace = workspace
 nc_fpth = workspace / "frenchman-flat.input.nc"
 gwf.netcdf_input_file = nc_fpth
 dis.ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
-dis.ncf.filename = str(workspace / "ff.dis.ncf")
+dis.ncf.filename = workspace / "ff.dis.ncf"
 
 # Here, grid and time info is passed to the `NetCDFModel' constructor
 # so that coordinate and mesh data is written to the NetCDF file.
@@ -822,7 +822,7 @@ sim.workspace = workspace
 gwf.netcdf_mesh2d_file = Path("frenchman-flat.nc")
 gwf.netcdf_input_file = Path("frenchman-flat.input.nc")
 dis.ncf = Ncf.from_grid(grid, NetCDFFormat.LAYERED_MESH)
-dis.ncf.filename = str(workspace / "ff.dis.ncf")
+dis.ncf.filename = workspace / "ff.dis.ncf"
 
 # Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(
@@ -871,7 +871,7 @@ nc_fpth = workspace / "frenchman-flat.input.nc"
 gwf.netcdf_input_file = nc_fpth
 gwf.netcdf_mesh2d_file = None
 dis.ncf = Ncf.from_grid(grid, NetCDFFormat.STRUCTURED)
-dis.ncf.filename = str(workspace / "ff.dis.ncf")
+dis.ncf.filename = workspace / "ff.dis.ncf"
 
 # Again, with grid and time info
 nc_model = flopy4.mf6.netcdf.NetCDFModel.from_model(gwf, grid=grid, time=time)

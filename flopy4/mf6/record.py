@@ -26,7 +26,7 @@ before any instance of it has ever been built.
 from __future__ import annotations
 
 import types
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any, Union, get_args, get_origin
 
 from pydantic import ConfigDict
@@ -181,6 +181,8 @@ class Record:
                     tokens.append(name.upper())
             elif isinstance(v, (list, tuple)):
                 tokens.extend(v)
+            elif isinstance(v, PurePath):
+                tokens.append(v.as_posix())
             else:
                 tokens.append(v)
         return tuple(tokens)

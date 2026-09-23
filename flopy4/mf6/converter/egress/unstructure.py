@@ -31,7 +31,7 @@ def _path_to_tuple(name: str, field: FieldInfo, value: Path) -> tuple[str, ...]:
     t = [str(keyword).upper()]
     if direction:
         t.append("FILEOUT" if direction == "out" else "FILEIN")
-    t.append(str(value))
+    t.append(value.as_posix())
     return tuple(t)
 
 
