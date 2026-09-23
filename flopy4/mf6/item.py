@@ -143,7 +143,7 @@ def _n_fixed_tokens(cls: type) -> int:
             continue
         if f.metadata.get("optional"):
             continue
-        n += 1 + len(f.metadata.get("prefix", ()))
+        n += 1 + (1 if f.metadata.get("_keyword") else 0)
         if f.metadata.get("direction"):
             n += 1
     return n
@@ -249,8 +249,8 @@ class Item(Record):
                 if not keyword_emitted:
                     row.append(keyword.upper())
                     keyword_emitted = True
-                if prefix := f.metadata.get("prefix"):
-                    row.extend(prefix)
+                if file_kw := f.metadata.get("_keyword"):
+                    row.append(file_kw.upper())
                 if direction := f.metadata.get("direction"):
                     row.append("FILEOUT" if direction == "out" else "FILEIN")
                 row.append(str(val) if isinstance(val, Path) else val)
@@ -298,8 +298,8 @@ class Item(Record):
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
-            if prefix := f.metadata.get("prefix"):
-                tok_idx += len(prefix)
+            if f.metadata.get("_keyword"):
+                tok_idx += 1
             if f.metadata.get("direction"):
                 tok_idx += 1
             if tok_idx >= n:
@@ -308,7 +308,7 @@ class Item(Record):
             tok_idx += 1
 
         def width(f: attrs.Attribute) -> int:
-            w = 1 + len(f.metadata.get("prefix", ()))
+            w = 1 + (1 if f.metadata.get("_keyword") else 0)
             if f.metadata.get("direction"):
                 w += 1
             return w

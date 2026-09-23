@@ -123,6 +123,7 @@ class Lkt(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="concentration",
     )
     budget_file: Optional[Path] = path(
         default=None,
@@ -130,6 +131,7 @@ class Lkt(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budget",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
@@ -137,6 +139,7 @@ class Lkt(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budgetcsv",
     )
     ts_file: Optional[Path] = path(
         default=None,
@@ -144,6 +147,7 @@ class Lkt(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -151,6 +155,7 @@ class Lkt(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     packagedata: Optional[list[Packagedata]] = field(
         default=None,

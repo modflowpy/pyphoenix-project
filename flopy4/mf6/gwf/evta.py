@@ -62,6 +62,7 @@ class Evta(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="tas6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -69,6 +70,7 @@ class Evta(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     export_array_netcdf: bool = field(
         default=False,

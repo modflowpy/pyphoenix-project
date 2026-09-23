@@ -71,6 +71,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budget",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
@@ -78,6 +79,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budgetcsv",
     )
     concentration_file: Optional[Path] = path(
         default=None,
@@ -85,6 +87,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="concentration",
     )
     concentrationprint: Optional[Concentrationprint] = field(
         default=None,

@@ -45,7 +45,6 @@ def field(
     fk: str | None = None,
     cellid: bool = False,
     tagged: bool = False,
-    prefix: tuple[str, ...] | None = None,
     array: bool = False,
 ):
     """Define a field: always a plain ``attrs.field()``."""
@@ -84,8 +83,6 @@ def field(
         metadata["cellid"] = True
     if tagged:
         metadata["tagged"] = True
-    if prefix:
-        metadata["prefix"] = tuple(prefix)
     if array:
         metadata["array"] = True
     return attrs.field(
@@ -117,20 +114,20 @@ def path(
     direction: FileDirection | None = None,
     longname: str | None = None,
     optional: bool = False,
-    prefix: tuple[str, ...] | None = None,
+    keyword: str | None = None,
 ):
     """Define a path field: always a plain ``attrs.field()``.
 
-    ``prefix``: fixed token(s) a row-level path column emits before its own
-    FILEIN/FILEOUT+filename (e.g. LAK tables' ``TAB6``, SSM fileinput's
-    ``SPC6``) -- read by Item.to_tokens()/from_tokens() the same way any
-    other row column's prefix= is (see flopy4.mf6.item.Item). Package-level
-    path fields (options-block file records) don't need this -- there's no
-    preceding row context, just the field's own direction=.
+    ``keyword``: the file record's trigger keyword, stored as ``_keyword``
+    metadata (lowercase, same convention as a Record class's own
+    ``_keyword``) -- the token before FILEIN/FILEOUT+filename, e.g. ``ts6``
+    in ``TS6 FILEIN <file>`` (block level, where it's also the row's key on
+    ingress -- not derivable from the py name, ts_filerecord → ts_file) or
+    ``tab6`` in a LAK tables row (read by Item.to_tokens()/from_tokens()).
     """
     metadata = metadata or {}
-    if prefix:
-        metadata["prefix"] = tuple(prefix)
+    if keyword:
+        metadata["_keyword"] = keyword.lower()
     if block:
         metadata["block"] = block
     if direction:

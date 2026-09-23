@@ -44,6 +44,7 @@ class Disv(DisBase):
         block="options",
         optional=True,
         direction="in",
+        keyword="ncf6",
     )
     ncf: Optional[Ncf] = attrs.field(default=None)
     nlay: int = field(default=0, block="dimensions")

@@ -62,6 +62,7 @@ class Welg(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="auto_flow_reduce_csv",
     )
     flow_reduction_length: bool = field(
         default=False,
@@ -75,6 +76,7 @@ class Welg(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     mover: bool = field(
         default=False,

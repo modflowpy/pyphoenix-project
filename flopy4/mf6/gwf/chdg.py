@@ -56,6 +56,7 @@ class Chdg(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     export_array_netcdf: bool = field(
         default=False,

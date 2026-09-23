@@ -55,6 +55,7 @@ class Mvr(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budget",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
@@ -62,6 +63,7 @@ class Mvr(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budgetcsv",
     )
     maxmvr: Optional[int] = field(
         default=None,

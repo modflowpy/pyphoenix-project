@@ -1388,6 +1388,32 @@ def test_gwf_netcdf_input_file_serializes():
     assert "NETCDF FILEIN model.input.nc" in text
 
 
+def test_file_records_roundtrip():
+    """Options-block file records are keyed by their trigger keyword (TS6,
+    OBS6, HEAD), not the py field name (ts_file, obs_file, head_file) --
+    both on load and on write."""
+    from pathlib import Path
+
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Oc, Wel
+
+    raw = loads("BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
+    wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    assert wel.ts_file == Path("a.ts")
+    assert wel.obs_file == Path("w.obs")
+    text = dumps(unstructure_component(wel))
+    assert "TS6 FILEIN a.ts" in text
+    assert "OBS6 FILEIN w.obs" in text
+
+    raw = loads("BEGIN OPTIONS\n  HEAD FILEOUT m.hds\n  BUDGET FILEOUT m.cbc\nEND OPTIONS\n")
+    oc = structure_component(raw, Oc)
+    assert oc.head_file == Path("m.hds")
+    assert oc.budget_file == Path("m.cbc")
+
+
 def test_gwt_netcdf_fields_serialize():
     """All three NetCDF path fields on Gwt must produce the correct NAM OPTIONS tokens."""
     from pathlib import Path

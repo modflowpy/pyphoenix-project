@@ -66,6 +66,7 @@ class Riv(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -73,6 +74,7 @@ class Riv(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     mover: bool = field(
         default=False,

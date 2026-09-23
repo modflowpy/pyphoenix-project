@@ -60,6 +60,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budget",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
@@ -67,6 +68,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budgetcsv",
     )
     track_file: Optional[Path] = path(
         default=None,
@@ -74,6 +76,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="track",
     )
     trackcsv_file: Optional[Path] = path(
         default=None,
@@ -81,6 +84,7 @@ class Oc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="trackcsv",
     )
     track_release: bool = field(
         default=False,

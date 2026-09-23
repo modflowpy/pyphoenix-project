@@ -65,6 +65,7 @@ class Vsc(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="viscosity",
     )
     nviscspecies: Optional[int] = field(
         default=None,

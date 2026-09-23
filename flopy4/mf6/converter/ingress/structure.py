@@ -676,6 +676,13 @@ def structure_component(
         if f.alias and f.alias != f.name:
             alias_map[f.alias] = f.name
 
+    # Block-level file records ("TS6 FILEIN <file>") are keyed by their
+    # trigger keyword, the path field's _keyword metadata (see spec.path),
+    # not by the field's py name (ts_file).
+    file_fields: dict[str, Any] = {
+        f.metadata["_keyword"]: f for f in all_fields.values() if f.metadata.get("_keyword")
+    }
+
     # Index Optional[InnerClass] fields by the inner class's _keyword (lowercase).
     # Covers options-block compound records like Npf.Cvoptions, Ims.Rclose, etc.
     inner_class_fields: dict[str, tuple] = {}
@@ -741,6 +748,15 @@ def structure_component(
             if not row:
                 continue
             key = str(row[0]).lower()
+            if (ff := file_fields.get(key)) is not None:
+                # KEYWORD FILEIN|FILEOUT <path>: the path follows the
+                # keyword and the direction token.
+                tokens = row[1:]
+                if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
+                    tokens = tokens[1:]
+                if tokens:
+                    kwargs[ff.alias or ff.name] = Path(_strip_quotes(str(tokens[0])))
+                continue
             f = all_fields.get(key) or all_fields.get(alias_map.get(key, ""))
             if f is None or f.init is False:
                 if key in inner_class_fields:

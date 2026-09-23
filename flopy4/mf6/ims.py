@@ -45,6 +45,7 @@ class Ims(Solution):
         block="options",
         optional=True,
         direction="out",
+        keyword="csv_outer_output",
     )
     csv_inner_output_file: Optional[Path] = path(
         default=None,
@@ -52,6 +53,7 @@ class Ims(Solution):
         block="options",
         optional=True,
         direction="out",
+        keyword="csv_inner_output",
     )
     no_ptc: Optional[NoPtc] = field(
         default=None,

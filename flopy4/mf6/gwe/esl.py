@@ -64,6 +64,7 @@ class Esl(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -71,6 +72,7 @@ class Esl(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",

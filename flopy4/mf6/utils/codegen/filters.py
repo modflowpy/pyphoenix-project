@@ -465,8 +465,20 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         child = file_child(f)
         assert child is not None  # is_file_record() already confirmed a File child exists
         kw["direction"] = child.direction
+        # The record's trigger keyword (e.g. "ts6" in "TS6 FILEIN <file>")
+        # isn't recoverable from the py name (ts_filerecord → ts_file), so
+        # carry it explicitly -- stored as _keyword metadata, the same
+        # convention as a Record class's own _keyword (see spec.path).
+        keywords = [c.name for c in f.fields.values() if isinstance(c, KeywordField)]
+        if len(keywords) != 1:
+            raise ValueError(f"file record {f.name!r}: expected one keyword, got {keywords}")
+        kw["keyword"] = keywords[0].lower()
     elif is_bare_file(f):
         kw["direction"] = f.direction
+        # A tagged bare File (e.g. prt-fmi's "GWFHEAD FILEIN <file>") is its
+        # own trigger keyword.
+        if f.tagged:
+            kw["keyword"] = f.name.lower()
     if longname := getattr(f, "longname", None):
         # DFN longname text escapes underscores for LaTeX rendering (e.g.
         # AUTO\_FLOW\_REDUCE); harmless in the .dfn but `\_` isn't a valid
@@ -674,12 +686,16 @@ def item_class(
         """MF6 file direction implied by a row column's prefix tokens."""
         return "out" if "FILEOUT" in (col.get("prefix") or "").upper().split() else "in"
 
-    def _prefix_tokens(col: dict) -> tuple:
-        """Fixed literal prefix token(s) preceding FILEIN/FILEOUT itself (e.g.
-        SSM fileinput's "SPC6", LAK tables' "TAB6") -- the FILEIN/FILEOUT
-        keyword is handled separately via direction=, not part of this tuple."""
-        parts = (col.get("prefix") or "").split()
-        return tuple(p for p in parts if p not in ("FILEIN", "FILEOUT"))
+    def _file_keyword(col: dict) -> str | None:
+        """A row-level file column's trigger keyword preceding FILEIN/FILEOUT
+        (e.g. SSM fileinput's "spc6", LAK tables' "tab6"), emitted as
+        path(keyword=...) -- the same _keyword convention as a block-level
+        file record (see field_call) and a Record class's own _keyword. The
+        FILEIN/FILEOUT token is handled separately via direction=."""
+        parts = [p for p in (col.get("prefix") or "").split() if p not in ("FILEIN", "FILEOUT")]
+        if len(parts) > 1:
+            raise ValueError(f"file column {col['name']!r}: expected one keyword, got {parts}")
+        return parts[0].lower() if parts else None
 
     def _field_meta(col: dict) -> dict:
         role = col["role"]
@@ -726,8 +742,8 @@ def item_class(
         # generic dtype-based Union[float, str] fallback below.
         if col.get("prefix"):
             direction = _prefix_direction(col)
-            fixed = _prefix_tokens(col)
-            prefix_kw = f", prefix={_dq(fixed)}" if fixed else ""
+            file_kw = _file_keyword(col)
+            prefix_kw = f", keyword={_dq(file_kw)}" if file_kw else ""
             if optional:
                 return (
                     f"        {col['name']}: Optional[Path] = path(\n"

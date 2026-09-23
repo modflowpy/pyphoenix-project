@@ -149,6 +149,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="strain_csv_interbed",
     )
     straincg_file: Optional[Path] = path(
         default=None,
@@ -156,6 +157,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="strain_csv_coarse",
     )
     compaction_file: Optional[Path] = path(
         default=None,
@@ -163,6 +165,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="compaction",
     )
     compaction_elastic_file: Optional[Path] = path(
         default=None,
@@ -170,6 +173,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="compaction_elastic",
     )
     compaction_inelastic_file: Optional[Path] = path(
         default=None,
@@ -177,6 +181,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="compaction_inelastic",
     )
     compaction_interbed_file: Optional[Path] = path(
         default=None,
@@ -184,6 +189,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="compaction_interbed",
     )
     compaction_coarse_file: Optional[Path] = path(
         default=None,
@@ -191,6 +197,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="compaction_coarse",
     )
     zdisplacement_file: Optional[Path] = path(
         default=None,
@@ -198,6 +205,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="zdisplacement",
     )
     package_convergence_file: Optional[Path] = path(
         default=None,
@@ -205,6 +213,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="package_convergence",
     )
     ts_file: Optional[Path] = path(
         default=None,
@@ -212,6 +221,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -219,6 +229,7 @@ class Csub(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     ninterbeds: Optional[int] = field(
         default=None,

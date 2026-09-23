@@ -18,14 +18,14 @@ from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
 
-def _path_to_tuple(name: str, value: Path, direction: FileDirection) -> tuple[str, ...]:
-    for suffix in ("_input_file", "_filerecord", "_file"):
-        if name.endswith(suffix):
-            prefix = name[: -len(suffix)]
-            break
-    else:
-        prefix = name
-    t = [prefix.upper()]
+def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
+    """A block-level file record's ``KEYWORD FILEIN|FILEOUT <path>`` row. The
+    keyword is the field's own ``_keyword`` metadata (see spec.path)."""
+    keyword = field.metadata.get("_keyword")
+    if not keyword:
+        raise ValueError(f"file field {field.name!r} has no _keyword metadata")
+    direction: FileDirection | None = field.metadata.get("direction")
+    t = [keyword.upper()]
     if direction:
         t.append("FILEOUT" if direction == "out" else "FILEIN")
     t.append(str(value))
@@ -224,7 +224,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 blocks[block_name][f.name] = field_value
 
         elif meta.get("direction") and isinstance(field_value, Path):
-            t = _path_to_tuple(f.name, field_value, meta.get("direction", "out"))
+            t = _path_to_tuple(f, field_value)
             blocks[block_name][t[0].lower()] = t
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
@@ -354,8 +354,8 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                     if field_value:
                         blocks[block_name][field_name] = field_value
                 case Path():
-                    direction = field.metadata.get("direction", "out") if field else "out"
-                    t = _path_to_tuple(field_name, field_value, direction=direction)  # type: ignore[arg-type]
+                    assert field is not None  # field_name comes from blocks_dict(type(value))
+                    t = _path_to_tuple(field, field_value)
                     blocks[block_name][t[0]] = t
                 case datetime():
                     blocks[block_name][field_name] = field_value.isoformat()

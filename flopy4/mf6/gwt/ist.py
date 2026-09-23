@@ -42,6 +42,7 @@ class Ist(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budget",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
@@ -49,6 +50,7 @@ class Ist(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budgetcsv",
     )
     sorption: Optional[str] = field(
         default=None,
@@ -74,6 +76,7 @@ class Ist(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="cim",
     )
     cimprint: Optional[Cimprint] = field(
         default=None,
@@ -85,6 +88,7 @@ class Ist(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="sorbate",
     )
     export_array_ascii: bool = field(
         default=False,

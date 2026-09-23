@@ -41,6 +41,7 @@ class Buy(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="density",
     )
     nrhospecies: Optional[int] = field(
         default=None,

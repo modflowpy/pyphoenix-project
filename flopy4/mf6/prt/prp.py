@@ -94,6 +94,7 @@ class Prp(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="track",
     )
     trackcsv_file: Optional[Path] = path(
         default=None,
@@ -101,6 +102,7 @@ class Prp(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="trackcsv",
     )
     stoptime: Optional[float] = field(
         default=None,
