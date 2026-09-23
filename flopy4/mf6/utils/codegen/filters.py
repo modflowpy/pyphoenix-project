@@ -106,9 +106,16 @@ def output_path(dfn_name: str, root: Path) -> Path:
 # Component/Block-level helpers
 
 
-def has_period_block(component: Component) -> bool:
-    """True if the component defines a period block (stress package)."""
-    return "period" in (component.blocks or {})
+def fill_forward_blocks(component: Component) -> frozenset[str]:
+    """Names of the component's repeating blocks whose header fills forward
+    (a missing occurrence reuses the prior one's values) -- ``period``, per
+    the DFN's own ``BlockHeader.fill_forward``, not assumed by name.
+    """
+    return frozenset(
+        name
+        for name, block in (component.blocks or {}).items()
+        if block.header is not None and block.header.fill_forward
+    )
 
 
 def has_dimensions_block(component: Component) -> bool:
@@ -149,13 +156,14 @@ def is_scalar(f: FieldV3) -> bool:
 
 
 def is_array(f: FieldV3) -> bool:
-    """True for array fields (numeric or string type with a shape).
-
-    Excludes auxiliary variable name lists (shape == [], see is_aux_list_field)
-    and other unshaped arrays (variadic-count fields with no static dim --
-    see devtools/todo.md 2026-08-18 entry on Array.repeat).
+    """True for readarray-form array fields: standalone (not nested in a
+    Record/Union/List item -- callers only ever see standalone fields, see
+    flat_fields), non-keyword, non-string. Excludes is_aux_list_field
+    (string) -- per the DFN spec, only a standalone non-string array is the
+    full multi-line readarray form; a string array is always inline
+    (auxiliary names), as is any array nested in a record-like field.
     """
-    return isinstance(f, Array) and bool(f.shape) and f.dtype != "keyword"
+    return isinstance(f, Array) and f.dtype not in ("keyword", "string")
 
 
 def is_keyword_array(f: FieldV3) -> bool:
@@ -188,29 +196,25 @@ def file_child(f: Record) -> File | None:
 
 
 def is_aux_list_field(f: FieldV3) -> bool:
-    """True for auxiliary variable name lists (options block, shape []).
+    """True for auxiliary variable name lists (options block).
 
-    dev3 represents this as Array(dtype="string", shape=[], name="auxiliary")
-    -- an unshaped string array. (Legacy encoded this as a shaped field with
-    a self-referential dim "naux"; dev3 drops the fake dimension entirely
-    since the count *is* len() of the list itself, nothing to declare.)
+    A standalone string array -- inline per the DFN spec, never the
+    multi-line readarray form (see is_array). (Legacy encoded this as a
+    shaped field with a self-referential dim "naux"; dev3 drops the fake
+    dimension entirely since the count *is* len() of the list itself,
+    nothing to declare.)
     """
-    return isinstance(f, Array) and f.dtype == "string" and f.shape == [] and f.name == "auxiliary"
+    return isinstance(f, Array) and f.dtype == "string"
 
 
-def is_period_array(f: FieldV3, block_name: str) -> bool:
-    """True for array fields in the period block (G-variant packages)."""
-    return block_name == "period" and (is_array(f) or is_keyword_array(f))
+def is_any_array(f: FieldV3) -> bool:
+    """True for numeric or keyword array fields."""
+    return is_array(f) or is_keyword_array(f)
 
 
 def is_dimensions_scalar(f: FieldV3, block_name: str) -> bool:
     """True for scalar fields in the dimensions block (computed, init=False)."""
     return block_name == "dimensions" and is_scalar(f)
-
-
-def is_boundname_field(f: FieldV3, block_name: str) -> bool:
-    """True for the boundname string field in the period block."""
-    return block_name == "period" and f.name == "boundname"
 
 
 def is_list_field(f: FieldV3) -> bool:
@@ -243,13 +247,25 @@ def _is_expandable_child(child: FieldV3) -> bool:
     return isinstance(child, KeywordField)
 
 
+def is_record_list_field(c: FieldV3) -> bool:
+    """True for a non-keyword array nested in a record.
+
+    Per the DFN spec, an array nested in a record is always inline: it
+    consumes whatever tokens remain on the line, regardless of any declared
+    shape (e.g. sfacval's shape == ["time_series_name"], a sibling-field
+    reference rather than a resolvable extent). See record.py's
+    from_tokens/to_tokens.
+    """
+    return isinstance(c, Array) and c.dtype != "keyword"
+
+
 def _record_child_supported(c: FieldV3) -> bool:
-    """True if a record child is a scalar/keyword, or a Record whose own
-    children are (recursively) supported -- arbitrarily deep, since nested
-    Records now compose as their own classes (make.py's
-    _build_record_class_specs) rather than needing to flatten into a fixed
-    depth. Lists and unions still fall back to TODO."""
+    """True if a record child is a scalar/keyword, a nested inline array
+    (is_record_list_field), or a Record of supported children (recursive).
+    Recarray-typed Lists and unions still fall back to TODO."""
     if isinstance(c, _RECORD_CLASS_SCALAR_TYPES + (KeywordField,)):
+        return True
+    if is_record_list_field(c):
         return True
     if isinstance(c, Record) and c.fields:
         return all(_record_child_supported(gc) for gc in c.fields.values())
@@ -259,29 +275,28 @@ def _record_child_supported(c: FieldV3) -> bool:
 def can_generate_record_class(f: FieldV3) -> bool:
     """True when a compound record should be rendered as an inner attrs class.
 
-    All non-file records whose children are entirely scalars, keywords, and/or
-    nested records (of supported shape, see _record_child_supported) become
-    inner attrs classes. The first keyword child (if any) is the trigger
-    token (``_keyword``); remaining keyword children become ``Optional[bool]``
-    fields so related options stay grouped. A child that is itself a Record
-    becomes its own composed class rather than being flattened in (the
-    `head/temperature/concentration/qoutflow/cim` printrecord family: outer
-    record composes `formatrecord: Record{columns, width, digits, format}`).
+    All non-file records whose children are entirely scalars, keywords,
+    nested inline arrays, and/or nested records (see
+    _record_child_supported) become inner attrs classes. The first keyword
+    child (if any) is the trigger token (``_keyword``); remaining keyword
+    children become ``Optional[bool]`` fields. A child that is itself a
+    Record becomes its own composed class rather than being flattened in.
 
-    All-keyword records with only one child (a lone flag keyword) are left to
-    :func:`can_expand_record` -- a bare bool field is cleaner there than an
-    empty inner class. Records with unsupported child types (list, union)
-    fall back to TODO comments.
+    All-keyword records with only one child are left to
+    :func:`can_expand_record` instead. Records with unsupported child types
+    (recarray list, union) fall back to TODO comments.
     """
     if not isinstance(f, Record) or is_file_record(f) or not f.fields:
         return False
     children = list(f.fields.values())
     if not all(_record_child_supported(c) for c in children):
         return False
-    has_scalar = any(isinstance(c, _RECORD_CLASS_SCALAR_TYPES) for c in children)
+    has_data = any(
+        isinstance(c, _RECORD_CLASS_SCALAR_TYPES) or is_record_list_field(c) for c in children
+    )
     # All-keyword records need at least 2 children (trigger + modifier) to
     # justify a class; a single lone keyword expands more cleanly to a bool.
-    if not has_scalar:
+    if not has_data:
         return len(children) >= 2
     return True
 
@@ -333,11 +348,17 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
         The component definition.
     developmode :
         If False (default), fields marked developmode are excluded.
+
+    Fields marked `removed` are always excluded -- MF6 no longer parses
+    that syntax at all (unlike `deprecated`, which still parses and stays
+    generated). See InputFieldBase.removed's docstring.
     """
     result: list[tuple[str, FieldV3]] = []
     for block_name, block in (component.blocks or {}).items():
         for f in block.fields.values():
             if f.developmode and not developmode:
+                continue
+            if getattr(f, "removed", None):
                 continue
             result.append((block_name, f))
     return result
@@ -359,8 +380,6 @@ def py_type(f: FieldV3, block_name: str) -> str:
         return "Optional[list[str]]"
     if is_file_record(f) or is_bare_file(f):
         base = "Path"
-    elif is_boundname_field(f, block_name):
-        base = "NDArray[np.str_]"
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
     elif is_array(f):
@@ -382,10 +401,7 @@ def py_type(f: FieldV3, block_name: str) -> str:
     else:
         base = "Any"
 
-    # Period-block arrays can be absent for a given stress period, so they're
-    # implicitly nullable at the Python level even when the DFN marks them required.
-    is_nullable = f.optional or is_period_array(f, block_name)
-    return f"Optional[{base}]" if is_nullable else base
+    return f"Optional[{base}]" if f.optional else base
 
 
 # Python name sanitisation
@@ -429,7 +445,7 @@ def _default_repr(f: FieldV3) -> str:
 # Field call strings
 
 
-def field_metadata(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> dict:
+def field_metadata(f: FieldV3, block_name: str) -> dict:
     """Build the ``field()``/``path()`` spec-call kwargs for a field.
 
     These calls carry passive metadata (shape, block, etc.) read by the
@@ -451,9 +467,6 @@ def field_metadata(f: FieldV3, block_name: str, *, plain_maxbound: bool = False)
         kw["direction"] = child.direction
     elif is_bare_file(f):
         kw["direction"] = f.direction
-    if plain_maxbound:
-        # Omit MAXBOUND when unset (0) instead of writing an invalid MAXBOUND=0.
-        kw["auto_from"] = "stress_period_data"
     if longname := getattr(f, "longname", None):
         # DFN longname text escapes underscores for LaTeX rendering (e.g.
         # AUTO\_FLOW\_REDUCE); harmless in the .dfn but `\_` isn't a valid
@@ -508,18 +521,19 @@ def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
     return f"{pad}{k}=(\n{body}\n{pad}),"
 
 
-def field_call(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> str:
+def field_call(f: FieldV3, block_name: str) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
-    kw = field_metadata(f, block_name, plain_maxbound=plain_maxbound)
-    # A G-variant package's maxbound (see build_component_spec's
-    # _maxbound_is_computed) is still a plain field, not a computed
-    # property -- defaults to 0 like the computed version would.
-    if block_name == "dimensions" and f.name == "maxbound":
+    kw = field_metadata(f, block_name)
+    # A plain (non-computed) required maxbound defaults to 0, like the
+    # computed one. An optional one (READARRAYGRID packages: CHDG, WELG, ...)
+    # keeps the DFN default (None) so it's omitted unless set -- MF6 then
+    # sizes it to the grid, and rejects an explicit MAXBOUND <= 0.
+    if block_name == "dimensions" and f.name == "maxbound" and not f.optional:
         default = "0"
     else:
         default = _default_repr(f)

@@ -23,7 +23,7 @@ block: attributes_block | time_block
 
 attributes_block: "begin"i "attributes"i [_remark] _NL _NL* attributes_fields _NL* "end"i "attributes"i
 time_block: "begin"i "time"i block_index [_remark] _NL _NL* time_fields _NL* "end"i "time"i [block_index]
-block_index: integer
+block_index: number
 attributes_fields: ((time_series_namerecord | interpolation_methodrecord | sfacrecord | open_close_redirect) _NL*)*
 time_fields: ((tas_array | open_close_redirect) _NL*)*
 time_series_namerecord: "name"i array [_remark] _NL

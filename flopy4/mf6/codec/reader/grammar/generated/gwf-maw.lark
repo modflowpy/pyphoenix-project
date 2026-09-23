@@ -27,7 +27,7 @@ packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields
 connectiondata_block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata_fields _NL* "end"i "connectiondata"i
 angledata_block: "begin"i "angledata"i [_remark] _NL _NL* angledata_fields _NL* "end"i "angledata"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | non_vertical_wells | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover | dev_peaceman_effective_radius | open_close_redirect) _NL*)*
 dimensions_fields: ((nmawwells | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*

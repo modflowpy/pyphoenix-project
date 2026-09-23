@@ -2,6 +2,7 @@ import pytest
 from modflow_devtools.dfns.schema import (
     Array,
     Block,
+    BlockHeader,
     Double,
     Integer,
     Keyword,
@@ -78,6 +79,26 @@ def test_make_grammar_with_multiple_blocks(tmp_path, simple_dfn):
     assert "array" in content.lower()
 
 
+def test_make_grammar_skips_removed_fields(tmp_path):
+    dfn = Package(
+        name="test-removed",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={
+                    "kept": Keyword(name="kept"),
+                    "gone": Keyword(name="gone", removed="6.8.0"),
+                },
+            )
+        },
+    )
+    make_grammar(dfn, tmp_path)
+
+    content = (tmp_path / "test-removed.lark").read_text()
+    assert "kept" in content
+    assert "gone" not in content
+
+
 def test_make_all_grammars(tmp_path):
     outdir = tmp_path / "new_directory"
     assert not outdir.exists()
@@ -130,7 +151,7 @@ def test_make_grammar_with_period_block(tmp_path):
             ),
             "period": Block(
                 name="period",
-                header=Integer(name="iper"),
+                header=BlockHeader(field=Integer(name="iper"), fill_forward=True),
                 fields={
                     "stress_period_data": List(
                         name="stress_period_data",
@@ -175,7 +196,7 @@ def test_make_grammar_with_named_subfields(tmp_path):
         blocks={
             "period": Block(
                 name="period",
-                header=Integer(name="iper"),
+                header=BlockHeader(field=Integer(name="iper"), fill_forward=True),
                 fields={
                     "stress_period_data": List(
                         name="stress_period_data",
@@ -210,7 +231,7 @@ def test_make_grammar_with_oc_style_records(tmp_path):
         blocks={
             "period": Block(
                 name="period",
-                header=Integer(name="iper"),
+                header=BlockHeader(field=Integer(name="iper"), fill_forward=True),
                 fields={
                     "output": List(
                         name="output",

@@ -126,6 +126,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     spd_period: dict[int, list[tuple]] = {}
     # READARRAY period fields (G/A variants): {kper: {field_name: xr.DataArray}}
     readarray_period: dict[int, dict[str, Any]] = {}
+    # Name of the fill-forward block (period) the two dicts above belong to;
+    # at most one per component (enforced by codegen).
+    fill_forward_block: str | None = None
     try:
         from dask.array import Array as _DaskArray
     except ImportError:
@@ -149,11 +152,16 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
 
         dfn_type = to_field_type(f.type)
 
-        # ── PERIOD block ────────────────────────────────────────────────────────
-        if block_name == "period":
-            # READARRAY period field (G/A variants): ndarray shaped (nper, ...)
-            is_readarray = meta.get("reader") == "readarray"
-            if is_readarray and isinstance(field_value, (np.ndarray, _DaskArray)):
+        # ── PERIOD (fill-forward) block ─────────────────────────────────────────
+        if meta.get("fill_forward"):
+            fill_forward_block = block_name
+            # READARRAY period field (G/A variants): ndarray shaped (nper, ...).
+            # No other period-block field is ever a bare ndarray -- the
+            # stress-period Item list further below is a dict, and a
+            # repeating-block-array field (see the "dict" branch below) only
+            # ever occurs on a non-period block -- so the value's own
+            # runtime type is already unambiguous, no metadata flag needed.
+            if isinstance(field_value, (np.ndarray, _DaskArray)):
                 is_layered = meta.get("layered", False)
                 nper = field_value.shape[0]
                 # Aux field: shape (nper, ncpl, naux) → emit one named block per
@@ -189,6 +197,22 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                     else []
                 )
                 spd_period.setdefault(kper_int, []).extend(rows)
+            continue
+
+        # Array field whose own block repeats (e.g. utl-tas.tas_array):
+        # dict[header, ndarray] -> one block per entry. By this point the
+        # field is not fill-forward (the branch above always `continue`s),
+        # and no other non-period field is ever a bare
+        # dict (griddata fields are ndarrays; options/attributes fields are
+        # Records or scalars; item-list blocks are list[Item]) -- so, again,
+        # the value's own runtime type is unambiguous. Whether the array
+        # body gets a leading field-name token (like griddata) or is bare
+        # (tas_array: "" key) is driven by the field's own `tagged`
+        # attribute, not assumed.
+        if isinstance(field_value, dict):
+            array_key = f.name if meta.get("tagged") else ""
+            for tval, arr in field_value.items():
+                blocks[f"{block_name} {tval}"] = {array_key: _wrap_array(arr)}
             continue
 
         # ── Non-period blocks ───────────────────────────────────────────────────
@@ -258,22 +282,23 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             blocks.setdefault("dimensions", {})["maxbound"] = maxbound
 
     # Assemble period blocks (stress-period Item rows), in kper order.
-    for kper in sorted(spd_period.keys()):
-        key = f"period {kper + 1}"
-        blocks[key] = {"period": spd_period[kper]}
+    if fill_forward_block is not None:
+        for kper in sorted(spd_period.keys()):
+            key = f"{fill_forward_block} {kper + 1}"
+            blocks[key] = {fill_forward_block: spd_period[kper]}
 
-    # READARRAY period blocks (G/A variants): each kper gets its own period block.
-    # Fields where every value is FILL_DNODATA are skipped; if no fields remain
-    # for a period, the block is omitted entirely so MF6 fill-forwards from the
-    # previous period instead of treating 3e30 as a real array value.
-    for kper in sorted(readarray_period.keys()):
-        key = f"period {kper + 1}"
-        ra_block = blocks.get(key, {})
-        for field_name, da in readarray_period[kper].items():
-            if not np.all(da.values == FILL_DNODATA):
-                ra_block[field_name] = da
-        if ra_block:
-            blocks[key] = ra_block
+        # READARRAY period blocks (G/A variants): each kper gets its own period block.
+        # Fields where every value is FILL_DNODATA are skipped; if no fields remain
+        # for a period, the block is omitted entirely so MF6 fill-forwards from the
+        # previous period instead of treating 3e30 as a real array value.
+        for kper in sorted(readarray_period.keys()):
+            key = f"{fill_forward_block} {kper + 1}"
+            ra_block = blocks.get(key, {})
+            for field_name, da in readarray_period[kper].items():
+                if not np.all(da.values == FILL_DNODATA):
+                    ra_block[field_name] = da
+            if ra_block:
+                blocks[key] = ra_block
 
     return {
         name: block

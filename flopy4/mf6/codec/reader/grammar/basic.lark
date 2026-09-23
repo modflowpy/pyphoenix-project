@@ -1,6 +1,6 @@
 start: [_NL*] (block [_NL*])*
 block: "begin"i block_name _NL _list "end"i block_name [_NL+]
-block_name: CNAME [INT]
+block_name: CNAME [NUMBER]
 _list: line*
 line: item* _NL+
 item: word | NUMBER

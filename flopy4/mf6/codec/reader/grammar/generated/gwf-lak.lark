@@ -28,7 +28,7 @@ connectiondata_block: "begin"i "connectiondata"i [_remark] _NL _NL* connectionda
 tables_block: "begin"i "tables"i [_remark] _NL _NL* tables_fields _NL* "end"i "tables"i
 outlets_block: "begin"i "outlets"i [_remark] _NL _NL* outlets_fields _NL* "end"i "outlets"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_force_fallback | dev_groundwater_head_conductance | dev_maximum_outlet_depth | surfdep | implicit | maximum_iterations | maximum_stage_change | time_conversion | length_conversion | open_close_redirect) _NL*)*
 dimensions_fields: ((nlakes | noutlets | ntables | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*

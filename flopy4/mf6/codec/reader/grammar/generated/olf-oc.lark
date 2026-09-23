@@ -23,7 +23,7 @@ block: options_block | period_block
 
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((budget_filerecord | budgetcsv_filerecord | qoutflow_filerecord | stage_filerecord | qoutflowprintrecord | open_close_redirect) _NL*)*
 period_fields: ((saverecord | printrecord | open_close_redirect) _NL*)*
 budget_filerecord: "budget"i "fileout"i word [_remark] _NL

@@ -70,7 +70,7 @@
 {{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
 "{{ child.name }}"i
 {%- elif child.type == 'array' -%}
-"{{ child.name }}"i {{ child.dtype }}+
+"{{ child.name }}"i {{ child|field_type }}
 {%- else -%}
 "{{ child.name }}"i {{ child.type }}
 {%- endif %}
@@ -79,13 +79,7 @@
 {%- endmacro %}
 
 {% macro simple_field(field_name, field, field_type) -%}
-{%- if field_type == 'array' and field.dtype == 'string' -%}
-{# A string-dtype "array" (e.g. AUXILIARY's list of aux names, `type
-   string, shape (naux)` in the DFN) is really just a run of names on one
-   line -- confirmed against the real DFN source -- not a numeric
-   CONSTANT/INTERNAL/OPEN-CLOSE grid array like every other Array field. #}
-{{ field_name|to_rule_name }}: "{{ field.name }}"i word+ [_remark] _NL
-{%- elif field_type == 'array' and field.name|lower == 'aux' -%}
+{%- if field_type == 'array' and field.name|lower == 'aux' -%}
 {# The DFN's "aux" field is a documentation placeholder for READASARRAYS-
    style packages (e.g. RCHA) -- real files write the *user-declared*
    AUXILIARY variable name as the field's own keyword instead of a literal
@@ -121,7 +115,7 @@
 {{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}: {% if opt.type == 'keyword' -%}
 "{{ opt.name }}"i
 {%- elif opt.type == 'array' -%}
-"{{ opt.name }}"i {{ opt.dtype }}+
+"{{ opt.name }}"i {{ opt|field_type }}
 {%- else -%}
 "{{ opt.name }}"i {{ opt.type }}
 {%- endif %}

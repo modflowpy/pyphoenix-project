@@ -288,12 +288,12 @@ class Flopy3Package(PackageInterface):
         # Stress-period recarray packages (CHD, DRN, etc.)
         if getattr(self._package, "_stress_period_data", None) is not None:
             return True
-        # Any other "period"-block field (covers OC's own
+        # Any other fill-forward (period) field (covers OC's own
         # _stress_period_data too, redundantly with the check above -- kept
         # as a generic fallback for any period field shape).
         try:
             for f in attrs.fields(type(self._package)):
-                if f.metadata.get("block") == "period":
+                if f.metadata.get("fill_forward"):
                     attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
                     if getattr(self._package, attr_name, None) is not None:
                         return True

@@ -25,7 +25,7 @@ options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 packages_block: "begin"i "packages"i [_remark] _NL _NL* packages_fields _NL* "end"i "packages"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((print_input | print_flows | modelnames | budget_filerecord | budgetcsv_filerecord | open_close_redirect) _NL*)*
 dimensions_fields: ((maxmvr | maxpackages | open_close_redirect) _NL*)*
 packages_fields: ((packagesdata | open_close_redirect) _NL*)*

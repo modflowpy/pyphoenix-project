@@ -7,7 +7,6 @@ import attrs
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
 
 
@@ -16,11 +15,6 @@ class Prp(Package):
     dfn_name: ClassVar[str] = "prt-prp"
 
     multi_package: ClassVar[bool] = True
-
-    @attrs.define
-    class ReleaseTimesfile(Record):
-        _keyword: ClassVar[str] = "release_timesfile"
-        timesfile: str = attrs.field()
 
     @attrs.define
     class Packagedata(Item):
@@ -137,11 +131,6 @@ class Prp(Package):
         block="options",
         optional=True,
         longname="drape",
-    )
-    # TODO: release_timesrecord — type 'record' not yet supported
-    release_timesfile: Optional[ReleaseTimesfile] = field(
-        default=None,
-        block="options",
     )
     dry_tracking_method: Optional[str] = field(
         default=None,

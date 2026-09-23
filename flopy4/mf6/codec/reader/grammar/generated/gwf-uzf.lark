@@ -25,7 +25,7 @@ options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((auxiliary | auxmultname | boundnames | print_input | print_flows | save_flows | wc_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_no_final_check | simulate_et | linear_gwet | square_gwet | simulate_gwseep | unsat_etwc | unsat_etae | open_close_redirect) _NL*)*
 dimensions_fields: ((nuzfcells | ntrailwaves | nwavesets | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*

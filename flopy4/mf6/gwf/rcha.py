@@ -79,18 +79,24 @@ class Rcha(Package):
     irch: Optional[IntArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     recharge: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )

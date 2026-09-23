@@ -25,8 +25,8 @@ options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i
 dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
 tracktimes_block: "begin"i "tracktimes"i [_remark] _NL _NL* tracktimes_fields _NL* "end"i "tracktimes"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
-options_fields: ((budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_subfeature_exit | track_timestep | track_terminate | track_weaksink | track_usertime | track_dropped | track_timesrecord | track_timesfilerecord | dev_dump_event_trace | scratch_buffer | open_close_redirect) _NL*)*
+block_index: number
+options_fields: ((budget_filerecord | budgetcsv_filerecord | track_filerecord | trackcsv_filerecord | track_release | track_exit | track_subfeature_exit | track_timestep | track_terminate | track_weaksink | track_usertime | track_dropped | dev_dump_event_trace | scratch_buffer | open_close_redirect) _NL*)*
 dimensions_fields: ((ntracktimes | open_close_redirect) _NL*)*
 tracktimes_fields: ((tracktimesdata | open_close_redirect) _NL*)*
 period_fields: ((saverecord | printrecord | open_close_redirect) _NL*)*
@@ -42,8 +42,6 @@ track_terminate: "track_terminate"i  [_remark] _NL
 track_weaksink: "track_weaksink"i  [_remark] _NL
 track_usertime: "track_usertime"i  [_remark] _NL
 track_dropped: "track_dropped"i  [_remark] _NL
-track_timesrecord: "track_times"i array [_remark] _NL
-track_timesfilerecord: "track_timesfile"i word [_remark] _NL
 dev_dump_event_trace: "dev_dump_event_trace"i  [_remark] _NL
 scratch_buffer: "scratch_buffer"i  [_remark] _NL
 ntracktimes: "ntracktimes"i integer [_remark] _NL

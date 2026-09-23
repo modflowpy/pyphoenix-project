@@ -11,10 +11,11 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import to_field_type
+from flopy4.mf6.record import Record
+from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 
 
-def _inner_class_type(field_type) -> type | None:
+def _inner_class_type(field_type) -> type[Record] | None:
     """If field_type is Optional[C] where C is an attrs inner-record class, return C."""
     args = get_args(field_type)
     if not args:
@@ -22,7 +23,7 @@ def _inner_class_type(field_type) -> type | None:
     for arg in args:
         if arg is type(None):
             continue
-        if attrs.has(arg) and "_keyword" in vars(arg):
+        if isinstance(arg, type) and issubclass(arg, Record) and "_keyword" in vars(arg):
             return arg
     return None
 
@@ -595,6 +596,33 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     return kwargs
 
 
+def _group_repeating_rows(
+    raw_lower: dict, prefixes: "set[str]", cast
+) -> "dict[str, dict[Any, list]]":
+    """Group raw ``"{prefix} {header}"`` block rows by prefix, then by
+    ``cast``-ed header value -- the shape any repeating block (``period``,
+    or any other block whose own header repeats, e.g. utl-tas's ``time``)
+    has in the raw parsed dict, regardless of what's inside one repetition
+    (an Item-list, a plain array, ...). Shared by Pass 3 (``period``, keyed
+    0-based via ``cast=lambda s: int(s) - 1``) and the general
+    repeating-block-array case below (keyed directly by the field's own
+    dict key type, e.g. ``float`` for utl-tas's ``time``). A block name
+    whose header token doesn't ``cast`` cleanly is skipped -- a malformed
+    or unexpected block name, not this repeating shape.
+    """
+    grouped: dict[str, dict[Any, list]] = {}
+    for block_name, rows in raw_lower.items():
+        parts = block_name.split()
+        if len(parts) < 2 or parts[0] not in prefixes:
+            continue
+        try:
+            header = cast(parts[1])
+        except ValueError:
+            continue
+        grouped.setdefault(parts[0], {})[header] = rows
+    return grouped
+
+
 def structure_component(
     raw: dict,
     cls: type,
@@ -636,8 +664,13 @@ def structure_component(
     raw_lower = {k.lower(): v for k, v in raw.items()}
     binding_kwargs = _resolve_bindings(cls, raw_lower, workspace) if workspace else {}
 
-    # Index all init-eligible fields by name and alias
-    all_fields = {f.name: f for f in attrs.fields(cls) if f.init is not False}
+    # Only DFN-block-derived fields -- excludes identity/bookkeeping
+    # attributes (Component.name, filename, ...) with no `block` metadata,
+    # so a block keyword can't shadow them (e.g. utl-tas's "NAME ..." row
+    # is for time_series_name, not Package.name).
+    all_fields = {
+        f.name: f for f in attrs.fields(cls) if f.init is not False and "block" in f.metadata
+    }
     alias_map: dict[str, str] = {}  # alias → name
     for f in attrs.fields(cls):
         if f.alias and f.alias != f.name:
@@ -663,16 +696,34 @@ def structure_component(
     period_field = None  # field for the period Item-list
     period_item_cls: "type[Item] | tuple[type[Item], ...] | None" = None
 
+    # Fill-forward repeating blocks (period), per the fields' own
+    # fill_forward metadata (from the DFN's BlockHeader.fill_forward).
+    fill_forward_blocks = {
+        f.metadata["block"] for f in attrs.fields(cls) if f.metadata.get("fill_forward")
+    }
+
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
         item_cls = item_list_type(f.type)
         if item_cls is None:
             continue
-        if block == "period":
+        if f.metadata.get("fill_forward"):
             period_field = f
             period_item_cls = item_cls
         else:
             block_item_fields[block] = (f, item_cls)
+
+    # Array fields whose own block repeats per header value -- e.g.
+    # utl-tas's tas_array, dict[float, ndarray]. Detected structurally from
+    # the field's own annotation (Optional[dict[K, ArrayLike]]), the same
+    # way block_item_fields above is detected via item_list_type -- not via
+    # a metadata flag. Mirrors egress/unstructure.py's write path.
+    repeating_array_fields = {
+        f.name: f
+        for f in attrs.fields(cls)
+        if repeating_array_key_type(f.type) is not None and f.init is not False
+    }
+    repeating_array_block_prefixes = {f.metadata["block"] for f in repeating_array_fields.values()}
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
@@ -681,8 +732,9 @@ def structure_component(
             continue
         if (
             block_name in block_item_fields
-            or block_name.startswith("period")
+            or block_name.split()[0] in fill_forward_blocks
             or block_name == "griddata"
+            or block_name.split()[0] in repeating_array_block_prefixes
         ):
             continue
         for row in rows:
@@ -697,6 +749,14 @@ def structure_component(
                     kwargs[cand_init] = inner_cls.from_tokens(row)
                 continue
             init_key = f.alias if f.alias else f.name
+            # A Record-typed field must go through from_tokens(), even when
+            # the matched token is the field's own name rather than the
+            # record's separate trigger keyword (e.g. sfacrecord's outer
+            # field is itself named "sfac").
+            inner_cls = _inner_class_type(f.type)
+            if inner_cls is not None:
+                kwargs[init_key] = inner_cls.from_tokens(row)
+                continue
             if len(row) == 1:
                 kwargs[init_key] = True
             else:
@@ -734,18 +794,13 @@ def structure_component(
             kwargs[init_key] = row_list
 
     # ── Pass 3: period blocks ────────────────────────────────────────────────
+    # At most one fill-forward block per component (enforced by codegen).
     kper_rows: dict[int, list] = {}
-    for block_name, rows in raw_lower.items():
-        if not block_name.startswith("period"):
-            continue
-        parts = block_name.split()
-        if len(parts) < 2:
-            continue
-        try:
-            kper = int(parts[1]) - 1
-        except ValueError:
-            continue
-        kper_rows[kper] = rows
+    if fill_forward_blocks:
+        (fill_forward_block,) = fill_forward_blocks
+        kper_rows = _group_repeating_rows(raw_lower, fill_forward_blocks, lambda s: int(s) - 1).get(
+            fill_forward_block, {}
+        )
 
     if kper_rows:
         if period_field is not None:
@@ -768,12 +823,16 @@ def structure_component(
         else:
             # ── Pass 3b: READARRAY period fields (G/A variants) ─────────────
             # Packages like Rcha/Chdg store full-grid arrays per stress period.
-            # Each field has block="period" + reader="readarray".
+            # Each field is fill_forward and a plain Optional[Int|
+            # FloatArrayLike] -- not an Item-list (else period_field would be
+            # set above) and not dict-wrapped (else it'd be a
+            # repeating_array_field instead, see below).
             ra_fields = {
                 f.name: f
                 for f in attrs.fields(cls)
-                if f.metadata.get("block") == "period"
-                and f.metadata.get("reader") == "readarray"
+                if f.metadata.get("fill_forward")
+                and f.name not in repeating_array_fields
+                and to_field_type(f.type) in ("integer", "double")
                 and f.init is not False
             }
             if ra_fields and dims:
@@ -794,6 +853,41 @@ def structure_component(
                     for fname, arr in parsed.items():
                         accum[fname][kper] = arr
                 kwargs.update(accum)
+
+    # ── Pass 3c: array fields whose own block repeats (utl-tas.tas_array is
+    # the only current DFN example) ──────────────────────────────────────────
+    # No `layered` form (single flat control record, always) -- confirmed
+    # every current field of this shape is only ever consumed by
+    # single-layer array packages (their own array fields are likewise
+    # ncpl-shaped, no layered form), so the flat length is ncpl, not the
+    # full-grid nodes count. Same derivation as Pass 3b's READARRAY period
+    # fields. Row grouping (by "{block} {header}" prefix, cast header value)
+    # is the same mechanic Pass 3 uses for "period" -- see
+    # _group_repeating_rows -- just with a no-offset header cast to the
+    # field's own dict key type instead of period's int/-1 one.
+    if repeating_array_fields:
+        effective_dims = dims or _self_dims_from_kwargs(kwargs)
+        nodes = effective_dims.get("nodes", 0)
+        if nodes:
+            nlay = effective_dims.get("nlay", 1)
+            ncpl = nodes // nlay if nlay > 1 else nodes
+            for fname, f in repeating_array_fields.items():
+                block = f.metadata["block"]
+                key_type = repeating_array_key_type(f.type)
+                series_rows = _group_repeating_rows(raw_lower, {block}, key_type).get(block)
+                if not series_rows:
+                    continue
+                dtype = np.int64 if to_field_type(f.type) == "integer" else np.float64
+                length = _griddata_flat_length(f, effective_dims, ncpl)
+                series: dict[Any, np.ndarray] = {}
+                for header, rows in sorted(series_rows.items()):
+                    if not rows:
+                        continue
+                    value, _ = _read_control_record(rows, 0, workspace, dtype, length)
+                    series[header] = value
+                if series:
+                    init_key = f.alias if f.alias else fname
+                    kwargs[init_key] = series
 
     # ── Pass 4: griddata block ────────────────────────────────────────────────
     griddata_rows = raw_lower.get("griddata", [])

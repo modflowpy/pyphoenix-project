@@ -39,13 +39,6 @@ class Ims(Solution):
         optional=True,
         longname="solver complexity",
     )
-    csv_output_file: Optional[Path] = path(
-        default=None,
-        converter=_optional_path,
-        block="options",
-        optional=True,
-        direction="out",
-    )
     csv_outer_output_file: Optional[Path] = path(
         default=None,
         converter=_optional_path,
@@ -70,22 +63,10 @@ class Ims(Solution):
         optional=True,
         longname="fraction of outer maximum used with ats",
     )
-    outer_hclose: Optional[float] = field(
-        default=None,
-        block="nonlinear",
-        optional=True,
-        longname="head change criterion",
-    )
     outer_dvclose: float = field(
         default=None,
         block="nonlinear",
         longname="dependent-variable change criterion",
-    )
-    outer_rclosebnd: Optional[float] = field(
-        default=None,
-        block="nonlinear",
-        optional=True,
-        longname="boundary package flow residual tolerance",
     )
     outer_maximum: int = field(
         default=None,
@@ -153,12 +134,6 @@ class Ims(Solution):
         default=None,
         block="linear",
         longname="maximum number of inner iterations",
-    )
-    inner_hclose: Optional[float] = field(
-        default=None,
-        block="linear",
-        optional=True,
-        longname="head change tolerance",
     )
     inner_dvclose: float = field(
         default=None,

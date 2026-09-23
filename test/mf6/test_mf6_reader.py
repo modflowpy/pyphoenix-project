@@ -10,6 +10,7 @@ from lark import Lark
 from modflow_devtools.dfns.schema import (
     Array,
     Block,
+    BlockHeader,
     Double,
     Integer,
     Keyword,
@@ -748,3 +749,36 @@ def test_transform_gwf_sto_file(model_workspace, dfn_path):
     assert "iconvert" in griddata
     assert "control" in griddata["iconvert"]
     assert "data" in griddata["iconvert"]
+
+
+def test_typed_grammar_repeating_block_double_header(tmp_path):
+    """A repeating block's header isn't always an integer -- utl-tas's real
+    "time" block has header type double. Regression test for a bug found
+    while generalizing repeating-block handling: the grammar template
+    unconditionally emitted `block_index: integer` for every repeating
+    block, so a fractional header (e.g. "BEGIN TIME 1.5") silently parsed
+    as index=1 with the ".5" swallowed as a discarded trailing remark
+    token, instead of failing loudly or parsing correctly.
+    """
+    from flopy4.mf6.codec.reader.grammar import make_grammar
+
+    dfn = Package(
+        name="test-repeating-double",
+        blocks={
+            "time": Block(
+                name="time",
+                header=BlockHeader(field=Double(name="time_from_model_start")),
+                fields={"x": Array(name="x", dtype="double", shape=["nodes"])},
+            ),
+        },
+    )
+    make_grammar(dfn, tmp_path)
+    grammar_text = (tmp_path / "test-repeating-double.lark").read_text()
+    assert "block_index: number" in grammar_text
+
+    grammar_module = BASE_GRAMMAR_PATH.parent
+    parser = Lark(grammar_text, parser="lalr", debug=True, import_paths=[str(grammar_module)])
+    transformer = TypedTransformer(dfn=dfn)
+    result = transformer.transform(parser.parse("BEGIN TIME 1.5\n    X CONSTANT 1.0\nEND TIME\n"))
+
+    assert 1.5 in result["time"]

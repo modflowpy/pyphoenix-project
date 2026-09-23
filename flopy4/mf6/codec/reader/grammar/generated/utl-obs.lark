@@ -23,7 +23,7 @@ block: options_block | continuous_block
 
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 continuous_block: "begin"i "continuous"i block_index [_remark] _NL _NL* continuous_fields _NL* "end"i "continuous"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((digits | print_input | open_close_redirect) _NL*)*
 continuous_fields: ((continuousdata | open_close_redirect) _NL*)*
 digits: "digits"i integer [_remark] _NL

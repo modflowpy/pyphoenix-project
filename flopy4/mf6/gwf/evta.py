@@ -79,30 +79,40 @@ class Evta(Package):
     ievt: Optional[IntArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     surface: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     rate: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     depth: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
