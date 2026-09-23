@@ -77,12 +77,18 @@ def _load_toml(cls, path: Path, name: "str | None" = None) -> Component:
         return structure(load_toml(fp), path)
 
 
+def _open_for_write(component: Component, mode: str = "w"):
+    # a model's files can be in a subdirectory of the simulation workspace
+    component.path.parent.mkdir(parents=True, exist_ok=True)
+    return open(component.path, mode)
+
+
 def _write_mf6(component: Component, context=None, **kwargs) -> None:
     from flopy4.mf6.write_context import WriteContext
 
     ctx = context if context is not None else WriteContext.default()
 
-    with open(component.path, "w") as fp:
+    with _open_for_write(component) as fp:
         data = unstructure(component)
         try:
             dump_mf6(data, fp, context=ctx)
@@ -94,13 +100,13 @@ def _write_mf6(component: Component, context=None, **kwargs) -> None:
 
 
 def _write_json(component: Component) -> None:
-    with open(component.path, "w") as fp:
+    with _open_for_write(component) as fp:
         data = unstructure(component)
         dump_json(data, fp, indent=4)
 
 
 def _write_toml(component: Component) -> None:
-    with open(component.path, "wb") as fp:
+    with _open_for_write(component, "wb") as fp:
         data = unstructure(component)
         dump_toml(data, fp)
 
