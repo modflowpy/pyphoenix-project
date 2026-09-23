@@ -12,6 +12,8 @@ from flopy4.mf6.spec import field, path
 
 @attrs.define(kw_only=True, slots=False)
 class Pts(Solution):
+    dfn_name: ClassVar[str] = "sln-pts"
+
     slntype: ClassVar[str] = "pts"
 
     @attrs.define
@@ -23,11 +25,13 @@ class Pts(Solution):
         default=None,
         block="options",
         optional=True,
+        longname="print option",
     )
     complexity: Optional[str] = field(
         default=None,
         block="options",
         optional=True,
+        longname="print option",
     )
     csv_output_file: Optional[Path] = path(
         default=None,
@@ -58,8 +62,10 @@ class Pts(Solution):
         default=None,
         block="options",
         optional=True,
+        longname="fraction of outer maximum used with ats",
     )
     outer_maximum: int = field(
         default=None,
         block="nonlinear",
+        longname="outer maximum iterations",
     )

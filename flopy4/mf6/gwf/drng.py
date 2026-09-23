@@ -74,6 +74,13 @@ class Drng(Package):
         optional=True,
         longname="export array variables to netcdf output files.",
     )
+    maxbound: Optional[int] = field(
+        default=0,
+        block="dimensions",
+        optional=True,
+        auto_from="stress_period_data",
+        longname="maximum number of drain cells in any stress period",
+    )
     elev: Optional[FloatArrayLike] = field(
         default=None,
         block="period",

@@ -624,6 +624,78 @@ def test_quickstart_grid(function_tmpdir):
     sim.write()
     sim.run()
 
+    # No maxbound supplied -- the DIMENSIONS block must not be written at
+    # all (MF6 defaults MAXBOUND to NCPL internally for READARRAYGRID
+    # packages; the block is not merely allowed to be empty, it is omitted).
+    chdg_text = (function_tmpdir / f"{gwf_name}.chdg").read_text()
+    assert "DIMENSIONS" not in chdg_text
+
+
+def test_quickstart_grid_explicit_maxbound(function_tmpdir):
+    """A user-supplied maxbound (less than the full grid cell count, sized to
+    the max number of non-DNODATA cells in any stress period) must round-trip
+    through the DIMENSIONS block and be honored by MF6 -- both the
+    default-omitted and explicit-value paths are part of the supported API.
+    """
+    sim_name = "quickstart"
+    gwf_name = "mymodel"
+
+    nlay = 1
+    nrow = 10
+    ncol = 10
+
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+    ims = Ims(
+        models=[gwf_name],
+        outer_dvclose=1e-6,
+        outer_maximum=100,
+        inner_maximum=300,
+        inner_dvclose=1e-6,
+        linear_acceleration="cg",
+    )
+    dis = Dis(
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        top=1.0,
+        botm=0.0,
+    )
+    sim = Simulation(
+        tdis=time,
+        workspace=function_tmpdir,
+        name=sim_name,
+        solutions={"ims": ims},
+    )
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    Ic(parent=gwf)
+    Oc(
+        parent=gwf,
+        budget_file=f"{gwf_name}.bud",
+        head_file=f"{gwf_name}.hds",
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+    )
+    Npf(parent=gwf, icelltype=0, k=1.0)
+
+    # Only 2 of the 100 grid cells are active CHD cells -- maxbound (2) is
+    # deliberately less than ncpl (100).
+    GRID_NODATA = np.full((nlay, nrow, ncol), FILL_DNODATA, dtype=float)
+    head = np.repeat(np.expand_dims(GRID_NODATA, axis=0), repeats=1, axis=0)
+    head[0, 0, 0, 0] = 1.0
+    head[0, 0, 9, 9] = 0.0
+    Chdg(
+        parent=gwf,
+        head=head.reshape(1, -1),
+        maxbound=2,
+    )
+
+    sim.write()
+
+    chdg_text = (function_tmpdir / f"{gwf_name}.chdg").read_text()
+    assert "BEGIN DIMENSIONS" in chdg_text
+    assert "MAXBOUND 2" in chdg_text
+
+    sim.run()
+
 
 def test_quickstart_netcdf(function_tmpdir):
     from flopy4.mf6.netcdf import NetCDFModel
