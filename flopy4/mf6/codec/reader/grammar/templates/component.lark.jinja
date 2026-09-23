@@ -40,16 +40,6 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {{ m.block_def(block.name, block.has_index) }}
 {% endfor -%}
 {% if blocks|selectattr('has_index')|list -%}
-{# `number` (not `integer`) -- an indexed block's header isn't always an
-   integer (e.g. utl-tas's "time" block, header type double: "BEGIN TIME
-   1.5"). `number` is a strict superset of `integer`'s own matching set and
-   parses a whole-number header to a real ``int`` just the same (see
-   TypedTransformer.number/flopy4.utils.parse_number), so this is exactly
-   as precise as `integer` was for period/solutiongroup-style blocks, while
-   also handling non-integer headers correctly instead of silently
-   truncating them (confirmed: the old `integer` rule parsed "BEGIN TIME
-   1.5" as index=1 with ".5" silently swallowed as a discarded remark
-   token). #}
 block_index: number
 {% endif -%}
 {% for block in blocks -%}

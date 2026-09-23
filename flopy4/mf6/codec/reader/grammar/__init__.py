@@ -2,7 +2,7 @@ from os import PathLike
 from pathlib import Path
 
 import jinja2
-from modflow_devtools.dfns.schema import Component, List, Union
+from modflow_devtools.dfns.schema import Block, Component, List, Union
 
 from flopy4.mf6.codec.reader.grammar import filters
 
@@ -21,17 +21,8 @@ def _get_env():
     return env
 
 
-def _get_template_data(blocks) -> tuple[list[dict], dict[str, object]]:
-    """Build per-block, per-field jinja context from a Component's blocks.
-
-    A block's ``List`` field (at most one) is the only special case: a
-    ``List(item=Record)`` (e.g. WEL's ``stress_period_data``) becomes a
-    generic ``record+`` recarray rule; a ``List(item=Union)`` (OC's
-    ``output``, PRP's ``perioddata``) has no recarray indirection -- its
-    arms are spliced into the block's own field list directly. Every field
-    also passes through ``filters.valid_as_union``. Fields marked ``removed``
-    are skipped -- MF6 no longer parses them.
-    """
+def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]]:
+    """Build block and field context"""
     all_blocks = []
     all_fields = {}
 
@@ -77,7 +68,7 @@ def make_grammar(component: Component, outdir: PathLike):
     env = _get_env()
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{component.name}.lark"
-    blocks, fields = _get_template_data(component.blocks or {})
+    blocks, fields = _to_context(component.blocks or {})
     with open(target_path, "w") as f:
         f.write(
             template.render(
