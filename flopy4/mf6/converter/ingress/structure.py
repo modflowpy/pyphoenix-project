@@ -36,16 +36,7 @@ def _parse_rows(
     boundnames: bool = False,
     dims: "dict | None" = None,
 ) -> list | None:
-    """Parse raw token rows into a list of Item instances.
-
-    item_cls is either a single Item class or a tuple of arm classes for a
-    keystring union field, dispatched per-row by keyword token (see
-    item.parse_union_items). ncelldim (a variable-width cellid's element
-    count) is inferred once from the first row -- not applicable to unions
-    (arms with a cellid field aren't a case seen in the corpus). Prefers
-    `dims` (unambiguous: 3/2/1 for DIS/DISV/DISU) over counting row tokens
-    when available -- see `item.infer_ncelldim`.
-    """
+    """Parse lists of tokens (rows) into a list of Items."""
     if not rows:
         return None
     if isinstance(item_cls, tuple):
@@ -327,13 +318,6 @@ def _self_dims_from_kwargs(kwargs: dict) -> dict:
 def _parse_readarray_period_block(
     rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
 ) -> "dict[str, np.ndarray]":
-    """Parse one READARRAY period block (rows from a BEGIN PERIOD N block).
-
-    Returns {field_name: ndarray} shaped (ncpl,) for non-layered fields
-    or (nlay, ncpl) for layered fields. Control records (CONSTANT/
-    INTERNAL/OPEN-CLOSE) are the same vocabulary as griddata blocks -- see
-    `_read_control_record`, shared with `_parse_griddata_block`.
-    """
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
@@ -389,8 +373,6 @@ def _parse_readarray_period_block(
         dtype = np.int64 if is_int else np.float64
 
         if is_layered:
-            # Same "read what's actually there, don't assume exactly nlay
-            # rows" lookahead as _parse_griddata_block's LAYERED branch.
             layers = []
             while i < len(rows):
                 vrow = rows[i]
@@ -412,16 +394,6 @@ def _parse_readarray_period_block(
 
 
 def _apply_binding_terms(child: Any, terms: list) -> None:
-    """Ingress mirror of `converter/binding.py`'s `Binding.from_component`'s
-    `_get_binding_terms`: for `Exchange`/`Solution` targets, a binding
-    row's trailing terms carry real semantic data (the two model names an
-    exchange couples, or the model name(s) a solution applies to) that
-    isn't recoverable from the referenced file's own content -- write it
-    back onto the loaded child. A `Model`/`Package` target's trailing term
-    is just its pname, already passed as `name=` and applied by the
-    caller (`_resolve_bindings`) at construction time, not state to set
-    here.
-    """
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.solution import Solution
 
@@ -437,14 +409,9 @@ def _apply_binding_terms(child: Any, terms: list) -> None:
 
 
 def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) -> "type[Component]":
-    """Pick between a base package class and its G/A-variant sibling (e.g.
-    Chd vs Chdg) when both share one namefile ftype (see
-    `component_ftype()`'s docstring) -- real MF6 decides this from a
-    READASARRAYS/READARRAYGRID option keyword inside the file itself, not
-    the namefile row, so peek the file's own text for either marker rather
-    than requiring a per-package-family keyword table (both markers are
-    used consistently, one across RCH/EVT, the other across CHD/DRN/GHB/
-    RIV/WEL).
+    """
+    Pick between a base package class and its G/A-variant sibling
+    when both share one namefile ftype by peeking at the namefile.
     """
     text = path.read_text().upper()
     is_variant = "READASARRAYS" in text or "READARRAYGRID" in text
@@ -599,17 +566,6 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
 def _group_repeating_rows(
     raw_lower: dict, prefixes: "set[str]", cast
 ) -> "dict[str, dict[Any, list]]":
-    """Group raw ``"{prefix} {header}"`` block rows by prefix, then by
-    ``cast``-ed header value -- the shape any repeating block (``period``,
-    or any other block whose own header repeats, e.g. utl-tas's ``time``)
-    has in the raw parsed dict, regardless of what's inside one repetition
-    (an Item-list, a plain array, ...). Shared by Pass 3 (``period``, keyed
-    0-based via ``cast=lambda s: int(s) - 1``) and the general
-    repeating-block-array case below (keyed directly by the field's own
-    dict key type, e.g. ``float`` for utl-tas's ``time``). A block name
-    whose header token doesn't ``cast`` cleanly is skipped -- a malformed
-    or unexpected block name, not this repeating shape.
-    """
     grouped: dict[str, dict[Any, list]] = {}
     for block_name, rows in raw_lower.items():
         parts = block_name.split()
