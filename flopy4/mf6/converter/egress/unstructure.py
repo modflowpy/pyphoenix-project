@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 from pydantic.fields import FieldInfo
 
-from flopy4.attrs_xarray import child_field_candidates
+from flopy4.dataclass_xarray import child_field_candidates
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context

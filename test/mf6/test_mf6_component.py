@@ -294,7 +294,7 @@ def test_init_sim_explicit_dims():
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # k is stored as a plain attrs field; use to_xarray() for Dataset access
+    # k is stored as a plain field; use to_xarray() for Dataset access
     assert np.array_equal(sim.models["gwf"].npf.k, np.ones(100))
     assert np.array_equal(sim.models["gwf"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
 
@@ -1719,7 +1719,7 @@ def test_explicit_parent_top_down():
 def test_explicit_parent_bottom_up_non_package():
     """The bottom-up (`parent=`) half of _parent tracking works for a
     non-Package component (Model/Context/Component's own chain), whose
-    own __attrs_post_init__ chains to Component's."""
+    own __post_init__ chains to Component's."""
     sim = Simulation()
     gwf = Gwf(parent=sim, name="gwf")
     assert gwf._parent is sim
@@ -1727,8 +1727,8 @@ def test_explicit_parent_bottom_up_non_package():
 
 def test_explicit_parent_bottom_up_package():
     """The bottom-up (`parent=`) half of `_parent` tracking also works
-    for a Package subclass, which requires Package.__attrs_post_init__
-    to chain to Component.__attrs_post_init__ via super() -- see that
+    for a Package subclass, which requires Package.__post_init__
+    to chain to Component.__post_init__ via super() -- see that
     method's own docstring for why the chaining order matters.
     """
     gwf = Gwf()
@@ -1766,3 +1766,11 @@ def test_parent_setter_detach():
     assert ic.parent is None
     assert ic._parent is None
     assert gwf.ic is None
+
+
+def test_eq_ignores_dims_and_parent():
+    """Equality ignores `dims` and `_parent`, on subclasses too (each
+    generated dataclass gets its own `__eq__`)."""
+    assert Ims(dims={"nodes": 3}) == Ims(dims={"nodes": 4})
+    assert Ims(parent=Simulation()) == Ims()
+    assert Ims(inner_maximum=10) != Ims(inner_maximum=20)

@@ -71,13 +71,10 @@ def test_flopy3_model(tmp_path):
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    # Legacy (pre-current-DFN) attribute names, not real Ims fields -- attrs
-    # (slots=False) tolerated bolting these on as plain extra instance
-    # attributes; pydantic's validate_assignment+extra="forbid" (needed
-    # elsewhere for init=False derived fields like DisBase's nlay/nrow/... --
-    # pydantic itself refuses to combine init=False with extra="allow" at
-    # all) rejects an ordinary `ims.inner_hclose = ...` now, so this uses
-    # the same object.__setattr__ escape hatch the real source itself uses
+    # Legacy (pre-current-DFN) attribute names, not real Ims fields.
+    # extra="forbid" (needed for init=False derived fields like DisBase's
+    # nlay/nrow/...) rejects an ordinary `ims.inner_hclose = ...`, so this
+    # uses the same object.__setattr__ escape hatch the source uses
     # internally (e.g. Package._broadcast_griddata) to bypass validation.
     object.__setattr__(ims, "inner_hclose", 1e-6)
     object.__setattr__(ims, "inner_rclose", 0.1000000)
@@ -230,20 +227,16 @@ def test_flopy3_package(tmp_path):
     assert not dis3.has_stress_period_data
 
     # package data
-    # Flopy3Package.data_list is built from attrs_to_dataset(dis): every
+    # Flopy3Package.data_list is built from dataclass_to_dataset(dis): every
     # non-None scalar field first (dataset-level .attrs, in declaration
     # order), then every array field (.data_vars, in declaration order) --
-    # not a curated flopy3-only subset. See attrs_to_dataset()'s own
-    # docstring (flopy4/attrs_xarray.py) for the scalar/array split rule.
+    # not a curated flopy3-only subset. See dataclass_to_dataset()'s own
+    # docstring (flopy4/dataclass_xarray.py) for the scalar/array split rule.
     #
-    # nlay/nrow/ncol/ncpl/nvert/nodes' relative order here differs from
-    # attrs: DisBase declares them all together (as init=False derived
-    # fields); Dis then redeclares nlay/ncol/nrow as its own real,
-    # required fields. attrs moves a redeclared field to its subclass
-    # redeclaration position; pydantic (like plain stdlib dataclasses)
-    # keeps it at the base class's original position instead -- confirmed
-    # via Dis.__pydantic_fields__ directly. Not a bug to work around, a
-    # real, documented library difference this list now reflects.
+    # nlay/nrow/ncol/ncpl/nvert/nodes' relative order: DisBase declares
+    # them all together (as init=False derived fields); Dis then redeclares
+    # nlay/ncol/nrow as its own required fields. A redeclared dataclass
+    # field keeps the base class's original position.
     data_list = [
         "name",
         "nlay",

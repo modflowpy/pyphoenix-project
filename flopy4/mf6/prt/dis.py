@@ -64,12 +64,12 @@ class Dis(DisBase):
         netcdf=False,
     )
 
-    def __post_init__(self):
+    def __post_init__(self, dims: Optional[dict] = None):
         self.nodes = self.ncol * self.nrow * self.nlay
         self.ncpl = self.ncol * self.nrow
         self.nvert = (self.ncol + 1) * (self.nrow + 1)
         self._coerce_griddata()
-        super().__post_init__()
+        super().__post_init__(dims)
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions."""

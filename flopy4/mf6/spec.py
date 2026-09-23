@@ -21,7 +21,7 @@ FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 # Sentinel distinguishing "no default given" (a required field) from a
 # real default of `None` -- pydantic.Field()'s own "no default" state is
 # just not passing `default=` at all, so this marks that case through
-# field()/path()'s own default=... parameter (mirrors attrs.NOTHING's role).
+# field()/path()'s own default=... parameter.
 _UNSET = object()
 
 
@@ -55,7 +55,7 @@ def field(
 
     ``converter``: stashed into the field's own `json_schema_extra`
     (`metadata["converter"]`) rather than passed to `Field()` directly --
-    pydantic has no per-field `converter=` hook the way attrs does.
+    pydantic has no per-field `converter=` hook.
     Applied uniformly by one shared `field_validator("*", mode="before")`
     on `Component` (see `flopy4.mf6.component.Component._apply_converter`)
     instead of one per field.

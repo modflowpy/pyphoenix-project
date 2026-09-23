@@ -10,16 +10,14 @@ another) rather than flattening the nested one's fields into itself --
 see _nested_class, inferred from the field's own type annotation rather
 than a declared flag, and make.py's _build_record_class_specs.
 
-Generated Record/Item subclasses are `pydantic.dataclasses.dataclass`, not
-`attrs.define` -- `Record.fields()`/`_nested_class()` below read
+Generated Record/Item subclasses are `pydantic.dataclasses.dataclass` --
+`Record.fields()`/`_nested_class()` below read
 `__pydantic_fields__`/`FieldInfo.json_schema_extra` accordingly. A nested/
 composed field's annotation (e.g. `Headprint.formatrecord: "Oc.Format"`) is
 a forward-reference string naming a SIBLING class inside the same enclosing
 package class -- unresolvable via any module-global lookup at class-body-
 execution time (Python class bodies can't see sibling names in an enclosing
-class's scope). Unlike attrs (which leaves this unresolved forever, forcing
-a qualname-walking string resolver), pydantic resolves it lazily and
-self-heals on first construction -- `Record.fields()`'s guarded
+class's scope). Pydantic resolves it lazily on first construction -- `Record.fields()`'s guarded
 `rebuild_dataclass()` call handles the one case that doesn't self-heal on
 its own: something (like `from_tokens()`) inspecting a class's fields
 before any instance of it has ever been built.
@@ -43,10 +41,9 @@ def _nested_class(cls: type, annotation: Any) -> "type[Record] | None":
     Resolvability against a real Record subclass is itself the signal, no
     declared "is this nested" flag needed.
 
-    Replaces the attrs original's qualname-walking string resolver
-    entirely: by the time `Record.fields()` has run, `annotation`
-    (a pydantic `FieldInfo.annotation`) IS the real class object already,
-    not a string -- no `sys.modules`/qualname lookup needed.
+    By the time `Record.fields()` has run, `annotation` (a pydantic
+    `FieldInfo.annotation`) is already the real class object, not a
+    string -- no `sys.modules`/qualname lookup needed.
     """
     args = get_args(annotation)
     candidate = next((a for a in args if a is not type(None)), annotation)

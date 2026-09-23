@@ -1,6 +1,6 @@
 from abc import ABC
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -40,19 +40,13 @@ def _is_dask_array(v: Any) -> bool:
 @dataclass(config=CFG, kw_only=True)
 class Package(Component, ABC):
     # A griddata field's *declared* type is an array type (NDArray[...]/
-    # FloatArrayLike/IntArrayLike), but its *default value* in the real DFN
-    # corpus is often a bare scalar (e.g. `strt: FloatArrayLike =
-    # field(default=1.0, ...)`) that only becomes a real array once dims
-    # are known -- attrs never type-checks this mismatch (no per-field
-    # validator declared), so a scalar sails through construction
-    # untouched until __post_init__'s _broadcast_griddata expands it.
-    # Pydantic DOES enforce it: confirmed empirically that
-    # `IcLike(strt=1.0, dims=...)` raises `ValidationError: Input should be
-    # an instance of _ArrayLike` without this coercion step -- the
-    # unvalidated *default* (not explicitly passed) doesn't hit this,
-    # since pydantic doesn't validate field defaults unless
-    # validate_default=True (not set here), but any *explicit* scalar
-    # override does. One shared `field_validator("*", mode="before")`,
+    # FloatArrayLike/IntArrayLike), but its value is often a bare scalar
+    # (e.g. `strt: FloatArrayLike = field(default=1.0, ...)`) that only
+    # becomes a real array once dims are known, in __post_init__'s
+    # _broadcast_griddata. Pydantic doesn't validate defaults (no
+    # validate_default=True), but an explicit scalar override would fail
+    # the array type check without this coercion. One shared
+    # `field_validator("*", mode="before")`,
     # driven by each field's own `json_schema_extra["shape"]` (which
     # `spec.field()` already emits today), covers every griddata field on
     # every subclass -- not one per field, not one per generated class.
@@ -84,11 +78,9 @@ class Package(Component, ABC):
         if isinstance(v, dict):
             # An empty-dict griddata value (e.g. Chd(dims={}) with no
             # explicit scalar override) is _broadcast_griddata's own
-            # "use the field's own scalar default" signal -- attrs let it
-            # reach __post_init__ as a raw {} unchanged; pydantic's
-            # NDArray/_ArrayLike type check has no such carve-out (and
-            # np.asarray({}, ...) itself raises, confirmed by running the
-            # real empty-dict-griddata test). Pre-resolve it into the same
+            # "use the field's own scalar default" signal, but it can't
+            # pass the NDArray/_ArrayLike type check (and np.asarray({})
+            # raises). Pre-resolve it into the same
             # 0-d default-valued array a bare scalar default produces here
             # -- _broadcast_griddata's existing size==1 branch (added for
             # that scalar case) picks it up and broadcasts it exactly the
@@ -97,7 +89,7 @@ class Package(Component, ABC):
             return np.asarray(default, dtype=dtype)
         return np.asarray(v, dtype=dtype)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, dims: Optional[dict] = None) -> None:
         """Post-init for Package subclasses.
 
         Handles three concerns in order:
@@ -123,25 +115,22 @@ class Package(Component, ABC):
         # flopy4/mf6/exg/ -- just dfn_name, no declared fields) still
         # inherit Component's own fields (filename, name, ...), none of
         # which carry block metadata, so this simply no-ops through the
-        # rest of this method for them -- no NotAnAttrsClassError-style
-        # guard needed (every Package subclass is a pydantic dataclass,
-        # unconditionally, unlike attrs' optional per-class opt-in).
+        # rest of this method for them.
         fields = type(self).__pydantic_fields__
         if not any((f.json_schema_extra or {}).get("block") is not None for f in fields.values()):
-            super().__post_init__()
+            super().__post_init__(dims)
             return
 
         # 1. Item-list coercion.
         self._init_item_lists(fields)
 
         # 2. Griddata broadcasting.
-        dims: dict = self.__dict__.get("dims") or {}
         if dims:
             self._broadcast_griddata(fields, dims)
 
         # 3. Chain to Component's own post-init -- see docstring above for
         # why this must run last, not first.
-        super().__post_init__()
+        super().__post_init__(dims)
 
     def _init_item_lists(self, fields) -> None:
         """Coerce raw list/dict block+period data into Item-list fields;
@@ -338,7 +327,7 @@ class Package(Component, ABC):
         if not any((f.json_schema_extra or {}).get("block") for f in all_fields.values()):
             return super().to_dict(blocks=blocks, strict=strict)
 
-        _exclude = {"name", "parent", "_parent", "dims", "filename", "workspace", "strict"}
+        _exclude = {"name", "parent", "_parent", "filename", "workspace", "strict"}
         result: dict = {}
         for name, f in all_fields.items():
             if name in _exclude or f.init is False:
@@ -394,9 +383,7 @@ class Package(Component, ABC):
                 # A missing optional column (e.g. boundname) round-trips
                 # through pandas as NaN, not absent -- drop it so the
                 # Item class's own default applies instead of failing
-                # pydantic's real type validation (unlike attrs, which
-                # applied none here and silently accepted a stray float
-                # in a str-typed field).
+                # type validation (a float in a str-typed field).
                 rows.append(item_cls(**{k: v for k, v in row.items() if not pd.isna(v)}))
             spd[int(kper)] = rows
         self.__dict__["_stress_period_data"] = spd
@@ -446,7 +433,7 @@ class Package(Component, ABC):
 
         Stays lazy if dask-backed. For packages with no array fields this
         falls through to ``Component.to_xarray()``, which returns whatever
-        ``attrs_to_dataset()`` finds -- empty for a package with no
+        ``dataclass_to_dataset()`` finds -- empty for a package with no
         griddata fields of its own.
         """
         fields = type(self).__pydantic_fields__

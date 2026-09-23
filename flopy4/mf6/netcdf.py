@@ -79,7 +79,7 @@ def get_spec(package_name: str):
 
 class _PackageSpec:
     """Summarizes a package's netcdf-relevant array fields (dtype, dims,
-    metadata) from its attrs field metadata (block, shape, layered, ...)."""
+    metadata) from its field metadata (block, shape, layered, ...)."""
 
     _DTYPE_MAP = _PKG_DTYPE_MAP
 

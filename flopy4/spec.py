@@ -8,8 +8,7 @@ from pydantic.dataclasses import is_pydantic_dataclass
 
 
 def is_dataclass_instance(value: Any) -> bool:
-    """True if `value` is an instance of a pydantic dataclass -- the
-    pydantic-dataclass replacement for `attrs.has(type(value))`, used
+    """True if `value` is an instance of a pydantic dataclass. Used
     wherever generic tree-walking code needs to tell a nested
     dataclass-typed value apart from a plain scalar/array leaf value."""
     return is_pydantic_dataclass(type(value))

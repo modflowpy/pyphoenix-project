@@ -15,7 +15,9 @@ inspecting field *type annotations* when reconstructing one from a tree
 (a bare `DataTree` node carries no back-pointer to the field it came
 from, so reconstruction has no values to inspect yet).
 
-Known limitation: a field literally named `dims`, `parent`, or `_parent`
+InitVars (e.g. `Component.dims`) aren't stored, so they're skipped.
+
+Known limitation: a field literally named `parent` or `_parent`
 is always excluded (see `_RESERVED_FIELD_NAMES` for why each one is
 there). No real DFN field uses any of these names today; if one ever
 did, it would need a different name or a second, explicit exclusion
@@ -40,15 +42,13 @@ from pydantic.dataclasses import is_pydantic_dataclass
 
 from flopy4.spec import is_dataclass_instance
 
-# Field names to always skip, regardless of what they hold. `dims`
-# (Component.dims) is a plain dict of already-resolved dimension sizes,
-# not xarray-representable leaf/child data. `parent` and `_parent`
+# Field names to always skip, regardless of what they hold. `parent` and `_parent`
 # (Output.parent, Component._parent -- see their own docstrings) are
 # back-reference fields whose runtime values would otherwise look
 # structurally like real leaf/child data and cause infinite recursion
 # (parent -> child -> same parent) if walked, so they're excluded by
 # name rather than by (unreliable) type-checking.
-_RESERVED_FIELD_NAMES = frozenset({"dims", "parent", "_parent"})
+_RESERVED_FIELD_NAMES = frozenset({"parent", "_parent"})
 
 
 def _leaf_fields_and_children(
@@ -63,7 +63,7 @@ def _leaf_fields_and_children(
     single_children: "dict[str, Any]" = {}
     collection_children: "dict[str, dict | list]" = {}
     for name, finfo in type(obj).__pydantic_fields__.items():
-        if name in _RESERVED_FIELD_NAMES:
+        if name in _RESERVED_FIELD_NAMES or finfo.init_var:
             continue
         # A private field (leading underscore) exposed under an alias --
         # e.g. Context._workspace/alias="workspace" -- is keyed by that
@@ -101,11 +101,11 @@ def _array_dims(finfo: Any, name: str, ndim: int) -> tuple:
     return tuple(f"{name}_dim{i}" for i in range(ndim))
 
 
-def attrs_to_dataset(obj) -> xr.Dataset:
+def dataclass_to_dataset(obj) -> xr.Dataset:
     """Flatten `obj`'s own scalar/array fields into a flat `xr.Dataset`.
 
     Dataclass-typed child fields are skipped here -- see
-    `attrs_to_datatree()` for those. A `numpy.ndarray`-valued field becomes
+    `dataclass_to_datatree()` for those. A `numpy.ndarray`-valued field becomes
     a data variable, with dims named from its `shape` metadata when
     present (falling back to generic per-axis names otherwise); everything
     else becomes a dataset-level attr.
@@ -162,9 +162,9 @@ def _leaf_kwargs_from_dataset(cls: type, dataset: xr.Dataset) -> dict:
     return kwargs
 
 
-def dataset_to_attrs(cls: type, dataset: xr.Dataset):
+def dataset_to_dataclass(cls: type, dataset: xr.Dataset):
     """Construct a `cls` instance from an `xr.Dataset` shaped like
-    `attrs_to_dataset()`'s output: data variables and dataset-level attrs
+    `dataclass_to_dataset()`'s output: data variables and dataset-level attrs
     are matched to `cls`'s fields by name and passed as constructor
     kwargs. Unmatched dataset keys are ignored; fields with no matching
     key fall back to `cls`'s own default.
@@ -172,10 +172,10 @@ def dataset_to_attrs(cls: type, dataset: xr.Dataset):
     return cls(**_leaf_kwargs_from_dataset(cls, dataset))
 
 
-def attrs_to_datatree(obj, _ancestors: frozenset = frozenset()) -> xr.DataTree:
+def dataclass_to_datatree(obj, _ancestors: frozenset = frozenset()) -> xr.DataTree:
     """Recursively convert `obj` into an `xr.DataTree`.
 
-    `obj`'s own leaf fields become the root dataset (`attrs_to_dataset()`).
+    `obj`'s own leaf fields become the root dataset (`dataclass_to_dataset()`).
     Each dataclass-typed child field becomes a named child node
     (recursively converted the same way); a dict- or list-of-children
     field expands to one child node per entry, named by its dict key or
@@ -194,15 +194,15 @@ def attrs_to_datatree(obj, _ancestors: frozenset = frozenset()) -> xr.DataTree:
     for name, child in single_children.items():
         if id(child) in ancestors:
             continue
-        children[name] = attrs_to_datatree(child, ancestors)
+        children[name] = dataclass_to_datatree(child, ancestors)
     for field_name, collection in collection_children.items():
         items = collection.items() if isinstance(collection, dict) else enumerate(collection)
         for key, child in items:
             if id(child) in ancestors:
                 continue
             node_name = str(key) if isinstance(collection, dict) else f"{field_name}{key}"
-            children[node_name] = attrs_to_datatree(child, ancestors)
-    return xr.DataTree(dataset=attrs_to_dataset(obj), children=children)
+            children[node_name] = dataclass_to_datatree(child, ancestors)
+    return xr.DataTree(dataset=dataclass_to_dataset(obj), children=children)
 
 
 def _unwrap_optional(tp):
@@ -277,12 +277,12 @@ def child_field_candidates(finfo: Any) -> "tuple[str, tuple[type, ...]] | None":
     return None
 
 
-def datatree_to_attrs(cls: type, tree: xr.DataTree):
+def datatree_to_dataclass(cls: type, tree: xr.DataTree):
     """Construct a `cls` instance from an `xr.DataTree` produced by
-    `attrs_to_datatree()`.
+    `dataclass_to_datatree()`.
 
     The root dataset supplies `cls`'s own scalar/array field kwargs (see
-    `dataset_to_attrs()`). Each dataclass-typed child field is matched to
+    `dataset_to_dataclass()`). Each dataclass-typed child field is matched to
     child node(s) by name and recursively reconstructed against the
     field's own declared element type. See the module docstring for the
     "dict"-kind and `Union`-element limitations.
@@ -297,12 +297,12 @@ def datatree_to_attrs(cls: type, tree: xr.DataTree):
         kind, elem_type = spec
         if kind == "one":
             if name in tree.children:
-                kwargs[name] = datatree_to_attrs(elem_type, tree.children[name])
+                kwargs[name] = datatree_to_dataclass(elem_type, tree.children[name])
         elif kind == "list":
             items = []
             i = 0
             while f"{name}{i}" in tree.children:
-                items.append(datatree_to_attrs(elem_type, tree.children[f"{name}{i}"]))
+                items.append(datatree_to_dataclass(elem_type, tree.children[f"{name}{i}"]))
                 i += 1
             if items:
                 kwargs[name] = items

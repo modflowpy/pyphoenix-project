@@ -26,8 +26,7 @@ class _ArrayLike(Protocol[_DT]):
     (see `codec/writer/filters.py`'s `array2chunks`, which streams
     dask-backed arrays without materializing them).
 
-    `@runtime_checkable` is required for pydantic (not needed under attrs,
-    which never validated this annotation at all): under
+    `@runtime_checkable` is required: under
     `arbitrary_types_allowed=True`, pydantic builds an `isinstance()`-based
     validator for any type it doesn't otherwise understand, which requires
     the protocol to support `isinstance()` at all -- confirmed empirically
@@ -48,7 +47,7 @@ FloatArrayLike: TypeAlias = _ArrayLike[np.float64]
 
 
 def _optional_path(v):
-    """Converter for Optional[Path] attrs fields.
+    """Converter for Optional[Path] fields.
 
     Accepts None, str, or Path; returns None or Path.
     """

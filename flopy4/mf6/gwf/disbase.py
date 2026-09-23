@@ -22,8 +22,8 @@ class DisBase(Package):
     nvert: Optional[int] = Field(default=None, init=False)
     nodes: Optional[int] = Field(default=None, init=False)
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __post_init__(self, dims: Optional[dict] = None):
+        super().__post_init__(dims)
 
     def _coerce_griddata(self) -> None:
         """Coerce griddata fields: list→ndarray, per-layer expansion, flatten.
@@ -34,10 +34,9 @@ class DisBase(Package):
         Package._coerce_arrays (inherited -- a field_validator("*",
         mode="before") runs during construction, ahead of __post_init__),
         so it already arrives here as a real ndarray of the right dtype;
-        the list/tuple branch below is effectively a no-op today but kept
-        for parity with the attrs original (harmless if a future caller
-        ever bypasses construction-time validation via a direct __dict__
-        write, as several places in this codebase do).
+        the list/tuple branch below only matters for a caller that
+        bypasses construction-time validation via a direct __dict__ write,
+        as several places in this codebase do.
         """
         fields = type(self).__pydantic_fields__
         dims = self.get_dims()

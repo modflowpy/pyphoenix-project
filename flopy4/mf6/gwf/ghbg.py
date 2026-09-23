@@ -73,7 +73,6 @@ class Ghbg(Package):
         default=None,
         block="dimensions",
         optional=True,
-        auto_from="stress_period_data",
         longname="maximum number of general-head boundaries in any stress period",
     )
     bhead: Optional[FloatArrayLike] = field(

@@ -190,13 +190,13 @@ class Gwf(Model):
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
     wel: list[Union[Wel, Welg]] = field(block="packages", default_factory=list)
-    # attrs' takes_self=True factory, ported: pydantic default_factory
-    # callables take no arguments, so this is Optional + filled in by
-    # __post_init__ below instead (same pattern as Component.name).
+    # Needs the instance to build, which default_factory can't see, so
+    # it's Optional and filled in by __post_init__ below (same pattern as
+    # Component.name).
     output: Optional[Output] = Field(default=None, repr=False)
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __post_init__(self, dims: Optional[dict] = None):
+        super().__post_init__(dims)
         if self.output is None:
             self.output = Gwf.Output(self)
 

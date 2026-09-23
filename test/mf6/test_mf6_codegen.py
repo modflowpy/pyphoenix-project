@@ -502,7 +502,7 @@ class TestBlockPropertySpec:
         assert bp.dim_is_dfn_declared is True
 
     def test_lak_ifno_collision_prefixed(self, lak_spec):
-        # ifno appears in packagedata, connectiondata, and tables — all get block-prefixed attrs
+        # ifno appears in packagedata, connectiondata, and tables — all get block-prefixed fields
         for block in ("packagedata", "connectiondata", "tables"):
             bp = next(b for b in lak_spec.block_properties if b.block_name == block)
             assert bp.attr_name_map.get("ifno") == f"{block}_ifno", (

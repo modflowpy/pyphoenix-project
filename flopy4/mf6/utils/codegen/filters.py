@@ -273,11 +273,11 @@ def _record_child_supported(c: FieldV3) -> bool:
 
 
 def can_generate_record_class(f: FieldV3) -> bool:
-    """True when a compound record should be rendered as an inner attrs class.
+    """True when a compound record should be rendered as an inner dataclass.
 
     All non-file records whose children are entirely scalars, keywords,
     nested inline arrays, and/or nested records (see
-    _record_child_supported) become inner attrs classes. The first keyword
+    _record_child_supported) become inner dataclasses. The first keyword
     child (if any) is the trigger token (``_keyword``); remaining keyword
     children become ``Optional[bool]`` fields. A child that is itself a
     Record becomes its own composed class rather than being flattened in.
@@ -461,25 +461,6 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         kw["time_series"] = True
     if f.optional:
         kw["optional"] = True
-    if block_name == "dimensions" and f.name == "maxbound":
-        # Reached only for a maxbound field that build_component_spec did NOT
-        # skip via its _maxbound_is_computed `continue` -- i.e. any package
-        # whose maxbound stays a real, user-writable field rather than
-        # becoming a computed @property. Confirmed (via
-        # src/Model/ModelUtilities/BoundaryPackageExt.f90's
-        # BndExtType%source_dimensions) that MF6 never reads a user-supplied
-        # MAXBOUND at all for a READARRAYGRID ("G-variant") package -- it's
-        # dead input there, always overwritten with NCPL. Fixed at the real
-        # root cause upstream (modflow-devtools DFN migration no longer
-        # declares the field for those packages at all -- see
-        # MODFLOW-ORG/modflow-devtools issue/PR for
-        # gwf-chdg/drng/ghbg/rivg/welg), so this `auto_from` fallback no
-        # longer applies to them; it's reached today only by the Api family
-        # (gwf-api/gwt-api), whose maxbound has NOT been confirmed dead the
-        # same way -- MF6 infers it itself when left at 0/unwritten, so it
-        # must never be written out as a literal 0 -- see unstructure.py's
-        # auto_from handling.
-        kw["auto_from"] = "stress_period_data"
     if is_file_record(f):
         child = file_child(f)
         assert child is not None  # is_file_record() already confirmed a File child exists
@@ -643,7 +624,7 @@ def item_class(
     ``prefix=``/``tagged=``, via ``field()``) -- the class itself is the schema.
 
     Required fields (no default) are declared before optional fields to
-    satisfy attrs ordering constraints.
+    satisfy dataclass field-ordering constraints.
 
     ``is_period=True`` injects ``aux: tuple = ()`` between required value
     columns and optional columns, for packages that accept positional AUXILIARY
@@ -784,7 +765,7 @@ def item_class(
         if meta:
             return f"        {col['name']}: {py_type} = field({margs})"
         # A bare annotation here is equivalent to field() at runtime (both
-        # mean "no default") -- but mypy's attrs plugin doesn't recognize
+        # mean "no default") -- but mypy's dataclass_transform support doesn't recognize
         # field() (a flopy4.mf6.spec wrapper, not pydantic.Field itself) as a
         # field specifier, so it can't tell field()-declared columns above
         # (e.g. pk=/cellid=) don't actually have a default either. Left
@@ -988,7 +969,7 @@ def collision_names(
 
     A name is a collision when it appears in more than one static list block,
     OR when it appears in any block AND is reserved by a period field. The
-    latter ensures that static block attrs never shadow bare period field names.
+    latter ensures that static block fields never shadow bare period field names.
     Prefix columns are excluded since they produce no attr.
     """
     names = [col.name for cols in block_schemas.values() for col in cols if not col.is_prefix]

@@ -64,11 +64,9 @@ def _is_item_union(annotation: Any) -> "tuple[type[Item], ...] | None":
     Item classes (e.g. OC's ``All | First | Last | Frequency | Steps``),
     return the tuple of arm classes; else None.
 
-    Replaces the attrs original's `_nested_union_classes()` -- a
-    qualname-walking parse of the field's raw, unresolved forward-ref
-    string. Not needed here: by the time `Record.fields()` has run,
-    `annotation` (a pydantic `FieldInfo.annotation`) IS the real union of
-    resolved classes already.
+    By the time `Record.fields()` has run, `annotation` (a pydantic
+    `FieldInfo.annotation`) is already the resolved union of classes, not
+    a forward-ref string.
     """
     origin = get_origin(annotation)
     if origin is Union or origin is type(int | str):
@@ -439,10 +437,9 @@ def _unwrap_skip_validation(t: Any) -> Any:
 
     Item-list fields are pydantic.SkipValidation-wrapped (codegen emits
     this -- see Package._init_item_lists' own docstring for why: pydantic
-    validates an Item-list field's raw tuple/dict input eagerly by
-    default, unlike attrs, which applies no validation there at all).
-    get_origin() on the raw annotation returns Annotated, not dict/list,
-    so the unwrapping below needs this extra step attrs never did.
+    would otherwise validate an Item-list field's raw tuple/dict input
+    eagerly). get_origin() on the raw annotation returns Annotated, not
+    dict/list, so the unwrapping below needs this extra step.
     """
     if get_origin(t) is Annotated:
         return get_args(t)[0]

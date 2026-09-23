@@ -30,11 +30,9 @@ class Tdis(Package):
         # numeric-token grammar splits at the leading digits, before the
         # first embedded dash -- and a bare year like "1997" (no rest of an
         # ISO string on the row at all) tokenizes as a plain int, not a
-        # str. Under attrs both passed through unvalidated (no type check
-        # on this field at all); pydantic's real Optional[str] validation
-        # correctly rejects a list or a bare int, so the converter (already
-        # needed for the datetime -> isoformat direction) also normalizes
-        # both back into one string here.
+        # str. Neither passes Optional[str] validation, so the converter
+        # (already needed for the datetime -> isoformat direction) also
+        # normalizes both back into one string here.
         converter=lambda v: (
             v.isoformat()
             if isinstance(v, datetime)
@@ -66,7 +64,7 @@ class Tdis(Package):
             return v
         return np.asarray(v)
 
-    def __post_init__(self):
+    def __post_init__(self, dims: Optional[dict] = None):
         if self.perioddata:
             rows = [
                 row
@@ -80,14 +78,14 @@ class Tdis(Package):
             object.__setattr__(self, "perlen", np.array([r.perlen for r in rows], dtype=np.float64))
             object.__setattr__(self, "nstp", np.array([r.nstp for r in rows], dtype=np.int64))
             object.__setattr__(self, "tsmult", np.array([r.tsmult for r in rows], dtype=np.float64))
-            super().__post_init__()
+            super().__post_init__(dims)
             return
         nper = self.nper
         # _coerce_to_array only runs on an EXPLICITLY passed value
         # (pydantic doesn't validate an unused field default unless
         # validate_default=True, not set here) -- so an untouched default
         # (Tdis() with no perlen=/nstp=/tsmult= at all) still arrives here
-        # as attrs would have always left it, a bare int/float; an
+        # as a bare int/float; an
         # explicit scalar/list override arrives already coerced to a 0-d/
         # plain ndarray by that validator. Both are handled below.
         if isinstance(self.perlen, (int, float)):
@@ -113,7 +111,7 @@ class Tdis(Package):
             for p, n, t in zip(self.perlen, self.nstp, self.tsmult)
         ]
         object.__setattr__(self, "perioddata", rows)
-        super().__post_init__()
+        super().__post_init__(dims)
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions."""

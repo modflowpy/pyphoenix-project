@@ -70,10 +70,9 @@ class Disv(DisBase):
     # iv/xv/yv are declared NDArray-typed but commonly constructed from a
     # plain list/tuple (see from_grid() below) -- unlike Package's own
     # griddata fields, these carry no block="griddata"/shape= metadata, so
-    # Package._coerce_arrays' shape-driven check doesn't reach them. Same
-    # underlying gap as Tdis.perlen/nstp/tsmult: attrs never validated the
-    # declared NDArray type against an actual list default/override at
-    # all; pydantic does, so this needs its own small mode="before" fix.
+    # Package._coerce_arrays' shape-driven check doesn't reach them, so
+    # they get their own mode="before" coercion (as do Tdis.perlen/nstp/
+    # tsmult).
     @field_validator("iv", mode="before")
     @classmethod
     def _coerce_iv(cls, v):
@@ -88,7 +87,7 @@ class Disv(DisBase):
     cell2ddata: Optional[list] = Field(default=None)
     cell2d: Optional[list] = field(default=None, init=False, block="cell2d")
 
-    def __post_init__(self):
+    def __post_init__(self, dims: Optional[dict] = None):
         if self.iv is not None and (not isinstance(self.iv, np.ndarray)):
             object.__setattr__(self, "iv", np.asarray(self.iv, dtype=np.int64))
         if self.xv is not None and (not isinstance(self.xv, np.ndarray)):
@@ -113,7 +112,7 @@ class Disv(DisBase):
         self.nrow = 0
         self.ncol = 0
         self._coerce_griddata()
-        super().__post_init__()
+        super().__post_init__(dims)
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions."""

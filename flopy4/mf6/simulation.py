@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import ClassVar
+from typing import ClassVar, Optional
 from warnings import warn
 
 from modflow_devtools.misc import cd, run_cmd
@@ -34,8 +34,8 @@ class Simulation(Context):
     def default_filename(self) -> str:
         return "mfsim.nam"
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __post_init__(self, dims: Optional[dict] = None):
+        super().__post_init__(dims)
         if self.filename != "mfsim.nam":
             if self.filename is not None:
                 warn(
@@ -47,9 +47,8 @@ class Simulation(Context):
         # exchanges/solutions/tdis) -- Context.__post_init__ (already run,
         # via super() above) only saw whatever was attached at ITS point
         # in the post-init chain; re-assigning through the property setter
-        # (attrs' on_setattr=update_child_attr, ported -- see Context.
-        # workspace) re-runs the propagation now that every field on this
-        # concrete Simulation instance is attached.
+        # (see Context.workspace) re-runs the propagation now that every
+        # field on this concrete Simulation instance is attached.
         self.workspace = self.workspace
 
     @property

@@ -13,7 +13,7 @@ from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
 from pydantic.dataclasses import is_pydantic_dataclass
 
-from flopy4.attrs_xarray import attrs_to_dataset
+from flopy4.dataclass_xarray import dataclass_to_dataset
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
 
@@ -35,7 +35,7 @@ def _resolve_leaf_type(annotation) -> "type | None":
     `NDArray[np.float64]`) down to the concrete runtime type
     `Flopy3Data` dispatches on (`bool`/`int`/`float`/`str`/`np.ndarray`).
 
-    Returns `None` for anything else (a nested attrs/Component type,
+    Returns `None` for anything else (a nested Component type,
     `Path`, `datetime`, `Record`, a bare `dict`/`list` period field, ...)
     -- those aren't representable as a single flopy3 `Data` leaf.
     """
@@ -207,7 +207,7 @@ class Flopy3Package(PackageInterface):
     ):
         self._model = model
         self._package = package
-        self._dataset = attrs_to_dataset(package)
+        self._dataset = dataclass_to_dataset(package)
         if modelgrid:
             self._grid = modelgrid
         elif model:

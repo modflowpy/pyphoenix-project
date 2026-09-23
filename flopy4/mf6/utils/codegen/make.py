@@ -53,7 +53,7 @@ class FieldSpec:
 
 @dataclass
 class InnerClassFieldSpec:
-    """Pre-computed context for one field of an inner attrs class."""
+    """Pre-computed context for one field of an inner dataclass."""
 
     py_name: str
     type_annotation: str
@@ -64,7 +64,7 @@ class InnerClassFieldSpec:
 
 @dataclass
 class InnerClassSpec:
-    """Pre-computed context for a generated inner attrs class."""
+    """Pre-computed context for a generated inner dataclass."""
 
     class_name: str
     keyword: str
@@ -109,7 +109,7 @@ class PeriodArmSpec:
 @dataclass
 class ComputedFieldSpec:
     """Pre-computed context for a read-only computed property, replacing a
-    stored attrs field entirely -- e.g. ``maxbound``, derived live from
+    stored field entirely -- e.g. ``maxbound``, derived live from
     ``stress_period_data``'s row counts rather than stored and kept in
     sync by hand (see ``build_component_spec``'s ``_maxbound_is_computed``
     for when this applies)."""
@@ -159,7 +159,7 @@ def _schema_dict_from_columns(
     accumulated and attached as a 'prefix' key on the next value column so the
     codec can emit the fixed token(s) before the value. is_row_keyword columns
     (optional keywords, e.g. MIXED) get role 'inline_keyword'. aux columns are
-    excluded -- appended dynamically in __attrs_post_init__.
+    excluded -- appended dynamically in __post_init__.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
@@ -325,8 +325,8 @@ def _ml_field(
     Produces continuation lines pre-indented at 8 spaces (args) and 4 spaces
     (closing paren) so the Jinja template can render it verbatim after
     ``    {name}: {type} = ``. ``metadata`` here is the set of ``field()``/
-    ``path()`` kwargs (block, schema, fill_forward, ...), not a raw attrs
-    metadata dict -- generated fields are plain attrs fields, so they go
+    ``path()`` kwargs (block, schema, fill_forward, ...), not a raw
+    metadata dict -- generated fields are plain dataclass fields, so they go
     through the same passive-metadata constructors hand-written classes
     use for their scalar fields.
     """
@@ -580,7 +580,7 @@ def _build_record_class_specs(
     for child in data_children:
         _process_child(child)
 
-    # attrs requires fields with defaults to follow fields without defaults.
+    # Dataclass fields with defaults must follow fields without defaults.
     inner_fields.sort(key=lambda field: str(field.optional))
 
     words = _strip_record_words(f.name)
@@ -798,7 +798,7 @@ def _generated_imports(
         # period_arms (see the call site) -- SkipValidation is needed
         # whenever any Item-list field is generated (see item.py's
         # item_list_type()/Package._init_item_lists() for why: pydantic
-        # validates a raw tuple/dict input eagerly where attrs applied none).
+        # would otherwise validate a raw tuple/dict input eagerly).
         _pydantic_parts.append("SkipValidation")
     third_party: list[str] = []
     if _pydantic_parts:
@@ -930,7 +930,7 @@ def build_component_spec(
 
     for block_name, f in all_fields:
         if filters.is_list_field(f) and block_name in _bp_block_names:
-            continue  # covered by BlockPropertySpec; column attrs generated below
+            continue  # covered by BlockPropertySpec; column fields generated below
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
             union = filters.find_keystring_union(f)
@@ -1112,7 +1112,7 @@ def build_component_spec(
             )
         )
 
-    # READARRAY period fields → individual Optional[Int|FloatArrayLike] attrs
+    # READARRAY period fields → individual Optional[Int|FloatArrayLike]
     # fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period
     # array separately. Each field is a full-grid array passed directly by
     # the user; the egress side (unstructure.py's _unstructure_package)

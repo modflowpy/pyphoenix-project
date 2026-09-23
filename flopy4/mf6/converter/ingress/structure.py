@@ -436,7 +436,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
     a child is already attached, not while its siblings are still loading.
     """
-    from flopy4.attrs_xarray import child_field_candidates
+    from flopy4.dataclass_xarray import child_field_candidates
     from flopy4.mf6.converter.binding import component_ftype
     from flopy4.mf6.exchange import Exchange
     from flopy4.mf6.model import Model
@@ -746,10 +746,9 @@ def structure_component(
             # _keyword (e.g. Npf.rewet: Optional[Rewet], Rewet._keyword ==
             # "rewet") matches `all_fields` above before `inner_class_fields`
             # (a fallback keyed by the row's *keyword*, not the field's own
-            # name) is ever consulted -- surfaced as a real bug by pydantic's
-            # real Optional[Rewet] validation (attrs applied none, so this
-            # field silently held a raw token list instead of a real Rewet
-            # instance): route it through the same from_tokens() path here
+            # name) is ever consulted, so without this it would get a raw
+            # token list instead of a Rewet instance. Route it through the
+            # same from_tokens() path here
             # too, rather than falling into the generic scalar/list branch
             # below, which is wrong for any Record-typed field.
             direct_inner_cls = _inner_class_type(f.annotation)
@@ -764,14 +763,10 @@ def structure_component(
                 # compound record this keyword is also meant to trigger
                 # (e.g. Gwf's `newton`/`newtonoptions` pair) isn't resolved
                 # here if it isn't reachable via inner_class_fields (that
-                # needs the inner class's own _keyword ClassVar, a
-                # pre-existing gap unrelated to this migration) -- under
-                # attrs a trailing modifier token (e.g. "NEWTON
-                # UNDER_RELAXATION") silently overwrote this bool field with
-                # a raw string, unvalidated and never actually used;
-                # pydantic's real bool validation correctly rejects that, so
-                # this takes the keyword's own presence as the field's real
-                # (and only sound) signal instead.
+                # needs the inner class's own _keyword ClassVar). A
+                # trailing modifier token (e.g. "NEWTON UNDER_RELAXATION")
+                # isn't a valid bool, so the keyword's presence is the
+                # field's value.
                 kwargs[init_key] = True
             else:
                 # List-valued options (auxiliary, etc.) have shape metadata;
@@ -782,9 +777,7 @@ def structure_component(
                 # by name directly -- otherwise a row naming exactly one
                 # aux variable (e.g. "AUXILIARY MULT", row length 2) fell
                 # through to the plain-scalar branch below and stored a
-                # bare string, which attrs tolerated (no validation on this
-                # field either) but pydantic's real list[str] check
-                # correctly rejects.
+                # bare string, which fails list[str] validation.
                 _f_meta = f.json_schema_extra or {}
                 is_list_opt = (
                     isinstance(_f_meta, dict) and isinstance(_f_meta.get("shape"), tuple)
@@ -802,13 +795,9 @@ def structure_component(
                     # seen in some older, migrated fixtures (e.g. IMS
                     # "OUTER_MAXIMUM 100 500" or "REORDERING_METHOD NONE
                     # RKM"), the second value belonging to a field the
-                    # current DFN schema no longer declares. Under attrs
-                    # this silently stored the whole raw list into a
-                    # scalar-typed field, unvalidated and never actually
-                    # used; pydantic's real validation correctly rejects a
-                    # list there, so take just the first (real,
-                    # current-schema) value instead of keeping stale extra
-                    # tokens no longer part of the spec.
+                    # current DFN schema no longer declares. A list fails
+                    # scalar validation, so take just the first value and
+                    # drop the stale extra tokens.
                     kwargs[init_key] = row[1]
                 else:
                     kwargs[init_key] = list(row[1:]) if len(row) > 2 else row[1]

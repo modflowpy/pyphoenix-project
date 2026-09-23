@@ -14,11 +14,9 @@ from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
 
-# Shared config for every Component/Package (sub)class -- one constant,
-# repeated per class at its own `@dataclass(config=CFG, ...)` decoration
-# site (config isn't inherited the way attrs' class-level settings are),
-# same shape codegen already emits today (`@attrs.define(kw_only=True,
-# slots=False)` on every generated class).
+# Shared config for every Component/Package (sub)class. Pydantic doesn't
+# inherit dataclass config, so each class passes it explicitly at its own
+# `@dataclass(config=CFG, ...)` decoration site, as codegen does.
 CFG = ConfigDict(
     arbitrary_types_allowed=True,
     validate_assignment=True,
@@ -121,7 +119,7 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
     Returns `(finfo, kind)`, or `None` if no field matches. Raises
     `TypeError` if more than one field matches (ambiguous).
     """
-    from flopy4.attrs_xarray import child_field_candidates
+    from flopy4.dataclass_xarray import child_field_candidates
 
     matches = []
     for name, finfo in parent_cls.__pydantic_fields__.items():
@@ -171,23 +169,23 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     defaults it to the *actual* runtime class's lowercased name -- not
     whichever class in the hierarchy happens to declare this field -- so a
     `Package` leaf (e.g. `Ic`, never separately subclassed for this field)
-    still gets "ic", not "package". (Pydantic's `default_factory` takes no
-    arguments, unlike attrs' `takes_self=True`, so this can't be a
-    declarative field default the way it was under attrs -- filled in
-    explicitly in `__post_init__` instead.) Overridden explicitly by
+    still gets "ic", not "package". (Pydantic's `default_factory` can't see
+    the instance, so this is filled in by `__post_init__` rather than a
+    declarative default.) Overridden explicitly by
     `_resolve_child_name()`/`_attach_to_parent_field()` when a component is
     attached as a named child; otherwise this default stands."""
 
-    _parent: Any = Field(default=None, alias="parent", repr=False)
+    _parent: Any = dataclasses.field(
+        default=Field(default=None, alias="parent", repr=False), compare=False
+    )
     """Parent back-reference -- source of truth for "who is this
     component's parent", top-down (`Gwf(dis=Dis(...))`) and bottom-up
-    (`Dis(parent=gwf)`) alike. Leading underscore + `alias="parent"`
-    mirrors attrs' private-attribute convention: the constructor keyword
-    stays `parent=` even though the field is `_parent`. Typed `Any` so
+    (`Dis(parent=gwf)`) alike. The alias keeps the constructor keyword
+    `parent=` even though the field is `_parent`. Typed `Any` so
     `child_field_candidates()` (type-annotation based) doesn't mistake it
-    for a real child field, and excluded from `__eq__` below (a live
-    `.parent` would otherwise recurse: comparing a component's parent
-    compares the parent's own children, including this component again).
+    for a real child field, and `compare=False` because comparing a live
+    `.parent` would recurse: comparing a component's parent compares the
+    parent's own children, including this component again.
 
     Populated by `_set_child_parents()` (top-down) and
     `_attach_to_parent_field()` (bottom-up), and kept current by
@@ -196,50 +194,25 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     otherwise be a reference cycle.
     """
 
-    dims: dict = Field(default_factory=dict, repr=False)
-    """Accepts `dims=` at construction (e.g. `Ic(dims={"nodes": 900})`)
-    for API-compatibility with existing call sites. Read directly via
-    `self.__dict__.get("dims")` by `Package.__post_init__` for griddata
-    broadcasting -- not resolved/consumed by anything at the `Component`
-    level itself. Excluded from `__eq__` below for the same reason `attrs`
-    excluded it: two components differing only in already-resolved
-    dimension bookkeeping should still compare equal."""
+    dims: dataclasses.InitVar[Optional[dict]] = None
+    """Dimension sizes to size griddata with at construction (e.g.
+    `Ic(dims={"nodes": 900})`). Construction-only: passed through the
+    `__post_init__` chain to `Package.__post_init__`, which broadcasts
+    scalar griddata to full shape, and not stored on the instance."""
 
     @field_validator("*", mode="before")
     @classmethod
     def _apply_converter(cls, v: Any, info) -> Any:
-        """The one shared hook every field-level `converter=` (attrs
-        original) funnels through -- `flopy4.mf6.spec.field()`/`path()`
-        stash the callable in `json_schema_extra["converter"]` instead of
-        a per-field attrs `converter=`, and this single validator (not one
-        per field, not one per generated class) applies it uniformly."""
+        """Apply each field's `converter=`, if any. Pydantic has no
+        per-field converter hook, so `flopy4.mf6.spec.field()`/`path()`
+        stash the callable in `json_schema_extra["converter"]` and this
+        single validator applies it for every field of every class."""
         finfo = cls.__pydantic_fields__.get(info.field_name)
         if finfo is None or v is None:
             return v
         meta = finfo.json_schema_extra or {}
         conv = meta.get("converter") if isinstance(meta, dict) else None
         return conv(v) if conv is not None else v
-
-    def __eq__(self, other: object) -> bool:
-        """Hand-written, replacing the dataclass-generated `__eq__`
-        (disabled below via `eq=False`... note: NOT disabled -- see
-        below): compares every field except `_parent`/`dims` (attrs'
-        `eq=False` on those two fields, ported -- see their own
-        docstrings for why). Defined once here, inherited by every
-        subclass unmodified: reads `dataclasses.fields(self)`
-        dynamically, so it naturally covers each subclass's own
-        additional fields too, without needing to be redeclared or
-        special-cased per generated class.
-        """
-        if type(self) is not type(other):
-            return NotImplemented
-        skip = {"_parent", "dims"}
-        for f in dataclasses.fields(self):
-            if f.name in skip:
-                continue
-            if getattr(self, f.name) != getattr(other, f.name):
-                return False
-        return True
 
     @property
     def parent(self) -> "Component | None":
@@ -297,9 +270,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         (`write()`, `NetCDFModel.from_model()`, ...), so nothing can read a
         stale name depending on call order.
 
-        Detects child fields via `flopy4.attrs_xarray.child_field_candidates()`.
+        Detects child fields via `flopy4.dataclass_xarray.child_field_candidates()`.
         """
-        from flopy4.attrs_xarray import child_field_candidates
+        from flopy4.dataclass_xarray import child_field_candidates
 
         self._set_child_parents()
 
@@ -335,7 +308,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         Detects child fields via `child_field_candidates()` (type-
         annotation based).
         """
-        from flopy4.attrs_xarray import child_field_candidates
+        from flopy4.dataclass_xarray import child_field_candidates
 
         used: "set[str]" = set()
         for name, finfo in type(self).__pydantic_fields__.items():
@@ -389,14 +362,17 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
-    def __post_init__(self):
+    def __post_init__(self, dims: Optional[dict] = None):
         """
         Post-initialization hook for all components. Chains to parent
         class post-init hooks (including DimensionRegistryMixin).
 
-        Defaults `.name` from the runtime class (attrs' `takes_self=True`
-        factory, ported -- see the field's own docstring), then runs the
-        two `_parent`-tracking hooks (see `_parent`'s docstring): stamps
+        `dims` is the `dims` InitVar; only `Package` uses it, so it isn't
+        passed further up the chain.
+
+        Defaults `.name` from the runtime class (see the field's own
+        docstring), then runs the two `_parent`-tracking hooks (see
+        `_parent`'s docstring): stamps
         `_parent` on this component's own already-populated children
         (top-down construction), and -- if this component's own `_parent`
         was given directly as `parent=`, i.e. bottom-up construction --
@@ -474,7 +450,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         if not isinstance(value, Component):
             raise TypeError(f"Expected a Component, got {type(value).__name__}")
 
-        from flopy4.attrs_xarray import child_field_candidates
+        from flopy4.dataclass_xarray import child_field_candidates
 
         for name, finfo in type(self).__pydantic_fields__.items():
             spec = child_field_candidates(finfo)
@@ -518,7 +494,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     def __delitem__(self, key):
         """Detach the child named `key`, from whatever field/slot
         currently holds it."""
-        from flopy4.attrs_xarray import child_field_candidates
+        from flopy4.dataclass_xarray import child_field_candidates
 
         for name, finfo in type(self).__pydantic_fields__.items():
             spec = child_field_candidates(finfo)
@@ -591,10 +567,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         this component's own: e.g. `Gwf.Output.parent` is a genuine
         back-reference to the owning `Gwf`, unrelated to `Component.
         _parent`, but recursing into it the same way would infinitely
-        loop (output -> parent -> output -> ...). Ported from the attrs
-        original's `attrs.asdict(self, recurse=True, filter=...)` --
-        pydantic/stdlib dataclasses' own `dataclasses.asdict()` has no
-        filter hook, so this walks by hand instead."""
+        loop (output -> parent -> output -> ...). `dataclasses.asdict()`
+        has no filter hook, so this walks by hand instead."""
 
         def _convert(value: Any) -> Any:
             if is_pydantic_dataclass(type(value)):
@@ -659,14 +633,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         """Flat xr.Dataset of this component's own scalar/array fields,
         merged with any child packages that have griddata fields.
 
-        Built directly from live attribute values via flopy4.attrs_xarray's
-        attrs_to_dataset.
+        Built directly from live attribute values via flopy4.dataclass_xarray's
+        dataclass_to_dataset.
         """
         import xarray as _xr
 
-        from flopy4.attrs_xarray import attrs_to_dataset
+        from flopy4.dataclass_xarray import dataclass_to_dataset
 
-        base = attrs_to_dataset(self)
+        base = dataclass_to_dataset(self)
         extra = list(self._collect_child_griddata_datasets().values())
         if not extra:
             return base

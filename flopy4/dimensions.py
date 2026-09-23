@@ -97,14 +97,14 @@ class DimensionResolverMixin:
     Attributes
     ----------
     _dimension_cache : dict[str, int]
-        Cache of resolved dimensions (stored as instance variable, not attrs field)
+        Cache of resolved dimensions (stored as instance variable, not a dataclass field)
     """
 
     @property
     def _dimension_cache(self) -> dict:
-        # Lazily initialize in __dict__ directly rather than as a real attrs
-        # field: avoids needing a mutable-default Factory, and doesn't
-        # depend on __attrs_post_init__ chaining order across mixins.
+        # Lazily initialize in __dict__ directly rather than as a real
+        # dataclass field: avoids a mutable default, and doesn't depend on
+        # __post_init__ chaining order across mixins.
         if "_dimension_cache" not in self.__dict__:
             self.__dict__["_dimension_cache"] = {}
         return self.__dict__["_dimension_cache"]
