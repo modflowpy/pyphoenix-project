@@ -1,8 +1,12 @@
+import re
 from typing import Any
 
 from lark import Token, Transformer
 
 from flopy4.utils import parse_number
+
+# A whole token that's a number, allowing Fortran `D` exponents (`1D-5`).
+_NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 
 
 class BasicTransformer(Transformer):
@@ -41,14 +45,11 @@ class BasicTransformer(Transformer):
     def line(self, items: list[Any]) -> list[Any]:
         return items
 
-    def item(self, items: list[Any]) -> str | float | int:
-        return items[0]
-
-    def word(self, items: list[Token]) -> str:
-        return str(items[0])
-
-    def NUMBER(self, token: Token) -> int | float:
-        return parse_number(str(token))
+    def TOKEN(self, token: Token) -> str | int | float:
+        value = str(token)
+        if _NUMBER.fullmatch(value):
+            return parse_number(value.replace("d", "e").replace("D", "E"))
+        return value
 
     def CNAME(self, token: Token) -> str:
         return str(token)

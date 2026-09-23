@@ -21,31 +21,6 @@ from flopy4.mf6.simulation import Simulation
 from .test_mf6_load_all_models import KNOWN_PASSING
 
 XFAIL = {
-    # the basic grammar splits an ISO datetime (TDIS `START_DATE_TIME`) into
-    # a number and a word, so TDIS fails to write
-    "tokenizer splits ISO datetimes": {
-        "mf6/test/test001a_Tharmonic",
-        "mf6/test/test001a_Tharmonic_tabs",
-        "mf6/test/test001h_drn_list4",
-        "mf6/test/test001h_evt_array1",
-        "mf6/test/test001h_evt_array2",
-        "mf6/test/test001h_evt_array3",
-        "mf6/test/test001h_evt_array4",
-        "mf6/test/test001h_evt_list1",
-        "mf6/test/test001h_evt_list2",
-        "mf6/test/test001h_evt_list3",
-        "mf6/test/test001h_evt_list4",
-        "mf6/test/test001h_rch_array1",
-        "mf6/test/test001h_rch_array2",
-        "mf6/test/test001h_rch_array3",
-        "mf6/test/test001h_rch_array4",
-        "mf6/test/test001h_rch_list1",
-        "mf6/test/test001h_rch_list2",
-        "mf6/test/test001h_rch_list3",
-        "mf6/test/test001h_rch_list4",
-        "mf6/test/test001i_gwf-gwf",
-        "mf6/test/test001i_multilayer",
-    },
     # array values are written with 9 significant digits
     "writer rounds floats": {
         "mf6/test/test033_wtdecay",
@@ -86,6 +61,22 @@ XFAIL = {
     # `AUXILIARY <one name>` loads as a str, not a list, and egress drops it
     "ingress loads a single AUXILIARY name as a str": {
         "mf6/test/test001a_Tharmonic_extlist",
+        "mf6/test/test001h_evt_array1",
+        "mf6/test/test001h_evt_array2",
+        "mf6/test/test001h_evt_array3",
+        "mf6/test/test001h_evt_array4",
+        "mf6/test/test001h_evt_list1",
+        "mf6/test/test001h_evt_list2",
+        "mf6/test/test001h_evt_list3",
+        "mf6/test/test001h_evt_list4",
+        "mf6/test/test001h_rch_array1",
+        "mf6/test/test001h_rch_array2",
+        "mf6/test/test001h_rch_array3",
+        "mf6/test/test001h_rch_array4",
+        "mf6/test/test001h_rch_list1",
+        "mf6/test/test001h_rch_list2",
+        "mf6/test/test001h_rch_list3",
+        "mf6/test/test001h_rch_list4",
         "mf6/test/test005_advgw_tidal",
         "mf6/test/test201_gwtbuy-henryCHD",
         "mf6/test/test202_gwtbuy-henryCHDm",
@@ -96,6 +87,7 @@ XFAIL = {
     # a TIMEARRAYSERIES-sourced period array is dropped on load (see
     # test_tas_period_array_kept)
     "ingress drops TAS period arrays": {
+        "mf6/test/test001h_rch_array3",
         "mf6/test/test027_TimeseriesTest",
         "mf6/test/test027_TimeseriesTest_idomain",
     },

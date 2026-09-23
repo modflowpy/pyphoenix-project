@@ -38,6 +38,25 @@ END griddata
     assert result["griddata"] == [["delr"], ["constant", 100.0], ["delc"], ["constant", 100.0]]
 
 
+def test_loads_number_only_as_whole_token():
+    mf6_input = """
+BEGIN options
+  start_date_time 1997-07-16T19:20:30.45+01:00
+  ts6 filein 1model.ts
+  x 1,2.5 .5 7. 1e5 3 # comment
+  y -5 +2 -1.5e3 1D-5 8.2d-4
+END options
+"""
+
+    result = loads(mf6_input)
+    assert result["options"] == [
+        ["start_date_time", "1997-07-16T19:20:30.45+01:00"],
+        ["ts6", "filein", "1model.ts"],
+        ["x", 1, 2.5, 0.5, 7.0, 1e5, 3],
+        ["y", -5, 2, -1500.0, 1e-5, 8.2e-4],
+    ]
+
+
 def test_dumps_ic():
     from flopy4.mf6.gwf import Dis, Gwf, Ic
 

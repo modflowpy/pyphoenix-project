@@ -1,17 +1,20 @@
 start: [_NL*] (block [_NL*])*
 block: "begin"i block_name _NL _list "end"i block_name [_NL+]
-block_name: CNAME [NUMBER]
+block_name: CNAME [TOKEN]
 _list: line*
-line: item* _NL+
-item: word | NUMBER
-word: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+line: TOKEN* _NL+
+// Every whitespace-delimited token lexes as one terminal, and the
+// transformer decides whether it's a number. Separate NUMBER and word
+// terminals overlap, and the lexer takes the first that matches rather
+// than the longest, so e.g. an ISO datetime `1997-07-16T19:20:30` lexed as
+// `1997` and `-07-16T19:20:30`.
+TOKEN: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 COMMA: ","
 
 %import common.NEWLINE -> _NL
 %import common.WS_INLINE
 %import common.CNAME
 %import common.WORD
-%import common.NUMBER
 %import common.INT
 %import common.SH_COMMENT
 %import common._STRING_INNER
