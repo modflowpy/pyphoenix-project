@@ -407,3 +407,40 @@ def test_dis_griddata_open_close_quoted_filename(tmp_path):
     dis = Dis.load(dis_file)
     assert np.array_equal(np.asarray(dis.top), top_values)
     assert np.array_equal(np.asarray(dis.botm), np.zeros(6))
+
+
+def test_options_ignore_trailing_tokens(tmp_path):
+    """MF6 ignores tokens after an option's value, often an inline comment."""
+    from flopy4.mf6.gwf.wel import Wel
+
+    p = tmp_path / "model.wel"
+    p.write_text(
+        textwrap.dedent("""\
+        BEGIN OPTIONS
+          AUXILIARY CONCENTRATION
+          PRINT_INPUT (echo input to listing file)
+          SAVE_FLOWS model.cbb (file for binary flow information)
+        END OPTIONS
+    """)
+    )
+    wel = Wel.load(p)
+    assert wel.auxiliary == ["CONCENTRATION"]
+    assert wel.print_input is True
+    assert wel.save_flows is True
+
+
+def test_ims_options_ignore_trailing_tokens(tmp_path):
+    from flopy4.mf6.ims import Ims
+
+    p = tmp_path / "model.ims"
+    p.write_text(
+        textwrap.dedent("""\
+        BEGIN NONLINEAR
+          OUTER_MAXIMUM 100 500
+          UNDER_RELAXATION NONE DBD
+        END NONLINEAR
+    """)
+    )
+    ims = Ims.load(p)
+    assert ims.outer_maximum == 100
+    assert ims.under_relaxation == "NONE"

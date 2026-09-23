@@ -1,7 +1,7 @@
 import struct
 from abc import ABC
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -26,6 +26,13 @@ def _inner_class_type(field_type) -> type[Record] | None:
         if isinstance(arg, type) and issubclass(arg, Record) and "_keyword" in vars(arg):
             return arg
     return None
+
+
+def _is_list_type(field_type) -> bool:
+    """Whether field_type is list[...] or Optional[list[...]]."""
+    if get_origin(field_type) is list:
+        return True
+    return any(get_origin(arg) is list for arg in get_args(field_type))
 
 
 def _parse_rows(
@@ -729,16 +736,16 @@ def structure_component(
             if inner_cls is not None:
                 kwargs[init_key] = inner_cls.from_tokens(row)
                 continue
-            if len(row) == 1:
+            # Take what the field's type needs from the row; MF6 ignores
+            # anything after it (often an inline comment, or a second value
+            # like IMS's `UNDER_RELAXATION NONE DBD`).
+            if len(row) == 1 or to_field_type(f.type) == "keyword":
                 kwargs[init_key] = True
+            elif _is_list_type(f.type) or isinstance(f.metadata.get("shape"), tuple):
+                # inline arrays (AUXILIARY, etc.), even with one element
+                kwargs[init_key] = list(row[1:])
             else:
-                # List-valued options (auxiliary, etc.) have shape metadata;
-                # always keep them as a list so __attrs_post_init__ can use len().
-                is_list_opt = isinstance(f.metadata.get("shape"), tuple)
-                if is_list_opt:
-                    kwargs[init_key] = list(row[1:])
-                else:
-                    kwargs[init_key] = list(row[1:]) if len(row) > 2 else row[1]
+                kwargs[init_key] = row[1]
 
     naux = 0
     if "auxiliary" in kwargs:

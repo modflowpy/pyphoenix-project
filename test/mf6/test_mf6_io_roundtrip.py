@@ -21,56 +21,6 @@ from flopy4.mf6.simulation import Simulation
 from .test_mf6_load_all_models import KNOWN_PASSING
 
 XFAIL = {
-    # an option row with trailing tokens (a comment, or a second keyword
-    # like IMS `UNDER_RELAXATION DBD`) loads as a list of tokens
-    "ingress keeps trailing option tokens": {
-        "mf6/test/test004_bcfss",
-        "mf6/test/test005_advgw_tidal",
-        "mf6/test/test006_gwf3_tr",
-        "mf6/test/test006_gwf3_tr_nr",
-        "mf6/test/test011_mflgr_ex3",
-        "mf6/test/test013_Zaidel",
-        "mf6/test/test023_FlowingWell",
-        "mf6/test/test027_TimeseriesTest",
-        "mf6/test/test027_TimeseriesTest_idomain",
-        "mf6/test/test028_sfr",
-        "mf6/test/test028_sfr_mvr",
-        "mf6/test/test028_sfr_mvr_openclose",
-        "mf6/test/test029_lgrsfr_parent",
-        "mf6/test/test032_sfr",
-        "mf6/test/test044_lakebotfill_dev",
-        "mf6/test/test045_lake2tr_nr",
-        "mf6/test/test051_uzfp2",
-        "mf6/test/test051_uzfp2TS",
-        "mf6/test/test051_uzfp2_nouzf",
-        "mf6/test/test051_uzfp2_openclose",
-    },
-    # `AUXILIARY <one name>` loads as a str, not a list, and egress drops it
-    "ingress loads a single AUXILIARY name as a str": {
-        "mf6/test/test001a_Tharmonic_extlist",
-        "mf6/test/test001h_evt_array1",
-        "mf6/test/test001h_evt_array2",
-        "mf6/test/test001h_evt_array3",
-        "mf6/test/test001h_evt_array4",
-        "mf6/test/test001h_evt_list1",
-        "mf6/test/test001h_evt_list2",
-        "mf6/test/test001h_evt_list3",
-        "mf6/test/test001h_evt_list4",
-        "mf6/test/test001h_rch_array1",
-        "mf6/test/test001h_rch_array2",
-        "mf6/test/test001h_rch_array3",
-        "mf6/test/test001h_rch_array4",
-        "mf6/test/test001h_rch_list1",
-        "mf6/test/test001h_rch_list2",
-        "mf6/test/test001h_rch_list3",
-        "mf6/test/test001h_rch_list4",
-        "mf6/test/test005_advgw_tidal",
-        "mf6/test/test201_gwtbuy-henryCHD",
-        "mf6/test/test202_gwtbuy-henryCHDm",
-        "mf6/test/test203_gwtbuy-henryGHB",
-        "mf6/test/test204_gwtbuy-henryGHBm",
-        "mf6/test/test205_gwtbuy-henrytidal",
-    },
     # a TIMEARRAYSERIES-sourced period array is dropped on load (see
     # test_tas_period_array_kept)
     "ingress drops TAS period arrays": {
