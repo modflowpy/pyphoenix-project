@@ -62,8 +62,9 @@ class DisBase(Package):
                 setattr(self, "ncf6_filerecord", Path(Path(ncf.filename).name))
         super().write(format=format, context=context)
         if ncf is not None:
-            # NCF lat/lon coordinate arrays require full float64 precision.
-            ncf.write(format=format, context=WriteContext(float_precision=15))
+            # NCF lat/lon coordinate arrays require full float64 precision,
+            # even if the caller asked for rounding.
+            ncf.write(format=format, context=WriteContext(float_precision=None))
 
     def to_grid(self) -> LegacyGrid:
         pass

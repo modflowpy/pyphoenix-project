@@ -16,6 +16,7 @@ from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
 from flopy4.mf6.utl.ncf import Ncf
+from flopy4.mf6.write_context import WriteContext
 
 
 def test_registry():
@@ -1328,7 +1329,7 @@ def test_ncf_subpackage_no_overwrite_filerecord(function_tmpdir):
 
 
 def test_ncf_subpackage_float_precision(function_tmpdir):
-    """NCF lat/lon arrays are written with float64 precision (15 sig figs)."""
+    """NCF lat/lon arrays are written with full float64 precision."""
     lat = 35.123456789012345
     lon = -120.987654321098765
     ncf = Ncf(ncpl=1, latitude=[lat], longitude=[lon])
@@ -1337,12 +1338,12 @@ def test_ncf_subpackage_float_precision(function_tmpdir):
     dis = Dis(nlay=1, nrow=1, ncol=1, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     dis.filename = str(function_tmpdir / "gwf.dis")
     dis.ncf = ncf
-    dis.write()
+    # even when the caller asks for rounding
+    dis.write(context=WriteContext(float_precision=4))
 
     ncf_text = (function_tmpdir / "gwf.dis.ncf").read_text()
-    # default precision is 8 sig figs (3.51234568e+01); at precision=15 more digits survive
-    assert "3.512345678901" in ncf_text
-    assert "1.209876543210" in ncf_text
+    assert repr(lat) in ncf_text
+    assert repr(lon) in ncf_text
 
 
 def test_ncf_wkt_write(function_tmpdir):

@@ -15,7 +15,7 @@ def test_write_context_default():
     assert ctx.use_binary is False
     assert ctx.use_netcdf is False
     assert ctx.binary_threshold is None
-    assert ctx.float_precision == 8
+    assert ctx.float_precision is None
     assert ctx.use_relative_paths is True
     assert ctx.array_format is None
 
@@ -38,6 +38,14 @@ def test_write_context_to_numpy_printoptions():
     assert "threshold" in opts
 
 
+def test_write_context_to_numpy_printoptions_lossless():
+    """Without a precision, numpy prints floats losslessly."""
+    opts = WriteContext().to_numpy_printoptions()
+
+    assert "precision" not in opts
+    assert opts["floatmode"] == "unique"
+
+
 def test_write_context_get_float_format():
     """Test float format string generation."""
     ctx = WriteContext(float_precision=6)
@@ -46,12 +54,14 @@ def test_write_context_get_float_format():
     ctx2 = WriteContext(float_precision=10)
     assert ctx2.get_float_format() == "%.10e"
 
+    assert WriteContext().get_float_format() == "%.17g"
+
 
 def test_write_context_manager():
     """Test WriteContext as context manager."""
     # Default context
     default_ctx = WriteContext.current()
-    assert default_ctx.float_precision == 8
+    assert default_ctx.float_precision is None
 
     # Enter context manager
     with WriteContext(float_precision=10):
@@ -60,7 +70,7 @@ def test_write_context_manager():
 
     # After exiting, should return to default
     after = WriteContext.current()
-    assert after.float_precision == 8
+    assert after.float_precision is None
 
 
 def test_write_context_manager_nesting():
@@ -75,7 +85,7 @@ def test_write_context_manager_nesting():
         assert WriteContext.current().float_precision == 4
 
     # Should return to default
-    assert WriteContext.current().float_precision == 8
+    assert WriteContext.current().float_precision is None
 
 
 def test_write_context_thread_local():
@@ -210,3 +220,24 @@ def test_nested_write_context_precision(function_tmpdir):
     # After: back to 4 decimals
     assert "1.1235" in after_content
     assert after_content == outer_content
+
+
+def test_write_floats_lossless_by_default(function_tmpdir):
+    """By default, floats are written as the shortest string that reads back
+    as the same value."""
+    dis = Dis(
+        nlay=1,
+        nrow=1,
+        ncol=3,
+        delr=[11.09305553, 0.1, 3e30],
+        delc=100.58491653,
+        top=1.123456789012345,
+        botm=0.0,
+    )
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.write()
+
+    content = (function_tmpdir / "gwf.dis").read_text()
+    assert "11.09305553 0.1 3e+30" in content
+    assert "CONSTANT 100.58491653" in content
+    assert "CONSTANT 1.123456789012345" in content
