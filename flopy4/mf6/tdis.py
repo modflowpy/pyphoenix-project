@@ -46,9 +46,9 @@ class Tdis(Package):
         optional=True,
     )
     nper: int = field(default=1, block="dimensions")
-    perlen: NDArray[np.float64] = field(default=1.0)
-    nstp: NDArray[np.int64] = field(default=1)
-    tsmult: NDArray[np.float64] = field(default=1.0)
+    perlen: NDArray[np.float64] = field(default_factory=lambda: np.array(1.0))
+    nstp: NDArray[np.int64] = field(default_factory=lambda: np.array(1, dtype=np.int64))
+    tsmult: NDArray[np.float64] = field(default_factory=lambda: np.array(1.0))
     perioddata: Optional[list[PeriodData]] = field(default=None, block="perioddata")
 
     # perlen/nstp/tsmult aren't Package "griddata" block fields (no
@@ -81,28 +81,18 @@ class Tdis(Package):
             super().__post_init__(dims)
             return
         nper = self.nper
-        # _coerce_to_array only runs on an EXPLICITLY passed value
-        # (pydantic doesn't validate an unused field default unless
-        # validate_default=True, not set here) -- so an untouched default
-        # (Tdis() with no perlen=/nstp=/tsmult= at all) still arrives here
-        # as a bare int/float; an
-        # explicit scalar/list override arrives already coerced to a 0-d/
-        # plain ndarray by that validator. Both are handled below.
-        if isinstance(self.perlen, (int, float)):
-            object.__setattr__(self, "perlen", np.full(nper, self.perlen, dtype=np.float64))
-        elif self.perlen.size == 1:
+        # Defaults are 0-d arrays, and _coerce_to_array turns an explicit
+        # scalar/list into an array, so each is an array here; broadcast a
+        # single value to nper.
+        if self.perlen.size == 1:
             object.__setattr__(self, "perlen", np.full(nper, self.perlen.item(), dtype=np.float64))
         elif self.perlen.dtype != np.float64:
             object.__setattr__(self, "perlen", self.perlen.astype(np.float64))
-        if isinstance(self.nstp, (int, float)):
-            object.__setattr__(self, "nstp", np.full(nper, int(self.nstp), dtype=np.int64))
-        elif self.nstp.size == 1:
+        if self.nstp.size == 1:
             object.__setattr__(self, "nstp", np.full(nper, int(self.nstp.item()), dtype=np.int64))
         elif self.nstp.dtype != np.int64:
             object.__setattr__(self, "nstp", self.nstp.astype(np.int64))
-        if isinstance(self.tsmult, (int, float)):
-            object.__setattr__(self, "tsmult", np.full(nper, self.tsmult, dtype=np.float64))
-        elif self.tsmult.size == 1:
+        if self.tsmult.size == 1:
             object.__setattr__(self, "tsmult", np.full(nper, self.tsmult.item(), dtype=np.float64))
         elif self.tsmult.dtype != np.float64:
             object.__setattr__(self, "tsmult", self.tsmult.astype(np.float64))

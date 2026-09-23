@@ -14,6 +14,7 @@ from pydantic import Field
 from pydantic.fields import FieldInfo
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
+from flopy4.spec import field_meta
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
@@ -173,7 +174,7 @@ def blocks_dict(cls) -> dict[str, Block]:
     fields = fields_dict(cls)
     blocks: dict[str, Block] = {}
     for k, v in fields.items():
-        block = v.json_schema_extra["block"]  # type: ignore[index]
+        block = field_meta(v)["block"]
         if block not in blocks:
             blocks[block] = {}
         blocks[block][k] = v
@@ -191,11 +192,7 @@ def fields_dict(cls) -> dict[str, FieldInfo]:
     whose keys are field names. Each field is a `FieldInfo`.
     """
     fields = flopy_fields_dict(cls)
-    return {
-        k: v
-        for k, v in fields.items()
-        if isinstance(v.json_schema_extra, dict) and "block" in v.json_schema_extra
-    }
+    return {k: v for k, v in fields.items() if "block" in field_meta(v)}
 
 
 def _ndarray_field_type(t) -> FieldType | None:
@@ -246,7 +243,7 @@ def repeating_array_key_type(field_type) -> type | None:
     return key if val in (IntArrayLike, FloatArrayLike) else None
 
 
-def to_field_type(t: type) -> FieldType:
+def to_field_type(t: Any) -> FieldType:
     if (result := _ndarray_field_type(t)) is not None:
         return result
     match t:

@@ -17,6 +17,7 @@ from flopy4.mf6.item import (
     normalize_aux_keys,
 )
 from flopy4.mf6.spec import to_field_type
+from flopy4.spec import field_meta, pydantic_fields
 
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
 # full array.
@@ -53,10 +54,10 @@ class Package(Component, ABC):
     @field_validator("*", mode="before")
     @classmethod
     def _coerce_arrays(cls, v: Any, info) -> Any:
-        finfo = cls.__pydantic_fields__.get(info.field_name)
+        finfo = pydantic_fields(cls).get(info.field_name)
         if finfo is None or v is None:
             return v
-        meta = finfo.json_schema_extra or {}
+        meta = field_meta(finfo)
         if not (isinstance(meta, dict) and meta.get("block") == "griddata" and meta.get("shape")):
             return v
         if isinstance(v, np.ndarray) or _is_dask_array(v):
@@ -116,8 +117,8 @@ class Package(Component, ABC):
         # inherit Component's own fields (filename, name, ...), none of
         # which carry block metadata, so this simply no-ops through the
         # rest of this method for them.
-        fields = type(self).__pydantic_fields__
-        if not any((f.json_schema_extra or {}).get("block") is not None for f in fields.values()):
+        fields = pydantic_fields(type(self))
+        if not any(field_meta(f).get("block") is not None for f in fields.values()):
             super().__post_init__(dims)
             return
 
@@ -143,7 +144,7 @@ class Package(Component, ABC):
         __dict__ key object.__setattr__ writes to) is still the real name.
         """
         for name, f in fields.items():
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             block = meta.get("block")
             if not block:
                 continue
@@ -230,7 +231,7 @@ class Package(Component, ABC):
         ) or ("ncpl" in dims and "nrow" not in dims)
 
         for name, f in fields.items():
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             if meta.get("block") != "griddata":
                 continue
             shape_meta = meta.get("shape")
@@ -320,11 +321,11 @@ class Package(Component, ABC):
         strict : bool
             If True, only include fields with ``block`` metadata.
         """
-        all_fields = type(self).__pydantic_fields__
+        all_fields = pydantic_fields(type(self))
 
         # Fall back for a Package subclass with no schema-driven fields of
         # its own (e.g. the exchange leaves in flopy4/mf6/exg/).
-        if not any((f.json_schema_extra or {}).get("block") for f in all_fields.values()):
+        if not any(field_meta(f).get("block") for f in all_fields.values()):
             return super().to_dict(blocks=blocks, strict=strict)
 
         _exclude = {"name", "parent", "_parent", "filename", "workspace", "strict"}
@@ -332,7 +333,7 @@ class Package(Component, ABC):
         for name, f in all_fields.items():
             if name in _exclude or f.init is False:
                 continue
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             block = meta.get("block")
             if not block:
                 continue
@@ -389,8 +390,8 @@ class Package(Component, ABC):
         self.__dict__["_stress_period_data"] = spd
 
     def _period_item_cls(self) -> "type[Item] | tuple[type[Item], ...]":
-        for f in type(self).__pydantic_fields__.values():
-            meta = f.json_schema_extra or {}
+        for f in pydantic_fields(type(self)).values():
+            meta = field_meta(f)
             if meta.get("fill_forward"):
                 item_cls = item_list_type(f.annotation)
                 if item_cls is not None:
@@ -436,13 +437,12 @@ class Package(Component, ABC):
         ``dataclass_to_dataset()`` finds -- empty for a package with no
         griddata fields of its own.
         """
-        fields = type(self).__pydantic_fields__
+        fields = pydantic_fields(type(self))
         for _block in ("griddata", "period"):
             data_vars = {
                 name: self.to_dataarray(name)
                 for name, f in fields.items()
-                if (f.json_schema_extra or {}).get("block") == _block
-                and getattr(self, name) is not None
+                if field_meta(f).get("block") == _block and getattr(self, name) is not None
             }
             if data_vars:
                 return xr.Dataset(data_vars)

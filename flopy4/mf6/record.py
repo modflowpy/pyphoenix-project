@@ -12,7 +12,7 @@ than a declared flag, and make.py's _build_record_class_specs.
 
 Generated Record/Item subclasses are `pydantic.dataclasses.dataclass` --
 `Record.fields()`/`_nested_class()` below read
-`__pydantic_fields__`/`FieldInfo.json_schema_extra` accordingly. A nested/
+`pydantic_fields()`/`FieldInfo.json_schema_extra` accordingly. A nested/
 composed field's annotation (e.g. `Headprint.formatrecord: "Oc.Format"`) is
 a forward-reference string naming a SIBLING class inside the same enclosing
 package class -- unresolvable via any module-global lookup at class-body-
@@ -30,7 +30,9 @@ from pathlib import Path
 from typing import Any, Union, get_args, get_origin
 
 from pydantic import ConfigDict
-from pydantic.dataclasses import rebuild_dataclass
+from pydantic.dataclasses import is_pydantic_dataclass, rebuild_dataclass
+
+from flopy4.spec import field_meta, pydantic_fields
 
 CFG = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, extra="forbid")
 
@@ -63,7 +65,7 @@ def _coerce(token: Any, finfo: Any) -> Any:
     to the raw string if it isn't a float). Only Optional[X] (a single
     non-None union arm) is unwrapped -- a genuine multi-type union like
     Union[float, str] is deliberately ambiguous and left as the raw token."""
-    meta = finfo.json_schema_extra or {}
+    meta = field_meta(finfo)
     if isinstance(meta, dict) and meta.get("time_series"):
         try:
             return float(token)
@@ -86,7 +88,7 @@ def _coerce(token: Any, finfo: Any) -> Any:
 
 
 def _is_tagged(finfo: Any) -> bool:
-    meta = finfo.json_schema_extra or {}
+    meta = field_meta(finfo)
     return bool(isinstance(meta, dict) and meta.get("tagged"))
 
 
@@ -148,9 +150,10 @@ class Record:
         even when called before any instance of `cls` has ever been
         constructed (exactly what `from_tokens()` does).
         """
-        if not cls.__pydantic_complete__:  # type: ignore[attr-defined]
-            rebuild_dataclass(cls, force=True, _parent_namespace_depth=4)  # type: ignore[arg-type]
-        return {n: f for n, f in cls.__pydantic_fields__.items() if not n.startswith("_")}  # type: ignore[attr-defined]
+        assert is_pydantic_dataclass(cls)
+        if not cls.__pydantic_complete__:
+            rebuild_dataclass(cls, force=True, _parent_namespace_depth=4)
+        return {n: f for n, f in pydantic_fields(cls).items() if not n.startswith("_")}
 
     @classmethod
     def keyword(cls) -> str:

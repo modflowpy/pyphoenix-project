@@ -4,6 +4,8 @@ from typing import Protocol, runtime_checkable
 
 from pydantic.dataclasses import is_pydantic_dataclass
 
+from flopy4.spec import field_meta, pydantic_fields
+
 
 @runtime_checkable
 class DimensionProvider(Protocol):
@@ -191,7 +193,7 @@ class DimensionResolverMixin:
 
     def _walk_providers(self):
         """Yield (source_label, dims_dict) for each DimensionProvider in child fields."""
-        for name in type(self).__pydantic_fields__:  # type: ignore[attr-defined]
+        for name in pydantic_fields(type(self)):
             if (value := getattr(self, name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
@@ -271,9 +273,9 @@ def validate_dimension_resolution(component) -> list[str]:
     errors = []
 
     # Check all array fields on this component
-    for name, finfo in type(component).__pydantic_fields__.items():
+    for name, finfo in pydantic_fields(type(component)).items():
         # Check if field has dimension metadata
-        meta = finfo.json_schema_extra or {}
+        meta = field_meta(finfo)
         if isinstance(meta, dict) and "dims" in meta:
             dims_needed = meta["dims"]
             # Check if this component has a parent and can resolve dimensions
@@ -288,7 +290,7 @@ def validate_dimension_resolution(component) -> list[str]:
                             )
 
     # Recursively validate children
-    for name in type(component).__pydantic_fields__:
+    for name in pydantic_fields(type(component)):
         value = getattr(component, name, None)
         if value is None:
             continue

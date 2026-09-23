@@ -100,12 +100,6 @@ class Disv(DisBase):
     cell2d: Optional[list] = field(default=None, init=False, block="cell2d")
 
     def __post_init__(self, dims: Optional[dict] = None):
-        if self.iv is not None and (not isinstance(self.iv, np.ndarray)):
-            object.__setattr__(self, "iv", np.asarray(self.iv, dtype=np.int64))
-        if self.xv is not None and (not isinstance(self.xv, np.ndarray)):
-            object.__setattr__(self, "xv", np.asarray(self.xv, dtype=np.float64))
-        if self.yv is not None and (not isinstance(self.yv, np.ndarray)):
-            object.__setattr__(self, "yv", np.asarray(self.yv, dtype=np.float64))
         if self.iv is not None and self.xv is not None and (self.yv is not None):
             rows = [
                 self.Vertices(iv=int(iv) + 1, xv=float(xv), yv=float(yv))
@@ -113,13 +107,13 @@ class Disv(DisBase):
             ]
             object.__setattr__(self, "vertices", rows)
         if self.cell2ddata is not None:
-            rows = []
+            cell_rows = []
             for rec in self.cell2ddata:
                 row = (rec.icell2d + 1, rec.xc, rec.yc, rec.ncvert) + tuple(
                     (v + 1 for v in rec.icvert)
                 )
-                rows.append(row)
-            object.__setattr__(self, "cell2d", rows)
+                cell_rows.append(row)
+            object.__setattr__(self, "cell2d", cell_rows)
         self.nodes = self.ncpl * self.nlay
         self.nrow = 0
         self.ncol = 0

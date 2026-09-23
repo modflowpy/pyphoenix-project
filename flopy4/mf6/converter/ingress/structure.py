@@ -12,6 +12,7 @@ from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_it
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
+from flopy4.spec import field_meta, pydantic_fields
 
 
 def _inner_class_type(field_type) -> type[Record] | None:
@@ -212,7 +213,7 @@ def _griddata_flat_length(f, dims: dict, default: int) -> int:
     back to `default` (the grid's total node count) when the field's
     declared shape dimension isn't resolvable from `dims`.
     """
-    shape_meta = (f.json_schema_extra or {}).get("shape")
+    shape_meta = field_meta(f).get("shape")
     if shape_meta:
         dim_name = shape_meta[-1] if isinstance(shape_meta, (tuple, list)) else shape_meta
         if dim_name in dims:
@@ -244,7 +245,7 @@ def _parse_griddata_block(
             continue
         key = str(row[0]).lower()
         f = fields_by_name.get(key)
-        meta = (f.json_schema_extra or {}) if f is not None else {}
+        meta = field_meta(f) if f is not None else {}
         if f is None or meta.get("block") != "griddata":
             i += 1
             continue
@@ -367,7 +368,7 @@ def _parse_readarray_period_block(
             continue
 
         is_int = to_field_type(f.annotation) == "integer"
-        meta = f.json_schema_extra or {}
+        meta = field_meta(f)
         is_layered = meta.get("layered", False) or any(str(t).upper() == "LAYERED" for t in row[1:])
         dtype = np.int64 if is_int else np.float64
 
@@ -453,11 +454,11 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     model_prefix = cls.__name__.lower() if issubclass(cls, Model) else None
 
     fields_by_block: dict[str, list] = {}
-    for name, f in cls.__pydantic_fields__.items():
+    for name, f in pydantic_fields(cls).items():
         spec = child_field_candidates(f)
         if spec is None:
             continue
-        meta = f.json_schema_extra or {}
+        meta = field_meta(f)
         block_name = meta.get("block") if isinstance(meta, dict) else None
         if block_name is None:
             continue
@@ -626,11 +627,11 @@ def structure_component(
     # is for time_series_name, not Package.name).
     all_fields = {
         fname: f
-        for fname, f in cls.__pydantic_fields__.items()
-        if f.init is not False and "block" in (f.json_schema_extra or {})
+        for fname, f in pydantic_fields(cls).items()
+        if f.init is not False and "block" in field_meta(f)
     }
     alias_map: dict[str, str] = {}  # alias → name
-    for fname, f in cls.__pydantic_fields__.items():
+    for fname, f in pydantic_fields(cls).items():
         if f.alias and f.alias != fname:
             alias_map[f.alias] = fname
 
@@ -638,9 +639,7 @@ def structure_component(
     # trigger keyword, the path field's _keyword metadata (see spec.path),
     # not by the field's py name (ts_file).
     file_fields: dict[str, tuple[str, Any]] = {
-        kw: (fname, f)
-        for fname, f in all_fields.items()
-        if (kw := (f.json_schema_extra or {}).get("_keyword"))
+        kw: (fname, f) for fname, f in all_fields.items() if (kw := field_meta(f).get("_keyword"))
     }
 
     # Index Optional[InnerClass] fields by the inner class's _keyword (lowercase).
@@ -655,7 +654,7 @@ def structure_component(
     # test failed, with kwargs["name"] ending up as the *last field name
     # iterated* (e.g. "output") instead of the caller's actual override.
     inner_class_fields: dict[str, tuple] = {}
-    for fname, f in cls.__pydantic_fields__.items():
+    for fname, f in pydantic_fields(cls).items():
         if f.init is False:
             continue
         inner_cls = _inner_class_type(f.annotation)
@@ -676,13 +675,13 @@ def structure_component(
     # Fill-forward repeating blocks (period), per the fields' own
     # fill_forward metadata (from the DFN's BlockHeader.fill_forward).
     fill_forward_blocks = {
-        (f.json_schema_extra or {})["block"]
-        for f in cls.__pydantic_fields__.values()
-        if (f.json_schema_extra or {}).get("fill_forward")
+        field_meta(f)["block"]
+        for f in pydantic_fields(cls).values()
+        if field_meta(f).get("fill_forward")
     }
 
-    for fname, f in cls.__pydantic_fields__.items():
-        meta = f.json_schema_extra or {}
+    for fname, f in pydantic_fields(cls).items():
+        meta = field_meta(f)
         block = meta.get("block", "") if isinstance(meta, dict) else ""
         item_cls = item_list_type(f.annotation)
         if item_cls is None:
@@ -701,11 +700,11 @@ def structure_component(
     # a metadata flag. Mirrors egress/unstructure.py's write path.
     repeating_array_fields = {
         fname: f
-        for fname, f in cls.__pydantic_fields__.items()
+        for fname, f in pydantic_fields(cls).items()
         if repeating_array_key_type(f.annotation) is not None and f.init is not False
     }
     repeating_array_block_prefixes = {
-        (f.json_schema_extra or {})["block"] for f in repeating_array_fields.values()
+        field_meta(f)["block"] for f in repeating_array_fields.values()
     }
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
@@ -735,13 +734,14 @@ def structure_component(
                     kwargs[ff_f.alias or ff_name] = Path(_strip_quotes(str(tokens[0])))
                 continue
             found_name = key if key in all_fields else alias_map.get(key)
-            f = all_fields.get(found_name) if found_name else None
-            if f is None or f.init is False:
+            found = all_fields.get(found_name) if found_name is not None else None
+            if found_name is None or found is None or found.init is False:
                 if key in inner_class_fields:
                     cand_name, cand_f, inner_cls = inner_class_fields[key]
                     cand_init = cand_f.alias if cand_f.alias else cand_name
                     kwargs[cand_init] = inner_cls.from_tokens(row)
                 continue
+            f = found
             # A field whose OWN name happens to equal its inner Record's
             # _keyword (e.g. Npf.rewet: Optional[Rewet], Rewet._keyword ==
             # "rewet") matches `all_fields` above before `inner_class_fields`
@@ -778,7 +778,7 @@ def structure_component(
                 # aux variable (e.g. "AUXILIARY MULT", row length 2) fell
                 # through to the plain-scalar branch below and stored a
                 # bare string, which fails list[str] validation.
-                _f_meta = f.json_schema_extra or {}
+                _f_meta = field_meta(f)
                 is_list_opt = (
                     isinstance(_f_meta, dict) and isinstance(_f_meta.get("shape"), tuple)
                 ) or found_name == "auxiliary"
@@ -838,7 +838,9 @@ def structure_component(
 
     if kper_rows:
         if period_field is not None:
-            assert period_item_cls is not None  # set together with period_field above
+            assert (
+                period_item_cls is not None and period_field_name is not None
+            )  # set with period_field
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
@@ -863,9 +865,8 @@ def structure_component(
             # repeating_array_field instead, see below).
             ra_fields = {
                 name: f
-                for name, f in cls.__pydantic_fields__.items()
-                if isinstance(f.json_schema_extra, dict)
-                and f.json_schema_extra.get("fill_forward")
+                for name, f in pydantic_fields(cls).items()
+                if field_meta(f).get("fill_forward")
                 and name not in repeating_array_fields
                 and to_field_type(f.annotation) in ("integer", "double")
                 and f.init is not False
@@ -879,7 +880,7 @@ def structure_component(
                 # fill-forward semantics (egress skips all-FILL_DNODATA periods).
                 accum: dict[str, np.ndarray] = {}
                 for fname, f in ra_fields.items():
-                    _meta = f.json_schema_extra or {}
+                    _meta = field_meta(f)
                     shape = (nper, nlay, ncpl) if _meta.get("layered", False) else (nper, ncpl)
                     accum[fname] = np.full(shape, FILL_DNODATA)
                 for kper, rows in sorted(kper_rows.items()):
@@ -908,7 +909,7 @@ def structure_component(
             nlay = effective_dims.get("nlay", 1)
             ncpl = nodes // nlay if nlay > 1 else nodes
             for fname, f in repeating_array_fields.items():
-                block = (f.json_schema_extra or {})["block"]
+                block = field_meta(f)["block"]
                 key_type = repeating_array_key_type(f.annotation)
                 series_rows = _group_repeating_rows(raw_lower, {block}, key_type).get(block)
                 if not series_rows:
@@ -938,10 +939,8 @@ def structure_component(
         if effective_dims:
             gd_fields = {
                 name: f
-                for name, f in cls.__pydantic_fields__.items()
-                if isinstance(f.json_schema_extra, dict)
-                and f.json_schema_extra.get("block") == "griddata"
-                and f.init is not False
+                for name, f in pydantic_fields(cls).items()
+                if field_meta(f).get("block") == "griddata" and f.init is not False
             }
             parsed = _parse_griddata_block(griddata_rows, gd_fields, effective_dims, workspace)
             kwargs.update(parsed)

@@ -16,12 +16,13 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
+from flopy4.spec import field_meta, pydantic_fields
 
 
 def _path_to_tuple(name: str, field: FieldInfo, value: Path) -> tuple[str, ...]:
     """A block-level file record's ``KEYWORD FILEIN|FILEOUT <path>`` row. The
     keyword is the field's own ``_keyword`` metadata (see spec.path)."""
-    meta = field.json_schema_extra or {}
+    meta = field_meta(field)
     assert isinstance(meta, dict)
     keyword = meta.get("_keyword")
     if not keyword:
@@ -40,12 +41,12 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
 
     blocks = {}  # type: ignore
 
-    for child_name, f in type(value).__pydantic_fields__.items():
+    for child_name, f in pydantic_fields(type(value)).items():
         if child_field_candidates(f) is None:
             continue
         if (child := getattr(value, child_name, None)) is None:
             continue
-        meta = f.json_schema_extra or {}
+        meta = field_meta(f)
         block_name = meta.get("block") if isinstance(meta, dict) else None
         if block_name is None:
             continue
@@ -131,8 +132,8 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     except ImportError:
         _DaskArray = type(None)  # type: ignore[misc,assignment]
 
-    for name, f in cls.__pydantic_fields__.items():
-        meta = f.json_schema_extra or {}
+    for name, f in pydantic_fields(cls).items():
+        meta = field_meta(f)
         block_name = meta.get("block") if isinstance(meta, dict) else None
         if not block_name:
             continue
@@ -288,7 +289,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
     pydantic-typed child fields, including its child binding blocks."""
     blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
-    fields_by_name = dict(type(value).__pydantic_fields__)
+    fields_by_name = dict(pydantic_fields(type(value)))
 
     # create child component binding blocks
     blocks.update(_make_binding_blocks(value))
@@ -300,13 +301,13 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         for field_name in block.keys():
             # Skip child components already processed as bindings
             field = fields_by_name.get(field_name)
-            field_meta = (field.json_schema_extra or {}) if field is not None else {}
+            fmeta = field_meta(field) if field is not None else {}
             if (
                 isinstance(value, Context)
                 and field is not None
                 and child_field_candidates(field) is not None
-                and isinstance(field_meta, dict)
-                and field_meta.get("block") == block_name
+                and isinstance(fmeta, dict)
+                and fmeta.get("block") == block_name
             ):
                 continue
 

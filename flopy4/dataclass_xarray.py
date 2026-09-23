@@ -40,7 +40,7 @@ import numpy as np
 import xarray as xr
 from pydantic.dataclasses import is_pydantic_dataclass
 
-from flopy4.spec import is_dataclass_instance
+from flopy4.spec import field_meta, is_dataclass_instance, pydantic_fields
 
 # Field names to always skip, regardless of what they hold. `parent` and `_parent`
 # (Output.parent, Component._parent -- see their own docstrings) are
@@ -62,7 +62,7 @@ def _leaf_fields_and_children(
     leaves: "dict[str, tuple]" = {}
     single_children: "dict[str, Any]" = {}
     collection_children: "dict[str, dict | list]" = {}
-    for name, finfo in type(obj).__pydantic_fields__.items():
+    for name, finfo in pydantic_fields(type(obj)).items():
         if name in _RESERVED_FIELD_NAMES or finfo.init_var:
             continue
         # A private field (leading underscore) exposed under an alias --
@@ -94,7 +94,7 @@ def _leaf_fields_and_children(
 
 
 def _array_dims(finfo: Any, name: str, ndim: int) -> tuple:
-    meta = finfo.json_schema_extra or {}
+    meta = field_meta(finfo)
     shape_meta = meta.get("shape") if isinstance(meta, dict) else None
     if shape_meta and len(shape_meta) == ndim:
         return tuple(shape_meta)
@@ -114,7 +114,7 @@ def dataclass_to_dataset(obj) -> xr.Dataset:
     data_vars = {}
     ds_attrs = {}
     for name, (finfo, value) in leaves.items():
-        meta = finfo.json_schema_extra or {}
+        meta = field_meta(finfo)
         has_shape = isinstance(meta, dict) and meta.get("shape")
         if isinstance(value, xr.DataArray):
             data_vars[name] = value
@@ -145,7 +145,7 @@ def _init_field_names(cls: type) -> set:
     # here must match that key, not the private real name.
     return {
         (f.alias if (f.alias and name.startswith("_")) else name)
-        for name, f in cls.__pydantic_fields__.items()
+        for name, f in pydantic_fields(cls).items()
         if f.init is not False
     }
 
@@ -288,7 +288,7 @@ def datatree_to_dataclass(cls: type, tree: xr.DataTree):
     "dict"-kind and `Union`-element limitations.
     """
     kwargs = _leaf_kwargs_from_dataset(cls, tree.dataset)
-    for name, finfo in cls.__pydantic_fields__.items():
+    for name, finfo in pydantic_fields(cls).items():
         if finfo.init is False:
             continue
         spec = _child_field_spec(finfo)

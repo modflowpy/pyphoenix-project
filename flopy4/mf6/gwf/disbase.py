@@ -10,6 +10,7 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import field_meta, pydantic_fields
 
 
 @dataclass(config=CFG, kw_only=True)
@@ -38,12 +39,12 @@ class DisBase(Package):
         bypasses construction-time validation via a direct __dict__ write,
         as several places in this codebase do.
         """
-        fields = type(self).__pydantic_fields__
+        fields = pydantic_fields(type(self))
         dims = self.get_dims()
         ncpl = dims.get("ncpl", 0)
         nlay = dims.get("nlay", 1)
         for name, f in fields.items():
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             if meta.get("block") != "griddata":
                 continue
             val = self.__dict__.get(name)

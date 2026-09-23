@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Annotated, Any, Union, cast, get_args, get_origin
 
 from flopy4.mf6.record import Record, _coerce
+from flopy4.spec import field_meta
 
 _AUX_KEY_RE = re.compile(r"^aux(\d+)$")
 
@@ -42,11 +43,7 @@ def normalize_aux_keys(item: dict) -> dict:
 
 def _cellid_field(cls: type) -> Any | None:
     return next(
-        (
-            f
-            for f in cast(type[Record], cls).fields().values()
-            if (f.json_schema_extra or {}).get("cellid")
-        ),
+        (f for f in cast(type[Record], cls).fields().values() if field_meta(f).get("cellid")),
         None,
     )
 
@@ -89,7 +86,7 @@ def construct_item(item_cls: type, values) -> "Item":
             i
             for i, (name, f) in enumerate(fields)
             if name == "aux"
-            or (f.json_schema_extra or {}).get("array")
+            or field_meta(f).get("array")
             or _is_item_union(f.annotation) is not None
         ),
         None,
@@ -125,7 +122,7 @@ def _n_fixed_tokens(cls: type) -> int:
     cls = cast(type[Record], cls)
     n = 1 if cls.keyword() else 0
     for name, f in cls.fields().items():
-        meta = f.json_schema_extra or {}
+        meta = field_meta(f)
         if meta.get("cellid") or name in ("aux", "boundname"):
             continue
         if meta.get("optional"):
@@ -209,7 +206,7 @@ class Item(Record):
             val = getattr(self, name)
             if val is None:
                 continue
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             if meta.get("cellid"):
                 row.extend(int(c) + 1 for c in val)
             elif meta.get("index"):
@@ -274,7 +271,7 @@ class Item(Record):
 
         def consume(name: str, f: Any) -> None:
             nonlocal tok_idx, keyword_skipped
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             if meta.get("cellid"):
                 cellid = tuple(int(tokens[tok_idx + j]) - 1 for j in range(ncelldim))
                 kwargs[name] = cellid
@@ -297,7 +294,7 @@ class Item(Record):
             tok_idx += 1
 
         def width(f: Any) -> int:
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             w = 1 + (1 if meta.get("_keyword") else 0)
             if meta.get("direction"):
                 w += 1
@@ -308,16 +305,12 @@ class Item(Record):
             (name, f) for name, f in main_fields if _is_item_union(f.annotation) is not None
         ]
         main_fields = [item for item in main_fields if item not in nested_union_fields]
-        array_fields = [
-            (name, f) for name, f in main_fields if (f.json_schema_extra or {}).get("array")
-        ]
+        array_fields = [(name, f) for name, f in main_fields if field_meta(f).get("array")]
         main_fields = [item for item in main_fields if item not in array_fields]
         required_fields = [
-            (name, f) for name, f in main_fields if not (f.json_schema_extra or {}).get("optional")
+            (name, f) for name, f in main_fields if not field_meta(f).get("optional")
         ]
-        optional_fields = [
-            (name, f) for name, f in main_fields if (f.json_schema_extra or {}).get("optional")
-        ]
+        optional_fields = [(name, f) for name, f in main_fields if field_meta(f).get("optional")]
 
         for name, f in required_fields:
             consume(name, f)
@@ -329,9 +322,7 @@ class Item(Record):
         remaining = n - tok_idx - (1 if has_bn_token else 0) - (naux if has_aux else 0)
 
         budget_fields = [
-            (name, f)
-            for name, f in optional_fields
-            if not (f.json_schema_extra or {}).get("tagged")
+            (name, f) for name, f in optional_fields if not field_meta(f).get("tagged")
         ]
         n_opt_present = 0
         used = 0
@@ -344,7 +335,7 @@ class Item(Record):
 
         budget_idx = 0
         for name, f in optional_fields:
-            meta = f.json_schema_extra or {}
+            meta = field_meta(f)
             if meta.get("tagged"):
                 if not keyword_skipped:
                     tok_idx += 1

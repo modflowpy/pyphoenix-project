@@ -20,6 +20,7 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
+from flopy4.spec import field_meta, pydantic_fields
 from flopy4.version import __version__
 
 
@@ -86,7 +87,7 @@ class _PackageSpec:
     def __init__(self, cls):
         class _ArrayInfo:
             def __init__(self, name, f):
-                meta = f.json_schema_extra or {}
+                meta = field_meta(f)
                 # A fill-forward (period) field's value has a leading nper axis.
                 fill_forward = bool(meta.get("fill_forward"))
                 is_layered = meta.get("layered", True)
@@ -112,8 +113,8 @@ class _PackageSpec:
 
         self.arrays = {
             name: _ArrayInfo(name, f)
-            for name, f in cls.__pydantic_fields__.items()
-            if (f.json_schema_extra or {}).get("netcdf")
+            for name, f in pydantic_fields(cls).items()
+            if field_meta(f).get("netcdf")
         }
 
 
@@ -232,8 +233,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
             else:
                 _nodes = d.get("nodes", _nlay)
 
-            for name, f in type(package).__pydantic_fields__.items():
-                meta = f.json_schema_extra or {}
+            for name, f in pydantic_fields(type(package)).items():
+                meta = field_meta(f)
                 if not meta.get("netcdf"):
                     continue
                 if meta.get("block") == "griddata":

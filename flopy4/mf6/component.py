@@ -12,6 +12,7 @@ from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import field_meta, pydantic_fields
 from flopy4.uio import IO, Loader, Writer
 
 # Shared config for every Component/Package (sub)class. Pydantic doesn't
@@ -122,7 +123,7 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
     from flopy4.dataclass_xarray import child_field_candidates
 
     matches = []
-    for name, finfo in parent_cls.__pydantic_fields__.items():
+    for name, finfo in pydantic_fields(parent_cls).items():
         spec = child_field_candidates(finfo)
         if spec is None:
             continue
@@ -207,10 +208,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         per-field converter hook, so `flopy4.mf6.spec.field()`/`path()`
         stash the callable in `json_schema_extra["converter"]` and this
         single validator applies it for every field of every class."""
-        finfo = cls.__pydantic_fields__.get(info.field_name)
+        finfo = pydantic_fields(cls).get(info.field_name)
         if finfo is None or v is None:
             return v
-        meta = finfo.json_schema_extra or {}
+        meta = field_meta(finfo)
         conv = meta.get("converter") if isinstance(meta, dict) else None
         return conv(v) if conv is not None else v
 
@@ -277,7 +278,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         self._set_child_parents()
 
         result: "dict[str, Component]" = {}
-        for name, finfo in type(self).__pydantic_fields__.items():
+        for name, finfo in pydantic_fields(type(self)).items():
             spec = child_field_candidates(finfo)
             if spec is None:
                 continue
@@ -311,7 +312,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         from flopy4.dataclass_xarray import child_field_candidates
 
         used: "set[str]" = set()
-        for name, finfo in type(self).__pydantic_fields__.items():
+        for name, finfo in pydantic_fields(type(self)).items():
             spec = child_field_candidates(finfo)
             if spec is None:
                 continue
@@ -452,7 +453,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
         from flopy4.dataclass_xarray import child_field_candidates
 
-        for name, finfo in type(self).__pydantic_fields__.items():
+        for name, finfo in pydantic_fields(type(self)).items():
             spec = child_field_candidates(finfo)
             if spec is None:
                 continue
@@ -496,7 +497,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         currently holds it."""
         from flopy4.dataclass_xarray import child_field_candidates
 
-        for name, finfo in type(self).__pydantic_fields__.items():
+        for name, finfo in pydantic_fields(type(self)).items():
             spec = child_field_candidates(finfo)
             if spec is None:
                 continue
@@ -574,7 +575,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if is_pydantic_dataclass(type(value)):
                 return {
                     name: _convert(getattr(value, name))
-                    for name in type(value).__pydantic_fields__
+                    for name in pydantic_fields(type(value))
                     if name not in ("parent", "_parent")
                 }
             if isinstance(value, dict):
@@ -614,7 +615,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             blocks_ = {}  # type: ignore
             for field_name, finfo in spec.items():
                 field_value = data[field_name]
-                meta = finfo.json_schema_extra or {}
+                meta = field_meta(finfo)
                 block_name = meta.get("block") if isinstance(meta, dict) else None
                 if strict and block_name is None:
                     continue
@@ -626,7 +627,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             return {
                 field_name: data[field_name]
                 for field_name, finfo in spec.items()
-                if (finfo.json_schema_extra or {}).get("block") or not strict
+                if field_meta(finfo).get("block") or not strict
             }
 
     def to_xarray(self):
@@ -658,10 +659,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             for name, child in self._children.items():
                 if not is_pydantic_dataclass(type(child)):
                     continue
-                _fields = type(child).__pydantic_fields__
-                if not any(
-                    (f.json_schema_extra or {}).get("block") == "griddata" for f in _fields.values()
-                ):
+                _fields = pydantic_fields(type(child))
+                if not any(field_meta(f).get("block") == "griddata" for f in _fields.values()):
                     continue
                 try:
                     ds = child.to_xarray()

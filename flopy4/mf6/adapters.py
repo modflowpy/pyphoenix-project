@@ -16,6 +16,7 @@ from pydantic.dataclasses import is_pydantic_dataclass
 from flopy4.dataclass_xarray import dataclass_to_dataset
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.spec import field_meta, pydantic_fields
 
 
 def _to_numpy(val):
@@ -217,7 +218,7 @@ class Flopy3Package(PackageInterface):
         self._time = modeltime
         self._dlist = list()
 
-        field_by_name = dict(type(package).__pydantic_fields__)
+        field_by_name = dict(pydantic_fields(type(package)))
 
         for a, value in self._dataset.attrs.items():
             field = field_by_name.get(a)
@@ -238,7 +239,7 @@ class Flopy3Package(PackageInterface):
             self._dlist.append(d_fp3)
 
         for v, data_array in self._dataset.data_vars.items():
-            field = field_by_name.get(v)
+            field = field_by_name.get(str(v))
             if field is None:
                 continue
             d_fp3 = Flopy3Data(
@@ -292,8 +293,8 @@ class Flopy3Package(PackageInterface):
         # _stress_period_data too, redundantly with the check above -- kept
         # as a generic fallback for any period field shape).
         if is_pydantic_dataclass(type(self._package)):
-            for name, f in type(self._package).__pydantic_fields__.items():
-                meta = f.json_schema_extra or {}
+            for name, f in pydantic_fields(type(self._package)).items():
+                meta = field_meta(f)
                 if isinstance(meta, dict) and meta.get("fill_forward"):
                     attr_name = f.alias if (f.alias and name.startswith("_")) else name
                     if getattr(self._package, attr_name, None) is not None:
