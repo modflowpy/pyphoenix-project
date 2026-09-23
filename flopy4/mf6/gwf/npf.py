@@ -109,6 +109,7 @@ class Npf(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="tvk6",
     )
     export_array_ascii: bool = field(
         default=False,

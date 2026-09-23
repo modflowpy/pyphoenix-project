@@ -2,9 +2,8 @@
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
-from numpy.typing import NDArray
 
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field
@@ -17,17 +16,33 @@ class Tas(Package):
     multi_package: ClassVar[bool] = True
 
     @attrs.define
+    class TimeSeriesName(Record):
+        _keyword: ClassVar[str] = "name"
+        time_series_name: list[str] = attrs.field()
+
+    @attrs.define
     class InterpolationMethod(Record):
         _keyword: ClassVar[str] = "method"
         interpolation_method: str = attrs.field()
 
-    # TODO: time_series_namerecord — type 'record' not yet supported
+    @attrs.define
+    class Sfac(Record):
+        _keyword: ClassVar[str] = "sfac"
+        sfacval: list[float] = attrs.field()
+
+    time_series_name: Optional[TimeSeriesName] = field(
+        default=None,
+        block="attributes",
+    )
     interpolation_method: Optional[InterpolationMethod] = field(
         default=None,
         block="attributes",
     )
-    # TODO: sfacrecord — type 'record' not yet supported
-    tas_array: NDArray[np.float64] = field(
+    sfac: Optional[Sfac] = field(
+        default=None,
+        block="attributes",
+    )
+    tas_array: Optional[dict[float, FloatArrayLike]] = field(
         default=None,
         block="time",
         shape=("ncpl",),

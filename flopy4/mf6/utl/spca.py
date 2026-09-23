@@ -32,16 +32,19 @@ class Spca(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="tas6",
     )
     concentration: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        fill_forward=True,
     )
     temperature: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        fill_forward=True,
     )

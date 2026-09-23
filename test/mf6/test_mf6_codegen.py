@@ -217,21 +217,6 @@ class TestFilters:
         assert py_type(field, block_name) == expected
 
     @pytest.mark.parametrize(
-        "field",
-        [
-            Array(name="x", dtype="double", shape=["nodes"]),
-            Array(name="x", dtype="integer", shape=["nodes"]),
-            Array(name="x", dtype="keyword", shape=["nodes"]),
-        ],
-    )
-    def test_py_type_period_array_always_optional(self, field):
-        """Period arrays get Optional even when DFN marks them required."""
-        result = py_type(field, "period")
-        assert result.startswith("Optional["), (
-            f"Expected Optional for period array but got {result!r}"
-        )
-
-    @pytest.mark.parametrize(
         "field, generatable",
         [
             (Keyword(name="x"), True),

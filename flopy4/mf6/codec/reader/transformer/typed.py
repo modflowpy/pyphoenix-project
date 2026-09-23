@@ -178,8 +178,8 @@ class TypedTransformer(Transformer):
     def netcdf(self, _) -> dict[str, bool]:
         return {"netcdf": True}
 
-    def block_index(self, items: list[Any]) -> int:
-        """Extract block index (e.g., period number)."""
+    def block_index(self, items: list[Any]) -> int | float:
+        """Extract block index (e.g., period number, or utl-tas's time)."""
         return items[0]
 
     def stress_period_data(self, items: list[Any]) -> list[Any]:
@@ -238,11 +238,14 @@ class TypedTransformer(Transformer):
             # Indexed block: [index, fields, closing index]. The closing
             # index is optional in the grammar (most real files write a bare
             # "END <name>", not repeating the number) -- Lark fills the
-            # omitted slot with None rather than dropping it.
+            # omitted slot with None rather than dropping it. The index
+            # itself is usually an int (period/solutiongroup) but can be a
+            # float (utl-tas's "time" block) -- see block_index/the `number`
+            # grammar rule.
             if (
                 len(children) == 3
-                and isinstance(children[0], int)
-                and (children[2] is None or isinstance(children[2], int))
+                and isinstance(children[0], (int, float))
+                and (children[2] is None or isinstance(children[2], (int, float)))
             ):
                 block_index = children[0]
                 fields_data = children[1]

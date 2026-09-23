@@ -31,6 +31,10 @@ def valid_as_union(field: InputField) -> InputField:
 
 def field_type(field: InputField) -> str:
     if isinstance(field, Array):
+        # no declared shape -> griddata reshaping doesn't apply, it's a bare
+        # run of values (e.g. AUXILIARY's names, PRP's steps)
+        if not field.shape:
+            return f"{'word' if field.dtype == 'string' else field.dtype}+"
         return "array"
     if isinstance(field, Keyword):
         return ""

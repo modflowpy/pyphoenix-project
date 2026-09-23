@@ -18,14 +18,14 @@ from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
 
-def _path_to_tuple(name: str, value: Path, direction: FileDirection) -> tuple[str, ...]:
-    for suffix in ("_input_file", "_filerecord", "_file"):
-        if name.endswith(suffix):
-            prefix = name[: -len(suffix)]
-            break
-    else:
-        prefix = name
-    t = [prefix.upper()]
+def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
+    """A block-level file record's ``KEYWORD FILEIN|FILEOUT <path>`` row. The
+    keyword is the field's own ``_keyword`` metadata (see spec.path)."""
+    keyword = field.metadata.get("_keyword")
+    if not keyword:
+        raise ValueError(f"file field {field.name!r} has no _keyword metadata")
+    direction: FileDirection | None = field.metadata.get("direction")
+    t = [keyword.upper()]
     if direction:
         t.append("FILEOUT" if direction == "out" else "FILEIN")
     t.append(str(value))
@@ -117,15 +117,13 @@ def _normalize_kper(kper: Any) -> int | None:
 
 
 def _unstructure_package(value: Package) -> dict[str, Any]:
-    """Unstructure a leaf package into its raw block dict."""
+    """Unstructure a package into a dict."""
     cls = type(value)
     blocks: dict[str, dict[str, Any]] = {}
-    # Block names that must appear in output even when empty (e.g. SSM SOURCES).
     write_if_empty_set: set[str] = set()
-    # Stress-period recarray fields: {kper: [(cellid, val, ...), ...]}
     spd_period: dict[int, list[tuple]] = {}
-    # READARRAY period fields (G/A variants): {kper: {field_name: xr.DataArray}}
     readarray_period: dict[int, dict[str, Any]] = {}
+    fill_forward_block: str | None = None
     try:
         from dask.array import Array as _DaskArray
     except ImportError:
@@ -141,7 +139,6 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             write_if_empty_set.add(block_name)
             blocks.setdefault(block_name, {})
 
-        # Private alias fields (e.g. _stress_period_data) → access via public name
         attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
         field_value = getattr(value, attr_name, None)
         if field_value is None:
@@ -149,15 +146,14 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
 
         dfn_type = to_field_type(f.type)
 
-        # ── PERIOD block ────────────────────────────────────────────────────────
-        if block_name == "period":
-            # READARRAY period field (G/A variants): ndarray shaped (nper, ...)
-            is_readarray = meta.get("reader") == "readarray"
-            if is_readarray and isinstance(field_value, (np.ndarray, _DaskArray)):
+        # fill-forward block
+        if meta.get("fill_forward"):
+            fill_forward_block = block_name
+            # array: ndarray shaped (nper, ...)
+            if isinstance(field_value, (np.ndarray, _DaskArray)):
                 is_layered = meta.get("layered", False)
                 nper = field_value.shape[0]
-                # Aux field: shape (nper, ncpl, naux) → emit one named block per
-                # aux variable so MF6 reads e.g. "TRACER" not "AUX".
+                # aux field: shape (nper, ncpl, naux)
                 if f.name == "aux" and field_value.ndim == 3:
                     aux_names: list[str] = list(getattr(value, "auxiliary", None) or [])
                     naux = field_value.shape[2]
@@ -176,9 +172,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                         da = xr.DataArray(layer_slice)
                     readarray_period.setdefault(kper, {})[f.name] = da
                 continue
+            # list: dict[int, list[Item]]
             if not isinstance(field_value, dict):
                 continue
-            # Stress-period Item list: dict[int, list[Item]]
             for kper, row_list in field_value.items():
                 kper_int = _normalize_kper(kper)
                 if kper_int is None:
@@ -191,7 +187,13 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 spd_period.setdefault(kper_int, []).extend(rows)
             continue
 
-        # ── Non-period blocks ───────────────────────────────────────────────────
+        if isinstance(field_value, dict):
+            array_key = f.name if meta.get("tagged") else ""
+            for tval, arr in field_value.items():
+                blocks[f"{block_name} {tval}"] = {array_key: _wrap_array(arr)}
+            continue
+
+        # non-fill-forward block
         if block_name not in blocks:
             blocks[block_name] = {}
 
@@ -200,22 +202,19 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 blocks[block_name][f.name] = field_value
 
         elif meta.get("direction") and isinstance(field_value, Path):
-            t = _path_to_tuple(f.name, field_value, meta.get("direction", "out"))
+            t = _path_to_tuple(f, field_value)
             blocks[block_name][t[0].lower()] = t
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
-            # packagedata / connectiondata / etc. -- list[ItemClass] block
             blocks[block_name][f.name] = _rows_to_tuples(field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
-            # Pre-formatted list of row tuples (e.g. cell2d).
             blocks[block_name][f.name] = field_value
 
         elif meta.get("shape") and not isinstance(field_value, bool):
-            # griddata-style array (shape is a non-empty tuple)
             if meta["shape"]:
-                # For layered arrays, reshape to (nlay, ncpl) with named dims
-                # so the writer can detect and emit LAYERED format.
+                # reshape layered array to (nlay, ncpl) with named
+                # dims to signal the writer to use layered format
                 if (
                     meta.get("layered")
                     and hasattr(field_value, "reshape")
@@ -237,7 +236,6 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             blocks[block_name][f.name] = ("AUXILIARY",) + tuple(field_value)
 
         elif isinstance(field_value, Record):
-            # Inner-class record (e.g. Oc.Headprint)
             blocks[block_name][f.name] = field_value.to_tokens()
 
         elif dfn_type in ("integer", "double", "double precision"):
@@ -248,32 +246,26 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif dfn_type == "string" and field_value:
             blocks[block_name][f.name] = field_value
 
-    # `maxbound` is a computed property on some generated classes (see
-    # make.py's ComputedFieldSpec), not a real attrs field -- attrs.fields()
-    # above never sees it, so inject it into the dimensions block directly.
-    # Skipping when 0 matches the plain-field case's auto_from behavior above.
+    # `maxbound` is a computed property on some classes, not a real field
     if isinstance(getattr(cls, "maxbound", None), property):
         maxbound = value.maxbound  # type: ignore[attr-defined]
         if maxbound:
             blocks.setdefault("dimensions", {})["maxbound"] = maxbound
 
-    # Assemble period blocks (stress-period Item rows), in kper order.
-    for kper in sorted(spd_period.keys()):
-        key = f"period {kper + 1}"
-        blocks[key] = {"period": spd_period[kper]}
+    # sort filled blocks by label
+    if fill_forward_block is not None:
+        for kper in sorted(spd_period.keys()):
+            key = f"{fill_forward_block} {kper + 1}"
+            blocks[key] = {fill_forward_block: spd_period[kper]}
 
-    # READARRAY period blocks (G/A variants): each kper gets its own period block.
-    # Fields where every value is FILL_DNODATA are skipped; if no fields remain
-    # for a period, the block is omitted entirely so MF6 fill-forwards from the
-    # previous period instead of treating 3e30 as a real array value.
-    for kper in sorted(readarray_period.keys()):
-        key = f"period {kper + 1}"
-        ra_block = blocks.get(key, {})
-        for field_name, da in readarray_period[kper].items():
-            if not np.all(da.values == FILL_DNODATA):
-                ra_block[field_name] = da
-        if ra_block:
-            blocks[key] = ra_block
+        for kper in sorted(readarray_period.keys()):
+            key = f"{fill_forward_block} {kper + 1}"
+            ra_block = blocks.get(key, {})
+            for field_name, da in readarray_period[kper].items():
+                if not np.all(da.values == FILL_DNODATA):
+                    ra_block[field_name] = da
+            if ra_block:
+                blocks[key] = ra_block
 
     return {
         name: block
@@ -329,8 +321,8 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                     if field_value:
                         blocks[block_name][field_name] = field_value
                 case Path():
-                    direction = field.metadata.get("direction", "out") if field else "out"
-                    t = _path_to_tuple(field_name, field_value, direction=direction)  # type: ignore[arg-type]
+                    assert field is not None  # field_name comes from blocks_dict(type(value))
+                    t = _path_to_tuple(field, field_value)
                     blocks[block_name][t[0]] = t
                 case datetime():
                     blocks[block_name][field_name] = field_value.isoformat()

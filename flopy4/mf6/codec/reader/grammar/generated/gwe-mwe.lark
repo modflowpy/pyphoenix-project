@@ -24,7 +24,7 @@ block: options_block | packagedata_block | period_block
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((flow_package_name | auxiliary | flow_package_auxiliary_name | boundnames | print_input | print_temperature | print_flows | save_flows | temperature_filerecord | budget_filerecord | budgetcsv_filerecord | ts_filerecord | obs_filerecord | dev_nonexpanding_matrix | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
 period_fields: ((stress_period_data | open_close_redirect) _NL*)*

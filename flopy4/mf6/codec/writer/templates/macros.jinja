@@ -29,8 +29,10 @@
 {% macro array(name, value, how="internal") %}
 {% if how == "netcdf" %}{{ inset ~ name.upper() }} NETCDF
 {%- else -%}
+{% if name %}
 {{ inset ~ name.upper() }}{% if "layered" in how %} LAYERED{% endif %}
 
+{% endif %}
 {% if how == "constant" %}
 {{ inset }}CONSTANT {{ value|array2const(context.float_precision) }}
 {% elif how == "layered constant" %}

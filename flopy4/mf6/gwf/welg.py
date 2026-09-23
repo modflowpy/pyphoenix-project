@@ -62,6 +62,7 @@ class Welg(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="auto_flow_reduce_csv",
     )
     flow_reduction_length: bool = field(
         default=False,
@@ -75,6 +76,7 @@ class Welg(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     mover: bool = field(
         default=False,
@@ -88,21 +90,24 @@ class Welg(Package):
         longname="export array variables to netcdf output files.",
     )
     maxbound: Optional[int] = field(
-        default=0,
+        default=None,
         block="dimensions",
         optional=True,
-        auto_from="stress_period_data",
         longname="maximum number of wells in any stress period",
     )
     q: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("nodes",),
         layered=True,
+        netcdf=True,
+        fill_forward=True,
     )
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("nodes",),
         layered=True,
+        netcdf=True,
+        fill_forward=True,
     )

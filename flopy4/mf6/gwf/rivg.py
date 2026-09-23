@@ -56,6 +56,7 @@ class Rivg(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     mover: bool = field(
         default=False,
@@ -69,33 +70,40 @@ class Rivg(Package):
         longname="export array variables to netcdf output files.",
     )
     maxbound: Optional[int] = field(
-        default=0,
+        default=None,
         block="dimensions",
         optional=True,
-        auto_from="stress_period_data",
         longname="maximum number of river cells in any stress period",
     )
     stage: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("nodes",),
         layered=True,
+        netcdf=True,
+        fill_forward=True,
     )
     cond: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("nodes",),
         layered=True,
+        netcdf=True,
+        fill_forward=True,
     )
     rbot: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("nodes",),
         layered=True,
+        netcdf=True,
+        fill_forward=True,
     )
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("nodes",),
         layered=True,
+        netcdf=True,
+        fill_forward=True,
     )

@@ -43,6 +43,7 @@ class Mst(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="sorbate",
     )
     export_array_ascii: bool = field(
         default=False,

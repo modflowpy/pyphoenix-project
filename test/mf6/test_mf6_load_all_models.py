@@ -339,15 +339,19 @@ KNOWN_PASSING = frozenset(
 
 
 def _param(model_name: str):
-    if model_name in KNOWN_PASSING:
-        return pytest.param(model_name)
-    return pytest.param(
-        model_name,
-        marks=pytest.mark.xfail(
-            reason="not confirmed loadable by Simulation.load() -- corpus survey 2026-09-11",
-            strict=False,
-        ),
-    )
+    marks = []
+    # the `large` corpus models take from ~10s to ~2min each to load --
+    # `slow` so `pytest --smoke` (modflow-devtools) skips them
+    if model_name.startswith("mf6/large/"):
+        marks.append(pytest.mark.slow)
+    if model_name not in KNOWN_PASSING:
+        marks.append(
+            pytest.mark.xfail(
+                reason="not confirmed loadable by Simulation.load() -- corpus survey 2026-09-11",
+                strict=False,
+            )
+        )
+    return pytest.param(model_name, marks=marks)
 
 
 @pytest.mark.skipif(not ALL_MODELS, reason="modflow-devtools model registry unavailable")

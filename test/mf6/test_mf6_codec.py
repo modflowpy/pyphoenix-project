@@ -711,26 +711,20 @@ def test_clean_last_chunk():
     assert list(cleaned) == ["chunk1", "chunk2", "\n"]
 
 
-@pytest.mark.skip(
-    reason="utl-tas's TimeSeriesName/Sfac records contain Array(shape=[]) children "
-    "(time_series_name, sfacval) rather than plain scalars under dev3 -- tied to the "
-    "same already-tracked Array.repeat gap as tas_array (devtools/todo.md, 2026-08-18 "
-    "'Array.repeat is never populated by migration' entry). Only InterpolationMethod "
-    "(a plain String child) generates today; TimeSeriesName/Sfac are TODOs pending "
-    "that upstream fix, not a flopy4-side regression."
-)
 def test_dumps_tas_inner_classes():
     """utl-tas: multi=True package with 3 inner record classes unstructures correctly.
 
-    TimeSeriesName, InterpolationMethod, and Sfac each have a _keyword token that
-    must appear before the scalar value in the ATTRIBUTES block.
+    Each has a _keyword token before its value(s) in the ATTRIBUTES block.
+    TimeSeriesName/Sfac's data children are inline arrays nested in a
+    record, not scalars -- MF6 allows multiple names/scale factors on one
+    line.
     """
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name="my_ts"),
+        time_series_name=Tas.TimeSeriesName(time_series_name=["my_ts"]),
         interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
-        sfac=Tas.Sfac(sfacval=1.5),
+        sfac=Tas.Sfac(sfacval=[1.5]),
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
@@ -744,6 +738,92 @@ def test_dumps_tas_inner_classes():
     assert "NAME my_ts" in dumped
     assert "METHOD linear" in dumped
     assert "SFAC 1.5" in dumped
+
+
+def test_dumps_tas_inner_classes_multi_value():
+    """TimeSeriesName/Sfac accept more than one value on the line, per MF6 syntax."""
+    from flopy4.mf6.utl.tas import Tas
+
+    tas = Tas(
+        time_series_name=Tas.TimeSeriesName(time_series_name=["ts1", "ts2"]),
+        sfac=Tas.Sfac(sfacval=[1.5, 2.0]),
+    )
+
+    unstructured = COMPONENT_CONVERTER.unstructure(tas)
+    assert unstructured["attributes"]["time_series_name"] == ("NAME", "ts1", "ts2")
+    assert unstructured["attributes"]["sfac"] == ("SFAC", 1.5, 2.0)
+
+    dumped = dumps(unstructured)
+    assert "NAME ts1 ts2" in dumped
+    assert "SFAC 1.5 2.0" in dumped
+
+
+def test_load_tas_inner_classes_name_collision():
+    """A record keyword ("NAME"/"SFAC") must never be shadowed by an
+    unrelated field (Package.name) or the record's own outer field name."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl.tas import Tas
+
+    tas = Tas(
+        time_series_name=Tas.TimeSeriesName(time_series_name=["ts1", "ts2"]),
+        sfac=Tas.Sfac(sfacval=[1.5, 2.0]),
+    )
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(tas))
+    structured = structure_component(loads(dumped), Tas)
+    assert structured.name == "tas"  # not clobbered by the "NAME ts1 ts2" row
+    assert structured.time_series_name.time_series_name == ["ts1", "ts2"]
+    assert structured.sfac.sfacval == [1.5, 2.0]
+
+
+def test_tas_array_roundtrip():
+    """tas_array: a griddata-style array whose own block ("time") repeats
+    per header value (BEGIN TIME <t> ... END TIME), dict[float, ndarray]."""
+    import numpy as np
+
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl.tas import Tas
+
+    tas = Tas(tas_array={0.0: np.array([0.02, 0.03, 0.04]), 4.0: np.array([0.05, 0.06, 0.07])})
+
+    unstructured = COMPONENT_CONVERTER.unstructure(tas)
+    dumped = dumps(unstructured)
+    assert "BEGIN TIME 0.0" in dumped
+    assert "END TIME 0.0" in dumped
+    assert "BEGIN TIME 4.0" in dumped
+
+    structured = structure_component(loads(dumped), Tas, dims={"nodes": 3, "nlay": 1})
+    assert structured.tas_array[0.0].tolist() == [0.02, 0.03, 0.04]
+    assert structured.tas_array[4.0].tolist() == [0.05, 0.06, 0.07]
+
+
+def test_tas_array_constant_roundtrip():
+    """tas_array's U2DREL control record also accepts CONSTANT (broadcast)."""
+    import numpy as np
+
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl.tas import Tas
+
+    tas = Tas(tas_array={0.0: np.array([0.02, 0.02, 0.02])})
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(tas))
+    assert "CONSTANT" in dumped
+
+    structured = structure_component(loads(dumped), Tas, dims={"nodes": 3, "nlay": 1})
+    assert structured.tas_array[0.0].tolist() == [0.02, 0.02, 0.02]
+
+
+def test_tas_array_ncpl_not_nodes():
+    """tas_array is only ever consumed by single-layer array packages
+    (gwf-rcha, gwf-evta, utl-spca) with no `layered` form of their own --
+    its flat length is ncpl (one layer), not the full-grid nodes count.
+    Regression test: with nlay=2 (nodes=6, ncpl=3) and 6 values physically
+    present in the TIME block (e.g. a neighboring, unrelated INTERNAL run
+    of numbers), a nodes-sized read would wrongly consume all 6."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl.tas import Tas
+
+    loaded = {"TIME 0.0": [["INTERNAL"], [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]]}
+    structured = structure_component(loaded, Tas, dims={"nodes": 6, "nlay": 2})
+    assert structured.tas_array[0.0].tolist() == [0.1, 0.2, 0.3]
 
 
 def test_dumps_zero_field_exg():
@@ -1306,6 +1386,32 @@ def test_gwf_netcdf_input_file_serializes():
     gwf.netcdf_input_file = Path("model.input.nc")
     text = dumps(unstructure_component(gwf))
     assert "NETCDF FILEIN model.input.nc" in text
+
+
+def test_file_records_roundtrip():
+    """Options-block file records are keyed by their trigger keyword (TS6,
+    OBS6, HEAD), not the py field name (ts_file, obs_file, head_file) --
+    both on load and on write."""
+    from pathlib import Path
+
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Oc, Wel
+
+    raw = loads("BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
+    wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    assert wel.ts_file == Path("a.ts")
+    assert wel.obs_file == Path("w.obs")
+    text = dumps(unstructure_component(wel))
+    assert "TS6 FILEIN a.ts" in text
+    assert "OBS6 FILEIN w.obs" in text
+
+    raw = loads("BEGIN OPTIONS\n  HEAD FILEOUT m.hds\n  BUDGET FILEOUT m.cbc\nEND OPTIONS\n")
+    oc = structure_component(raw, Oc)
+    assert oc.head_file == Path("m.hds")
+    assert oc.budget_file == Path("m.cbc")
 
 
 def test_gwt_netcdf_fields_serialize():

@@ -24,7 +24,7 @@ block: options_block | griddata_block | period_block
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((save_flows | storagecoefficient | ss_confined_only | tvs_filerecord | export_array_ascii | export_array_netcdf | dev_original_specific_storage | dev_oldstorageformulation | open_close_redirect) _NL*)*
 griddata_fields: ((iconvert | ss | sy | open_close_redirect) _NL*)*
 period_fields: ((storage | open_close_redirect) _NL*)*

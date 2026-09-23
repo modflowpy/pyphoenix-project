@@ -20,7 +20,7 @@ from typing import Any, Union, cast, get_args, get_origin
 
 import attrs
 
-from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class, keyword_of, record_fields
+from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 
 _AUX_KEY_RE = re.compile(r"^aux(\d+)$")
 
@@ -42,15 +42,15 @@ def normalize_aux_keys(item: dict) -> dict:
 
 
 def _cellid_field(cls: type) -> attrs.Attribute | None:
-    return next((f for f in record_fields(cls) if f.metadata.get("cellid")), None)
+    return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
 
 
 def _has_aux_field(cls: type) -> bool:
-    return any(f.name == "aux" for f in record_fields(cls))
+    return any(f.name == "aux" for f in cast(type[Record], cls).fields())
 
 
 def _has_boundname_field(cls: type) -> bool:
-    return any(f.name == "boundname" for f in record_fields(cls))
+    return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
 
 @lru_cache(maxsize=None)
@@ -89,7 +89,7 @@ def construct_item(item_cls: type, values) -> "Item":
     trailing string when the class also has boundname (always declared
     last) -- a string there unambiguously isn't a numeric aux value.
     """
-    fields = record_fields(item_cls)
+    fields = cast(type[Record], item_cls).fields()
     tuple_idx = next(
         (
             i
@@ -105,7 +105,7 @@ def construct_item(item_cls: type, values) -> "Item":
     )
     values = list(values)
     if tuple_idx is None:
-        return item_cls(*values)
+        return cast("Item", item_cls(*values))
     nested_field = fields[tuple_idx]
     nested_field_type = _field_type_str(nested_field)
     arm_classes = (
@@ -129,20 +129,21 @@ def construct_item(item_cls: type, values) -> "Item":
         construct_union_item(trailing, arm_classes) if arm_classes is not None else tuple(trailing)
     )
     if boundname_val is not None:
-        return item_cls(*before, tuple_vals, boundname=boundname_val)
-    return item_cls(*before, tuple_vals)
+        return cast("Item", item_cls(*before, tuple_vals, boundname=boundname_val))
+    return cast("Item", item_cls(*before, tuple_vals))
 
 
 def _n_fixed_tokens(cls: type) -> int:
     """Fixed (non-cellid/aux/boundname, non-optional) token slots -- used to
     infer a variable-width cellid's element count from total token length."""
-    n = 1 if keyword_of(cls) else 0
-    for f in record_fields(cls):
+    cls = cast(type[Record], cls)
+    n = 1 if cls.keyword() else 0
+    for f in cls.fields():
         if f.metadata.get("cellid") or f.name in ("aux", "boundname"):
             continue
         if f.metadata.get("optional"):
             continue
-        n += 1 + len(f.metadata.get("prefix", ()))
+        n += 1 + (1 if f.metadata.get("_keyword") else 0)
         if f.metadata.get("direction"):
             n += 1
     return n
@@ -211,8 +212,8 @@ class Item(Record):
         is emitted before the first non-index field. aux/boundname last.
         """
         cls = type(self)
-        fields = record_fields(cls)
-        keyword = keyword_of(cls)
+        fields = cls.fields()
+        keyword = cls.keyword()
         row: list[Any] = []
         keyword_emitted = not keyword
         for f in fields:
@@ -248,8 +249,8 @@ class Item(Record):
                 if not keyword_emitted:
                     row.append(keyword.upper())
                     keyword_emitted = True
-                if prefix := f.metadata.get("prefix"):
-                    row.extend(prefix)
+                if file_kw := f.metadata.get("_keyword"):
+                    row.append(file_kw.upper())
                 if direction := f.metadata.get("direction"):
                     row.append("FILEOUT" if direction == "out" else "FILEIN")
                 row.append(str(val) if isinstance(val, Path) else val)
@@ -274,8 +275,8 @@ class Item(Record):
         boundname, not per-field. Tagged optional fields self-identify by
         keyword and skip that budget.
         """
-        fields = record_fields(cls)
-        keyword = keyword_of(cls)
+        fields = cls.fields()
+        keyword = cls.keyword()
         keyword_skipped = not keyword
         has_boundname = _has_boundname_field(cls) and boundnames
         has_aux = _has_aux_field(cls)
@@ -297,8 +298,8 @@ class Item(Record):
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
-            if prefix := f.metadata.get("prefix"):
-                tok_idx += len(prefix)
+            if f.metadata.get("_keyword"):
+                tok_idx += 1
             if f.metadata.get("direction"):
                 tok_idx += 1
             if tok_idx >= n:
@@ -307,7 +308,7 @@ class Item(Record):
             tok_idx += 1
 
         def width(f: attrs.Attribute) -> int:
-            w = 1 + len(f.metadata.get("prefix", ()))
+            w = 1 + (1 if f.metadata.get("_keyword") else 0)
             if f.metadata.get("direction"):
                 w += 1
             return w
@@ -456,7 +457,7 @@ def item_list_type(field_type) -> "type[Item] | tuple[type[Item], ...] | None":
 def dispatch_union_item(item: list, arm_classes: "tuple[type[Item], ...]") -> "type[Item] | None":
     """Find which arm class a raw token item belongs to, by its leading
     _keyword token."""
-    kw_map = {keyword_of(c).upper(): c for c in arm_classes if keyword_of(c)}
+    kw_map = {c.keyword().upper(): c for c in arm_classes if c.keyword()}
     for t in item:
         arm_cls = kw_map.get(str(t).upper())
         if arm_cls is not None:
@@ -479,7 +480,7 @@ def construct_union_item(values, arm_classes: "tuple[type[Item], ...]") -> "Item
     arm_cls = dispatch_union_item(values, arm_classes)
     if arm_cls is None:
         return None
-    kw = keyword_of(arm_cls).upper()
+    kw = arm_cls.keyword().upper()
     kw_idx = next((i for i, v in enumerate(values) if str(v).upper() == kw), None)
     if kw_idx is not None:
         values = values[:kw_idx] + values[kw_idx + 1 :]

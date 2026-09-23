@@ -26,12 +26,12 @@ dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _N
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 releasetimes_block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes_fields _NL* "end"i "releasetimes"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: integer
-options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | release_timesrecord | release_timesfilerecord | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window | open_close_redirect) _NL*)*
+block_index: number
+options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window | open_close_redirect) _NL*)*
 dimensions_fields: ((nreleasepts | nreleasetimes | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
 releasetimes_fields: ((releasetimesdata | open_close_redirect) _NL*)*
-period_fields: ((all | first | last | frequency | steps | fraction | open_close_redirect) _NL*)*
+period_fields: ((all | first | last | frequency | steps | open_close_redirect) _NL*)*
 boundnames: "boundnames"i  [_remark] _NL
 print_input: "print_input"i  [_remark] _NL
 dev_exit_solve_method: "dev_exit_solve_method"i integer [_remark] _NL
@@ -45,8 +45,6 @@ stoptraveltime: "stoptraveltime"i double [_remark] _NL
 stop_at_weak_sink: "stop_at_weak_sink"i  [_remark] _NL
 istopzone: "istopzone"i integer [_remark] _NL
 drape: "drape"i  [_remark] _NL
-release_timesrecord: "release_times"i array [_remark] _NL
-release_timesfilerecord: "release_timesfile"i word [_remark] _NL
 dry_tracking_method: "dry_tracking_method"i (dry_tracking_method_drop | dry_tracking_method_stop | dry_tracking_method_stay) [_remark] _NL
 
 dry_tracking_method_drop: "drop"i
@@ -69,6 +67,5 @@ first: "first"i  [_remark] _NL
 last: "last"i  [_remark] _NL
 frequency: "frequency"i integer [_remark] _NL
 steps: "steps"i integer+ [_remark] _NL
-fraction: "fraction"i double+ [_remark] _NL
 packagedatadata: record+
 releasetimesdata: record+

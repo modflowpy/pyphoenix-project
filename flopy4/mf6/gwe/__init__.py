@@ -60,13 +60,25 @@ class Gwe(Model):
     save_flows: bool = field(block="options", default=False)
     dependent_variable_scaling: bool = field(block="options", default=False)
     netcdf_mesh2d_file: Optional[Path] = path(
-        block="options", default=None, converter=to_path, direction="out"
+        block="options",
+        default=None,
+        converter=to_path,
+        direction="out",
+        keyword="netcdf_mesh2d",
     )
     netcdf_structured_file: Optional[Path] = path(
-        block="options", default=None, converter=to_path, direction="out"
+        block="options",
+        default=None,
+        converter=to_path,
+        direction="out",
+        keyword="netcdf_structured",
     )
     netcdf_input_file: Optional[Path] = path(
-        block="options", default=None, converter=to_path, direction="in"
+        block="options",
+        default=None,
+        converter=to_path,
+        direction="in",
+        keyword="netcdf",
     )
     dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)

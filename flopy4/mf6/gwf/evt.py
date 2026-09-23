@@ -75,6 +75,7 @@ class Evt(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -82,6 +83,7 @@ class Evt(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     surf_rate_specified: bool = field(
         default=False,

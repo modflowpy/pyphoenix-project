@@ -88,21 +88,16 @@ class _PackageSpec:
 
         class _ArrayInfo:
             def __init__(self, f):
-                is_ra_period = (
-                    f.metadata.get("block") == "period" and f.metadata.get("reader") == "readarray"
-                )
-                # Non-layered READARRAY period fields (e.g. RCHA recharge) have shape
-                # (nper, nrow, ncol), so use "ncpl" so _structured_shape maps to
-                # ["y", "x"] rather than ["layer", "y", "x"].
+                # A fill-forward (period) field's value has a leading nper axis.
+                fill_forward = bool(f.metadata.get("fill_forward"))
                 is_layered = f.metadata.get("layered", True)
-                default_spatial = "nodes" if (not is_ra_period or is_layered) else "ncpl"
-                raw_shape = f.metadata.get("shape") or (default_spatial,)
+                raw_shape = f.metadata.get("shape") or ("nodes",)
                 # normalize ncpl → nodes for layered fields only
                 if is_layered:
                     normalized = tuple("nodes" if d == "ncpl" else d for d in raw_shape)
                 else:
                     normalized = raw_shape
-                if is_ra_period and "nper" not in normalized:
+                if fill_forward and "nper" not in normalized:
                     normalized = ("nper",) + normalized
 
                 self.dtype = np.dtype(
@@ -112,18 +107,13 @@ class _PackageSpec:
                 self.metadata = {
                     "longname": f.metadata.get("longname", f.name),
                     "block": f.metadata.get("block", ""),
+                    "fill_forward": fill_forward,
                     "netcdf": True,
                 }
 
-        def _include(f) -> bool:
-            block = f.metadata.get("block", "")
-            if block == "griddata" and f.metadata.get("netcdf"):
-                return True
-            if block == "period" and f.metadata.get("reader") == "readarray":
-                return True
-            return False
-
-        self.arrays = {f.name: _ArrayInfo(f) for f in _attrs.fields(cls) if _include(f)}
+        self.arrays = {
+            f.name: _ArrayInfo(f) for f in _attrs.fields(cls) if f.metadata.get("netcdf")
+        }
 
 
 def _field_shape(package_name: str, field_name: str) -> tuple | None:
@@ -244,8 +234,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 _nodes = d.get("nodes", _nlay)
 
             for f in _attrs.fields(type(package)):
-                block = f.metadata.get("block")
-                if block == "griddata" and f.metadata.get("netcdf"):
+                if not f.metadata.get("netcdf"):
+                    continue
+                if f.metadata.get("block") == "griddata":
                     val = getattr(package, f.name)
                     if val is None:
                         continue
@@ -255,7 +246,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     if "nodes" in shape_meta and arr.size < _nodes:
                         arr = np.full(_nodes, float(arr.ravel()[0]))
                     p["params"].append({"name": f.name, "data": arr})
-                elif block == "period" and f.metadata.get("reader") == "readarray":
+                else:
                     val = getattr(package, f.name)
                     if val is None:
                         continue
@@ -851,7 +842,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
         _meta["dtype"] = spec.arrays[param].dtype
         if np.issubdtype(spec.arrays[param].dtype, np.floating):
             _meta["encodings"]["_FillValue"] = (
-                FILL_DNODATA if metadata(spec.arrays[param], "block") == "period" else FILL_FLOAT64
+                FILL_DNODATA if metadata(spec.arrays[param], "fill_forward") else FILL_FLOAT64
             )
         elif np.issubdtype(spec.arrays[param].dtype, np.integer):
             # MF6 defines DNODATA (3e30) for reals but has no parallel integer

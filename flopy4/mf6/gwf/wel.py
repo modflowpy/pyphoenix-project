@@ -70,6 +70,7 @@ class Wel(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="auto_flow_reduce_csv",
     )
     flow_reduction_length: bool = field(
         default=False,
@@ -89,6 +90,7 @@ class Wel(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -96,6 +98,7 @@ class Wel(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     mover: bool = field(
         default=False,

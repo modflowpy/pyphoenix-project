@@ -62,6 +62,7 @@ class Rcha(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="tas6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -69,6 +70,7 @@ class Rcha(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     export_array_netcdf: bool = field(
         default=False,
@@ -79,18 +81,24 @@ class Rcha(Package):
     irch: Optional[IntArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     recharge: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        reader="readarray",
+        shape=("ncpl",),
         layered=False,
+        netcdf=True,
+        fill_forward=True,
     )

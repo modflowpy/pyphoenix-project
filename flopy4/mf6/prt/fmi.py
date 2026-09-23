@@ -25,6 +25,7 @@ class Fmi(Package):
         block="packagedata",
         optional=True,
         direction="in",
+        keyword="gwfhead",
         longname="gwf head file",
     )
     gwfbudget: Optional[Path] = path(
@@ -33,6 +34,7 @@ class Fmi(Package):
         block="packagedata",
         optional=True,
         direction="in",
+        keyword="gwfbudget",
         longname="gwf budget file",
     )
     gwfgrid: Optional[Path] = path(
@@ -41,5 +43,6 @@ class Fmi(Package):
         block="packagedata",
         optional=True,
         direction="in",
+        keyword="gwfgrid",
         longname="gwf grid file",
     )

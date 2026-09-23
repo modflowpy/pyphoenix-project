@@ -42,6 +42,7 @@ class Sto(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="tvs6",
     )
     export_array_ascii: bool = field(
         default=False,

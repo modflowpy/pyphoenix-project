@@ -26,7 +26,7 @@ timing_block: "begin"i "timing"i [_remark] _NL _NL* timing_fields _NL* "end"i "t
 models_block: "begin"i "models"i [_remark] _NL _NL* models_fields _NL* "end"i "models"i
 exchanges_block: "begin"i "exchanges"i [_remark] _NL _NL* exchanges_fields _NL* "end"i "exchanges"i
 solutiongroup_block: "begin"i "solutiongroup"i block_index [_remark] _NL _NL* solutiongroup_fields _NL* "end"i "solutiongroup"i [block_index]
-block_index: integer
+block_index: number
 options_fields: ((continue | nocheck | memory_print_option | profile_option | maxerrors | print_input | hpc_filerecord | open_close_redirect) _NL*)*
 timing_fields: ((tdis6 | open_close_redirect) _NL*)*
 models_fields: ((modelsdata | open_close_redirect) _NL*)*

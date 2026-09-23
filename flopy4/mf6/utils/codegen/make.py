@@ -10,10 +10,12 @@ migration history from the legacy modflow_devtools.dfn (flat TypedDict)
 schema this replaces.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from os import PathLike
 from pathlib import Path
+from typing import Any
 
 import jinja2
 from modflow_devtools.dfns.schema import (
@@ -241,7 +243,7 @@ def _dfn_type_str(f: FieldV3) -> str:
 # Context builders
 
 
-def _build_field_spec(f: FieldV3, block_name: str, *, plain_maxbound: bool = False) -> FieldSpec:
+def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -252,7 +254,7 @@ def _build_field_spec(f: FieldV3, block_name: str, *, plain_maxbound: bool = Fal
     else:
         py_name = filters.safe_name(f.name)
     if generatable:
-        spec_call_str = filters.field_call(f, block_name, plain_maxbound=plain_maxbound)
+        spec_call_str = filters.field_call(f, block_name)
     else:
         spec_call_str = ""
     return FieldSpec(
@@ -475,6 +477,9 @@ def _strip_record_words(name: str) -> list[str]:
     return [w for w in words if w]
 
 
+_RECORD_LIST_CHILD_PY_TYPES: dict[str, str] = {"string": "str", "double": "float", "integer": "int"}
+
+
 def _build_record_class_specs(
     f: Record, dfn_name: str, used_names: set[str], *, parent_hint: str = ""
 ) -> list[InnerClassSpec]:
@@ -547,6 +552,19 @@ def _build_record_class_specs(
                         optional=True,
                     )
                 )
+        elif isinstance(child, Array):
+            # Array nested in a record is always inline -- see is_record_list_field.
+            elem_type = _RECORD_LIST_CHILD_PY_TYPES.get(child.dtype, "str")
+            base_type = f"list[{elem_type}]"
+            type_annotation = f"Optional[{base_type}]" if is_optional else base_type
+            inner_fields.append(
+                InnerClassFieldSpec(
+                    py_name=filters.safe_name(child.name),
+                    type_annotation=type_annotation,
+                    tagged=tagged,
+                    optional=is_optional,
+                )
+            )
         else:
             base_type = filters._SCALAR_PY_TYPES.get(type(child), "Any")
             type_annotation = f"Optional[{base_type}]" if is_optional else base_type
@@ -598,14 +616,12 @@ def _period_keystring_names(component: Component) -> frozenset[str]:
     Union.arms names instead of the extra_period_fields TOML override table
     (removed: no longer needed now that arms are schema-native).
     """
-    period = (component.blocks or {}).get("period")
-    if period is None:
-        return frozenset()
-    for f in period.fields.values():
-        if filters.is_list_field(f):
-            union = filters.find_keystring_union(f)
-            if union is not None:
-                return frozenset(name.lower() for name in union.arms)
+    for block_name in filters.fill_forward_blocks(component):
+        for f in component.blocks[block_name].fields.values():
+            if filters.is_list_field(f):
+                union = filters.find_keystring_union(f)
+                if union is not None:
+                    return frozenset(name.lower() for name in union.arms)
     return frozenset()
 
 
@@ -623,9 +639,10 @@ def _build_block_property_specs(
     dfn_dims_ordered = list(dim_block.fields.keys()) if dim_block is not None else []
     dfn_dims = set(dfn_dims_ordered)
 
+    fill_forward_blocks = filters.fill_forward_blocks(component)
     list_fields_map: dict[str, FieldV3] = {}
     for block_name, block in (component.blocks or {}).items():
-        if block_name == "period":
+        if block_name in fill_forward_blocks:
             continue
         for f in block.fields.values():
             if filters.is_list_field(f) and not filters.is_keystring_list(f):
@@ -699,21 +716,24 @@ def _generated_imports(
     period_schema: list[dict] | None = None,
     period_arms: "list[PeriodArmSpec] | None" = None,
     block_schemas: dict[str, list[dict]] | None = None,
+    repeating_blocks: "Mapping[str, str] | None" = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
+    repeating_blocks = repeating_blocks or {}
     has_array = any(
-        (filters.is_array(f) or filters.is_keyword_array(f))
-        and block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
+        block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
+        and (
+            filters.is_keyword_array(f)
+            # repeating block's own array → dict[header, ...], not NDArray
+            or (filters.is_array(f) and block_name not in repeating_blocks)
+        )
         for block_name, f in generatable_fields
     )
     has_file_records = any(
         filters.is_file_record(f) or filters.is_bare_file(f) for _, f in generatable_fields
     )
     has_optional = (
-        any(
-            (f.optional and not isinstance(f, KeywordField)) or filters.is_period_array(f, bn)
-            for bn, f in generatable_fields
-        )
+        any(f.optional and not isinstance(f, KeywordField) for _, f in generatable_fields)
         or has_inner_classes
         or has_period_schema
         or bool(block_schemas)
@@ -825,27 +845,38 @@ def build_component_spec(
     """Build all template context for a DFN component."""
     all_fields = filters.flat_fields(component, developmode=developmode)
 
+    # Block names where Block.repeats is True (Block.header is not None),
+    # mapped to their header field's Python key type (e.g. "float" for utl-tas's
+    # "time" block, header type double; "int" for period/solutiongroup,
+    # header type integer) -- read from the header field itself rather than
+    # assumed, since different repeating blocks have different header types
+    # (confirmed against the real DFN corpus: period/solutiongroup headers
+    # are integer, utl-tas's time header is the only double one).
+    _repeating_blocks: dict[str, str] = {
+        name: filters._SCALAR_PY_TYPES[type(block.header.field)]
+        for name, block in (component.blocks or {}).items()
+        if block.header is not None and type(block.header.field) in filters._SCALAR_PY_TYPES
+    }
+    # Repeating blocks whose missing occurrences reuse the prior one's
+    # values (period) -- see filters.fill_forward_blocks. Their contents
+    # consolidate into one stress_period_data field (plus any READARRAY
+    # fields), which assumes at most one such block per component.
+    _fill_forward_blocks = filters.fill_forward_blocks(component)
+    if len(_fill_forward_blocks) > 1:
+        raise ValueError(
+            f"{component.name}: expected at most one fill-forward block, "
+            f"found {sorted(_fill_forward_blocks)}"
+        )
+    _ff_block = next(iter(_fill_forward_blocks), None)
+
     has_maxbound = filters.has_dimensions_block(component)
     # maxbound becomes a computed property only with a real Item-list period
     # field to derive it from (see has_dimensions_block's docstring).
     _has_list_period = any(
-        block_name == "period" and filters.is_list_field(f) for block_name, f in all_fields
-    )
-    _maxbound_is_computed = has_maxbound and _has_list_period
-    # G-variant packages (CHDG, DRNG, WELG, RIVG, GHBG) have maxbound but no
-    # row list to compute it from -- their period data is a READARRAY grid
-    # instead. Distinct from e.g. API's maxbound, which is a plain
-    # user-specified dimension (no period block at all) and must stay a
-    # real required field, not silently omittable.
-    # True only for G-variant packages (CHDG, DRNG, WELG, RIVG, GHBG):
-    # maxbound is a plain, optional field rather than a computed property.
-    _has_readarray_period = any(
-        block_name == "period" and filters.is_period_array(f, block_name)
+        block_name in _fill_forward_blocks and filters.is_list_field(f)
         for block_name, f in all_fields
     )
-    _maxbound_is_plain_optional = (
-        has_maxbound and not _maxbound_is_computed and _has_readarray_period
-    )
+    _maxbound_is_computed = has_maxbound and _has_list_period
 
     # Fields are collected into four ordered buckets so the generated class has
     # fields in DFN block order without hard-coding block names in any sort key.
@@ -874,13 +905,14 @@ def build_component_spec(
     period_schema: list[dict] = []
     period_arms: list[PeriodArmSpec] = []
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
+    _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
     _standard_period_list: FieldV3 | None = None  # standard (non-keystring) period List field
 
     for block_name, f in all_fields:
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
 
-        if block_name == "period" and filters.is_list_field(f):
+        if block_name in _fill_forward_blocks and filters.is_list_field(f):
             union = filters.find_keystring_union(f)
             if union is not None:
                 period_arms = _build_period_arm_specs(f, union, _inner_class_names)
@@ -889,8 +921,8 @@ def build_component_spec(
             continue
 
         # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare period arrays
-        # directly (not wrapped in a List) with reader=readarray.
-        if block_name == "period" and filters.is_period_array(f, block_name):
+        # directly (not wrapped in a List).
+        if block_name in _fill_forward_blocks and filters.is_any_array(f):
             _readarray_period_fields.append(f)
             continue
 
@@ -902,7 +934,7 @@ def build_component_spec(
         # blocks). Same single-column keystring shape as the LAK-style case
         # above, just with exactly one column since there's nothing else in
         # the block to key against.
-        if block_name == "period" and filters.is_scalar(f):
+        if block_name in _fill_forward_blocks and filters.is_scalar(f):
             period_schema = [{"name": f.name, "dfn_type": "keyword", "role": "keystring"}]
             continue
 
@@ -911,9 +943,40 @@ def build_component_spec(
         if block_name == "dimensions" and f.name == "maxbound" and _maxbound_is_computed:
             continue
 
+        # Array field whose own block repeats (e.g. utl-tas's "time" block,
+        # the only current DFN example -- see _repeating_blocks). Header
+        # value isn't a stored field -- carried by the dict's own keys, typed
+        # per the block's own header type rather than assumed, since
+        # different repeating blocks have different header types (period's
+        # is integer, utl-tas's is double).
+        if filters.is_array(f) and block_name in _repeating_blocks:
+            _repeating_array_fields.append(f)
+            _repeating_array_base = (
+                "IntArrayLike" if getattr(f, "dtype", "") == "integer" else "FloatArrayLike"
+            )
+            _repeating_block_meta: dict[str, Any] = {"block": block_name}
+            if getattr(f, "shape", None):
+                _repeating_block_meta["shape"] = tuple(f.shape)
+            if getattr(f, "tagged", True):
+                # field()'s tagged kwarg only ever records True.
+                _repeating_block_meta["tagged"] = True
+            data_specs.append(
+                FieldSpec(
+                    dfn_name=f.name,
+                    py_name=filters.safe_name(f.name),
+                    type_annotation=(
+                        f"Optional[dict[{_repeating_blocks[block_name]}, {_repeating_array_base}]]"
+                    ),
+                    spec_call=_ml_field(metadata=_repeating_block_meta),
+                    generatable=True,
+                )
+            )
+            generatable_field_objects.append((block_name, f))
+            continue
+
         if block_name in ("options", "dimensions"):
             target = prefix_specs
-        elif block_name == "period":
+        elif block_name in _fill_forward_blocks:
             target = period_specs
         else:
             target = data_specs
@@ -939,10 +1002,7 @@ def build_component_spec(
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
         else:
-            _plain_maxbound = (
-                block_name == "dimensions" and f.name == "maxbound" and _maxbound_is_plain_optional
-            )
-            spec = _build_field_spec(f, block_name, plain_maxbound=_plain_maxbound)
+            spec = _build_field_spec(f, block_name)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
@@ -1008,7 +1068,7 @@ def build_component_spec(
         # this annotation short and readable even for LAK-sized unions
         # (13 arms) -- one line per arm class name would blow past the
         # line-length limit.
-        _spd_meta = {"block": "period", "fill_forward": True}
+        _spd_meta = {"block": _ff_block, "fill_forward": True}
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",
@@ -1019,7 +1079,7 @@ def build_component_spec(
             )
         )
     elif period_schema:
-        _spd_meta = {"block": "period", "fill_forward": True}
+        _spd_meta = {"block": _ff_block, "fill_forward": True}
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",
@@ -1032,16 +1092,21 @@ def build_component_spec(
 
     # READARRAY period fields → individual Optional[Int|FloatArrayLike] attrs
     # fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period
-    # array separately with reader=readarray. Each field is a full-grid array
-    # passed directly by the user; the egress dispatches to
-    # _unstructure_readarray_period.
+    # array separately. Each field is a full-grid array passed directly by
+    # the user; the egress side (unstructure.py's _unstructure_package)
+    # recognizes it by its value's own runtime type (an ndarray), not by a
+    # metadata flag.
     if _readarray_period_fields:
         for _ra_f in _readarray_period_fields:
-            _ra_meta = {
-                "block": "period",
-                "reader": "readarray",
-                "layered": getattr(_ra_f, "layered", False),
-            }
+            # shape/netcdf are the per-block DFN values, as for griddata;
+            # the stored value's leading nper axis is not part of shape.
+            _ra_meta: dict = {"block": _ff_block}
+            if shape := getattr(_ra_f, "shape", None):
+                _ra_meta["shape"] = tuple(shape)
+            _ra_meta["layered"] = getattr(_ra_f, "layered", False)
+            if getattr(_ra_f, "netcdf", False):
+                _ra_meta["netcdf"] = True
+            _ra_meta["fill_forward"] = True
             _ra_base = (
                 "IntArrayLike" if getattr(_ra_f, "dtype", "") == "integer" else "FloatArrayLike"
             )
@@ -1071,9 +1136,11 @@ def build_component_spec(
     _has_griddata = any(
         bn == "griddata" and filters.is_array(f) for bn, f in generatable_field_objects
     )
-    _arraylike_types = {
-        getattr(f, "dtype", None) for bn, f in generatable_field_objects if bn == "griddata"
-    } | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
+    _arraylike_types = (
+        {getattr(f, "dtype", None) for bn, f in generatable_field_objects if bn == "griddata"}
+        | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
+        | {getattr(f, "dtype", "double") for f in _repeating_array_fields}
+    )
     _needs_int_arraylike = "integer" in _arraylike_types
     _needs_float_arraylike = bool(_arraylike_types - {"integer", None})
     _has_field_call = any(
@@ -1095,6 +1162,7 @@ def build_component_spec(
         period_schema=period_schema,
         period_arms=period_arms,
         block_schemas=block_schemas,
+        repeating_blocks=_repeating_blocks,
     )
 
     computed_field_specs = (

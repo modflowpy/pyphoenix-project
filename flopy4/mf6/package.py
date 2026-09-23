@@ -98,7 +98,7 @@ class Package(Component, ABC):
             if raw is None:
                 continue
 
-            if block == "period" or f.metadata.get("fill_forward"):
+            if f.metadata.get("fill_forward"):
                 coerced = {
                     kper: self._coerce_item_list(rows, item_cls) for kper, rows in raw.items()
                 }
@@ -320,7 +320,7 @@ class Package(Component, ABC):
 
     def _period_item_cls(self) -> "type[Item] | tuple[type[Item], ...]":
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if f.metadata.get("block") == "period" or f.metadata.get("fill_forward"):
+            if f.metadata.get("fill_forward"):
                 item_cls = item_list_type(f.type)
                 if item_cls is not None:
                     return item_cls

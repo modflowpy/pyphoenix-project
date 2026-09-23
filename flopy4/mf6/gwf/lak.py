@@ -39,7 +39,7 @@ class Lak(Package):
     @attrs.define
     class Tables(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        tab6_filename: Path = path(converter=Path, direction="in", prefix=("TAB6",))
+        tab6_filename: Path = path(converter=Path, direction="in", keyword="tab6")
 
     @attrs.define
     class Outlets(Item):
@@ -188,6 +188,7 @@ class Lak(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="stage",
     )
     budget_file: Optional[Path] = path(
         default=None,
@@ -195,6 +196,7 @@ class Lak(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budget",
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
@@ -202,6 +204,7 @@ class Lak(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="budgetcsv",
     )
     package_convergence_file: Optional[Path] = path(
         default=None,
@@ -209,6 +212,7 @@ class Lak(Package):
         block="options",
         optional=True,
         direction="out",
+        keyword="package_convergence",
     )
     ts_file: Optional[Path] = path(
         default=None,
@@ -216,6 +220,7 @@ class Lak(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="ts6",
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -223,6 +228,7 @@ class Lak(Package):
         block="options",
         optional=True,
         direction="in",
+        keyword="obs6",
     )
     mover: bool = field(
         default=False,
