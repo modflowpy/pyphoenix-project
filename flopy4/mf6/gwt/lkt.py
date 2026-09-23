@@ -2,64 +2,65 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Lkt(Package):
     dfn_name: ClassVar[str] = "gwt-lkt"
 
     multi_package: ClassVar[bool] = True
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         ifno: int = field(index=True, fk="packagedata.ifno")
         status: Union[float, str] = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Concentration(Item):
         _keyword: ClassVar[str] = "concentration"
         ifno: int = field(index=True, fk="packagedata.ifno")
         concentration: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
         ifno: int = field(index=True, fk="packagedata.ifno")
         rainfall: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
         ifno: int = field(index=True, fk="packagedata.ifno")
         evaporation: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
         ifno: int = field(index=True, fk="packagedata.ifno")
         runoff: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class ExtInflow(Item):
         _keyword: ClassVar[str] = "ext-inflow"
         ifno: int = field(index=True, fk="packagedata.ifno")
         ext_inflow: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         ifno: int = field(index=True, fk="packagedata.ifno")
@@ -157,12 +158,12 @@ class Lkt(Package):
         direction="in",
         keyword="obs6",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

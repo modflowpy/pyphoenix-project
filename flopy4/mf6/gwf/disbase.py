@@ -1,56 +1,64 @@
 from pathlib import Path
 from typing import Optional
 
-import attrs
 import numpy as np
 from flopy.discretization.grid import Grid as LegacyGrid
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.write_context import WriteContext
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class DisBase(Package):
     # Derived dimensions — not read/written by the codec, set by subclass post_init.
-    nlay: Optional[int] = attrs.field(default=None, init=False)
-    nrow: Optional[int] = attrs.field(default=None, init=False)
-    ncol: Optional[int] = attrs.field(default=None, init=False)
-    ncpl: Optional[int] = attrs.field(default=None, init=False)
-    nvert: Optional[int] = attrs.field(default=None, init=False)
-    nodes: Optional[int] = attrs.field(default=None, init=False)
+    nlay: Optional[int] = Field(default=None, init=False)
+    nrow: Optional[int] = Field(default=None, init=False)
+    ncol: Optional[int] = Field(default=None, init=False)
+    ncpl: Optional[int] = Field(default=None, init=False)
+    nvert: Optional[int] = Field(default=None, init=False)
+    nodes: Optional[int] = Field(default=None, init=False)
 
-    def __attrs_post_init__(self):
-        super().__attrs_post_init__()
+    def __post_init__(self):
+        super().__post_init__()
 
     def _coerce_griddata(self) -> None:
         """Coerce griddata fields: list→ndarray, per-layer expansion, flatten.
 
         Must be called after derived dimensions (nodes, ncpl) are set and
-        before _broadcast_griddata / super().__attrs_post_init__().
+        before _broadcast_griddata / super().__post_init__(). By this
+        point, any scalar/list griddata value has already passed through
+        Package._coerce_arrays (inherited -- a field_validator("*",
+        mode="before") runs during construction, ahead of __post_init__),
+        so it already arrives here as a real ndarray of the right dtype;
+        the list/tuple branch below is effectively a no-op today but kept
+        for parity with the attrs original (harmless if a future caller
+        ever bypasses construction-time validation via a direct __dict__
+        write, as several places in this codebase do).
         """
-        import attrs as _attrs
-
-        fields = _attrs.fields(type(self))
+        fields = type(self).__pydantic_fields__
         dims = self.get_dims()
         ncpl = dims.get("ncpl", 0)
         nlay = dims.get("nlay", 1)
-        for f in fields:
-            if f.metadata.get("block") != "griddata":
+        for name, f in fields.items():
+            meta = f.json_schema_extra or {}
+            if meta.get("block") != "griddata":
                 continue
-            val = self.__dict__.get(f.name)
+            val = self.__dict__.get(name)
             if val is None:
                 continue
-            dtype = _PKG_DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+            dtype = _PKG_DTYPE_MAP.get(meta.get("dfn_type", "double"), np.float64)
             if isinstance(val, (list, tuple)):
                 val = np.asarray(val, dtype=dtype)
-                self.__dict__[f.name] = val
+                self.__dict__[name] = val
             if isinstance(val, np.ndarray):
-                if f.metadata.get("layered") and val.size == nlay and nlay > 0 and ncpl > 0:
-                    self.__dict__[f.name] = np.repeat(val, ncpl).astype(dtype)
+                if meta.get("layered") and val.size == nlay and nlay > 0 and ncpl > 0:
+                    self.__dict__[name] = np.repeat(val, ncpl).astype(dtype)
                 elif val.ndim > 1:
-                    self.__dict__[f.name] = val.ravel()
+                    self.__dict__[name] = val.ravel()
         self._broadcast_griddata(fields, dims)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:

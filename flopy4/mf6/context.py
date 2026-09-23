@@ -1,45 +1,45 @@
 from abc import ABC
 from pathlib import Path
+from typing import Any, Optional
 
-import attrs
 from modflow_devtools.misc import cd
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import CFG, Component
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import field
 from flopy4.utils import to_path
 
 
-def update_child_attr(instance, attribute, new_value):
-    """
-    Generalized function to update child attribute (e.g. workspace).
-
-    Args:
-        instance: The model instance
-        attribute: The attribute being set (from attrs on_setattr)
-        new_value: The new value being set
-
-    Returns:
-        The new_value (unchanged)
-    """
-
-    for child in instance._children.values():
-        if hasattr(child, attribute.name):
-            setattr(child, attribute.name, new_value)
-
-    return new_value
-
-
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Context(Component, ABC):
-    workspace: Path = field(default=None, converter=to_path, on_setattr=update_child_attr)
+    # `_workspace`/`workspace` mirrors `Component._parent`/`.parent`'s
+    # private-field-plus-property pattern: pydantic has no per-field
+    # `on_setattr=` hook (attrs' `update_child_attr`, ported into the
+    # setter below), so the propagate-to-children side effect needs an
+    # explicit property instead of a declarative field option.
+    _workspace: Any = Field(default=None, alias="workspace", repr=False)
 
-    def __attrs_post_init__(self):
-        super().__attrs_post_init__()
-        # By the time this runs, `super().__attrs_post_init__()`
-        # (Component's) has already resolved `_parent`/`.parent` for both
-        # top-down and bottom-up construction (see `Component._parent`'s
-        # docstring).
+    @property
+    def workspace(self) -> Optional[Path]:
+        return self._workspace
+
+    @workspace.setter
+    def workspace(self, value) -> None:
+        """Coerce `value` to a `Path` (attrs' `converter=to_path`, ported),
+        then propagate it to every child that has its own `workspace`
+        attribute (attrs' `on_setattr=update_child_attr`, ported)."""
+        value = to_path(value)
+        self._workspace = value
+        for child in self._children.values():
+            if hasattr(child, "workspace"):
+                child.workspace = value
+
+    def __post_init__(self):
+        super().__post_init__()
+        # By the time this runs, `super().__post_init__()` (Component's)
+        # has already resolved `_parent`/`.parent` for both top-down and
+        # bottom-up construction (see `Component._parent`'s docstring).
         if self.workspace is None:
             self.workspace = (
                 self._parent.workspace

@@ -170,7 +170,14 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NCOL", 10], ["NROW", 10]]
+    # NROW/NCOL order (not NCOL/NROW) here is a real, documented library
+    # difference, not a bug: DisBase declares nlay/nrow/ncol/... together;
+    # Dis redeclares nlay/ncol/nrow as its own real fields. attrs moves a
+    # redeclared field to its subclass redeclaration position; pydantic
+    # (like plain stdlib dataclasses) keeps it at the base class's
+    # original position instead -- see test_flopy3_package's own note on
+    # the identical difference for Dis's nlay/nrow/ncol/ncpl/nvert/nodes.
+    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NROW", 10], ["NCOL", 10]]
     assert ["DELR"] in loaded["GRIDDATA"]
     assert ["DELC"] in loaded["GRIDDATA"]
 
@@ -1460,7 +1467,16 @@ def test_ssm_fileinput_row_format():
         fileinput={
             "pname": np.array(["rch-1", "wel-1"]),
             "spc6_filename": np.array(["rch.spc6", "wel.spc6"]),
-            "mixed": np.array([True, False]),
+            # `mixed` is a bare-presence-flag tagged field (see item.py's
+            # module docstring) but declared Optional[str] (item.py's
+            # codegen types every "inline_keyword"-role tagged field str,
+            # regardless of how it's actually used) -- to_tokens() only
+            # ever checks its truthiness (`if val:`), so a real string,
+            # not a bool, is the field's actual contract; attrs never
+            # validated this (a raw np.True_/np.False_ passed through
+            # unchecked), pydantic's real Optional[str] check correctly
+            # rejects it.
+            "mixed": np.array(["MIXED", ""], dtype=object),
         },
     )
     text = dumps(unstructure_component(ssm))
@@ -1620,10 +1636,16 @@ def test_rclose_from_tokens_with_option():
 
 
 def test_from_tokens_missing_required_raises():
-    """attrs raises TypeError when a required field has no value."""
+    """A required field with no value raises -- attrs raised TypeError
+    (Python's own missing-positional-argument error); pydantic dataclasses
+    raise their own ValidationError instead (a real, expected difference
+    in exception *type*, not a behavior regression -- both signal the same
+    "missing required field" condition at construction)."""
+    from pydantic import ValidationError
+
     from flopy4.mf6.gwf.oc import Oc
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         Oc.Headprint.from_tokens("")
 
 

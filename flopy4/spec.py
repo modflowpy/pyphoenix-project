@@ -1,14 +1,23 @@
 """
-Wrap `attrs` specification utilities.
+Generic pydantic-dataclass specification utilities.
 """
 
-from attrs import Attribute
-from attrs import fields_dict as attrs_fields_dict
+from typing import Any
+
+from pydantic.dataclasses import is_pydantic_dataclass
 
 
-def fields_dict(cls) -> dict[str, Attribute]:
+def is_dataclass_instance(value: Any) -> bool:
+    """True if `value` is an instance of a pydantic dataclass -- the
+    pydantic-dataclass replacement for `attrs.has(type(value))`, used
+    wherever generic tree-walking code needs to tell a nested
+    dataclass-typed value apart from a plain scalar/array leaf value."""
+    return is_pydantic_dataclass(type(value))
+
+
+def fields_dict(cls) -> dict[str, Any]:
     """
     Return an ordered dictionary of fields for a component class,
-    whose keys are field names. Each field is an `attrs.Attribute`.
+    whose keys are field names. Each field is a pydantic `FieldInfo`.
     """
-    return dict(attrs_fields_dict(cls))
+    return dict(getattr(cls, "__pydantic_fields__", {}))

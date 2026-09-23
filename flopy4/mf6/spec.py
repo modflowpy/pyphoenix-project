@@ -1,5 +1,5 @@
 """
-Wrap `attrs` specification utilities for MF6.
+Wrap `pydantic` specification utilities for MF6.
 These include field decorators and introspection functions.
 """
 
@@ -7,27 +7,31 @@ import builtins
 import types
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin
 
-import attrs
 import numpy as np
-from attrs import NOTHING, Attribute
+from pydantic import Field
+from pydantic.fields import FieldInfo
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
+# Sentinel distinguishing "no default given" (a required field) from a
+# real default of `None` -- pydantic.Field()'s own "no default" state is
+# just not passing `default=` at all, so this marks that case through
+# field()/path()'s own default=... parameter (mirrors attrs.NOTHING's role).
+_UNSET = object()
+
 
 def field(
-    default=NOTHING,
-    validator=None,
+    default=_UNSET,
+    default_factory=None,
     converter=None,
     repr=True,
-    eq=True,
     init=True,
     metadata=None,
-    on_setattr=None,
     alias: str | None = None,
     block: str | None = None,
     longname: str | None = None,
@@ -47,8 +51,18 @@ def field(
     tagged: bool = False,
     array: bool = False,
 ):
-    """Define a field: always a plain ``attrs.field()``."""
+    """Define a field: always a plain ``pydantic.Field()``.
+
+    ``converter``: stashed into the field's own `json_schema_extra`
+    (`metadata["converter"]`) rather than passed to `Field()` directly --
+    pydantic has no per-field `converter=` hook the way attrs does.
+    Applied uniformly by one shared `field_validator("*", mode="before")`
+    on `Component` (see `flopy4.mf6.component.Component._apply_converter`)
+    instead of one per field.
+    """
     metadata = metadata or {}
+    if converter is not None:
+        metadata["converter"] = converter
     if block:
         metadata["block"] = block
     if longname:
@@ -85,38 +99,32 @@ def field(
         metadata["tagged"] = True
     if array:
         metadata["array"] = True
-    return attrs.field(
-        default=default,
-        validator=validator,
-        converter=converter,
-        repr=repr,
-        eq=eq,
-        init=init,
-        on_setattr=on_setattr,
-        metadata=metadata,
-        alias=alias,
-    )
+    kwargs: dict[str, Any] = dict(repr=repr, init=init, json_schema_extra=metadata)
+    if alias is not None:
+        kwargs["alias"] = alias
+    if default_factory is not None:
+        kwargs["default_factory"] = default_factory
+    elif default is not _UNSET:
+        kwargs["default"] = default
+    return Field(**kwargs)
 
 
 FileDirection = Literal[None, "in", "out"]
 
 
 def path(
-    default=NOTHING,
-    validator=None,
+    default=_UNSET,
     converter=None,
     repr=True,
-    eq=True,
     init=True,
     metadata=None,
-    on_setattr=None,
     block: str | None = None,
     direction: FileDirection | None = None,
     longname: str | None = None,
     optional: bool = False,
     keyword: str | None = None,
 ):
-    """Define a path field: always a plain ``attrs.field()``.
+    """Define a path field: always a plain ``pydantic.Field()``.
 
     ``keyword``: the file record's trigger keyword, stored as ``_keyword``
     metadata (lowercase, same convention as a Record class's own
@@ -124,8 +132,14 @@ def path(
     in ``TS6 FILEIN <file>`` (block level, where it's also the row's key on
     ingress -- not derivable from the py name, ts_filerecord → ts_file) or
     ``tab6`` in a LAK tables row (read by Item.to_tokens()/from_tokens()).
+
+    ``converter``: see `field()`'s own docstring -- stashed in metadata,
+    applied by the shared `Component`-level validator (Item/Record-level
+    path fields go through `Record`'s own equivalent validator instead).
     """
     metadata = metadata or {}
+    if converter is not None:
+        metadata["converter"] = converter
     if keyword:
         metadata["_keyword"] = keyword.lower()
     if block:
@@ -136,22 +150,16 @@ def path(
         metadata["longname"] = longname
     if optional:
         metadata["optional"] = True
-    return attrs.field(
-        default=default,
-        validator=validator,
-        converter=converter,
-        repr=repr,
-        eq=eq,
-        init=init,
-        on_setattr=on_setattr,
-        metadata=metadata,
-    )
+    kwargs: dict[str, Any] = dict(repr=repr, init=init, json_schema_extra=metadata)
+    if default is not _UNSET:
+        kwargs["default"] = default
+    return Field(**kwargs)
 
 
-Block = dict[str, Attribute]
+Block = dict[str, FieldInfo]
 
 
-def blocks(cls) -> list[list[Attribute]]:
+def blocks(cls) -> list[list[FieldInfo]]:
     """Return an ordered list of blocks for a component class."""
     return [list(v.values()) for v in blocks_dict(cls).values()]
 
@@ -160,30 +168,34 @@ def blocks_dict(cls) -> dict[str, Block]:
     """
     Return an ordered dictionary of blocks for a component class,
     whose keys are block names. Each block is a map from variable
-    (field) name to `attrs.Attribute`.
+    (field) name to `FieldInfo`.
     """
     fields = fields_dict(cls)
     blocks: dict[str, Block] = {}
     for k, v in fields.items():
-        block = v.metadata["block"]
+        block = v.json_schema_extra["block"]  # type: ignore[index]
         if block not in blocks:
             blocks[block] = {}
         blocks[block][k] = v
     return dict(sorted(blocks.items(), key=block_sort_key))
 
 
-def fields(cls) -> list[Attribute]:
+def fields(cls) -> list[FieldInfo]:
     """Return an ordered list of fields for a component class."""
     return list(fields_dict(cls).values())
 
 
-def fields_dict(cls) -> dict[str, Attribute]:
+def fields_dict(cls) -> dict[str, FieldInfo]:
     """
     Return an ordered dictionary of fields for a component class,
-    whose keys are field names. Each field is an `attrs.Attribute`.
+    whose keys are field names. Each field is a `FieldInfo`.
     """
     fields = flopy_fields_dict(cls)
-    return {k: v for k, v in fields.items() if "block" in v.metadata}
+    return {
+        k: v
+        for k, v in fields.items()
+        if isinstance(v.json_schema_extra, dict) and "block" in v.json_schema_extra
+    }
 
 
 def _ndarray_field_type(t) -> FieldType | None:

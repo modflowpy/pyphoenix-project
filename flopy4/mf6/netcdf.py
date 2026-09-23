@@ -84,14 +84,13 @@ class _PackageSpec:
     _DTYPE_MAP = _PKG_DTYPE_MAP
 
     def __init__(self, cls):
-        import attrs as _attrs
-
         class _ArrayInfo:
-            def __init__(self, f):
+            def __init__(self, name, f):
+                meta = f.json_schema_extra or {}
                 # A fill-forward (period) field's value has a leading nper axis.
-                fill_forward = bool(f.metadata.get("fill_forward"))
-                is_layered = f.metadata.get("layered", True)
-                raw_shape = f.metadata.get("shape") or ("nodes",)
+                fill_forward = bool(meta.get("fill_forward"))
+                is_layered = meta.get("layered", True)
+                raw_shape = meta.get("shape") or ("nodes",)
                 # normalize ncpl → nodes for layered fields only
                 if is_layered:
                     normalized = tuple("nodes" if d == "ncpl" else d for d in raw_shape)
@@ -101,18 +100,20 @@ class _PackageSpec:
                     normalized = ("nper",) + normalized
 
                 self.dtype = np.dtype(
-                    _PackageSpec._DTYPE_MAP.get(to_field_type(f.type), np.float64)
+                    _PackageSpec._DTYPE_MAP.get(to_field_type(f.annotation), np.float64)
                 )
                 self.dims = normalized
                 self.metadata = {
-                    "longname": f.metadata.get("longname", f.name),
-                    "block": f.metadata.get("block", ""),
+                    "longname": meta.get("longname", name),
+                    "block": meta.get("block", ""),
                     "fill_forward": fill_forward,
                     "netcdf": True,
                 }
 
         self.arrays = {
-            f.name: _ArrayInfo(f) for f in _attrs.fields(cls) if f.metadata.get("netcdf")
+            name: _ArrayInfo(name, f)
+            for name, f in cls.__pydantic_fields__.items()
+            if (f.json_schema_extra or {}).get("netcdf")
         }
 
 
@@ -220,8 +221,6 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 "params": [],
             }
 
-            import attrs as _attrs
-
             # compute total nodes for broadcasting scalars to full grid
             _dis = getattr(model, "dis", None)
             d = _dis.get_dims() if _dis is not None else {}
@@ -233,24 +232,25 @@ class NetCDFModel(BaseModel, NetCDFInput):
             else:
                 _nodes = d.get("nodes", _nlay)
 
-            for f in _attrs.fields(type(package)):
-                if not f.metadata.get("netcdf"):
+            for name, f in type(package).__pydantic_fields__.items():
+                meta = f.json_schema_extra or {}
+                if not meta.get("netcdf"):
                     continue
-                if f.metadata.get("block") == "griddata":
-                    val = getattr(package, f.name)
+                if meta.get("block") == "griddata":
+                    val = getattr(package, name)
                     if val is None:
                         continue
                     arr = np.asarray(val, dtype=np.float64)
                     # Only broadcast scalars to full grid for nodes-shaped fields
-                    shape_meta = f.metadata.get("shape", ())
+                    shape_meta = meta.get("shape", ())
                     if "nodes" in shape_meta and arr.size < _nodes:
                         arr = np.full(_nodes, float(arr.ravel()[0]))
-                    p["params"].append({"name": f.name, "data": arr})
+                    p["params"].append({"name": name, "data": arr})
                 else:
-                    val = getattr(package, f.name)
+                    val = getattr(package, name)
                     if val is None:
                         continue
-                    p["params"].append({"name": f.name, "data": np.asarray(val, dtype=np.float64)})
+                    p["params"].append({"name": name, "data": np.asarray(val, dtype=np.float64)})
 
             if len(p["params"]) > 0:
                 packages.append(p)

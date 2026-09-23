@@ -1,4 +1,5 @@
-from attrs import define
+from pydantic import ConfigDict
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.exchange import Exchange
@@ -19,7 +20,10 @@ def component_ftype(cls: type) -> str:
     return f"{cls_name.upper()}6"
 
 
-@define
+_CFG = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+
+
+@dataclass(config=_CFG)
 class Binding:
     """A serializable representation of a component."""
 

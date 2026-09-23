@@ -2,19 +2,20 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import FloatArrayLike, _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Csub(Package):
     dfn_name: ClassVar[str] = "gwf-csub"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         icsubno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
@@ -30,7 +31,7 @@ class Csub(Package):
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         sig0: Union[float, str] = field(time_series=True)
@@ -242,7 +243,7 @@ class Csub(Package):
         optional=True,
         longname="maximum number of stress offset cells",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
@@ -277,7 +278,7 @@ class Csub(Package):
         optional=True,
         longname="specific gravity of saturated sediments",
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[StressPeriodData]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

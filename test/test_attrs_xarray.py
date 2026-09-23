@@ -10,7 +10,8 @@ from typing import Optional
 
 import numpy as np
 import xarray as xr
-from attrs import define, field
+from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.attrs_xarray import (
     attrs_to_dataset,
@@ -23,8 +24,10 @@ from flopy4.mf6.spec import field as mf6_field
 from flopy4.mixins import DatasetConvertibleMixin, DataTreeConvertibleMixin
 from flopy4.protocols import DatasetConvertible, DataTreeConvertible
 
+_CFG = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
-@define
+
+@dataclass(config=_CFG)
 class Leaf(DatasetConvertibleMixin):
     """A leaf class with only scalar/array fields, no children."""
 
@@ -36,29 +39,29 @@ class Leaf(DatasetConvertibleMixin):
     values: Optional[np.ndarray] = mf6_field(default=None, shape=("nlay",))
 
 
-@define
+@dataclass(config=_CFG)
 class OnlyChild(DatasetConvertibleMixin):
     label: str = "child"
 
 
-@define
+@dataclass(config=_CFG)
 class ListChild(DatasetConvertibleMixin):
     idx: int = 0
 
 
-@define
+@dataclass(config=_CFG)
 class DictChild(DatasetConvertibleMixin):
     key: str = "k"
 
 
-@define
+@dataclass(config=_CFG)
 class Node(DataTreeConvertibleMixin):
     """An internal-node class with all three child-field kinds."""
 
     title: str = "node"
     only: Optional[OnlyChild] = None
-    items: list[ListChild] = field(factory=list)
-    mapping: dict[str, DictChild] = field(factory=dict)
+    items: list[ListChild] = Field(default_factory=list)
+    mapping: dict[str, DictChild] = Field(default_factory=dict)
 
 
 def test_leaf_scalar_and_array_round_trip():

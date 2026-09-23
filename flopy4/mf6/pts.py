@@ -2,24 +2,25 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.record import Record
-from flopy4.mf6.solution import Solution
+from flopy4.mf6.solution import CFG, Solution
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Pts(Solution):
     dfn_name: ClassVar[str] = "sln-pts"
 
     slntype: ClassVar[str] = "pts"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class NoPtc(Record):
         _keyword: ClassVar[str] = "no_ptc"
-        no_ptc_option: Optional[str] = attrs.field(default=None)
+        no_ptc_option: Optional[str] = Field(default=None)
 
     print_option: Optional[str] = field(
         default=None,

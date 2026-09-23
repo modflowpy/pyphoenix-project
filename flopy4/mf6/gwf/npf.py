@@ -2,34 +2,35 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Npf(Package):
     dfn_name: ClassVar[str] = "gwf-npf"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"
-        dewatered: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        dewatered: Optional[bool] = Field(default=None, json_schema_extra={"tagged": True})
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Rewet(Record):
         _keyword: ClassVar[str] = "rewet"
-        wetfct: float = attrs.field(metadata={"tagged": True})
-        iwetit: int = attrs.field(metadata={"tagged": True})
-        ihdwet: int = attrs.field(metadata={"tagged": True})
+        wetfct: float = Field(json_schema_extra={"tagged": True})
+        iwetit: int = Field(json_schema_extra={"tagged": True})
+        ihdwet: int = Field(json_schema_extra={"tagged": True})
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Xt3doptions(Record):
         _keyword: ClassVar[str] = "xt3d"
-        rhs: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        rhs: Optional[bool] = Field(default=None, json_schema_extra={"tagged": True})
 
     save_flows: bool = field(
         default=False,

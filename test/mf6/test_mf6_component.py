@@ -1598,15 +1598,13 @@ def test_disv_class_identity():
 
 def test_prt_dis_no_ncf():
     """prt.Dis and prt.Disv must not expose NCF fields."""
-    import attrs
-
     from flopy4.mf6 import prt
 
-    dis_field_names = {f.name for f in attrs.fields(prt.Dis)}
+    dis_field_names = set(prt.Dis.__pydantic_fields__)
     assert "ncf6_filerecord" not in dis_field_names
     assert "ncf" not in dis_field_names
 
-    disv_field_names = {f.name for f in attrs.fields(prt.Disv)}
+    disv_field_names = set(prt.Disv.__pydantic_fields__)
     assert "ncf6_filerecord" not in disv_field_names
     assert "ncf" not in disv_field_names
 

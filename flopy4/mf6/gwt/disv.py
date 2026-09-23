@@ -1,31 +1,32 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
 import numpy as np
 from numpy.typing import NDArray
+from pydantic import Field, field_validator
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
-from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.gwf.disbase import CFG, DisBase
 from flopy4.mf6.item import Item
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils.grid import VertexGrid
 from flopy4.mf6.utl.ncf import Ncf
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Disv(DisBase):
     dfn_name: ClassVar[str] = "gwt-disv"
 
-    @attrs.define(slots=False)
+    @dataclass(config=CFG)
     class Cell2dRecord:
-        icell2d: int = attrs.field()
-        xc: float = attrs.field()
-        yc: float = attrs.field()
-        ncvert: int = attrs.field()
-        icvert: tuple[int, ...] = attrs.field()
+        icell2d: int = Field()
+        xc: float = Field()
+        yc: float = Field()
+        ncvert: int = Field()
+        icvert: tuple[int, ...] = Field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Vertices(Item):
         iv: int
         xv: float
@@ -46,11 +47,11 @@ class Disv(DisBase):
         direction="in",
         keyword="ncf6",
     )
-    ncf: Optional[Ncf] = attrs.field(default=None)
+    ncf: Optional[Ncf] = Field(default=None)
     nlay: int = field(default=0, block="dimensions")
     ncpl: int = field(default=0, block="dimensions")
     nvert: int = field(default=0, block="dimensions")
-    top: NDArray[np.float64] = field(
+    top: Optional[NDArray[np.float64]] = field(
         default=None,
         longname="model top elevation",
         block="griddata",
@@ -58,7 +59,7 @@ class Disv(DisBase):
         layered=False,
         netcdf=True,
     )
-    botm: NDArray[np.float64] = field(
+    botm: Optional[NDArray[np.float64]] = field(
         default=None,
         longname="model bottom elevation",
         block="griddata",
@@ -74,14 +75,32 @@ class Disv(DisBase):
         layered=True,
         netcdf=True,
     )
-    iv: Optional[NDArray[np.int64]] = attrs.field(default=None)
-    xv: Optional[NDArray[np.float64]] = attrs.field(default=None)
-    yv: Optional[NDArray[np.float64]] = attrs.field(default=None)
+    iv: Optional[NDArray[np.int64]] = Field(default=None)
+    xv: Optional[NDArray[np.float64]] = Field(default=None)
+    yv: Optional[NDArray[np.float64]] = Field(default=None)
+
+    # iv/xv/yv are declared NDArray-typed but commonly constructed from a
+    # plain list/tuple (see from_grid() below) -- unlike Package's own
+    # griddata fields, these carry no block="griddata"/shape= metadata, so
+    # Package._coerce_arrays' shape-driven check doesn't reach them. Same
+    # underlying gap as Tdis.perlen/nstp/tsmult: attrs never validated the
+    # declared NDArray type against an actual list default/override at
+    # all; pydantic does, so this needs its own small mode="before" fix.
+    @field_validator("iv", mode="before")
+    @classmethod
+    def _coerce_iv(cls, v):
+        return v if v is None or isinstance(v, np.ndarray) else np.asarray(v, dtype=np.int64)
+
+    @field_validator("xv", "yv", mode="before")
+    @classmethod
+    def _coerce_xv_yv(cls, v):
+        return v if v is None or isinstance(v, np.ndarray) else np.asarray(v, dtype=np.float64)
+
     vertices: Optional[list[Vertices]] = field(default=None, block="vertices")
-    cell2ddata: Optional[list] = attrs.field(default=None)
+    cell2ddata: Optional[list] = Field(default=None)
     cell2d: Optional[list] = field(default=None, init=False, block="cell2d")
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         if self.iv is not None and (not isinstance(self.iv, np.ndarray)):
             object.__setattr__(self, "iv", np.asarray(self.iv, dtype=np.int64))
         if self.xv is not None and (not isinstance(self.xv, np.ndarray)):
@@ -106,7 +125,7 @@ class Disv(DisBase):
         self.nrow = 0
         self.ncol = 0
         self._coerce_griddata()
-        super().__attrs_post_init__()
+        super().__post_init__()
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions."""

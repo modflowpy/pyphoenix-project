@@ -1,11 +1,11 @@
 from abc import ABC
 
-import attrs
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.context import Context
+from flopy4.mf6.context import CFG, Context
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Model(Context, ABC):
     def default_filename(self) -> str:
         return f"{self.name}.nam"  # type: ignore

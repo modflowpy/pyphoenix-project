@@ -2,21 +2,22 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Prp(Package):
     dfn_name: ClassVar[str] = "prt-prp"
 
     multi_package: ClassVar[bool] = True
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         irptno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
@@ -26,33 +27,33 @@ class Prp(Package):
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Releasetimes(Item):
         time: float = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class All(Item):
         _keyword: ClassVar[str] = "all"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class First(Item):
         _keyword: ClassVar[str] = "first"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Last(Item):
         _keyword: ClassVar[str] = "last"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Frequency(Item):
         _keyword: ClassVar[str] = "frequency"
         frequency: int = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Steps(Item):
         _keyword: ClassVar[str] = "steps"
         steps: tuple = field(default=(), array=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Fraction(Item):
         _keyword: ClassVar[str] = "fraction"
         fraction: tuple = field(default=(), array=True)
@@ -168,17 +169,17 @@ class Prp(Package):
         block="dimensions",
         longname="number of particle release times",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
-    releasetimes: Optional[list[Releasetimes]] = field(
+    releasetimes: Optional[SkipValidation[list[Releasetimes]]] = field(
         default=None,
         block="releasetimes",
         auto_from="releasetimes",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

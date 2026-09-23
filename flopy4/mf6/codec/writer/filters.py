@@ -1,8 +1,8 @@
+import dataclasses
 from collections.abc import Hashable, Mapping
 from io import StringIO
 from typing import Any, Literal
 
-import attrs
 import numpy as np
 import xarray as xr
 from numpy.typing import NDArray
@@ -267,7 +267,7 @@ def dataset2list(value: xr.Dataset):
                     if name == "perioddata":
                         val = value[name]
                         val = val.item() if val.shape == () else val
-                        yield attrs.astuple(val, recurse=True)  # type: ignore
+                        yield dataclasses.astuple(val)  # type: ignore
                     continue
                 val = value[name]
                 val = val.item() if val.shape == () else val

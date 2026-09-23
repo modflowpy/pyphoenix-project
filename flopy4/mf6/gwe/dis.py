@@ -1,18 +1,19 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
 import numpy as np
 from numpy.typing import NDArray
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
-from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.gwf.disbase import CFG, DisBase
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils.grid import StructuredGrid
 from flopy4.mf6.utl.ncf import Ncf
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Dis(DisBase):
     dfn_name: ClassVar[str] = "gwe-dis"
 
@@ -31,11 +32,11 @@ class Dis(DisBase):
         direction="in",
         keyword="ncf6",
     )
-    ncf: Optional[Ncf] = attrs.field(default=None)
+    ncf: Optional[Ncf] = Field(default=None)
     nlay: int = field(default=1, block="dimensions")
     ncol: int = field(default=2, block="dimensions")
     nrow: int = field(default=2, block="dimensions")
-    delr: NDArray[np.float64] = field(
+    delr: Optional[NDArray[np.float64]] = field(
         default=1.0,
         longname="spacing along a row",
         block="griddata",
@@ -43,7 +44,7 @@ class Dis(DisBase):
         layered=False,
         netcdf=True,
     )
-    delc: NDArray[np.float64] = field(
+    delc: Optional[NDArray[np.float64]] = field(
         default=1.0,
         longname="spacing along a column",
         block="griddata",
@@ -51,7 +52,7 @@ class Dis(DisBase):
         layered=False,
         netcdf=True,
     )
-    top: NDArray[np.float64] = field(
+    top: Optional[NDArray[np.float64]] = field(
         default=1.0,
         longname="cell top elevation",
         block="griddata",
@@ -59,7 +60,7 @@ class Dis(DisBase):
         layered=False,
         netcdf=True,
     )
-    botm: NDArray[np.float64] = field(
+    botm: Optional[NDArray[np.float64]] = field(
         default=0.0,
         longname="cell bottom elevation",
         block="griddata",
@@ -76,12 +77,12 @@ class Dis(DisBase):
         longname="idomain existence array",
     )
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         self.nodes = self.ncol * self.nrow * self.nlay
         self.ncpl = self.ncol * self.nrow
         self.nvert = (self.ncol + 1) * (self.nrow + 1)
         self._coerce_griddata()
-        super().__attrs_post_init__()
+        super().__post_init__()
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions."""

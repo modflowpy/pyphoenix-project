@@ -2,14 +2,14 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import FloatArrayLike, _optional_path
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Welg(Package):
     dfn_name: ClassVar[str] = "gwf-welg"
 
@@ -93,6 +93,7 @@ class Welg(Package):
         default=None,
         block="dimensions",
         optional=True,
+        auto_from="stress_period_data",
         longname="maximum number of wells in any stress period",
     )
     q: Optional[FloatArrayLike] = field(

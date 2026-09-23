@@ -783,15 +783,35 @@ def _generated_imports(
     if typing_parts:
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
-    third_party: list[str] = ["import attrs"]
+    # Bare pydantic Field() (as opposed to the flopy4.mf6.spec field()/
+    # path() wrappers, imported separately below via _spec_parts) is only
+    # ever emitted by the template for spec.inner_classes -- composed
+    # Record fields (e.g. Oc.Headprint.formatrecord). Every top-level
+    # package field and every item_class()-rendered Item/Record field
+    # routes through field()/path() instead. Confirmed empirically: a
+    # generated file with no inner_classes but an unconditional Field
+    # import left 49 F401 (unused import) errors across the regenerated
+    # corpus before this was scoped to has_inner_classes.
+    _pydantic_parts = ["Field"] if has_inner_classes else []
+    if has_period_schema:
+        # has_period_schema is already the OR of period_schema/block_schemas/
+        # period_arms (see the call site) -- SkipValidation is needed
+        # whenever any Item-list field is generated (see item.py's
+        # item_list_type()/Package._init_item_lists() for why: pydantic
+        # validates a raw tuple/dict input eagerly where attrs applied none).
+        _pydantic_parts.append("SkipValidation")
+    third_party: list[str] = []
+    if _pydantic_parts:
+        third_party.append(f"from pydantic import {', '.join(sorted(_pydantic_parts))}")
+    third_party.append("from pydantic.dataclasses import dataclass")
     if has_array:
         third_party.append("import numpy as np")
         third_party.append("from numpy.typing import NDArray")
 
     _base_imports = {
-        "Package": "from flopy4.mf6.package import Package",
-        "Solution": "from flopy4.mf6.solution import Solution",
-        "Context": "from flopy4.mf6.context import Context",
+        "Package": "from flopy4.mf6.package import CFG, Package",
+        "Solution": "from flopy4.mf6.solution import CFG, Solution",
+        "Context": "from flopy4.mf6.context import CFG, Context",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     if has_inner_classes:
@@ -1053,7 +1073,7 @@ def build_component_spec(
             FieldSpec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
-                type_annotation=f"Optional[list[{_item_cls_name}]]",
+                type_annotation=f"Optional[SkipValidation[list[{_item_cls_name}]]]",
                 spec_call=_ml_field(metadata=_meta),
                 generatable=True,
             )
@@ -1073,7 +1093,9 @@ def build_component_spec(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[_StressPeriodDataItem]]]",
+                type_annotation=(
+                    "Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]]"
+                ),
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
@@ -1084,7 +1106,7 @@ def build_component_spec(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[StressPeriodData]]]",
+                type_annotation="Optional[SkipValidation[dict[int, list[StressPeriodData]]]]",
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )

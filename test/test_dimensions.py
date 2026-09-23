@@ -2,12 +2,15 @@
 
 from typing import Optional
 
-from attrs import define, field
+from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.dimensions import DimensionResolverMixin
 
+_CFG = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
-@define
+
+@dataclass(config=_CFG)
 class MockDimensionProvider:
     """Mock component that provides dimensions."""
 
@@ -26,25 +29,25 @@ class MockDimensionProvider:
         }
 
 
-@define
+@dataclass(config=_CFG)
 class MockContainer(DimensionResolverMixin):
     """Mock container that uses the dimension registry mixin."""
 
     provider: Optional[MockDimensionProvider] = None
 
 
-@define
+@dataclass(config=_CFG)
 class MockContainerWithDict(DimensionResolverMixin):
     """Mock container with dict of providers."""
 
-    providers: dict[str, MockDimensionProvider] = field(factory=dict)
+    providers: dict[str, MockDimensionProvider] = Field(default_factory=dict)
 
 
-@define
+@dataclass(config=_CFG)
 class MockContainerWithList(DimensionResolverMixin):
     """Mock container with list of providers."""
 
-    providers: list[MockDimensionProvider] = field(factory=list)
+    providers: list[MockDimensionProvider] = Field(default_factory=list)
 
 
 def test_resolve_dimension_from_direct_child():

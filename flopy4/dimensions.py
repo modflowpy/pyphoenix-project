@@ -2,7 +2,7 @@
 
 from typing import Protocol, runtime_checkable
 
-import attrs
+from pydantic.dataclasses import is_pydantic_dataclass
 
 
 @runtime_checkable
@@ -109,9 +109,9 @@ class DimensionResolverMixin:
             self.__dict__["_dimension_cache"] = {}
         return self.__dict__["_dimension_cache"]
 
-    def __attrs_post_init__(self) -> None:
-        if hasattr(super(), "__attrs_post_init__"):
-            super().__attrs_post_init__()  # type: ignore[misc]
+    def __post_init__(self) -> None:
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()  # type: ignore[misc]
 
     def resolve_dims(self, *dims: str) -> dict[str, int]:
         """
@@ -191,19 +191,19 @@ class DimensionResolverMixin:
 
     def _walk_providers(self):
         """Yield (source_label, dims_dict) for each DimensionProvider in child fields."""
-        for field_obj in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if (value := getattr(self, field_obj.name, None)) is None:
+        for name in type(self).__pydantic_fields__:  # type: ignore[attr-defined]
+            if (value := getattr(self, name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
-                yield field_obj.name, value.get_dims()
+                yield name, value.get_dims()
             elif isinstance(value, dict):
                 for child_key, child in value.items():
                     if isinstance(child, DimensionProvider):
-                        yield f"{field_obj.name}[{child_key}]", child.get_dims()
+                        yield f"{name}[{child_key}]", child.get_dims()
             elif isinstance(value, list):
                 for idx, child in enumerate(value):
                     if isinstance(child, DimensionProvider):
-                        yield f"{field_obj.name}[{idx}]", child.get_dims()
+                        yield f"{name}[{idx}]", child.get_dims()
 
     def _get_all_dimensions(self) -> dict[str, int]:
         """Get all dimensions from children and parent. Children take precedence."""
@@ -271,10 +271,11 @@ def validate_dimension_resolution(component) -> list[str]:
     errors = []
 
     # Check all array fields on this component
-    for field in attrs.fields(type(component)):
+    for name, finfo in type(component).__pydantic_fields__.items():
         # Check if field has dimension metadata
-        if hasattr(field, "metadata") and field.metadata and "dims" in field.metadata:
-            dims_needed = field.metadata["dims"]
+        meta = finfo.json_schema_extra or {}
+        if isinstance(meta, dict) and "dims" in meta:
+            dims_needed = meta["dims"]
             # Check if this component has a parent and can resolve dimensions
             if hasattr(component, "_parent") and component._parent:
                 if hasattr(component._parent, "resolve_dims"):
@@ -282,40 +283,26 @@ def validate_dimension_resolution(component) -> list[str]:
                         result = component._parent.resolve_dims(dim)
                         if dim not in result:
                             errors.append(
-                                f"{type(component).__name__}.{field.name} needs dimension '{dim}' "
+                                f"{type(component).__name__}.{name} needs dimension '{dim}' "
                                 f"but it's not available in parent hierarchy"
                             )
 
     # Recursively validate children
-    for field in attrs.fields(type(component)):
-        value = getattr(component, field.name, None)
+    for name in type(component).__pydantic_fields__:
+        value = getattr(component, name, None)
         if value is None:
             continue
 
-        # Check if child is a component with attrs fields
-        if hasattr(value, "__class__") and hasattr(attrs, "fields"):
-            try:
-                attrs.fields(type(value))
-                # It's an attrs class, validate it
-                errors.extend(validate_dimension_resolution(value))
-            except Exception:
-                # Not an attrs class, skip
-                pass
+        # Check if child is a pydantic dataclass instance
+        if is_pydantic_dataclass(type(value)):
+            errors.extend(validate_dimension_resolution(value))
         elif isinstance(value, dict):
             for child in value.values():
-                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
-                    try:
-                        attrs.fields(type(child))
-                        errors.extend(validate_dimension_resolution(child))
-                    except Exception:
-                        pass
+                if is_pydantic_dataclass(type(child)):
+                    errors.extend(validate_dimension_resolution(child))
         elif isinstance(value, list):
             for child in value:
-                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
-                    try:
-                        attrs.fields(type(child))
-                        errors.extend(validate_dimension_resolution(child))
-                    except Exception:
-                        pass
+                if is_pydantic_dataclass(type(child)):
+                    errors.extend(validate_dimension_resolution(child))
 
     return errors

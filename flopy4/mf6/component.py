@@ -1,17 +1,29 @@
+import dataclasses
 from abc import ABC
 from collections.abc import MutableMapping
 from os import PathLike
 from pathlib import Path
 from typing import Any, ClassVar, Optional
 
-import attrs
-from attrs import fields
+from pydantic import ConfigDict, Field, field_validator
+from pydantic.dataclasses import dataclass, is_pydantic_dataclass
 
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import field, fields_dict
+from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
+
+# Shared config for every Component/Package (sub)class -- one constant,
+# repeated per class at its own `@dataclass(config=CFG, ...)` decoration
+# site (config isn't inherited the way attrs' class-level settings are),
+# same shape codegen already emits today (`@attrs.define(kw_only=True,
+# slots=False)` on every generated class).
+CFG = ConfigDict(
+    arbitrary_types_allowed=True,
+    validate_assignment=True,
+    extra="forbid",
+)
 
 FNAMES: "dict[str, type[Component]]" = {}
 """MF6 component name (e.g. 'gwf-dis') -> component class."""
@@ -106,33 +118,34 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
     """Find the single field on `parent_cls` that accepts `child_cls` as a
     child, by type annotation (`child_field_candidates()`).
 
-    Returns `(field, kind)`, or `None` if no field matches. Raises
+    Returns `(finfo, kind)`, or `None` if no field matches. Raises
     `TypeError` if more than one field matches (ambiguous).
     """
     from flopy4.attrs_xarray import child_field_candidates
 
     matches = []
-    for f in fields(parent_cls):  # type: ignore[arg-type]
-        spec = child_field_candidates(f)
+    for name, finfo in parent_cls.__pydantic_fields__.items():
+        spec = child_field_candidates(finfo)
         if spec is None:
             continue
         kind, candidates = spec
         if any(issubclass(child_cls, c) for c in candidates):
-            matches.append((f, kind))
+            matches.append((name, finfo, kind))
     if not matches:
         return None
     if len(matches) > 1:
-        names = ", ".join(f.name for f, _ in matches)
+        names = ", ".join(name for name, _, _ in matches)
         raise TypeError(
             f"Class '{parent_cls.__name__}' has multiple fields of type "
             f"'{child_cls.__name__}' ({names}); can't bind."
         )
-    return matches[0]
+    name, _finfo, kind = matches[0]
+    return name, kind
 
 
 # kw_only=True necessary so we can define optional fields here
-# and required fields in subclasses. attrs complains otherwise
-@attrs.define(kw_only=True, slots=False)
+# and required fields in subclasses.
+@dataclass(config=CFG, kw_only=True)
 class Component(DimensionResolverMixin, ABC, MutableMapping):
     """
     Base class for MF6 components.
@@ -150,41 +163,83 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: str | None = field(default=None)
+    filename: Optional[str] = Field(default=None)
     """The name of the component's input file."""
 
-    name: str = field(
-        default=attrs.Factory(lambda self: type(self).__name__.lower(), takes_self=True)
-    )
-    """The component's own identity/tag name. Computed per-instance from
-    the *actual* runtime class (`takes_self=True`), not whichever class in
-    the hierarchy happens to declare this field -- so a `Package` leaf
-    (e.g. `Ic`, never separately subclassed for this field) still gets
-    "ic", not "package". Overridden explicitly by `_resolve_child_name()`/
-    `_attach_to_parent_field()` when a component is attached as a named
-    child; otherwise this default stands."""
+    name: Optional[str] = Field(default=None)
+    """The component's own identity/tag name. `None` until `__post_init__`
+    defaults it to the *actual* runtime class's lowercased name -- not
+    whichever class in the hierarchy happens to declare this field -- so a
+    `Package` leaf (e.g. `Ic`, never separately subclassed for this field)
+    still gets "ic", not "package". (Pydantic's `default_factory` takes no
+    arguments, unlike attrs' `takes_self=True`, so this can't be a
+    declarative field default the way it was under attrs -- filled in
+    explicitly in `__post_init__` instead.) Overridden explicitly by
+    `_resolve_child_name()`/`_attach_to_parent_field()` when a component is
+    attached as a named child; otherwise this default stands."""
 
-    _parent: Any = field(default=None, repr=False, eq=False)
+    _parent: Any = Field(default=None, alias="parent", repr=False)
     """Parent back-reference -- source of truth for "who is this
     component's parent", top-down (`Gwf(dis=Dis(...))`) and bottom-up
-    (`Dis(parent=gwf)`) alike. Leading underscore triggers attrs' private-
-    attribute convention, so the constructor keyword stays `parent=` even
-    though the field is `_parent`. Typed `Any` so `child_field_candidates()`
-    (type-annotation based) doesn't mistake it for a real child field.
+    (`Dis(parent=gwf)`) alike. Leading underscore + `alias="parent"`
+    mirrors attrs' private-attribute convention: the constructor keyword
+    stays `parent=` even though the field is `_parent`. Typed `Any` so
+    `child_field_candidates()` (type-annotation based) doesn't mistake it
+    for a real child field, and excluded from `__eq__` below (a live
+    `.parent` would otherwise recurse: comparing a component's parent
+    compares the parent's own children, including this component again).
 
     Populated by `_set_child_parents()` (top-down) and
     `_attach_to_parent_field()` (bottom-up), and kept current by
-    `parent`'s setter below. Excluded by name from `to_dict()`'s
-    `attrs.asdict()` recursion (alongside the unrelated `Output.parent`)
-    since a live `.parent` would otherwise be a reference cycle.
+    `parent`'s setter below. Excluded by name from `to_dict()`'s recursion
+    (alongside the unrelated `Output.parent`) since a live `.parent` would
+    otherwise be a reference cycle.
     """
 
-    dims: dict = field(default=attrs.Factory(dict), repr=False, eq=False)
+    dims: dict = Field(default_factory=dict, repr=False)
     """Accepts `dims=` at construction (e.g. `Ic(dims={"nodes": 900})`)
     for API-compatibility with existing call sites. Read directly via
-    `self.__dict__.get("dims")` by `Package.__attrs_post_init__` for
-    griddata broadcasting -- not resolved/consumed by anything at the
-    `Component` level itself."""
+    `self.__dict__.get("dims")` by `Package.__post_init__` for griddata
+    broadcasting -- not resolved/consumed by anything at the `Component`
+    level itself. Excluded from `__eq__` below for the same reason `attrs`
+    excluded it: two components differing only in already-resolved
+    dimension bookkeeping should still compare equal."""
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _apply_converter(cls, v: Any, info) -> Any:
+        """The one shared hook every field-level `converter=` (attrs
+        original) funnels through -- `flopy4.mf6.spec.field()`/`path()`
+        stash the callable in `json_schema_extra["converter"]` instead of
+        a per-field attrs `converter=`, and this single validator (not one
+        per field, not one per generated class) applies it uniformly."""
+        finfo = cls.__pydantic_fields__.get(info.field_name)
+        if finfo is None or v is None:
+            return v
+        meta = finfo.json_schema_extra or {}
+        conv = meta.get("converter") if isinstance(meta, dict) else None
+        return conv(v) if conv is not None else v
+
+    def __eq__(self, other: object) -> bool:
+        """Hand-written, replacing the dataclass-generated `__eq__`
+        (disabled below via `eq=False`... note: NOT disabled -- see
+        below): compares every field except `_parent`/`dims` (attrs'
+        `eq=False` on those two fields, ported -- see their own
+        docstrings for why). Defined once here, inherited by every
+        subclass unmodified: reads `dataclasses.fields(self)`
+        dynamically, so it naturally covers each subclass's own
+        additional fields too, without needing to be redeclared or
+        special-cased per generated class.
+        """
+        if type(self) is not type(other):
+            return NotImplemented
+        skip = {"_parent", "dims"}
+        for f in dataclasses.fields(self):
+            if f.name in skip:
+                continue
+            if getattr(self, f.name) != getattr(other, f.name):
+                return False
+        return True
 
     @property
     def parent(self) -> "Component | None":
@@ -249,11 +304,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         self._set_child_parents()
 
         result: "dict[str, Component]" = {}
-        for f in fields(type(self)):
-            spec = child_field_candidates(f)
+        for name, finfo in type(self).__pydantic_fields__.items():
+            spec = child_field_candidates(finfo)
             if spec is None:
                 continue
-            value = getattr(self, f.name, None)
+            value = getattr(self, name, None)
             if value is None:
                 continue
             kind, _ = spec
@@ -283,11 +338,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         from flopy4.attrs_xarray import child_field_candidates
 
         used: "set[str]" = set()
-        for f in fields(type(self)):
-            spec = child_field_candidates(f)
+        for name, finfo in type(self).__pydantic_fields__.items():
+            spec = child_field_candidates(finfo)
             if spec is None:
                 continue
-            value = getattr(self, f.name, None)
+            value = getattr(self, name, None)
             if value is None:
                 continue
             kind, _ = spec
@@ -295,13 +350,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             if kind == "only":
                 if isinstance(value, Component):
                     value.__dict__["_parent"] = self
-                    value.name = _resolve_child_name(used, kind, f.name, value)  # type: ignore[attr-defined]
+                    value.name = _resolve_child_name(used, kind, name, value)  # type: ignore[attr-defined]
                     used.add(value.name)  # type: ignore[attr-defined]
             elif kind == "list":
                 for child in value:
                     if isinstance(child, Component):
                         child.__dict__["_parent"] = self
-                        child.name = _resolve_child_name(used, kind, f.name, child)  # type: ignore[attr-defined]
+                        child.name = _resolve_child_name(used, kind, name, child)  # type: ignore[attr-defined]
                         used.add(child.name)  # type: ignore[attr-defined]
             elif kind == "dict":
                 for key, child in value.items():
@@ -334,22 +389,25 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         """
         Post-initialization hook for all components. Chains to parent
         class post-init hooks (including DimensionRegistryMixin).
 
-        Also runs the two `_parent`-tracking hooks (see `_parent`'s
-        docstring): stamps `_parent` on this component's own already-
-        populated children (top-down construction), and -- if this
-        component's own `_parent` was given directly as `parent=`, i.e.
-        bottom-up construction -- attaches `self` into the matching field
-        on it and resolves its `.name` -- see `_attach_to_parent_field()`'s
-        docstring.
+        Defaults `.name` from the runtime class (attrs' `takes_self=True`
+        factory, ported -- see the field's own docstring), then runs the
+        two `_parent`-tracking hooks (see `_parent`'s docstring): stamps
+        `_parent` on this component's own already-populated children
+        (top-down construction), and -- if this component's own `_parent`
+        was given directly as `parent=`, i.e. bottom-up construction --
+        attaches `self` into the matching field on it and resolves its
+        `.name` -- see `_attach_to_parent_field()`'s docstring.
         """
         # Chain to parent classes (including DimensionRegistryMixin)
-        if hasattr(super(), "__attrs_post_init__"):
-            super().__attrs_post_init__()  # type: ignore[misc]
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()  # type: ignore[misc]
+        if self.name is None:
+            self.name = type(self).__name__.lower()
         if self._parent is not None:
             self._attach_to_parent_field(self._parent)
         self._set_child_parents()
@@ -369,14 +427,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         match = _find_child_field(type(parent), type(self))
         if match is None:
             return
-        target_field, kind = match
+        target_name, kind = match
         used = {c.name for c in parent._children.values()}  # type: ignore[attr-defined]
         if kind == "only":
-            self.name = _resolve_child_name(used, kind, target_field.name, self)  # type: ignore[attr-defined]
-            setattr(parent, target_field.name, self)
+            self.name = _resolve_child_name(used, kind, target_name, self)  # type: ignore[attr-defined]
+            setattr(parent, target_name, self)
         elif kind == "list":
-            self.name = _resolve_child_name(used, kind, target_field.name, self)  # type: ignore[attr-defined]
-            getattr(parent, target_field.name).append(self)
+            self.name = _resolve_child_name(used, kind, target_name, self)  # type: ignore[attr-defined]
+            getattr(parent, target_name).append(self)
         elif kind == "dict":
             # No positional auto-key to fall back on for an unnamed child,
             # unlike "only"/"list" -- see `_set_child_parents`'s "dict"
@@ -387,10 +445,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                 raise ValueError(
                     f"Child name '{key}' collides with an existing child on the same parent."
                 )
-            getattr(parent, target_field.name)[key] = self
+            getattr(parent, target_name)[key] = self
 
-    @classmethod
-    def __attrs_init_subclass__(cls):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
         # Only register classes that declare their own `dfn_name`.
         # Abstract bases (Package, Context, Model, Exchange, Solution,
         # DisBase, ...) have no `dfn_name` of their own and are silently
@@ -418,17 +476,17 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
         from flopy4.attrs_xarray import child_field_candidates
 
-        for f in fields(type(self)):
-            spec = child_field_candidates(f)
+        for name, finfo in type(self).__pydantic_fields__.items():
+            spec = child_field_candidates(finfo)
             if spec is None:
                 continue
             kind, _ = spec
-            current = getattr(self, f.name, None)
+            current = getattr(self, name, None)
             if kind == "only":
                 if isinstance(current, Component) and current.name == key:  # type: ignore[attr-defined]
                     value.name = key  # type: ignore[attr-defined]
                     value.__dict__["_parent"] = self
-                    setattr(self, f.name, value)
+                    setattr(self, name, value)
                     return
             elif kind == "list":
                 for i, child in enumerate(current or []):
@@ -447,30 +505,30 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         match = _find_child_field(type(self), type(value))
         if match is None:
             raise TypeError(f"No field on {type(self).__name__} accepts a {type(value).__name__}")
-        target_field, kind = match
+        target_name, kind = match
         value.__dict__["_parent"] = self
         value.name = key  # type: ignore[attr-defined]
         if kind == "only":
-            setattr(self, target_field.name, value)
+            setattr(self, target_name, value)
         elif kind == "list":
-            getattr(self, target_field.name).append(value)
+            getattr(self, target_name).append(value)
         elif kind == "dict":
-            getattr(self, target_field.name)[key] = value
+            getattr(self, target_name)[key] = value
 
     def __delitem__(self, key):
         """Detach the child named `key`, from whatever field/slot
         currently holds it."""
         from flopy4.attrs_xarray import child_field_candidates
 
-        for f in fields(type(self)):
-            spec = child_field_candidates(f)
+        for name, finfo in type(self).__pydantic_fields__.items():
+            spec = child_field_candidates(finfo)
             if spec is None:
                 continue
             kind, _ = spec
-            value = getattr(self, f.name, None)
+            value = getattr(self, name, None)
             if kind == "only":
                 if isinstance(value, Component) and value.name == key:  # type: ignore[attr-defined]
-                    setattr(self, f.name, None)
+                    setattr(self, name, None)
                     return
             elif kind == "list":
                 for i, child in enumerate(value or []):
@@ -527,6 +585,32 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         for child in self._children.values():
             child.write(format=format, context=context)
 
+    def _asdict_filtered(self) -> dict[str, Any]:
+        """Recursive `dataclasses.asdict()`, excluding any field literally
+        named "parent" or "_parent" at every recursion level, not just
+        this component's own: e.g. `Gwf.Output.parent` is a genuine
+        back-reference to the owning `Gwf`, unrelated to `Component.
+        _parent`, but recursing into it the same way would infinitely
+        loop (output -> parent -> output -> ...). Ported from the attrs
+        original's `attrs.asdict(self, recurse=True, filter=...)` --
+        pydantic/stdlib dataclasses' own `dataclasses.asdict()` has no
+        filter hook, so this walks by hand instead."""
+
+        def _convert(value: Any) -> Any:
+            if is_pydantic_dataclass(type(value)):
+                return {
+                    name: _convert(getattr(value, name))
+                    for name in type(value).__pydantic_fields__
+                    if name not in ("parent", "_parent")
+                }
+            if isinstance(value, dict):
+                return {k: _convert(v) for k, v in value.items()}
+            if isinstance(value, (list, tuple)):
+                return type(value)(_convert(v) for v in value)
+            return value
+
+        return _convert(self)
+
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict[str, Any]:
         """
         Convert the component to a dictionary representation.
@@ -545,14 +629,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             Dictionary containing component data, either
             in terms of fields (flat) or blocks (nested).
         """
-        # Exclude any field literally named "parent" or "_parent" at every
-        # recursion level, not just this component's own: e.g.
-        # Gwf.Output.parent is a genuine back-reference to the owning Gwf,
-        # unrelated to Component._parent, but recursing into it the same
-        # way would infinitely loop (output -> parent -> output -> ...).
-        data = attrs.asdict(
-            self, recurse=True, filter=lambda attr, value: attr.name not in ("parent", "_parent")
-        )
+        data = self._asdict_filtered()
         spec = fields_dict(self.__class__)
 
         if strict:
@@ -561,9 +638,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
         if blocks:
             blocks_ = {}  # type: ignore
-            for field_name, field_attr in spec.items():
+            for field_name, finfo in spec.items():
                 field_value = data[field_name]
-                block_name = field_attr.metadata.get("block")
+                meta = finfo.json_schema_extra or {}
+                block_name = meta.get("block") if isinstance(meta, dict) else None
                 if strict and block_name is None:
                     continue
                 if block_name not in blocks_:
@@ -573,8 +651,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         else:
             return {
                 field_name: data[field_name]
-                for field_name, field_attr in spec.items()
-                if field_attr.metadata.get("block") or not strict
+                for field_name, finfo in spec.items()
+                if (finfo.json_schema_extra or {}).get("block") or not strict
             }
 
     def to_xarray(self):
@@ -604,11 +682,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         result: dict = {}
         try:
             for name, child in self._children.items():
-                try:
-                    _fields = attrs.fields(type(child))
-                except attrs.exceptions.NotAnAttrsClassError:
+                if not is_pydantic_dataclass(type(child)):
                     continue
-                if not any(f.metadata.get("block") == "griddata" for f in _fields):
+                _fields = type(child).__pydantic_fields__
+                if not any(
+                    (f.json_schema_extra or {}).get("block") == "griddata" for f in _fields.values()
+                ):
                     continue
                 try:
                     ds = child.to_xarray()

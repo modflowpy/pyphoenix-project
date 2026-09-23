@@ -2,33 +2,34 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import FloatArrayLike, _optional_path
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Ist(Package):
     dfn_name: ClassVar[str] = "gwt-ist"
 
     multi_package: ClassVar[bool] = True
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Format(Record):
         _keyword: ClassVar[str] = ""
-        format_: str = attrs.field()
-        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        format_: str = Field()
+        columns: Optional[int] = Field(default=None, json_schema_extra={"tagged": True})
+        width: Optional[int] = Field(default=None, json_schema_extra={"tagged": True})
+        digits: Optional[int] = Field(default=None, json_schema_extra={"tagged": True})
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Cimprint(Record):
         _keyword: ClassVar[str] = "cim"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
-        formatrecord: "Ist.Format" = attrs.field()
+        formatrecord: "Ist.Format" = Field()
 
     save_flows: bool = field(
         default=False,

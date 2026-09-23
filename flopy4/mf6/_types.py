@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol, TypeAlias, TypeVar
+from typing import Protocol, TypeAlias, TypeVar, runtime_checkable
 
 import numpy as np
 
@@ -15,6 +15,7 @@ time-typed fields. Usable directly in `isinstance()` checks (PEP 604
 unions support this natively)."""
 
 
+@runtime_checkable
 class _ArrayLike(Protocol[_DT]):
     """Structural stand-in for "ndarray or duck array of this dtype".
 
@@ -24,6 +25,16 @@ class _ArrayLike(Protocol[_DT]):
     Used for griddata and READARRAY period fields, which may be dask-backed
     (see `codec/writer/filters.py`'s `array2chunks`, which streams
     dask-backed arrays without materializing them).
+
+    `@runtime_checkable` is required for pydantic (not needed under attrs,
+    which never validated this annotation at all): under
+    `arbitrary_types_allowed=True`, pydantic builds an `isinstance()`-based
+    validator for any type it doesn't otherwise understand, which requires
+    the protocol to support `isinstance()` at all -- confirmed empirically
+    that schema-building itself fails with a `SchemaError` (not even a
+    runtime `ValidationError`) without this decorator, even though the
+    generic type parameter (`_DT`) is itself ignored by the resulting
+    isinstance check either way, same as plain Python `Protocol` semantics.
     """
 
     @property
