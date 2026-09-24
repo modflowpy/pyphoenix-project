@@ -9,6 +9,7 @@ from pydantic.dataclasses import dataclass
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import CFG, Package
+from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
 from flopy4.spec import field_meta, pydantic_fields
 
@@ -50,7 +51,7 @@ class DisBase(Package):
             val = self.__dict__.get(name)
             if val is None:
                 continue
-            dtype = _PKG_DTYPE_MAP.get(meta.get("dfn_type", "double"), np.float64)
+            dtype = _PKG_DTYPE_MAP.get(to_field_type(f.annotation), np.float64)
             if isinstance(val, (list, tuple)):
                 val = np.asarray(val, dtype=dtype)
                 self.__dict__[name] = val

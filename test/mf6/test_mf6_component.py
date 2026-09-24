@@ -1800,3 +1800,13 @@ def test_external_array_path_is_posix():
     macros = _JINJA_ENV.get_template("macros.jinja").module
     out = str(macros.array("top", PureWindowsPath("data\\top.dat"), how="external"))  # type: ignore[attr-defined]
     assert "OPEN/CLOSE data/top.dat" in out
+
+
+def test_layered_int_griddata_keeps_int_dtype():
+    # A scalar layered integer array (idomain=1) is repeated per layer in
+    # _coerce_griddata; it must stay integer, or it's written as a float
+    # CONSTANT, which some MF6 builds reject for an integer array.
+    from flopy4.mf6.gwf import Dis
+
+    dis = Dis(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1)
+    assert dis.idomain.dtype == np.int64

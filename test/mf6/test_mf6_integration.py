@@ -764,7 +764,7 @@ def test_quickstart_netcdf(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
         lines = fh.readlines()
         nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-        assert f" NETCDF FILEIN {nc_fpth}\n" in lines
+        assert f" NETCDF FILEIN {nc_fpth.as_posix()}\n" in lines
     with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
         lines = fh.readlines()
         assert " DELR NETCDF\n" in lines
@@ -876,7 +876,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     with open(function_tmpdir / f"{gwf_name}.nam", "r") as fh:
         lines = fh.readlines()
         nc_fpth = function_tmpdir / f"{gwf_name}.input.nc"
-        assert f" NETCDF FILEIN {nc_fpth}\n" in lines
+        assert f" NETCDF FILEIN {nc_fpth.as_posix()}\n" in lines
     with open(function_tmpdir / f"{gwf_name}.dis", "r") as fh:
         lines = fh.readlines()
         assert " DELR NETCDF\n" in lines
