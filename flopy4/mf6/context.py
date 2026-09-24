@@ -1,55 +1,56 @@
 from abc import ABC
 from pathlib import Path
+from typing import Any, Optional
 
-import attrs
 from modflow_devtools.misc import cd
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import CFG, Component
 from flopy4.mf6.constants import MF6
-from flopy4.mf6.spec import field
 from flopy4.utils import to_path
 
 
-def update_child_attr(instance, attribute, new_value):
-    """
-    Generalized function to update child attribute (e.g. workspace).
-
-    Args:
-        instance: The model instance
-        attribute: The attribute being set (from attrs on_setattr)
-        new_value: The new value being set
-
-    Returns:
-        The new_value (unchanged)
-    """
-
-    for child in instance._children.values():
-        if hasattr(child, attribute.name):
-            setattr(child, attribute.name, new_value)
-
-    return new_value
-
-
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Context(Component, ABC):
-    workspace: Path = field(default=None, converter=to_path, on_setattr=update_child_attr)
+    # `_workspace`/`workspace` mirrors `Component._parent`/`.parent`'s
+    # private-field-plus-property pattern: pydantic has no per-field
+    # on-setattr hook, so propagating to children happens in the property
+    # setter below.
+    _workspace: Any = Field(default=None, alias="workspace", repr=False)
 
-    def __attrs_post_init__(self):
-        super().__attrs_post_init__()
-        # By the time this runs, `super().__attrs_post_init__()`
-        # (Component's) has already resolved `_parent`/`.parent` for both
-        # top-down and bottom-up construction (see `Component._parent`'s
-        # docstring).
-        if self.workspace is None:
+    @property
+    def workspace(self) -> Path:
+        """The directory this context's files live in. Given at
+        construction, or resolved by `__post_init__` from the parent's
+        workspace or the current directory."""
+        if self._workspace is None:
+            raise RuntimeError(f"{type(self).__name__}.workspace is not resolved yet")
+        return self._workspace
+
+    @workspace.setter
+    def workspace(self, value) -> None:
+        """Coerce `value` to a `Path`, then propagate it to every child
+        `Context`."""
+        value = to_path(value)
+        self._workspace = value
+        for child in self._children.values():
+            if isinstance(child, Context):
+                child.workspace = value
+
+    def __post_init__(self, dims: Optional[dict] = None):
+        super().__post_init__(dims)
+        # By the time this runs, `super().__post_init__()` (Component's)
+        # has already resolved `_parent`/`.parent` for both top-down and
+        # bottom-up construction (see `Component._parent`'s docstring).
+        if self._workspace is None:
             self.workspace = (
-                self._parent.workspace
-                if self._parent and hasattr(self._parent, "workspace")
-                else Path.cwd()
+                self._parent.workspace if isinstance(self._parent, Context) else Path.cwd()
             )
 
     @property
     def path(self) -> Path:
-        self.filename = self.filename or self.default_filename()
+        self.filename = self.filename or Path(self.default_filename())
         return self.workspace / self.filename
 
     @classmethod
@@ -69,10 +70,10 @@ class Context(Component, ABC):
     def to_xarray(self):
         """DataTree for this context and its full child hierarchy.
 
-        Built directly from live attribute values via flopy4.attrs_xarray's
-        attrs_to_datatree. Each child node, leaf packages included, is
+        Built directly from live attribute values via flopy4.dataclass_xarray's
+        dataclass_to_datatree. Each child node, leaf packages included, is
         built from its own fields directly, so griddata appears natively.
         """
-        from flopy4.attrs_xarray import attrs_to_datatree
+        from flopy4.dataclass_xarray import dataclass_to_datatree
 
-        return attrs_to_datatree(self)
+        return dataclass_to_datatree(self)

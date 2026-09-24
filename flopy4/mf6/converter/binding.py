@@ -1,4 +1,7 @@
-from attrs import define
+from pathlib import Path
+
+from pydantic import ConfigDict
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.exchange import Exchange
@@ -19,7 +22,10 @@ def component_ftype(cls: type) -> str:
     return f"{cls_name.upper()}6"
 
 
-@define
+_CFG = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+
+
+@dataclass(config=_CFG)
 class Binding:
     """A serializable representation of a component."""
 
@@ -46,6 +52,6 @@ class Binding:
 
         return cls(
             type=component_ftype(type(component)),
-            fname=component.filename or component.default_filename(),
+            fname=Path(component.filename or component.default_filename()).as_posix(),
             terms=_get_binding_terms(component),
         )

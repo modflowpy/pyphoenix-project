@@ -3,15 +3,18 @@
 import threading
 from typing import TYPE_CHECKING, ClassVar, Literal, Optional
 
-from attrs import define, field
+from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass
 
 if TYPE_CHECKING:
     from threading import local
 
 ArrayFormat = Literal["internal", "constant", "open/close"]
 
+_CFG = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, extra="forbid")
 
-@define
+
+@dataclass(config=_CFG)
 class WriteContext:
     """
     Configuration context for writing MODFLOW 6 input files.
@@ -51,12 +54,12 @@ class WriteContext:
     ...     sim.write()
     """
 
-    use_binary: bool = field(default=False)
-    use_netcdf: bool = field(default=False)
-    binary_threshold: Optional[int] = field(default=None)
-    float_precision: int = field(default=8)
-    use_relative_paths: bool = field(default=True)
-    array_format: Optional[ArrayFormat] = field(default=None)
+    use_binary: bool = Field(default=False)
+    use_netcdf: bool = Field(default=False)
+    binary_threshold: Optional[int] = Field(default=None)
+    float_precision: int = Field(default=8)
+    use_relative_paths: bool = Field(default=True)
+    array_format: Optional[ArrayFormat] = Field(default=None)
 
     # Class-level thread-local storage for context stack
     _global_context_stack: ClassVar["local"]

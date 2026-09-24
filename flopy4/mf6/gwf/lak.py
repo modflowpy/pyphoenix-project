@@ -2,21 +2,22 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Lak(Package):
     dfn_name: ClassVar[str] = "gwf-lak"
 
     multi_package: ClassVar[bool] = True
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
@@ -24,7 +25,7 @@ class Lak(Package):
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Connectiondata(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
         iconn: int = field(index=True)
@@ -36,12 +37,12 @@ class Lak(Package):
         connlen: float = field()
         connwidth: float = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Tables(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
         tab6_filename: Path = path(converter=Path, direction="in", keyword="tab6")
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Outlets(Item):
         outletno: int = field(index=True, pk=True)
         lakein: int = field(index=True, fk="packagedata.ifno")
@@ -52,79 +53,79 @@ class Lak(Package):
         rough: Union[float, str] = field(time_series=True)
         slope: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         status: Union[float, str] = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Stage(Item):
         _keyword: ClassVar[str] = "stage"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         stage: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         rainfall: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         evaporation: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         runoff: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         inflow: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Withdrawal(Item):
         _keyword: ClassVar[str] = "withdrawal"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         withdrawal: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Rate(Item):
         _keyword: ClassVar[str] = "rate"
         outletno: int = field(index=True, fk="outlets.outletno")
         rate: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Invert(Item):
         _keyword: ClassVar[str] = "invert"
         outletno: int = field(index=True, fk="outlets.outletno")
         invert: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Width(Item):
         _keyword: ClassVar[str] = "width"
         outletno: int = field(index=True, fk="outlets.outletno")
         width: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Slope(Item):
         _keyword: ClassVar[str] = "slope"
         outletno: int = field(index=True, fk="outlets.outletno")
         slope: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Rough(Item):
         _keyword: ClassVar[str] = "rough"
         outletno: int = field(index=True, fk="outlets.outletno")
         rough: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         lakeno: int = field(index=True, fk="packagedata.ifno")
@@ -286,27 +287,27 @@ class Lak(Package):
         block="dimensions",
         longname="number of tables",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",
     )
-    connectiondata: Optional[list[Connectiondata]] = field(
+    connectiondata: Optional[SkipValidation[list[Connectiondata]]] = field(
         default=None,
         block="connectiondata",
         write_if_empty=True,
     )
-    tables: Optional[list[Tables]] = field(
+    tables: Optional[SkipValidation[list[Tables]]] = field(
         default=None,
         block="tables",
         auto_from="tables",
     )
-    outlets: Optional[list[Outlets]] = field(
+    outlets: Optional[SkipValidation[list[Outlets]]] = field(
         default=None,
         block="outlets",
         auto_from="outlets",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

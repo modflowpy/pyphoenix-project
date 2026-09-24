@@ -14,7 +14,7 @@
 {% endfor %}
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class {{ spec.class_name }}({{ spec.base_class }}):
     dfn_name: ClassVar[str] = "{{ spec.dfn_name }}"
 
@@ -27,7 +27,7 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 
 {% endif %}
 {% for rec in spec.inner_classes %}
-    @attrs.define
+    @dataclass(config=CFG)
     class {{ rec.class_name }}(Record):
         _keyword: ClassVar[str] = "{{ rec.keyword }}"
 {% if rec.extra_tokens_repr %}
@@ -35,17 +35,17 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endif %}
 {% for f in rec.fields %}
 {% if f.nested and f.optional %}
-        {{ f.py_name }}: "Optional[{{ spec.class_name }}.{{ f.type_annotation }}]" = attrs.field(default=None)
+        {{ f.py_name }}: "Optional[{{ spec.class_name }}.{{ f.type_annotation }}]" = Field(default=None)
 {% elif f.nested %}
-        {{ f.py_name }}: "{{ spec.class_name }}.{{ f.type_annotation }}" = attrs.field()
+        {{ f.py_name }}: "{{ spec.class_name }}.{{ f.type_annotation }}" = Field()
 {% elif f.tagged and f.optional %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(default=None, metadata={"tagged": True})
+        {{ f.py_name }}: {{ f.type_annotation }} = Field(default=None, json_schema_extra={"tagged": True})
 {% elif f.tagged %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(metadata={"tagged": True})
+        {{ f.py_name }}: {{ f.type_annotation }} = Field(json_schema_extra={"tagged": True})
 {% elif f.optional %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(default=None)
+        {{ f.py_name }}: {{ f.type_annotation }} = Field(default=None)
 {% else %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field()
+        {{ f.py_name }}: {{ f.type_annotation }} = Field()
 {% endif %}
 {% endfor %}
 

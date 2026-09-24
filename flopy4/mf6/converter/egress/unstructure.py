@@ -1,13 +1,13 @@
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-import attrs
 import numpy as np
 import xarray as xr
+from pydantic.fields import FieldInfo
 
-from flopy4.attrs_xarray import child_field_candidates
+from flopy4.dataclass_xarray import child_field_candidates
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
@@ -16,19 +16,22 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
+from flopy4.spec import field_meta, pydantic_fields
 
 
-def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
+def _path_to_tuple(name: str, field: FieldInfo, value: Path) -> tuple[str, ...]:
     """A block-level file record's ``KEYWORD FILEIN|FILEOUT <path>`` row. The
     keyword is the field's own ``_keyword`` metadata (see spec.path)."""
-    keyword = field.metadata.get("_keyword")
+    meta = field_meta(field)
+    assert isinstance(meta, dict)
+    keyword = meta.get("_keyword")
     if not keyword:
-        raise ValueError(f"file field {field.name!r} has no _keyword metadata")
-    direction: FileDirection | None = field.metadata.get("direction")
-    t = [keyword.upper()]
+        raise ValueError(f"file field {name!r} has no _keyword metadata")
+    direction = cast(FileDirection | None, meta.get("direction"))
+    t = [str(keyword).upper()]
     if direction:
         t.append("FILEOUT" if direction == "out" else "FILEIN")
-    t.append(str(value))
+    t.append(value.as_posix())
     return tuple(t)
 
 
@@ -38,13 +41,13 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
 
     blocks = {}  # type: ignore
 
-    for f in attrs.fields(type(value)):  # type: ignore[arg-type]
+    for child_name, f in pydantic_fields(type(value)).items():
         if child_field_candidates(f) is None:
             continue
-        child_name = f.name
         if (child := getattr(value, child_name, None)) is None:
             continue
-        block_name = f.metadata.get("block")
+        meta = field_meta(f)
+        block_name = meta.get("block") if isinstance(meta, dict) else None
         if block_name is None:
             continue
         if block_name not in blocks:
@@ -129,9 +132,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     except ImportError:
         _DaskArray = type(None)  # type: ignore[misc,assignment]
 
-    for f in attrs.fields(cls):  # type: ignore[arg-type]
-        meta = f.metadata
-        block_name = meta.get("block")
+    for name, f in pydantic_fields(cls).items():
+        meta = field_meta(f)
+        block_name = meta.get("block") if isinstance(meta, dict) else None
         if not block_name:
             continue
 
@@ -139,12 +142,12 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             write_if_empty_set.add(block_name)
             blocks.setdefault(block_name, {})
 
-        attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
+        attr_name = f.alias if (f.alias and name.startswith("_")) else name
         field_value = getattr(value, attr_name, None)
         if field_value is None:
             continue
 
-        dfn_type = to_field_type(f.type)
+        dfn_type = to_field_type(f.annotation)
 
         # fill-forward block
         if meta.get("fill_forward"):
@@ -154,7 +157,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 is_layered = meta.get("layered", False)
                 nper = field_value.shape[0]
                 # aux field: shape (nper, ncpl, naux)
-                if f.name == "aux" and field_value.ndim == 3:
+                if name == "aux" and field_value.ndim == 3:
                     aux_names: list[str] = list(getattr(value, "auxiliary", None) or [])
                     naux = field_value.shape[2]
                     for kper in range(nper):
@@ -170,7 +173,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                         da = xr.DataArray(layer_slice, dims=("nlay",) + extra_dims)
                     else:
                         da = xr.DataArray(layer_slice)
-                    readarray_period.setdefault(kper, {})[f.name] = da
+                    readarray_period.setdefault(kper, {})[name] = da
                 continue
             # list: dict[int, list[Item]]
             if not isinstance(field_value, dict):
@@ -188,7 +191,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             continue
 
         if isinstance(field_value, dict):
-            array_key = f.name if meta.get("tagged") else ""
+            array_key = name if meta.get("tagged") else ""
             for tval, arr in field_value.items():
                 blocks[f"{block_name} {tval}"] = {array_key: _wrap_array(arr)}
             continue
@@ -199,17 +202,17 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
 
         if dfn_type == "keyword":
             if field_value:
-                blocks[block_name][f.name] = field_value
+                blocks[block_name][name] = field_value
 
         elif meta.get("direction") and isinstance(field_value, Path):
-            t = _path_to_tuple(f, field_value)
+            t = _path_to_tuple(name, f, field_value)
             blocks[block_name][t[0].lower()] = t
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
-            blocks[block_name][f.name] = _rows_to_tuples(field_value)
+            blocks[block_name][name] = _rows_to_tuples(field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
-            blocks[block_name][f.name] = field_value
+            blocks[block_name][name] = field_value
 
         elif meta.get("shape") and not isinstance(field_value, bool):
             if meta["shape"]:
@@ -225,26 +228,26 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                     _nlay = _dims_d.get("nlay", 0)
                     _ncpl = _dims_d.get("ncpl", 0)
                     if _nlay > 1 and _ncpl > 0 and field_value.size == _nlay * _ncpl:
-                        blocks[block_name][f.name] = xr.DataArray(
+                        blocks[block_name][name] = xr.DataArray(
                             field_value.reshape(_nlay, _ncpl),
                             dims=("nlay", "ncpl"),
                         )
                         continue
-                blocks[block_name][f.name] = _wrap_array(field_value)
+                blocks[block_name][name] = _wrap_array(field_value)
 
-        elif f.name == "auxiliary" and isinstance(field_value, list):
-            blocks[block_name][f.name] = ("AUXILIARY",) + tuple(field_value)
+        elif name == "auxiliary" and isinstance(field_value, list):
+            blocks[block_name][name] = ("AUXILIARY",) + tuple(field_value)
 
         elif isinstance(field_value, Record):
-            blocks[block_name][f.name] = field_value.to_tokens()
+            blocks[block_name][name] = field_value.to_tokens()
 
         elif dfn_type in ("integer", "double", "double precision"):
             if field_value == 0 and meta.get("auto_from"):
                 continue
-            blocks[block_name][f.name] = field_value
+            blocks[block_name][name] = field_value
 
         elif dfn_type == "string" and field_value:
-            blocks[block_name][f.name] = field_value
+            blocks[block_name][name] = field_value
 
     # `maxbound` is a computed property on some classes, not a real field
     if isinstance(getattr(cls, "maxbound", None), property):
@@ -283,10 +286,10 @@ def unstructure_component(value: Component) -> dict[str, Any]:
 
 def _unstructure_component(value: Component) -> dict[str, Any]:
     """Unstructure an internal-node component (Gwf, Simulation, etc.) with
-    attrs-typed child fields, including its child binding blocks."""
+    pydantic-typed child fields, including its child binding blocks."""
     blockspec = blocks_dict(type(value))
     blocks: dict[str, dict[str, Any]] = {}
-    fields_by_name = {f.name: f for f in attrs.fields(type(value))}  # type: ignore[arg-type]
+    fields_by_name = dict(pydantic_fields(type(value)))
 
     # create child component binding blocks
     blocks.update(_make_binding_blocks(value))
@@ -298,11 +301,13 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
         for field_name in block.keys():
             # Skip child components already processed as bindings
             field = fields_by_name.get(field_name)
+            fmeta = field_meta(field) if field is not None else {}
             if (
                 isinstance(value, Context)
                 and field is not None
                 and child_field_candidates(field) is not None
-                and field.metadata.get("block") == block_name
+                and isinstance(fmeta, dict)
+                and fmeta.get("block") == block_name
             ):
                 continue
 
@@ -322,7 +327,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                         blocks[block_name][field_name] = field_value
                 case Path():
                     assert field is not None  # field_name comes from blocks_dict(type(value))
-                    t = _path_to_tuple(field, field_value)
+                    t = _path_to_tuple(field_name, field, field_value)
                     blocks[block_name][t[0]] = t
                 case datetime():
                     blocks[block_name][field_name] = field_value.isoformat()

@@ -2,21 +2,22 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Lke(Package):
     dfn_name: ClassVar[str] = "gwe-lke"
 
     multi_package: ClassVar[bool] = True
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         lakeno: int = field(index=True, pk=True)
         strt: float = field()
@@ -25,43 +26,43 @@ class Lke(Package):
         aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         status: Union[float, str] = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         temperature: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         rainfall: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         evaporation: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         runoff: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class ExtInflow(Item):
         _keyword: ClassVar[str] = "ext-inflow"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         ext_inflow: Union[float, str] = field(time_series=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
@@ -159,12 +160,12 @@ class Lke(Package):
         direction="in",
         keyword="obs6",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

@@ -13,14 +13,14 @@ Item subclasses share one field (a Union of their types), each identified
 by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
+from __future__ import annotations
+
 import re
-from functools import lru_cache
 from pathlib import Path
-from typing import Any, Union, cast, get_args, get_origin
+from typing import Annotated, Any, Union, cast, get_args, get_origin
 
-import attrs
-
-from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
+from flopy4.mf6.record import Record, _coerce
+from flopy4.spec import field_meta
 
 _AUX_KEY_RE = re.compile(r"^aux(\d+)$")
 
@@ -41,44 +41,35 @@ def normalize_aux_keys(item: dict) -> dict:
     return rest
 
 
-def _cellid_field(cls: type) -> attrs.Attribute | None:
-    return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
+def _cellid_field(cls: type) -> Any | None:
+    return next(
+        (f for f in cast(type[Record], cls).fields().values() if field_meta(f).get("cellid")),
+        None,
+    )
 
 
 def _has_aux_field(cls: type) -> bool:
-    return any(f.name == "aux" for f in cast(type[Record], cls).fields())
+    return "aux" in cast(type[Record], cls).fields()
 
 
 def _has_boundname_field(cls: type) -> bool:
-    return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
+    return "boundname" in cast(type[Record], cls).fields()
 
 
-@lru_cache(maxsize=None)
-def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] | None":
-    """If a field's raw type annotation is a `` | ``-joined forward
-    reference to sibling Item classes (e.g. ``"Oc.All | Oc.First | ..."``,
-    see make.py's _build_arm_specs_from_union), return the tuple of
-    resolved classes; else None. Resolvability is itself the signal, same
-    as record.py's _nested_class.
+def _is_item_union(annotation: Any) -> "tuple[type[Item], ...] | None":
+    """If a field's (already-resolved) annotation is a Union of sibling
+    Item classes (e.g. OC's ``All | First | Last | Frequency | Steps``),
+    return the tuple of arm classes; else None.
 
-    Cached since to_tokens/from_tokens call this per field, often
-    repeatedly while parsing many rows.
+    By the time `Record.fields()` has run, `annotation` (a pydantic
+    `FieldInfo.annotation`) is already the resolved union of classes, not
+    a forward-ref string.
     """
-    names = [part.strip().rsplit(".", 1)[-1] for part in type_str.split(" | ")]
-    if len(names) < 2:
-        return None
-    resolved = [_resolve_sibling_class(cls, name) for name in names]
-    if any(not (isinstance(r, type) and issubclass(r, Item)) for r in resolved):
-        return None
-    return tuple(cast("list[type[Item]]", resolved))
-
-
-def _field_type_str(f: attrs.Attribute) -> "str | None":
-    """attrs stubs type `Attribute.type` as `type | None`, but attrs
-    actually stores the raw annotation there -- a string for a forward
-    reference (every nested-sibling-union field). None otherwise."""
-    t: Any = f.type
-    return t if isinstance(t, str) else None
+    origin = get_origin(annotation)
+    if origin is Union or origin is type(int | str):
+        arms = tuple(a for a in get_args(annotation) if isinstance(a, type) and issubclass(a, Item))
+        return arms or None
+    return None
 
 
 def construct_item(item_cls: type, values) -> "Item":
@@ -89,34 +80,26 @@ def construct_item(item_cls: type, values) -> "Item":
     trailing string when the class also has boundname (always declared
     last) -- a string there unambiguously isn't a numeric aux value.
     """
-    fields = cast(type[Record], item_cls).fields()
+    fields = list(cast(type[Record], item_cls).fields().items())
     tuple_idx = next(
         (
             i
-            for i, f in enumerate(fields)
-            if f.name == "aux"
-            or f.metadata.get("array")
-            or (
-                (t := _field_type_str(f)) is not None
-                and _nested_union_classes(item_cls, t) is not None
-            )
+            for i, (name, f) in enumerate(fields)
+            if name == "aux"
+            or field_meta(f).get("array")
+            or _is_item_union(f.annotation) is not None
         ),
         None,
     )
     values = list(values)
     if tuple_idx is None:
         return cast("Item", item_cls(*values))
-    nested_field = fields[tuple_idx]
-    nested_field_type = _field_type_str(nested_field)
-    arm_classes = (
-        _nested_union_classes(item_cls, nested_field_type)
-        if nested_field_type is not None
-        else None
-    )
+    _, nested_finfo = fields[tuple_idx]
+    arm_classes = _is_item_union(nested_finfo.annotation)
     boundname_val = None
     if (
         fields
-        and fields[-1].name == "boundname"
+        and fields[-1][0] == "boundname"
         and len(values) > tuple_idx
         and isinstance(values[-1], str)
         and arm_classes is None
@@ -138,13 +121,14 @@ def _n_fixed_tokens(cls: type) -> int:
     infer a variable-width cellid's element count from total token length."""
     cls = cast(type[Record], cls)
     n = 1 if cls.keyword() else 0
-    for f in cls.fields():
-        if f.metadata.get("cellid") or f.name in ("aux", "boundname"):
+    for name, f in cls.fields().items():
+        meta = field_meta(f)
+        if meta.get("cellid") or name in ("aux", "boundname"):
             continue
-        if f.metadata.get("optional"):
+        if meta.get("optional"):
             continue
-        n += 1 + (1 if f.metadata.get("_keyword") else 0)
-        if f.metadata.get("direction"):
+        n += 1 + (1 if meta.get("_keyword") else 0)
+        if meta.get("direction"):
             n += 1
     return n
 
@@ -216,27 +200,28 @@ class Item(Record):
         keyword = cls.keyword()
         row: list[Any] = []
         keyword_emitted = not keyword
-        for f in fields:
-            if f.name in ("aux", "boundname"):
+        for name, f in fields.items():
+            if name in ("aux", "boundname"):
                 continue
-            val = getattr(self, f.name)
+            val = getattr(self, name)
             if val is None:
                 continue
-            if f.metadata.get("cellid"):
+            meta = field_meta(f)
+            if meta.get("cellid"):
                 row.extend(int(c) + 1 for c in val)
-            elif f.metadata.get("index"):
+            elif meta.get("index"):
                 row.append(int(val) + 1)
-            elif f.metadata.get("array"):
+            elif meta.get("array"):
                 if not keyword_emitted:
                     row.append(keyword.upper())
                     keyword_emitted = True
                 row.extend(val)
-            elif f.metadata.get("tagged"):
+            elif meta.get("tagged"):
                 if not keyword_emitted:
                     row.append(keyword.upper())
                     keyword_emitted = True
                 if val:
-                    row.append(f.name.upper())
+                    row.append(name.upper())
             elif isinstance(val, Record):
                 # Nested keystring-union field (OC's ocsetting) -- val is
                 # already the resolved arm instance and knows how to
@@ -249,11 +234,11 @@ class Item(Record):
                 if not keyword_emitted:
                     row.append(keyword.upper())
                     keyword_emitted = True
-                if file_kw := f.metadata.get("_keyword"):
+                if file_kw := meta.get("_keyword"):
                     row.append(file_kw.upper())
-                if direction := f.metadata.get("direction"):
+                if direction := meta.get("direction"):
                     row.append("FILEOUT" if direction == "out" else "FILEIN")
-                row.append(str(val) if isinstance(val, Path) else val)
+                row.append(val.as_posix() if isinstance(val, Path) else val)
         if not keyword_emitted:
             row.append(keyword.upper())
         aux = getattr(self, "aux", None)
@@ -284,51 +269,51 @@ class Item(Record):
         tok_idx = 0
         n = len(tokens)
 
-        def consume(f: attrs.Attribute) -> None:
+        def consume(name: str, f: Any) -> None:
             nonlocal tok_idx, keyword_skipped
-            if f.metadata.get("cellid"):
+            meta = field_meta(f)
+            if meta.get("cellid"):
                 cellid = tuple(int(tokens[tok_idx + j]) - 1 for j in range(ncelldim))
-                kwargs[f.name] = cellid
+                kwargs[name] = cellid
                 tok_idx += ncelldim
                 return
-            if f.metadata.get("index"):
-                kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
+            if meta.get("index"):
+                kwargs[name] = int(float(str(tokens[tok_idx]))) - 1
                 tok_idx += 1
                 return
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
-            if f.metadata.get("_keyword"):
+            if meta.get("_keyword"):
                 tok_idx += 1
-            if f.metadata.get("direction"):
+            if meta.get("direction"):
                 tok_idx += 1
             if tok_idx >= n:
                 return
-            kwargs[f.name] = _coerce(tokens[tok_idx], f)
+            kwargs[name] = _coerce(tokens[tok_idx], f)
             tok_idx += 1
 
-        def width(f: attrs.Attribute) -> int:
-            w = 1 + (1 if f.metadata.get("_keyword") else 0)
-            if f.metadata.get("direction"):
+        def width(f: Any) -> int:
+            meta = field_meta(f)
+            w = 1 + (1 if meta.get("_keyword") else 0)
+            if meta.get("direction"):
                 w += 1
             return w
 
-        main_fields = [f for f in fields if f.name not in ("aux", "boundname")]
+        main_fields = [(name, f) for name, f in fields.items() if name not in ("aux", "boundname")]
         nested_union_fields = [
-            f
-            for f in main_fields
-            if (t := _field_type_str(f)) is not None
-            # mypy false positive: type[Item] vs. Hashable (lru_cache arg)
-            and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
+            (name, f) for name, f in main_fields if _is_item_union(f.annotation) is not None
         ]
-        main_fields = [f for f in main_fields if f not in nested_union_fields]
-        array_fields = [f for f in main_fields if f.metadata.get("array")]
-        main_fields = [f for f in main_fields if not f.metadata.get("array")]
-        required_fields = [f for f in main_fields if not f.metadata.get("optional")]
-        optional_fields = [f for f in main_fields if f.metadata.get("optional")]
+        main_fields = [item for item in main_fields if item not in nested_union_fields]
+        array_fields = [(name, f) for name, f in main_fields if field_meta(f).get("array")]
+        main_fields = [item for item in main_fields if item not in array_fields]
+        required_fields = [
+            (name, f) for name, f in main_fields if not field_meta(f).get("optional")
+        ]
+        optional_fields = [(name, f) for name, f in main_fields if field_meta(f).get("optional")]
 
-        for f in required_fields:
-            consume(f)
+        for name, f in required_fields:
+            consume(name, f)
 
         has_bn_token = False
         if has_boundname and n > tok_idx:
@@ -336,10 +321,12 @@ class Item(Record):
             has_bn_token = isinstance(last, str) and not _token_fits(last, float)
         remaining = n - tok_idx - (1 if has_bn_token else 0) - (naux if has_aux else 0)
 
-        budget_fields = [f for f in optional_fields if not f.metadata.get("tagged")]
+        budget_fields = [
+            (name, f) for name, f in optional_fields if not field_meta(f).get("tagged")
+        ]
         n_opt_present = 0
         used = 0
-        for f in budget_fields:
+        for name, f in budget_fields:
             w = width(f)
             if used + w > remaining:
                 break
@@ -347,20 +334,21 @@ class Item(Record):
             n_opt_present += 1
 
         budget_idx = 0
-        for f in optional_fields:
-            if f.metadata.get("tagged"):
+        for name, f in optional_fields:
+            meta = field_meta(f)
+            if meta.get("tagged"):
                 if not keyword_skipped:
                     tok_idx += 1
                     keyword_skipped = True
-                kw = f.name.upper()
+                kw = name.upper()
                 if tok_idx < n and str(tokens[tok_idx]).upper() == kw:
-                    kwargs[f.name] = str(tokens[tok_idx])
+                    kwargs[name] = str(tokens[tok_idx])
                     tok_idx += 1
                 continue
             present = budget_idx < n_opt_present
             budget_idx += 1
             if present:
-                consume(f)
+                consume(name, f)
 
         if array_fields:
             # Consumes everything left up to aux/boundname's own reserved
@@ -371,7 +359,7 @@ class Item(Record):
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
-            f = array_fields[0]
+            name, _f = array_fields[0]
             end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
             vals = []
             while tok_idx < end:
@@ -381,7 +369,7 @@ class Item(Record):
                 except (ValueError, TypeError):
                     vals.append(tok)
                 tok_idx += 1
-            kwargs[f.name] = tuple(vals)
+            kwargs[name] = tuple(vals)
         elif nested_union_fields:
             # Nested keystring-union field (OC's ocsetting) -- same span
             # logic as array_fields above, but dispatches a typed arm
@@ -389,20 +377,18 @@ class Item(Record):
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
-            f = nested_union_fields[0]
-            nested_field_type = _field_type_str(f)
-            assert nested_field_type is not None
-            arm_classes = _nested_union_classes(cls, nested_field_type)  # type: ignore[arg-type]
+            name, f = nested_union_fields[0]
+            arm_classes = _is_item_union(f.annotation)
             assert arm_classes is not None
             end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
             nested_tokens = list(tokens[tok_idx:end])
             arm_cls = dispatch_union_item(nested_tokens, arm_classes)
             if arm_cls is None:
                 raise ValueError(
-                    f"{cls.__name__}.{f.name}: no matching arm in {arm_classes} "
+                    f"{cls.__name__}.{name}: no matching arm in {arm_classes} "
                     f"for tokens {nested_tokens}"
                 )
-            kwargs[f.name] = arm_cls.from_tokens(nested_tokens)
+            kwargs[name] = arm_cls.from_tokens(nested_tokens)
             tok_idx = end
         elif not keyword_skipped:
             tok_idx += 1
@@ -437,18 +423,35 @@ def _unwrap_item(item) -> "type[Item] | tuple[type[Item], ...] | None":
     return None
 
 
+def _unwrap_skip_validation(t: Any) -> Any:
+    """Strip one `Annotated[X, SkipValidation()]` layer, if present.
+
+    Item-list fields are pydantic.SkipValidation-wrapped (codegen emits
+    this -- see Package._init_item_lists' own docstring for why: pydantic
+    would otherwise validate an Item-list field's raw tuple/dict input
+    eagerly). get_origin() on the raw annotation returns Annotated, not
+    dict/list, so the unwrapping below needs this extra step.
+    """
+    if get_origin(t) is Annotated:
+        return get_args(t)[0]
+    return t
+
+
 def item_list_type(field_type) -> "type[Item] | tuple[type[Item], ...] | None":
-    """For Optional[list[C]] or Optional[dict[int, list[C]]], return C (or
-    the tuple of arm classes for a Union item type)."""
+    """For Optional[list[C]] or Optional[dict[int, list[C]]] (each
+    optionally SkipValidation-wrapped), return C (or the tuple of arm
+    classes for a Union item type)."""
     args = get_args(field_type)
     inner = next((a for a in args if a is not type(None)), None)
     if inner is None:
         return None
+    inner = _unwrap_skip_validation(inner)
     origin = get_origin(inner)
     if origin is list:
         return _unwrap_item(get_args(inner)[0])
     if origin is dict:
         _, val = get_args(inner)
+        val = _unwrap_skip_validation(val)
         if get_origin(val) is list:
             return _unwrap_item(get_args(val)[0])
     return None

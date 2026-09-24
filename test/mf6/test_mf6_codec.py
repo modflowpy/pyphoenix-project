@@ -170,7 +170,10 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NCOL", 10], ["NROW", 10]]
+    # NROW/NCOL order (not NCOL/NROW): DisBase declares nlay/nrow/ncol/...
+    # together; Dis redeclares nlay/ncol/nrow as its own fields, and a
+    # redeclared dataclass field keeps the base class's original position.
+    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NROW", 10], ["NCOL", 10]]
     assert ["DELR"] in loaded["GRIDDATA"]
     assert ["DELC"] in loaded["GRIDDATA"]
 
@@ -1460,7 +1463,14 @@ def test_ssm_fileinput_row_format():
         fileinput={
             "pname": np.array(["rch-1", "wel-1"]),
             "spc6_filename": np.array(["rch.spc6", "wel.spc6"]),
-            "mixed": np.array([True, False]),
+            # `mixed` is a bare-presence-flag tagged field (see item.py's
+            # module docstring) but declared Optional[str] (item.py's
+            # codegen types every "inline_keyword"-role tagged field str,
+            # regardless of how it's actually used) -- to_tokens() only
+            # ever checks its truthiness (`if val:`), so a real string,
+            # not a bool, is the field's actual contract (a raw
+            # np.True_/np.False_ fails Optional[str] validation).
+            "mixed": np.array(["MIXED", ""], dtype=object),
         },
     )
     text = dumps(unstructure_component(ssm))
@@ -1620,10 +1630,12 @@ def test_rclose_from_tokens_with_option():
 
 
 def test_from_tokens_missing_required_raises():
-    """attrs raises TypeError when a required field has no value."""
+    """A required field with no value raises pydantic's ValidationError."""
+    from pydantic import ValidationError
+
     from flopy4.mf6.gwf.oc import Oc
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         Oc.Headprint.from_tokens("")
 
 

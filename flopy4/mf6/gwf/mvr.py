@@ -2,24 +2,25 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Mvr(Package):
     dfn_name: ClassVar[str] = "gwf-mvr"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packages(Item):
         pname: Union[float, str] = field()
         mname: Optional[Union[float, str]] = field(default=None, optional=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class StressPeriodData(Item):
         pname1: Union[float, str] = field()
         id1: int = field(index=True)
@@ -75,12 +76,12 @@ class Mvr(Package):
         block="dimensions",
         longname="number of packages to be used with the mover",
     )
-    packages: Optional[list[Packages]] = field(
+    packages: Optional[SkipValidation[list[Packages]]] = field(
         default=None,
         block="packages",
         auto_from="packages",
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[StressPeriodData]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

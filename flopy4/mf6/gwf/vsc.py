@@ -2,19 +2,20 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Vsc(Package):
     dfn_name: ClassVar[str] = "gwf-vsc"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         iviscspec: int = field(index=True, pk=True)
         dviscdc: float = field()
@@ -72,7 +73,7 @@ class Vsc(Package):
         block="dimensions",
         longname="number of species used in viscosity equation of state",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
         auto_from="packagedata",

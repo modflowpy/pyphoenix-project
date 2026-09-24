@@ -2,18 +2,19 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Fmi(Package):
     dfn_name: ClassVar[str] = "gwe-fmi"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Packagedata(Item):
         flowtype: Union[float, str] = field()
         fname: Path = path(converter=Path, direction="in")
@@ -31,7 +32,7 @@ class Fmi(Package):
         optional=True,
         longname="correct for flow imbalance",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[SkipValidation[list[Packagedata]]] = field(
         default=None,
         block="packagedata",
     )

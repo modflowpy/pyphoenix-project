@@ -53,7 +53,7 @@ class FieldSpec:
 
 @dataclass
 class InnerClassFieldSpec:
-    """Pre-computed context for one field of an inner attrs class."""
+    """Pre-computed context for one field of an inner dataclass."""
 
     py_name: str
     type_annotation: str
@@ -64,7 +64,7 @@ class InnerClassFieldSpec:
 
 @dataclass
 class InnerClassSpec:
-    """Pre-computed context for a generated inner attrs class."""
+    """Pre-computed context for a generated inner dataclass."""
 
     class_name: str
     keyword: str
@@ -109,7 +109,7 @@ class PeriodArmSpec:
 @dataclass
 class ComputedFieldSpec:
     """Pre-computed context for a read-only computed property, replacing a
-    stored attrs field entirely -- e.g. ``maxbound``, derived live from
+    stored field entirely -- e.g. ``maxbound``, derived live from
     ``stress_period_data``'s row counts rather than stored and kept in
     sync by hand (see ``build_component_spec``'s ``_maxbound_is_computed``
     for when this applies)."""
@@ -159,7 +159,7 @@ def _schema_dict_from_columns(
     accumulated and attached as a 'prefix' key on the next value column so the
     codec can emit the fixed token(s) before the value. is_row_keyword columns
     (optional keywords, e.g. MIXED) get role 'inline_keyword'. aux columns are
-    excluded -- appended dynamically in __attrs_post_init__.
+    excluded -- appended dynamically in __post_init__.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
@@ -325,8 +325,8 @@ def _ml_field(
     Produces continuation lines pre-indented at 8 spaces (args) and 4 spaces
     (closing paren) so the Jinja template can render it verbatim after
     ``    {name}: {type} = ``. ``metadata`` here is the set of ``field()``/
-    ``path()`` kwargs (block, schema, fill_forward, ...), not a raw attrs
-    metadata dict -- generated fields are plain attrs fields, so they go
+    ``path()`` kwargs (block, schema, fill_forward, ...), not a raw
+    metadata dict -- generated fields are plain dataclass fields, so they go
     through the same passive-metadata constructors hand-written classes
     use for their scalar fields.
     """
@@ -580,7 +580,7 @@ def _build_record_class_specs(
     for child in data_children:
         _process_child(child)
 
-    # attrs requires fields with defaults to follow fields without defaults.
+    # Dataclass fields with defaults must follow fields without defaults.
     inner_fields.sort(key=lambda field: str(field.optional))
 
     words = _strip_record_words(f.name)
@@ -783,15 +783,35 @@ def _generated_imports(
     if typing_parts:
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 
-    third_party: list[str] = ["import attrs"]
+    # Bare pydantic Field() (as opposed to the flopy4.mf6.spec field()/
+    # path() wrappers, imported separately below via _spec_parts) is only
+    # ever emitted by the template for spec.inner_classes -- composed
+    # Record fields (e.g. Oc.Headprint.formatrecord). Every top-level
+    # package field and every item_class()-rendered Item/Record field
+    # routes through field()/path() instead. Confirmed empirically: a
+    # generated file with no inner_classes but an unconditional Field
+    # import left 49 F401 (unused import) errors across the regenerated
+    # corpus before this was scoped to has_inner_classes.
+    _pydantic_parts = ["Field"] if has_inner_classes else []
+    if has_period_schema:
+        # has_period_schema is already the OR of period_schema/block_schemas/
+        # period_arms (see the call site) -- SkipValidation is needed
+        # whenever any Item-list field is generated (see item.py's
+        # item_list_type()/Package._init_item_lists() for why: pydantic
+        # would otherwise validate a raw tuple/dict input eagerly).
+        _pydantic_parts.append("SkipValidation")
+    third_party: list[str] = []
+    if _pydantic_parts:
+        third_party.append(f"from pydantic import {', '.join(sorted(_pydantic_parts))}")
+    third_party.append("from pydantic.dataclasses import dataclass")
     if has_array:
         third_party.append("import numpy as np")
         third_party.append("from numpy.typing import NDArray")
 
     _base_imports = {
-        "Package": "from flopy4.mf6.package import Package",
-        "Solution": "from flopy4.mf6.solution import Solution",
-        "Context": "from flopy4.mf6.context import Context",
+        "Package": "from flopy4.mf6.package import CFG, Package",
+        "Solution": "from flopy4.mf6.solution import CFG, Solution",
+        "Context": "from flopy4.mf6.context import CFG, Context",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     if has_inner_classes:
@@ -910,7 +930,7 @@ def build_component_spec(
 
     for block_name, f in all_fields:
         if filters.is_list_field(f) and block_name in _bp_block_names:
-            continue  # covered by BlockPropertySpec; column attrs generated below
+            continue  # covered by BlockPropertySpec; column fields generated below
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
             union = filters.find_keystring_union(f)
@@ -1053,7 +1073,7 @@ def build_component_spec(
             FieldSpec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
-                type_annotation=f"Optional[list[{_item_cls_name}]]",
+                type_annotation=f"Optional[SkipValidation[list[{_item_cls_name}]]]",
                 spec_call=_ml_field(metadata=_meta),
                 generatable=True,
             )
@@ -1073,7 +1093,9 @@ def build_component_spec(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[_StressPeriodDataItem]]]",
+                type_annotation=(
+                    "Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]]"
+                ),
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
@@ -1084,13 +1106,13 @@ def build_component_spec(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[StressPeriodData]]]",
+                type_annotation="Optional[SkipValidation[dict[int, list[StressPeriodData]]]]",
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
         )
 
-    # READARRAY period fields → individual Optional[Int|FloatArrayLike] attrs
+    # READARRAY period fields → individual Optional[Int|FloatArrayLike]
     # fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period
     # array separately. Each field is a full-grid array passed directly by
     # the user; the egress side (unstructure.py's _unstructure_package)

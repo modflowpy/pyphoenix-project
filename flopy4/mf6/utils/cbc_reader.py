@@ -9,15 +9,18 @@ import dask.array
 import numpy as np
 import xarray as xr
 import xugrid as xu
-from attrs import define
 from flopy.discretization import StructuredGrid
+from pydantic import ConfigDict
+from pydantic.dataclasses import dataclass
 
 from flopy4.adapters import read_binary_grid_file
 from flopy4.mf6.utils.grid import get_coords
 from flopy4.mf6.utils.time import assign_datetime_coords
 
+_CFG = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
-@define
+
+@dataclass(config=_CFG)
 class Imeth1Header:
     kstp: int
     kper: int
@@ -32,7 +35,7 @@ class Imeth1Header:
     pos: int
 
 
-@define
+@dataclass(config=_CFG)
 class Imeth6Header:
     kstp: int
     kper: int

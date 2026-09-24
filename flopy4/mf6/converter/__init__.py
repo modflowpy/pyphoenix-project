@@ -34,7 +34,7 @@ def structure(data: dict[str, Any], path: Path) -> Component:
     component = COMPONENT_CONVERTER.structure(data, Component)
     if isinstance(component, Context):
         component.workspace = path.parent
-    component.filename = path.name
+    component.filename = Path(path.name)
     return component
 
 

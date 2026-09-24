@@ -294,7 +294,7 @@ def test_init_sim_explicit_dims():
     assert gwf.oc is oc
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
-    # k is stored as a plain attrs field; use to_xarray() for Dataset access
+    # k is stored as a plain field; use to_xarray() for Dataset access
     assert np.array_equal(sim.models["gwf"].npf.k, np.ones(100))
     assert np.array_equal(sim.models["gwf"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
 
@@ -536,7 +536,7 @@ def test_to_xarray_on_context(function_tmpdir):
     assert isinstance(dt, xr.DataTree)
     assert isinstance(dt.kper, xr.DataArray)
     assert np.array_equal(dt.kper, [0])
-    assert dt.attrs["filename"] == "mfsim.nam"
+    assert dt.attrs["filename"] == Path("mfsim.nam")
     assert dt.attrs["workspace"] == Path(function_tmpdir)
 
 
@@ -1598,15 +1598,13 @@ def test_disv_class_identity():
 
 def test_prt_dis_no_ncf():
     """prt.Dis and prt.Disv must not expose NCF fields."""
-    import attrs
-
     from flopy4.mf6 import prt
 
-    dis_field_names = {f.name for f in attrs.fields(prt.Dis)}
+    dis_field_names = set(prt.Dis.__pydantic_fields__)
     assert "ncf6_filerecord" not in dis_field_names
     assert "ncf" not in dis_field_names
 
-    disv_field_names = {f.name for f in attrs.fields(prt.Disv)}
+    disv_field_names = set(prt.Disv.__pydantic_fields__)
     assert "ncf6_filerecord" not in disv_field_names
     assert "ncf" not in disv_field_names
 
@@ -1721,7 +1719,7 @@ def test_explicit_parent_top_down():
 def test_explicit_parent_bottom_up_non_package():
     """The bottom-up (`parent=`) half of _parent tracking works for a
     non-Package component (Model/Context/Component's own chain), whose
-    own __attrs_post_init__ chains to Component's."""
+    own __post_init__ chains to Component's."""
     sim = Simulation()
     gwf = Gwf(parent=sim, name="gwf")
     assert gwf._parent is sim
@@ -1729,8 +1727,8 @@ def test_explicit_parent_bottom_up_non_package():
 
 def test_explicit_parent_bottom_up_package():
     """The bottom-up (`parent=`) half of `_parent` tracking also works
-    for a Package subclass, which requires Package.__attrs_post_init__
-    to chain to Component.__attrs_post_init__ via super() -- see that
+    for a Package subclass, which requires Package.__post_init__
+    to chain to Component.__post_init__ via super() -- see that
     method's own docstring for why the chaining order matters.
     """
     gwf = Gwf()
@@ -1768,3 +1766,47 @@ def test_parent_setter_detach():
     assert ic.parent is None
     assert ic._parent is None
     assert gwf.ic is None
+
+
+def test_eq_ignores_dims_and_parent():
+    """Equality ignores `dims` and `_parent`, on subclasses too (each
+    generated dataclass gets its own `__eq__`)."""
+    assert Ims(dims={"nodes": 3}) == Ims(dims={"nodes": 4})
+    assert Ims(parent=Simulation()) == Ims()
+    assert Ims(inner_maximum=10) != Ims(inner_maximum=20)
+
+
+def test_filename_is_path():
+    """`filename` accepts a str or Path, is stored as a Path, and goes into
+    the name file with POSIX separators."""
+    from pathlib import PureWindowsPath
+
+    from flopy4.mf6.codec.writer.filters import quote_if_needed
+    from flopy4.mf6.converter.binding import Binding
+
+    ic = Ic(filename="gwf.ic")
+    assert ic.filename == Path("gwf.ic")
+    ic.filename = Path("sub") / "gwf.ic"
+    assert Binding.from_component(ic).fname == "sub/gwf.ic"
+    assert quote_if_needed(PureWindowsPath("sub\\gwf.ic")) == "sub/gwf.ic"
+
+
+def test_external_array_path_is_posix():
+    """An external array's OPEN/CLOSE path is written with POSIX separators."""
+    from pathlib import PureWindowsPath
+
+    from flopy4.mf6.codec.writer import _JINJA_ENV
+
+    macros = _JINJA_ENV.get_template("macros.jinja").module
+    out = str(macros.array("top", PureWindowsPath("data\\top.dat"), how="external"))  # type: ignore[attr-defined]
+    assert "OPEN/CLOSE data/top.dat" in out
+
+
+def test_layered_int_griddata_keeps_int_dtype():
+    # A scalar layered integer array (idomain=1) is repeated per layer in
+    # _coerce_griddata; it must stay integer, or it's written as a float
+    # CONSTANT, which some MF6 builds reject for an integer array.
+    from flopy4.mf6.gwf import Dis
+
+    dis = Dis(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1)
+    assert dis.idomain.dtype == np.int64
