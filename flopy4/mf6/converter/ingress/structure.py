@@ -1,7 +1,8 @@
 import struct
 from abc import ABC
 from pathlib import Path
-from typing import Any, get_args, get_origin
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -28,11 +29,12 @@ def _inner_class_type(field_type) -> type[Record] | None:
     return None
 
 
-def _is_list_type(field_type) -> bool:
-    """Whether field_type is list[...] or Optional[list[...]]."""
-    if get_origin(field_type) is list:
-        return True
-    return any(get_origin(arg) is list for arg in get_args(field_type))
+def _strip_optional(field_type):
+    """T for Optional[T], else field_type unchanged."""
+    if get_origin(field_type) not in (Union, UnionType):
+        return field_type
+    args = [a for a in get_args(field_type) if a is not NoneType]
+    return args[0] if len(args) == 1 else field_type
 
 
 def _parse_rows(
@@ -739,9 +741,10 @@ def structure_component(
             # Take what the field's type needs from the row; MF6 ignores
             # anything after it (often an inline comment, or a second value
             # like IMS's `UNDER_RELAXATION NONE DBD`).
-            if len(row) == 1 or to_field_type(f.type) == "keyword":
+            t = _strip_optional(f.type)
+            if t is bool:
                 kwargs[init_key] = True
-            elif _is_list_type(f.type) or isinstance(f.metadata.get("shape"), tuple):
+            elif get_origin(t) is list:
                 # inline arrays (AUXILIARY, etc.), even with one element
                 kwargs[init_key] = list(row[1:])
             else:
