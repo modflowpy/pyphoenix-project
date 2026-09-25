@@ -782,3 +782,23 @@ def test_typed_grammar_repeating_block_double_header(tmp_path):
     result = transformer.transform(parser.parse("BEGIN TIME 1.5\n    X CONSTANT 1.0\nEND TIME\n"))
 
     assert 1.5 in result["time"]
+
+
+def test_typed_loads_filename_with_leading_digit(dfn_path):
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed(
+        "BEGIN options\n  ts6 filein 1model.ts\nEND options\n", "gwf-chd", dfn_path=dfn_path
+    )
+    assert result["options"]["ts_filerecord"]["ts6_filename"] == "1model.ts"
+
+
+def test_typed_loads_iso_datetime(dfn_path):
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed(
+        "BEGIN options\n  start_date_time 1997-07-16T19:20:30.45+01:00\nEND options\n",
+        "sim-tdis",
+        dfn_path=dfn_path,
+    )
+    assert result["options"]["start_date_time"] == "1997-07-16T19:20:30.45+01:00"
