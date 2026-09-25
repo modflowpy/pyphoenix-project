@@ -58,14 +58,19 @@ open_close_redirect: "open/close"i filename [_remark] _NL
 %import common.WS_INLINE
 %import common.CNAME
 %import common.WORD
-%import common.NUMBER
-%import common.INT
 %import common.SH_COMMENT
 %import common.ESCAPED_STRING
-%import common.SIGNED_NUMBER
-%import common.SIGNED_INT
 
 COMMA: ","
 %ignore WS_INLINE
 %ignore SH_COMMENT
 %ignore COMMA
+
+// common's number terminals, but only as a whole token. Otherwise a token
+// that starts like a number lexes as a number followed by a word, e.g. an
+// ISO datetime `1997-07-16T19:20:30` as `1997`, `-07`, `-16` and
+// `T19:20:30`.
+INT: /\d+(?![^\s,#])/
+SIGNED_INT: /[+-]\d+(?![^\s,#])/
+NUMBER: /(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#])/
+SIGNED_NUMBER: /[+-](\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?(?![^\s,#])/
