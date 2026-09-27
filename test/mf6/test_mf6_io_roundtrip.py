@@ -29,11 +29,6 @@ XFAIL = {
         "mf6/test/test120_mv_dis-lgr",
         "mf6/test/test120_mv_dis-lgr_3models",
     },
-    # a model file in a subdirectory of the workspace can't be written
-    # because the subdirectory isn't created
-    "writer doesn't create model subdirectories": {
-        "mf6/test/test031_many_gwf",
-    },
     # an option row with trailing tokens (a comment, or a second keyword
     # like IMS `UNDER_RELAXATION DBD`) loads as a list of tokens
     "ingress keeps trailing option tokens": {
