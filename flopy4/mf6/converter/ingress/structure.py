@@ -1,8 +1,7 @@
 import struct
 from abc import ABC
 from pathlib import Path
-from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -14,6 +13,7 @@ from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_it
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
+from flopy4.utils import unwrap_optional
 
 
 def _inner_class_type(field_type) -> type[Record] | None:
@@ -27,14 +27,6 @@ def _inner_class_type(field_type) -> type[Record] | None:
         if isinstance(arg, type) and issubclass(arg, Record) and "_keyword" in vars(arg):
             return arg
     return None
-
-
-def _strip_optional(field_type):
-    """T for Optional[T], else field_type unchanged."""
-    if get_origin(field_type) not in (Union, UnionType):
-        return field_type
-    args = [a for a in get_args(field_type) if a is not NoneType]
-    return args[0] if len(args) == 1 else field_type
 
 
 def _parse_rows(
@@ -741,7 +733,7 @@ def structure_component(
             # Take what the field's type needs from the row; MF6 ignores
             # anything after it (often an inline comment, or a second value
             # like IMS's `UNDER_RELAXATION NONE DBD`).
-            t = _strip_optional(f.type)
+            t = unwrap_optional(f.type)
             if t is bool:
                 kwargs[init_key] = True
             elif get_origin(t) is list:
@@ -752,8 +744,7 @@ def structure_component(
 
     naux = 0
     if "auxiliary" in kwargs:
-        aux_opt = kwargs["auxiliary"]
-        naux = len(aux_opt) if isinstance(aux_opt, list) else 1
+        naux = len(kwargs["auxiliary"])
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a
