@@ -126,7 +126,7 @@ class WriteContext:
         """
         import sys
 
-        options = {"linewidth": sys.maxsize, "threshold": sys.maxsize}
+        options: dict[str, int | str] = {"linewidth": sys.maxsize, "threshold": sys.maxsize}
         if self.float_precision is None:
             options["floatmode"] = "unique"
         else:
