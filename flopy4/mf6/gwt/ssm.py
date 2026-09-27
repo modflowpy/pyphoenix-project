@@ -2,24 +2,25 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Ssm(Package):
     dfn_name: ClassVar[str] = "gwt-ssm"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Sources(Item):
         pname: Union[float, str] = field()
         srctype: Union[float, str] = field()
         auxname: Union[float, str] = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Fileinput(Item):
         pname: Union[float, str] = field()
         spc6_filename: Path = path(converter=Path, direction="in", keyword="spc6")
@@ -37,12 +38,12 @@ class Ssm(Package):
         optional=True,
         longname="save calculated flows to budget file",
     )
-    sources: Optional[list[Sources]] = field(
+    sources: Optional[SkipValidation[list[Sources]]] = field(
         default=None,
         block="sources",
         write_if_empty=True,
     )
-    fileinput: Optional[list[Fileinput]] = field(
+    fileinput: Optional[SkipValidation[list[Fileinput]]] = field(
         default=None,
         block="fileinput",
     )

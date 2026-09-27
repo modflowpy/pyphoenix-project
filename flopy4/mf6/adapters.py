@@ -3,7 +3,6 @@ import types
 from typing import Optional, Union, get_args, get_origin
 from warnings import warn
 
-import attrs
 import numpy as np
 from flopy.datbase import DataInterface, DataListInterface, DataType
 from flopy.discretization.grid import Grid
@@ -12,10 +11,12 @@ from flopy.export.utils import model_export, package_export
 from flopy.mbase import ModelInterface
 from flopy.pakbase import PackageInterface
 from flopy.plot.plotutil import PlotUtilities
+from pydantic.dataclasses import is_pydantic_dataclass
 
-from flopy4.attrs_xarray import attrs_to_dataset
+from flopy4.dataclass_xarray import dataclass_to_dataset
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.spec import field_meta, pydantic_fields
 
 
 def _to_numpy(val):
@@ -35,7 +36,7 @@ def _resolve_leaf_type(annotation) -> "type | None":
     `NDArray[np.float64]`) down to the concrete runtime type
     `Flopy3Data` dispatches on (`bool`/`int`/`float`/`str`/`np.ndarray`).
 
-    Returns `None` for anything else (a nested attrs/Component type,
+    Returns `None` for anything else (a nested Component type,
     `Path`, `datetime`, `Record`, a bare `dict`/`list` period field, ...)
     -- those aren't representable as a single flopy3 `Data` leaf.
     """
@@ -207,7 +208,7 @@ class Flopy3Package(PackageInterface):
     ):
         self._model = model
         self._package = package
-        self._dataset = attrs_to_dataset(package)
+        self._dataset = dataclass_to_dataset(package)
         if modelgrid:
             self._grid = modelgrid
         elif model:
@@ -217,13 +218,13 @@ class Flopy3Package(PackageInterface):
         self._time = modeltime
         self._dlist = list()
 
-        field_by_name = {f.name: f for f in attrs.fields(type(package))}
+        field_by_name = dict(pydantic_fields(type(package)))
 
         for a, value in self._dataset.attrs.items():
             field = field_by_name.get(a)
             if field is None or value is None:
                 continue
-            leaf_type = _resolve_leaf_type(field.type)
+            leaf_type = _resolve_leaf_type(field.annotation)
             if leaf_type is None:
                 continue
             d_fp3 = Flopy3Data(
@@ -238,7 +239,7 @@ class Flopy3Package(PackageInterface):
             self._dlist.append(d_fp3)
 
         for v, data_array in self._dataset.data_vars.items():
-            field = field_by_name.get(v)
+            field = field_by_name.get(str(v))
             if field is None:
                 continue
             d_fp3 = Flopy3Data(
@@ -291,14 +292,13 @@ class Flopy3Package(PackageInterface):
         # Any other fill-forward (period) field (covers OC's own
         # _stress_period_data too, redundantly with the check above -- kept
         # as a generic fallback for any period field shape).
-        try:
-            for f in attrs.fields(type(self._package)):
-                if f.metadata.get("fill_forward"):
-                    attr_name = f.alias if (f.alias and f.name.startswith("_")) else f.name
+        if is_pydantic_dataclass(type(self._package)):
+            for name, f in pydantic_fields(type(self._package)).items():
+                meta = field_meta(f)
+                if isinstance(meta, dict) and meta.get("fill_forward"):
+                    attr_name = f.alias if (f.alias and name.startswith("_")) else name
                     if getattr(self._package, attr_name, None) is not None:
                         return True
-        except attrs.exceptions.NotAnAttrsClassError:
-            pass
         return "nper" in self._dataset.dims
 
     def check(self, f=None, verbose=True, level=1, checktype=None):

@@ -2,62 +2,63 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
+from pydantic import Field, SkipValidation
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import CFG, Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Oc(Package):
     dfn_name: ClassVar[str] = "gwe-oc"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Format(Record):
         _keyword: ClassVar[str] = ""
-        format_: str = attrs.field()
-        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        format_: str = Field()
+        columns: Optional[int] = Field(default=None, json_schema_extra={"tagged": True})
+        width: Optional[int] = Field(default=None, json_schema_extra={"tagged": True})
+        digits: Optional[int] = Field(default=None, json_schema_extra={"tagged": True})
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Temperatureprint(Record):
         _keyword: ClassVar[str] = "temperature"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
-        formatrecord: "Oc.Format" = attrs.field()
+        formatrecord: "Oc.Format" = Field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class All(Item):
         _keyword: ClassVar[str] = "all"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class First(Item):
         _keyword: ClassVar[str] = "first"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Last(Item):
         _keyword: ClassVar[str] = "last"
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Frequency(Item):
         _keyword: ClassVar[str] = "frequency"
         frequency: int = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Steps(Item):
         _keyword: ClassVar[str] = "steps"
         steps: tuple = field(default=(), array=True)
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Save(Item):
         _keyword: ClassVar[str] = "save"
         rtype: Union[float, str] = field()
         ocsetting: "Oc.All | Oc.First | Oc.Last | Oc.Frequency | Oc.Steps" = field()
 
-    @attrs.define
+    @dataclass(config=CFG)
     class Print(Item):
         _keyword: ClassVar[str] = "print"
         rtype: Union[float, str] = field()
@@ -93,7 +94,7 @@ class Oc(Package):
         default=None,
         block="options",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[SkipValidation[dict[int, list[_StressPeriodDataItem]]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,

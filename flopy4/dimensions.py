@@ -2,7 +2,9 @@
 
 from typing import Protocol, runtime_checkable
 
-import attrs
+from pydantic.dataclasses import is_pydantic_dataclass
+
+from flopy4.spec import field_meta, pydantic_fields
 
 
 @runtime_checkable
@@ -97,21 +99,21 @@ class DimensionResolverMixin:
     Attributes
     ----------
     _dimension_cache : dict[str, int]
-        Cache of resolved dimensions (stored as instance variable, not attrs field)
+        Cache of resolved dimensions (stored as instance variable, not a dataclass field)
     """
 
     @property
     def _dimension_cache(self) -> dict:
-        # Lazily initialize in __dict__ directly rather than as a real attrs
-        # field: avoids needing a mutable-default Factory, and doesn't
-        # depend on __attrs_post_init__ chaining order across mixins.
+        # Lazily initialize in __dict__ directly rather than as a real
+        # dataclass field: avoids a mutable default, and doesn't depend on
+        # __post_init__ chaining order across mixins.
         if "_dimension_cache" not in self.__dict__:
             self.__dict__["_dimension_cache"] = {}
         return self.__dict__["_dimension_cache"]
 
-    def __attrs_post_init__(self) -> None:
-        if hasattr(super(), "__attrs_post_init__"):
-            super().__attrs_post_init__()  # type: ignore[misc]
+    def __post_init__(self) -> None:
+        if hasattr(super(), "__post_init__"):
+            super().__post_init__()  # type: ignore[misc]
 
     def resolve_dims(self, *dims: str) -> dict[str, int]:
         """
@@ -191,19 +193,19 @@ class DimensionResolverMixin:
 
     def _walk_providers(self):
         """Yield (source_label, dims_dict) for each DimensionProvider in child fields."""
-        for field_obj in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if (value := getattr(self, field_obj.name, None)) is None:
+        for name in pydantic_fields(type(self)):
+            if (value := getattr(self, name, None)) is None:
                 continue
             if isinstance(value, DimensionProvider):
-                yield field_obj.name, value.get_dims()
+                yield name, value.get_dims()
             elif isinstance(value, dict):
                 for child_key, child in value.items():
                     if isinstance(child, DimensionProvider):
-                        yield f"{field_obj.name}[{child_key}]", child.get_dims()
+                        yield f"{name}[{child_key}]", child.get_dims()
             elif isinstance(value, list):
                 for idx, child in enumerate(value):
                     if isinstance(child, DimensionProvider):
-                        yield f"{field_obj.name}[{idx}]", child.get_dims()
+                        yield f"{name}[{idx}]", child.get_dims()
 
     def _get_all_dimensions(self) -> dict[str, int]:
         """Get all dimensions from children and parent. Children take precedence."""
@@ -271,10 +273,11 @@ def validate_dimension_resolution(component) -> list[str]:
     errors = []
 
     # Check all array fields on this component
-    for field in attrs.fields(type(component)):
+    for name, finfo in pydantic_fields(type(component)).items():
         # Check if field has dimension metadata
-        if hasattr(field, "metadata") and field.metadata and "dims" in field.metadata:
-            dims_needed = field.metadata["dims"]
+        meta = field_meta(finfo)
+        if isinstance(meta, dict) and "dims" in meta:
+            dims_needed = meta["dims"]
             # Check if this component has a parent and can resolve dimensions
             if hasattr(component, "_parent") and component._parent:
                 if hasattr(component._parent, "resolve_dims"):
@@ -282,40 +285,26 @@ def validate_dimension_resolution(component) -> list[str]:
                         result = component._parent.resolve_dims(dim)
                         if dim not in result:
                             errors.append(
-                                f"{type(component).__name__}.{field.name} needs dimension '{dim}' "
+                                f"{type(component).__name__}.{name} needs dimension '{dim}' "
                                 f"but it's not available in parent hierarchy"
                             )
 
     # Recursively validate children
-    for field in attrs.fields(type(component)):
-        value = getattr(component, field.name, None)
+    for name in pydantic_fields(type(component)):
+        value = getattr(component, name, None)
         if value is None:
             continue
 
-        # Check if child is a component with attrs fields
-        if hasattr(value, "__class__") and hasattr(attrs, "fields"):
-            try:
-                attrs.fields(type(value))
-                # It's an attrs class, validate it
-                errors.extend(validate_dimension_resolution(value))
-            except Exception:
-                # Not an attrs class, skip
-                pass
+        # Check if child is a pydantic dataclass instance
+        if is_pydantic_dataclass(type(value)):
+            errors.extend(validate_dimension_resolution(value))
         elif isinstance(value, dict):
             for child in value.values():
-                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
-                    try:
-                        attrs.fields(type(child))
-                        errors.extend(validate_dimension_resolution(child))
-                    except Exception:
-                        pass
+                if is_pydantic_dataclass(type(child)):
+                    errors.extend(validate_dimension_resolution(child))
         elif isinstance(value, list):
             for child in value:
-                if hasattr(child, "__class__") and hasattr(attrs, "fields"):
-                    try:
-                        attrs.fields(type(child))
-                        errors.extend(validate_dimension_resolution(child))
-                    except Exception:
-                        pass
+                if is_pydantic_dataclass(type(child)):
+                    errors.extend(validate_dimension_resolution(child))
 
     return errors

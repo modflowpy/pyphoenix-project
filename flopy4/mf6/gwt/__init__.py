@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import ClassVar, Optional
 
-import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwt.adv import Adv
@@ -19,7 +19,7 @@ from flopy4.mf6.gwt.mvt import Mvt
 from flopy4.mf6.gwt.oc import Oc
 from flopy4.mf6.gwt.src import Src
 from flopy4.mf6.gwt.ssm import Ssm
-from flopy4.mf6.model import Model
+from flopy4.mf6.model import CFG, Model
 from flopy4.mf6.spec import field, path
 from flopy4.utils import to_path
 
@@ -52,7 +52,7 @@ __all__ = [
 ]
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Gwt(Model):
     dfn_name: ClassVar[str] = "gwt-nam"
 
@@ -88,9 +88,9 @@ class Gwt(Model):
     adv: Adv | None = field(block="packages", default=None)
     dsp: Dsp | None = field(block="packages", default=None)
     mst: Mst | None = field(block="packages", default=None)
-    cnc: list[Cnc] = field(block="packages", default=attrs.Factory(list))
-    src: list[Src] = field(block="packages", default=attrs.Factory(list))
-    lkt: list[Lkt] = field(block="packages", default=attrs.Factory(list))
+    cnc: list[Cnc] = field(block="packages", default_factory=list)
+    src: list[Src] = field(block="packages", default_factory=list)
+    lkt: list[Lkt] = field(block="packages", default_factory=list)
     ssm: Ssm | None = field(block="packages", default=None)
     mvt: Mvt | None = field(block="packages", default=None)
     api: Api | None = field(block="packages", default=None)

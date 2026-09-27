@@ -1,11 +1,12 @@
 from os import PathLike
-from typing import ClassVar
+from pathlib import Path
+from typing import ClassVar, Optional
 from warnings import warn
 
-import attrs
 from modflow_devtools.misc import cd, run_cmd
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.context import Context, update_child_attr
+from flopy4.mf6.context import CFG, Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.solution import Solution
@@ -22,32 +23,34 @@ def convert_time(value):
     raise TypeError(f"Expected Time or Tdis, got {type(value)}")
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Simulation(Context):
     dfn_name: ClassVar[str] = "sim-nam"
 
-    tdis: Tdis = field(block="timing", converter=convert_time, default=attrs.Factory(Tdis))
-    models: dict[str, Model] = field(block="models", default=attrs.Factory(dict))
-    exchanges: dict[str, Exchange] = field(block="exchanges", default=attrs.Factory(dict))
-    solutions: dict[str, Solution] = field(block="solutiongroup", default=attrs.Factory(dict))
+    tdis: Tdis = field(block="timing", converter=convert_time, default_factory=Tdis)
+    models: dict[str, Model] = field(block="models", default_factory=dict)
+    exchanges: dict[str, Exchange] = field(block="exchanges", default_factory=dict)
+    solutions: dict[str, Solution] = field(block="solutiongroup", default_factory=dict)
 
     def default_filename(self) -> str:
         return "mfsim.nam"
 
-    def __attrs_post_init__(self):
-        from attrs import fields_dict
-
-        super().__attrs_post_init__()
-        if self.filename != "mfsim.nam":
+    def __post_init__(self, dims: Optional[dict] = None):
+        super().__post_init__(dims)
+        if self.filename != Path("mfsim.nam"):
             if self.filename is not None:
                 warn(
                     "Simulation filename must be 'mfsim.nam'.",
                     UserWarning,
                 )
-            self.filename = "mfsim.nam"
-        fields = fields_dict(type(self))
-        field = fields["workspace"]
-        update_child_attr(self, field, self.workspace)
+            self.filename = Path("mfsim.nam")
+        # Re-propagate workspace to Simulation's own children (models/
+        # exchanges/solutions/tdis) -- Context.__post_init__ (already run,
+        # via super() above) only saw whatever was attached at ITS point
+        # in the post-init chain; re-assigning through the property setter
+        # (see Context.workspace) re-runs the propagation now that every
+        # field on this concrete Simulation instance is attached.
+        self.workspace = self.workspace
 
     @property
     def time(self) -> Time:

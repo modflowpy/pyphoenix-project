@@ -5,7 +5,9 @@ from flopy4.mf6.spec import blocks, blocks_dict
 def test_blocks():
     block_spec = blocks(Gwf)
     options = block_spec[0]
-    assert options[-1].name == "netcdf_input_file"
+    options_by_name = blocks_dict(Gwf)["options"]
+    assert next(reversed(options_by_name)) == "netcdf_input_file"
+    assert len(options) == len(options_by_name)
 
 
 def test_blocks_dict():

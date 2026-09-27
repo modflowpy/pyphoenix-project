@@ -2,14 +2,14 @@
 
 from pathlib import Path
 
-import attrs
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import CFG, Component
 from flopy4.mf6.constants import MF6
 from flopy4.uio import DEFAULT_REGISTRY, IO, Loader, Registry, Writer
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class MockComponent(Component):
     """Minimal test component for IO testing."""
 
@@ -100,7 +100,7 @@ def test_loader_registry_subclass_lookup():
     """Test that registry correctly finds loaders for subclasses."""
     test_registry = Registry()
 
-    @attrs.define(kw_only=True, slots=False)
+    @dataclass(config=CFG, kw_only=True)
     class SubComponent(MockComponent):
         """Subclass of MockComponent."""
 

@@ -254,7 +254,7 @@ class TestFilters:
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
         result = item_class(schema, "Packagedata")
-        assert "@attrs.define" in result
+        assert "@dataclass(config=CFG)" in result
         assert "class Packagedata(Item):" in result
         assert "ifno: int = field(index=True, pk=True)" in result
         assert "strt: float" in result
@@ -370,7 +370,7 @@ class TestSimpleTierComponentSpec:
             + spec.imports.get("third_party", [])
             + spec.imports.get("flopy4", [])
         )
-        assert "attrs" in all_imports
+        assert "pydantic" in all_imports
         assert "Package" in all_imports
 
     def test_outpath(self, dfn_name, expected_class, expected_base, all_dfns):
@@ -424,7 +424,7 @@ class TestSolutionTierComponentSpec:
             + spec.imports.get("third_party", [])
             + spec.imports.get("flopy4", [])
         )
-        assert "attrs" in all_imports
+        assert "pydantic" in all_imports
         assert "Solution" in all_imports
         assert "ClassVar" in all_imports
 
@@ -458,7 +458,8 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     assert spec.period_schema, "MVR should have a period_schema"
     assert "_stress_period_data" in field_map
     spd_field = field_map["_stress_period_data"]
-    assert spd_field.type_annotation == "Optional[dict[int, list[StressPeriodData]]]"
+    expected_type = "Optional[SkipValidation[dict[int, list[StressPeriodData]]]]"
+    assert spd_field.type_annotation == expected_type
     # Packages block → single recarray field
     assert "packages" in field_map or "packages" in spec.block_schemas
 
@@ -501,7 +502,7 @@ class TestBlockPropertySpec:
         assert bp.dim_is_dfn_declared is True
 
     def test_lak_ifno_collision_prefixed(self, lak_spec):
-        # ifno appears in packagedata, connectiondata, and tables — all get block-prefixed attrs
+        # ifno appears in packagedata, connectiondata, and tables — all get block-prefixed fields
         for block in ("packagedata", "connectiondata", "tables"):
             bp = next(b for b in lak_spec.block_properties if b.block_name == block)
             assert bp.attr_name_map.get("ifno") == f"{block}_ifno", (

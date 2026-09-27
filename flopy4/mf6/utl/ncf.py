@@ -1,16 +1,16 @@
 from typing import ClassVar, Optional
 from warnings import warn
 
-import attrs
 import numpy as np
 from numpy.typing import NDArray
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.spec import field
-from flopy4.mf6.utl.ncf_base import NcfBase
+from flopy4.mf6.utl.ncf_base import CFG, NcfBase
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Ncf(NcfBase):
     dfn_name: ClassVar[str] = "utl-ncf"
 

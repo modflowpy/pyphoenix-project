@@ -1,11 +1,11 @@
 from typing import ClassVar, Optional
 
-import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.model import Model
+from flopy4.mf6.model import CFG, Model
 from flopy4.mf6.prt.dis import Dis
 from flopy4.mf6.prt.disv import Disv
 from flopy4.mf6.prt.fmi import Fmi
@@ -36,7 +36,7 @@ __all__ = [
 ]
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Prt(Model):
     dfn_name: ClassVar[str] = "prt-nam"
 
@@ -48,7 +48,7 @@ class Prt(Model):
     fmi: Fmi | None = field(block="packages", default=None)
     mip: Mip | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
-    prp: list[Prp] = field(block="packages", default=attrs.Factory(list))
+    prp: list[Prp] = field(block="packages", default_factory=list)
 
     @property
     def grid(self):

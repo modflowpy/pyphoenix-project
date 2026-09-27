@@ -1,15 +1,15 @@
 from typing import ClassVar, Optional
 
-import attrs
 import numpy as np
 from numpy.typing import NDArray
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.gwf.disbase import DisBase
+from flopy4.mf6.gwf.disbase import CFG, DisBase
 from flopy4.mf6.spec import field
 from flopy4.mf6.utils.grid import StructuredGrid
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Dis(DisBase):
     dfn_name: ClassVar[str] = "prt-dis"
 
@@ -23,7 +23,7 @@ class Dis(DisBase):
     nlay: int = field(default=1, block="dimensions")
     ncol: int = field(default=2, block="dimensions")
     nrow: int = field(default=2, block="dimensions")
-    delr: NDArray[np.float64] = field(
+    delr: Optional[NDArray[np.float64]] = field(
         default=1.0,
         longname="spacing along a row",
         block="griddata",
@@ -31,7 +31,7 @@ class Dis(DisBase):
         layered=False,
         netcdf=False,
     )
-    delc: NDArray[np.float64] = field(
+    delc: Optional[NDArray[np.float64]] = field(
         default=1.0,
         longname="spacing along a column",
         block="griddata",
@@ -39,7 +39,7 @@ class Dis(DisBase):
         layered=False,
         netcdf=False,
     )
-    top: NDArray[np.float64] = field(
+    top: Optional[NDArray[np.float64]] = field(
         default=1.0,
         longname="cell top elevation",
         block="griddata",
@@ -47,7 +47,7 @@ class Dis(DisBase):
         layered=False,
         netcdf=False,
     )
-    botm: NDArray[np.float64] = field(
+    botm: Optional[NDArray[np.float64]] = field(
         default=0.0,
         longname="cell bottom elevation",
         block="griddata",
@@ -64,12 +64,12 @@ class Dis(DisBase):
         netcdf=False,
     )
 
-    def __attrs_post_init__(self):
+    def __post_init__(self, dims: Optional[dict] = None):
         self.nodes = self.ncol * self.nrow * self.nlay
         self.ncpl = self.ncol * self.nrow
         self.nvert = (self.ncol + 1) * (self.nrow + 1)
         self._coerce_griddata()
-        super().__attrs_post_init__()
+        super().__post_init__(dims)
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions."""

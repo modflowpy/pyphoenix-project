@@ -1,13 +1,13 @@
 from pathlib import Path
 from typing import ClassVar, Optional, Union
 
-import attrs
 import xarray as xr
 import xugrid as xu
-from attrs import define
 from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
+from pydantic import Field
+from pydantic.dataclasses import dataclass
 
 from flopy4.mf6.gwf.buy import Buy
 from flopy4.mf6.gwf.chd import Chd
@@ -35,7 +35,7 @@ from flopy4.mf6.gwf.sto import Sto
 from flopy4.mf6.gwf.vsc import Vsc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.gwf.welg import Welg
-from flopy4.mf6.model import Model
+from flopy4.mf6.model import CFG, Model
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
@@ -85,18 +85,18 @@ def convert_grid(value):
     raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
 
 
-@attrs.define(kw_only=True, slots=False)
+@dataclass(config=CFG, kw_only=True)
 class Gwf(Model):
     dfn_name: ClassVar[str] = "gwf-nam"
 
-    @define
+    @dataclass(config=CFG)
     class NewtonOptions:
         newton: bool = field()
         under_relaxation: bool = field()
 
-    @define
+    @dataclass(config=CFG)
     class Output:
-        parent: "Gwf" = attrs.field(repr=False)
+        parent: "Gwf" = Field(repr=False)
 
         @property
         def head(self) -> xr.DataArray | xu.UgridDataArray:
@@ -179,20 +179,26 @@ class Gwf(Model):
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
     buy: Buy | None = field(block="packages", default=None)
-    chd: list[Union[Chd, Chdg]] = field(block="packages", default=attrs.Factory(list))
-    drn: list[Union[Drn, Drng]] = field(block="packages", default=attrs.Factory(list))
-    evt: list[Union[Evt, Evta]] = field(block="packages", default=attrs.Factory(list))
-    ghb: list[Union[Ghb, Ghbg]] = field(block="packages", default=attrs.Factory(list))
-    rch: list[Union[Rch, Rcha]] = field(block="packages", default=attrs.Factory(list))
-    riv: list[Union[Riv, Rivg]] = field(block="packages", default=attrs.Factory(list))
-    csub: list[Csub] = field(block="packages", default=attrs.Factory(list))
-    lak: list[Lak] = field(block="packages", default=attrs.Factory(list))
+    chd: list[Union[Chd, Chdg]] = field(block="packages", default_factory=list)
+    drn: list[Union[Drn, Drng]] = field(block="packages", default_factory=list)
+    evt: list[Union[Evt, Evta]] = field(block="packages", default_factory=list)
+    ghb: list[Union[Ghb, Ghbg]] = field(block="packages", default_factory=list)
+    rch: list[Union[Rch, Rcha]] = field(block="packages", default_factory=list)
+    riv: list[Union[Riv, Rivg]] = field(block="packages", default_factory=list)
+    csub: list[Csub] = field(block="packages", default_factory=list)
+    lak: list[Lak] = field(block="packages", default_factory=list)
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
-    wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
-    output: Output = attrs.field(
-        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
-    )
+    wel: list[Union[Wel, Welg]] = field(block="packages", default_factory=list)
+    # Needs the instance to build, which default_factory can't see, so
+    # it's Optional and filled in by __post_init__ below (same pattern as
+    # Component.name).
+    output: Optional[Output] = Field(default=None, repr=False)
+
+    def __post_init__(self, dims: Optional[dict] = None):
+        super().__post_init__(dims)
+        if self.output is None:
+            self.output = Gwf.Output(self)
 
     @property
     def grid(self) -> Grid:

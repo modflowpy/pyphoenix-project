@@ -1,12 +1,14 @@
 from abc import ABC
 from pathlib import Path
+from typing import Any, Optional
 
-import attrs
 import numpy as np
 import pandas as pd
 import xarray as xr
+from pydantic import field_validator
+from pydantic.dataclasses import dataclass
 
-from flopy4.mf6.component import Component
+from flopy4.mf6.component import CFG, Component
 from flopy4.mf6.item import (
     Item,
     construct_item,
@@ -15,6 +17,7 @@ from flopy4.mf6.item import (
     normalize_aux_keys,
 )
 from flopy4.mf6.spec import to_field_type
+from flopy4.spec import field_meta, pydantic_fields
 
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
 # full array.
@@ -27,9 +30,67 @@ _DTYPE_MAP: dict = {
 }
 
 
-@attrs.define(kw_only=True, slots=False)
+def _is_dask_array(v: Any) -> bool:
+    try:
+        from dask.array import Array as _DaskArray
+    except ImportError:
+        return False
+    return isinstance(v, _DaskArray)
+
+
+@dataclass(config=CFG, kw_only=True)
 class Package(Component, ABC):
-    def __attrs_post_init__(self) -> None:
+    # A griddata field's *declared* type is an array type (NDArray[...]/
+    # FloatArrayLike/IntArrayLike), but its value is often a bare scalar
+    # (e.g. `strt: FloatArrayLike = field(default=1.0, ...)`) that only
+    # becomes a real array once dims are known, in __post_init__'s
+    # _broadcast_griddata. Pydantic doesn't validate defaults (no
+    # validate_default=True), but an explicit scalar override would fail
+    # the array type check without this coercion. One shared
+    # `field_validator("*", mode="before")`,
+    # driven by each field's own `json_schema_extra["shape"]` (which
+    # `spec.field()` already emits today), covers every griddata field on
+    # every subclass -- not one per field, not one per generated class.
+    @field_validator("*", mode="before")
+    @classmethod
+    def _coerce_arrays(cls, v: Any, info) -> Any:
+        finfo = pydantic_fields(cls).get(info.field_name)
+        if finfo is None or v is None:
+            return v
+        meta = field_meta(finfo)
+        if not (isinstance(meta, dict) and meta.get("block") == "griddata" and meta.get("shape")):
+            return v
+        if isinstance(v, np.ndarray) or _is_dask_array(v):
+            # Already a real ndarray, or specifically a dask.array.Array
+            # (the one duck array actually exercised here -- see
+            # codec/writer/filters.py's array2chunks). np.asarray() below
+            # would materialize a dask array into a real ndarray, losing
+            # its laziness (confirmed by running the real dask-array
+            # griddata test), so it's passed through untouched. Anything
+            # ELSE duck-array-shaped (an xr.DataArray, notably -- confirmed
+            # by running Disv.from_grid() with a DataArray-backed grid) is
+            # NOT preserved as-is: some hand-written fields (Dis/Disv's
+            # own top/botm/delr/delc/iv/xv/yv) declare the stricter
+            # NDArray[...] rather than the _ArrayLike Protocol most
+            # generated griddata fields use, and only real np.ndarray
+            # satisfies that -- so it still needs materializing below.
+            return v
+        dtype = _DTYPE_MAP.get(to_field_type(finfo.annotation), np.float64)
+        if isinstance(v, dict):
+            # An empty-dict griddata value (e.g. Chd(dims={}) with no
+            # explicit scalar override) is _broadcast_griddata's own
+            # "use the field's own scalar default" signal, but it can't
+            # pass the NDArray/_ArrayLike type check (and np.asarray({})
+            # raises). Pre-resolve it into the same
+            # 0-d default-valued array a bare scalar default produces here
+            # -- _broadcast_griddata's existing size==1 branch (added for
+            # that scalar case) picks it up and broadcasts it exactly the
+            # same way.
+            default = finfo.default if isinstance(finfo.default, (int, float)) else 0
+            return np.asarray(default, dtype=dtype)
+        return np.asarray(v, dtype=dtype)
+
+    def __post_init__(self, dims: Optional[dict] = None) -> None:
         """Post-init for Package subclasses.
 
         Handles three concerns in order:
@@ -37,75 +98,71 @@ class Package(Component, ABC):
            auto-set n<block>s.
         2. Broadcast scalar griddata values to their DFN shape when dims
            is supplied (e.g. IC(strt=1.0, dims={"nodes": 900})).
-        3. Chain to Component.__attrs_post_init__() via super() -- LAST,
-           after 1-2, in every exit path (including the two early
-           returns below). Several of a package's own fields (e.g.
-           griddata arrays default to a bare scalar/dict until step 2
-           broadcasts them) aren't in their final shape until steps 1-2
-           finish, and Component.__attrs_post_init__() (via
-           DimensionResolverMixin's chain and _set_child_parents(),
-           which walks every attrs field) reads them -- so chaining
-           before they're finalized breaks griddata broadcasting and
-           dims resolution. Matches the ordering DisBase/Dis already use
-           for their own __attrs_post_init__ chaining (super() called
-           last, after their own field setup).
+        3. Chain to Component.__post_init__() via super() -- LAST, after
+           1-2, in every exit path (including the early return below).
+           Several of a package's own fields (e.g. griddata arrays
+           default to a bare scalar/dict until step 2 broadcasts them)
+           aren't in their final shape until steps 1-2 finish, and
+           Component.__post_init__() (via DimensionResolverMixin's chain
+           and _set_child_parents(), which walks every field) reads them
+           -- so chaining before they're finalized breaks griddata
+           broadcasting and dims resolution. Matches the ordering
+           DisBase/Dis already use for their own __post_init__ chaining
+           (super() called last, after their own field setup).
         """
-        import attrs as _attrs
-
-        # Detect schema-driven fields by presence of 'block' in field metadata.
-        # Package subclasses with no fields of their own (e.g. the
-        # Gwfgwe/Gwfgwt/Gwfprt exchange leaves in flopy4/mf6/exg/ -- just
-        # dfn_name, no declared fields) no-op through the rest of this method.
-        try:
-            fields = _attrs.fields(type(self))  # type: ignore[arg-type]
-        except _attrs.exceptions.NotAnAttrsClassError:
-            super().__attrs_post_init__()
-            return
-        if not any(f.metadata.get("block") is not None for f in fields):
-            super().__attrs_post_init__()
+        # Detect schema-driven fields by presence of 'block' in field
+        # json_schema_extra. Package subclasses with no fields of their
+        # own (e.g. the Gwfgwe/Gwfgwt/Gwfprt exchange leaves in
+        # flopy4/mf6/exg/ -- just dfn_name, no declared fields) still
+        # inherit Component's own fields (filename, name, ...), none of
+        # which carry block metadata, so this simply no-ops through the
+        # rest of this method for them.
+        fields = pydantic_fields(type(self))
+        if not any(field_meta(f).get("block") is not None for f in fields.values()):
+            super().__post_init__(dims)
             return
 
         # 1. Item-list coercion.
         self._init_item_lists(fields)
 
         # 2. Griddata broadcasting.
-        dims: dict = self.__dict__.get("dims") or {}
         if dims:
             self._broadcast_griddata(fields, dims)
 
         # 3. Chain to Component's own post-init -- see docstring above for
         # why this must run last, not first.
-        super().__attrs_post_init__()
+        super().__post_init__(dims)
 
     def _init_item_lists(self, fields) -> None:
         """Coerce raw list/dict block+period data into Item-list fields;
         auto-set n<block>s from the resulting list lengths. `maxbound`
         (where applicable) is a computed property instead, not set here.
 
-        Reads/writes the field's real attribute name (f.name) always --
-        aliases (e.g. _stress_period_data's "stress_period_data") only name
-        the __init__ parameter; the instance attribute (and __dict__ key
-        object.__setattr__ writes to) is still the real name.
+        Reads/writes the field's real attribute name (the dict key)
+        always -- aliases (e.g. _stress_period_data's "stress_period_data")
+        only name the __init__ parameter; the instance attribute (and
+        __dict__ key object.__setattr__ writes to) is still the real name.
         """
-        for f in fields:
-            block = f.metadata.get("block")
+        for name, f in fields.items():
+            meta = field_meta(f)
+            block = meta.get("block")
             if not block:
                 continue
-            item_cls = item_list_type(f.type)
+            item_cls = item_list_type(f.annotation)
             if item_cls is None:
                 continue
-            raw = self.__dict__.get(f.name)
+            raw = self.__dict__.get(name)
             if raw is None:
                 continue
 
-            if f.metadata.get("fill_forward"):
+            if meta.get("fill_forward"):
                 coerced = {
                     kper: self._coerce_item_list(rows, item_cls) for kper, rows in raw.items()
                 }
-                object.__setattr__(self, f.name, coerced)
+                object.__setattr__(self, name, coerced)
             else:
                 coerced_list = self._coerce_item_list(raw, item_cls)
-                object.__setattr__(self, f.name, coerced_list)
+                object.__setattr__(self, name, coerced_list)
                 if getattr(self, f"n{block}s", 0) == 0:
                     object.__setattr__(self, f"n{block}s", len(coerced_list))
 
@@ -173,16 +230,17 @@ class Package(Component, ABC):
             and _par_data.dims.get("nrow", 0) == 0
         ) or ("ncpl" in dims and "nrow" not in dims)
 
-        for f in fields:
-            if f.metadata.get("block") != "griddata":
+        for name, f in fields.items():
+            meta = field_meta(f)
+            if meta.get("block") != "griddata":
                 continue
-            shape_meta = f.metadata.get("shape")
+            shape_meta = meta.get("shape")
             if not shape_meta:
                 continue
-            val = self.__dict__.get(f.name)
+            val = self.__dict__.get(name)
             if val is None:
                 continue
-            _gd_dtype = _DTYPE_MAP.get(to_field_type(f.type), np.float64)
+            _gd_dtype = _DTYPE_MAP.get(to_field_type(f.annotation), np.float64)
             try:
                 resolved = []
                 for d in shape_meta:
@@ -194,15 +252,23 @@ class Package(Component, ABC):
             except KeyError:
                 continue
             if isinstance(val, (int, float)):
-                self.__dict__[f.name] = np.full(shape, val, dtype=_gd_dtype)
+                self.__dict__[name] = np.full(shape, val, dtype=_gd_dtype)
+            elif isinstance(val, np.ndarray) and val.size == 1 and val.shape != shape:
+                # A scalar that already passed through _coerce_arrays'
+                # mode="before" validator (needed so pydantic's own type
+                # check on an _ArrayLike-typed field accepts it at all --
+                # see that validator's docstring) arrives here as a 0-d
+                # ndarray, not a bare int/float, so the branch above
+                # doesn't match. Same broadcast, just unwrapped first.
+                self.__dict__[name] = np.full(shape, val.item(), dtype=_gd_dtype)
             elif isinstance(val, np.ndarray) and val.shape != shape:
                 try:
-                    self.__dict__[f.name] = val.reshape(shape)
+                    self.__dict__[name] = val.reshape(shape)
                 except ValueError:
                     pass
             elif isinstance(val, dict) and not val:
                 default = f.default if isinstance(f.default, (int, float)) else 0
-                self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
+                self.__dict__[name] = np.full(shape, default, dtype=_gd_dtype)
 
     @classmethod
     def load(  # type: ignore[override]
@@ -255,27 +321,23 @@ class Package(Component, ABC):
         strict : bool
             If True, only include fields with ``block`` metadata.
         """
-        import attrs as _attrs
-
-        try:
-            all_fields = _attrs.fields(type(self))  # type: ignore[arg-type]
-        except _attrs.exceptions.NotAnAttrsClassError:
-            return super().to_dict(blocks=blocks, strict=strict)
+        all_fields = pydantic_fields(type(self))
 
         # Fall back for a Package subclass with no schema-driven fields of
         # its own (e.g. the exchange leaves in flopy4/mf6/exg/).
-        if not any(f.metadata.get("block") for f in all_fields):
+        if not any(field_meta(f).get("block") for f in all_fields.values()):
             return super().to_dict(blocks=blocks, strict=strict)
 
-        _exclude = {"name", "parent", "_parent", "dims", "filename", "workspace", "strict"}
+        _exclude = {"name", "parent", "_parent", "filename", "workspace", "strict"}
         result: dict = {}
-        for f in all_fields:
-            if f.name in _exclude or f.init is False:
+        for name, f in all_fields.items():
+            if name in _exclude or f.init is False:
                 continue
-            block = f.metadata.get("block")
+            meta = field_meta(f)
+            block = meta.get("block")
             if not block:
                 continue
-            key = f.alias if (f.alias and f.name.startswith("_")) else f.name
+            key = f.alias if (f.alias and name.startswith("_")) else name
             val = getattr(self, key, None)
             if blocks:
                 result.setdefault(block, {})[key] = val
@@ -285,12 +347,14 @@ class Package(Component, ABC):
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return stress period data as a tidy DataFrame. Zero cost if not called."""
+        import dataclasses as _dc
+
         _spd = self.__dict__.get("_stress_period_data")
         if not _spd:
             return pd.DataFrame()
         frames = []
         for kper in sorted(_spd):
-            df = pd.DataFrame([attrs.asdict(row) for row in _spd[kper]])
+            df = pd.DataFrame([_dc.asdict(row) for row in _spd[kper]])
             df.insert(0, "kper", kper)
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -315,13 +379,21 @@ class Package(Component, ABC):
         spd: dict[int, list] = {}
         for kper, group in df.groupby("kper"):
             group = group.drop(columns=["kper"])
-            spd[int(kper)] = [item_cls(**row) for row in group.to_dict("records")]
+            rows = []
+            for row in group.to_dict("records"):
+                # A missing optional column (e.g. boundname) round-trips
+                # through pandas as NaN, not absent -- drop it so the
+                # Item class's own default applies instead of failing
+                # type validation (a float in a str-typed field).
+                rows.append(item_cls(**{k: v for k, v in row.items() if not pd.isna(v)}))
+            spd[int(kper)] = rows
         self.__dict__["_stress_period_data"] = spd
 
     def _period_item_cls(self) -> "type[Item] | tuple[type[Item], ...]":
-        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if f.metadata.get("fill_forward"):
-                item_cls = item_list_type(f.type)
+        for f in pydantic_fields(type(self)).values():
+            meta = field_meta(f)
+            if meta.get("fill_forward"):
+                item_cls = item_list_type(f.annotation)
                 if item_cls is not None:
                     return item_cls
         raise ValueError(f"{type(self).__name__} has no period Item-list field")
@@ -362,17 +434,15 @@ class Package(Component, ABC):
 
         Stays lazy if dask-backed. For packages with no array fields this
         falls through to ``Component.to_xarray()``, which returns whatever
-        ``attrs_to_dataset()`` finds -- empty for a package with no
+        ``dataclass_to_dataset()`` finds -- empty for a package with no
         griddata fields of its own.
         """
-        import attrs as _attrs
-
-        fields = _attrs.fields(type(self))  # type: ignore[arg-type]
+        fields = pydantic_fields(type(self))
         for _block in ("griddata", "period"):
             data_vars = {
-                a.name: self.to_dataarray(a.name)
-                for a in fields
-                if a.metadata.get("block") == _block and getattr(self, a.name) is not None
+                name: self.to_dataarray(name)
+                for name, f in fields.items()
+                if field_meta(f).get("block") == _block and getattr(self, name) is not None
             }
             if data_vars:
                 return xr.Dataset(data_vars)
