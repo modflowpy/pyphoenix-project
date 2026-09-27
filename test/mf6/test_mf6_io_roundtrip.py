@@ -21,14 +21,6 @@ from flopy4.mf6.simulation import Simulation
 from .test_mf6_load_all_models import KNOWN_PASSING
 
 XFAIL = {
-    # array values are written with 9 significant digits
-    "writer rounds floats": {
-        "mf6/test/test033_wtdecay",
-        "mf6/test/test061_csub_holly",
-        "mf6/test/test061_csub_jacob",
-        "mf6/test/test120_mv_dis-lgr",
-        "mf6/test/test120_mv_dis-lgr_3models",
-    },
     # an option row with trailing tokens (a comment, or a second keyword
     # like IMS `UNDER_RELAXATION DBD`) loads as a list of tokens
     "ingress keeps trailing option tokens": {

@@ -1,4 +1,3 @@
-import sys
 from typing import IO, Iterator
 
 import numpy as np
@@ -25,14 +24,11 @@ _JINJA_TEMPLATE_NAME = "blocks.jinja"
 
 def _get_print_options(context=None):
     """Get numpy print options from WriteContext."""
-    if context is not None:
-        return context.to_numpy_printoptions()
-    # Default options
-    return {
-        "precision": 4,
-        "linewidth": sys.maxsize,
-        "threshold": sys.maxsize,
-    }
+    from flopy4.mf6.write_context import WriteContext
+
+    if context is None:
+        context = WriteContext.default()
+    return context.to_numpy_printoptions()
 
 
 def _clean_last_chunk(iterator: Iterator[str]) -> Iterator[str]:

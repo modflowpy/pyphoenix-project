@@ -456,7 +456,7 @@ def test_dumps_rcha():
     assert "END PERIOD 1" in dumped
     assert "RECHARGE" in dumped
     assert "INTERNAL" in dumped
-    assert "1.0e-03" in dumped or "1.0e-3" in dumped or "1.00000000e-03" in dumped
+    assert "0.001" in dumped
 
     loaded = loads(dumped)
     print("RCHA load:")
