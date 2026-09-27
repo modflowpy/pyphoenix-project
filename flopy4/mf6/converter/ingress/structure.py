@@ -1,7 +1,7 @@
 import struct
 from abc import ABC
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -13,6 +13,7 @@ from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_it
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
+from flopy4.utils import unwrap_optional
 
 
 def _inner_class_type(field_type) -> type[Record] | None:
@@ -729,21 +730,21 @@ def structure_component(
             if inner_cls is not None:
                 kwargs[init_key] = inner_cls.from_tokens(row)
                 continue
-            if len(row) == 1:
+            # Take what the field's type needs from the row; MF6 ignores
+            # anything after it (often an inline comment, or a second value
+            # like IMS's `UNDER_RELAXATION NONE DBD`).
+            t = unwrap_optional(f.type)
+            if t is bool:
                 kwargs[init_key] = True
+            elif get_origin(t) is list:
+                # inline arrays (AUXILIARY, etc.), even with one element
+                kwargs[init_key] = list(row[1:])
             else:
-                # List-valued options (auxiliary, etc.) have shape metadata;
-                # always keep them as a list so __attrs_post_init__ can use len().
-                is_list_opt = isinstance(f.metadata.get("shape"), tuple)
-                if is_list_opt:
-                    kwargs[init_key] = list(row[1:])
-                else:
-                    kwargs[init_key] = list(row[1:]) if len(row) > 2 else row[1]
+                kwargs[init_key] = row[1]
 
     naux = 0
     if "auxiliary" in kwargs:
-        aux_opt = kwargs["auxiliary"]
-        naux = len(aux_opt) if isinstance(aux_opt, list) else 1
+        naux = len(kwargs["auxiliary"])
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a

@@ -39,6 +39,8 @@ import attrs
 import numpy as np
 import xarray as xr
 
+from flopy4.utils import unwrap_optional
+
 
 def _is_attrs_instance(value: Any) -> bool:
     return attrs.has(type(value))
@@ -187,14 +189,6 @@ def attrs_to_datatree(obj, _ancestors: frozenset = frozenset()) -> xr.DataTree:
     return xr.DataTree(dataset=attrs_to_dataset(obj), children=children)
 
 
-def _unwrap_optional(tp):
-    if get_origin(tp) in (Union, types.UnionType):
-        args = [a for a in get_args(tp) if a is not type(None)]
-        if len(args) == 1:
-            return args[0]
-    return tp
-
-
 def _child_field_spec(field: attrs.Attribute) -> "tuple[str, type] | None":
     """If `field`'s declared type holds attrs-typed child/children, return
     ``(kind, element_type)`` where `kind` is ``"one"``, ``"list"``, or
@@ -206,7 +200,7 @@ def _child_field_spec(field: attrs.Attribute) -> "tuple[str, type] | None":
     tp = field.type
     if tp is None or isinstance(tp, str):
         return None
-    tp = _unwrap_optional(tp)
+    tp = unwrap_optional(tp)
     origin = get_origin(tp)
     if origin is None:
         return ("one", tp) if attrs.has(tp) else None
@@ -235,10 +229,10 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
     tp = field.type
     if tp is None or isinstance(tp, str):
         return None
-    tp = _unwrap_optional(tp)
+    tp = unwrap_optional(tp)
     origin = get_origin(tp)
     if origin in (Union, types.UnionType):
-        # Optional[Union[A, B]] -- _unwrap_optional only collapses a
+        # Optional[Union[A, B]] -- unwrap_optional only collapses a
         # single non-None arm, so a genuine multi-arm Union survives here.
         candidates = tuple(a for a in get_args(tp) if a is not type(None) and attrs.has(a))
         return ("only", candidates) if candidates else None
