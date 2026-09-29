@@ -143,7 +143,7 @@ IO is at the product's boundary. Details of any input or output format should no
 Input file IO is implemented in three layers:
 
 1. **Unified IO layer**: Registry and descriptors implementing `load` and `write` methods on the base `Component` class
-2. **Conversion layer**: Uses `cattrs` to map the object model to/from Python primitives and containers (i.e. un/structuring)
+2. **Conversion layer**: Maps the object model to/from Python primitives and containers (i.e. un/structuring)
 3. **Serialization layer**: Format-specific encoders/decoders translating primitives and containers to/from strings or binary data
 
 #### Unified IO
@@ -156,9 +156,9 @@ Loaders and writers can be registered for any component class and format. The re
 
 The sparse input format used by MODFLOW 6 is in tension with an object model where tables are disaggregated into a separate array variable for each column &mdash; this requires a nontrivial conversion at load and write time.
 
-The conversion layer uses `cattrs` to transform between the product's `xarray`/`attrs`-based object model and plain Python data structures suitable for serialization. This layer is format-agnostic and handles structural transformations common across formats.
+The conversion layer (`flopy4.mf6.converter`) transforms between the product's `xarray`/`attrs`-based object model and plain Python data structures suitable for serialization. This layer is format-agnostic and handles structural transformations common across formats.
 
-**Unstructuring (write time)**: A `cattrs` converter with appropriate unstructuring hooks converts components to a form suitable for serialization, handling transformations like:
+**Unstructuring (write time)**: `converter.egress.unstructure` converts components to a form suitable for serialization, handling transformations like:
 
 - Grouping fields into blocks according to their `block` metadata from DFNs
 - Converting child components to binding tables for parent component name files
@@ -167,7 +167,7 @@ The conversion layer uses `cattrs` to transform between the product's `xarray`/`
 
 The unstructuring phase aims to avoid a) unnecessary copies and b) materializing data in memory.
 
-**Structuring (load time)**: A `cattrs` converter with appropriate structuring hooks converts dictionaries of primitives into component instances, including:
+**Structuring (load time)**: `converter.ingress.structure` converts dictionaries of primitives into component instances, including:
 
 - Instantiating child components from bindings
 - Converting sparse list input data representations to arrays
