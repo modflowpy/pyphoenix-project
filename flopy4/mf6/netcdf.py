@@ -90,7 +90,7 @@ class _PackageSpec:
             def __init__(self, f):
                 # A fill-forward (period) field's value has a leading nper axis.
                 fill_forward = bool(f.metadata.get("fill_forward"))
-                is_layered = f.metadata.get("layered", True)
+                is_layered = f.metadata.get("layered", False)
                 raw_shape = f.metadata.get("shape") or ("nodes",)
                 # normalize ncpl → nodes for layered fields only
                 if is_layered:

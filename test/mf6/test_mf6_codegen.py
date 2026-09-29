@@ -18,6 +18,7 @@ import sys
 import warnings
 from pathlib import Path
 
+import attrs
 import pytest
 from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
 
@@ -944,6 +945,15 @@ def test_converter_from_type(type_str, expected):
     from flopy4.mf6.utils.codegen.filters import converter
 
     assert converter(type_str) == expected
+
+
+def test_layered_griddata_metadata():
+    """Griddata arrays carry the DFN's `layered` flag; unset means False."""
+    from flopy4.mf6.gwf.npf import Npf
+    from flopy4.mf6.utl.ncf import Ncf
+
+    assert attrs.fields_dict(Npf)["k"].metadata["layered"] is True
+    assert not attrs.fields_dict(Ncf)["latitude"].metadata.get("layered", False)
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):

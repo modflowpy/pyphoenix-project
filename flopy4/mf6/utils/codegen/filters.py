@@ -482,6 +482,8 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
     kw: dict = {"block": block_name}
     if shape := getattr(f, "shape", None):
         kw["shape"] = tuple(shape)
+    if getattr(f, "layered", False):
+        kw["layered"] = True
     if getattr(f, "netcdf", False):
         kw["netcdf"] = True
     if getattr(f, "time_series", False):
