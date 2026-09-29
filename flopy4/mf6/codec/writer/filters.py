@@ -172,7 +172,7 @@ def array2string(value: NDArray, precision: int | None = None) -> str:
     return buffer.getvalue().strip()
 
 
-def quote_if_needed(value: Any) -> str:
+def quote_if_needed(value: Scalar | PurePath) -> str:
     """
     Wrap a string in single quotes if it contains double-quotes.
 
