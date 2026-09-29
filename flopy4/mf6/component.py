@@ -8,6 +8,7 @@ import attrs
 from attrs import fields
 
 from flopy4.dimensions import DimensionResolverMixin
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.write_context import WriteContext
@@ -150,7 +151,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: Optional[Path] = field(default=None, converter=attrs.converters.optional(Path))
+    filename: Optional[Path] = field(default=None, converter=_optional_path)
     """The component's input file, relative to the workspace (a `str` is
     accepted and converted). Written to name files with POSIX separators."""
 

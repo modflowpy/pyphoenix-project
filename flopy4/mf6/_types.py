@@ -1,16 +1,16 @@
 """Shared type definitions for flopy4.mf6 packages."""
 
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Protocol, TypeAlias, TypeVar
 
 import numpy as np
 
 _DT = TypeVar("_DT", bound=np.generic, covariant=True)
 
-Scalar: TypeAlias = bool | int | np.integer | float | np.floating | str | Path | datetime
+Scalar: TypeAlias = bool | int | np.integer | float | np.floating | str | PurePath | datetime
 """A single, non-array value -- covers every leaf DFN scalar type
-(including numpy scalar dtypes) plus Path/datetime for path- and
+(including numpy scalar dtypes) plus PurePath/datetime for path- and
 time-typed fields. Usable directly in `isinstance()` checks (PEP 604
 unions support this natively)."""
 
