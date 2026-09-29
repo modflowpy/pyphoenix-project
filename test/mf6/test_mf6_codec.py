@@ -2836,3 +2836,25 @@ def test_evt_period_aux_roundtrip():
 # ---------------------------------------------------------------------------
 # SPC / TVK / TVS — options-only packages with path(inout="filein")
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("1970-01-01T00:00:00", "1970-01-01T00:00:00"),
+        ("1997-01-01", "1997-01-01"),
+        ("1997", "1997"),
+    ],
+)
+def test_tdis_start_date_time_is_str(text, expected):
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.tdis import Tdis
+
+    raw = loads(
+        f"BEGIN OPTIONS\n  START_DATE_TIME {text}\nEND OPTIONS\n"
+        "BEGIN DIMENSIONS\n  NPER 1\nEND DIMENSIONS\n"
+        "BEGIN PERIODDATA\n  1.0 1 1.0\nEND PERIODDATA\n"
+    )
+    tdis = structure_component(raw, Tdis)
+    assert isinstance(tdis.start_date_time, str)
+    assert tdis.start_date_time == expected
