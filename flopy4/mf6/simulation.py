@@ -1,4 +1,5 @@
 from os import PathLike
+from pathlib import Path
 from typing import ClassVar
 from warnings import warn
 
@@ -38,13 +39,13 @@ class Simulation(Context):
         from attrs import fields_dict
 
         super().__attrs_post_init__()
-        if self.filename != "mfsim.nam":
+        if self.filename != Path("mfsim.nam"):
             if self.filename is not None:
                 warn(
                     "Simulation filename must be 'mfsim.nam'.",
                     UserWarning,
                 )
-            self.filename = "mfsim.nam"
+            self.filename = Path("mfsim.nam")
         fields = fields_dict(type(self))
         field = fields["workspace"]
         update_child_attr(self, field, self.workspace)

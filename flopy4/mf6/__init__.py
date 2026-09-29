@@ -63,7 +63,7 @@ def _load_mf6(cls, path: Path, name: "str | None" = None) -> Component:
     instance = structure_component(raw, cls, workspace=path.parent, name=name)
     if isinstance(instance, Context):
         instance.workspace = path.parent
-    instance.filename = path.name
+    instance.filename = Path(path.name)
     return instance
 
 

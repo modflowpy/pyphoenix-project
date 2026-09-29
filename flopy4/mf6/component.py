@@ -8,6 +8,7 @@ import attrs
 from attrs import fields
 
 from flopy4.dimensions import DimensionResolverMixin
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.write_context import WriteContext
@@ -150,8 +151,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: str | None = field(default=None)
-    """The name of the component's input file."""
+    filename: Optional[Path] = field(default=None, converter=_optional_path)
+    """The component's input file, relative to the workspace (a `str` is
+    accepted and converted). Written to name files with POSIX separators."""
 
     name: str = field(
         default=attrs.Factory(lambda self: type(self).__name__.lower(), takes_self=True)
@@ -318,7 +320,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     @property
     def path(self) -> Path:
         """The path to the component's input file."""
-        self.filename = self.filename or self.default_filename()
+        self.filename = self.filename or Path(self.default_filename())
         return Path.cwd() / self.filename
 
     def default_filename(self) -> str:
@@ -518,7 +520,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # name as this component's filename stem, if it has one. an
         # actual solution is to auto-set the filename when children
         # are attached to parents.
-        self.filename = self.filename or self.default_filename()
+        self.filename = self.filename or Path(self.default_filename())
 
         # Determine active context: provided > current > default
         active_context = context or WriteContext.current()

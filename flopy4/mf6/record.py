@@ -14,7 +14,7 @@ than a declared flag, and make.py's _build_record_class_specs.
 import sys
 import types
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any, Union, cast, get_args, get_origin
 
 import attrs
@@ -169,6 +169,8 @@ class Record:
                     tokens.append(a.name.upper())
             elif isinstance(v, (list, tuple)):
                 tokens.extend(v)
+            elif isinstance(v, PurePath):
+                tokens.append(v.as_posix())
             else:
                 tokens.append(v)
         return tuple(tokens)

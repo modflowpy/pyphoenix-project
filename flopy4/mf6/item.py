@@ -253,7 +253,7 @@ class Item(Record):
                     row.append(file_kw.upper())
                 if direction := f.metadata.get("direction"):
                     row.append("FILEOUT" if direction == "out" else "FILEIN")
-                row.append(str(val) if isinstance(val, Path) else val)
+                row.append(val.as_posix() if isinstance(val, Path) else val)
         if not keyword_emitted:
             row.append(keyword.upper())
         aux = getattr(self, "aux", None)
