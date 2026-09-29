@@ -1769,3 +1769,8 @@ def test_parent_setter_detach():
     assert ic.parent is None
     assert ic._parent is None
     assert gwf.ic is None
+
+
+def test_layered_int_griddata_keeps_int_dtype():
+    dis = Dis(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1)
+    assert dis.idomain.dtype == np.int64
