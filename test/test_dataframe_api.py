@@ -214,3 +214,14 @@ def test_stress_period_data_setter_with_two_named_aux_columns():
     spd = wel.stress_period_data
     assert float(spd[0][0].aux[0]) == pytest.approx(35.0)
     assert float(spd[0][0].aux[1]) == pytest.approx(1025.0)
+
+
+def test_from_dataframe_drops_missing_optional_columns():
+    """A NaN in an optional str column (boundname) falls back to the default."""
+    chd = Chd(stress_period_data={0: [[(0, 0, 0), 1.0, "a"], [(0, 0, 1), 2.0]]})
+    df = chd.to_dataframe()
+    assert "boundname" in df.columns and pd.isna(df["boundname"].iloc[1])
+    chd.from_dataframe(df)
+    rows = chd.stress_period_data[0]
+    assert rows[0].boundname == "a"
+    assert rows[1].boundname is None
