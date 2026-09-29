@@ -1,5 +1,6 @@
 from collections.abc import Hashable, Mapping
 from io import StringIO
+from pathlib import PurePath
 from typing import Any, Literal
 
 import attrs
@@ -171,7 +172,7 @@ def array2string(value: NDArray, precision: int | None = None) -> str:
     return buffer.getvalue().strip()
 
 
-def quote_if_needed(value: str) -> str:
+def quote_if_needed(value: Any) -> str:
     """
     Wrap a string in single quotes if it contains double-quotes.
 
@@ -179,7 +180,12 @@ def quote_if_needed(value: str) -> str:
     contain double-quotes and must be single-quoted for MF6 to parse them.
     MF6 keyword sequences like 'STEPS 1 5' or 'all' are left as-is even
     if they contain spaces, because they are not string literals.
+
+    Paths are written with POSIX separators so input files are portable
+    across platforms.
     """
+    if isinstance(value, PurePath):
+        return value.as_posix()
     if isinstance(value, str) and '"' in value:
         return f"'{value}'"
     return str(value)

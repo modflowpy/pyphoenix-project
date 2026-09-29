@@ -28,7 +28,7 @@ def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
     t = [keyword.upper()]
     if direction:
         t.append("FILEOUT" if direction == "out" else "FILEIN")
-    t.append(str(value))
+    t.append(value.as_posix())
     return tuple(t)
 
 
