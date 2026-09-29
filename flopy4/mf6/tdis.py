@@ -24,7 +24,14 @@ class Tdis(Package):
     time_units: Optional[str] = field(default=None, block="options", optional=True)
     start_date_time: Optional[str] = field(
         default=None,
-        converter=lambda v: v.isoformat() if isinstance(v, datetime) else v,
+        # A bare year like "1997" tokenizes as an int, so stringify it.
+        converter=lambda v: (
+            v.isoformat()
+            if isinstance(v, datetime)
+            else str(v)
+            if isinstance(v, (int, float))
+            else v
+        ),
         block="options",
         optional=True,
     )
