@@ -285,12 +285,24 @@ def test_dumps_tdis():
     pprint(loaded)
 
 
+def test_tdis_period_columns_are_views():
+    from flopy4.mf6.tdis import Tdis
+
+    tdis = Tdis(perioddata=[(1.0, 1, 1.0), (2.0, 2, 1.5)])
+    assert tdis.nper == 2
+    tdis.perioddata[1].perlen = 5.0
+    assert list(tdis.perlen) == [1.0, 5.0]
+    assert list(Tdis(nper=3).nstp) == [1, 1, 1]
+    with pytest.raises(ValueError, match="nper"):
+        Tdis(nper=3, perioddata=[(1.0, 1, 1.0)])
+
+
 def test_tdis_round_trip():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.tdis import Tdis
 
-    tdis = Tdis(nper=2, perlen=[1.0, 2.0], nstp=[1, 2], tsmult=[1.0, 1.5])
+    tdis = Tdis(perioddata=[(1.0, 1, 1.0), (2.0, 2, 1.5)])
     text = dumps(unstructure_component(tdis))
     raw = loads(text)
     tdis2 = structure_component(raw, Tdis)

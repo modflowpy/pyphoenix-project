@@ -124,7 +124,6 @@ SOLUTION_TIER = {
 
 # Future tiers (not yet implemented):
 # DIS_TIER = {"gwf-dis": ("Dis", "DisBase"), ...}
-# TDIS_TIER = {"sim-tdis": ("Tdis", "Package"), ...}
 
 
 # Layer 1: Filter unit tests (no DFNs required)
@@ -704,6 +703,16 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
         assert cls.slntype == expected_slntype, (
             f"{expected_class}.slntype expected {expected_slntype!r}, got {cls.slntype!r}"
         )
+
+
+def test_tdis_generates_on_tdis_base(tmp_path, all_dfns):
+    """sim-tdis generates a Tdis subclassing the hand-written TdisBase."""
+    skip = {n for n in all_dfns if n != "sim-tdis"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip)
+    assert spec.base_class == "TdisBase"
+    text = spec.outpath.read_text()
+    assert "class Tdis(TdisBase):" in text
+    assert "perioddata: Optional[list[Perioddata]]" in text
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):
