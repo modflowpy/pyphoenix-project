@@ -15,7 +15,6 @@ _MF6_ROOT = _PROJ_ROOT / "flopy4" / "mf6"
 #
 # nam files: model/simulation name files need special model-level handling.
 # dis/disv: require DisBase + grid conversion methods (dis tier).
-# tdis/ims: top-level hand-written files, not yet templated.
 # *g / *a variants: gridded/array package variants, deferred.
 #
 # TODO (subpackage tier): detect `# flopy subpackage` DFN annotations and emit
@@ -29,8 +28,6 @@ _SKIP = {
     "gwt-dis",
     "gwe-dis",
     "prt-dis",
-    # time discretization (hand-written tdis.py)
-    "sim-tdis",
     # hand-written: wkt/crs_wkt field type overrides, in NcfBase
     # (utl/ncf_base.py); Ncf.from_grid() factory stays on the concrete
     # class, matching the DisBase pattern.

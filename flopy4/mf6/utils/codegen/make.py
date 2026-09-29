@@ -792,6 +792,7 @@ def _generated_imports(
         "Package": "from flopy4.mf6.package import Package",
         "Solution": "from flopy4.mf6.solution import Solution",
         "Context": "from flopy4.mf6.context import Context",
+        "TdisBase": "from flopy4.mf6.tdis_base import TdisBase",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     if has_inner_classes:
@@ -826,6 +827,8 @@ def _base_class(component: Component) -> str:
     """Determine the Python base class for a component."""
     if component.name.split("-")[0] == _SLN_PREFIX:
         return "Solution"
+    if component.name == "sim-tdis":
+        return "TdisBase"
     return "Package"
 
 

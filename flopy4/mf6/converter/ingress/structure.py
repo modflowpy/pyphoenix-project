@@ -739,6 +739,10 @@ def structure_component(
             elif get_origin(t) is list:
                 # inline arrays (AUXILIARY, etc.), even with one element
                 kwargs[init_key] = list(row[1:])
+            elif t is str:
+                # a numeric-looking string (e.g. a bare year for
+                # START_DATE_TIME) tokenizes as a number
+                kwargs[init_key] = str(row[1])
             else:
                 kwargs[init_key] = row[1]
 
