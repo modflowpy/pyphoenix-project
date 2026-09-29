@@ -5,6 +5,7 @@ import attrs
 import numpy as np
 import pandas as pd
 import xarray as xr
+from pandas.api.types import is_scalar
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.item import (
@@ -315,7 +316,13 @@ class Package(Component, ABC):
         spd: dict[int, list] = {}
         for kper, group in df.groupby("kper"):
             group = group.drop(columns=["kper"])
-            spd[int(kper)] = [item_cls(**row) for row in group.to_dict("records")]
+            # A missing optional column (e.g. boundname) round-trips through
+            # pandas as NaN, not absent. Drop it so the Item class's own
+            # default applies rather than storing a float in a str field.
+            spd[int(kper)] = [
+                item_cls(**{k: v for k, v in row.items() if not (is_scalar(v) and pd.isna(v))})
+                for row in group.to_dict("records")
+            ]
         self.__dict__["_stress_period_data"] = spd
 
     def _period_item_cls(self) -> "type[Item] | tuple[type[Item], ...]":
