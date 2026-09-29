@@ -12,6 +12,7 @@ from flopy4.mf6.gwe.dis import Dis
 from flopy4.mf6.gwe.disv import Disv
 from flopy4.mf6.gwe.esl import Esl
 from flopy4.mf6.gwe.est import Est
+from flopy4.mf6.gwe.fmi import Fmi
 from flopy4.mf6.gwe.ic import Ic
 from flopy4.mf6.gwe.lke import Lke
 from flopy4.mf6.gwe.mve import Mve
@@ -86,6 +87,7 @@ class Gwe(Model):
     adv: Adv | None = field(block="packages", default=None)
     cnd: Cnd | None = field(block="packages", default=None)
     est: Est | None = field(block="packages", default=None)
+    fmi: Fmi | None = field(block="packages", default=None)
     ctp: list[Ctp] = field(block="packages", default=attrs.Factory(list))
     esl: list[Esl] = field(block="packages", default=attrs.Factory(list))
     lke: list[Lke] = field(block="packages", default=attrs.Factory(list))

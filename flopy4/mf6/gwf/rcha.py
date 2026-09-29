@@ -97,7 +97,7 @@ class Rcha(Package):
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        shape=("ncpl",),
+        shape=("auxiliary", "ncpl"),
         layered=False,
         netcdf=True,
         fill_forward=True,

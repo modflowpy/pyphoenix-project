@@ -28,6 +28,19 @@ _DTYPE_MAP: dict = {
 }
 
 
+def split_aux(aux, naux: int) -> list:
+    """Split (nper, naux, ...) period aux data into one (nper, ...) array per
+    AUXILIARY name. A single auxiliary may omit the naux axis."""
+    if naux <= 1 and (aux.ndim < 3 or aux.shape[1] != 1):
+        return [aux]
+    if aux.ndim < 3 or aux.shape[1] != naux:
+        raise ValueError(
+            f"aux shape {tuple(aux.shape)}: expected (nper, {naux}, ...) "
+            f"for {naux} auxiliary variables"
+        )
+    return [aux[:, n] for n in range(naux)]
+
+
 @attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
     def __attrs_post_init__(self) -> None:

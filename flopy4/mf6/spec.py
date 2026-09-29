@@ -11,6 +11,7 @@ from typing import Literal, Union, get_args, get_origin
 
 import attrs
 import numpy as np
+import numpy.typing as npt
 from attrs import NOTHING, Attribute
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
@@ -186,6 +187,25 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
+def ndarray_scalar(t) -> type | None:
+    """The scalar type of a parameterized ``NDArray[X]`` annotation, else ``None``.
+
+    numpy >= 2.5 makes ``NDArray`` a type alias (``NDArray[X]`` has args
+    ``(X,)``); before, ``NDArray[X]`` is ``ndarray[shape, dtype[X]]``.
+    """
+    origin = get_origin(t)
+    args = get_args(t)
+    if origin is npt.NDArray:
+        dtype_args = args
+    elif origin is np.ndarray and len(args) >= 2:
+        dtype_args = get_args(args[1])
+    else:
+        return None
+    if not dtype_args or not isinstance(dtype_args[0], type):
+        return None
+    return dtype_args[0]
+
+
 def _ndarray_field_type(t) -> FieldType | None:
     """Map a bare ``NDArray[dtype]`` annotation to its DFN field type, if possible.
 
@@ -195,15 +215,9 @@ def _ndarray_field_type(t) -> FieldType | None:
     also be dask-backed; DIS/DISV griddata never is). Returns ``None`` for
     anything that isn't a parameterized ``numpy.ndarray`` annotation.
     """
-    if get_origin(t) is not np.ndarray:
+    scalar = ndarray_scalar(t)
+    if scalar is None:
         return None
-    args = get_args(t)
-    if len(args) < 2:
-        return None
-    dtype_args = get_args(args[1])
-    if not dtype_args or not isinstance(dtype_args[0], type):
-        return None
-    scalar = dtype_args[0]
     if issubclass(scalar, np.bool_):
         return "keyword"
     if issubclass(scalar, np.integer):

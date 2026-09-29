@@ -9,6 +9,7 @@ from flopy.discretization.grid import Grid
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
 
+from flopy4.mf6.gwf.api import Api
 from flopy4.mf6.gwf.buy import Buy
 from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
@@ -190,6 +191,7 @@ class Gwf(Model):
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
     wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
+    api: Api | None = field(block="packages", default=None)
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
     )

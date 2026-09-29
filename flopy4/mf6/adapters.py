@@ -16,6 +16,7 @@ from flopy.plot.plotutil import PlotUtilities
 from flopy4.attrs_xarray import attrs_to_dataset
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import ndarray_scalar
 
 
 def _to_numpy(val):
@@ -49,6 +50,8 @@ def _resolve_leaf_type(annotation) -> "type | None":
             return None
         tp = args[0]
         origin = get_origin(tp)
+    if ndarray_scalar(tp) is not None:
+        return np.ndarray
     resolved = origin if origin is not None else tp
     if isinstance(resolved, type) and issubclass(resolved, _LEAF_TYPES):
         return resolved

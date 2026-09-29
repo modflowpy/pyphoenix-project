@@ -15,20 +15,14 @@ import xarray as xr
 from modflow_devtools.models import copy_to
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.gwf import Wel
+from flopy4.mf6.converter.ingress.structure import _parse_readarray_period_block
+from flopy4.mf6.gwf import Wel, Welg
 from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.spec import to_field_type
 
 from .test_mf6_load_all_models import KNOWN_PASSING
 
-XFAIL = {
-    # a TIMEARRAYSERIES-sourced period array is dropped on load (see
-    # test_tas_period_array_kept)
-    "ingress drops TAS period arrays": {
-        "mf6/test/test001h_rch_array3",
-        "mf6/test/test027_TimeseriesTest",
-        "mf6/test/test027_TimeseriesTest_idomain",
-    },
-}
+XFAIL: dict[str, set[str]] = {}
 
 MODELS = sorted(m for m in KNOWN_PASSING if not m.startswith("mf6/large/"))
 
@@ -155,7 +149,6 @@ def _period_block(workspace, text):
     raise AssertionError(f"no written file contains {text!r}")
 
 
-@pytest.mark.xfail(reason="missing aux-named period arrays", strict=True)
 def test_aux_period_array_kept(tmp_path):
     """An `AUXILIARY`-named array in a READASARRAYS period block survives."""
     _, _, out = _roundtrip(tmp_path, "mf6/test/test027_TimeseriesTest")
@@ -201,3 +194,61 @@ def test_repeated_ts6_kept(tmp_path):
     }
     expected = {f"model_well{i}_pump.ts" for i in range(1, 6)}
     assert expected <= loaded
+
+
+def test_unsupported_component_warns(tmp_path):
+    """A component flopy4 has no class for (here UZF6) is reported, not silently dropped."""
+    workspace = copy_to(tmp_path, "mf6/test/test001e_UZF_3lay", verbose=False)
+    with pytest.warns(UserWarning, match="unsupported component UZF6"):
+        Simulation.load(workspace / "mfsim.nam")
+
+
+def test_loaded_disv_grid(tmp_path):
+    """A loaded DISV derives its grid arrays from VERTICES/CELL2D and builds a grid."""
+    workspace = copy_to(tmp_path, "mf6/test/test003_gwfs_disv", verbose=False)
+    sim = Simulation.load(workspace / "mfsim.nam")
+    disv = next(iter(sim.models.values())).dis
+    grid = disv.to_grid()
+    assert disv.iv[0] == 0 and disv.cell2ddata[0].icell2d == 0
+    assert grid.ncpl == disv.ncpl
+    assert len(grid.verts) == disv.nvert
+
+
+def _readarray_fields(cls):
+    return {
+        f.name: f
+        for f in attrs.fields(cls)
+        if f.metadata.get("fill_forward") and to_field_type(f.type) in ("integer", "double")
+    }
+
+
+def test_readarray_aux_name_collision():
+    """An AUXILIARY name matching a field name loads into `aux`, as in MF6."""
+    rows = [["q"], ["constant", "5.0"]]
+    result, unstored = _parse_readarray_period_block(
+        rows, _readarray_fields(Welg), {"nlay": 1, "nodes": 2}, auxiliary=["q"]
+    )
+    assert "q" not in result and not unstored
+    assert np.allclose(result["aux"][0], 5.0)
+
+
+def test_readarray_unstored_rows():
+    """Time-array-series and unknown rows are consumed and reported unstored,
+    so the period is not taken for a reset."""
+    rows = [["q", "timearrayseries", "s"], ["foo"], ["constant", "1.0"]]
+    result, unstored = _parse_readarray_period_block(
+        rows, _readarray_fields(Welg), {"nlay": 1, "nodes": 2}
+    )
+    assert result == {} and unstored
+
+
+def test_record_keyed_by_first_tagged_field(tmp_path):
+    """A record with no trigger keyword (IMS Rclose) loads from a row led by
+    its first tagged field's name."""
+    from flopy4.mf6.ims import Ims
+
+    path = tmp_path / "model.ims"
+    path.write_text("BEGIN LINEAR\n  INNER_RCLOSE 1.0e-4 STRICT\nEND LINEAR\n")
+    ims = Ims.load(path)
+    assert ims.rclose.inner_rclose == pytest.approx(1.0e-4)
+    assert ims.rclose.rclose_option.lower() == "strict"

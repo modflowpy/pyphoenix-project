@@ -1,6 +1,7 @@
 import abc
 from os import PathLike
 from typing import Any
+from warnings import warn
 
 import numpy as np
 import xarray as xr
@@ -16,7 +17,7 @@ from flopy4.mf6.constants import FILL_DNODATA, FILL_FLOAT64, FILL_INT64
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import Package, split_aux
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
@@ -213,12 +214,14 @@ class NetCDFModel(BaseModel, NetCDFInput):
         for package in model._children.values():
             packagetype = package.__class__.__name__.lower()
             distype = packagetype if packagetype.startswith("dis") else distype
-            # TODO: auxiliary
             p: dict[str, Any] = {
                 "package_name": package.name,
                 "package_type": f"{modeltype}-{packagetype}",
                 "params": [],
             }
+            auxiliary = getattr(package, "auxiliary", None)
+            if auxiliary and getattr(package, "aux", None) is not None:
+                p["auxiliary"] = list(auxiliary)
 
             import attrs as _attrs
 
@@ -269,6 +272,28 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     _nper = _p.tdis.nper  # type: ignore[attr-defined]
                     break
                 _p = getattr(_p, "_parent", None)
+
+        # A period array holds periods up to the last one given; pad it to
+        # NPER with DNODATA (missing trailing periods carry forward in MF6).
+        # Periods past NPER are never read by MF6: drop them.
+        for p in packages:
+            spec = get_spec(p["package_type"])
+            for param in p["params"]:
+                info = spec.arrays.get(param["name"])
+                data = param["data"]
+                if info is None or not info.metadata["fill_forward"] or data.ndim == 0:
+                    continue
+                if data.shape[0] > _nper:
+                    warn(
+                        f"{p['package_name']} {param['name']}: {data.shape[0]} periods, "
+                        f"NPER is {_nper}; periods past NPER not written",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                    param["data"] = data[:_nper]
+                elif data.shape[0] < _nper:
+                    pad = np.full((_nper - data.shape[0],) + data.shape[1:], FILL_DNODATA)
+                    param["data"] = np.concatenate([data, pad])
 
         dims = [
             _nper,
@@ -569,6 +594,18 @@ class NetCDFPackage(BaseModel, NetCDFInput):
                 p["attrs"]["layer"] = layer + 1
                 _params.append(NetCDFParam.from_dict(p, context=paramctx))
 
+        def _aux_params(p):
+            """One param per AUXILIARY name, with its modflow_iaux and its own
+            data (see split_aux)."""
+            naux = len(auxiliary)  # type: ignore[arg-type]
+            data = p.get("data")
+            parts = split_aux(data, naux) if data is not None else [None] * naux
+            for i, part in enumerate(parts):
+                aux_p = {**p, "attrs": {**p["attrs"], "modflow_iaux": i + 1}}
+                if part is not None:
+                    aux_p["data"] = part
+                yield aux_p
+
         _params = []
         for p in _meta["params"]:
             if "attrs" not in p:
@@ -584,17 +621,15 @@ class NetCDFPackage(BaseModel, NetCDFInput):
             if not gridded or mesh is None:
                 assert "layer" not in p["attrs"]
                 if p["name"].lower() == "aux":
-                    for i, aux in enumerate(auxiliary):  # type: ignore
-                        p["attrs"]["modflow_iaux"] = i + 1
-                        _params.append(NetCDFParam.from_dict(p, context=paramctx))
+                    for aux_p in _aux_params(p):
+                        _params.append(NetCDFParam.from_dict(aux_p, context=paramctx))
                 else:
                     _params.append(NetCDFParam.from_dict(p, context=paramctx))
 
             else:
                 if p["name"].lower() == "aux":
-                    for i, aux in enumerate(auxiliary):  # type: ignore
-                        p["attrs"]["modflow_iaux"] = i + 1
-                        _add_layered_param(p)
+                    for aux_p in _aux_params(p):
+                        _add_layered_param(aux_p)
                 else:
                     _add_layered_param(p)
 

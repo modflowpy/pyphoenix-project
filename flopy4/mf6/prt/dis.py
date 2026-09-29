@@ -1,11 +1,13 @@
+from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
 from numpy.typing import NDArray
 
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils.grid import StructuredGrid
 
 
@@ -15,6 +17,14 @@ class Dis(DisBase):
 
     length_units: Optional[str] = field(default=None, block="options", optional=True)
     nogrb: bool = field(default=False, block="options", optional=True)
+    grb_filerecord: Optional[Path] = path(
+        default=None,
+        converter=_optional_path,
+        block="options",
+        optional=True,
+        direction="out",
+        keyword="grb6",
+    )
     xorigin: float = field(default=0.0, block="options", optional=True)
     yorigin: float = field(default=0.0, block="options", optional=True)
     angrot: Optional[float] = field(default=None, block="options", optional=True)
