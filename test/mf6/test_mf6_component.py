@@ -1801,3 +1801,116 @@ def test_external_array_path_is_posix():
     macros = _JINJA_ENV.get_template("macros.jinja").module
     out = str(macros.array("top", PureWindowsPath("data\\top.dat"), how="external"))  # type: ignore[attr-defined]
     assert "OPEN/CLOSE data/top.dat" in out
+
+
+def _dis(**kwargs):
+    kw = dict(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1)
+    kw.update(kwargs)
+    return Dis(**kw)
+
+
+def test_eq_arrays():
+    assert _dis() == _dis()
+    assert _dis() != _dis(top=2.0)
+    idomain = np.ones(6, dtype=np.int64)
+    idomain[3] = 0
+    assert _dis(idomain=idomain) != _dis()
+    assert _dis(idomain=idomain) == _dis(idomain=idomain.copy())
+
+
+def test_eq_array_dtype_and_shape_matter():
+    from flopy4.mf6._types import array_eq
+
+    assert not array_eq(np.ones(3, dtype=np.int64), np.ones(3, dtype=np.float64))
+    assert not array_eq(np.ones(3), np.ones(4))
+    assert not array_eq(np.ones((1, 3)), np.ones(3))
+
+
+def test_eq_array_nan_equal():
+    from flopy4.mf6._types import array_eq
+
+    a = np.array([1.0, np.nan])
+    assert array_eq(a, a.copy())
+    assert not array_eq(a, np.array([np.nan, 1.0]))
+    assert array_eq(np.array(["a", "b"], dtype=object), np.array(["a", "b"], dtype=object))
+
+
+def test_eq_ignores_parent_and_dims():
+    assert Ims(dims={"nodes": 3}) == Ims(dims={"nodes": 4})
+    assert Ims(parent=Simulation()) == Ims()
+    assert Ims(inner_maximum=10) != Ims(inner_maximum=20)
+
+
+def test_eq_on_subclass_with_own_decorator():
+    import attrs
+
+    from flopy4.mf6.spec import field
+
+    @attrs.define(kw_only=True, slots=False)
+    class MyDis(Dis):
+        extra: int = field(default=0)
+
+    a = MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1)
+    b = MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1)
+    assert a == b
+    assert a != MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1, extra=1)
+
+
+def test_eq_dask_arrays_are_not_computed():
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6._types import array_eq
+
+    def boom(x):
+        raise AssertionError("computed")
+
+    lazy = da.ones(4, chunks=2).map_blocks(boom, dtype=float)
+    assert array_eq(lazy, lazy)
+    assert not array_eq(lazy, da.ones(4, chunks=2).map_blocks(boom, dtype=float, name="other"))
+    assert not array_eq(lazy, np.ones(4))
+    same = da.from_array(np.arange(4.0), chunks=2, name="x")
+    assert array_eq(same, da.from_array(np.arange(4.0), chunks=2, name="x"))
+    assert not array_eq(same, same.rechunk(4))
+
+
+def test_eq_disv_vertex_arrays():
+    def make(xv):
+        return Disv(
+            nlay=1,
+            ncpl=1,
+            nvert=3,
+            top=1.0,
+            botm=[0.0],
+            idomain=1,
+            iv=np.arange(3, dtype=np.int64),
+            xv=np.array(xv),
+            yv=np.array([0.0, 0.0, 1.0]),
+        )
+
+    assert make([0.0, 1.0, 0.0]) == make([0.0, 1.0, 0.0])
+    assert make([0.0, 1.0, 0.0]) != make([0.0, 2.0, 0.0])
+
+
+def test_eq_model_with_children():
+    def make(k):
+        return Gwf(
+            dis=Dis(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1),
+            npf=Npf(k=k),
+            ic=Ic(strt=1.0),
+        )
+
+    assert make(2.0) == make(2.0)
+    assert make(2.0) != make(3.0)
+
+
+def test_eq_simulation():
+    def make(head):
+        gwf = Gwf(
+            dis=Dis(nlay=1, nrow=1, ncol=3, top=1.0, botm=[0.0], idomain=1),
+            npf=Npf(k=2.0),
+            ic=Ic(strt=1.0),
+            chd=[Chd(stress_period_data={0: [[(0, 0, 0), head]]})],
+        )
+        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutions={"ims": Ims()})
+
+    assert make(1.0) == make(1.0)
+    assert make(1.0) != make(2.0)

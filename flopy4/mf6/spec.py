@@ -13,7 +13,7 @@ import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
 
-from flopy4.mf6._types import FloatArrayLike, IntArrayLike
+from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
@@ -24,7 +24,7 @@ def field(
     validator=None,
     converter=None,
     repr=True,
-    eq=True,
+    eq=None,
     init=True,
     metadata=None,
     on_setattr=None,
@@ -49,6 +49,14 @@ def field(
     count: str | None = None,
     signed: bool = False,
 ):
+    """Define a field: always a plain ``attrs.field()``.
+
+    A field with a ``shape`` holds an array, so unless ``eq`` is given it
+    compares with `array_eq` (numpy's elementwise ``==`` isn't a valid
+    ``__eq__`` result).
+    """
+    if eq is None:
+        eq = ARRAY_EQ if shape else True
     metadata = metadata or {}
     if block:
         metadata["block"] = block
