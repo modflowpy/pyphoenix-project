@@ -15,7 +15,7 @@
 
 
 @attrs.define(kw_only=True, slots=False)
-class {{ spec.class_name }}({{ spec.base_class }}):
+class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ spec.base_class }}):
     dfn_name: ClassVar[str] = "{{ spec.dfn_name }}"
 
 {% if spec.multi %}

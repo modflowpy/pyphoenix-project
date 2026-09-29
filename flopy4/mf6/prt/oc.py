@@ -148,7 +148,7 @@ class Oc(Package):
     tracktimes: Optional[list[Tracktimes]] = field(
         default=None,
         block="tracktimes",
-        auto_from="tracktimes",
+        dim="ntracktimes",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",

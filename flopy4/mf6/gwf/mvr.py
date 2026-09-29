@@ -76,7 +76,7 @@ class Mvr(Package):
     packages: Optional[list[Packages]] = field(
         default=None,
         block="packages",
-        auto_from="packages",
+        dim="maxpackages",
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",

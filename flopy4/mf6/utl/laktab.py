@@ -34,7 +34,7 @@ class Laktab(Package):
     table: Optional[list[Table]] = field(
         default=None,
         block="table",
-        auto_from="table",
+        dim="nrow",
     )
 
 

@@ -29,7 +29,7 @@ class Ats(Package):
     perioddata: Optional[list[Perioddata]] = field(
         default=None,
         block="perioddata",
-        auto_from="perioddata",
+        dim="maxats",
     )
 
 

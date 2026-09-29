@@ -34,7 +34,7 @@ class Package(Component, ABC):
 
         Handles three concerns in order:
         1. Coerce raw list/block/period data into Item-list fields, and
-           auto-set n<block>s.
+           set each list's row-count dimension.
         2. Broadcast scalar griddata values to their DFN shape when dims
            is supplied (e.g. IC(strt=1.0, dims={"nodes": 900})).
         3. Chain to Component.__attrs_post_init__() via super() -- LAST,
@@ -78,9 +78,14 @@ class Package(Component, ABC):
         super().__attrs_post_init__()
 
     def _init_item_lists(self, fields) -> None:
-        """Coerce raw list/dict block+period data into Item-list fields;
-        auto-set n<block>s from the resulting list lengths. `maxbound`
-        (where applicable) is a computed property instead, not set here.
+        """Coerce raw list/dict block+period data into Item-list fields.
+
+        A list field with `dim` metadata (the DIMENSIONS field counting its
+        rows, from the DFN) gets that dimension set from its row count,
+        unless it was given explicitly; more rows than an explicit dimension
+        is an error. A list with DFN `default_rows` of one row and no data gets
+        that row repeated `dim` times. `maxbound` (where applicable) is a
+        computed property instead, not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -94,7 +99,12 @@ class Package(Component, ABC):
             item_cls = item_list_type(f.type)
             if item_cls is None:
                 continue
+            dim = f.metadata.get("dim")
             raw = self.__dict__.get(f.name)
+            if raw is None and (default := f.metadata.get("default_rows")):
+                raw = list(default)
+                if dim and len(raw) == 1:
+                    raw *= getattr(self, dim) or 1
             if raw is None:
                 continue
 
@@ -106,8 +116,15 @@ class Package(Component, ABC):
             else:
                 coerced_list = self._coerce_item_list(raw, item_cls)
                 object.__setattr__(self, f.name, coerced_list)
-                if getattr(self, f"n{block}s", 0) == 0:
-                    object.__setattr__(self, f"n{block}s", len(coerced_list))
+                if dim:
+                    self._set_dim_from_rows(dim, len(coerced_list))
+
+    def _set_dim_from_rows(self, dim: str, nrows: int) -> None:
+        declared = getattr(self, dim)
+        if declared in (None, 0, attrs.fields_dict(type(self))[dim].default):
+            object.__setattr__(self, dim, nrows)
+        elif nrows > declared:
+            raise ValueError(f"{dim}={declared} but {nrows} rows were given")
 
     @staticmethod
     def _coerce_item_list(data, item_cls: "type[Item] | tuple[type[Item], ...]") -> list:

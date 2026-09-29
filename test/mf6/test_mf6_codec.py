@@ -285,16 +285,14 @@ def test_dumps_tdis():
     pprint(loaded)
 
 
-def test_tdis_period_columns_are_views():
+def test_tdis_nper_from_perioddata():
     from flopy4.mf6.tdis import Tdis
 
-    tdis = Tdis(perioddata=[(1.0, 1, 1.0), (2.0, 2, 1.5)])
-    assert tdis.nper == 2
-    tdis.perioddata[1].perlen = 5.0
-    assert list(tdis.perlen) == [1.0, 5.0]
-    assert list(Tdis(nper=3).nstp) == [1, 1, 1]
+    assert Tdis(perioddata=[(1.0, 1, 1.0), (2.0, 2, 1.5)]).nper == 2
+    tdis = Tdis(nper=3)
+    assert [r.nstp for r in tdis.perioddata] == [1, 1, 1]
     with pytest.raises(ValueError, match="nper"):
-        Tdis(nper=3, perioddata=[(1.0, 1, 1.0)])
+        Tdis(nper=2, perioddata=[(1.0, 1, 1.0)] * 3)
 
 
 def test_tdis_round_trip():
@@ -307,12 +305,7 @@ def test_tdis_round_trip():
     raw = loads(text)
     tdis2 = structure_component(raw, Tdis)
     assert tdis2.nper == 2
-    assert float(tdis2.perlen[0]) == pytest.approx(1.0)
-    assert float(tdis2.perlen[1]) == pytest.approx(2.0)
-    assert int(tdis2.nstp[0]) == 1
-    assert int(tdis2.nstp[1]) == 2
-    assert float(tdis2.tsmult[0]) == pytest.approx(1.0)
-    assert float(tdis2.tsmult[1]) == pytest.approx(1.5)
+    assert tdis2.perioddata == tdis.perioddata
 
 
 def test_disv_vertices_roundtrip(disv_with_constant_arrays):

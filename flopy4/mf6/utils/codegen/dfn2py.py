@@ -5,7 +5,7 @@ import sys
 from os import PathLike
 from pathlib import Path
 
-from flopy4.mf6.utils.codegen.make import make_modules
+from flopy4.mf6.utils.codegen.make import check_mixins, make_modules
 
 _PROJ_ROOT = Path(__file__).parents[4].expanduser().resolve()
 _MF6_ROOT = _PROJ_ROOT / "flopy4" / "mf6"
@@ -28,10 +28,6 @@ _SKIP = {
     "gwt-dis",
     "gwe-dis",
     "prt-dis",
-    # hand-written: wkt/crs_wkt field type overrides, in NcfBase
-    # (utl/ncf_base.py); Ncf.from_grid() factory stays on the concrete
-    # class, matching the DisBase pattern.
-    "utl-ncf",
 }
 
 
@@ -50,6 +46,7 @@ def make(
     dfns :
         Pre-loaded DFN dict, e.g. from a registry's `spec()` call.
     """
+    check_mixins(dfns)
     outdir = Path(outdir).expanduser().resolve()
     outdir.mkdir(exist_ok=True, parents=True)
     components = make_modules(

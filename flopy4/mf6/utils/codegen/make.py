@@ -139,6 +139,7 @@ class ComponentSpec:
     dfn_name: str
     class_name: str
     base_class: str
+    mixins: list[str]
     multi: bool
     slntype: str | None
     imports: dict[str, list[str]]
@@ -764,6 +765,7 @@ def _generated_imports(
     generatable_fields: list[tuple[str, FieldV3]],
     *,
     base_class: str = "Package",
+    mixins: list[str] | None = None,
     multi: bool = False,
     slntype: bool = False,
     has_inner_classes: bool = False,
@@ -845,9 +847,11 @@ def _generated_imports(
         "Package": "from flopy4.mf6.package import Package",
         "Solution": "from flopy4.mf6.solution import Solution",
         "Context": "from flopy4.mf6.context import Context",
-        "TdisBase": "from flopy4.mf6.tdis_base import TdisBase",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
+    for mixin in mixins or []:
+        module, name = mixin.split(":")
+        flopy4.append(f"from {module} import {name}")
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
@@ -875,13 +879,25 @@ def _generated_imports(
 
 _SLN_PREFIX = "sln"
 
+# flopy API methods (factories, conversions to and from flopy types) for
+# generated classes, as "module:Class" method-only mixins. Mixins declare no
+# fields; those come from the DFN only.
+MIXINS: dict[str, list[str]] = {
+    "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
+    "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
+}
+
+
+def check_mixins(dfns: Mapping[str, Component]) -> None:
+    """Raise if a `MIXINS` key names no DFN component."""
+    if unknown := sorted(set(MIXINS) - set(dfns)):
+        raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
+
 
 def _base_class(component: Component) -> str:
     """Determine the Python base class for a component."""
     if component.name.split("-")[0] == _SLN_PREFIX:
         return "Solution"
-    if component.name == "sim-tdis":
-        return "TdisBase"
     return "Package"
 
 
@@ -1100,6 +1116,7 @@ def build_component_spec(
     # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block
     # whose only field is an untagged list. The Item class's own fields are
     # the schema -- see item_class() -- no separate __*_schema__ ClassVar.
+    _declared_dims = [bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared]
     for bp in block_properties:
         _list_field = next(
             f for f in component.blocks[bp.block_name].fields.values() if filters.is_list_field(f)
@@ -1116,8 +1133,12 @@ def build_component_spec(
         if _union is not None:
             item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
-        if bp.dim_is_dfn_declared:
-            _meta["auto_from"] = bp.block_name
+        # The DIMENSIONS field counting this block's rows. A dimension shared
+        # by several blocks (MAW's nmawwells) doesn't count any one's rows.
+        if bp.dim_is_dfn_declared and _declared_dims.count(bp.dim_attr) == 1:
+            _meta["dim"] = bp.dim_attr
+        if _list_field.default:
+            _meta["default_rows"] = tuple(_list_field.default)
         # A block must still appear in the written file even with zero rows
         # if MF6 requires its header to be present regardless of row count
         # (e.g. SSM SOURCES) -- as opposed to a block that must be *omitted*
@@ -1205,6 +1226,7 @@ def build_component_spec(
     field_specs = _deduped
 
     base = _base_class(component)
+    mixins = MIXINS.get(component.name, [])
     multi = bool(component.multi) if hasattr(component, "multi") else False
     slntype = _slntype(component)
     has_inner_classes = bool(inner_class_specs)
@@ -1226,6 +1248,7 @@ def build_component_spec(
     imports = _generated_imports(
         generatable_field_objects,
         base_class=base,
+        mixins=mixins,
         multi=multi,
         slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
@@ -1248,6 +1271,7 @@ def build_component_spec(
         dfn_name=component.name,
         class_name=filters.class_name(component.name),
         base_class=base,
+        mixins=[m.split(":")[1] for m in mixins],
         multi=multi,
         slntype=slntype,
         imports=imports,

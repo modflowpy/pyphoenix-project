@@ -243,7 +243,7 @@ class Csub(Package):
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
-        auto_from="packagedata",
+        dim="ninterbeds",
     )
     cg_ske_cr: FloatArrayLike = field(
         default=1e-05,

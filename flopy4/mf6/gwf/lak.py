@@ -292,7 +292,7 @@ class Lak(Package):
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
-        auto_from="packagedata",
+        dim="nlakes",
     )
     connectiondata: Optional[list[Connectiondata]] = field(
         default=None,
@@ -302,12 +302,12 @@ class Lak(Package):
     tables: Optional[list[Tables]] = field(
         default=None,
         block="tables",
-        auto_from="tables",
+        dim="ntables",
     )
     outlets: Optional[list[Outlets]] = field(
         default=None,
         block="outlets",
-        auto_from="outlets",
+        dim="noutlets",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",
