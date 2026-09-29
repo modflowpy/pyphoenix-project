@@ -8,6 +8,7 @@ from flopy.discretization.grid import Grid as LegacyGrid
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import Package
+from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
 
 
@@ -42,7 +43,7 @@ class DisBase(Package):
             val = self.__dict__.get(f.name)
             if val is None:
                 continue
-            dtype = _PKG_DTYPE_MAP.get(f.metadata.get("dfn_type", "double"), np.float64)
+            dtype = _PKG_DTYPE_MAP.get(to_field_type(f.type), np.float64)
             if isinstance(val, (list, tuple)):
                 val = np.asarray(val, dtype=dtype)
                 self.__dict__[f.name] = val
