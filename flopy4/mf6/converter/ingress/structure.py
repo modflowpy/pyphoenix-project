@@ -2,6 +2,7 @@ import struct
 from abc import ABC
 from pathlib import Path
 from typing import Any, get_args, get_origin
+from warnings import warn
 
 import attrs
 import numpy as np
@@ -317,13 +318,29 @@ def _self_dims_from_kwargs(kwargs: dict) -> dict:
 
 
 def _parse_readarray_period_block(
-    rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
-) -> "dict[str, np.ndarray]":
+    rows: list,
+    ra_fields: dict,
+    dims: dict,
+    workspace: "Path | None" = None,
+    auxiliary: "list[str] | None" = None,
+) -> "tuple[dict, bool]":
+    """Parse one READARRAY period block. Returns ({field name: array}, with an
+    "aux" entry {iaux: array}, and whether any row was consumed but not
+    stored (a time-array-series reference or an unknown name)."""
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
 
-    result: dict[str, np.ndarray] = {}
+    # an AUXILIARY name's position indexes `aux`'s naux axis; aux names are
+    # matched before field names, as in MF6
+    aux_index = (
+        {str(name).lower(): n for n, name in enumerate(auxiliary)}
+        if auxiliary and "aux" in ra_fields
+        else {}
+    )
+
+    result: dict = {}
+    unstored = False
     i = 0
     while i < len(rows):
         row = rows[i]
@@ -331,7 +348,8 @@ def _parse_readarray_period_block(
             i += 1
             continue
         key = str(row[0]).lower()
-        f = ra_fields.get(key)
+        iaux = aux_index.get(key)
+        f = ra_fields["aux"] if iaux is not None else ra_fields.get(key)
         i += 1
 
         # A field can be sourced from a named time-array-series instead of
@@ -342,16 +360,13 @@ def _parse_readarray_period_block(
         # one row and move on, rather than misreading the *next* row as
         # this field's data.
         if any(str(t).upper() in ("TIMEARRAYSERIES", "TAS6") for t in row[1:]):
+            unstored = True
             continue
 
         if f is None:
-            # Unrecognized field name -- e.g. a per-period AUXILIARY-named
-            # array (RCHA/EVTA-style: `AUXILIARY <name>` in OPTIONS lets
-            # `<name>` appear as its own array field in the period block,
-            # keyed dynamically, so it's not one of `ra_fields`'s declared
-            # class fields). Still consume its control-record data so it
-            # doesn't get mistaken for the *next* real field's row; just
-            # don't store it (not resolved to a real array yet either).
+            # unknown name: consume its data so it isn't read as the next
+            # field's, but don't store it
+            unstored = True
             is_layered_unknown = any(str(t).upper() == "LAYERED" for t in row[1:])
             if is_layered_unknown:
                 while i < len(rows):
@@ -379,19 +394,24 @@ def _parse_readarray_period_block(
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
-                layers.append(value)
-            if layers:
-                if len(layers) < nlay:
-                    layers = (layers * nlay)[:nlay]
-                result[f.name] = np.stack(layers)  # (nlay, ncpl)
+                layer, i = _read_control_record(rows, i, workspace, dtype, ncpl)
+                layers.append(layer)
+            if not layers:
+                continue
+            if len(layers) < nlay:
+                layers = (layers * nlay)[:nlay]
+            value = np.stack(layers)  # (nlay, ncpl)
         else:
             if i >= len(rows):
                 break
             value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
-            result[f.name] = value
 
-    return result
+        if iaux is None:
+            result[f.name] = value
+        else:
+            result.setdefault("aux", {})[iaux] = value
+
+    return result, unstored
 
 
 def _apply_binding_terms(child: Any, terms: list) -> None:
@@ -516,6 +536,18 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
 
                 resolved.append((row, target_cls, child_name, kind))
                 break
+            else:
+                # A component row (MF6 ftype, e.g. "MAW6") no field accepts is
+                # a component type flopy4 does not support; it is not loaded.
+                if token[:1].isalpha() and token.endswith("6"):
+                    fname = row[1] if len(row) > 1 else ""
+                    warn(
+                        f"{cls.__name__} '{block_name}' block: unsupported component "
+                        f"{token.upper()} ({fname}) was not loaded and will be "
+                        "missing from the loaded simulation",
+                        UserWarning,
+                        stacklevel=2,
+                    )
 
         resolved.sort(key=lambda r: 0 if issubclass(r[1], DimensionProvider) else 1)
 
@@ -650,6 +682,12 @@ def structure_component(
         if inner_cls is None:
             continue
         kw = vars(inner_cls).get("_keyword", "")
+        if not kw:
+            # a record without a trigger keyword starts with its first
+            # tagged field's name (Ims.Rclose: "INNER_RCLOSE <value> ...")
+            fields = attrs.fields(inner_cls)  # type: ignore[arg-type]
+            tagged = [a for a in fields if a.metadata.get("tagged")]
+            kw = tagged[0].name if tagged else ""
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
@@ -691,6 +729,7 @@ def structure_component(
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
+    reset_periods: set[int] = set()  # grid packages, see Pass 3b
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
@@ -707,13 +746,17 @@ def structure_component(
             key = str(row[0]).lower()
             if (ff := file_fields.get(key)) is not None:
                 # KEYWORD FILEIN|FILEOUT <path>: the path follows the
-                # keyword and the direction token.
+                # keyword and the direction token. A record sharing the
+                # trigger keyword (e.g. OC's "HEAD PRINT_FORMAT ...") has
+                # no direction token and is handled as a record below.
                 tokens = row[1:]
-                if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
-                    tokens = tokens[1:]
-                if tokens:
-                    kwargs[ff.alias or ff.name] = Path(_strip_quotes(str(tokens[0])))
-                continue
+                has_direction = bool(tokens) and str(tokens[0]).upper() in ("FILEIN", "FILEOUT")
+                if has_direction or key not in inner_class_fields:
+                    if has_direction:
+                        tokens = tokens[1:]
+                    if tokens:
+                        kwargs[ff.alias or ff.name] = Path(_strip_quotes(str(tokens[0])))
+                    continue
             f = all_fields.get(key) or all_fields.get(alias_map.get(key, ""))
             if f is None or f.init is False:
                 if key in inner_class_fields:
@@ -785,6 +828,9 @@ def structure_component(
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
+                    # an empty block is kept: for list packages it clears
+                    # the previous period's stresses (MF6 nbound=0)
+                    spd[kper] = []
                     continue
                 rows = _resolve_open_close_rows(rows, workspace)
                 row_list = _parse_rows(
@@ -819,17 +865,43 @@ def structure_component(
                 ncpl = nodes // nlay if nlay > 1 else nodes
                 # Pre-fill with FILL_DNODATA; periods absent from file use MF6
                 # fill-forward semantics (egress skips all-FILL_DNODATA periods).
+                # Fields absent from every period are left unset (None).
+                # `aux` has a leading (naux) axis, one entry per AUXILIARY name.
+                auxiliary = kwargs.get("auxiliary")
                 accum: dict[str, np.ndarray] = {}
                 for fname, f in ra_fields.items():
                     shape = (nper, nlay, ncpl) if f.metadata.get("layered", False) else (nper, ncpl)
+                    if fname == "aux":
+                        shape = shape[:1] + (naux,) + shape[1:]
                     accum[fname] = np.full(shape, FILL_DNODATA)
+                found: set[str] = set()
                 for kper, rows in sorted(kper_rows.items()):
-                    if not rows:
-                        continue
-                    parsed = _parse_readarray_period_block(rows, ra_fields, dims, workspace)
+                    parsed, unstored = (
+                        _parse_readarray_period_block(rows, ra_fields, dims, workspace, auxiliary)
+                        if rows
+                        else ({}, False)
+                    )
+                    # a grid (READARRAYGRID) period giving no stress clears the
+                    # previous period's (all-DNODATA arrays alone would carry
+                    # forward), unless a row wasn't stored (e.g. TAS)
+                    if (
+                        kwargs.get("readarraygrid")
+                        and not unstored
+                        and not any(
+                            np.any(np.asarray(arr) != FILL_DNODATA)
+                            for fname, arr in parsed.items()
+                            if fname != "aux"
+                        )
+                    ):
+                        reset_periods.add(kper)
                     for fname, arr in parsed.items():
-                        accum[fname][kper] = arr
-                kwargs.update(accum)
+                        if fname == "aux":
+                            for iaux, aux_arr in arr.items():
+                                accum[fname][kper, iaux] = aux_arr
+                        else:
+                            accum[fname][kper] = arr
+                        found.add(fname)
+                kwargs.update({fname: accum[fname] for fname in found})
 
     # ── Pass 3c: array fields whose own block repeats (utl-tas.tas_array is
     # the only current DFN example) ──────────────────────────────────────────
@@ -889,4 +961,7 @@ def structure_component(
     if name is not None:
         kwargs["name"] = name
 
-    return cls(**kwargs)
+    instance = cls(**kwargs)
+    if reset_periods:
+        instance.reset_periods = reset_periods
+    return instance

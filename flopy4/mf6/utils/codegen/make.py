@@ -1106,6 +1106,9 @@ def build_component_spec(
             _ra_meta: dict = {"block": _ff_block}
             if shape := getattr(_ra_f, "shape", None):
                 _ra_meta["shape"] = tuple(shape)
+                # period aux is (naux, ncpl|nodes); grid package DFNs omit naux
+                if _ra_f.name == "aux" and "auxiliary" not in shape:
+                    _ra_meta["shape"] = ("auxiliary",) + tuple(shape)
             _ra_meta["layered"] = getattr(_ra_f, "layered", False)
             if getattr(_ra_f, "netcdf", False):
                 _ra_meta["netcdf"] = True

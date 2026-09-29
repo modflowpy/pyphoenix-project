@@ -13,7 +13,7 @@ from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.item import Item
-from flopy4.mf6.package import Package
+from flopy4.mf6.package import Package, split_aux
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
@@ -72,6 +72,31 @@ def _rows_to_tuples(row_list: list) -> list[tuple]:
     """Convert a list of Item instances to MF6 record tuples via each
     Item's own to_tokens()."""
     return [row.to_tokens() for row in row_list]
+
+
+def _mark_netcdf(da: xr.DataArray, meta: Mapping) -> xr.DataArray:
+    """Mark an array from a field MF6 reads from NetCDF (dfn `netcdf` flag),
+    so a NetCDF write writes `NETCDF` for it; unmarked arrays keep their data."""
+    if not meta.get("netcdf"):
+        return da
+    da = da.copy(deep=False)
+    da.attrs = {**da.attrs, "netcdf": True}
+    return da
+
+
+def _cell_array(arr, nlay: int, nrow: int, ncol: int, ncpl: int, layered: bool):
+    """Give a cell array the dims the writer formats by: `nlay` leads a
+    layered array, and a structured layer is (nrow, ncol), as MF6 reads it
+    row by row. Returns None if the array fits neither."""
+    size = arr.size
+    structured = bool(nrow and ncol)
+    if structured and not layered and size == nrow * ncol:
+        return xr.DataArray(arr.reshape(nrow, ncol), dims=("nrow", "ncol"))
+    if structured and layered and size == nlay * nrow * ncol:
+        return xr.DataArray(arr.reshape(nlay, nrow, ncol), dims=("nlay", "nrow", "ncol"))
+    if layered and nlay and ncpl and size == nlay * ncpl:
+        return xr.DataArray(arr.reshape(nlay, ncpl), dims=("nlay", "ncpl"))
+    return None
 
 
 def _wrap_array(value: Any) -> xr.DataArray:
@@ -153,24 +178,30 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             if isinstance(field_value, (np.ndarray, _DaskArray)):
                 is_layered = meta.get("layered", False)
                 nper = field_value.shape[0]
-                # aux field: shape (nper, ncpl, naux)
-                if f.name == "aux" and field_value.ndim == 3:
-                    aux_names: list[str] = list(getattr(value, "auxiliary", None) or [])
-                    naux = field_value.shape[2]
+                # aux: one period array per AUXILIARY name, written under it
+                arrays = {f.name: field_value}
+                aux_names = list(getattr(value, "auxiliary", None) or [])
+                if f.name == "aux" and aux_names:
+                    arrays = dict(zip(aux_names, split_aux(field_value, len(aux_names))))
+                _grid = value.resolve_dims("nrow", "ncol")
+                nrow, ncol = _grid.get("nrow") or 0, _grid.get("ncol") or 0
+                for array_key, array_value in arrays.items():
                     for kper in range(nper):
-                        for i in range(naux):
-                            col = field_value[kper, :, i]
-                            aux_key = aux_names[i] if i < len(aux_names) else f"aux{i}"
-                            readarray_period.setdefault(kper, {})[aux_key] = xr.DataArray(col)
-                    continue
-                for kper in range(nper):
-                    layer_slice = field_value[kper]
-                    if is_layered and layer_slice.ndim >= 2:
-                        extra_dims = tuple(f"x{i}" for i in range(layer_slice.ndim - 1))
-                        da = xr.DataArray(layer_slice, dims=("nlay",) + extra_dims)
-                    else:
-                        da = xr.DataArray(layer_slice)
-                    readarray_period.setdefault(kper, {})[f.name] = da
+                        layer_slice = np.asarray(array_value[kper])
+                        # integer fields are held as float (DNODATA fill);
+                        # write fully-given periods back as integers
+                        if dfn_type == "integer" and not np.any(layer_slice == FILL_DNODATA):
+                            layer_slice = layer_slice.astype(np.int64)
+                        da = None
+                        if is_layered and layer_slice.ndim >= 2:
+                            nlay_k, ncpl_k = layer_slice.shape[0], layer_slice.shape[-1]
+                            da = _cell_array(layer_slice, nlay_k, nrow, ncol, ncpl_k, True)
+                            if da is None:
+                                extra_dims = tuple(f"x{i}" for i in range(layer_slice.ndim - 1))
+                                da = xr.DataArray(layer_slice, dims=("nlay",) + extra_dims)
+                        if da is None:
+                            da = xr.DataArray(layer_slice)
+                        readarray_period.setdefault(kper, {})[array_key] = _mark_netcdf(da, meta)
                 continue
             # list: dict[int, list[Item]]
             if not isinstance(field_value, dict):
@@ -213,24 +244,28 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
 
         elif meta.get("shape") and not isinstance(field_value, bool):
             if meta["shape"]:
-                # reshape layered array to (nlay, ncpl) with named
-                # dims to signal the writer to use layered format
+                shaped: xr.DataArray | None = None
+                # a cell array (not DELR/DELC), given flat
+                is_cells = meta["shape"][-1] in ("ncpl", "nodes")
                 if (
-                    meta.get("layered")
+                    is_cells
                     and hasattr(field_value, "reshape")
                     and not isinstance(field_value, xr.DataArray)
                 ):
                     _get_dims = getattr(value, "get_dims", None)
                     _dims_d = _get_dims() if _get_dims else {}
                     _nlay = _dims_d.get("nlay", 0)
-                    _ncpl = _dims_d.get("ncpl", 0)
-                    if _nlay > 1 and _ncpl > 0 and field_value.size == _nlay * _ncpl:
-                        blocks[block_name][f.name] = xr.DataArray(
-                            field_value.reshape(_nlay, _ncpl),
-                            dims=("nlay", "ncpl"),
-                        )
-                        continue
-                blocks[block_name][f.name] = _wrap_array(field_value)
+                    shaped = _cell_array(
+                        field_value,
+                        _nlay,
+                        _dims_d.get("nrow", 0),
+                        _dims_d.get("ncol", 0),
+                        _dims_d.get("ncpl", 0),
+                        bool(meta.get("layered")) and _nlay > 1,
+                    )
+                if shaped is None:
+                    shaped = _wrap_array(field_value)
+                blocks[block_name][f.name] = _mark_netcdf(shaped, meta)
 
         elif f.name == "auxiliary" and isinstance(field_value, list):
             blocks[block_name][f.name] = ("AUXILIARY",) + tuple(field_value)
@@ -258,14 +293,19 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             key = f"{fill_forward_block} {kper + 1}"
             blocks[key] = {fill_forward_block: spd_period[kper]}
 
-        for kper in sorted(readarray_period.keys()):
+        # grid (READARRAYGRID) periods given with no stress: written as an
+        # empty block, which clears the previous period's stresses in MF6
+        reset_periods = set(getattr(value, "reset_periods", None) or ())
+        for kper in sorted(set(readarray_period) | reset_periods):
             key = f"{fill_forward_block} {kper + 1}"
             ra_block = blocks.get(key, {})
-            for field_name, da in readarray_period[kper].items():
+            for field_name, da in readarray_period.get(kper, {}).items():
                 if not np.all(da.values == FILL_DNODATA):
                     ra_block[field_name] = da
-            if ra_block:
+            if ra_block or kper in reset_periods:
                 blocks[key] = ra_block
+            if kper in reset_periods:
+                write_if_empty_set.add(key)
 
     return {
         name: block

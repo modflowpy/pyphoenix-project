@@ -95,6 +95,23 @@ except Exception:
 # xfails) -- up from 12 models before any of them.
 KNOWN_PASSING = frozenset(
     {
+        "mf6/large/test1000_751x751",
+        "mf6/large/test1000_751x751_confined",
+        "mf6/large/test1001_Peterson",
+        "mf6/large/test1002_biscqtg_disv_dev",
+        "mf6/large/test1002_biscqtg_disv_gnc_dev",
+        "mf6/large/test1002_biscqtg_disv_gnc_nr_dev",
+        "mf6/large/test1002_biscqtg_disv_nr_MD_dev",
+        "mf6/large/test1002_biscqtg_disv_nr_RCM_dev",
+        "mf6/large/test1002_biscqtg_disv_nr_dev",
+        "mf6/large/test1003_MNW2_Fig28",
+        "mf6/large/test1004_mvlake_lak_ss_dev",
+        "mf6/large/test1004_mvlake_lak_tr",
+        "mf6/large/test1004_mvlake_laksfr_tr",
+        "mf6/large/test1005_secp",
+        "mf6/large/test1200_gwtbuy-goswami",
+        "mf6/large/test1201_gwtbuy-elderRa60",
+        "mf6/large/test2001_gwtbuy-elderRa400",
         "mf6/test/test001a_Tharmonic",
         "mf6/test/test001a_Tharmonic_extlist",
         "mf6/test/test001a_Tharmonic_tabs",

@@ -12,7 +12,9 @@ from flopy4.mf6.gwt.cnc import Cnc
 from flopy4.mf6.gwt.dis import Dis
 from flopy4.mf6.gwt.disv import Disv
 from flopy4.mf6.gwt.dsp import Dsp
+from flopy4.mf6.gwt.fmi import Fmi
 from flopy4.mf6.gwt.ic import Ic
+from flopy4.mf6.gwt.ist import Ist
 from flopy4.mf6.gwt.lkt import Lkt
 from flopy4.mf6.gwt.mst import Mst
 from flopy4.mf6.gwt.mvt import Mvt
@@ -88,6 +90,8 @@ class Gwt(Model):
     adv: Adv | None = field(block="packages", default=None)
     dsp: Dsp | None = field(block="packages", default=None)
     mst: Mst | None = field(block="packages", default=None)
+    ist: list[Ist] = field(block="packages", default=attrs.Factory(list))
+    fmi: Fmi | None = field(block="packages", default=None)
     cnc: list[Cnc] = field(block="packages", default=attrs.Factory(list))
     src: list[Src] = field(block="packages", default=attrs.Factory(list))
     lkt: list[Lkt] = field(block="packages", default=attrs.Factory(list))

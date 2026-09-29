@@ -372,3 +372,70 @@ def test_param_mesh():
         meta = nc_param.meta
         assert isinstance(meta, dict)
         nc_param = NetCDFParam.model_validate(meta, context=context)
+
+
+def test_welg_two_aux_data():
+    """Each aux variable gets its own data slice and modflow_iaux, with and
+    without a layered mesh."""
+    dims = [2, 4, 3, 2]  # [nper, nlay, nrow, ncol]
+    aux = np.stack([grid_nodata(dims), grid_nodata(dims)], axis=1)
+    aux[0, 0] = 1.0
+    aux[0, 1] = 2.0
+    package = {
+        "package_name": "welg_0",
+        "package_type": "gwf-welg",
+        "auxiliary": ["a1", "a2"],
+        "params": [{"name": "aux", "data": aux}],
+    }
+    nc_cfg = {"modeltype": "gwf6", "modelname": "m", "gridtype": "structured"}
+
+    ds = NetCDFModel.from_dict(
+        {**nc_cfg, "packages": [package]}, context={"dims": dims}
+    ).to_xarray()
+    for n, name in enumerate(["a1", "a2"]):
+        var = ds[f"welg_0_{name}"]
+        assert var.attrs["modflow_iaux"] == n + 1
+        assert np.allclose(var.values, aux[:, n])
+
+    ds = NetCDFModel.from_dict(
+        {**nc_cfg, "attrs": {"mesh": "layered"}, "packages": [package]}, context={"dims": dims}
+    ).to_xarray()
+    for n, name in enumerate(["a1", "a2"]):
+        for k in range(dims[1]):
+            var = ds[f"welg_0_{name}_l{k + 1}"]
+            assert var.attrs["modflow_iaux"] == n + 1
+            assert np.allclose(var.values, aux[:, n, k].reshape(dims[0], -1))
+
+
+def test_from_model_periods_past_nper_dropped():
+    """Period data past NPER is dropped, with a warning."""
+    import pytest
+
+    from flopy4.mf6.gwf import Chdg, Dis, Gwf
+    from flopy4.mf6.simulation import Simulation
+    from flopy4.mf6.utils.time import Time
+
+    sim = Simulation(tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0]), name="s")
+    gwf = Gwf(parent=sim, dis=Dis(nlay=1, nrow=1, ncol=2), name="m")
+    Chdg(parent=gwf, head=np.array([[1.0, 2.0], [3.0, 4.0]]))
+    with pytest.warns(UserWarning, match="past NPER"):
+        ds = NetCDFModel.from_model(gwf).to_xarray()
+    assert ds.sizes["time"] == 1
+    assert np.allclose(ds["chd0_head"].values.ravel(), [1.0, 2.0])
+
+
+def test_split_aux():
+    """Period aux splits into one (nper, ...) array per AUXILIARY name."""
+    import pytest
+
+    from flopy4.mf6.package import split_aux
+
+    aux = np.arange(12.0).reshape(2, 2, 3)  # (nper, naux, ncpl)
+    parts = split_aux(aux, 2)
+    assert [p.shape for p in parts] == [(2, 3), (2, 3)]
+    assert np.array_equal(parts[1], aux[:, 1])
+    # a single auxiliary, with or without the naux axis
+    assert split_aux(aux[:, :1], 1)[0].shape == (2, 3)
+    assert split_aux(aux[:, 0], 1)[0].shape == (2, 3)
+    with pytest.raises(ValueError, match="expected"):
+        split_aux(aux, 3)

@@ -18,6 +18,14 @@ class Dis(DisBase):
 
     length_units: Optional[str] = field(default=None, block="options", optional=True)
     nogrb: bool = field(default=False, block="options", optional=True)
+    grb_filerecord: Optional[Path] = path(
+        default=None,
+        converter=_optional_path,
+        block="options",
+        optional=True,
+        direction="out",
+        keyword="grb6",
+    )
     xorigin: float = field(default=0.0, block="options", optional=True)
     yorigin: float = field(default=0.0, block="options", optional=True)
     angrot: Optional[float] = field(default=None, block="options", optional=True)

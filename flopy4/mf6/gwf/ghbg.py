@@ -94,7 +94,7 @@ class Ghbg(Package):
     aux: Optional[FloatArrayLike] = field(
         default=None,
         block="period",
-        shape=("nodes",),
+        shape=("auxiliary", "nodes"),
         layered=True,
         netcdf=True,
         fill_forward=True,

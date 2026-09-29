@@ -4,6 +4,7 @@ from pprint import pprint
 
 import numpy as np
 import pytest
+import xarray as xr
 
 from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.constants import FILL_DNODATA
@@ -2708,7 +2709,7 @@ def test_rcha_period_aux_dump():
         parent=gwf,
         auxiliary=["tracer"],
         recharge=np.expand_dims(recharge, axis=0),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),  # (nper, ncpl, naux)
+        aux=aux[np.newaxis, np.newaxis, :],  # (nper, naux, ncpl)
         dims={"nper": 1, "naux": 1},
     )
 
@@ -2726,6 +2727,48 @@ def test_rcha_period_aux_dump():
     period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0]
     assert "tracer" in period_section.lower()
     assert " aux " not in period_section.lower()
+
+
+def test_dis_structured_arrays_dump_by_row():
+    """DIS TOP/BOTM are written one grid row per line: MF6 reads them as
+    (nrow, ncol) per layer, row by row, so a whole layer on one line fails."""
+    from flopy4.mf6.gwf import Dis
+
+    nlay, nrow, ncol = 2, 3, 4
+    top = 10.0 + np.arange(nrow * ncol, dtype=float)
+    botm = -np.arange(nlay * nrow * ncol, dtype=float).reshape(nlay, nrow, ncol)
+    dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, top=top.reshape(nrow, ncol), botm=botm)
+
+    lines = [line.strip() for line in dumps(COMPONENT_CONVERTER.unstructure(dis)).splitlines()]
+    for row in top.reshape(nrow, ncol).tolist():
+        assert " ".join(map(repr, row)) in lines
+    for layer in botm.tolist():
+        for row in layer:
+            assert " ".join(map(repr, row)) in lines
+
+
+def test_netcdf_dump_only_netcdf_fields():
+    """With use_netcdf, only arrays of netcdf-capable (dfn) fields are written
+    `NETCDF`; others keep their data, as MF6 has no variable to read."""
+    from flopy4.mf6.gwf import Npf
+    from flopy4.mf6.prt.mip import Mip
+    from flopy4.mf6.write_context import WriteContext
+
+    ctx = WriteContext(use_netcdf=True)
+    mip = dumps(COMPONENT_CONVERTER.unstructure(Mip(porosity=np.array([0.1, 0.2]))), context=ctx)
+    npf = dumps(
+        COMPONENT_CONVERTER.unstructure(Npf(k=np.array([1.0, 2.0]), icelltype=np.array([0, 0]))),
+        context=ctx,
+    )
+
+    assert "NETCDF" not in mip.upper()
+    assert "0.1 0.2" in mip
+    assert "K NETCDF" in npf.upper()
+
+    # opt-in: an array egress did not mark keeps its data
+    from flopy4.mf6.codec.writer.filters import array_how
+
+    assert array_how(xr.DataArray([1.0, 2.0]), netcdf=True) == "internal"
 
 
 def test_chdg_period_aux_dump():
@@ -2749,7 +2792,7 @@ def test_chdg_period_aux_dump():
         parent=gwf,
         auxiliary=["well_id"],
         head=np.expand_dims(head, axis=0),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),
+        aux=aux.reshape(1, 1, ncpl),  # (nper, naux, ncpl)
         dims={"nper": 1, "naux": 1},
     )
 
@@ -2781,15 +2824,15 @@ def test_rcha_period_double_aux_dump():
 
     recharge = np.zeros(ncpl, dtype=float)
     recharge[0] = 1.0e-4
-    aux = np.zeros((ncpl, 2), dtype=float)
+    aux = np.zeros((2, ncpl), dtype=float)
     aux[0, 0] = 5.0
-    aux[0, 1] = 10.0
+    aux[1, 0] = 10.0
 
     rch = Rcha(
         parent=gwf,
         auxiliary=["tracer_a", "tracer_b"],
         recharge=np.expand_dims(recharge, axis=0),
-        aux=np.expand_dims(aux, axis=0),  # (nper, ncpl, naux)
+        aux=np.expand_dims(aux, axis=0),  # (nper, naux, ncpl)
         dims={"nper": 1, "naux": 2},
     )
 
@@ -2870,3 +2913,13 @@ def test_tdis_start_date_time_is_str(text, expected):
     tdis = structure_component(raw, Tdis)
     assert isinstance(tdis.start_date_time, str)
     assert tdis.start_date_time == expected
+
+
+def test_dis_delr_delc_not_reshaped():
+    """With one row, DELR/DELC (size ncol/nrow) are not taken for cell arrays."""
+    from flopy4.mf6.gwf import Dis
+
+    ones = np.array([1.0, 2.0, 3.0])
+    blocks = COMPONENT_CONVERTER.unstructure(Dis(nlay=1, nrow=1, ncol=3, delr=ones, top=ones))
+    assert blocks["griddata"]["delr"].ndim == 1
+    assert blocks["griddata"]["top"].dims == ("nrow", "ncol")

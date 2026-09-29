@@ -26,8 +26,11 @@ _SKIP = {
     "gwf-dis",
     "gwf-disv",
     "gwt-dis",
+    "gwt-disv",
     "gwe-dis",
+    "gwe-disv",
     "prt-dis",
+    "prt-disv",
     # hand-written: wkt/crs_wkt field type overrides, in NcfBase
     # (utl/ncf_base.py); Ncf.from_grid() factory stays on the concrete
     # class, matching the DisBase pattern.

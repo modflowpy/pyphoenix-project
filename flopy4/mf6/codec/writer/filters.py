@@ -27,7 +27,8 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     all values are the same, so return "constant" or "internal"
     as appropriate.
     """
-    if netcdf:
+    # arrays from fields MF6 reads from NetCDF are marked by egress
+    if netcdf and value.attrs.get("netcdf", False):
         return "netcdf"
     if hasattr(value.data, "blocks"):
         # Dask-backed: stream as internal, never materialize to check constant.
@@ -210,8 +211,6 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     """
     Yield records (tuples) from data in a `list`, `dict`, `DataArray` or `Dataset`.
     """
-    from flopy4.mf6.gwf.disv import Disv
-
     if isinstance(value, (list, tuple)):
         for rec in value:
             yield rec
@@ -238,14 +237,7 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
     indices = np.where(mask)
     values = value.values[mask]
     for i, val in enumerate(values):
-        if isinstance(val, Disv.Cell2dRecord):
-            rec = (
-                val.icell2d + 1,
-                val.xc,
-                val.yc,
-                val.ncvert,
-            ) + tuple(v + 1 for v in val.icvert)
-        elif has_spatial_dims:
+        if has_spatial_dims:
             cellid = tuple(idx[i] + 1 for idx in indices)
             rec = cellid + (val,)
         else:

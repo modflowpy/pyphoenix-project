@@ -1,12 +1,14 @@
+from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
 from numpy.typing import NDArray
 
+from flopy4.mf6._types import _optional_path
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.item import Item
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils.grid import VertexGrid
 
 
@@ -28,8 +30,25 @@ class Disv(DisBase):
         xv: float
         yv: float
 
+    @attrs.define
+    class Cell2d(Item):
+        icell2d: int
+        xc: float
+        yc: float
+        ncvert: int
+        # vertex numbers; the item array parser reads them as floats
+        icvert: tuple = field(default=(), array=True, converter=lambda v: tuple(int(i) for i in v))
+
     length_units: Optional[str] = field(default=None, block="options", optional=True)
     nogrb: bool = field(default=False, block="options", optional=True)
+    grb_filerecord: Optional[Path] = path(
+        default=None,
+        converter=_optional_path,
+        block="options",
+        optional=True,
+        direction="out",
+        keyword="grb6",
+    )
     xorigin: Optional[float] = field(default=None, block="options", optional=True)
     yorigin: Optional[float] = field(default=None, block="options", optional=True)
     angrot: Optional[float] = field(default=None, block="options", optional=True)
@@ -67,7 +86,7 @@ class Disv(DisBase):
     yv: Optional[NDArray[np.float64]] = attrs.field(default=None)
     vertices: Optional[list[Vertices]] = field(default=None, block="vertices")
     cell2ddata: Optional[list] = attrs.field(default=None)
-    cell2d: Optional[list] = field(default=None, init=False, block="cell2d")
+    cell2d: Optional[list[Cell2d]] = field(default=None, block="cell2d")
 
     def __attrs_post_init__(self):
         if self.iv is not None and (not isinstance(self.iv, np.ndarray)):
@@ -82,14 +101,32 @@ class Disv(DisBase):
                 for iv, xv, yv in zip(self.iv, self.xv, self.yv)
             ]
             object.__setattr__(self, "vertices", rows)
+        elif self.vertices is not None:
+            # loaded: grid arrays from the (1-based) VERTICES rows
+            object.__setattr__(self, "iv", np.array([v.iv - 1 for v in self.vertices]))
+            object.__setattr__(self, "xv", np.array([v.xv for v in self.vertices], dtype=float))
+            object.__setattr__(self, "yv", np.array([v.yv for v in self.vertices], dtype=float))
         if self.cell2ddata is not None:
-            rows = []
-            for rec in self.cell2ddata:
-                row = (rec.icell2d + 1, rec.xc, rec.yc, rec.ncvert) + tuple(
-                    (v + 1 for v in rec.icvert)
+            rows = [
+                self.Cell2d(
+                    icell2d=rec.icell2d + 1,
+                    xc=rec.xc,
+                    yc=rec.yc,
+                    ncvert=rec.ncvert,
+                    icvert=tuple(v + 1 for v in rec.icvert),
                 )
-                rows.append(row)
+                for rec in self.cell2ddata
+            ]
             object.__setattr__(self, "cell2d", rows)
+        elif self.cell2d is not None:
+            # loaded: grid records from the (1-based) CELL2D rows
+            recs = [
+                self.Cell2dRecord(
+                    c.icell2d - 1, c.xc, c.yc, c.ncvert, tuple(v - 1 for v in c.icvert)
+                )
+                for c in self.cell2d
+            ]
+            object.__setattr__(self, "cell2ddata", recs)
         self.nodes = self.ncpl * self.nlay
         self.nrow = 0
         self.ncol = 0
