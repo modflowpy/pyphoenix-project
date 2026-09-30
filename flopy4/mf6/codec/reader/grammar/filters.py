@@ -1,4 +1,4 @@
-from modflow_devtools.dfns.schema import Array, InputField, Keyword, Union
+from modflow_devtools.dfns.schema import Array, InputField, Keyword, Union, split_bound
 
 
 def valid_as_union(field: InputField) -> InputField:
@@ -31,9 +31,10 @@ def valid_as_union(field: InputField) -> InputField:
 
 def field_type(field: InputField) -> str:
     if isinstance(field, Array):
-        # no declared shape -> griddata reshaping doesn't apply, it's a bare
-        # run of values (e.g. AUXILIARY's names, PRP's steps)
-        if not field.shape:
+        # no shape or a bounded one (PRP's steps, "<=nstp") -> no fixed
+        # length, griddata reshaping doesn't apply, it's a bare run of values
+        # (e.g. AUXILIARY's names)
+        if not field.shape or any(split_bound(s)[0] for s in field.shape):
             return f"{'word' if field.dtype == 'string' else field.dtype}+"
         return "array"
     if isinstance(field, Keyword):

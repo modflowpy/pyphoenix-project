@@ -218,12 +218,13 @@ def _schema_dict_from_columns(
             # ocsetting) -- see _build_arm_specs_from_union.
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
-        elif isinstance(f, UnionField) or (isinstance(f, Array) and not getattr(f, "shape", None)):
-            # A nested union not (or not yet) expanded above, or a bare
-            # *unbounded* array arm (PRP's STEPS n1 n2 ..., shape=[]) --
-            # keyword-plus-trailing-values, consumes all remaining tokens
-            # as a tuple. A *named*-dimension array (e.g. EVT's pxdp/petm)
-            # is a fixed-length column instead; is_cellid was handled above.
+        elif isinstance(f, UnionField) or filters.is_variadic_array(f):
+            # A nested union not (or not yet) expanded above, or an array
+            # arm with no fixed length (PRP's STEPS n1 n2 ..., shape
+            # ["<=nstp"]) -- keyword-plus-trailing-values, consumes all
+            # remaining tokens as a tuple. An exact-shape array (e.g. EVT's
+            # pxdp/petm) is a fixed-length column instead; is_cellid was
+            # handled above.
             entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"
@@ -713,10 +714,6 @@ def _build_block_property_specs(
     Returns (specs, block_names) where block_names is used as a skip-set in
     the main field loop.
     """
-    dim_block = (component.blocks or {}).get("dimensions")
-    dfn_dims_ordered = list(dim_block.fields.keys()) if dim_block is not None else []
-    dfn_dims = set(dfn_dims_ordered)
-
     fill_forward_blocks = filters.fill_forward_blocks(component)
     list_fields_map: dict[str, FieldV3] = {}
     for block_name, block in (component.blocks or {}).items():
@@ -733,26 +730,14 @@ def _build_block_property_specs(
     col_schemas = {block: filters.list_columns(f) for block, f in list_fields_map.items()}
     collisions = filters.collision_names(col_schemas, reserved=reserved_names)
 
-    # Resolve which DFN dimension scalar each block maps to.
+    # Resolve which DFN dimension scalar each block maps to: only through the
+    # list's explicit shape (see filters.list_col_dim).
     dim_resolutions: dict[str, tuple[str, bool]] = {}
-    claimed_dims: set[str] = set()
-    maxbound_blocks: list[str] = []
-
     for block_name, lf in list_fields_map.items():
-        dfn_dim = filters.list_col_dim(lf, component)
-        if dfn_dim and dfn_dim in dfn_dims:
+        if dfn_dim := filters.list_col_dim(lf, component):
             dim_resolutions[block_name] = (dfn_dim, True)
-            claimed_dims.add(dfn_dim)
-        elif lf.shape and "maxbound" in lf.shape and dfn_dims:
-            maxbound_blocks.append(block_name)
         else:
             dim_resolutions[block_name] = (f"n{block_name}", False)
-
-    unclaimed = [d for d in dfn_dims_ordered if d not in claimed_dims]
-    for block_name in maxbound_blocks:
-        dim_resolutions[block_name] = (
-            (unclaimed.pop(0), True) if unclaimed else (f"n{block_name}", False)
-        )
 
     specs: list[BlockPropertySpec] = []
     block_names: set[str] = set()

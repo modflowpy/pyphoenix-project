@@ -28,6 +28,7 @@ from modflow_devtools.dfns.schema import (
     Integer,
     Record,
     String,
+    split_bound,
 )
 from modflow_devtools.dfns.schema import (
     Keyword as KeywordField,
@@ -164,6 +165,13 @@ def is_array(f: FieldV3) -> bool:
     (auxiliary names), as is any array nested in a record-like field.
     """
     return isinstance(f, Array) and f.dtype not in ("keyword", "string")
+
+
+def is_variadic_array(f: FieldV3) -> bool:
+    """True for an array whose length isn't fixed: no shape (e.g. AUXILIARY
+    names) or a bounded one (OC's ``steps``, shape ``<=nstp``). Inline, it
+    consumes the rest of the line's tokens."""
+    return isinstance(f, Array) and (not f.shape or any(split_bound(s)[0] for s in f.shape))
 
 
 def is_keyword_array(f: FieldV3) -> bool:
@@ -949,32 +957,19 @@ def list_columns(f: ListField) -> list[ColumnSpec]:
 
 
 def list_col_dim(f: ListField, component: Component) -> str | None:
-    """Return the dimension name for list column arrays.
+    """Return the DIMENSIONS field that counts a list's rows, or None.
 
-    Uses the last entry of the list field's explicit shape when present,
-    preferring the actual dimensions-block field name when the shape entry
-    differs (e.g. shape uses 'npackages' but field is 'maxpackages').
-    Falls back to the single entry in the component's dimensions block.
-    Returns None when the dimension cannot be determined unambiguously.
+    Only an explicit shape links a list to a dimension: its single entry,
+    minus any bound operator (``"<=maxbound"`` -> ``maxbound``), when that
+    names a field in the component's dimensions block.
     """
     dim_block = (component.blocks or {}).get("dimensions")
     dim_names = list(dim_block.fields.keys()) if dim_block is not None else []
-    if shape := (f.shape or []):
-        shape_dim = shape[-1]
-        if shape_dim in dim_names:
-            return shape_dim
-        # Shape dim may use a different prefix than the actual field name
-        # (e.g., shape "npackages" vs dimensions field "maxpackages"). Try
-        # suffix matching: strip leading "n" and find a field that ends with
-        # the remainder.
-        suffix = shape_dim.lstrip("n")
-        if suffix:
-            for fname in dim_names:
-                if fname.endswith(suffix):
-                    return fname
-    if len(dim_names) == 1:
-        return dim_names[0]
-    return None
+    shape = f.shape or []
+    if len(shape) != 1:
+        return None
+    _, shape_dim = split_bound(shape[0])
+    return shape_dim if shape_dim in dim_names else None
 
 
 def list_block_names(component: Component) -> list[str]:

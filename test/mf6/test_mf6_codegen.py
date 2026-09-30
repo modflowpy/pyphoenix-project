@@ -710,6 +710,35 @@ def test_tdis_generates_on_tdis_base(tmp_path, all_dfns):
     assert "perioddata: Optional[list[Perioddata]]" in text
 
 
+def test_list_col_dim_only_from_shape(all_dfns):
+    """A list links to a dimension only through its shape, with any bound
+    operator stripped; a shapeless list isn't linked to a lone dimension."""
+    from modflow_devtools.dfns.schema import List as ListField
+
+    from flopy4.mf6.utils.codegen.filters import list_col_dim
+
+    def lst(comp, block):
+        return next(
+            f for f in all_dfns[comp].blocks[block].fields.values() if isinstance(f, ListField)
+        )
+
+    assert list_col_dim(lst("utl-ats", "perioddata"), all_dfns["utl-ats"]) == "maxats"
+    assert list_col_dim(lst("sim-tdis", "perioddata"), all_dfns["sim-tdis"]) == "nper"
+    assert list_col_dim(lst("gwf-mvr", "packages"), all_dfns["gwf-mvr"]) == "maxpackages"
+    # MAW's connectiondata has no shape; its one dimension (nmawwells) counts
+    # wells, not connections
+    assert list_col_dim(lst("gwf-maw", "connectiondata"), all_dfns["gwf-maw"]) is None
+
+
+@pytest.mark.parametrize("name", ["gwf-oc", "prt-prp"])
+def test_bounded_array_arm_is_variadic(tmp_path, all_dfns, name):
+    """A bounded array arm (OC/PRP STEPS, shape ["<=nstp"]) stays a
+    trailing-values tuple, not a fixed-length scalar column."""
+    skip = {n for n in all_dfns if n != name}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert "steps: tuple = field(default=(), array=True)" in spec.outpath.read_text()
+
+
 @pytest.mark.parametrize("name,field", [("gwf-chd", "ts_file"), ("utl-spca", "tas_file")])
 def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
     """A tagged list of file records (TS6/TAS6 FILEIN) is a repeatable
