@@ -723,17 +723,25 @@ def test_check_mixins_rejects_unknown_component(all_dfns):
 
 
 def test_list_block_dim_and_default_rows(tmp_path, all_dfns):
-    """A list block's row-count dimension and DFN default rows are emitted,
-    but not a dimension shared by several blocks (MAW's nmawwells)."""
-    skip = {n for n in all_dfns if n not in ("sim-tdis", "gwf-maw")}
+    """A list block's row-count dimension, its bound operator and DFN default
+    rows are emitted. Only a list whose shape names the dimension links to
+    it: MAW's packagedata, not its shapeless connectiondata/angledata."""
+    skip = {n for n in all_dfns if n not in ("sim-tdis", "utl-ats", "gwf-maw")}
     specs = {
         s.dfn_name: s
         for s in make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     }
     tdis = specs["sim-tdis"].outpath.read_text()
     assert 'dim="nper"' in tdis
+    assert "dim_bound" not in tdis
     assert "default_rows=((1.0, 1, 1.0),)" in tdis
-    assert 'dim="nmawwells"' not in specs["gwf-maw"].outpath.read_text()
+    ats = specs["utl-ats"].outpath.read_text()
+    assert 'dim="maxats"' in ats
+    assert 'dim_bound="<="' in ats
+    maw = build_component_spec(all_dfns["gwf-maw"], root=Path("/fake"))
+    linked = {bp.block_name for bp in maw.block_properties if bp.dim_is_dfn_declared}
+    assert linked == {"packagedata"}
+    assert specs["gwf-maw"].outpath.read_text().count('dim="nmawwells"') == 1
 
 
 def test_list_col_dim_only_from_shape(all_dfns):

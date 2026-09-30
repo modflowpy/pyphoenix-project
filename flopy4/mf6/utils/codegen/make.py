@@ -90,6 +90,7 @@ class BlockPropertySpec:
     dim_is_dfn_declared: bool  # False → synthetic (__dim__), not written to file
     columns: list[ColumnSpec]
     attr_name_map: dict[str, str]  # col_name → Python attr name (bare or block-prefixed)
+    dim_bound: str | None = None  # shape's bound operator ("<="), None → exact
 
 
 @dataclass
@@ -754,6 +755,7 @@ def _build_block_property_specs(
                 dim_is_dfn_declared=dim_is_dfn_declared,
                 columns=cols,
                 attr_name_map=attr_name_map,
+                dim_bound=filters.list_dim_bound(list_fields_map[block_name]),
             )
         )
         block_names.add(block_name)
@@ -1116,7 +1118,6 @@ def build_component_spec(
     # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block
     # whose only field is an untagged list. The Item class's own fields are
     # the schema -- see item_class() -- no separate __*_schema__ ClassVar.
-    _declared_dims = [bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared]
     for bp in block_properties:
         _list_field = next(
             f for f in component.blocks[bp.block_name].fields.values() if filters.is_list_field(f)
@@ -1133,10 +1134,12 @@ def build_component_spec(
         if _union is not None:
             item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
-        # The DIMENSIONS field counting this block's rows. A dimension shared
-        # by several blocks (MAW's nmawwells) doesn't count any one's rows.
-        if bp.dim_is_dfn_declared and _declared_dims.count(bp.dim_attr) == 1:
+        # The DIMENSIONS field counting this block's rows (from its shape),
+        # and whether the count is exact or bounded by it.
+        if bp.dim_is_dfn_declared:
             _meta["dim"] = bp.dim_attr
+            if bp.dim_bound:
+                _meta["dim_bound"] = bp.dim_bound
         if _list_field.default:
             _meta["default_rows"] = tuple(_list_field.default)
         # A block must still appear in the written file even with zero rows

@@ -1,3 +1,4 @@
+import operator
 from abc import ABC
 from pathlib import Path
 
@@ -24,6 +25,16 @@ _DTYPE_MAP: dict = {
     "double precision": np.float64,
     "string": np.object_,
     "keyword": np.object_,
+}
+
+# A list shape's bound operator (DFN "<=maxbound") -> check of row count
+# against the dimension. No operator means the shape is exact.
+_BOUND_OPS: dict = {
+    None: operator.eq,
+    "<": operator.lt,
+    "<=": operator.le,
+    ">": operator.gt,
+    ">=": operator.ge,
 }
 
 
@@ -82,10 +93,12 @@ class Package(Component, ABC):
 
         A list field with `dim` metadata (the DIMENSIONS field counting its
         rows, from the DFN) gets that dimension set from its row count,
-        unless it was given explicitly; more rows than an explicit dimension
-        is an error. A list with DFN `default_rows` of one row and no data gets
-        that row repeated `dim` times. `maxbound` (where applicable) is a
-        computed property instead, not set here.
+        unless it was given explicitly. An explicit dimension must equal the
+        row count, or with `dim_bound` metadata (the DFN shape's operator,
+        e.g. "<=") satisfy that bound, else it is an error. A list with DFN
+        `default_rows` of one row and no data gets that row repeated `dim`
+        times. `maxbound` (where applicable) is a computed property instead,
+        not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -117,14 +130,16 @@ class Package(Component, ABC):
                 coerced_list = self._coerce_item_list(raw, item_cls)
                 object.__setattr__(self, f.name, coerced_list)
                 if dim:
-                    self._set_dim_from_rows(dim, len(coerced_list))
+                    self._set_dim_from_rows(dim, len(coerced_list), f.metadata.get("dim_bound"))
 
-    def _set_dim_from_rows(self, dim: str, nrows: int) -> None:
+    def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
         if declared in (None, 0, attrs.fields_dict(type(self))[dim].default):
             object.__setattr__(self, dim, nrows)
-        elif nrows > declared:
-            raise ValueError(f"{dim}={declared} but {nrows} rows were given")
+        elif not _BOUND_OPS[bound](nrows, declared):
+            raise ValueError(
+                f"{dim}={declared} but {nrows} rows were given (need rows {bound or '=='} {dim})"
+            )
 
     @staticmethod
     def _coerce_item_list(data, item_cls: "type[Item] | tuple[type[Item], ...]") -> list:

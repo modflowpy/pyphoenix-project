@@ -30,6 +30,7 @@ class Ats(Package):
         default=None,
         block="perioddata",
         dim="maxats",
+        dim_bound="<=",
     )
 
 

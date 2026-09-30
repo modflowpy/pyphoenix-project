@@ -293,6 +293,21 @@ def test_tdis_nper_from_perioddata():
     assert [r.nstp for r in tdis.perioddata] == [1, 1, 1]
     with pytest.raises(ValueError, match="nper"):
         Tdis(nper=2, perioddata=[(1.0, 1, 1.0)] * 3)
+    # perioddata's shape is exact (nper): too few rows is an error too
+    with pytest.raises(ValueError, match="nper"):
+        Tdis(nper=3, perioddata=[(1.0, 1, 1.0)] * 2)
+
+
+def test_ats_maxats_bounds_perioddata():
+    """ATS perioddata's shape is a bound ("<=maxats"): fewer rows than an
+    explicit maxats is fine, more is an error."""
+    from flopy4.mf6.utl import Ats
+
+    row = (1, 1.0, 0.1, 10.0, 2.0, 5.0)
+    assert Ats(perioddata=[row, row]).maxats == 2
+    assert Ats(maxats=5, perioddata=[row, row]).maxats == 5
+    with pytest.raises(ValueError, match="maxats"):
+        Ats(maxats=2, perioddata=[row] * 3)
 
 
 def test_tdis_round_trip():

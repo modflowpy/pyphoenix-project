@@ -955,6 +955,13 @@ def list_col_dim(f: ListField, component: Component) -> str | None:
     return shape_dim if shape_dim in dim_names else None
 
 
+def list_dim_bound(f: ListField) -> str | None:
+    """Return a list shape's bound operator (``"<="`` for ``"<=maxbound"``),
+    or None when the shape is exact (or absent)."""
+    shape = f.shape or []
+    return split_bound(shape[0])[0] if len(shape) == 1 else None
+
+
 def list_block_names(component: Component) -> list[str]:
     """Return block names that contain list-type fields, in component order."""
     seen: set[str] = set()
