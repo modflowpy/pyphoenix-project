@@ -1433,11 +1433,22 @@ def test_file_records_roundtrip():
 
     raw = loads("BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
     wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
-    assert wel.ts_file == Path("a.ts")
+    assert wel.ts_file == [Path("a.ts")]
     assert wel.obs_file == Path("w.obs")
     text = dumps(unstructure_component(wel))
     assert "TS6 FILEIN a.ts" in text
     assert "OBS6 FILEIN w.obs" in text
+
+    # TS6 is a tagged list: every occurrence is kept, in order, and each is
+    # written back on its own line.
+    raw = loads(
+        "BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN w.obs\n  TS6 FILEIN b.ts\nEND OPTIONS\n"
+    )
+    wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    assert wel.ts_file == [Path("a.ts"), Path("b.ts")]
+    lines = [line.strip() for line in dumps(unstructure_component(wel)).splitlines()]
+    ts_lines = [line for line in lines if line.startswith("TS6")]
+    assert ts_lines == ["TS6 FILEIN a.ts", "TS6 FILEIN b.ts"]
 
     raw = loads("BEGIN OPTIONS\n  HEAD FILEOUT m.hds\n  BUDGET FILEOUT m.cbc\nEND OPTIONS\n")
     oc = structure_component(raw, Oc)

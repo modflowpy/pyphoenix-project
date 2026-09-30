@@ -249,7 +249,7 @@ def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
     # Compound records get the same treatment via _strip_record_words in
     # build_component_spec; this keeps the two paths consistent.
-    if filters.is_file_record(f):
+    if filters.is_file_record(f) or filters.is_repeatable_file(f):
         py_name = filters.safe_name("_".join(_strip_record_words(f.name)))
     else:
         py_name = filters.safe_name(f.name)
@@ -644,8 +644,14 @@ def _build_block_property_specs(
     for block_name, block in (component.blocks or {}).items():
         if block_name in fill_forward_blocks:
             continue
+        # Only an untagged list is its block's table; a tagged list is a
+        # repeatable field among the block's others (see is_tagged_list).
         for f in block.fields.values():
-            if filters.is_list_field(f) and not filters.is_keystring_list(f):
+            if (
+                filters.is_list_field(f)
+                and not filters.is_tagged_list(f)
+                and not filters.is_keystring_list(f)
+            ):
                 list_fields_map[block_name] = f
                 break
 
@@ -732,6 +738,7 @@ def _generated_imports(
     has_file_records = any(
         filters.is_file_record(f) or filters.is_bare_file(f) for _, f in generatable_fields
     )
+    has_repeatable_files = any(filters.is_repeatable_file(f) for _, f in generatable_fields)
     has_optional = (
         any(f.optional and not isinstance(f, KeywordField) for _, f in generatable_fields)
         or has_inner_classes
@@ -771,7 +778,7 @@ def _generated_imports(
     )
 
     stdlib: list[str] = []
-    if has_file_records or has_row_path_cols:
+    if has_file_records or has_repeatable_files or has_row_path_cols:
         stdlib.append("from pathlib import Path")
     typing_parts: list[str] = []
     if has_classvar:
@@ -813,6 +820,8 @@ def _generated_imports(
         _types_parts.append("FloatArrayLike")
     if has_file_records or has_optional_row_path_cols:
         _types_parts.append("_optional_path")
+    if has_repeatable_files:
+        _types_parts.append("_optional_path_list")
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
     flopy4.sort()
@@ -983,6 +992,23 @@ def build_component_spec(
             target = period_specs
         else:
             target = data_specs
+
+        # A tagged list of records: a repeatable record field, one line per
+        # element -- the record class a single occurrence would get.
+        if filters.is_tagged_list(f) and filters.can_generate_record_class(f.item):
+            record_specs = _build_record_class_specs(f.item, component.name, _inner_class_names)
+            inner_class_specs.extend(record_specs)
+            target.append(
+                FieldSpec(
+                    dfn_name=f.name,
+                    py_name=filters.safe_name("_".join(_strip_record_words(f.name))),
+                    type_annotation=f"Optional[list[{record_specs[-1].class_name}]]",
+                    spec_call=_ml_field(metadata={"block": block_name, "repeats": True}),
+                    generatable=True,
+                )
+            )
+            generatable_field_objects.append((block_name, f))
+            continue
 
         if filters.can_generate_record_class(f):
             record_specs = _build_record_class_specs(f, component.name, _inner_class_names)

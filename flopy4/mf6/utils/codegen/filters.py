@@ -222,6 +222,26 @@ def is_list_field(f: FieldV3) -> bool:
     return isinstance(f, ListField)
 
 
+def is_tagged_list(f: FieldV3) -> bool:
+    """True for a tagged list: every line it allows begins with a keyword
+    (derived by devtools from the item type), e.g. options-block
+    ``ts_filerecord``'s repeatable ``TS6 FILEIN <file>``.
+
+    Unlike an untagged list -- a table that fills its block (packagedata,
+    CHD's stress_period_data) -- a tagged list is a repeatable field among
+    the block's other fields. One in a fill-forward block (OC's output,
+    PRP's perioddata) is that block's keystring period data instead.
+    """
+    return isinstance(f, ListField) and f.tagged
+
+
+def is_repeatable_file(f: FieldV3) -> bool:
+    """True for a tagged list of file records (see is_tagged_list): a
+    ``list[Path]`` field, one ``KEYWORD FILEIN|FILEOUT <path>`` line per
+    element."""
+    return is_tagged_list(f) and is_file_record(f.item)
+
+
 def is_generatable(f: FieldV3) -> bool:
     """True if this field can be handled in the current generation pass."""
     return (
@@ -231,6 +251,7 @@ def is_generatable(f: FieldV3) -> bool:
         or is_file_record(f)
         or is_bare_file(f)
         or is_aux_list_field(f)
+        or is_repeatable_file(f)
     )
 
 
@@ -321,6 +342,9 @@ def skip_reason(f: FieldV3) -> str | None:
     """Return a human-readable reason why a field is skipped, or None."""
     if is_generatable(f):
         return None
+    if is_tagged_list(f):
+        # file records (is_repeatable_file) and record classes (make.py) only
+        return "tagged list of this item type not yet supported"
     if is_list_field(f):
         return None  # handled as recarray block in build_component_spec
     if can_expand_record(f):
@@ -378,6 +402,8 @@ def py_type(f: FieldV3, block_name: str) -> str:
     """Return the Python type annotation string for a field."""
     if is_aux_list_field(f):
         return "Optional[list[str]]"
+    if is_repeatable_file(f):
+        return "Optional[list[Path]]"
     if is_file_record(f) or is_bare_file(f):
         base = "Path"
     elif is_keyword_array(f):
@@ -540,6 +566,19 @@ def field_call(f: FieldV3, block_name: str) -> str:
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
+    if is_repeatable_file(f):
+        # Same metadata as the single file record (keyword, direction), plus
+        # `repeats` -- see is_tagged_list.
+        item_kw = field_metadata(f.item, block_name)
+        kw = {"block": item_kw.pop("block")}
+        if f.optional:
+            kw["optional"] = True
+        kw |= item_kw
+        kw["repeats"] = True
+        lines = ["path(", "        default=None,", "        converter=_optional_path_list,"]
+        lines += [_wrap_kwarg_line(k, v) for k, v in kw.items()]
+        lines.append("    )")
+        return "\n".join(lines)
     kw = field_metadata(f, block_name)
     # A plain (non-computed) required maxbound defaults to 0, like the
     # computed one. An optional one (READARRAYGRID packages: CHDG, WELG, ...)

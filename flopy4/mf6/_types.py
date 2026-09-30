@@ -1,6 +1,7 @@
 """Shared type definitions for flopy4.mf6 packages."""
 
 from datetime import datetime
+from os import PathLike
 from pathlib import Path, PurePath
 from typing import Protocol, TypeAlias, TypeVar
 
@@ -44,3 +45,17 @@ def _optional_path(v):
     if v is None:
         return None
     return Path(v) if not isinstance(v, Path) else v
+
+
+def _optional_path_list(v):
+    """Converter for Optional[list[Path]] attrs fields (repeatable file
+    records, e.g. ``ts_file``).
+
+    Accepts None, a single str/Path, or an iterable of them; returns None
+    or a list of Path.
+    """
+    if v is None:
+        return None
+    if isinstance(v, (str, PathLike)):
+        return [Path(v)]
+    return [Path(p) for p in v]

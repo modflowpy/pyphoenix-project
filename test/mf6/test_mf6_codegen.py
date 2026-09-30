@@ -476,6 +476,7 @@ class TestBlockPropertySpec:
         assert len(lak_spec.block_properties) == 4
 
     def test_lak_block_names(self, lak_spec):
+        # options holds a tagged list (ts_filerecord), which isn't a table
         names = [bp.block_name for bp in lak_spec.block_properties]
         assert set(names) == {"packagedata", "connectiondata", "tables", "outlets"}
 
@@ -713,6 +714,77 @@ def test_tdis_generates_on_tdis_base(tmp_path, all_dfns):
     text = spec.outpath.read_text()
     assert "class Tdis(TdisBase):" in text
     assert "perioddata: Optional[list[Perioddata]]" in text
+
+
+@pytest.mark.parametrize("name,field", [("gwf-chd", "ts_file"), ("utl-spca", "tas_file")])
+def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
+    """A tagged list of file records (TS6/TAS6 FILEIN) is a repeatable
+    list[Path] options field, not a table filling the options block."""
+    skip = {n for n in all_dfns if n != name}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert "options" not in {bp.block_name for bp in spec.block_properties}
+    text = spec.outpath.read_text()
+    assert f"{field}: Optional[list[Path]] = path(" in text
+    assert "converter=_optional_path_list," in text
+    assert "repeats=True," in text
+
+
+def test_tagged_record_list_roundtrip(tmp_path):
+    """A tagged list of (non-file) records is a repeatable list[RecordClass]
+    field: generated, loaded one element per line, and written back one line
+    per element. No real DFN has one yet, so a synthetic one."""
+    from modflow_devtools.dfns.schema import Block, Package
+    from modflow_devtools.dfns.schema import List as ListField
+
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    dfn = Package(
+        name="gwf-tlst",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={
+                    "print_input": Keyword(name="print_input", optional=True),
+                    "scalerecord": ListField(
+                        name="scalerecord",
+                        optional=True,
+                        item=Record(
+                            name="scalerecord",
+                            fields={
+                                "scale": Keyword(name="scale"),
+                                "factor": Double(name="factor", tagged=False),
+                            },
+                        ),
+                    ),
+                },
+            ),
+        },
+    )
+    (tmp_path / "gwf").mkdir()
+    (spec,) = make_modules(dfns={"gwf-tlst": dfn}, outdir=tmp_path)
+    text = spec.outpath.read_text()
+    assert "scale: Optional[list[Scale]]" in text
+    assert "repeats=True" in text
+
+    cls = _load_class_from_spec(spec, "gwf_tlst", "Tlst")
+    pkg = structure_component(
+        loads("BEGIN OPTIONS\n  SCALE 2.0\n  PRINT_INPUT\n  SCALE 3.0\nEND OPTIONS\n"), cls
+    )
+    assert [r.factor for r in pkg.scale] == [2.0, 3.0]
+    lines = [line.strip() for line in dumps(unstructure_component(pkg)).splitlines()]
+    assert [line for line in lines if line.startswith("SCALE")] == ["SCALE 2.0", "SCALE 3.0"]
+
+
+def test_optional_path_list():
+    from flopy4.mf6._types import _optional_path_list
+
+    assert _optional_path_list(None) is None
+    assert _optional_path_list("a.ts") == [Path("a.ts")]
+    assert _optional_path_list(Path("a.ts")) == [Path("a.ts")]
+    assert _optional_path_list(["a.ts", Path("b.ts")]) == [Path("a.ts"), Path("b.ts")]
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):

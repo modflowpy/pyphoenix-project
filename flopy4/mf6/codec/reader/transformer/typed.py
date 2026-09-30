@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfns.schema import Component, Keyword, Record, Union
+from modflow_devtools.dfns.schema import Component, Keyword, List, Record, Union
 
 from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
@@ -26,6 +26,13 @@ class TypedTransformer(Transformer):
             if dfn
             else None
         )
+        # Tagged lists of records (e.g. ts_filerecord) outside the period
+        # block: each line is one item record, and the field is always a list.
+        self._tagged_lists = {
+            name
+            for name, f in (self._flat_fields or {}).items()
+            if isinstance(f, List) and f.tagged and isinstance(f.item, Record)
+        }
 
     def __getattr__(self, name):
         """Handle typed__ prefixed methods by delegating to the unprefixed version."""
@@ -275,7 +282,9 @@ class TypedTransformer(Transformer):
                 if isinstance(item, tuple):
                     field_name = item[0].lower()
                     field_value = item[1]
-                    if field_name in fields_dict:
+                    if field_name in self._tagged_lists:
+                        fields_dict.setdefault(field_name, []).append(field_value)
+                    elif field_name in fields_dict:
                         # Multiple occurrences - convert to list or append
                         if not isinstance(fields_dict[field_name], list):
                             fields_dict[field_name] = [fields_dict[field_name]]
@@ -305,6 +314,8 @@ class TypedTransformer(Transformer):
         if field is None and "-" in data:
             # Try with hyphens instead of underscores (reverse of to_rule_name)
             field = self._flat_fields.get(data.replace("_", "-"), None)
+        if field is not None and data in self._tagged_lists:
+            field = field.item
         if field is not None:
             if isinstance(field, Keyword):
                 return data, True

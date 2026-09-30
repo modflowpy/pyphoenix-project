@@ -201,6 +201,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             if field_value:
                 blocks[block_name][f.name] = field_value
 
+        elif meta.get("repeats") and isinstance(field_value, list):
+            # DFN tagged list: one line per element, each written as the
+            # single field would be.
+            if field_value:
+                blocks[block_name][f.name] = [
+                    _path_to_tuple(f, v) if isinstance(v, Path) else v.to_tokens()
+                    for v in field_value
+                ]
+
         elif meta.get("direction") and isinstance(field_value, Path):
             t = _path_to_tuple(f, field_value)
             blocks[block_name][t[0].lower()] = t

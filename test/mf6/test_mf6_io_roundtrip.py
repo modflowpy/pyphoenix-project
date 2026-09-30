@@ -187,7 +187,6 @@ def _strings(value):
             yield from _strings(getattr(value, f.name))
 
 
-@pytest.mark.xfail(reason="only the last repeated TS6 FILEIN is kept", strict=True)
 def test_repeated_ts6_kept(tmp_path):
     """Every `TS6 FILEIN` row in a package's options is kept."""
     # `alt_model` isn't referenced from mfsim.nam, so load the WEL directly

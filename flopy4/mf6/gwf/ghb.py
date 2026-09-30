@@ -4,7 +4,7 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
-from flopy4.mf6._types import _optional_path
+from flopy4.mf6._types import _optional_path, _optional_path_list
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -59,13 +59,14 @@ class Ghb(Package):
         optional=True,
         longname="save GHB flows to budget file",
     )
-    ts_file: Optional[Path] = path(
+    ts_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path,
+        converter=_optional_path_list,
         block="options",
         optional=True,
         direction="in",
         keyword="ts6",
+        repeats=True,
     )
     obs_file: Optional[Path] = path(
         default=None,

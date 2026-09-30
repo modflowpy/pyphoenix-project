@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path, _optional_path_list
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -56,13 +56,14 @@ class Rcha(Package):
         optional=True,
         longname="save RCHA flows to budget file",
     )
-    tas_file: Optional[Path] = path(
+    tas_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path,
+        converter=_optional_path_list,
         block="options",
         optional=True,
         direction="in",
         keyword="tas6",
+        repeats=True,
     )
     obs_file: Optional[Path] = path(
         default=None,

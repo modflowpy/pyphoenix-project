@@ -24,9 +24,32 @@ def _inner_class_type(field_type) -> type[Record] | None:
     for arg in args:
         if arg is type(None):
             continue
-        if isinstance(arg, type) and issubclass(arg, Record) and "_keyword" in vars(arg):
+        if _is_inner_record(arg):
             return arg
     return None
+
+
+def _is_inner_record(t) -> bool:
+    return isinstance(t, type) and issubclass(t, Record) and "_keyword" in vars(t)
+
+
+def _field_record_type(f: attrs.Attribute) -> type[Record] | None:
+    """The inner record class a field's rows parse to: C for Optional[C], or
+    for a `repeats` field (DFN tagged list), Optional[list[C]]."""
+    if f.metadata.get("repeats"):
+        (elem,) = get_args(unwrap_optional(f.type))
+        return elem if _is_inner_record(elem) else None
+    return _inner_class_type(f.type)
+
+
+def _set_or_append(kwargs: dict, f: attrs.Attribute, value: Any) -> None:
+    """Set a field's init kwarg to one parsed row's value, or for a `repeats`
+    field (DFN tagged list) append it -- each row is one element."""
+    key = f.alias or f.name
+    if f.metadata.get("repeats"):
+        kwargs.setdefault(key, []).append(value)
+    else:
+        kwargs[key] = value
 
 
 def _parse_rows(
@@ -642,11 +665,13 @@ def structure_component(
 
     # Index Optional[InnerClass] fields by the inner class's _keyword (lowercase).
     # Covers options-block compound records like Npf.Cvoptions, Ims.Rclose, etc.
+    # A `repeats` field (DFN tagged list) is Optional[list[InnerClass]] -- one
+    # element per row, appended below.
     inner_class_fields: dict[str, tuple] = {}
     for f in attrs.fields(cls):
         if f.init is False:
             continue
-        inner_cls = _inner_class_type(f.type)
+        inner_cls = _field_record_type(f)
         if inner_cls is None:
             continue
         kw = vars(inner_cls).get("_keyword", "")
@@ -712,23 +737,22 @@ def structure_component(
                 if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
                     tokens = tokens[1:]
                 if tokens:
-                    kwargs[ff.alias or ff.name] = Path(_strip_quotes(str(tokens[0])))
+                    _set_or_append(kwargs, ff, Path(_strip_quotes(str(tokens[0]))))
                 continue
             f = all_fields.get(key) or all_fields.get(alias_map.get(key, ""))
             if f is None or f.init is False:
                 if key in inner_class_fields:
                     cand_f, inner_cls = inner_class_fields[key]
-                    cand_init = cand_f.alias if cand_f.alias else cand_f.name
-                    kwargs[cand_init] = inner_cls.from_tokens(row)
+                    _set_or_append(kwargs, cand_f, inner_cls.from_tokens(row))
                 continue
             init_key = f.alias if f.alias else f.name
             # A Record-typed field must go through from_tokens(), even when
             # the matched token is the field's own name rather than the
             # record's separate trigger keyword (e.g. sfacrecord's outer
             # field is itself named "sfac").
-            inner_cls = _inner_class_type(f.type)
+            inner_cls = _field_record_type(f)
             if inner_cls is not None:
-                kwargs[init_key] = inner_cls.from_tokens(row)
+                _set_or_append(kwargs, f, inner_cls.from_tokens(row))
                 continue
             # Take what the field's type needs from the row; MF6 ignores
             # anything after it (often an inline comment, or a second value
