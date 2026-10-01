@@ -810,6 +810,24 @@ def test_typed_loads_tagged_list(dfn_path):
     assert result["options"]["obs_filerecord"] == {"obs6_filename": "w.obs"}
 
 
+def test_typed_loads_inline_record_arrays(dfn_path):
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed(
+        "BEGIN ATTRIBUTES\n  NAMES rate stage\n  METHODS linear stepwise\n"
+        "  SFACS 1.5 2.0\nEND ATTRIBUTES\n\n"
+        "BEGIN TIMESERIES\n  0.0 1.0 2.0\n  1.0 2.0 3.0\nEND TIMESERIES\n",
+        "utl-ts",
+        dfn_path=dfn_path,
+    )
+    attributes = result["attributes"]
+    assert attributes["time_series_namerecord"] == {"time_series_names": ["rate", "stage"]}
+    assert attributes["interpolation_methodrecord"] == {
+        "interpolation_method": ["linear", "stepwise"]
+    }
+    assert attributes["sfacrecord"] == {"sfacval": [1.5, 2.0]}
+
+
 def test_typed_loads_iso_datetime(dfn_path):
     from flopy4.mf6.codec.reader import loads_typed
 

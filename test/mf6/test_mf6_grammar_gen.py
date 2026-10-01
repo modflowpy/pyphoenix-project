@@ -319,3 +319,10 @@ def test_make_grammar_with_oc_style_records(tmp_path):
     assert "ocsetting_all" in content
     assert "ocsetting_first" in content
     assert "ocsetting_last" in content
+
+
+@pytest.mark.parametrize("dtype,rule", [("string", "word+"), ("double", "double+")])
+def test_record_child_array_is_inline(dtype, rule):
+    from flopy4.mf6.codec.reader.grammar.filters import record_child_type
+
+    assert record_child_type(Array(name="vals", dtype=dtype, shape=["n"])) == rule
