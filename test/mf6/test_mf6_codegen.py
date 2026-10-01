@@ -739,6 +739,28 @@ def test_bounded_array_arm_is_variadic(tmp_path, all_dfns, name):
     assert "steps: tuple = field(default=(), array=True)" in spec.outpath.read_text()
 
 
+@pytest.mark.parametrize(
+    "field,fixed",
+    [
+        (Array(name="a", dtype="double", shape=["nseg"]), True),
+        (Array(name="a", dtype="integer", shape=["<=nstp"]), False),
+        (Array(name="a", dtype="string", shape=[]), False),
+        (Double(name="a"), False),
+    ],
+)
+def test_is_fixed_length_array(field, fixed):
+    from flopy4.mf6.utils.codegen.filters import is_fixed_length_array
+
+    assert is_fixed_length_array(field) == fixed
+
+
+def test_scalar_columns_stay_scalar(tmp_path, all_dfns):
+    """Only a variable-length array column becomes a trailing-values tuple."""
+    skip = {n for n in all_dfns if n != "gwf-wel"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert "q: Union[float, str] = field(time_series=True)" in spec.outpath.read_text()
+
+
 @pytest.mark.parametrize("name,field", [("gwf-chd", "ts_file"), ("utl-spca", "tas_file")])
 def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
     """A tagged list of file records (TS6/TAS6 FILEIN) is a repeatable
