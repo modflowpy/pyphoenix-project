@@ -89,5 +89,5 @@ class Mvr(Package):
     )
 
 
-MvrStressPeriodData = Mvr.StressPeriodData
 MvrPackages = Mvr.Packages
+MvrStressPeriodData = Mvr.StressPeriodData

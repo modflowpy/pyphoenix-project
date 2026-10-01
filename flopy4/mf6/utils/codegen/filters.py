@@ -196,7 +196,7 @@ def file_child(f: Record) -> File | None:
 
 
 def is_aux_list_field(f: FieldV3) -> bool:
-    """True for auxiliary variable name lists (options block).
+    """True for auxiliary variable name arrays (options block).
 
     A standalone string array -- inline per the DFN spec, never the
     multi-line readarray form (see is_array). (Legacy encoded this as a
@@ -235,10 +235,10 @@ def is_tagged_list(f: FieldV3) -> bool:
     return isinstance(f, ListField) and f.tagged
 
 
-def is_repeatable_file(f: FieldV3) -> bool:
+def is_file_list(f: FieldV3) -> bool:
     """True for a tagged list of file records (see is_tagged_list): a
     ``list[Path]`` field, one ``KEYWORD FILEIN|FILEOUT <path>`` line per
-    element."""
+    element, the way a single file record's Path field is one line."""
     return is_tagged_list(f) and is_file_record(f.item)
 
 
@@ -251,7 +251,7 @@ def is_generatable(f: FieldV3) -> bool:
         or is_file_record(f)
         or is_bare_file(f)
         or is_aux_list_field(f)
-        or is_repeatable_file(f)
+        or is_file_list(f)
     )
 
 
@@ -342,9 +342,6 @@ def skip_reason(f: FieldV3) -> str | None:
     """Return a human-readable reason why a field is skipped, or None."""
     if is_generatable(f):
         return None
-    if is_tagged_list(f):
-        # file records (is_repeatable_file) and record classes (make.py) only
-        return "tagged list of this item type not yet supported"
     if is_list_field(f):
         return None  # handled as recarray block in build_component_spec
     if can_expand_record(f):
@@ -401,8 +398,8 @@ _SCALAR_PY_TYPES: dict[type, str] = {
 def py_type(f: FieldV3, block_name: str) -> str:
     """Return the Python type annotation string for a field."""
     if is_aux_list_field(f):
-        return "Optional[list[str]]"
-    if is_repeatable_file(f):
+        return "Optional[NDArray[np.str_]]"
+    if is_file_list(f):
         return "Optional[list[Path]]"
     if is_file_record(f) or is_bare_file(f):
         base = "Path"
@@ -566,15 +563,13 @@ def field_call(f: FieldV3, block_name: str) -> str:
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
     """
-    if is_repeatable_file(f):
-        # Same metadata as the single file record (keyword, direction), plus
-        # `repeats` -- see is_tagged_list.
+    if is_file_list(f):
+        # Same metadata as a single file record (keyword, direction).
         item_kw = field_metadata(f.item, block_name)
         kw = {"block": item_kw.pop("block")}
         if f.optional:
             kw["optional"] = True
         kw |= item_kw
-        kw["repeats"] = True
         lines = ["path(", "        default=None,", "        converter=_optional_path_list,"]
         lines += [_wrap_kwarg_line(k, v) for k, v in kw.items()]
         lines.append("    )")
@@ -600,6 +595,8 @@ def field_call(f: FieldV3, block_name: str) -> str:
     lines = [f"{fn}(", f"        default={default},"]
     if is_file_record(f) or is_bare_file(f):
         lines.append("        converter=_optional_path,")
+    elif is_aux_list_field(f):
+        lines.append("        converter=_optional_str_array,")
     for k, v in kw.items():
         lines.append(_wrap_kwarg_line(k, v))
     lines.append(f"    ){type_ignore}")
@@ -952,12 +949,6 @@ def list_columns(f: ListField) -> list[ColumnSpec]:
     if not isinstance(item, Record):
         return []
     return _fields_to_columns(list(item.fields.items()))
-
-
-def is_keystring_list(f: ListField) -> bool:
-    """True if a List field's per-row shape has a discriminating Union
-    (keystring period style)."""
-    return find_keystring_union(f) is not None
 
 
 def list_col_dim(f: ListField, component: Component) -> str | None:

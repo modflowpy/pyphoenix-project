@@ -47,6 +47,20 @@ def _optional_path(v):
     return Path(v) if not isinstance(v, Path) else v
 
 
+def _optional_str_array(v):
+    """Converter for Optional[NDArray[np.str_]] attrs fields (inline string
+    arrays, e.g. ``auxiliary``).
+
+    Accepts None, a single str, or an iterable of str; returns None or a 1D
+    string array.
+    """
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = [v]
+    return np.asarray(list(v), dtype=np.str_)
+
+
 def _optional_path_list(v):
     """Converter for Optional[list[Path]] attrs fields (repeatable file
     records, e.g. ``ts_file``).

@@ -424,7 +424,7 @@ def test_options_ignore_trailing_tokens(tmp_path):
     """)
     )
     wel = Wel.load(p)
-    assert wel.auxiliary == ["CONCENTRATION"]
+    assert list(wel.auxiliary) == ["CONCENTRATION"]
     assert wel.print_input is True
     assert wel.save_flows is True
 

@@ -222,7 +222,6 @@ class Csub(Package):
         optional=True,
         direction="in",
         keyword="ts6",
-        repeats=True,
     )
     obs_file: Optional[Path] = path(
         default=None,
@@ -287,5 +286,5 @@ class Csub(Package):
     )
 
 
-CsubStressPeriodData = Csub.StressPeriodData
 CsubPackagedata = Csub.Packagedata
+CsubStressPeriodData = Csub.StressPeriodData

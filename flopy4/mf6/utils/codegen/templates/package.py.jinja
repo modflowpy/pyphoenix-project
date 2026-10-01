@@ -50,27 +50,18 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 {% endfor %}
 
 {% endfor %}
-{% for block_name, schema in spec.block_schemas.items() %}
-{{ schema | item_class(block_name | pascal_name, False, block_name == "packagedata", package_class_name=spec.class_name) }}
+{% for ic in spec.item_classes %}
+{{ ic.schema | item_class(ic.class_name, ic.is_period, ic.has_aux, ic.keyword, package_class_name=spec.class_name) }}
 
 {% endfor %}
-{% if spec.period_schema %}
-{{ spec.period_schema | item_class("StressPeriodData", True, package_class_name=spec.class_name) }}
-
-{% endif %}
-{% for arm in spec.period_arms %}
-{{ arm.schema | item_class(arm.class_name, False, False, arm.keyword, package_class_name=spec.class_name) }}
-
-{% endfor %}
-{% set top_level_arms = spec.period_arms | selectattr("top_level") | list %}
-{% if top_level_arms %}
-    _StressPeriodDataItem = (
-{% for arm in top_level_arms %}
-        {{ arm.class_name }}{{ " |" if not loop.last }}
+{% for union in spec.item_unions %}
+    {{ union.alias }} = (
+{% for member in union.members %}
+        {{ member }}{{ " |" if not loop.last }}
 {% endfor %}
     )
 
-{% endif %}
+{% endfor %}
 {% for f in spec.fields %}
 {% if f.generatable %}
     {{ f.py_name }}: {{ f.type_annotation }} = {{ f.spec_call }}
@@ -91,15 +82,9 @@ class {{ spec.class_name }}({{ spec.base_class }}):
             return 0
         return max(len(v) for v in self.{{ cf.source_field }}.values())
 {% endfor %}
-{% if spec.period_schema or spec.block_schemas or spec.period_arms %}
+{% if spec.item_classes %}
 
-{% if spec.period_schema %}
-{{ spec.class_name }}StressPeriodData = {{ spec.class_name }}.StressPeriodData
-{% endif %}
-{% for block_name in spec.block_schemas %}
-{{ spec.class_name }}{{ block_name | pascal_name }} = {{ spec.class_name }}.{{ block_name | pascal_name }}
-{% endfor %}
-{% for arm in spec.period_arms %}
-{{ spec.class_name }}{{ arm.class_name }} = {{ spec.class_name }}.{{ arm.class_name }}
+{% for ic in spec.item_classes %}
+{{ spec.class_name }}{{ ic.class_name }} = {{ spec.class_name }}.{{ ic.class_name }}
 {% endfor %}
 {% endif %}

@@ -1,5 +1,6 @@
 import struct
 from abc import ABC
+from collections import Counter
 from pathlib import Path
 from typing import Any, get_args, get_origin
 
@@ -24,32 +25,9 @@ def _inner_class_type(field_type) -> type[Record] | None:
     for arg in args:
         if arg is type(None):
             continue
-        if _is_inner_record(arg):
+        if isinstance(arg, type) and issubclass(arg, Record) and "_keyword" in vars(arg):
             return arg
     return None
-
-
-def _is_inner_record(t) -> bool:
-    return isinstance(t, type) and issubclass(t, Record) and "_keyword" in vars(t)
-
-
-def _field_record_type(f: attrs.Attribute) -> type[Record] | None:
-    """The inner record class a field's rows parse to: C for Optional[C], or
-    for a `repeats` field (DFN tagged list), Optional[list[C]]."""
-    if f.metadata.get("repeats"):
-        (elem,) = get_args(unwrap_optional(f.type))
-        return elem if _is_inner_record(elem) else None
-    return _inner_class_type(f.type)
-
-
-def _set_or_append(kwargs: dict, f: attrs.Attribute, value: Any) -> None:
-    """Set a field's init kwarg to one parsed row's value, or for a `repeats`
-    field (DFN tagged list) append it -- each row is one element."""
-    key = f.alias or f.name
-    if f.metadata.get("repeats"):
-        kwargs.setdefault(key, []).append(value)
-    else:
-        kwargs[key] = value
 
 
 def _parse_rows(
@@ -665,13 +643,11 @@ def structure_component(
 
     # Index Optional[InnerClass] fields by the inner class's _keyword (lowercase).
     # Covers options-block compound records like Npf.Cvoptions, Ims.Rclose, etc.
-    # A `repeats` field (DFN tagged list) is Optional[list[InnerClass]] -- one
-    # element per row, appended below.
     inner_class_fields: dict[str, tuple] = {}
     for f in attrs.fields(cls):
         if f.init is False:
             continue
-        inner_cls = _field_record_type(f)
+        inner_cls = _inner_class_type(f.type)
         if inner_cls is None:
             continue
         kw = vars(inner_cls).get("_keyword", "")
@@ -680,8 +656,12 @@ def structure_component(
 
     # Identify Item-list fields (packagedata, connectiondata, partitions …) --
     # the field's own type annotation (Optional[list[ItemClass]] or
-    # Optional[dict[int, list[ItemClass]]]) is the schema.
+    # Optional[dict[int, list[ItemClass]]]) is the schema. One alone in its
+    # block takes all the block's rows; one sharing its block with other
+    # fields (a DFN tagged list) takes the rows starting with its elements'
+    # keyword(s).
     block_item_fields: dict[str, tuple] = {}  # block_name → (field, item_cls)
+    keyword_item_fields: dict[str, tuple] = {}  # keyword → (field, item_cls)
     period_field = None  # field for the period Item-list
     period_item_cls: "type[Item] | tuple[type[Item], ...] | None" = None
 
@@ -690,6 +670,7 @@ def structure_component(
     fill_forward_blocks = {
         f.metadata["block"] for f in attrs.fields(cls) if f.metadata.get("fill_forward")
     }
+    block_sizes = Counter(f.metadata["block"] for f in all_fields.values())
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
@@ -699,8 +680,11 @@ def structure_component(
         if f.metadata.get("fill_forward"):
             period_field = f
             period_item_cls = item_cls
-        else:
+        elif block_sizes[block] == 1:
             block_item_fields[block] = (f, item_cls)
+        else:
+            for elem_cls in item_cls if isinstance(item_cls, tuple) else (item_cls,):
+                keyword_item_fields[elem_cls.keyword().lower()] = (f, elem_cls)
 
     # Array fields whose own block repeats per header value -- e.g.
     # utl-tas's tas_array, dict[float, ndarray]. Detected structurally from
@@ -737,22 +721,36 @@ def structure_component(
                 if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
                     tokens = tokens[1:]
                 if tokens:
-                    _set_or_append(kwargs, ff, Path(_strip_quotes(str(tokens[0]))))
+                    path = Path(_strip_quotes(str(tokens[0])))
+                    init_key = ff.alias or ff.name
+                    # A list[Path] field (a DFN tagged list of file
+                    # records) gets one element per row.
+                    if get_origin(unwrap_optional(ff.type)) is list:
+                        kwargs.setdefault(init_key, []).append(path)
+                    else:
+                        kwargs[init_key] = path
+                continue
+            if (kf := keyword_item_fields.get(key)) is not None:
+                # One element of an Item list sharing its block with other
+                # fields (a DFN tagged list), by its leading keyword.
+                f, item_cls = kf
+                kwargs.setdefault(f.alias or f.name, []).append(item_cls.from_tokens(row))
                 continue
             f = all_fields.get(key) or all_fields.get(alias_map.get(key, ""))
             if f is None or f.init is False:
                 if key in inner_class_fields:
                     cand_f, inner_cls = inner_class_fields[key]
-                    _set_or_append(kwargs, cand_f, inner_cls.from_tokens(row))
+                    cand_init = cand_f.alias if cand_f.alias else cand_f.name
+                    kwargs[cand_init] = inner_cls.from_tokens(row)
                 continue
             init_key = f.alias if f.alias else f.name
             # A Record-typed field must go through from_tokens(), even when
             # the matched token is the field's own name rather than the
             # record's separate trigger keyword (e.g. sfacrecord's outer
             # field is itself named "sfac").
-            inner_cls = _field_record_type(f)
+            inner_cls = _inner_class_type(f.type)
             if inner_cls is not None:
-                _set_or_append(kwargs, f, inner_cls.from_tokens(row))
+                kwargs[init_key] = inner_cls.from_tokens(row)
                 continue
             # Take what the field's type needs from the row; MF6 ignores
             # anything after it (often an inline comment, or a second value
@@ -760,8 +758,8 @@ def structure_component(
             t = unwrap_optional(f.type)
             if t is bool:
                 kwargs[init_key] = True
-            elif get_origin(t) is list:
-                # inline arrays (AUXILIARY, etc.), even with one element
+            elif get_origin(t) in (list, np.ndarray):
+                # inline arrays (AUXILIARY's names), even with one element
                 kwargs[init_key] = list(row[1:])
             elif t is str:
                 # a numeric-looking string (e.g. a bare year for

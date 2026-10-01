@@ -33,7 +33,6 @@ class Spca(Package):
         optional=True,
         direction="in",
         keyword="tas6",
-        repeats=True,
     )
     concentration: Optional[FloatArrayLike] = field(
         default=None,

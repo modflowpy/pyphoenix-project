@@ -436,13 +436,14 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns):
     spec = build_component_spec(all_dfns["gwf-lak"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Block schemas exist for list blocks (single recarray field each)
-    assert "packagedata" in spec.block_schemas
-    assert "connectiondata" in spec.block_schemas
+    # Item classes exist for list blocks (single list field each)
+    item_classes = {ic.class_name: ic for ic in spec.item_classes}
+    assert "Packagedata" in item_classes
+    assert "Connectiondata" in item_classes
     assert "packagedata" in field_map
     assert "connectiondata" in field_map
     # Schemas contain feature_id roles (advanced package, no spatial cellid in packagedata)
-    pd_schema = spec.block_schemas["packagedata"]
+    pd_schema = item_classes["Packagedata"].schema
     assert any(col.get("role") == "feature_id" for col in pd_schema)
 
 
@@ -453,13 +454,13 @@ def test_mvr_list_fields_expanded_and_optional(all_dfns):
     spec = build_component_spec(all_dfns["gwf-mvr"], root=Path("/fake"))
     field_map = {f.py_name: f for f in spec.fields}
 
-    # Period data -> single _stress_period_data field with period schema
-    assert spec.period_schema, "MVR should have a period_schema"
+    # Period data -> single _stress_period_data field with a period item class
+    assert "StressPeriodData" in {ic.class_name for ic in spec.item_classes}
     assert "_stress_period_data" in field_map
     spd_field = field_map["_stress_period_data"]
     assert spd_field.type_annotation == "Optional[dict[int, list[StressPeriodData]]]"
-    # Packages block → single recarray field
-    assert "packages" in field_map or "packages" in spec.block_schemas
+    # Packages block → single list field
+    assert "packages" in field_map
 
 
 # Layer 2d: BlockPropertySpec (Phase 2)
@@ -726,7 +727,6 @@ def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
     text = spec.outpath.read_text()
     assert f"{field}: Optional[list[Path]] = path(" in text
     assert "converter=_optional_path_list," in text
-    assert "repeats=True," in text
 
 
 def test_tagged_record_list_roundtrip(tmp_path):
@@ -767,7 +767,7 @@ def test_tagged_record_list_roundtrip(tmp_path):
     (spec,) = make_modules(dfns={"gwf-tlst": dfn}, outdir=tmp_path)
     text = spec.outpath.read_text()
     assert "scale: Optional[list[Scale]]" in text
-    assert "repeats=True" in text
+    assert 'class Scale(Item):\n        _keyword: ClassVar[str] = "scale"' in text
 
     cls = _load_class_from_spec(spec, "gwf_tlst", "Tlst")
     pkg = structure_component(
@@ -776,6 +776,78 @@ def test_tagged_record_list_roundtrip(tmp_path):
     assert [r.factor for r in pkg.scale] == [2.0, 3.0]
     lines = [line.strip() for line in dumps(unstructure_component(pkg)).splitlines()]
     assert [line for line in lines if line.startswith("SCALE")] == ["SCALE 2.0", "SCALE 3.0"]
+
+
+def test_union_list_outside_period_roundtrip(tmp_path):
+    """A list of unions gets the same arm classes and keyword dispatch in
+    any block, not just the period block. No real DFN has one outside the
+    period block yet, so a synthetic one."""
+    from modflow_devtools.dfns.schema import Block, Package, Union
+    from modflow_devtools.dfns.schema import List as ListField
+
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    def arm(name):
+        return Record(
+            name=f"{name}record",
+            fields={
+                name: Keyword(name=name),
+                f"{name}_value": Double(name=f"{name}_value", tagged=False),
+            },
+        )
+
+    dfn = Package(
+        name="gwf-ulst",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={
+                    "print_input": Keyword(name="print_input", optional=True),
+                    "settings": ListField(
+                        name="settings",
+                        optional=True,
+                        item=Union(
+                            name="setting",
+                            arms={"raterecord": arm("rate"), "stagerecord": arm("stage")},
+                        ),
+                    ),
+                },
+            ),
+        },
+    )
+    (tmp_path / "gwf").mkdir()
+    (spec,) = make_modules(dfns={"gwf-ulst": dfn}, outdir=tmp_path)
+    assert "settings: Optional[list[_SettingsItem]]" in spec.outpath.read_text()
+
+    cls = _load_class_from_spec(spec, "gwf_ulst", "Ulst")
+    pkg = structure_component(
+        loads("BEGIN OPTIONS\n  RATE 2.0\n  PRINT_INPUT\n  STAGE 3.0\nEND OPTIONS\n"), cls
+    )
+    assert [type(s).__name__ for s in pkg.settings] == ["Rate", "Stage"]
+    assert pkg.print_input
+    lines = [line.strip() for line in dumps(unstructure_component(pkg)).splitlines()]
+    assert [line for line in lines if line.startswith(("RATE", "STAGE"))] == [
+        "RATE 2.0",
+        "STAGE 3.0",
+    ]
+
+
+def test_auxiliary_is_string_array():
+    """AUXILIARY is a string array in the DFN, and in the class: a list of
+    names converts to one."""
+    import numpy as np
+
+    from flopy4.mf6._types import _optional_str_array
+    from flopy4.mf6.gwf import Wel
+
+    assert _optional_str_array(None) is None
+    assert _optional_str_array("conc").tolist() == ["conc"]
+    wel = Wel(auxiliary=["conc", "temp"])
+    assert isinstance(wel.auxiliary, np.ndarray)
+    assert wel.auxiliary.tolist() == ["conc", "temp"]
 
 
 def test_optional_path_list():
@@ -848,8 +920,7 @@ def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
         cls = _load_class_from_spec(spec, f"_codegen_test_oc.{dfn_name}", expected_class)
         assert issubclass(cls, Package)
         # Verify the OC period arms (Save/Print, real typed classes) were generated
-        assert spec.period_arms, f"{dfn_name} should have period_arms (Save/Print)"
-        arm_names = [arm.class_name for arm in spec.period_arms]
+        arm_names = [ic.class_name for ic in spec.item_classes]
         assert {"Save", "Print"} <= set(arm_names), f"{dfn_name} should have Save/Print arm classes"
         # ocsetting's own arms (All/First/Last/Frequency/Steps) must be built
         # exactly once (shared by Save.ocsetting and Print.ocsetting, not
@@ -857,11 +928,12 @@ def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
         # make.py's _build_arm_specs_from_union nested_union_cache) and must
         # NOT be folded into the top-level Save|Print dispatch union.
         assert arm_names.count("All") == 1, f"{dfn_name}: ocsetting arms must not be duplicated"
-        top_level_names = {arm.class_name for arm in spec.period_arms if arm.top_level}
+        (period_union,) = [u for u in spec.item_unions if u.alias == "_StressPeriodDataItem"]
+        top_level_names = set(period_union.members)
         assert top_level_names == {"Save", "Print"}, (
             f"{dfn_name}: only Save/Print may be top_level (dispatch union) arms"
         )
-        nested_names = {arm.class_name for arm in spec.period_arms if not arm.top_level}
+        nested_names = {ic.class_name for ic in spec.item_classes if not ic.top_level}
         assert nested_names == {"All", "First", "Last", "Frequency", "Steps"}
 
 

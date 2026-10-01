@@ -3,8 +3,16 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
+import numpy as np
+from numpy.typing import NDArray
 
-from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path, _optional_path_list
+from flopy4.mf6._types import (
+    FloatArrayLike,
+    IntArrayLike,
+    _optional_path,
+    _optional_path_list,
+    _optional_str_array,
+)
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -26,8 +34,9 @@ class Evta(Package):
         optional=True,
         longname="if cell is dry do not apply evapotranspiration to underlying cell",
     )
-    auxiliary: Optional[list[str]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
+        converter=_optional_str_array,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
@@ -63,7 +72,6 @@ class Evta(Package):
         optional=True,
         direction="in",
         keyword="tas6",
-        repeats=True,
     )
     obs_file: Optional[Path] = path(
         default=None,

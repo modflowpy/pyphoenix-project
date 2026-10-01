@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
+import numpy as np
+from numpy.typing import NDArray
 
-from flopy4.mf6._types import _optional_path, _optional_path_list
+from flopy4.mf6._types import _optional_path, _optional_path_list, _optional_str_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -78,8 +80,9 @@ class Lke(Package):
         optional=True,
         longname="keyword to specify name of corresponding flow package",
     )
-    auxiliary: Optional[list[str]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
+        converter=_optional_str_array,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
@@ -150,7 +153,6 @@ class Lke(Package):
         optional=True,
         direction="in",
         keyword="ts6",
-        repeats=True,
     )
     obs_file: Optional[Path] = path(
         default=None,

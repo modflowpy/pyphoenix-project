@@ -46,13 +46,8 @@ def field(
     cellid: bool = False,
     tagged: bool = False,
     array: bool = False,
-    repeats: bool = False,
 ):
-    """Define a field: always a plain ``attrs.field()``.
-
-    ``repeats``: a list field whose elements are each one ``KEYWORD ...``
-    line in the block (a DFN tagged list) -- see make.py.
-    """
+    """Define a field: always a plain ``attrs.field()``."""
     metadata = metadata or {}
     if block:
         metadata["block"] = block
@@ -90,8 +85,6 @@ def field(
         metadata["tagged"] = True
     if array:
         metadata["array"] = True
-    if repeats:
-        metadata["repeats"] = True
     return attrs.field(
         default=default,
         validator=validator,
@@ -122,7 +115,6 @@ def path(
     longname: str | None = None,
     optional: bool = False,
     keyword: str | None = None,
-    repeats: bool = False,
 ):
     """Define a path field: always a plain ``attrs.field()``.
 
@@ -132,9 +124,6 @@ def path(
     in ``TS6 FILEIN <file>`` (block level, where it's also the row's key on
     ingress -- not derivable from the py name, ts_filerecord → ts_file) or
     ``tab6`` in a LAK tables row (read by Item.to_tokens()/from_tokens()).
-
-    ``repeats``: a ``list[Path]`` field, one ``KEYWORD FILEIN <path>`` line
-    per element (a DFN tagged list, e.g. several TS6 files).
     """
     metadata = metadata or {}
     if keyword:
@@ -147,8 +136,6 @@ def path(
         metadata["longname"] = longname
     if optional:
         metadata["optional"] = True
-    if repeats:
-        metadata["repeats"] = True
     return attrs.field(
         default=default,
         validator=validator,
