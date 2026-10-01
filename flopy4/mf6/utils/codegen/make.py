@@ -214,17 +214,9 @@ def _schema_dict_from_columns(
             entry["role"] = "inline_keyword"
             entry["optional"] = True
         elif isinstance(f, UnionField) and col.name in nested_arm_classes:
-            # Nested union already expanded into typed arms (OC's
-            # ocsetting) -- see _build_arm_specs_from_union.
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
-        elif isinstance(f, UnionField) or filters.is_variadic_array(f):
-            # A nested union not (or not yet) expanded above, or an array
-            # arm with no fixed length (PRP's STEPS n1 n2 ..., shape
-            # ["<=nstp"]) -- keyword-plus-trailing-values, consumes all
-            # remaining tokens as a tuple. An exact-shape array (e.g. EVT's
-            # pxdp/petm) is a fixed-length column instead; is_cellid was
-            # handled above.
+        elif isinstance(f, UnionField) or not filters.is_fixed_length_array(f):
             entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"
@@ -789,7 +781,7 @@ def _generated_imports(
             filters.is_keyword_array(f)
             or filters.is_aux_list_field(f)
             # repeating block's own array → dict[header, ...], not NDArray
-            or (filters.is_array(f) and block_name not in repeating_blocks)
+            or (filters.is_readarray(f) and block_name not in repeating_blocks)
         )
         for block_name, f in generatable_fields
     )
@@ -1025,7 +1017,7 @@ def build_component_spec(
         # per the block's own header type rather than assumed, since
         # different repeating blocks have different header types (period's
         # is integer, utl-tas's is double).
-        if filters.is_array(f) and block_name in _repeating_blocks:
+        if filters.is_readarray(f) and block_name in _repeating_blocks:
             _repeating_array_fields.append(f)
             _repeating_array_base = (
                 "IntArrayLike" if getattr(f, "dtype", "") == "integer" else "FloatArrayLike"
@@ -1216,7 +1208,7 @@ def build_component_spec(
     has_inner_classes = bool(inner_class_specs)
 
     _has_griddata = any(
-        bn == "griddata" and filters.is_array(f) for bn, f in generatable_field_objects
+        bn == "griddata" and filters.is_readarray(f) for bn, f in generatable_field_objects
     )
     _arraylike_types = (
         {getattr(f, "dtype", None) for bn, f in generatable_field_objects if bn == "griddata"}

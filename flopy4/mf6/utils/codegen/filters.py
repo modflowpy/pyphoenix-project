@@ -152,42 +152,23 @@ ARRAY_NUMPY_DTYPES: dict[str, str] = {
 
 
 def is_scalar(f: FieldV3) -> bool:
-    """True for simple scalar fields (no shape)."""
     return isinstance(f, (KeywordField, Integer, Double, String))
 
 
-def is_array(f: FieldV3) -> bool:
-    """True for readarray-form array fields: standalone (not nested in a
-    Record/Union/List item -- callers only ever see standalone fields, see
-    flat_fields), non-keyword, non-string. Excludes is_aux_list_field
-    (string) -- per the DFN spec, only a standalone non-string array is the
-    full multi-line readarray form; a string array is always inline
-    (auxiliary names), as is any array nested in a record-like field.
-    """
+def is_readarray(f: FieldV3) -> bool:
     return isinstance(f, Array) and f.dtype not in ("keyword", "string")
 
 
-def is_variadic_array(f: FieldV3) -> bool:
-    """True for an array whose length isn't fixed: no shape (e.g. AUXILIARY
-    names) or a bounded one (OC's ``steps``, shape ``<=nstp``). Inline, it
-    consumes the rest of the line's tokens."""
+def is_fixed_length_array(f: FieldV3) -> bool:
     return isinstance(f, Array) and (not f.shape or any(split_bound(s)[0] for s in f.shape))
 
 
 def is_keyword_array(f: FieldV3) -> bool:
-    """True for boolean-array fields (keyword type with shape)."""
     return isinstance(f, Array) and f.dtype == "keyword" and bool(f.shape)
 
 
 def is_file_record(f: FieldV3) -> bool:
-    """True for record fields whose children include a File field.
-
-    The MF6 ``KEYWORD FILEIN <path>``/``KEYWORD FILEOUT <path>`` pattern
-    (e.g. options-block ``ts_filerecord``): a Record wrapping a trigger
-    Keyword and a File child. Distinct from is_bare_file (below) -- a File
-    field can also appear directly in a block with no wrapping Record (e.g.
-    prt-fmi.packagedata's gwfhead/gwfbudget/gwfgrid).
-    """
+    """True for record fields whose children include a File field."""
     return isinstance(f, Record) and any(isinstance(c, File) for c in f.fields.values())
 
 
@@ -217,7 +198,7 @@ def is_aux_list_field(f: FieldV3) -> bool:
 
 def is_any_array(f: FieldV3) -> bool:
     """True for numeric or keyword array fields."""
-    return is_array(f) or is_keyword_array(f)
+    return is_readarray(f) or is_keyword_array(f)
 
 
 def is_dimensions_scalar(f: FieldV3, block_name: str) -> bool:
@@ -240,7 +221,7 @@ def is_generatable(f: FieldV3) -> bool:
     """True if this field can be handled in the current generation pass."""
     return (
         is_scalar(f)
-        or is_array(f)
+        or is_readarray(f)
         or is_keyword_array(f)
         or is_file_record(f)
         or is_bare_file(f)
@@ -399,7 +380,7 @@ def py_type(f: FieldV3, block_name: str) -> str:
         base = "Path"
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
-    elif is_array(f):
+    elif is_readarray(f):
         assert isinstance(f, Array)
         if block_name == "griddata":
             base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
@@ -613,7 +594,7 @@ def field_call(f: FieldV3, block_name: str) -> str:
     _str_default = default.startswith("'")
     _numeric_field = isinstance(f, (Double, Integer))
     type_ignore = ""
-    if (is_array(f) and default != "None") or (_str_default and _numeric_field):
+    if (is_readarray(f) and default != "None") or (_str_default and _numeric_field):
         type_ignore = "  # type: ignore[assignment]"
     fn = "path" if (is_file_record(f) or is_bare_file(f)) else "field"
     lines = [f"{fn}(", f"        default={default},"]
