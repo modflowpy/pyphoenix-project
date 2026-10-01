@@ -16,13 +16,6 @@ def test_local_mf6_version_from_checkout(tmp_path):
     assert _local_mf6_version(dfn) == "6.9.0.dev0"
 
 
-def test_local_mf6_version_override(tmp_path):
-    """An explicit --mf6-version wins over version.txt."""
-    dfn = _dfn_dir(tmp_path)
-    (tmp_path / "modflow6" / "version.txt").write_text("6.9.0.dev0\n")
-    assert _local_mf6_version(dfn, "develop") == "develop"
-
-
 def test_local_mf6_version_unknown(tmp_path):
     """No checkout or no version.txt: unknown, not an error."""
     assert _local_mf6_version(tmp_path) == "unknown"

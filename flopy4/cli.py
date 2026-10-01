@@ -39,13 +39,11 @@ def _resolve_release_id(release_id: str | None, verbose: bool = False) -> str:
     return "MODFLOW-ORG/modflow6@latest"
 
 
-def _local_mf6_version(path: Path, override: str | None = None) -> str:
-    """The MF6 version to record for DFNs read from a local directory: the
-    explicit override, else the version.txt of the modflow6 checkout the
-    DFNs are in (they live at doc/mf6io/mf6ivar/dfn), else "unknown".
+def _local_mf6_version(path: Path) -> str:
+    """The MF6 version of DFNs read from a local directory: the version.txt
+    of the modflow6 checkout the DFNs are in (they live at
+    doc/mf6io/mf6ivar/dfn), else "unknown".
     """
-    if override:
-        return override
     if "modflow6" in path.parts and len(path.parents) > 3:
         version_file = path.parents[3] / "version.txt"
         if version_file.is_file():
@@ -128,7 +126,7 @@ def _cmd_sync(args: argparse.Namespace) -> None:
 
         registry = LocalDfnRegistry(path=path)
         source = str(path)
-        effective_version = _local_mf6_version(path, args.mf6_version)
+        effective_version = args.mf6_version or _local_mf6_version(path)
     else:
         release_id = _resolve_release_id(args.release_id, verbose=args.verbose)
         if args.verbose:
