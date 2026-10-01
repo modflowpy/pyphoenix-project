@@ -1850,7 +1850,7 @@ def test_lak_packagedata_single_aux_roundtrip():
             "ifno": np.array([0]),
             "strt": np.array([5.0]),
             "nlakeconn": np.array([2]),
-            "aux0": np.array([100.0]),
+            "aux": [(100.0,)],
             "boundname": np.array(["lake1"], dtype=object),
         },
     )
@@ -1887,8 +1887,7 @@ def test_lak_packagedata_double_aux_roundtrip():
             "ifno": np.array([0, 1]),
             "strt": np.array([-0.4, -0.5]),
             "nlakeconn": np.array([3, 2]),
-            "aux0": np.array([0.0, 5.0]),
-            "aux1": np.array([1025.0, 1010.0]),
+            "aux": [(0.0, 1025.0), (5.0, 1010.0)],
             "boundname": np.array(["lake1", "lake2"], dtype=object),
         },
     )
@@ -1926,8 +1925,7 @@ def test_lkt_packagedata_double_aux_roundtrip():
         packagedata={
             "ifno": np.array([0]),
             "strt": np.array([35.0]),
-            "aux0": np.array([99.0]),
-            "aux1": np.array([999.0]),
+            "aux": [(99.0, 999.0)],
             "boundname": np.array(["mylake"], dtype=object),
         },
     )
@@ -2374,8 +2372,7 @@ def test_lke_packagedata_double_aux_roundtrip():
             "strt": np.array([12.0, 14.0]),
             "ktf": np.array([0.6, 0.7]),
             "rbthcnd": np.array([0.1, 0.2]),
-            "aux0": np.array([10.0, 30.0]),
-            "aux1": np.array([20.0, 40.0]),
+            "aux": [(10.0, 20.0), (30.0, 40.0)],
             "boundname": np.array(["lakeA", "lakeB"], dtype=object),
         },
     )
@@ -2835,7 +2832,13 @@ def test_evt_period_aux_roundtrip():
         auxiliary=["et_zone"],
         stress_period_data={
             0: [
-                {"cellid": (0, 1, 1), "surface": 10.0, "rate": 1.5e-3, "depth": 2.0, "aux0": 3.14},
+                {
+                    "cellid": (0, 1, 1),
+                    "surface": 10.0,
+                    "rate": 1.5e-3,
+                    "depth": 2.0,
+                    "aux": (3.14,),
+                },
             ]
         },
     )

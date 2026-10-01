@@ -15,7 +15,6 @@ Item subclasses share one field (a Union of their types), each identified
 by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
-import re
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
@@ -24,24 +23,6 @@ from typing import Any, Union, cast, get_args, get_origin
 import attrs
 
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
-
-_AUX_KEY_RE = re.compile(r"^aux(\d+)$")
-
-
-def normalize_aux_keys(item: dict) -> dict:
-    """Collapse legacy aux0/aux1/... dict keys into one aux tuple key."""
-    aux_items = []
-    rest = {}
-    for k, v in item.items():
-        m = _AUX_KEY_RE.match(k)
-        if m:
-            aux_items.append((int(m.group(1)), v))
-        else:
-            rest[k] = v
-    if aux_items:
-        aux_items.sort(key=lambda kv: kv[0])
-        rest["aux"] = tuple(v for _, v in aux_items)
-    return rest
 
 
 def _cellid_field(cls: type) -> attrs.Attribute | None:
