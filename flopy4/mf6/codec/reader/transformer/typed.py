@@ -19,20 +19,11 @@ class TypedTransformer(Transformer):
         super().__init__(visit_tokens)
         self.dfn = dfn
         self.blocks = dfn.blocks if dfn else None
-        # get_fields(recurse=True) replaces the old hand-rolled
-        # _flatten_fields() descent through Record/Union/List children.
         self._flat_fields = (
             {name: valid_as_union(f) for name, f in dict(dfn.get_fields(recurse=True)).items()}
             if dfn
             else None
         )
-        # Tagged lists of records (e.g. ts_filerecord) outside the period
-        # block: each line is one item record, and the field is always a list.
-        self._tagged_lists = {
-            name
-            for name, f in (self._flat_fields or {}).items()
-            if isinstance(f, List) and f.tagged and isinstance(f.item, Record)
-        }
 
     def __getattr__(self, name):
         """Handle typed__ prefixed methods by delegating to the unprefixed version."""
@@ -238,6 +229,16 @@ class TypedTransformer(Transformer):
                 pass
         return array_info
 
+    def _list_elements(self, block_name: str) -> set[str]:
+        """Rule names of a block's list element lines: a tagged list's own
+        name, or its union item's arm names."""
+        names: set[str] = set()
+        block = (self.blocks or {}).get(block_name)
+        for name, f in (block.fields if block else {}).items():
+            if isinstance(f, List):
+                names |= set(f.item.arms) if isinstance(f.item, Union) else {name}
+        return names
+
     def __default__(self, data, children, meta):
         if self.blocks is None or self._flat_fields is None:
             return super().__default__(data, children, meta)
@@ -276,21 +277,16 @@ class TypedTransformer(Transformer):
                 else:
                     # Fallback to original behavior
                     return {"stress_period_data": children}
-            # Group fields by name to handle repeated fields
+            # A list's elements are always a list, anything else one value.
+            elements = self._list_elements(data[: -len("_fields")])
             fields_dict = {}
             for item in children:
                 if isinstance(item, tuple):
                     field_name = item[0].lower()
-                    field_value = item[1]
-                    if field_name in self._tagged_lists:
-                        fields_dict.setdefault(field_name, []).append(field_value)
-                    elif field_name in fields_dict:
-                        # Multiple occurrences - convert to list or append
-                        if not isinstance(fields_dict[field_name], list):
-                            fields_dict[field_name] = [fields_dict[field_name]]
-                        fields_dict[field_name].append(field_value)
+                    if field_name in elements:
+                        fields_dict.setdefault(field_name, []).append(item[1])
                     else:
-                        fields_dict[field_name] = field_value
+                        fields_dict[field_name] = item[1]
             return fields_dict
         elif "_" in data and (parts := data.rsplit("_", 1)) and len(parts) == 2:
             # Check if this is a union alternative (e.g., ocsetting_all)
@@ -314,7 +310,8 @@ class TypedTransformer(Transformer):
         if field is None and "-" in data:
             # Try with hyphens instead of underscores (reverse of to_rule_name)
             field = self._flat_fields.get(data.replace("_", "-"), None)
-        if field is not None and data in self._tagged_lists:
+        if isinstance(field, List):
+            # the rule matches one element line
             field = field.item
         if field is not None:
             if isinstance(field, Keyword):

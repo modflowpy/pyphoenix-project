@@ -4,7 +4,6 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.tdis_base import TdisBase
@@ -34,7 +33,7 @@ class Tdis(TdisBase):
     )
     ats_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

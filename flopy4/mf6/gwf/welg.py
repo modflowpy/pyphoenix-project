@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import FloatArrayLike, _optional_path, _optional_str_array
+from flopy4.mf6._types import FloatArrayLike, to_array
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -24,7 +24,7 @@ class Welg(Package):
     )
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
-        converter=_optional_str_array,
+        converter=attrs.converters.optional(to_array(np.str_)),
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
@@ -61,7 +61,7 @@ class Welg(Package):
     )
     afrcsv_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -75,7 +75,7 @@ class Welg(Package):
     )
     obs_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

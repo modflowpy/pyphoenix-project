@@ -51,7 +51,7 @@ class {{ spec.class_name }}({{ spec.base_class }}):
 
 {% endfor %}
 {% for ic in spec.item_classes %}
-{{ ic.schema | item_class(ic.class_name, ic.is_period, ic.has_aux, ic.keyword, package_class_name=spec.class_name) }}
+{{ ic.schema | item_class(ic.class_name, ic.keyword, package_class_name=spec.class_name) }}
 
 {% endfor %}
 {% for union in spec.item_unions %}

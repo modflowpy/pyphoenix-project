@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
@@ -38,7 +38,7 @@ class Ist(Package):
     )
     budget_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -46,7 +46,7 @@ class Ist(Package):
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -72,7 +72,7 @@ class Ist(Package):
     )
     cim_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -84,7 +84,7 @@ class Ist(Package):
     )
     sorbate_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",

@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import _optional_path, _optional_path_list, _optional_str_array
+from flopy4.mf6._types import to_array, to_list
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -24,7 +24,7 @@ class Lke(Package):
         strt: float = field()
         ktf: float = field()
         rbthcnd: float = field()
-        aux: tuple = ()
+        aux: tuple = field(default=(), shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
@@ -82,7 +82,7 @@ class Lke(Package):
     )
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
-        converter=_optional_str_array,
+        converter=attrs.converters.optional(to_array(np.str_)),
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
@@ -124,7 +124,7 @@ class Lke(Package):
     )
     temperature_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -132,7 +132,7 @@ class Lke(Package):
     )
     budget_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -140,7 +140,7 @@ class Lke(Package):
     )
     budgetcsv_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -148,7 +148,7 @@ class Lke(Package):
     )
     ts_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path_list,
+        converter=attrs.converters.optional(to_list(Path)),
         block="options",
         optional=True,
         direction="in",
@@ -156,7 +156,7 @@ class Lke(Package):
     )
     obs_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

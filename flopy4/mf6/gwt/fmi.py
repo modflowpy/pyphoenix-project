@@ -17,7 +17,6 @@ class Fmi(Package):
     class Packagedata(Item):
         flowtype: Union[float, str] = field()
         fname: Path = path(converter=Path, direction="in")
-        aux: tuple = ()
 
     save_flows: bool = field(
         default=False,

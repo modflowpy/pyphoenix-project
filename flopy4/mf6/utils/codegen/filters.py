@@ -427,6 +427,35 @@ def py_type(f: FieldV3, block_name: str) -> str:
     return f"Optional[{base}]" if f.optional else base
 
 
+def converter(type_str: str) -> str | None:
+    """The attrs converter for a generated type annotation, built from the
+    type: ``Optional[X]`` -> ``attrs.converters.optional(<X>)``, ``list[X]``
+    -> ``to_list(<X>)``, ``Path`` -> ``Path``, and an inline (string) array
+    ``NDArray[np.str_]`` -> ``to_array(np.str_)``. Other types need none
+    (numeric arrays take constants, layers or xarray; see is_array).
+    """
+    if m := re.fullmatch(r"Optional\[(.+)\]", type_str):
+        inner = converter(m[1])
+        return f"attrs.converters.optional({inner})" if inner else None
+    if m := re.fullmatch(r"list\[(.+)\]", type_str):
+        inner = converter(m[1])
+        return f"to_list({inner})" if inner else None
+    if type_str == "NDArray[np.str_]":
+        return "to_array(np.str_)"
+    if type_str == "Path":
+        return "Path"
+    return None
+
+
+def field_converter(f: FieldV3, block_name: str) -> str | None:
+    """A generated field's converter (see converter). A field defaulting to
+    None accepts None whatever its annotation says."""
+    type_str = py_type(f, block_name)
+    if _default_repr(f) == "None" and not type_str.startswith("Optional["):
+        type_str = f"Optional[{type_str}]"
+    return converter(type_str)
+
+
 # Python name sanitisation
 
 
@@ -570,7 +599,8 @@ def field_call(f: FieldV3, block_name: str) -> str:
         if f.optional:
             kw["optional"] = True
         kw |= item_kw
-        lines = ["path(", "        default=None,", "        converter=_optional_path_list,"]
+        conv = field_converter(f, block_name)
+        lines = ["path(", "        default=None,", f"        converter={conv},"]
         lines += [_wrap_kwarg_line(k, v) for k, v in kw.items()]
         lines.append("    )")
         return "\n".join(lines)
@@ -593,10 +623,8 @@ def field_call(f: FieldV3, block_name: str) -> str:
         type_ignore = "  # type: ignore[assignment]"
     fn = "path" if (is_file_record(f) or is_bare_file(f)) else "field"
     lines = [f"{fn}(", f"        default={default},"]
-    if is_file_record(f) or is_bare_file(f):
-        lines.append("        converter=_optional_path,")
-    elif is_aux_list_field(f):
-        lines.append("        converter=_optional_str_array,")
+    if conv := field_converter(f, block_name):
+        lines.append(f"        converter={conv},")
     for k, v in kw.items():
         lines.append(_wrap_kwarg_line(k, v))
     lines.append(f"    ){type_ignore}")
@@ -638,8 +666,6 @@ def pascal_name(name: str) -> str:
 def item_class(
     schema_list: list[dict],
     class_name: str,
-    is_period: bool = False,
-    has_aux: bool = False,
     keyword: str = "",
     package_class_name: str = "",
 ) -> str:
@@ -662,11 +688,8 @@ def item_class(
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.
 
-    ``is_period=True`` injects ``aux: tuple = ()`` between required value
-    columns and optional columns, for packages that accept positional AUXILIARY
-    columns in their stress period rows. Static list blocks (packagedata,
-    connectiondata, etc.) have fixed DFN schemas and never carry dynamic aux
-    columns, so ``is_period`` should be False (the default) for those.
+    A ``role="sized"`` column (aux) is a tuple with ``shape`` metadata
+    naming the package field that sizes it (``auxiliary``).
 
     ``keyword``, when given, is one arm of a keystring-union period field
     (e.g. LAK's STAGE/RATE/STATUS settings, OC's SAVE/PRINT records) --
@@ -700,7 +723,7 @@ def item_class(
             return "object"
         if role == "boundname":
             return "str"
-        if role == "array":
+        if role in ("array", "sized"):
             return "tuple"
         if col.get("time_series") or col.get("dtype") == "np.object_":
             return "Union[float, str]"
@@ -716,6 +739,7 @@ def item_class(
             "inline_keyword",
             "keystring_value",
             "array",
+            "sized",
         )
 
     def _prefix_direction(col: dict) -> str:
@@ -772,6 +796,9 @@ def item_class(
             # keyword-plus-trailing-values setting whose arity/type isn't
             # fixed (PRP's Steps.steps/Fraction's leaf field).
             return f"        {col['name']}: tuple = field(default=(), array=True)"
+        if col["role"] == "sized":
+            shape = _dq(col["size_of"])
+            return f"        {col['name']}: tuple = field(default=(), shape=({shape},))"
         # File-reference columns (a fixed MF6 token or two before a filename,
         # e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields built via the
         # same path() convention used for Package-level file fields, not the
@@ -783,7 +810,7 @@ def item_class(
             if optional:
                 return (
                     f"        {col['name']}: Optional[Path] = path(\n"
-                    f"            default=None, converter=_optional_path, "
+                    f"            default=None, converter={converter('Optional[Path]')}, "
                     f'direction="{direction}"{prefix_kw}\n'
                     f"        )"
                 )
@@ -813,22 +840,8 @@ def item_class(
 
     required = [col for col in schema_list if not _is_optional(col)]
     optional = [col for col in schema_list if _is_optional(col)]
-    # Aux injection: period blocks (standard stress packages CHD, WEL, DRN,
-    # … carry aux as positional trailing columns whose count equals
-    # len(package.auxiliary); keystring period packages (LAK, SFR) embed
-    # AUXILIARY as a named keyword arm instead -- no positional aux there)
-    # and packagedata blocks specifically (has_aux=True, passed by the
-    # template only for block_name == "packagedata" -- the one static list
-    # block MF6 allows per-row aux values on; connectiondata/tables/outlets
-    # etc. have fixed schemas and never carry dynamic aux columns).
-    has_positional_aux = has_aux or (
-        is_period and not any(col["role"] == "keystring" for col in schema_list)
-    )
-
-    # aux sits between other optional columns and boundname in the real DFN
-    # token order (e.g. EVT: ..., pxdp, petm, petm0, aux, boundname) -- not
-    # necessarily right after the required columns (some packages, like EVT,
-    # have their own optional value columns before aux).
+    # Optional columns keep DFN order (e.g. EVT: ..., pxdp, petm, petm0, aux),
+    # with boundname last.
     optional_non_boundname = [col for col in optional if col["role"] != "boundname"]
     boundname_cols = [col for col in optional if col["role"] == "boundname"]
 
@@ -840,8 +853,6 @@ def item_class(
         lines.append(_field_line(col, optional=False))
     for col in optional_non_boundname:
         lines.append(_field_line(col, optional=True))
-    if has_positional_aux:
-        lines.append("        aux: tuple = ()")
     for col in boundname_cols:
         lines.append(_field_line(col, optional=True))
     return "\n".join(lines)

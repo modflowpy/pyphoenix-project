@@ -245,8 +245,8 @@ class TestFilters:
         assert item_class([], "StressPeriodData") == ""
 
     def test_item_class_static_block_no_aux(self):
-        # Static block item (is_period=False default): no aux field. Real
-        # field() metadata (pk=/etc.) is the schema.
+        # No sized column in the schema, no aux field. Real field()
+        # metadata (pk=/etc.) is the schema.
         schema = [
             {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "pk": True},
             {"name": "strt", "role": "value", "dfn_type": "double"},
@@ -277,25 +277,18 @@ class TestFilters:
         assert 'ifno: int = field(index=True, fk="packagedata.ifno")' in result
         assert "iconn: int = field(index=True, pk=True)" in result
 
-    def test_item_class_period_has_aux_for_standard_stress(self):
-        # Period item (is_period=True) with no keystring: aux field present.
+    def test_item_class_sized_column(self):
+        # A column sized by a package field (aux by auxiliary) is a tuple
+        # with that shape, in DFN order before boundname.
         schema = [
             {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
             {"name": "head", "role": "value", "dfn_type": "double"},
+            {"name": "aux", "role": "sized", "dfn_type": "double", "size_of": "auxiliary"},
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
-        result = item_class(schema, "StressPeriodData", is_period=True)
-        assert "aux: tuple = ()" in result
-
-    def test_item_class_period_keystring_no_aux(self):
-        # Period item with keystring role: no aux even with is_period=True.
-        schema = [
-            {"name": "number", "role": "feature_id", "dfn_type": "integer"},
-            {"name": "keyword", "role": "keystring", "dfn_type": "string"},
-            {"name": "value", "role": "keystring_value", "dfn_type": "object"},
-        ]
-        result = item_class(schema, "StressPeriodData", is_period=True)
-        assert "aux" not in result
+        result = item_class(schema, "StressPeriodData")
+        assert 'aux: tuple = field(default=(), shape=("auxiliary",))' in result
+        assert result.index("aux:") < result.index("boundname:")
 
     def test_item_class_field_order_matches_schema(self):
         # Required fields declared in schema order, then optional.
@@ -322,14 +315,14 @@ class TestFilters:
 
     def test_item_class_cellid_metadata(self):
         schema = [{"name": "cellid", "role": "cellid", "dfn_type": "integer"}]
-        result = item_class(schema, "StressPeriodData", is_period=True)
+        result = item_class(schema, "StressPeriodData")
         assert "cellid: tuple = field(cellid=True)" in result
 
     def test_item_class_time_series_metadata(self):
         schema = [
             {"name": "head", "role": "value", "dfn_type": "double", "time_series": True},
         ]
-        result = item_class(schema, "StressPeriodData", is_period=True)
+        result = item_class(schema, "StressPeriodData")
         assert "head: Union[float, str] = field(time_series=True)" in result
 
 
@@ -726,7 +719,7 @@ def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
     assert "options" not in {bp.block_name for bp in spec.block_properties}
     text = spec.outpath.read_text()
     assert f"{field}: Optional[list[Path]] = path(" in text
-    assert "converter=_optional_path_list," in text
+    assert "converter=attrs.converters.optional(to_list(Path))," in text
 
 
 def test_tagged_record_list_roundtrip(tmp_path):
@@ -840,23 +833,41 @@ def test_auxiliary_is_string_array():
     names converts to one."""
     import numpy as np
 
-    from flopy4.mf6._types import _optional_str_array
     from flopy4.mf6.gwf import Wel
 
-    assert _optional_str_array(None) is None
-    assert _optional_str_array("conc").tolist() == ["conc"]
+    assert Wel(auxiliary="conc").auxiliary.tolist() == ["conc"]
     wel = Wel(auxiliary=["conc", "temp"])
     assert isinstance(wel.auxiliary, np.ndarray)
     assert wel.auxiliary.tolist() == ["conc", "temp"]
 
 
-def test_optional_path_list():
-    from flopy4.mf6._types import _optional_path_list
+def test_to_list_and_to_array():
+    """A single value (str/path included) is wrapped; others convert per element."""
+    import numpy as np
 
-    assert _optional_path_list(None) is None
-    assert _optional_path_list("a.ts") == [Path("a.ts")]
-    assert _optional_path_list(Path("a.ts")) == [Path("a.ts")]
-    assert _optional_path_list(["a.ts", Path("b.ts")]) == [Path("a.ts"), Path("b.ts")]
+    from flopy4.mf6._types import to_array, to_list
+
+    assert to_list(Path)("a.ts") == [Path("a.ts")]
+    assert to_list(Path)(Path("a.ts")) == [Path("a.ts")]
+    assert to_list(Path)(["a.ts", Path("b.ts")]) == [Path("a.ts"), Path("b.ts")]
+    assert to_array(np.str_)("conc").tolist() == ["conc"]
+    assert to_array(np.str_)(("conc", "temp")).tolist() == ["conc", "temp"]
+
+
+@pytest.mark.parametrize(
+    "type_str,expected",
+    [
+        ("Optional[Path]", "attrs.converters.optional(Path)"),
+        ("Optional[list[Path]]", "attrs.converters.optional(to_list(Path))"),
+        ("Optional[NDArray[np.str_]]", "attrs.converters.optional(to_array(np.str_))"),
+        ("Optional[NDArray[np.float64]]", None),
+        ("Optional[int]", None),
+    ],
+)
+def test_converter_from_type(type_str, expected):
+    from flopy4.mf6.utils.codegen.filters import converter
+
+    assert converter(type_str) == expected
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):
@@ -977,3 +988,31 @@ def test_exg_tier_generates_importable_files(tmp_path, all_dfns):
         assert spec.outpath == tmp_path / "exg" / f"{expected_class.lower()}.py"
         cls = _load_class_from_spec(spec, f"_codegen_test_exg.{dfn_name}", expected_class)
         assert issubclass(cls, Package)
+
+
+def test_aux_columns_follow_dfn():
+    """An item has an aux column only where its DFN does, sized by the
+    package's auxiliary names."""
+    import attrs
+
+    from flopy4.mf6.gwf import Buy, Lak, Wel
+
+    assert attrs.fields_dict(Wel.StressPeriodData)["aux"].metadata["shape"] == ("auxiliary",)
+    assert attrs.fields_dict(Lak.Packagedata)["aux"].metadata["shape"] == ("auxiliary",)
+    # BUY has no AUXILIARY option and its packagedata no aux column
+    assert "aux" not in attrs.fields_dict(Buy.Packagedata)
+
+
+def test_sized_column_from_tokens():
+    """A sized column takes as many tokens as its sizing field has values."""
+    from flopy4.mf6.gwf import Wel
+
+    tokens = [1, 2, 3, -5.0, 0.1, 0.2, "well1"]
+    item = Wel.StressPeriodData.from_tokens(
+        tokens, ncelldim=3, sizes={"auxiliary": 2}, boundnames=True
+    )
+    assert item.cellid == (0, 1, 2)
+    assert item.q == -5.0
+    assert item.aux == (0.1, 0.2)
+    assert item.boundname == "well1"
+    assert item.to_tokens() == tuple(tokens)

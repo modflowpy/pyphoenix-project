@@ -4,7 +4,6 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -21,7 +20,7 @@ class Fmi(Package):
     )
     gwfhead: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="packagedata",
         optional=True,
         direction="in",
@@ -30,7 +29,7 @@ class Fmi(Package):
     )
     gwfbudget: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="packagedata",
         optional=True,
         direction="in",
@@ -39,7 +38,7 @@ class Fmi(Package):
     )
     gwfgrid: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="packagedata",
         optional=True,
         direction="in",

@@ -10,7 +10,7 @@ import numpy as np
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items
+from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items, sized_by
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
@@ -34,7 +34,7 @@ def _parse_rows(
     rows: list,
     item_cls: "type[Item] | tuple[type[Item], ...]",
     *,
-    naux: int = 0,
+    sizes: "dict[str, int] | None" = None,
     boundnames: bool = False,
     dims: "dict | None" = None,
 ) -> list | None:
@@ -42,10 +42,10 @@ def _parse_rows(
     if not rows:
         return None
     if isinstance(item_cls, tuple):
-        return parse_union_items(rows, item_cls, naux=naux, boundnames=boundnames)
-    ncelldim = infer_ncelldim(rows, item_cls, naux=naux, dims=dims)
+        return parse_union_items(rows, item_cls, sizes=sizes, boundnames=boundnames)
+    ncelldim = infer_ncelldim(rows, item_cls, sizes=sizes, dims=dims)
     result = [
-        item_cls.from_tokens(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
+        item_cls.from_tokens(row, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames)
         for row in rows
         if row
     ]
@@ -768,9 +768,16 @@ def structure_component(
             else:
                 kwargs[init_key] = row[1]
 
-    naux = 0
-    if "auxiliary" in kwargs:
-        naux = len(kwargs["auxiliary"])
+    # Lengths of the fields sizing item columns (auxiliary sizes aux).
+    item_types = [ic for _, ic in block_item_fields.values()]
+    if period_item_cls is not None:
+        item_types.append(period_item_cls)
+    sizes = {
+        name: len(kwargs[name])
+        for ic in item_types
+        for name in sized_by(ic)
+        if kwargs.get(name) is not None
+    }
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a
@@ -786,7 +793,7 @@ def structure_component(
             continue
         rows = _resolve_open_close_rows(rows, workspace)
         row_list = _parse_rows(
-            rows, item_cls, naux=naux, boundnames=boundnames, dims=effective_dims
+            rows, item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
         )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
@@ -810,7 +817,7 @@ def structure_component(
                     continue
                 rows = _resolve_open_close_rows(rows, workspace)
                 row_list = _parse_rows(
-                    rows, period_item_cls, naux=naux, boundnames=boundnames, dims=effective_dims
+                    rows, period_item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
                 )
                 if row_list is not None:
                     spd[kper] = row_list

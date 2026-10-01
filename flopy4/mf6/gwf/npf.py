@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field, path
@@ -105,7 +105,7 @@ class Npf(Package):
     )
     tvk_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

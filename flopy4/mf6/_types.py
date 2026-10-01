@@ -1,9 +1,10 @@
 """Shared type definitions for flopy4.mf6 packages."""
 
+from collections.abc import Callable, Iterable
 from datetime import datetime
 from os import PathLike
-from pathlib import Path, PurePath
-from typing import Protocol, TypeAlias, TypeVar
+from pathlib import PurePath
+from typing import Any, Protocol, TypeAlias, TypeVar
 
 import numpy as np
 
@@ -37,39 +38,19 @@ IntArrayLike: TypeAlias = _ArrayLike[np.int64]
 FloatArrayLike: TypeAlias = _ArrayLike[np.float64]
 
 
-def _optional_path(v):
-    """Converter for Optional[Path] attrs fields.
-
-    Accepts None, str, or Path; returns None or Path.
-    """
-    if v is None:
-        return None
-    return Path(v) if not isinstance(v, Path) else v
+def _wrap(v) -> list:
+    """A single value (a str or path is one value, not an iterable) as a
+    one-element list, else the values as a list."""
+    if isinstance(v, (str, bytes, PathLike)) or not isinstance(v, Iterable):
+        return [v]
+    return list(v)
 
 
-def _optional_str_array(v):
-    """Converter for Optional[NDArray[np.str_]] attrs fields (inline string
-    arrays, e.g. ``auxiliary``).
-
-    Accepts None, a single str, or an iterable of str; returns None or a 1D
-    string array.
-    """
-    if v is None:
-        return None
-    if isinstance(v, str):
-        v = [v]
-    return np.asarray(list(v), dtype=np.str_)
+def to_list(convert: Callable) -> Callable[[Any], list]:
+    """attrs converter to a list, each element through `convert`."""
+    return lambda v: [convert(x) for x in _wrap(v)]
 
 
-def _optional_path_list(v):
-    """Converter for Optional[list[Path]] attrs fields (repeatable file
-    records, e.g. ``ts_file``).
-
-    Accepts None, a single str/Path, or an iterable of them; returns None
-    or a list of Path.
-    """
-    if v is None:
-        return None
-    if isinstance(v, (str, PathLike)):
-        return [Path(v)]
-    return [Path(p) for p in v]
+def to_array(dtype) -> Callable[[Any], np.ndarray]:
+    """attrs converter to a 1D array of `dtype`."""
+    return lambda v: np.asarray(_wrap(v), dtype=dtype)
