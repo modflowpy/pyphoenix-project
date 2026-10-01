@@ -308,6 +308,10 @@ def test_tdis_nper_default_is_still_explicit():
     assert Tdis(perioddata=[(1.0, 1, 1.0)] * 3).nper == 3
     with pytest.raises(ValueError, match="nper"):
         Tdis(nper=1, perioddata=[(1.0, 1, 1.0)] * 3)
+    # only the default row is repeated to fill nper, not an equal explicit one
+    assert len(Tdis(nper=3).perioddata) == 3
+    with pytest.raises(ValueError, match="nper"):
+        Tdis(nper=3, perioddata=((1.0, 1, 1.0),))
 
 
 def test_ats_maxats_bounds_perioddata():
@@ -323,7 +327,7 @@ def test_ats_maxats_bounds_perioddata():
     # an explicit maxats equal to the DFN default (1) still bounds the rows
     with pytest.raises(ValueError, match="maxats"):
         Ats(maxats=1, perioddata=[row, row])
-    assert Ats().maxats == 1
+    assert Ats().maxats is None
 
 
 def test_tdis_round_trip():

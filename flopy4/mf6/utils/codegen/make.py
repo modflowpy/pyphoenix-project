@@ -1138,14 +1138,12 @@ def build_component_spec(
         if _union is not None:
             item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
-        # The DIMENSIONS field counting this block's rows (from its shape),
-        # and whether the count is exact or bounded by it.
+        # The DIMENSIONS field counting this block's rows, in the DFN's shape
+        # syntax: exact ("nper") or a bound ("<=maxats").
         if bp.dim_is_dfn_declared:
-            _meta["dim"] = bp.dim_attr
-            if bp.dim_bound:
-                _meta["dim_bound"] = bp.dim_bound
-        if _list_field.default:
-            _meta["default_rows"] = tuple(_list_field.default)
+            _meta["dim"] = f"{bp.dim_bound or ''}{bp.dim_attr}"
+        # DFN default rows (TDIS's perioddata) are the field's real default.
+        _default = repr(tuple(_list_field.default)) if _list_field.default else "None"
         # A block must still appear in the written file even with zero rows
         # if MF6 requires its header to be present regardless of row count
         # (e.g. SSM SOURCES) -- as opposed to a block that must be *omitted*
@@ -1172,7 +1170,11 @@ def build_component_spec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
                 type_annotation=f"Optional[list[{_elem}]]",
-                spec_call=_ml_field(metadata=_meta),
+                spec_call=_ml_field(
+                    _default,
+                    metadata=_meta,
+                    type_ignore="# type: ignore[assignment]" if _list_field.default else None,
+                ),
                 generatable=True,
             )
         )

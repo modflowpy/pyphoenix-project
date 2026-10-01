@@ -25,13 +25,11 @@ class Ats(Package):
         default=None,
         block="dimensions",
         longname="number of ATS periods",
-        dim_default=1,
     )
     perioddata: Optional[list[Perioddata]] = field(
         default=None,
         block="perioddata",
-        dim="maxats",
-        dim_bound="<=",
+        dim="<=maxats",
     )
 
 

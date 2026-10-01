@@ -44,14 +44,12 @@ class Tdis(TdisMethods, Package):
         default=None,
         block="dimensions",
         longname="number of stress periods",
-        dim_default=1,
     )
     perioddata: Optional[list[Perioddata]] = field(
-        default=None,
+        default=((1.0, 1, 1.0),),
         block="perioddata",
         dim="nper",
-        default_rows=((1.0, 1, 1.0),),
-    )
+    )  # type: ignore[assignment]
 
 
 TdisPerioddata = Tdis.Perioddata

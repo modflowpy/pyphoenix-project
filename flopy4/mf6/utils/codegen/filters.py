@@ -571,7 +571,7 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
 
     A `linked_dim` (a dimension counting a list's rows, e.g. TDIS's nper)
     defaults to None, so an explicit value equal to the DFN default still
-    counts as given; the DFN default goes in `dim_default` metadata instead.
+    counts as given. With no explicit value it's set from the row count.
     """
     if is_file_list(f):
         # Same metadata as a single file record (keyword, direction).
@@ -594,8 +594,7 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
         default = "0"
     else:
         default = _default_repr(f)
-    if linked_dim and default != "None":
-        kw["dim_default"] = f.default if not isinstance(f.default, str) else int(f.default)
+    if linked_dim:
         default = "None"
     # String-encoded numeric defaults (e.g. '1.e-5', '1000.') are valid at
     # runtime but mypy can't verify they satisfy Optional[float/int].

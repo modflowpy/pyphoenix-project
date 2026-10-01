@@ -38,9 +38,6 @@ def field(
     schema: str | None = None,
     write_if_empty: bool = False,
     dim: str | None = None,
-    dim_bound: str | None = None,
-    dim_default: int | None = None,
-    default_rows: tuple | None = None,
     fill_forward: bool = False,
     time_series: bool = False,
     index: bool = False,
@@ -72,12 +69,6 @@ def field(
         metadata["write_if_empty"] = True
     if dim:
         metadata["dim"] = dim
-    if dim_bound:
-        metadata["dim_bound"] = dim_bound
-    if dim_default is not None:
-        metadata["dim_default"] = dim_default
-    if default_rows:
-        metadata["default_rows"] = default_rows
     if fill_forward:
         metadata["fill_forward"] = True
     if time_series:

@@ -722,9 +722,9 @@ def test_check_mixins_rejects_unknown_component(all_dfns):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
 
 
-def test_list_block_dim_and_default_rows(tmp_path, all_dfns):
-    """A list block's row-count dimension, its bound operator and DFN default
-    rows are emitted. Only a list whose shape names the dimension links to
+def test_list_block_dim_and_default(tmp_path, all_dfns):
+    """A list block's row-count dimension (with any bound, in DFN shape
+    syntax) and DFN default rows are emitted. Only a list whose shape names the dimension links to
     it: MAW's packagedata, not its shapeless connectiondata/angledata."""
     skip = {n for n in all_dfns if n not in ("sim-tdis", "utl-ats", "gwf-maw")}
     specs = {
@@ -733,14 +733,9 @@ def test_list_block_dim_and_default_rows(tmp_path, all_dfns):
     }
     tdis = specs["sim-tdis"].outpath.read_text()
     assert 'dim="nper"' in tdis
-    assert "dim_bound" not in tdis
-    assert "default_rows=((1.0, 1, 1.0),)" in tdis
-    # the dimension defaults to None, keeping its DFN default as metadata
-    assert "dim_default=1," in tdis
+    assert "default=((1.0, 1, 1.0),)," in tdis
     ats = specs["utl-ats"].outpath.read_text()
-    assert 'dim="maxats"' in ats
-    assert 'dim_bound="<="' in ats
-    assert "dim_default=1," in ats
+    assert 'dim="<=maxats"' in ats
     maw = build_component_spec(all_dfns["gwf-maw"], root=Path("/fake"))
     linked = {bp.block_name for bp in maw.block_properties if bp.dim_is_dfn_declared}
     assert linked == {"packagedata"}

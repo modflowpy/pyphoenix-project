@@ -6,6 +6,7 @@ import attrs
 import numpy as np
 import pandas as pd
 import xarray as xr
+from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
 from flopy4.mf6.component import Component
@@ -92,15 +93,13 @@ class Package(Component, ABC):
         """Coerce raw list/dict block+period data into Item-list fields.
 
         A list field with `dim` metadata (the DIMENSIONS field counting its
-        rows, from the DFN) gets that dimension set from its row count,
-        unless it was given explicitly. It defaults to None, so an explicit
-        value equal to the DFN default still counts as given; the DFN default
-        (`dim_default` metadata) applies only when there are no rows. An
-        explicit dimension must equal the row count, or with `dim_bound`
-        metadata (the DFN shape's operator, e.g. "<=") satisfy that bound,
-        else it is an error. A list with DFN `default_rows` of one row and no
-        data gets that row repeated `dim` times. `maxbound` (where applicable)
-        is a computed property instead, not set here.
+        rows, in DFN shape syntax: exact "nper" or bounded "<=maxats") gets
+        that dimension set from its row count, unless it was given
+        explicitly. An explicit dimension must equal the row count, or
+        satisfy the bound, else it is an error. A list left at a one-row
+        default (TDIS's perioddata, from the DFN) gets that row repeated
+        `dim` times. `maxbound` (where applicable) is a computed property
+        instead, not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -114,15 +113,13 @@ class Package(Component, ABC):
             item_cls = item_list_type(f.type)
             if item_cls is None:
                 continue
-            dim = f.metadata.get("dim")
+            bound, dim = split_bound(f.metadata["dim"]) if "dim" in f.metadata else (None, None)
             raw = self.__dict__.get(f.name)
-            if raw is None and (default := f.metadata.get("default_rows")):
-                raw = list(default)
-                if dim and len(raw) == 1:
-                    raw *= self._dim_value(dim) or 1
+            # Identity, not equality: only the default object itself (never
+            # a user value, even an equal one) is repeated to fill `dim`.
+            if raw is not None and raw is f.default and len(raw) == 1:
+                raw = list(raw) * ((getattr(self, dim) if dim else None) or 1)
             if raw is None:
-                if dim and getattr(self, dim) is None:
-                    object.__setattr__(self, dim, self._dim_value(dim))
                 continue
 
             if f.metadata.get("fill_forward"):
@@ -134,13 +131,7 @@ class Package(Component, ABC):
                 coerced_list = self._coerce_item_list(raw, item_cls)
                 object.__setattr__(self, f.name, coerced_list)
                 if dim:
-                    self._set_dim_from_rows(dim, len(coerced_list), f.metadata.get("dim_bound"))
-
-    def _dim_value(self, dim: str) -> int | None:
-        """A linked dimension's value: as given, else its DFN default."""
-        if (value := getattr(self, dim)) is not None:
-            return value
-        return attrs.fields_dict(type(self))[dim].metadata.get("dim_default")
+                    self._set_dim_from_rows(dim, len(coerced_list), bound)
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
