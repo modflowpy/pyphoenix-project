@@ -28,6 +28,7 @@ from modflow_devtools.dfns.schema import (
     Integer,
     Record,
     String,
+    split_bound,
 )
 from modflow_devtools.dfns.schema import (
     Keyword as KeywordField,
@@ -151,35 +152,23 @@ ARRAY_NUMPY_DTYPES: dict[str, str] = {
 
 
 def is_scalar(f: FieldV3) -> bool:
-    """True for simple scalar fields (no shape)."""
     return isinstance(f, (KeywordField, Integer, Double, String))
 
 
-def is_array(f: FieldV3) -> bool:
-    """True for readarray-form array fields: standalone (not nested in a
-    Record/Union/List item -- callers only ever see standalone fields, see
-    flat_fields), non-keyword, non-string. Excludes is_aux_list_field
-    (string) -- per the DFN spec, only a standalone non-string array is the
-    full multi-line readarray form; a string array is always inline
-    (auxiliary names), as is any array nested in a record-like field.
-    """
+def is_readarray(f: FieldV3) -> bool:
     return isinstance(f, Array) and f.dtype not in ("keyword", "string")
 
 
+def is_fixed_length_array(f: FieldV3) -> bool:
+    return isinstance(f, Array) and (not f.shape or any(split_bound(s)[0] for s in f.shape))
+
+
 def is_keyword_array(f: FieldV3) -> bool:
-    """True for boolean-array fields (keyword type with shape)."""
     return isinstance(f, Array) and f.dtype == "keyword" and bool(f.shape)
 
 
 def is_file_record(f: FieldV3) -> bool:
-    """True for record fields whose children include a File field.
-
-    The MF6 ``KEYWORD FILEIN <path>``/``KEYWORD FILEOUT <path>`` pattern
-    (e.g. options-block ``ts_filerecord``): a Record wrapping a trigger
-    Keyword and a File child. Distinct from is_bare_file (below) -- a File
-    field can also appear directly in a block with no wrapping Record (e.g.
-    prt-fmi.packagedata's gwfhead/gwfbudget/gwfgrid).
-    """
+    """True for record fields whose children include a File field."""
     return isinstance(f, Record) and any(isinstance(c, File) for c in f.fields.values())
 
 
@@ -209,7 +198,7 @@ def is_aux_list_field(f: FieldV3) -> bool:
 
 def is_any_array(f: FieldV3) -> bool:
     """True for numeric or keyword array fields."""
-    return is_array(f) or is_keyword_array(f)
+    return is_readarray(f) or is_keyword_array(f)
 
 
 def is_dimensions_scalar(f: FieldV3, block_name: str) -> bool:
@@ -232,7 +221,7 @@ def is_generatable(f: FieldV3) -> bool:
     """True if this field can be handled in the current generation pass."""
     return (
         is_scalar(f)
-        or is_array(f)
+        or is_readarray(f)
         or is_keyword_array(f)
         or is_file_record(f)
         or is_bare_file(f)
@@ -391,7 +380,7 @@ def py_type(f: FieldV3, block_name: str) -> str:
         base = "Path"
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
-    elif is_array(f):
+    elif is_readarray(f):
         assert isinstance(f, Array)
         if block_name == "griddata":
             base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
@@ -605,7 +594,7 @@ def field_call(f: FieldV3, block_name: str) -> str:
     _str_default = default.startswith("'")
     _numeric_field = isinstance(f, (Double, Integer))
     type_ignore = ""
-    if (is_array(f) and default != "None") or (_str_default and _numeric_field):
+    if (is_readarray(f) and default != "None") or (_str_default and _numeric_field):
         type_ignore = "  # type: ignore[assignment]"
     fn = "path" if (is_file_record(f) or is_bare_file(f)) else "field"
     lines = [f"{fn}(", f"        default={default},"]
@@ -949,32 +938,19 @@ def list_columns(f: ListField) -> list[ColumnSpec]:
 
 
 def list_col_dim(f: ListField, component: Component) -> str | None:
-    """Return the dimension name for list column arrays.
+    """Return the DIMENSIONS field that counts a list's rows, or None.
 
-    Uses the last entry of the list field's explicit shape when present,
-    preferring the actual dimensions-block field name when the shape entry
-    differs (e.g. shape uses 'npackages' but field is 'maxpackages').
-    Falls back to the single entry in the component's dimensions block.
-    Returns None when the dimension cannot be determined unambiguously.
+    Only an explicit shape links a list to a dimension: its single entry,
+    minus any bound operator (``"<=maxbound"`` -> ``maxbound``), when that
+    names a field in the component's dimensions block.
     """
     dim_block = (component.blocks or {}).get("dimensions")
     dim_names = list(dim_block.fields.keys()) if dim_block is not None else []
-    if shape := (f.shape or []):
-        shape_dim = shape[-1]
-        if shape_dim in dim_names:
-            return shape_dim
-        # Shape dim may use a different prefix than the actual field name
-        # (e.g., shape "npackages" vs dimensions field "maxpackages"). Try
-        # suffix matching: strip leading "n" and find a field that ends with
-        # the remainder.
-        suffix = shape_dim.lstrip("n")
-        if suffix:
-            for fname in dim_names:
-                if fname.endswith(suffix):
-                    return fname
-    if len(dim_names) == 1:
-        return dim_names[0]
-    return None
+    shape = f.shape or []
+    if len(shape) != 1:
+        return None
+    _, shape_dim = split_bound(shape[0])
+    return shape_dim if shape_dim in dim_names else None
 
 
 def list_block_names(component: Component) -> list[str]:

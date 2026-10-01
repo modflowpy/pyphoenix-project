@@ -214,16 +214,9 @@ def _schema_dict_from_columns(
             entry["role"] = "inline_keyword"
             entry["optional"] = True
         elif isinstance(f, UnionField) and col.name in nested_arm_classes:
-            # Nested union already expanded into typed arms (OC's
-            # ocsetting) -- see _build_arm_specs_from_union.
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
-        elif isinstance(f, UnionField) or (isinstance(f, Array) and not getattr(f, "shape", None)):
-            # A nested union not (or not yet) expanded above, or a bare
-            # *unbounded* array arm (PRP's STEPS n1 n2 ..., shape=[]) --
-            # keyword-plus-trailing-values, consumes all remaining tokens
-            # as a tuple. A *named*-dimension array (e.g. EVT's pxdp/petm)
-            # is a fixed-length column instead; is_cellid was handled above.
+        elif isinstance(f, UnionField) or not filters.is_fixed_length_array(f):
             entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"
@@ -713,10 +706,6 @@ def _build_block_property_specs(
     Returns (specs, block_names) where block_names is used as a skip-set in
     the main field loop.
     """
-    dim_block = (component.blocks or {}).get("dimensions")
-    dfn_dims_ordered = list(dim_block.fields.keys()) if dim_block is not None else []
-    dfn_dims = set(dfn_dims_ordered)
-
     fill_forward_blocks = filters.fill_forward_blocks(component)
     list_fields_map: dict[str, FieldV3] = {}
     for block_name, block in (component.blocks or {}).items():
@@ -733,26 +722,14 @@ def _build_block_property_specs(
     col_schemas = {block: filters.list_columns(f) for block, f in list_fields_map.items()}
     collisions = filters.collision_names(col_schemas, reserved=reserved_names)
 
-    # Resolve which DFN dimension scalar each block maps to.
+    # Resolve which DFN dimension scalar each block maps to: only through the
+    # list's explicit shape (see filters.list_col_dim).
     dim_resolutions: dict[str, tuple[str, bool]] = {}
-    claimed_dims: set[str] = set()
-    maxbound_blocks: list[str] = []
-
     for block_name, lf in list_fields_map.items():
-        dfn_dim = filters.list_col_dim(lf, component)
-        if dfn_dim and dfn_dim in dfn_dims:
+        if dfn_dim := filters.list_col_dim(lf, component):
             dim_resolutions[block_name] = (dfn_dim, True)
-            claimed_dims.add(dfn_dim)
-        elif lf.shape and "maxbound" in lf.shape and dfn_dims:
-            maxbound_blocks.append(block_name)
         else:
             dim_resolutions[block_name] = (f"n{block_name}", False)
-
-    unclaimed = [d for d in dfn_dims_ordered if d not in claimed_dims]
-    for block_name in maxbound_blocks:
-        dim_resolutions[block_name] = (
-            (unclaimed.pop(0), True) if unclaimed else (f"n{block_name}", False)
-        )
 
     specs: list[BlockPropertySpec] = []
     block_names: set[str] = set()
@@ -804,7 +781,7 @@ def _generated_imports(
             filters.is_keyword_array(f)
             or filters.is_aux_list_field(f)
             # repeating block's own array → dict[header, ...], not NDArray
-            or (filters.is_array(f) and block_name not in repeating_blocks)
+            or (filters.is_readarray(f) and block_name not in repeating_blocks)
         )
         for block_name, f in generatable_fields
     )
@@ -1040,7 +1017,7 @@ def build_component_spec(
         # per the block's own header type rather than assumed, since
         # different repeating blocks have different header types (period's
         # is integer, utl-tas's is double).
-        if filters.is_array(f) and block_name in _repeating_blocks:
+        if filters.is_readarray(f) and block_name in _repeating_blocks:
             _repeating_array_fields.append(f)
             _repeating_array_base = (
                 "IntArrayLike" if getattr(f, "dtype", "") == "integer" else "FloatArrayLike"
@@ -1231,7 +1208,7 @@ def build_component_spec(
     has_inner_classes = bool(inner_class_specs)
 
     _has_griddata = any(
-        bn == "griddata" and filters.is_array(f) for bn, f in generatable_field_objects
+        bn == "griddata" and filters.is_readarray(f) for bn, f in generatable_field_objects
     )
     _arraylike_types = (
         {getattr(f, "dtype", None) for bn, f in generatable_field_objects if bn == "griddata"}
