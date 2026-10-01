@@ -216,7 +216,9 @@ def _schema_dict_from_columns(
         elif isinstance(f, UnionField) and col.name in nested_arm_classes:
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
-        elif isinstance(f, UnionField) or not filters.is_fixed_length_array(f):
+        elif isinstance(f, UnionField) or (
+            isinstance(f, Array) and not filters.is_fixed_length_array(f)
+        ):
             entry["role"] = "array"
         elif isinstance(f, String):
             entry["role"] = "value"

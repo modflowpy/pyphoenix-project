@@ -160,7 +160,7 @@ def is_readarray(f: FieldV3) -> bool:
 
 
 def is_fixed_length_array(f: FieldV3) -> bool:
-    return isinstance(f, Array) and (not f.shape or any(split_bound(s)[0] for s in f.shape))
+    return isinstance(f, Array) and bool(f.shape) and not any(split_bound(s)[0] for s in f.shape)
 
 
 def is_keyword_array(f: FieldV3) -> bool:
@@ -188,7 +188,7 @@ def is_aux_list_field(f: FieldV3) -> bool:
     """True for auxiliary variable name arrays (options block).
 
     A standalone string array -- inline per the DFN spec, never the
-    multi-line readarray form (see is_array). (Legacy encoded this as a
+    multi-line readarray form (see is_readarray). (Legacy encoded this as a
     shaped field with a self-referential dim "naux"; dev3 drops the fake
     dimension entirely since the count *is* len() of the list itself,
     nothing to declare.)
@@ -407,7 +407,7 @@ def converter(type_str: str) -> str | None:
     type: ``Optional[X]`` -> ``attrs.converters.optional(<X>)``, ``list[X]``
     -> ``to_list(<X>)``, ``Path`` -> ``Path``, and an inline (string) array
     ``NDArray[np.str_]`` -> ``to_array(np.str_)``. Other types need none
-    (numeric arrays take constants, layers or xarray; see is_array).
+    (numeric arrays take constants, layers or xarray; see is_readarray).
     """
     if m := re.fullmatch(r"Optional\[(.+)\]", type_str):
         inner = converter(m[1])
