@@ -213,32 +213,18 @@ def is_any_array(f: FieldV3) -> bool:
 
 
 def is_dimensions_scalar(f: FieldV3, block_name: str) -> bool:
-    """True for scalar fields in the dimensions block (computed, init=False)."""
     return block_name == "dimensions" and is_scalar(f)
 
 
 def is_list_field(f: FieldV3) -> bool:
-    """True for list-type sub-table fields (packagedata, perioddata, etc.)."""
     return isinstance(f, ListField)
 
 
 def is_tagged_list(f: FieldV3) -> bool:
-    """True for a tagged list: every line it allows begins with a keyword
-    (derived by devtools from the item type), e.g. options-block
-    ``ts_filerecord``'s repeatable ``TS6 FILEIN <file>``.
-
-    Unlike an untagged list -- a table that fills its block (packagedata,
-    CHD's stress_period_data) -- a tagged list is a repeatable field among
-    the block's other fields. One in a fill-forward block (OC's output,
-    PRP's perioddata) is that block's keystring period data instead.
-    """
     return isinstance(f, ListField) and f.tagged
 
 
 def is_file_list(f: FieldV3) -> bool:
-    """True for a tagged list of file records (see is_tagged_list): a
-    ``list[Path]`` field, one ``KEYWORD FILEIN|FILEOUT <path>`` line per
-    element, the way a single file record's Path field is one line."""
     return is_tagged_list(f) and is_file_record(f.item)
 
 

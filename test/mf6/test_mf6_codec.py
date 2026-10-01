@@ -1439,8 +1439,6 @@ def test_file_records_roundtrip():
     assert "TS6 FILEIN a.ts" in text
     assert "OBS6 FILEIN w.obs" in text
 
-    # TS6 is a tagged list: every occurrence is kept, in order, and each is
-    # written back on its own line.
     raw = loads(
         "BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN w.obs\n  TS6 FILEIN b.ts\nEND OPTIONS\n"
     )
