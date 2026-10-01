@@ -5,19 +5,6 @@ def valid_as_union(field: InputField) -> InputField:
     """Turn a ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
     STEADY-STATE/TRANSIENT) into a keyword union with one arm per value, so
     it reuses the existing union grammar/dispatch instead of a second path.
-
-    Trusts ``field.tagged`` directly for whether the field's own name must
-    precede the chosen value in real files (e.g. NPF's
-    "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC") or not (*-STO's bare
-    "STEADY-STATE"/"TRANSIENT", no "STORAGE" prefix). This previously needed
-    a PERIOD-block-vs-not heuristic instead, because *-STO's ``storage`` is
-    synthesized by ``modflow_devtools``'s DFN migration (``_collapse_sto_keywords``)
-    without setting ``tagged``, silently defaulting to ``True`` regardless of
-    real syntax. Fixed upstream (modflow-devtools#tagged-sto-storage,
-    ``migrate_to_v2_0_0_dev2.py``'s ``_collapse_sto_keywords`` now passes
-    ``tagged=False``) -- confirmed every other real ``valid=``-restricted
-    field already had a correct ``tagged`` value from the DFN source, so
-    ``storage`` was the only case the heuristic was covering.
     """
     valid = getattr(field, "valid", None)
     if not valid:
@@ -31,26 +18,18 @@ def valid_as_union(field: InputField) -> InputField:
 
 def field_type(field: InputField) -> str:
     if isinstance(field, Array):
-        # no shape or a bounded one (PRP's steps, "<=nstp") -> no fixed
-        # length, griddata reshaping doesn't apply, it's a bare run of values
-        # (e.g. AUXILIARY's names)
         if not field.shape or any(split_bound(s)[0] for s in field.shape):
             return f"{'word' if field.dtype == 'string' else field.dtype}+"
         return "array"
     if isinstance(field, Keyword):
         return ""
     if isinstance(field, Union):
-        return ""  # keystrings generate their own union rules
+        return ""
     return field.type
 
 
 def record_child_type(field: InputField) -> str:
-    """
-    Get the grammar type for a field within a record context.
-
-    In records, string fields should use 'word' instead of 'string'
-    to avoid consuming the rest of the line (since string matches token+ NEWLINE).
-    """
+    """Get the grammar type for a field within a record context."""
     if field.type == "string":
         return "word"  # Use word for strings in records to match single tokens
     if field.type in ("double", "integer"):
@@ -58,7 +37,7 @@ def record_child_type(field: InputField) -> str:
     if isinstance(field, Keyword):
         return ""
     if isinstance(field, Union):
-        return ""  # unions generate their own union rules
+        return ""
     return field.type
 
 
@@ -71,8 +50,6 @@ def get_recarray_name(block_name: str) -> str:
 
 
 def to_rule_name(name: str) -> str:
-    """Convert a field name to a valid Lark rule name.
-
-    Lark rule names must not contain hyphens, so we replace them with underscores.
-    """
+    """Convert a field name to a valid Lark rule name."""
+    # Lark rule names must not contain hyphens
     return name.replace("-", "_")
