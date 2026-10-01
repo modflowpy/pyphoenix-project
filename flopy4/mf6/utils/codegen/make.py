@@ -30,6 +30,9 @@ from modflow_devtools.dfns.schema import (
     Keyword as KeywordField,
 )
 from modflow_devtools.dfns.schema import (
+    List as ListField,
+)
+from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
 
@@ -77,9 +80,9 @@ class InnerClassSpec:
 class BlockPropertySpec:
     """Pre-computed schema for one list (recarray) block property.
 
-    Produced by build_component_spec from dev3 List/Record fields. Drives
-    block_schemas and the Optional[np.recarray] FieldSpec emitted per block
-    in extra_specs.
+    Produced by build_component_spec for each block whose only field is an
+    untagged list. Drives the Optional[list[ItemClass]] FieldSpec emitted
+    per block in extra_specs.
     """
 
     block_name: str
@@ -90,20 +93,31 @@ class BlockPropertySpec:
 
 
 @dataclass
-class PeriodArmSpec:
-    """Pre-computed context for one keystring-union period arm's generated
-    Item class (e.g. LAK's Stage/Rate/Status, OC's Saverecord/Printrecord).
+class ItemClassSpec:
+    """Pre-computed context for one generated Item class: the element type
+    of a list field, in any block (see _build_list_item_specs) -- a plain
+    row (CHD's StressPeriodData, LAK's Packagedata), a keyword-led row (a
+    tagged list's record), or one arm of a union (LAK's Stage/Rate/Status,
+    OC's Saverecord/Printrecord).
 
     ``top_level`` is False for an arm built by recursing into another
     arm's own union-typed field (e.g. OC's ocsetting) -- still emitted as
-    a flat sibling class, but excluded from the outer
-    ``_StressPeriodDataItem`` dispatch union.
+    a flat sibling class, but excluded from the outer union alias.
     """
 
     class_name: str
-    keyword: str  # lowercase, matches Record's _keyword convention
+    keyword: str  # lowercase, matches Record's _keyword convention; "" if none
     schema: list[dict]
     top_level: bool = True
+
+
+@dataclass
+class ItemUnionSpec:
+    """A union list's element type alias (e.g. ``_StressPeriodDataItem =
+    Stage | Rate | ...``), keeping the field annotation short."""
+
+    alias: str
+    members: list[str]
 
 
 @dataclass
@@ -132,9 +146,8 @@ class ComponentSpec:
     inner_classes: list[InnerClassSpec]
     outpath: Path
     block_properties: list[BlockPropertySpec] = dc_field(default_factory=list)
-    period_schema: list[dict] = dc_field(default_factory=list)
-    period_arms: list[PeriodArmSpec] = dc_field(default_factory=list)
-    block_schemas: dict[str, list[dict]] = dc_field(default_factory=dict)
+    item_classes: list[ItemClassSpec] = dc_field(default_factory=list)
+    item_unions: list[ItemUnionSpec] = dc_field(default_factory=list)
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
     has_griddata: bool = False
     has_readarray_period: bool = False
@@ -151,15 +164,18 @@ class ComponentSpec:
 
 
 def _schema_dict_from_columns(
-    columns: list[ColumnSpec], nested_arm_classes: "dict[str, list[str]] | None" = None
+    columns: list[ColumnSpec],
+    nested_arm_classes: "dict[str, list[str]] | None" = None,
+    arrays: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
     is_prefix columns (non-optional tagged keywords, e.g. FILEIN, SPC6) are
     accumulated and attached as a 'prefix' key on the next value column so the
     codec can emit the fixed token(s) before the value. is_row_keyword columns
-    (optional keywords, e.g. MIXED) get role 'inline_keyword'. aux columns are
-    excluded -- appended dynamically in __attrs_post_init__.
+    (optional keywords, e.g. MIXED) get role 'inline_keyword'. A column whose
+    shape names one of the component's ``arrays`` (aux, shaped by
+    ``auxiliary``) gets role 'sized': as many values as that array has.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
@@ -173,14 +189,15 @@ def _schema_dict_from_columns(
         if col.is_prefix:
             pending_prefix.append(col.name.upper())
             continue
-        if col.name == "aux":
-            pending_prefix = []
-            continue
         f = col.field
         entry: dict = {"name": col.name, "dfn_type": _dfn_type_str(f)}
         if f.optional:
             entry["optional"] = True
-        if col.is_cellid:
+        shape = getattr(f, "shape", None) or []
+        if isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
+            entry["role"] = "sized"
+            entry["size_of"] = shape[0]
+        elif col.is_cellid:
             entry["role"] = "cellid"
             if shape := getattr(f, "shape", None):
                 entry["shape"] = ",".join(shape)
@@ -249,7 +266,7 @@ def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
     # Compound records get the same treatment via _strip_record_words in
     # build_component_spec; this keeps the two paths consistent.
-    if filters.is_file_record(f):
+    if filters.is_file_record(f) or filters.is_file_list(f):
         py_name = filters.safe_name("_".join(_strip_record_words(f.name)))
     else:
         py_name = filters.safe_name(f.name)
@@ -346,41 +363,68 @@ def _ml_field(
     return "\n".join(lines)
 
 
-def _build_period_arm_specs(
-    list_field: FieldV3, union: UnionField, used_names: set[str]
-) -> list[PeriodArmSpec]:
-    """Build one PeriodArmSpec per keystring-union arm, from the union's own
-    real per-arm structure (Union.arms carries real fields natively under
-    dev3) -- each arm becomes its own typed Item class, dispatched at parse
-    time by its leading keyword (see item.py's dispatch_union_item), instead
-    of the old generic (index?, keyword, value) placeholder that collapsed
-    every arm's real shape into one untyped "value" column.
+def _build_list_item_specs(
+    list_field: ListField,
+    class_name: str,
+    used_names: set[str],
+    arrays: "frozenset[str] | set[str]" = frozenset(),
+) -> tuple[list[ItemClassSpec], str, ItemUnionSpec | None]:
+    """Build the Item class(es) for a list's elements, wherever the list is
+    (any block, repeating or not). Returns (classes, element type, union
+    alias or None):
 
-    Thin entry point: computes the shared-prefix columns from the outer
-    List's own item shape, then delegates to `_build_arm_specs_from_union`,
-    which does the actual (recursive) per-arm work.
+    - a union item (OC's output, LAK's period settings): one class per arm,
+      dispatched by keyword, and a ``_<class_name>Item`` alias for the union
+    - a tagged (keyword-led) record item: one class whose leading keyword is
+      its ``_keyword``, built like a union arm
+    - an untagged record item (packagedata, CHD's stress_period_data): one
+      class of positional columns
+
+    ``arrays`` names the component's array fields, which can size a column
+    (see _schema_dict_from_columns).
     """
-    item = list_field.item
-    shared_cols: list[tuple[str, FieldV3]] = (
-        [(n, f) for n, f in item.fields.items() if f is not union]
-        if isinstance(item, Record)
-        else []
-    )
-    return _build_arm_specs_from_union(
-        union, used_names, {}, shared_cols, name_hint=list_field.name
-    )
+    union = filters.find_keystring_union(list_field)
+    if union is not None:
+        item = list_field.item
+        shared_cols: list[tuple[str, FieldV3]] = (
+            [(n, f) for n, f in item.fields.items() if f is not union]
+            if isinstance(item, Record)
+            else []
+        )
+        specs = _build_arm_specs_from_union(
+            union, used_names, {}, shared_cols, name_hint=list_field.name, arrays=arrays
+        )
+        alias = f"_{class_name}Item"
+        members = [s.class_name for s in specs if s.top_level]
+        return specs, alias, ItemUnionSpec(alias=alias, members=members)
+    if list_field.tagged:
+        specs = _build_arm_spec(
+            list_field.name,
+            list_field.item,
+            used_names,
+            {},
+            [],
+            class_name=class_name,
+            arrays=arrays,
+        )
+        return specs, specs[-1].class_name, None
+    schema = _schema_dict_from_columns(filters.list_columns(list_field), arrays=arrays)
+    used_names.add(class_name)
+    spec = ItemClassSpec(class_name=class_name, keyword="", schema=schema)
+    return [spec], class_name, None
 
 
 def _build_arm_specs_from_union(
     union: UnionField,
     used_names: set[str],
-    nested_union_cache: "dict[tuple[str, ...], list[PeriodArmSpec]]",
+    nested_union_cache: "dict[tuple[str, ...], list[ItemClassSpec]]",
     shared_cols: "list[tuple[str, FieldV3]]" = [],
     *,
     name_hint: str = "",
     top_level: bool = True,
-) -> list[PeriodArmSpec]:
-    """Build one PeriodArmSpec per arm of `union`.
+    arrays: "frozenset[str] | set[str]" = frozenset(),
+) -> list[ItemClassSpec]:
+    """Build one ItemClassSpec per arm of `union` (see _build_arm_spec).
 
     Handles all three index shapes seen in the corpus generically, via a
     shared prefix of columns prepended to every arm:
@@ -391,11 +435,6 @@ def _build_arm_specs_from_union(
     - SFR/MAW-style: the union is a sibling of an outer index field (item
       Record = {ifno, ...setting: Union}) -- shared by every arm.
 
-    An arm field that's itself a union (OC's ocsetting) is recursively
-    exploded into its own typed sub-arms via a recursive call
-    (`top_level=False`) -- the DFN schema doesn't cap union nesting depth,
-    so this handles arbitrary depth rather than special-casing one level.
-
     `nested_union_cache` (shared across the whole call tree) is keyed by a
     nested union's arm-name set, since DFN parsing builds each Record
     arm's fields independently -- OC's `saverecord.ocsetting` and
@@ -403,60 +442,99 @@ def _build_arm_specs_from_union(
     arms, and without the cache the second occurrence would rebuild and
     rename a duplicate set of classes instead of reusing the first's.
     """
-    specs: list[PeriodArmSpec] = []
+    specs: list[ItemClassSpec] = []
     for arm_name, arm in union.arms.items():
-        if isinstance(arm, Record):
-            # The discriminating keyword isn't always the arm's first field --
-            # LAK's auxiliaryrecord is (lakeno, auxiliary(kw), auxname, auxval),
-            # its own per-arm index leading the keyword. Find the first
-            # KeywordField anywhere; everything else (including any leading
-            # index) is a real column. A second required keyword later (e.g.
-            # SFR's cross_sectionrecord: cross_section(kw), tab6(kw), ...) is
-            # left in `rest` and becomes a per-field prefix=, not _keyword.
-            arm_fields = list(arm.fields.items())
-            kw_idx = next(
-                (i for i, (_, fld) in enumerate(arm_fields) if isinstance(fld, KeywordField)), None
+        specs.extend(
+            _build_arm_spec(
+                arm_name,
+                arm,
+                used_names,
+                nested_union_cache,
+                shared_cols,
+                name_hint=name_hint,
+                top_level=top_level,
+                arrays=arrays,
             )
-            if kw_idx is not None:
-                keyword = arm_fields[kw_idx][0]
-                rest = arm_fields[:kw_idx] + arm_fields[kw_idx + 1 :]
-            else:
-                keyword = "_".join(_strip_record_words(arm_name))
-                rest = arm_fields
-        elif isinstance(arm, KeywordField):
-            # A bare keyword arm carries no data of its own (PRP's
-            # releasesetting ALL/FIRST/LAST) -- the keyword IS the entire row.
-            keyword = "_".join(_strip_record_words(arm_name))
-            rest = []
+        )
+    return specs
+
+
+def _build_arm_spec(
+    arm_name: str,
+    arm: FieldV3,
+    used_names: set[str],
+    nested_union_cache: "dict[tuple[str, ...], list[ItemClassSpec]]",
+    shared_cols: "list[tuple[str, FieldV3]]",
+    *,
+    name_hint: str = "",
+    top_level: bool = True,
+    class_name: str = "",
+    arrays: "frozenset[str] | set[str]" = frozenset(),
+) -> list[ItemClassSpec]:
+    """Build the keyword-led Item class for one union arm, or for a tagged
+    list's record item -- each line starts with (or, LAK-style, contains)
+    a keyword naming it. Returns any classes built for unions nested in it
+    (OC's ocsetting, recursively exploded into its own typed sub-arms with
+    `top_level=False` -- the DFN schema doesn't cap union nesting depth),
+    then this one.
+    """
+    specs: list[ItemClassSpec] = []
+    if isinstance(arm, Record):
+        # The discriminating keyword isn't always the arm's first field --
+        # LAK's auxiliaryrecord is (lakeno, auxiliary(kw), auxname, auxval),
+        # its own per-arm index leading the keyword. Find the first
+        # KeywordField anywhere; everything else (including any leading
+        # index) is a real column. A second required keyword later (e.g.
+        # SFR's cross_sectionrecord: cross_section(kw), tab6(kw), ...) is
+        # left in `rest` and becomes a per-field prefix=, not _keyword.
+        arm_fields = list(arm.fields.items())
+        kw_idx = next(
+            (i for i, (_, fld) in enumerate(arm_fields) if isinstance(fld, KeywordField)), None
+        )
+        if kw_idx is not None:
+            keyword = arm_fields[kw_idx][0]
+            rest = arm_fields[:kw_idx] + arm_fields[kw_idx + 1 :]
         else:
             keyword = "_".join(_strip_record_words(arm_name))
-            rest = [(arm_name, arm)]
+            rest = arm_fields
+    elif isinstance(arm, KeywordField):
+        # A bare keyword arm carries no data of its own (PRP's
+        # releasesetting ALL/FIRST/LAST) -- the keyword IS the entire row.
+        keyword = "_".join(_strip_record_words(arm_name))
+        rest = []
+    else:
+        keyword = "_".join(_strip_record_words(arm_name))
+        rest = [(arm_name, arm)]
 
-        nested_arm_classes: dict[str, list[str]] = {}
-        for field_name, fld in rest:
-            if not isinstance(fld, UnionField):
-                continue
-            cache_key = tuple(sorted(fld.arms.keys()))
-            cached = nested_union_cache.get(cache_key)
-            if cached is None:
-                cached = _build_arm_specs_from_union(
-                    fld, used_names, nested_union_cache, name_hint=field_name, top_level=False
-                )
-                nested_union_cache[cache_key] = cached
-                specs.extend(cached)
-            nested_arm_classes[field_name] = [s.class_name for s in cached]
+    nested_arm_classes: dict[str, list[str]] = {}
+    for field_name, fld in rest:
+        if not isinstance(fld, UnionField):
+            continue
+        cache_key = tuple(sorted(fld.arms.keys()))
+        cached = nested_union_cache.get(cache_key)
+        if cached is None:
+            cached = _build_arm_specs_from_union(
+                fld,
+                used_names,
+                nested_union_cache,
+                name_hint=field_name,
+                top_level=False,
+                arrays=arrays,
+            )
+            nested_union_cache[cache_key] = cached
+            specs.extend(cached)
+        nested_arm_classes[field_name] = [s.class_name for s in cached]
 
-        cols = filters._fields_to_columns(list(shared_cols) + rest)
-        schema = _schema_dict_from_columns(cols, nested_arm_classes)
+    cols = filters._fields_to_columns(list(shared_cols) + rest)
+    schema = _schema_dict_from_columns(cols, nested_arm_classes, arrays)
+    if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
             class_name = pascal_name("_".join(_strip_record_words(name_hint))) + class_name
-        used_names.add(class_name)
-        specs.append(
-            PeriodArmSpec(
-                class_name=class_name, keyword=keyword, schema=schema, top_level=top_level
-            )
-        )
+    used_names.add(class_name)
+    specs.append(
+        ItemClassSpec(class_name=class_name, keyword=keyword, schema=schema, top_level=top_level)
+    )
     return specs
 
 
@@ -644,8 +722,11 @@ def _build_block_property_specs(
     for block_name, block in (component.blocks or {}).items():
         if block_name in fill_forward_blocks:
             continue
+        # An untagged list must be alone in its block, so it's the block's
+        # only field; a tagged list is one field among the block's others
+        # (see is_tagged_list).
         for f in block.fields.values():
-            if filters.is_list_field(f) and not filters.is_keystring_list(f):
+            if filters.is_list_field(f) and not filters.is_tagged_list(f):
                 list_fields_map[block_name] = f
                 break
 
@@ -707,15 +788,12 @@ def _generated_imports(
     multi: bool = False,
     slntype: bool = False,
     has_inner_classes: bool = False,
-    has_period_schema: bool = False,
     has_readarray_period: bool = False,
     needs_int_arraylike: bool = False,
     needs_float_arraylike: bool = False,
     has_field_call: bool = False,
     has_path_call: bool = False,
-    period_schema: list[dict] | None = None,
-    period_arms: "list[PeriodArmSpec] | None" = None,
-    block_schemas: dict[str, list[dict]] | None = None,
+    item_classes: "list[ItemClassSpec] | None" = None,
     repeating_blocks: "Mapping[str, str] | None" = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
@@ -724,6 +802,7 @@ def _generated_imports(
         block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
         and (
             filters.is_keyword_array(f)
+            or filters.is_aux_list_field(f)
             # repeating block's own array → dict[header, ...], not NDArray
             or (filters.is_array(f) and block_name not in repeating_blocks)
         )
@@ -732,24 +811,19 @@ def _generated_imports(
     has_file_records = any(
         filters.is_file_record(f) or filters.is_bare_file(f) for _, f in generatable_fields
     )
+    has_file_lists = any(filters.is_file_list(f) for _, f in generatable_fields)
     has_optional = (
         any(f.optional and not isinstance(f, KeywordField) for _, f in generatable_fields)
         or has_inner_classes
-        or has_period_schema
-        or bool(block_schemas)
-        or bool(period_arms)
+        or bool(item_classes)
         or has_readarray_period
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
     has_classvar = True
     # Union[float, str] is used by item_class() for time_series and np.object_ columns.
-    # Check the period schema, all static block schemas, and all period arms.
-    _all_schema_cols = (
-        list(period_schema or [])
-        + [col for cols in (block_schemas or {}).values() for col in cols]
-        + [col for arm in (period_arms or []) for col in arm.schema]
-    )
+    # Check every generated Item class's columns.
+    _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
     has_union = any(
         col.get("time_series") or col.get("dtype") == "np.object_"
         for col in _all_schema_cols
@@ -759,19 +833,19 @@ def _generated_imports(
     # become Path fields via path() in item_class(), not Union[float, str].
     _row_path_cols = [col for col in _all_schema_cols if col.get("prefix")]
     has_row_path_cols = bool(_row_path_cols)
-    has_optional_row_path_cols = any(col.get("optional") for col in _row_path_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
     # field(), same as any other generated field -- checked separately from
     # has_field_call since these live inside item_class()'s rendered text, not
     # in the package's own top-level field_specs.
     _row_has_field_call = any(
-        col.get("role") in ("cellid", "feature_id", "inline_keyword") or col.get("time_series")
+        col.get("role") in ("cellid", "feature_id", "inline_keyword", "sized")
+        or col.get("time_series")
         for col in _all_schema_cols
         if not col.get("prefix")
     )
 
     stdlib: list[str] = []
-    if has_file_records or has_row_path_cols:
+    if has_file_records or has_file_lists or has_row_path_cols:
         stdlib.append("from pathlib import Path")
     typing_parts: list[str] = []
     if has_classvar:
@@ -797,7 +871,7 @@ def _generated_imports(
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
-    if has_period_schema:
+    if item_classes:
         flopy4.append("from flopy4.mf6.item import Item")
     _spec_parts: list[str] = []
     if has_field_call or _row_has_field_call:
@@ -811,8 +885,8 @@ def _generated_imports(
         _types_parts.append("IntArrayLike")
     if needs_float_arraylike:
         _types_parts.append("FloatArrayLike")
-    if has_file_records or has_optional_row_path_cols:
-        _types_parts.append("_optional_path")
+    _converters = " ".join(c for b, f in generatable_fields if (c := filters.field_converter(f, b)))
+    _types_parts += [fn for fn in ("to_array", "to_list") if f"{fn}(" in _converters]
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
     flopy4.sort()
@@ -896,7 +970,10 @@ def build_component_spec(
     inner_class_specs: list[InnerClassSpec] = []
     _inner_class_names: set[str] = set()
     generatable_field_objects: list[tuple[str, FieldV3]] = []
-    block_schemas: dict[str, list[dict]] = {}
+    # Every list's element classes (and union aliases), whatever its block --
+    # see _build_list_item_specs.
+    item_classes: list[ItemClassSpec] = []
+    item_unions: list[ItemUnionSpec] = []
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
@@ -905,22 +982,26 @@ def build_component_spec(
         reserved_names=_period_keystring_names(component),
     )
 
-    period_schema: list[dict] = []
-    period_arms: list[PeriodArmSpec] = []
+    _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
-    _standard_period_list: FieldV3 | None = None  # standard (non-keystring) period List field
+
+    # Array fields can size list columns (auxiliary sizes aux).
+    _arrays = frozenset(f.name for _, f in all_fields if isinstance(f, Array))
+
+    def _add_list_items(lf: ListField, class_name: str) -> str:
+        specs, elem, union = _build_list_item_specs(lf, class_name, _inner_class_names, _arrays)
+        item_classes.extend(specs)
+        if union is not None:
+            item_unions.append(union)
+        return elem
 
     for block_name, f in all_fields:
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
-            union = filters.find_keystring_union(f)
-            if union is not None:
-                period_arms = _build_period_arm_specs(f, union, _inner_class_names)
-            else:
-                _standard_period_list = f
+            _period_item = _add_list_items(f, "StressPeriodData")
             continue
 
         # G-variant packages (CHDG, DRNG, WELG, RCHA …) declare period arrays
@@ -938,7 +1019,14 @@ def build_component_spec(
         # above, just with exactly one column since there's nothing else in
         # the block to key against.
         if block_name in _fill_forward_blocks and filters.is_scalar(f):
-            period_schema = [{"name": f.name, "dfn_type": "keyword", "role": "keystring"}]
+            item_classes.append(
+                ItemClassSpec(
+                    class_name="StressPeriodData",
+                    keyword="",
+                    schema=[{"name": f.name, "dfn_type": "keyword", "role": "keystring"}],
+                )
+            )
+            _period_item = "StressPeriodData"
             continue
 
         # maxbound: emitted as a computed property (see computed_field_specs
@@ -984,6 +1072,24 @@ def build_component_spec(
         else:
             target = data_specs
 
+        # A tagged list among a block's other fields: one keyword-led line per
+        # element. File records' elements are their paths (list[Path], see
+        # _build_field_spec); any other item gets Item classes like any list.
+        if filters.is_tagged_list(f) and not filters.is_file_list(f):
+            py_words = _strip_record_words(f.name)
+            elem = _add_list_items(f, pascal_name("_".join(py_words)))
+            target.append(
+                FieldSpec(
+                    dfn_name=f.name,
+                    py_name=filters.safe_name("_".join(py_words)),
+                    type_annotation=f"Optional[list[{elem}]]",
+                    spec_call=_ml_field(metadata={"block": block_name}),
+                    generatable=True,
+                )
+            )
+            generatable_field_objects.append((block_name, f))
+            continue
+
         if filters.can_generate_record_class(f):
             record_specs = _build_record_class_specs(f, component.name, _inner_class_names)
             inner_class_specs.extend(record_specs)
@@ -1010,23 +1116,26 @@ def build_component_spec(
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
 
-    # Standard (non-keystring) period list block: same column-schema-building
-    # as a static list block (dev3 already carries a real cellid field), just
-    # wrapped as a repeating dict[int, ...] field instead of a flat one.
-    if _standard_period_list is not None:
-        cols = filters.list_columns(_standard_period_list)
-        period_schema = _schema_dict_from_columns(cols)
-
-    # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block.
-    # The Item class's own fields are the schema -- see item_class() -- no
-    # separate __*_schema__ ClassVar needed.
+    # Rendered before the other blocks' element classes.
+    block_item_classes: list[ItemClassSpec] = []
+    # BlockPropertySpec-driven fields: one Optional[list[ItemClass]] per block
+    # whose only field is an untagged list. The Item class's own fields are
+    # the schema -- see item_class() -- no separate __*_schema__ ClassVar.
     for bp in block_properties:
-        if not bp.columns:
+        _list_field = next(
+            f for f in component.blocks[bp.block_name].fields.values() if filters.is_list_field(f)
+        )
+        _specs, _elem, _union = _build_list_item_specs(
+            _list_field,
+            pascal_name(bp.block_name),
+            _inner_class_names,
+            _arrays,
+        )
+        if not any(spec.schema or spec.keyword for spec in _specs):
             continue
-        schema = _schema_dict_from_columns(bp.columns)
-        if not schema:
-            continue
-        block_schemas[bp.block_name] = schema
+        block_item_classes.extend(_specs)
+        if _union is not None:
+            item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
         if bp.dim_is_dfn_declared:
             _meta["auto_from"] = bp.block_name
@@ -1051,43 +1160,28 @@ def build_component_spec(
             _block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared)
         ):
             _meta["write_if_empty"] = True
-        _item_cls_name = pascal_name(bp.block_name)
         extra_specs.append(
             FieldSpec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
-                type_annotation=f"Optional[list[{_item_cls_name}]]",
+                type_annotation=f"Optional[list[{_elem}]]",
                 spec_call=_ml_field(metadata=_meta),
                 generatable=True,
             )
         )
 
-    # Consolidate period fields into one stress_period_data field. A
-    # keystring union's arms are real, separately-typed classes (period_arms)
-    # dispatched by keyword at parse time; a standard/scalar period list has
-    # one uniform row shape (period_schema), same as any static list block.
-    if period_arms:
-        # A per-package _StressPeriodDataItem alias (see the template) keeps
-        # this annotation short and readable even for LAK-sized unions
-        # (13 arms) -- one line per arm class name would blow past the
-        # line-length limit.
+    item_classes = block_item_classes + item_classes
+
+    # The fill-forward block's list (or STO-style scalar), one list of
+    # elements per period: the same element classes a list in any other
+    # block gets, in a dict keyed by period.
+    if _period_item is not None:
         _spd_meta = {"block": _ff_block, "fill_forward": True}
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[_StressPeriodDataItem]]]",
-                spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
-                generatable=True,
-            )
-        )
-    elif period_schema:
-        _spd_meta = {"block": _ff_block, "fill_forward": True}
-        period_specs.append(
-            FieldSpec(
-                dfn_name="_stress_period_data",
-                py_name="_stress_period_data",
-                type_annotation="Optional[dict[int, list[StressPeriodData]]]",
+                type_annotation=f"Optional[dict[int, list[{_period_item}]]]",
                 spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
                 generatable=True,
             )
@@ -1156,15 +1250,12 @@ def build_component_spec(
         multi=multi,
         slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
-        has_period_schema=bool(period_schema) or bool(block_schemas) or bool(period_arms),
         needs_int_arraylike=_needs_int_arraylike,
         needs_float_arraylike=_needs_float_arraylike,
         has_field_call=_has_field_call,
         has_path_call=_has_path_call,
         has_readarray_period=bool(_readarray_period_fields),
-        period_schema=period_schema,
-        period_arms=period_arms,
-        block_schemas=block_schemas,
+        item_classes=item_classes,
         repeating_blocks=_repeating_blocks,
     )
 
@@ -1185,9 +1276,8 @@ def build_component_spec(
         inner_classes=inner_class_specs,
         outpath=filters.output_path(component.name, root),
         block_properties=block_properties,
-        period_schema=period_schema,
-        period_arms=period_arms,
-        block_schemas=block_schemas,
+        item_classes=item_classes,
+        item_unions=item_unions,
         computed_fields=computed_field_specs,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),

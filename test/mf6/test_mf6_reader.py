@@ -790,7 +790,24 @@ def test_typed_loads_filename_with_leading_digit(dfn_path):
     result = loads_typed(
         "BEGIN options\n  ts6 filein 1model.ts\nEND options\n", "gwf-chd", dfn_path=dfn_path
     )
-    assert result["options"]["ts_filerecord"]["ts6_filename"] == "1model.ts"
+    assert result["options"]["ts_filerecord"] == [{"ts6_filename": "1model.ts"}]
+
+
+def test_typed_loads_tagged_list(dfn_path):
+    """A tagged list (TS6 FILEIN, repeatable) is always a list of item
+    records, in file order, alongside the block's other fields."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed(
+        "BEGIN options\n  ts6 filein a.ts\n  obs6 filein w.obs\n  ts6 filein b.ts\nEND options\n",
+        "gwf-chd",
+        dfn_path=dfn_path,
+    )
+    assert result["options"]["ts_filerecord"] == [
+        {"ts6_filename": "a.ts"},
+        {"ts6_filename": "b.ts"},
+    ]
+    assert result["options"]["obs_filerecord"] == {"obs6_filename": "w.obs"}
 
 
 def test_typed_loads_iso_datetime(dfn_path):

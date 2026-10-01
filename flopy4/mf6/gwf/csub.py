@@ -4,7 +4,7 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, to_list
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -27,14 +27,12 @@ class Csub(Package):
         theta: float = field()
         kv: float = field()
         h0: float = field()
-        aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         sig0: Union[float, str] = field(time_series=True)
-        aux: tuple = ()
 
     boundnames: bool = field(
         default=False,
@@ -145,7 +143,7 @@ class Csub(Package):
     )
     strainib_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -153,7 +151,7 @@ class Csub(Package):
     )
     straincg_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -161,7 +159,7 @@ class Csub(Package):
     )
     compaction_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -169,7 +167,7 @@ class Csub(Package):
     )
     compaction_elastic_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -177,7 +175,7 @@ class Csub(Package):
     )
     compaction_inelastic_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -185,7 +183,7 @@ class Csub(Package):
     )
     compaction_interbed_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -193,7 +191,7 @@ class Csub(Package):
     )
     compaction_coarse_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -201,7 +199,7 @@ class Csub(Package):
     )
     zdisplacement_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -209,15 +207,15 @@ class Csub(Package):
     )
     package_convergence_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
         keyword="package_convergence",
     )
-    ts_file: Optional[Path] = path(
+    ts_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(to_list(Path)),
         block="options",
         optional=True,
         direction="in",
@@ -225,7 +223,7 @@ class Csub(Package):
     )
     obs_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",
@@ -286,5 +284,5 @@ class Csub(Package):
     )
 
 
-CsubStressPeriodData = Csub.StressPeriodData
 CsubPackagedata = Csub.Packagedata
+CsubStressPeriodData = Csub.StressPeriodData

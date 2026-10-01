@@ -4,7 +4,6 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -23,7 +22,6 @@ class Prp(Package):
         xrpt: float = field()
         yrpt: float = field()
         zrpt: float = field()
-        aux: tuple = ()
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
@@ -90,7 +88,7 @@ class Prp(Package):
     )
     track_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
@@ -98,7 +96,7 @@ class Prp(Package):
     )
     trackcsv_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",

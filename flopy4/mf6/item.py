@@ -2,8 +2,10 @@
 connectiondata, period data, ...).
 
 Adds what Record doesn't need: index/pk/fk renumbering, cellid packing,
-aux/boundname trailing columns, and external parse context (ncelldim/naux/
+sized/boundname trailing columns, and external parse context (ncelldim/sizes/
 boundnames -- facts about the surrounding list/package, not one row). A
+sized column (``shape`` metadata, e.g. aux sized by the package's
+``auxiliary``) holds as many values as the named package field has. A
 tagged field here is always a bare presence flag (e.g. LAK tables' MIXED) --
 unlike Record's tagged fields, which may carry a value.
 
@@ -13,7 +15,7 @@ Item subclasses share one field (a Union of their types), each identified
 by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
-import re
+from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Union, cast, get_args, get_origin
@@ -22,31 +24,27 @@ import attrs
 
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 
-_AUX_KEY_RE = re.compile(r"^aux(\d+)$")
-
-
-def normalize_aux_keys(item: dict) -> dict:
-    """Collapse legacy aux0/aux1/... dict keys into one aux tuple key."""
-    aux_items = []
-    rest = {}
-    for k, v in item.items():
-        m = _AUX_KEY_RE.match(k)
-        if m:
-            aux_items.append((int(m.group(1)), v))
-        else:
-            rest[k] = v
-    if aux_items:
-        aux_items.sort(key=lambda kv: kv[0])
-        rest["aux"] = tuple(v for _, v in aux_items)
-    return rest
-
 
 def _cellid_field(cls: type) -> attrs.Attribute | None:
     return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
 
 
-def _has_aux_field(cls: type) -> bool:
-    return any(f.name == "aux" for f in cast(type[Record], cls).fields())
+def _sized_field(cls: type) -> attrs.Attribute | None:
+    """The column sized by a package field (its ``shape``, e.g. aux by
+    ``auxiliary``), if any."""
+    return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("shape")), None)
+
+
+def _size(cls: type, sizes: Mapping[str, int] | None) -> int:
+    """How many tokens the class's sized column takes."""
+    f = _sized_field(cls)
+    return (sizes or {}).get(f.metadata["shape"][0], 0) if f is not None else 0
+
+
+def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
+    """Names of the package fields that size an item class's columns."""
+    classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
+    return {f.metadata["shape"][0] for c in classes if (f := _sized_field(c)) is not None}
 
 
 def _has_boundname_field(cls: type) -> bool:
@@ -94,7 +92,7 @@ def construct_item(item_cls: type, values) -> "Item":
         (
             i
             for i, f in enumerate(fields)
-            if f.name == "aux"
+            if f.metadata.get("shape")
             or f.metadata.get("array")
             or (
                 (t := _field_type_str(f)) is not None
@@ -139,7 +137,7 @@ def _n_fixed_tokens(cls: type) -> int:
     cls = cast(type[Record], cls)
     n = 1 if cls.keyword() else 0
     for f in cls.fields():
-        if f.metadata.get("cellid") or f.name in ("aux", "boundname"):
+        if f.metadata.get("cellid") or f.metadata.get("shape") or f.name == "boundname":
             continue
         if f.metadata.get("optional"):
             continue
@@ -166,11 +164,15 @@ def ncelldim_from_dims(dims: "dict | None") -> "int | None":
 
 
 def infer_ncelldim(
-    items: list[list], item_cls: "type[Item]", *, naux: int = 0, dims: "dict | None" = None
+    items: list[list],
+    item_cls: "type[Item]",
+    *,
+    sizes: Mapping[str, int] | None = None,
+    dims: "dict | None" = None,
 ) -> int:
     """Infer an Item class's cellid width, preferring grid dimensions
     (unambiguous) when available. Falls back to counting the first
-    non-empty raw item's tokens -- total minus fixed columns minus aux
+    non-empty raw item's tokens -- total minus fixed columns minus sized
     minus a trailing boundname -- when `dims` isn't supplied or doesn't
     say; this heuristic overcounts if the row itself carries an extra
     trailing token the current Item class doesn't model (e.g. a field
@@ -186,7 +188,7 @@ def infer_ncelldim(
     n_fixed = _n_fixed_tokens(item_cls)
     last = first[-1]
     has_bn = isinstance(last, str) and not _token_fits(last, float)
-    return max(1, len(first) - n_fixed - naux - (1 if has_bn else 0))
+    return max(1, len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0))
 
 
 def _token_fits(token: Any, kind: type) -> bool:
@@ -209,15 +211,16 @@ class Item(Record):
 
     def to_tokens(self) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
-        is emitted before the first non-index field. aux/boundname last.
+        is emitted before the first non-index field. sized/boundname last.
         """
         cls = type(self)
         fields = cls.fields()
+        sized = _sized_field(cls)
         keyword = cls.keyword()
         row: list[Any] = []
         keyword_emitted = not keyword
         for f in fields:
-            if f.name in ("aux", "boundname"):
+            if f is sized or f.name == "boundname":
                 continue
             val = getattr(self, f.name)
             if val is None:
@@ -256,9 +259,8 @@ class Item(Record):
                 row.append(val.as_posix() if isinstance(val, Path) else val)
         if not keyword_emitted:
             row.append(keyword.upper())
-        aux = getattr(self, "aux", None)
-        if aux:
-            row.extend(aux)
+        if sized is not None and (values := getattr(self, sized.name)):
+            row.extend(values)
         boundname = getattr(self, "boundname", None)
         if boundname:
             row.append(boundname)
@@ -266,12 +268,17 @@ class Item(Record):
 
     @classmethod
     def from_tokens(  # type: ignore[override]
-        cls, tokens: list, *, ncelldim: int = 0, naux: int = 0, boundnames: bool = False
+        cls,
+        tokens: list,
+        *,
+        ncelldim: int = 0,
+        sizes: Mapping[str, int] | None = None,
+        boundnames: bool = False,
     ) -> "Item":
         """Mirror of to_tokens. Optional untagged columns (e.g. EVT's
         pxdp/petm/petm0) have no marker token -- MF6 writes a whole trailing
         group or none, gated by an unrelated OPTIONS flag -- so presence is
-        inferred once from the token budget left after reserving aux/
+        inferred once from the token budget left after reserving sized/
         boundname, not per-field. Tagged optional fields self-identify by
         keyword and skip that budget.
         """
@@ -279,7 +286,8 @@ class Item(Record):
         keyword = cls.keyword()
         keyword_skipped = not keyword
         has_boundname = _has_boundname_field(cls) and boundnames
-        has_aux = _has_aux_field(cls)
+        sized = _sized_field(cls)
+        nsized = _size(cls, sizes)
         kwargs: dict[str, Any] = {}
         tok_idx = 0
         n = len(tokens)
@@ -313,7 +321,7 @@ class Item(Record):
                 w += 1
             return w
 
-        main_fields = [f for f in fields if f.name not in ("aux", "boundname")]
+        main_fields = [f for f in fields if f is not sized and f.name != "boundname"]
         nested_union_fields = [
             f
             for f in main_fields
@@ -334,7 +342,7 @@ class Item(Record):
         if has_boundname and n > tok_idx:
             last = tokens[-1]
             has_bn_token = isinstance(last, str) and not _token_fits(last, float)
-        remaining = n - tok_idx - (1 if has_bn_token else 0) - (naux if has_aux else 0)
+        remaining = n - tok_idx - (1 if has_bn_token else 0) - nsized
 
         budget_fields = [f for f in optional_fields if not f.metadata.get("tagged")]
         n_opt_present = 0
@@ -363,7 +371,7 @@ class Item(Record):
                 consume(f)
 
         if array_fields:
-            # Consumes everything left up to aux/boundname's own reserved
+            # Consumes everything left up to sized/boundname's own reserved
             # slots -- a keyword-plus-trailing-values setting (PRP's
             # Steps.steps/Fraction's leaf field: "n1 n2 ..."), coerced
             # numeric-or-string per token like aux (see below) since the
@@ -372,7 +380,7 @@ class Item(Record):
                 tok_idx += 1
                 keyword_skipped = True
             f = array_fields[0]
-            end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
+            end = n - (1 if has_bn_token else 0) - nsized
             vals = []
             while tok_idx < end:
                 tok = tokens[tok_idx]
@@ -394,7 +402,7 @@ class Item(Record):
             assert nested_field_type is not None
             arm_classes = _nested_union_classes(cls, nested_field_type)  # type: ignore[arg-type]
             assert arm_classes is not None
-            end = n - (1 if has_bn_token else 0) - (naux if has_aux else 0)
+            end = n - (1 if has_bn_token else 0) - nsized
             nested_tokens = list(tokens[tok_idx:end])
             arm_cls = dispatch_union_item(nested_tokens, arm_classes)
             if arm_cls is None:
@@ -407,17 +415,17 @@ class Item(Record):
         elif not keyword_skipped:
             tok_idx += 1
 
-        if has_aux:
-            aux_vals = []
+        if sized is not None:
+            sized_vals = []
             end = n - (1 if has_bn_token else 0)
             while tok_idx < end:
                 tok = tokens[tok_idx]
                 try:
-                    aux_vals.append(float(tok))
+                    sized_vals.append(float(tok))
                 except (ValueError, TypeError):
-                    aux_vals.append(tok)
+                    sized_vals.append(tok)
                 tok_idx += 1
-            kwargs["aux"] = tuple(aux_vals)
+            kwargs[sized.name] = tuple(sized_vals)
 
         if has_bn_token:
             kwargs["boundname"] = str(tokens[-1])
@@ -488,7 +496,11 @@ def construct_union_item(values, arm_classes: "tuple[type[Item], ...]") -> "Item
 
 
 def parse_union_items(
-    items: list, arm_classes: "tuple[type[Item], ...]", *, naux: int = 0, boundnames: bool = False
+    items: list,
+    arm_classes: "tuple[type[Item], ...]",
+    *,
+    sizes: Mapping[str, int] | None = None,
+    boundnames: bool = False,
 ) -> list | None:
     """Parse raw token items into Item instances, dispatching each by
     keyword (see dispatch_union_item); unmatched items are skipped."""
@@ -501,5 +513,5 @@ def parse_union_items(
         arm_cls = dispatch_union_item(item, arm_classes)
         if arm_cls is None:
             continue
-        result.append(arm_cls.from_tokens(item, naux=naux, boundnames=boundnames))
+        result.append(arm_cls.from_tokens(item, sizes=sizes, boundnames=boundnames))
     return result or None

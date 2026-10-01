@@ -42,6 +42,9 @@ def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]
                             continue
                         all_fields[arm_name] = arm
                         standalone_fields.append(arm_name)
+                elif field.tagged:
+                    all_fields[field_name] = field.item
+                    standalone_fields.append(field_name)
                 else:
                     recarray_name = filters.get_recarray_name(block_name)
                     recarrays.append({"name": recarray_name})

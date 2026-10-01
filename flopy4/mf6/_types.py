@@ -1,8 +1,10 @@
 """Shared type definitions for flopy4.mf6 packages."""
 
+from collections.abc import Callable, Iterable
 from datetime import datetime
-from pathlib import Path, PurePath
-from typing import Protocol, TypeAlias, TypeVar
+from os import PathLike
+from pathlib import PurePath
+from typing import Any, Protocol, TypeAlias, TypeVar
 
 import numpy as np
 
@@ -36,11 +38,19 @@ IntArrayLike: TypeAlias = _ArrayLike[np.int64]
 FloatArrayLike: TypeAlias = _ArrayLike[np.float64]
 
 
-def _optional_path(v):
-    """Converter for Optional[Path] attrs fields.
+def _wrap(v) -> list:
+    """A single value (a str or path is one value, not an iterable) as a
+    one-element list, else the values as a list."""
+    if isinstance(v, (str, bytes, PathLike)) or not isinstance(v, Iterable):
+        return [v]
+    return list(v)
 
-    Accepts None, str, or Path; returns None or Path.
-    """
-    if v is None:
-        return None
-    return Path(v) if not isinstance(v, Path) else v
+
+def to_list(convert: Callable) -> Callable[[Any], list]:
+    """attrs converter to a list, each element through `convert`."""
+    return lambda v: [convert(x) for x in _wrap(v)]
+
+
+def to_array(dtype) -> Callable[[Any], np.ndarray]:
+    """attrs converter to a 1D array of `dtype`."""
+    return lambda v: np.asarray(_wrap(v), dtype=dtype)

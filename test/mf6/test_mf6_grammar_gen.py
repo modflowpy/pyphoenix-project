@@ -141,6 +141,40 @@ def test_make_grammar_overwrites_existing(tmp_path, minimal_dfn):
     assert "Auto-generated grammar" in content
 
 
+def test_make_grammar_with_tagged_list(tmp_path):
+    """A tagged list (every line starts with a keyword) is a repeatable field
+    among the block's others -- its item's rule -- not the block's table."""
+    dfn = Package(
+        name="gwf-test",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={
+                    "print_input": Keyword(name="print_input"),
+                    "ts_filerecord": List(
+                        name="ts_filerecord",
+                        optional=True,
+                        item=Record(
+                            name="ts_filerecord",
+                            fields={
+                                "ts6": Keyword(name="ts6"),
+                                "filein": Keyword(name="filein"),
+                                "ts6_filename": String(name="ts6_filename", tagged=False),
+                            },
+                        ),
+                    ),
+                },
+            ),
+        },
+    )
+
+    make_grammar(dfn, tmp_path)
+    content = (tmp_path / "gwf-test.lark").read_text()
+    assert "options_fields: ((print_input | ts_filerecord | open_close_redirect) _NL*)*" in content
+    assert 'ts_filerecord: "ts6"i "filein"i' in content
+    assert "optionsdata" not in content
+
+
 def test_make_grammar_with_period_block(tmp_path):
     dfn = Package(
         name="gwf-test",
@@ -159,8 +193,8 @@ def test_make_grammar_with_period_block(tmp_path):
                         item=Record(
                             name="stress_period_data",
                             fields={
-                                "q": Double(name="q"),
-                                "aux": Double(name="aux"),
+                                "q": Double(name="q", tagged=False),
+                                "aux": Double(name="aux", tagged=False),
                             },
                         ),
                     )
@@ -203,7 +237,7 @@ def test_make_grammar_with_named_subfields(tmp_path):
                         shape=["maxbound"],
                         item=Record(
                             name="stress_period_data",
-                            fields={"recharge": Double(name="recharge")},
+                            fields={"recharge": Double(name="recharge", tagged=False)},
                         ),
                     )
                 },

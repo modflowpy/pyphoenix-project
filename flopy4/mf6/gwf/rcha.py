@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
+import numpy as np
+from numpy.typing import NDArray
 
-from flopy4.mf6._types import FloatArrayLike, IntArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, IntArrayLike, to_array, to_list
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -26,8 +28,9 @@ class Rcha(Package):
         optional=True,
         longname="if cell is dry do not apply recharge to underlying cell",
     )
-    auxiliary: Optional[list[str]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
+        converter=attrs.converters.optional(to_array(np.str_)),
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
@@ -56,9 +59,9 @@ class Rcha(Package):
         optional=True,
         longname="save RCHA flows to budget file",
     )
-    tas_file: Optional[Path] = path(
+    tas_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(to_list(Path)),
         block="options",
         optional=True,
         direction="in",
@@ -66,7 +69,7 @@ class Rcha(Package):
     )
     obs_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

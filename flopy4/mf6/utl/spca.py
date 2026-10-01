@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike, _optional_path
+from flopy4.mf6._types import FloatArrayLike, to_list
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
 
@@ -26,9 +26,9 @@ class Spca(Package):
         optional=True,
         longname="print input to listing file",
     )
-    tas_file: Optional[Path] = path(
+    tas_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(to_list(Path)),
         block="options",
         optional=True,
         direction="in",

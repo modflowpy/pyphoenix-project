@@ -4,7 +4,6 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.record import Record
 from flopy4.mf6.solution import Solution
 from flopy4.mf6.spec import field, path
@@ -35,21 +34,21 @@ class Pts(Solution):
     )
     csv_output_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
     )
     csv_outer_output_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
     )
     csv_inner_output_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",

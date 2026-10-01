@@ -1,5 +1,6 @@
 import struct
 from abc import ABC
+from collections import Counter
 from pathlib import Path
 from typing import Any, get_args, get_origin
 
@@ -9,7 +10,7 @@ import numpy as np
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items
+from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items, sized_by
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
@@ -33,7 +34,7 @@ def _parse_rows(
     rows: list,
     item_cls: "type[Item] | tuple[type[Item], ...]",
     *,
-    naux: int = 0,
+    sizes: "dict[str, int] | None" = None,
     boundnames: bool = False,
     dims: "dict | None" = None,
 ) -> list | None:
@@ -41,10 +42,10 @@ def _parse_rows(
     if not rows:
         return None
     if isinstance(item_cls, tuple):
-        return parse_union_items(rows, item_cls, naux=naux, boundnames=boundnames)
-    ncelldim = infer_ncelldim(rows, item_cls, naux=naux, dims=dims)
+        return parse_union_items(rows, item_cls, sizes=sizes, boundnames=boundnames)
+    ncelldim = infer_ncelldim(rows, item_cls, sizes=sizes, dims=dims)
     result = [
-        item_cls.from_tokens(row, ncelldim=ncelldim, naux=naux, boundnames=boundnames)
+        item_cls.from_tokens(row, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames)
         for row in rows
         if row
     ]
@@ -655,8 +656,12 @@ def structure_component(
 
     # Identify Item-list fields (packagedata, connectiondata, partitions …) --
     # the field's own type annotation (Optional[list[ItemClass]] or
-    # Optional[dict[int, list[ItemClass]]]) is the schema.
+    # Optional[dict[int, list[ItemClass]]]) is the schema. One alone in its
+    # block takes all the block's rows; one sharing its block with other
+    # fields (a DFN tagged list) takes the rows starting with its elements'
+    # keyword(s).
     block_item_fields: dict[str, tuple] = {}  # block_name → (field, item_cls)
+    keyword_item_fields: dict[str, tuple] = {}  # keyword → (field, item_cls)
     period_field = None  # field for the period Item-list
     period_item_cls: "type[Item] | tuple[type[Item], ...] | None" = None
 
@@ -665,6 +670,7 @@ def structure_component(
     fill_forward_blocks = {
         f.metadata["block"] for f in attrs.fields(cls) if f.metadata.get("fill_forward")
     }
+    block_sizes = Counter(f.metadata["block"] for f in all_fields.values())
 
     for f in attrs.fields(cls):
         block = f.metadata.get("block", "")
@@ -674,8 +680,11 @@ def structure_component(
         if f.metadata.get("fill_forward"):
             period_field = f
             period_item_cls = item_cls
-        else:
+        elif block_sizes[block] == 1:
             block_item_fields[block] = (f, item_cls)
+        else:
+            for elem_cls in item_cls if isinstance(item_cls, tuple) else (item_cls,):
+                keyword_item_fields[elem_cls.keyword().lower()] = (f, elem_cls)
 
     # Array fields whose own block repeats per header value -- e.g.
     # utl-tas's tas_array, dict[float, ndarray]. Detected structurally from
@@ -712,7 +721,20 @@ def structure_component(
                 if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
                     tokens = tokens[1:]
                 if tokens:
-                    kwargs[ff.alias or ff.name] = Path(_strip_quotes(str(tokens[0])))
+                    path = Path(_strip_quotes(str(tokens[0])))
+                    init_key = ff.alias or ff.name
+                    # A list[Path] field (a DFN tagged list of file
+                    # records) gets one element per row.
+                    if get_origin(unwrap_optional(ff.type)) is list:
+                        kwargs.setdefault(init_key, []).append(path)
+                    else:
+                        kwargs[init_key] = path
+                continue
+            if (kf := keyword_item_fields.get(key)) is not None:
+                # One element of an Item list sharing its block with other
+                # fields (a DFN tagged list), by its leading keyword.
+                f, item_cls = kf
+                kwargs.setdefault(f.alias or f.name, []).append(item_cls.from_tokens(row))
                 continue
             f = all_fields.get(key) or all_fields.get(alias_map.get(key, ""))
             if f is None or f.init is False:
@@ -736,8 +758,8 @@ def structure_component(
             t = unwrap_optional(f.type)
             if t is bool:
                 kwargs[init_key] = True
-            elif get_origin(t) is list:
-                # inline arrays (AUXILIARY, etc.), even with one element
+            elif get_origin(t) in (list, np.ndarray):
+                # inline arrays (AUXILIARY's names), even with one element
                 kwargs[init_key] = list(row[1:])
             elif t is str:
                 # a numeric-looking string (e.g. a bare year for
@@ -746,9 +768,16 @@ def structure_component(
             else:
                 kwargs[init_key] = row[1]
 
-    naux = 0
-    if "auxiliary" in kwargs:
-        naux = len(kwargs["auxiliary"])
+    # Lengths of the fields sizing item columns (auxiliary sizes aux).
+    item_types = [ic for _, ic in block_item_fields.values()]
+    if period_item_cls is not None:
+        item_types.append(period_item_cls)
+    sizes = {
+        name: len(kwargs[name])
+        for ic in item_types
+        for name in sized_by(ic)
+        if kwargs.get(name) is not None
+    }
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a
@@ -764,7 +793,7 @@ def structure_component(
             continue
         rows = _resolve_open_close_rows(rows, workspace)
         row_list = _parse_rows(
-            rows, item_cls, naux=naux, boundnames=boundnames, dims=effective_dims
+            rows, item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
         )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
@@ -788,7 +817,7 @@ def structure_component(
                     continue
                 rows = _resolve_open_close_rows(rows, workspace)
                 row_list = _parse_rows(
-                    rows, period_item_cls, naux=naux, boundnames=boundnames, dims=effective_dims
+                    rows, period_item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
                 )
                 if row_list is not None:
                     spd[kper] = row_list

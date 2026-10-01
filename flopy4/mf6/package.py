@@ -13,7 +13,6 @@ from flopy4.mf6.item import (
     construct_item,
     construct_union_item,
     item_list_type,
-    normalize_aux_keys,
 )
 from flopy4.mf6.spec import to_field_type
 
@@ -149,16 +148,13 @@ class Package(Component, ABC):
             return items
         if isinstance(data, dict):
             n = len(next(iter(data.values()))) if data else 0
-            return [
-                item_cls(**normalize_aux_keys({name: vals[i] for name, vals in data.items()}))
-                for i in range(n)
-            ]
+            return [item_cls(**{name: vals[i] for name, vals in data.items()}) for i in range(n)]
         items = []
         for row in data:
             if isinstance(row, item_cls):
                 items.append(row)
             elif isinstance(row, dict):
-                items.append(item_cls(**normalize_aux_keys(row)))
+                items.append(item_cls(**row))
             elif isinstance(row, (list, tuple)):
                 items.append(construct_item(item_cls, row))
             else:

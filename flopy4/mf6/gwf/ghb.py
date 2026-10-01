@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import ClassVar, Optional, Union
 
 import attrs
+import numpy as np
+from numpy.typing import NDArray
 
-from flopy4.mf6._types import _optional_path
+from flopy4.mf6._types import to_array, to_list
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -21,11 +23,12 @@ class Ghb(Package):
         cellid: tuple = field(cellid=True)
         bhead: Union[float, str] = field(time_series=True)
         cond: Union[float, str] = field(time_series=True)
-        aux: tuple = ()
+        aux: tuple = field(default=(), shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
-    auxiliary: Optional[list[str]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
+        converter=attrs.converters.optional(to_array(np.str_)),
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
@@ -59,9 +62,9 @@ class Ghb(Package):
         optional=True,
         longname="save GHB flows to budget file",
     )
-    ts_file: Optional[Path] = path(
+    ts_file: Optional[list[Path]] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(to_list(Path)),
         block="options",
         optional=True,
         direction="in",
@@ -69,7 +72,7 @@ class Ghb(Package):
     )
     obs_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

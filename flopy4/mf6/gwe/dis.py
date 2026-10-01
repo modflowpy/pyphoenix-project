@@ -5,7 +5,6 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.spec import field, path
 from flopy4.mf6.utils.grid import StructuredGrid
@@ -25,7 +24,7 @@ class Dis(DisBase):
     crs: Optional[str] = field(default=None, block="options", optional=True)
     ncf6_filerecord: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="in",

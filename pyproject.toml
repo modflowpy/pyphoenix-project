@@ -34,7 +34,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git",
+    "modflow-devtools[ecosystem] @ git+https://github.com/MODFLOW-ORG/modflow-devtools.git@f0261f5b83d12bd27ab1797a01941f91e33912f8",
     "attrs>=25.4.0,<26",
     "cattrs>=25.3.0,<26",
     "flopy>=3.9.5,<4",

@@ -4,7 +4,6 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
-from flopy4.mf6._types import _optional_path
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -21,7 +20,6 @@ class Vsc(Package):
         cviscref: float = field()
         modelname: Union[float, str] = field()
         auxspeciesname: Union[float, str] = field()
-        aux: tuple = ()
 
     viscref: Optional[float] = field(
         default=1.0,
@@ -61,7 +59,7 @@ class Vsc(Package):
     )
     viscosity_file: Optional[Path] = path(
         default=None,
-        converter=_optional_path,
+        converter=attrs.converters.optional(Path),
         block="options",
         optional=True,
         direction="out",
