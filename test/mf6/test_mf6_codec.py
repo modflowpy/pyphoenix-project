@@ -298,6 +298,18 @@ def test_tdis_nper_from_perioddata():
         Tdis(nper=3, perioddata=[(1.0, 1, 1.0)] * 2)
 
 
+def test_tdis_nper_default_is_still_explicit():
+    """An explicit nper equal to the DFN default (1) is checked like any other."""
+    from flopy4.mf6.tdis import Tdis
+
+    tdis = Tdis()
+    assert tdis.nper == 1
+    assert [r.nstp for r in tdis.perioddata] == [1]
+    assert Tdis(perioddata=[(1.0, 1, 1.0)] * 3).nper == 3
+    with pytest.raises(ValueError, match="nper"):
+        Tdis(nper=1, perioddata=[(1.0, 1, 1.0)] * 3)
+
+
 def test_ats_maxats_bounds_perioddata():
     """ATS perioddata's shape is a bound ("<=maxats"): fewer rows than an
     explicit maxats is fine, more is an error."""
@@ -308,6 +320,10 @@ def test_ats_maxats_bounds_perioddata():
     assert Ats(maxats=5, perioddata=[row, row]).maxats == 5
     with pytest.raises(ValueError, match="maxats"):
         Ats(maxats=2, perioddata=[row] * 3)
+    # an explicit maxats equal to the DFN default (1) still bounds the rows
+    with pytest.raises(ValueError, match="maxats"):
+        Ats(maxats=1, perioddata=[row, row])
+    assert Ats().maxats == 1
 
 
 def test_tdis_round_trip():

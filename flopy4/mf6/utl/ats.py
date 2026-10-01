@@ -22,9 +22,10 @@ class Ats(Package):
         dtfailadj: float = field()
 
     maxats: Optional[int] = field(
-        default=1,
+        default=None,
         block="dimensions",
         longname="number of ATS periods",
+        dim_default=1,
     )
     perioddata: Optional[list[Perioddata]] = field(
         default=None,

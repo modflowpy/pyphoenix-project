@@ -93,12 +93,14 @@ class Package(Component, ABC):
 
         A list field with `dim` metadata (the DIMENSIONS field counting its
         rows, from the DFN) gets that dimension set from its row count,
-        unless it was given explicitly. An explicit dimension must equal the
-        row count, or with `dim_bound` metadata (the DFN shape's operator,
-        e.g. "<=") satisfy that bound, else it is an error. A list with DFN
-        `default_rows` of one row and no data gets that row repeated `dim`
-        times. `maxbound` (where applicable) is a computed property instead,
-        not set here.
+        unless it was given explicitly. It defaults to None, so an explicit
+        value equal to the DFN default still counts as given; the DFN default
+        (`dim_default` metadata) applies only when there are no rows. An
+        explicit dimension must equal the row count, or with `dim_bound`
+        metadata (the DFN shape's operator, e.g. "<=") satisfy that bound,
+        else it is an error. A list with DFN `default_rows` of one row and no
+        data gets that row repeated `dim` times. `maxbound` (where applicable)
+        is a computed property instead, not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -117,8 +119,10 @@ class Package(Component, ABC):
             if raw is None and (default := f.metadata.get("default_rows")):
                 raw = list(default)
                 if dim and len(raw) == 1:
-                    raw *= getattr(self, dim) or 1
+                    raw *= self._dim_value(dim) or 1
             if raw is None:
+                if dim and getattr(self, dim) is None:
+                    object.__setattr__(self, dim, self._dim_value(dim))
                 continue
 
             if f.metadata.get("fill_forward"):
@@ -132,9 +136,15 @@ class Package(Component, ABC):
                 if dim:
                     self._set_dim_from_rows(dim, len(coerced_list), f.metadata.get("dim_bound"))
 
+    def _dim_value(self, dim: str) -> int | None:
+        """A linked dimension's value: as given, else its DFN default."""
+        if (value := getattr(self, dim)) is not None:
+            return value
+        return attrs.fields_dict(type(self))[dim].metadata.get("dim_default")
+
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
-        if declared in (None, 0, attrs.fields_dict(type(self))[dim].default):
+        if declared is None:
             object.__setattr__(self, dim, nrows)
         elif not _BOUND_OPS[bound](nrows, declared):
             raise ValueError(

@@ -735,9 +735,12 @@ def test_list_block_dim_and_default_rows(tmp_path, all_dfns):
     assert 'dim="nper"' in tdis
     assert "dim_bound" not in tdis
     assert "default_rows=((1.0, 1, 1.0),)" in tdis
+    # the dimension defaults to None, keeping its DFN default as metadata
+    assert "dim_default=1," in tdis
     ats = specs["utl-ats"].outpath.read_text()
     assert 'dim="maxats"' in ats
     assert 'dim_bound="<="' in ats
+    assert "dim_default=1," in ats
     maw = build_component_spec(all_dfns["gwf-maw"], root=Path("/fake"))
     linked = {bp.block_name for bp in maw.block_properties if bp.dim_is_dfn_declared}
     assert linked == {"packagedata"}

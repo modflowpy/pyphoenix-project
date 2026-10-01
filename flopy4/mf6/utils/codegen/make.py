@@ -257,7 +257,9 @@ def _dfn_type_str(f: FieldV3) -> str:
 # Context builders
 
 
-def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
+def _build_field_spec(
+    f: FieldV3, block_name: str, linked_dims: frozenset[str] | set[str] = frozenset()
+) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -268,7 +270,7 @@ def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     else:
         py_name = filters.safe_name(f.name)
     if generatable:
-        spec_call_str = filters.field_call(f, block_name)
+        spec_call_str = filters.field_call(f, block_name, linked_dim=py_name in linked_dims)
     else:
         spec_call_str = ""
     return FieldSpec(
@@ -978,6 +980,8 @@ def build_component_spec(
         component,
         reserved_names=_period_keystring_names(component),
     )
+    # DIMENSIONS fields counting a list's rows
+    _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
@@ -1108,7 +1112,7 @@ def build_component_spec(
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
         else:
-            spec = _build_field_spec(f, block_name)
+            spec = _build_field_spec(f, block_name, _linked_dims)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))

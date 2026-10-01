@@ -562,12 +562,16 @@ def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
     return f"{pad}{k}=(\n{body}\n{pad}),"
 
 
-def field_call(f: FieldV3, block_name: str) -> str:
+def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
+
+    A `linked_dim` (a dimension counting a list's rows, e.g. TDIS's nper)
+    defaults to None, so an explicit value equal to the DFN default still
+    counts as given; the DFN default goes in `dim_default` metadata instead.
     """
     if is_file_list(f):
         # Same metadata as a single file record (keyword, direction).
@@ -590,6 +594,9 @@ def field_call(f: FieldV3, block_name: str) -> str:
         default = "0"
     else:
         default = _default_repr(f)
+    if linked_dim and default != "None":
+        kw["dim_default"] = f.default if not isinstance(f.default, str) else int(f.default)
+        default = "None"
     # String-encoded numeric defaults (e.g. '1.e-5', '1000.') are valid at
     # runtime but mypy can't verify they satisfy Optional[float/int].
     # Scalar defaults (int, float, str) on Int/FloatArrayLike fields have the same issue.
