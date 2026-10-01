@@ -89,6 +89,8 @@
    any word here rather than a fixed literal -- still bound to the "aux"
    rule name so the transformer's field lookup keeps working. #}
 {{ field_name|to_rule_name }}: word [_remark] [_NL] {{ field_type }}
+{%- elif field_type == 'array' and not field.tagged -%}
+{{ field_name|to_rule_name }}: {{ field_type }}
 {%- elif field_type == 'array' -%}
 {# Real files write an array field's name alone on its own line about as
    often as on the same line as its CONSTANT/INTERNAL/OPEN-CLOSE value
@@ -155,11 +157,13 @@
    alternative is accepted structurally here and simply dropped by the
    transformer (see `__default__`'s tuple-only field collection), same
    disposition as the AUXILIARY dynamic-name fallback. #}
-{%- macro field_list(block_name, fields, recarray_name) -%}
+{%- macro field_list(block_name, fields, recarray_name, redirect=true) -%}
 {%- set alts = fields|map('to_rule_name')|list -%}
 {%- if recarray_name -%}
 {%- set _ = alts.append(recarray_name) -%}
 {%- endif -%}
+{%- if redirect -%}
 {%- set _ = alts.append('open_close_redirect') -%}
+{%- endif -%}
 {{ block_name }}_fields: (({{ alts|join(' | ') }}) _NL*)*
 {%- endmacro %}

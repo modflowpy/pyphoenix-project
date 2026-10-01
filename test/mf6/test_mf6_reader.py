@@ -828,6 +828,35 @@ def test_typed_loads_inline_record_arrays(dfn_path):
     assert attributes["sfacrecord"] == {"sfacval": [1.5, 2.0]}
 
 
+@pytest.mark.parametrize(
+    "body,control",
+    [
+        ("CONSTANT 1.0", {"type": "constant", "value": 1.0}),
+        ("INTERNAL FACTOR 1.0\n    1.0 2.0 3.0", {"type": "internal", "factor": 1.0}),
+        (
+            "OPEN/CLOSE rch.dat FACTOR 2.0",
+            {"type": "external", "value": Path("rch.dat"), "factor": 2.0},
+        ),
+    ],
+)
+def test_typed_loads_tas_time_array(dfn_path, body, control):
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed(
+        "BEGIN ATTRIBUTES\n  NAME rchseries\n  METHOD linear\nEND ATTRIBUTES\n\n"
+        f"BEGIN TIME 0.0\n  {body}\nEND TIME\n\n"
+        "BEGIN TIME 1.5\n  CONSTANT 2.0\nEND TIME\n\n"
+        "BEGIN TIME 3\n  CONSTANT 4.0\nEND TIME\n",
+        "utl-tas",
+        dfn_path=dfn_path,
+    )
+    assert result["time"][0.0]["tas_array"]["control"] == control
+    assert {t: b["tas_array"]["control"]["value"] for t, b in result["time"].items() if t} == {
+        1.5: 2.0,
+        3.0: 4.0,
+    }
+
+
 def test_typed_loads_iso_datetime(dfn_path):
     from flopy4.mf6.codec.reader import loads_typed
 

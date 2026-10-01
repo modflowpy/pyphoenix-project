@@ -326,3 +326,26 @@ def test_record_child_array_is_inline(dtype, rule):
     from flopy4.mf6.codec.reader.grammar.filters import record_child_type
 
     assert record_child_type(Array(name="vals", dtype=dtype, shape=["n"])) == rule
+
+
+def test_make_grammar_with_untagged_array(tmp_path):
+    dfn = Package(
+        name="test-bare-array",
+        blocks={
+            "time": Block(
+                name="time",
+                header=BlockHeader(field=Double(name="time_from_model_start")),
+                fields={"vals": Array(name="vals", dtype="double", shape=["n"], tagged=False)},
+            ),
+            "griddata": Block(
+                name="griddata",
+                fields={"strt": Array(name="strt", dtype="double", shape=["n"])},
+            ),
+        },
+    )
+    make_grammar(dfn, tmp_path)
+    content = (tmp_path / "test-bare-array.lark").read_text()
+    assert "vals: array\n" in content
+    assert "time_fields: ((vals) _NL*)*" in content
+    assert 'strt: "strt"i' in content
+    assert "griddata_fields: ((strt | open_close_redirect) _NL*)*" in content
