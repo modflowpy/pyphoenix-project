@@ -39,6 +39,18 @@ def _resolve_release_id(release_id: str | None, verbose: bool = False) -> str:
     return "MODFLOW-ORG/modflow6@latest"
 
 
+def _local_mf6_version(path: Path) -> str:
+    """The MF6 version of DFNs read from a local directory: the version.txt
+    of the modflow6 checkout the DFNs are in (they live at
+    doc/mf6io/mf6ivar/dfn), else "unknown".
+    """
+    if "modflow6" in path.parts and len(path.parents) > 3:
+        version_file = path.parents[3] / "version.txt"
+        if version_file.is_file():
+            return version_file.read_text().strip()
+    return "unknown"
+
+
 def _cmd_sync(args: argparse.Namespace) -> None:
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message=".*modflow_devtools.programs.*experimental.*")
@@ -107,16 +119,14 @@ def _cmd_sync(args: argparse.Namespace) -> None:
             f'DFN_SCHEMA_VERSION = "{_DFN_SCHEMA_VERSION}"\n'
         )
 
-    path = Path(args.release_id).expanduser()
-    if path.exists() and path.is_dir():
+    path = Path(args.release_id).expanduser() if args.release_id else None
+    if path is not None and path.is_dir():
         if args.verbose:
             print(f"Generating flopy4.mf6 from local DFNs: {path}")
 
         registry = LocalDfnRegistry(path=path)
-        if "modflow6" in path.parts:
-            effective_version = (path.parents[3] / "version.txt").read_text()
-        else:
-            effective_version = "unknown"
+        source = str(path)
+        effective_version = args.mf6_version or _local_mf6_version(path)
     else:
         release_id = _resolve_release_id(args.release_id, verbose=args.verbose)
         if args.verbose:
@@ -126,11 +136,12 @@ def _cmd_sync(args: argparse.Namespace) -> None:
                 f"release_id must be 'owner/repo@tag' or a local path; got: {release_id!r}"
             )
         registry = RemoteDfnRegistry(release_id=release_id)
+        source = release_id
         effective_version = args.mf6_version or registry.latest_tag() or "unknown"
 
     if effective_version == "unknown":
         warnings.warn(
-            f"MF6 version is unknown for local DFN path '{release_id}'. "
+            f"MF6 version is unknown for DFNs from '{source}'. "
             "Pass --mf6-version to record it explicitly in _contract.py."
         )
 
