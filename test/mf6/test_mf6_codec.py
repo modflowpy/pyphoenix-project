@@ -490,6 +490,65 @@ def test_ts_names_mismatch():
         )
 
 
+def test_maw_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Maw
+
+    maw = Maw(
+        packagedata=[(0, 0.1, -10.0, 5.0, "THIEM", 2), (1, 0.1, -10.0, 5.0, "SKIN", 1)],
+        connectiondata=[
+            (0, 0, (0, 0, 0), 0.0, -10.0, 1.0, 0.2),
+            (0, 1, (1, 0, 0), 0.0, -10.0, 1.0, 0.2),
+            (1, 0, (0, 0, 1), 0.0, -10.0, 1.0, 0.2),
+        ],
+        stress_period_data={
+            0: [Maw.Rate(ifno=0, rate=-100.0), Maw.Status(ifno=1, status="INACTIVE")]
+        },
+    )
+    raw = loads(dumps(unstructure_component(maw)))
+    assert raw["CONNECTIONDATA"][1] == [1, 2, 2, 1, 1, 0.0, -10.0, 1.0, 0.2]
+    maw2 = structure_component(raw, Maw, dims={"nlay": 2, "nrow": 1, "ncol": 2})
+    assert maw2.packagedata == maw.packagedata
+    assert maw2.connectiondata == maw.connectiondata
+    assert maw2.stress_period_data == maw.stress_period_data
+
+
+def test_hfb_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Hfb
+
+    hfb = Hfb(
+        stress_period_data={0: [((0, 0, 0), (0, 0, 1), 0.001), ((0, 1, 0), (0, 1, 1), 0.002)]}
+    )
+    assert hfb.maxhfb == 2
+    raw = loads(dumps(unstructure_component(hfb)))
+    assert raw["PERIOD 1"][0] == [1, 1, 1, 1, 1, 2, 0.001]
+    hfb2 = structure_component(raw, Hfb, dims={"nlay": 1, "nrow": 2, "ncol": 2})
+    assert hfb2.stress_period_data == hfb.stress_period_data
+
+
+def test_uzf_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Uzf
+
+    uzf = Uzf(
+        packagedata=[
+            (0, (0,), 1, 1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
+            (1, (1,), 0, -1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
+        ],
+        stress_period_data={0: [(0, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
+    )
+    raw = loads(dumps(unstructure_component(uzf)))
+    # ivertcon 1 -> 2; -1 (no underlying cell) -> 0
+    assert [r[3] for r in raw["PACKAGEDATA"]] == [2, 0]
+    uzf2 = structure_component(raw, Uzf, dims={"nodes": 2})
+    assert uzf2.packagedata == uzf.packagedata
+    assert uzf2.stress_period_data == uzf.stress_period_data
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 

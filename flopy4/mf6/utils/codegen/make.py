@@ -1310,6 +1310,17 @@ def build_component_spec(
     # block gets, in a dict keyed by period.
     if _period_item is not None:
         _spd_meta = {"block": _ff_block, "fill_forward": True}
+        # The DIMENSIONS field bounding each period's rows, unless it's
+        # computed (maxbound): HFB's "<=maxhfb".
+        _ff_list = next(
+            (f for b, f in all_fields if b == _ff_block and filters.is_list_field(f)), None
+        )
+        if (
+            _ff_list is not None
+            and (_ff_dim := filters.list_col_dim(_ff_list, component))
+            and not (_ff_dim == "maxbound" and _maxbound_is_computed)
+        ):
+            _spd_meta["dim"] = f"{filters.list_dim_bound(_ff_list) or ''}{_ff_dim}"
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",

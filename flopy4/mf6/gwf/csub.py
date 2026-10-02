@@ -285,6 +285,7 @@ class Csub(Package):
         repr=False,
         block="period",
         fill_forward=True,
+        dim="<=maxsig0",
     )
 
 

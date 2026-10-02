@@ -78,10 +78,10 @@ SIMPLE_TIER = {
     "gwf-vsc": ("Vsc", "Package"),
     "gwf-mvr": ("Mvr", "Package"),
     # Tier 6: compressible storage
-    # (gwf-sfr, gwf-maw excluded: keystring period settings silently absent)
-    # (gwf-uzf excluded: duplicated ifno attribute and not currently functional)
-    # (gwf-hfb excluded: cell-pair recarray Tier 7, requires framework changes)
     "gwf-csub": ("Csub", "Package"),
+    "gwf-maw": ("Maw", "Package"),
+    "gwf-uzf": ("Uzf", "Package"),
+    "gwf-hfb": ("Hfb", "Package"),
 }
 
 # Transport model packages: gwt-ist (immobile storage transport, multi=True).

@@ -145,6 +145,9 @@ class Package(Component, ABC):
                 }
                 object.__setattr__(self, f.name, coerced)
                 rows = [r for kper_rows in coerced.values() for r in kper_rows]
+                if dim:
+                    nrows = max((len(r) for r in coerced.values()), default=0)
+                    self._set_dim_from_rows(dim, nrows, bound)
             else:
                 rows = self._coerce_item_list(raw, item_cls)
                 object.__setattr__(self, f.name, rows)
