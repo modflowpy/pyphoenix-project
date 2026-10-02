@@ -14,6 +14,7 @@ from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.csub import Csub
 from flopy4.mf6.gwf.dis import Dis
+from flopy4.mf6.gwf.disu import Disu
 from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.drng import Drng
@@ -45,6 +46,7 @@ __all__ = [
     "Chd",
     "Chdg",
     "Dis",
+    "Disu",
     "Disv",
     "Drn",
     "Drng",
@@ -75,13 +77,9 @@ def convert_grid(value):
         return Dis.from_grid(value)
     elif isinstance(value, VertexGrid):
         return Disv.from_grid(value)
-    if isinstance(value, Dis):
+    if isinstance(value, (Dis, Disv, Disu)) or value is None:
         return value
-    if isinstance(value, Disv):
-        return value
-    if value is None:
-        return None
-    raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
+    raise TypeError(f"Expected Grid or Dis/Disv/Disu, got {type(value)}")
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -100,7 +98,7 @@ class Gwf(Model):
         @property
         def head(self) -> xr.DataArray | xu.UgridDataArray:
             path = self.parent.workspace
-            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+            dis_ext = type(self.parent.dis).__name__.lower()
 
             hds_fpth = None
             head_file = self.parent.oc.head_file if self.parent.oc is not None else None
@@ -128,7 +126,7 @@ class Gwf(Model):
         @property
         def budget(self) -> xr.Dataset | xu.UgridDataset:
             path = self.parent.workspace
-            dis_ext = "disv" if isinstance(self.parent.dis, Disv) else "dis"
+            dis_ext = type(self.parent.dis).__name__.lower()
 
             cbc_fpth = None
             cbc_file = self.parent.oc.budget_file if self.parent.oc is not None else None
@@ -172,7 +170,7 @@ class Gwf(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | Disu | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)

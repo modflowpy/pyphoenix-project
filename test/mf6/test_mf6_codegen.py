@@ -705,7 +705,7 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
         ("sim-tdis", "class Tdis(TdisMethods, Package):"),
         ("utl-ncf", "class Ncf(NcfMethods, Package):"),
         ("gwf-disv", "class Disv(DisvMethods, GridDimsMethods, Package):"),
-        ("gwf-disu", "class Disu(GridDimsMethods, Package):"),
+        ("gwf-disu", "class Disu(DisuMethods, GridDimsMethods, Package):"),
         ("gwf-dis", "class Dis(DisMethods, GridDimsMethods, Package):"),
     ],
 )

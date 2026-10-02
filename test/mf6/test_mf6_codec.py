@@ -361,6 +361,55 @@ def test_disv_vertices_roundtrip(disv_with_constant_arrays):
     assert vertices[2][2] == pytest.approx(1.0)
 
 
+def test_disu_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Disu
+
+    # two unit cells side by side
+    disu = Disu(
+        nodes=2,
+        nja=4,
+        nvert=6,
+        top=1.0,
+        bot=0.0,
+        area=1.0,
+        iac=[2, 2],
+        ja=[1, 2, 2, 1],
+        ihc=[0, 1, 0, 1],
+        cl12=[0.0, 0.5, 0.0, 0.5],
+        hwva=[0.0, 1.0, 0.0, 1.0],
+        vertices=[
+            (0, 0.0, 0.0),
+            (1, 0.0, 1.0),
+            (2, 1.0, 1.0),
+            (3, 1.0, 0.0),
+            (4, 2.0, 1.0),
+            (5, 2.0, 0.0),
+        ],
+        cell2d=[
+            Disu.Cell2d(0, 0.5, 0.5, 5, (0, 1, 2, 3, 0)),
+            Disu.Cell2d(1, 1.5, 0.5, 5, (3, 2, 4, 5, 3)),
+        ],
+    )
+    assert disu.get_dims() == {"nodes": 2, "nja": 4, "nvert": 6, "ncelldim": 1, "njas": 1}
+
+    text = dumps(unstructure_component(disu))
+    raw = loads(text)
+    # MF6 reads CONNECTIONDATA before VERTICES and CELL2D
+    assert list(raw)[-4:] == ["GRIDDATA", "CONNECTIONDATA", "VERTICES", "CELL2D"]
+
+    disu2 = structure_component(raw, Disu)
+    for name in ("top", "bot", "area", "iac", "ja", "ihc", "cl12", "hwva"):
+        np.testing.assert_array_equal(getattr(disu2, name), getattr(disu, name))
+    assert disu2.vertices == disu.vertices
+    assert disu2.cell2d == disu.cell2d
+
+    grid = disu2.to_grid()
+    assert grid.nnodes == 2
+    np.testing.assert_array_equal(grid.ja, [0, 1, 1, 0])
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 

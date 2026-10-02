@@ -6,6 +6,7 @@ import attrs
 
 from flopy4.dimensions import DerivedDim
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
+from flopy4.mf6.disu_methods import DisuMethods
 from flopy4.mf6.grid_dims_methods import GridDimsMethods
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
@@ -13,7 +14,7 @@ from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
-class Disu(GridDimsMethods, Package):
+class Disu(DisuMethods, GridDimsMethods, Package):
     dfn_name: ClassVar[str] = "gwf-disu"
 
     @attrs.define
@@ -104,16 +105,6 @@ class Disu(GridDimsMethods, Package):
         optional=True,
         longname="number of vertices",
     )
-    vertices: Optional[list[Vertices]] = field(
-        default=None,
-        block="vertices",
-        dim="nvert",
-    )
-    cell2d: Optional[list[Cell2d]] = field(
-        default=None,
-        block="cell2d",
-        dim="nodes",
-    )
     top: FloatArrayLike = field(
         default=None,
         block="griddata",
@@ -175,6 +166,16 @@ class Disu(GridDimsMethods, Package):
         shape=("nja",),
         optional=True,
         longname="angle of face normal to connection",
+    )
+    vertices: Optional[list[Vertices]] = field(
+        default=None,
+        block="vertices",
+        dim="nvert",
+    )
+    cell2d: Optional[list[Cell2d]] = field(
+        default=None,
+        block="cell2d",
+        dim="nodes",
     )
 
     ncelldim = DerivedDim("1")

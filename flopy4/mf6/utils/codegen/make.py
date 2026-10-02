@@ -922,6 +922,7 @@ _SLN_PREFIX = "sln"
 _GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
 _DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods", *_GRID_DIMS]
+_DISU = ["flopy4.mf6.disu_methods:DisuMethods", *_GRID_DIMS]
 MIXINS: dict[str, list[str]] = {
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
@@ -929,13 +930,13 @@ MIXINS: dict[str, list[str]] = {
     # can't be told from the DFN (maxbound and friends are model-scoped too).
     "gwf-dis": _DIS,
     "gwf-disv": _DISV,
-    "gwf-disu": _GRID_DIMS,
+    "gwf-disu": _DISU,
     "gwt-dis": _DIS,
     "gwt-disv": _DISV,
-    "gwt-disu": _GRID_DIMS,
+    "gwt-disu": _DISU,
     "gwe-dis": _DIS,
     "gwe-disv": _DISV,
-    "gwe-disu": _GRID_DIMS,
+    "gwe-disu": _DISU,
     "prt-dis": _DIS,
     "prt-disv": _DISV,
     "chf-disv1d": _GRID_DIMS,
@@ -1317,7 +1318,18 @@ def build_component_spec(
 
     _seen_py_names: set[str] = set()
     _deduped: list[FieldSpec] = []
-    for _fs in prefix_specs + extra_specs + data_specs + period_specs:
+    # list blocks and other data blocks interleave in DFN block order (DISU:
+    # griddata, connectiondata, vertices, cell2d)
+    _block_order = list(dict.fromkeys(bn for bn, _ in all_fields))
+    _field_blocks = {f.name: bn for bn, f in all_fields}
+    _extra = {id(fs) for fs in extra_specs}
+
+    def _block_index(fs: FieldSpec) -> int:
+        bn = fs.dfn_name if id(fs) in _extra else _field_blocks.get(fs.dfn_name)
+        return _block_order.index(bn) if bn in _block_order else len(_block_order)
+
+    _data = sorted(extra_specs + data_specs, key=_block_index)
+    for _fs in prefix_specs + _data + period_specs:
         if _fs.py_name not in _seen_py_names:
             _seen_py_names.add(_fs.py_name)
             _deduped.append(_fs)

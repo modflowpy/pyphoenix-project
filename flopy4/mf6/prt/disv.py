@@ -114,16 +114,6 @@ class Disv(DisvMethods, GridDimsMethods, Package):
         block="dimensions",
         longname="number of vertices",
     )
-    vertices: Optional[list[Vertices]] = field(
-        default=None,
-        block="vertices",
-        dim="nvert",
-    )
-    cell2d: Optional[list[Cell2d]] = field(
-        default=None,
-        block="cell2d",
-        dim="ncpl",
-    )
     top: FloatArrayLike = field(
         default=None,
         block="griddata",
@@ -144,6 +134,16 @@ class Disv(DisvMethods, GridDimsMethods, Package):
         layered=True,
         optional=True,
         longname="idomain existence array",
+    )
+    vertices: Optional[list[Vertices]] = field(
+        default=None,
+        block="vertices",
+        dim="nvert",
+    )
+    cell2d: Optional[list[Cell2d]] = field(
+        default=None,
+        block="cell2d",
+        dim="ncpl",
     )
 
     nodes = DerivedDim("nlay * ncpl")

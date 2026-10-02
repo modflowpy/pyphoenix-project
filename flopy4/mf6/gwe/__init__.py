@@ -9,6 +9,7 @@ from flopy4.mf6.gwe.adv import Adv
 from flopy4.mf6.gwe.cnd import Cnd
 from flopy4.mf6.gwe.ctp import Ctp
 from flopy4.mf6.gwe.dis import Dis
+from flopy4.mf6.gwe.disu import Disu
 from flopy4.mf6.gwe.disv import Disv
 from flopy4.mf6.gwe.esl import Esl
 from flopy4.mf6.gwe.est import Est
@@ -27,14 +28,15 @@ def convert_grid(value):
         return Dis.from_grid(value)
     if isinstance(value, VertexGrid):
         return Disv.from_grid(value)
-    if isinstance(value, (Dis, Disv)) or value is None:
+    if isinstance(value, (Dis, Disv, Disu)) or value is None:
         return value
-    raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
+    raise TypeError(f"Expected Grid or Dis/Disv/Disu, got {type(value)}")
 
 
 __all__ = [
     "Gwe",
     "Dis",
+    "Disu",
     "Disv",
     "Adv",
     "Cnd",
@@ -79,7 +81,7 @@ class Gwe(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | Disu | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)

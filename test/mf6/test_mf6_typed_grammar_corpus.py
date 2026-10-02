@@ -54,6 +54,14 @@ KNOWN_TYPED_GAPS: dict[str, str] = {
 }
 
 
+# model -> reason, for a fixture-quality failure confined to one model
+KNOWN_TYPED_MODEL_GAPS: dict[str, str] = {
+    "mf6/test/test030_hani_col_disu": (
+        "model.disu has a CELLDATA block, which isn't in gwf-disu.dfn (MF6 ignores it)"
+    ),
+}
+
+
 def _collect_package_files(sim_path: Path) -> list[tuple[Path, str]]:
     """Run the real `Simulation.load()` (basic path), capturing every child
     package file it resolves plus its DFN name.
@@ -74,7 +82,15 @@ def _collect_package_files(sim_path: Path) -> list[tuple[Path, str]]:
     return calls
 
 
-@pytest.mark.parametrize("model_name", sorted(KNOWN_PASSING))
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        pytest.param(m, marks=pytest.mark.xfail(reason=KNOWN_TYPED_MODEL_GAPS[m], strict=True))
+        if m in KNOWN_TYPED_MODEL_GAPS
+        else m
+        for m in sorted(KNOWN_PASSING)
+    ],
+)
 def test_typed_grammar_parses_known_passing_files(tmp_path, model_name, dfn_path):
     """Every package file a known-passing model resolves should parse under
     its typed grammar too, unless its dfn_name is a documented gap."""
