@@ -209,6 +209,12 @@ def _read_control_record(
     return np.array(values[:length], dtype=dtype), j
 
 
+def _from_file_index(value: np.ndarray) -> np.ndarray:
+    """1-based file values to 0-based. A negative value is allowed (DISU's
+    ja marks each cell's own entry that way) and means the same as positive."""
+    return np.abs(value) - 1
+
+
 def _griddata_flat_length(f, dims: dict, default: int) -> int:
     """Target length for a non-layered griddata field's flat array --
     e.g. DIS's `delr`/`delc` are `(ncol,)`/`(nrow,)`, not `(nodes,)`. Falls
@@ -297,6 +303,8 @@ def _parse_array_block(
             length = _griddata_flat_length(f, dims, nodes)
             value, i = _read_control_record(rows, i, workspace, dtype, length)
             result[f.name] = value
+        if f.metadata.get("index") and f.name in result:
+            result[f.name] = _from_file_index(result[f.name])
 
     return result
 
@@ -392,6 +400,8 @@ def _parse_readarray_period_block(
                 break
             value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
             result[f.name] = value
+        if f.metadata.get("index") and f.name in result:
+            result[f.name] = _from_file_index(result[f.name])
 
     return result
 

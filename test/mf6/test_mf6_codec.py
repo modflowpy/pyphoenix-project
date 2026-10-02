@@ -375,7 +375,7 @@ def test_disu_round_trip():
         bot=0.0,
         area=1.0,
         iac=[2, 2],
-        ja=[1, 2, 2, 1],
+        ja=[0, 1, 1, 0],
         ihc=[0, 1, 0, 1],
         cl12=[0.0, 0.5, 0.0, 0.5],
         hwva=[0.0, 1.0, 0.0, 1.0],
@@ -398,6 +398,9 @@ def test_disu_round_trip():
     raw = loads(text)
     # MF6 reads CONNECTIONDATA before VERTICES and CELL2D
     assert list(raw)[-4:] == ["GRIDDATA", "CONNECTIONDATA", "VERTICES", "CELL2D"]
+    # ja is 0-based, 1-based in the file
+    conn = raw["CONNECTIONDATA"]
+    assert conn[conn.index(["JA"]) + 2] == [1, 2, 2, 1]
 
     disu2 = structure_component(raw, Disu)
     for name in ("top", "bot", "area", "iac", "ja", "ihc", "cl12", "hwva"):
@@ -548,6 +551,26 @@ def test_dumps_rcha():
     loaded = loads(dumped)
     print("RCHA load:")
     pprint(loaded)
+
+
+def test_rcha_irch_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Rcha
+
+    nper, ncpl = 2, 3
+    dims = {"nper": nper, "nlay": 2, "ncpl": ncpl, "nodes": 2 * ncpl}
+    irch = np.full((nper, ncpl), 3.0e30)
+    irch[0] = [0, 1, 0]
+    rch = Rcha(irch=irch, recharge=np.full((nper, ncpl), 1e-3), dims=dims)
+
+    raw = loads(dumps(unstructure_component(rch)))
+    # irch is 0-based, 1-based in the file
+    period = raw["PERIOD 1"]
+    assert period[period.index(["IRCH"]) + 2] == [1, 2, 1]
+
+    rch2 = structure_component(raw, Rcha, dims=dims)
+    np.testing.assert_array_equal(rch2.irch[0], [0, 1, 0])
 
 
 def test_dumps_wel():

@@ -525,6 +525,9 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         kw["netcdf"] = True
     if getattr(f, "time_series", False):
         kw["time_series"] = True
+    if isinstance(f, Array) and f.index:
+        # 0-based, written as 1-based, as for item columns
+        kw["index"] = True
     if f.optional:
         kw["optional"] = True
     if is_file_record(f):

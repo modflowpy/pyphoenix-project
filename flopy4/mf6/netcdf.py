@@ -250,7 +250,11 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     val = getattr(package, f.name)
                     if val is None:
                         continue
-                    p["params"].append({"name": f.name, "data": np.asarray(val, dtype=np.float64)})
+                    arr = np.asarray(val, dtype=np.float64)
+                    if f.metadata.get("index"):
+                        # 1-based in the file
+                        arr = np.where(arr == FILL_DNODATA, arr, arr + 1)
+                    p["params"].append({"name": f.name, "data": arr})
 
             if len(p["params"]) > 0:
                 packages.append(p)

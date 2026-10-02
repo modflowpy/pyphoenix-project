@@ -1300,6 +1300,8 @@ def build_component_spec(
             if shape := getattr(_ra_f, "shape", None):
                 _ra_meta["shape"] = tuple(shape)
             _ra_meta["layered"] = getattr(_ra_f, "layered", False)
+            if getattr(_ra_f, "index", False):
+                _ra_meta["index"] = True
             if getattr(_ra_f, "netcdf", False):
                 _ra_meta["netcdf"] = True
             _ra_meta["fill_forward"] = True

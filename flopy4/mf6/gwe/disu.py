@@ -140,6 +140,7 @@ class Disu(DisuMethods, GridDimsMethods, Package):
         default=None,
         block="connectiondata",
         shape=("nja",),
+        index=True,
         longname="grid connectivity",
     )
     ihc: IntArrayLike = field(

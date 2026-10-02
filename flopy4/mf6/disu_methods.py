@@ -31,7 +31,6 @@ class DisuMethods:
             yoff=self.yorigin or 0.0,
             angrot=self.angrot or 0.0,
             iac=np.asarray(self.iac),
-            # 1-based in the file, 0-based in flopy
-            ja=np.asarray(self.ja) - 1,
+            ja=np.asarray(self.ja),
             ihc=np.asarray(self.ihc),
         )

@@ -86,6 +86,7 @@ class Evta(Package):
         block="period",
         shape=("ncpl",),
         layered=False,
+        index=True,
         netcdf=True,
         fill_forward=True,
     )
