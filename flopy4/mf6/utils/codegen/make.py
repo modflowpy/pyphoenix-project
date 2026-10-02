@@ -433,6 +433,9 @@ def _ml_field(
     lines.append(f"        default={default},")
     if converter is not None:
         lines.append(f"        converter={converter},")
+        if "to_array(" in converter:
+            # inline arrays have no shape for field() to key on
+            lines.append("        eq=ARRAY_EQ,")
     if not repr_:
         lines.append("        repr=False,")
     if metadata is not None:
@@ -959,6 +962,8 @@ def _generated_imports(
         _types_parts.append("FloatArrayLike")
     _converters = " ".join(c for b, f in generatable_fields if (c := filters.field_converter(f, b)))
     _types_parts += [fn for fn in ("to_array", "to_list") if f"{fn}(" in _converters]
+    if "to_array(" in _converters:
+        _types_parts.append("ARRAY_EQ")
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
     flopy4.sort()
