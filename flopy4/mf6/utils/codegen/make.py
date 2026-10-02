@@ -90,6 +90,7 @@ class BlockPropertySpec:
     dim_is_dfn_declared: bool  # False → synthetic (__dim__), not written to file
     columns: list[ColumnSpec]
     attr_name_map: dict[str, str]  # col_name → Python attr name (bare or block-prefixed)
+    dim_bound: str | None = None  # shape's bound operator ("<="), None → exact
 
 
 @dataclass
@@ -139,6 +140,7 @@ class ComponentSpec:
     dfn_name: str
     class_name: str
     base_class: str
+    mixins: list[str]
     multi: bool
     slntype: str | None
     imports: dict[str, list[str]]
@@ -255,7 +257,9 @@ def _dfn_type_str(f: FieldV3) -> str:
 # Context builders
 
 
-def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
+def _build_field_spec(
+    f: FieldV3, block_name: str, linked_dims: frozenset[str] | set[str] = frozenset()
+) -> FieldSpec:
     generatable = filters.is_generatable(f)
     # Strip 'record' suffix from file record names for a cleaner API
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
@@ -266,7 +270,7 @@ def _build_field_spec(f: FieldV3, block_name: str) -> FieldSpec:
     else:
         py_name = filters.safe_name(f.name)
     if generatable:
-        spec_call_str = filters.field_call(f, block_name)
+        spec_call_str = filters.field_call(f, block_name, linked_dim=py_name in linked_dims)
     else:
         spec_call_str = ""
     return FieldSpec(
@@ -753,6 +757,7 @@ def _build_block_property_specs(
                 dim_is_dfn_declared=dim_is_dfn_declared,
                 columns=cols,
                 attr_name_map=attr_name_map,
+                dim_bound=filters.list_dim_bound(list_fields_map[block_name]),
             )
         )
         block_names.add(block_name)
@@ -764,6 +769,7 @@ def _generated_imports(
     generatable_fields: list[tuple[str, FieldV3]],
     *,
     base_class: str = "Package",
+    mixins: list[str] | None = None,
     multi: bool = False,
     slntype: bool = False,
     has_inner_classes: bool = False,
@@ -845,9 +851,11 @@ def _generated_imports(
         "Package": "from flopy4.mf6.package import Package",
         "Solution": "from flopy4.mf6.solution import Solution",
         "Context": "from flopy4.mf6.context import Context",
-        "TdisBase": "from flopy4.mf6.tdis_base import TdisBase",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
+    for mixin in mixins or []:
+        module, name = mixin.split(":")
+        flopy4.append(f"from {module} import {name}")
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
@@ -875,13 +883,25 @@ def _generated_imports(
 
 _SLN_PREFIX = "sln"
 
+# flopy API methods (factories, conversions to and from flopy types) for
+# generated classes, as "module:Class" method-only mixins. Mixins declare no
+# fields; those come from the DFN only.
+MIXINS: dict[str, list[str]] = {
+    "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
+    "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
+}
+
+
+def check_mixins(dfns: Mapping[str, Component]) -> None:
+    """Raise if a `MIXINS` key names no DFN component."""
+    if unknown := sorted(set(MIXINS) - set(dfns)):
+        raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
+
 
 def _base_class(component: Component) -> str:
     """Determine the Python base class for a component."""
     if component.name.split("-")[0] == _SLN_PREFIX:
         return "Solution"
-    if component.name == "sim-tdis":
-        return "TdisBase"
     return "Package"
 
 
@@ -960,6 +980,8 @@ def build_component_spec(
         component,
         reserved_names=_period_keystring_names(component),
     )
+    # DIMENSIONS fields counting a list's rows
+    _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
@@ -1090,7 +1112,7 @@ def build_component_spec(
             target.extend(specs)
             generatable_field_objects.extend((block_name, gf) for gf in gen_fields)
         else:
-            spec = _build_field_spec(f, block_name)
+            spec = _build_field_spec(f, block_name, _linked_dims)
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
@@ -1116,8 +1138,12 @@ def build_component_spec(
         if _union is not None:
             item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
+        # The DIMENSIONS field counting this block's rows, in the DFN's shape
+        # syntax: exact ("nper") or a bound ("<=maxats").
         if bp.dim_is_dfn_declared:
-            _meta["auto_from"] = bp.block_name
+            _meta["dim"] = f"{bp.dim_bound or ''}{bp.dim_attr}"
+        # DFN default rows (TDIS's perioddata) are the field's real default.
+        _default = repr(tuple(_list_field.default)) if _list_field.default else "None"
         # A block must still appear in the written file even with zero rows
         # if MF6 requires its header to be present regardless of row count
         # (e.g. SSM SOURCES) -- as opposed to a block that must be *omitted*
@@ -1144,7 +1170,11 @@ def build_component_spec(
                 dfn_name=bp.block_name,
                 py_name=bp.block_name,
                 type_annotation=f"Optional[list[{_elem}]]",
-                spec_call=_ml_field(metadata=_meta),
+                spec_call=_ml_field(
+                    _default,
+                    metadata=_meta,
+                    type_ignore="# type: ignore[assignment]" if _list_field.default else None,
+                ),
                 generatable=True,
             )
         )
@@ -1205,6 +1235,7 @@ def build_component_spec(
     field_specs = _deduped
 
     base = _base_class(component)
+    mixins = MIXINS.get(component.name, [])
     multi = bool(component.multi) if hasattr(component, "multi") else False
     slntype = _slntype(component)
     has_inner_classes = bool(inner_class_specs)
@@ -1226,6 +1257,7 @@ def build_component_spec(
     imports = _generated_imports(
         generatable_field_objects,
         base_class=base,
+        mixins=mixins,
         multi=multi,
         slntype=slntype is not None,
         has_inner_classes=has_inner_classes,
@@ -1248,6 +1280,7 @@ def build_component_spec(
         dfn_name=component.name,
         class_name=filters.class_name(component.name),
         base_class=base,
+        mixins=[m.split(":")[1] for m in mixins],
         multi=multi,
         slntype=slntype,
         imports=imports,

@@ -52,12 +52,14 @@ class Est(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         longname="porosity",
     )
     decay_water: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         optional=True,
         longname="aqueous phase decay rate coefficient",
     )
@@ -65,6 +67,7 @@ class Est(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         optional=True,
         longname="solid phase decay rate coefficient",
     )
@@ -72,11 +75,13 @@ class Est(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         longname="heat capacity of the aquifer material",
     )
     density_solid: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         longname="density of aquifer material",
     )

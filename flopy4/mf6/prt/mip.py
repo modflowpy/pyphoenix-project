@@ -22,12 +22,14 @@ class Mip(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         longname="porosity",
     )
     retfactor: Optional[FloatArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         optional=True,
         longname="retardation factor",
     )
@@ -35,6 +37,7 @@ class Mip(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         optional=True,
         longname="zone number",
     )

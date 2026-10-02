@@ -18,6 +18,7 @@ import sys
 import warnings
 from pathlib import Path
 
+import attrs
 import pytest
 from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
 
@@ -33,7 +34,7 @@ from flopy4.mf6.utils.codegen.filters import (
     py_type,
     safe_name,
 )
-from flopy4.mf6.utils.codegen.make import build_component_spec, make_modules
+from flopy4.mf6.utils.codegen.make import build_component_spec, check_mixins, make_modules
 
 
 # Shared fixtures
@@ -700,14 +701,45 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
         )
 
 
-def test_tdis_generates_on_tdis_base(tmp_path, all_dfns):
-    """sim-tdis generates a Tdis subclassing the hand-written TdisBase."""
-    skip = {n for n in all_dfns if n != "sim-tdis"}
-    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip)
-    assert spec.base_class == "TdisBase"
-    text = spec.outpath.read_text()
-    assert "class Tdis(TdisBase):" in text
-    assert "perioddata: Optional[list[Perioddata]]" in text
+@pytest.mark.parametrize(
+    "name,decl",
+    [
+        ("sim-tdis", "class Tdis(TdisMethods, Package):"),
+        ("utl-ncf", "class Ncf(NcfMethods, Package):"),
+    ],
+)
+def test_mixins(tmp_path, all_dfns, name, decl):
+    """Components listed in MIXINS get their method-only mixins as extra bases."""
+    skip = {n for n in all_dfns if n != name}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert spec.base_class == "Package"
+    assert decl in spec.outpath.read_text()
+
+
+def test_check_mixins_rejects_unknown_component(all_dfns):
+    check_mixins(all_dfns)
+    with pytest.raises(ValueError, match="sim-tdis"):
+        check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
+
+
+def test_list_block_dim_and_default(tmp_path, all_dfns):
+    """A list block's row-count dimension (with any bound, in DFN shape
+    syntax) and DFN default rows are emitted. Only a list whose shape names the dimension links to
+    it: MAW's packagedata, not its shapeless connectiondata/angledata."""
+    skip = {n for n in all_dfns if n not in ("sim-tdis", "utl-ats", "gwf-maw")}
+    specs = {
+        s.dfn_name: s
+        for s in make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    }
+    tdis = specs["sim-tdis"].outpath.read_text()
+    assert 'dim="nper"' in tdis
+    assert "default=((1.0, 1, 1.0),)," in tdis
+    ats = specs["utl-ats"].outpath.read_text()
+    assert 'dim="<=maxats"' in ats
+    maw = build_component_spec(all_dfns["gwf-maw"], root=Path("/fake"))
+    linked = {bp.block_name for bp in maw.block_properties if bp.dim_is_dfn_declared}
+    assert linked == {"packagedata"}
+    assert specs["gwf-maw"].outpath.read_text().count('dim="nmawwells"') == 1
 
 
 def test_list_col_dim_only_from_shape(all_dfns):
@@ -919,6 +951,15 @@ def test_converter_from_type(type_str, expected):
     from flopy4.mf6.utils.codegen.filters import converter
 
     assert converter(type_str) == expected
+
+
+def test_layered_griddata_metadata():
+    """Griddata arrays carry the DFN's `layered` flag; unset means False."""
+    from flopy4.mf6.gwf.npf import Npf
+    from flopy4.mf6.utl.ncf import Ncf
+
+    assert attrs.fields_dict(Npf)["k"].metadata["layered"] is True
+    assert not attrs.fields_dict(Ncf)["latitude"].metadata.get("layered", False)
 
 
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):

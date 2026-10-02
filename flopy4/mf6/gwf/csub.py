@@ -243,12 +243,13 @@ class Csub(Package):
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
-        auto_from="packagedata",
+        dim="ninterbeds",
     )
     cg_ske_cr: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         longname="elastic coarse specific storage",
     )  # type: ignore[assignment]
@@ -256,6 +257,7 @@ class Csub(Package):
         default=0.2,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         longname="initial coarse-grained material porosity",
     )  # type: ignore[assignment]
@@ -263,6 +265,7 @@ class Csub(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         optional=True,
         longname="specific gravity of moist sediments",
@@ -271,6 +274,7 @@ class Csub(Package):
         default=None,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         optional=True,
         longname="specific gravity of saturated sediments",

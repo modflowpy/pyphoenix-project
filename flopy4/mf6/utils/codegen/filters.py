@@ -482,6 +482,8 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
     kw: dict = {"block": block_name}
     if shape := getattr(f, "shape", None):
         kw["shape"] = tuple(shape)
+    if getattr(f, "layered", False):
+        kw["layered"] = True
     if getattr(f, "netcdf", False):
         kw["netcdf"] = True
     if getattr(f, "time_series", False):
@@ -560,12 +562,16 @@ def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
     return f"{pad}{k}=(\n{body}\n{pad}),"
 
 
-def field_call(f: FieldV3, block_name: str) -> str:
+def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
     """Return the field()/path() spec call string for a field.
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
     4-space closing paren).
+
+    A `linked_dim` (a dimension counting a list's rows, e.g. TDIS's nper)
+    defaults to None, so an explicit value equal to the DFN default still
+    counts as given. With no explicit value it's set from the row count.
     """
     if is_file_list(f):
         # Same metadata as a single file record (keyword, direction).
@@ -588,6 +594,8 @@ def field_call(f: FieldV3, block_name: str) -> str:
         default = "0"
     else:
         default = _default_repr(f)
+    if linked_dim:
+        default = "None"
     # String-encoded numeric defaults (e.g. '1.e-5', '1000.') are valid at
     # runtime but mypy can't verify they satisfy Optional[float/int].
     # Scalar defaults (int, float, str) on Int/FloatArrayLike fields have the same issue.
@@ -951,6 +959,13 @@ def list_col_dim(f: ListField, component: Component) -> str | None:
         return None
     _, shape_dim = split_bound(shape[0])
     return shape_dim if shape_dim in dim_names else None
+
+
+def list_dim_bound(f: ListField) -> str | None:
+    """Return a list shape's bound operator (``"<="`` for ``"<=maxbound"``),
+    or None when the shape is exact (or absent)."""
+    shape = f.shape or []
+    return split_bound(shape[0])[0] if len(shape) == 1 else None
 
 
 def list_block_names(component: Component) -> list[str]:

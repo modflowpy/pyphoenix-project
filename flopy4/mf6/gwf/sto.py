@@ -60,6 +60,7 @@ class Sto(Package):
         default=0,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         longname="convertible indicator",
     )  # type: ignore[assignment]
@@ -67,6 +68,7 @@ class Sto(Package):
         default=1e-05,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         longname="specific storage",
     )  # type: ignore[assignment]
@@ -74,6 +76,7 @@ class Sto(Package):
         default=0.15,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         longname="specific yield",
     )  # type: ignore[assignment]

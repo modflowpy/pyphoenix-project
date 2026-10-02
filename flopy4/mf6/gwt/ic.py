@@ -28,6 +28,7 @@ class Ic(Package):
         default=0.0,
         block="griddata",
         shape=("nodes",),
+        layered=True,
         netcdf=True,
         longname="starting concentration",
     )  # type: ignore[assignment]

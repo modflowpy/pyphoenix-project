@@ -169,12 +169,12 @@ class Prp(Package):
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
-        auto_from="packagedata",
+        dim="nreleasepts",
     )
     releasetimes: Optional[list[Releasetimes]] = field(
         default=None,
         block="releasetimes",
-        auto_from="releasetimes",
+        dim="nreleasetimes",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",

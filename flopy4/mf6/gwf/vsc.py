@@ -73,7 +73,7 @@ class Vsc(Package):
     packagedata: Optional[list[Packagedata]] = field(
         default=None,
         block="packagedata",
-        auto_from="packagedata",
+        dim="nviscspecies",
     )
 
 

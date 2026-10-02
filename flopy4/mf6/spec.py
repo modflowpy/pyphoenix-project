@@ -37,7 +37,7 @@ def field(
     netcdf: bool | None = None,
     schema: str | None = None,
     write_if_empty: bool = False,
-    auto_from: str | None = None,
+    dim: str | None = None,
     fill_forward: bool = False,
     time_series: bool = False,
     index: bool = False,
@@ -67,8 +67,8 @@ def field(
         metadata["schema"] = schema
     if write_if_empty:
         metadata["write_if_empty"] = True
-    if auto_from:
-        metadata["auto_from"] = auto_from
+    if dim:
+        metadata["dim"] = dim
     if fill_forward:
         metadata["fill_forward"] = True
     if time_series:

@@ -246,8 +246,6 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             blocks[block_name][f.name] = field_value.to_tokens()
 
         elif dfn_type in ("integer", "double", "double precision"):
-            if field_value == 0 and meta.get("auto_from"):
-                continue
             blocks[block_name][f.name] = field_value
 
         elif dfn_type == "string" and field_value:

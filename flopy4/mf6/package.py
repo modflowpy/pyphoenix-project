@@ -1,3 +1,4 @@
+import operator
 from abc import ABC
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import attrs
 import numpy as np
 import pandas as pd
 import xarray as xr
+from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
 from flopy4.mf6.component import Component
@@ -26,6 +28,16 @@ _DTYPE_MAP: dict = {
     "keyword": np.object_,
 }
 
+# A list shape's bound operator (DFN "<=maxbound") -> check of row count
+# against the dimension. No operator means the shape is exact.
+_BOUND_OPS: dict = {
+    None: operator.eq,
+    "<": operator.lt,
+    "<=": operator.le,
+    ">": operator.gt,
+    ">=": operator.ge,
+}
+
 
 @attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
@@ -34,7 +46,7 @@ class Package(Component, ABC):
 
         Handles three concerns in order:
         1. Coerce raw list/block/period data into Item-list fields, and
-           auto-set n<block>s.
+           set each list's row-count dimension.
         2. Broadcast scalar griddata values to their DFN shape when dims
            is supplied (e.g. IC(strt=1.0, dims={"nodes": 900})).
         3. Chain to Component.__attrs_post_init__() via super() -- LAST,
@@ -78,9 +90,16 @@ class Package(Component, ABC):
         super().__attrs_post_init__()
 
     def _init_item_lists(self, fields) -> None:
-        """Coerce raw list/dict block+period data into Item-list fields;
-        auto-set n<block>s from the resulting list lengths. `maxbound`
-        (where applicable) is a computed property instead, not set here.
+        """Coerce raw list/dict block+period data into Item-list fields.
+
+        A list field with `dim` metadata (the DIMENSIONS field counting its
+        rows, in DFN shape syntax: exact "nper" or bounded "<=maxats") gets
+        that dimension set from its row count, unless it was given
+        explicitly. An explicit dimension must equal the row count, or
+        satisfy the bound, else it is an error. A list left at a one-row
+        default (TDIS's perioddata, from the DFN) gets that row repeated
+        `dim` times. `maxbound` (where applicable) is a computed property
+        instead, not set here.
 
         Reads/writes the field's real attribute name (f.name) always --
         aliases (e.g. _stress_period_data's "stress_period_data") only name
@@ -94,7 +113,12 @@ class Package(Component, ABC):
             item_cls = item_list_type(f.type)
             if item_cls is None:
                 continue
+            bound, dim = split_bound(f.metadata["dim"]) if "dim" in f.metadata else (None, None)
             raw = self.__dict__.get(f.name)
+            # Identity, not equality: only the default object itself (never
+            # a user value, even an equal one) is repeated to fill `dim`.
+            if raw is not None and raw is f.default and len(raw) == 1:
+                raw = list(raw) * ((getattr(self, dim) if dim else None) or 1)
             if raw is None:
                 continue
 
@@ -106,8 +130,17 @@ class Package(Component, ABC):
             else:
                 coerced_list = self._coerce_item_list(raw, item_cls)
                 object.__setattr__(self, f.name, coerced_list)
-                if getattr(self, f"n{block}s", 0) == 0:
-                    object.__setattr__(self, f"n{block}s", len(coerced_list))
+                if dim:
+                    self._set_dim_from_rows(dim, len(coerced_list), bound)
+
+    def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
+        declared = getattr(self, dim)
+        if declared is None:
+            object.__setattr__(self, dim, nrows)
+        elif not _BOUND_OPS[bound](nrows, declared):
+            raise ValueError(
+                f"{dim}={declared} but {nrows} rows were given (need rows {bound or '=='} {dim})"
+            )
 
     @staticmethod
     def _coerce_item_list(data, item_cls: "type[Item] | tuple[type[Item], ...]") -> list:

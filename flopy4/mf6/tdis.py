@@ -5,12 +5,13 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6.item import Item
+from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
-from flopy4.mf6.tdis_base import TdisBase
+from flopy4.mf6.tdis_methods import TdisMethods
 
 
 @attrs.define(kw_only=True, slots=False)
-class Tdis(TdisBase):
+class Tdis(TdisMethods, Package):
     dfn_name: ClassVar[str] = "sim-tdis"
 
     @attrs.define
@@ -40,15 +41,15 @@ class Tdis(TdisBase):
         keyword="ats6",
     )
     nper: Optional[int] = field(
-        default=1,
+        default=None,
         block="dimensions",
         longname="number of stress periods",
     )
     perioddata: Optional[list[Perioddata]] = field(
-        default=None,
+        default=((1.0, 1, 1.0),),
         block="perioddata",
-        auto_from="perioddata",
-    )
+        dim="nper",
+    )  # type: ignore[assignment]
 
 
 TdisPerioddata = Tdis.Perioddata

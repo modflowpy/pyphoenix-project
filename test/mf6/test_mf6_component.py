@@ -508,9 +508,11 @@ def test_tdis_from_timestamps():
     assert tdis.nper == 2
     assert tdis.time_units == "days"
     assert tdis.start_date_time == "2020-01-01T00:00:00"
-    np.testing.assert_array_equal(tdis.perlen, [4.0, 10.0])
-    np.testing.assert_array_equal(tdis.nstp, [5, 5])
-    np.testing.assert_array_equal(tdis.tsmult, [1.2, 1.2])
+    time = tdis.to_time()
+    np.testing.assert_array_equal(time.perlen, [4.0, 10.0])
+    np.testing.assert_array_equal(time.nstp, [5, 5])
+    np.testing.assert_array_equal(time.tsmult, [1.2, 1.2])
+    assert Tdis.from_time(time).perioddata == tdis.perioddata
 
 
 def test_to_xarray_on_component():
