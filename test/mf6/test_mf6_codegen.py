@@ -124,9 +124,6 @@ SOLUTION_TIER = {
     "sln-pts": ("Pts", "Solution", "pts"),
 }
 
-# Future tiers (not yet implemented):
-# DISV_TIER: gwf/gwt/gwe/prt-disv and disu, once icvert is an array column.
-
 
 # Layer 1: Filter unit tests (no DFNs required)
 class TestFilters:
@@ -707,6 +704,8 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
     [
         ("sim-tdis", "class Tdis(TdisMethods, Package):"),
         ("utl-ncf", "class Ncf(NcfMethods, Package):"),
+        ("gwf-disv", "class Disv(DisvMethods, GridDimsMethods, Package):"),
+        ("gwf-disu", "class Disu(GridDimsMethods, Package):"),
         ("gwf-dis", "class Dis(DisMethods, GridDimsMethods, Package):"),
     ],
 )
@@ -1238,3 +1237,50 @@ def test_sized_column_from_tokens():
     assert item.aux == (0.1, 0.2)
     assert item.boundname == "well1"
     assert item.to_tokens() == tuple(tokens)
+
+
+def test_counted_array_column():
+    """cell2d's icvert holds as many vertex indices as ncvert counts, each
+    renumbered like an index column; ncvert defaults to len(icvert)."""
+    from flopy4.mf6.gwf import Disv
+
+    meta = attrs.fields_dict(Disv.Cell2d)["icvert"].metadata
+    assert meta["array"] and meta["index"] and meta["count"] == "ncvert"
+
+    square = Disv.Cell2d.from_tokens([1, 0.5, 0.5, 4, 1, 2, 5, 4])
+    assert square.icell2d == 0
+    assert square.ncvert == 4
+    assert square.icvert == (0, 1, 4, 3)
+    assert square.to_tokens() == (1, 0.5, 0.5, 4, 1, 2, 5, 4)
+
+    triangle = Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, icvert=(1, 2, 4))
+    assert triangle.to_tokens() == (2, 1.5, 0.5, 3, 2, 3, 5)
+
+    with pytest.raises(ValueError, match="ncvert=4"):
+        Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, ncvert=4, icvert=(1, 2, 4)).to_tokens()
+
+    disv = Disv(
+        nlay=1,
+        top=1.0,
+        botm=0.0,
+        vertices=[(0, 0.0, 0.0), (1, 1.0, 0.0), (2, 1.0, 1.0), (3, 0.0, 1.0)],
+        cell2d=[(0, 0.5, 0.5, 4, (0, 1, 2, 3))],
+    )
+    assert (disv.ncpl, disv.nvert) == (1, 4)
+    assert disv.cell2d[0].icvert == (0, 1, 2, 3)
+
+
+def test_counted_array_column_must_be_last():
+    from flopy4.mf6.utils.codegen.filters import ColumnSpec
+    from flopy4.mf6.utils.codegen.make import _schema_dict_from_columns
+
+    def col(f):
+        return ColumnSpec(f.name, f, False, False, False, False)
+
+    columns = [
+        col(Integer(name="ncvert")),
+        col(Array(name="icvert", dtype="integer", shape=["ncvert"])),
+        col(Double(name="xc")),
+    ]
+    with pytest.raises(ValueError, match="isn't the last column"):
+        _schema_dict_from_columns(columns)

@@ -22,9 +22,7 @@ class DisMethods:
         top = np.asarray(self.top).reshape(nrow, ncol)
         botm = np.asarray(self.botm).reshape(nlay, nrow, ncol)
         idomain = (
-            np.asarray(self.idomain).reshape(nlay, nrow, ncol)
-            if self.idomain is not None
-            else None
+            np.asarray(self.idomain).reshape(nlay, nrow, ncol) if self.idomain is not None else None
         )
         return StructuredGrid(
             length_units=self.length_units,

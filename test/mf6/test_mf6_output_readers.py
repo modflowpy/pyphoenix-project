@@ -119,10 +119,10 @@ def disv_model_output(function_tmpdir):
         [10, 11, 15, 14],
     ]
 
-    cell2ddata = []
+    cell2d = []
     for n in range(ncpl):
-        cell2ddata.append(
-            Disv.Cell2dRecord(
+        cell2d.append(
+            Disv.Cell2d(
                 n,
                 float((n % 3) * 10 + 5),
                 float(25 - (n // 3) * 10),
@@ -142,10 +142,8 @@ def disv_model_output(function_tmpdir):
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(nvert, dtype=int),
-        xv=xv,
-        yv=yv,
-        cell2ddata=cell2ddata,
+        vertices=dict(iv=np.arange(nvert, dtype=int), xv=xv, yv=yv),
+        cell2d=cell2d,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, dis=disv, name=gwf_name)
@@ -248,9 +246,7 @@ def test_disv_from_grid_round_trip():
     cells = [[0, 1, 4, 3], [1, 2, 5, 4]]
     # Two quads; extend to ncpl=4 by duplicating cells
     cells_full = cells + cells
-    cell2ddata = [
-        Disv.Cell2dRecord(n, float(n % 2) + 0.5, 0.5, 4, tuple(cells_full[n])) for n in range(ncpl)
-    ]
+    cell2d = [Disv.Cell2d(n, float(n % 2) + 0.5, 0.5, 4, tuple(cells_full[n])) for n in range(ncpl)]
     # 2×3 grid of vertices
     xv = np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0])
     yv = np.array([1.0, 1.0, 1.0, 0.0, 0.0, 0.0])
@@ -262,10 +258,8 @@ def test_disv_from_grid_round_trip():
         top=np.ones(ncpl),
         botm=botm,
         idomain=np.ones((nlay, ncpl), dtype=int),
-        iv=np.arange(nvert, dtype=int),
-        xv=xv,
-        yv=yv,
-        cell2ddata=cell2ddata,
+        vertices=dict(iv=np.arange(nvert, dtype=int), xv=xv, yv=yv),
+        cell2d=cell2d,
     )
 
     # Convert to VertexGrid, then back to Disv
@@ -283,8 +277,8 @@ def test_disv_from_grid_round_trip():
     np.testing.assert_array_equal(disv_rt.idomain, disv_orig.idomain)
 
     # Vertex coordinates must be preserved
-    np.testing.assert_allclose(disv_rt.xv, disv_orig.xv)
-    np.testing.assert_allclose(disv_rt.yv, disv_orig.yv)
+    np.testing.assert_allclose([v.xv for v in disv_rt.vertices], [v.xv for v in disv_orig.vertices])
+    np.testing.assert_allclose([v.yv for v in disv_rt.vertices], [v.yv for v in disv_orig.vertices])
 
 
 # NetCDF head-reader tests (_open_hds_netcdf paths)

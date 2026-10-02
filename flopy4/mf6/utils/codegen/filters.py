@@ -783,6 +783,10 @@ def item_class(
             meta["tagged"] = True
         elif role == "array":
             meta["array"] = True
+            if col.get("index"):
+                meta["index"] = True
+            if col.get("count"):
+                meta["count"] = col["count"]
         if col.get("time_series"):
             meta["time_series"] = True
         if _is_optional(col):
@@ -802,6 +806,11 @@ def item_class(
             # _build_arm_specs_from_union) -- forward-ref union annotation.
             arms = " | ".join(f"{package_class_name}.{c}" for c in col["arm_classes"])
             return f'        {col["name"]}: "{arms}" = field()'
+        if col["role"] == "array" and col.get("count"):
+            # As many values as an earlier column counts (cell2d's icvert).
+            elem = _DFN_PY.get(col.get("dfn_type", "double"), "float")
+            margs = ", ".join(f"{k}={_dq(v)}" for k, v in _field_meta(col).items())
+            return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), {margs})"
         if col["role"] == "array":
             # Consumes all remaining tokens as a tuple -- a
             # keyword-plus-trailing-values setting whose arity/type isn't

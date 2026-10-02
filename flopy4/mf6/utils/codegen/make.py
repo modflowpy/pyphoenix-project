@@ -189,6 +189,14 @@ def _schema_dict_from_columns(
     nested_arm_classes = nested_arm_classes or {}
     schema = []
     pending_prefix: list[str] = []
+    # Columns counting a later array column's values (cell2d's ncvert, for
+    # icvert). Optional: filled in from the array's length when omitted.
+    counts = {
+        shape[0]
+        for col in columns
+        if isinstance(col.field, Array) and len(shape := col.field.shape or []) == 1
+    } & {col.name for col in columns}
+    seen: set[str] = set()
     for col in columns:
         if col.is_prefix:
             pending_prefix.append(col.name.upper())
@@ -214,6 +222,18 @@ def _schema_dict_from_columns(
         elif isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
             entry["role"] = "sized"
             entry["size_of"] = shape[0]
+        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in seen:
+            # Inline array counted by an earlier column of the same row
+            # (DISV/DISU cell2d's icvert, by ncvert). Rows vary in length,
+            # so it must be the last column.
+            if col is not columns[-1]:
+                raise ValueError(
+                    f"array column {col.name!r}, counted by {shape[0]!r}, isn't the last column"
+                )
+            entry["role"] = "array"
+            entry["count"] = shape[0]
+            if col.is_index:
+                entry["index"] = True
         elif col.is_cellid:
             entry["role"] = "cellid"
             if shape := getattr(f, "shape", None):
@@ -242,10 +262,13 @@ def _schema_dict_from_columns(
             entry["dtype"] = "np.object_"
         else:
             entry["role"] = "value"
+        if col.name in counts:
+            entry["optional"] = True
         if getattr(f, "time_series", False):
             entry["time_series"] = True
             entry["dtype"] = "np.object_"
         schema.append(entry)
+        seen.add(col.name)
     return schema
 
 
@@ -906,22 +929,23 @@ _SLN_PREFIX = "sln"
 # fields; those come from the DFN only.
 _GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
 _DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
+_DISV = ["flopy4.mf6.disv_methods:DisvMethods", *_GRID_DIMS]
 MIXINS: dict[str, list[str]] = {
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
     # Grid packages provide the model's dimensions. Which components do
     # can't be told from the DFN (maxbound and friends are model-scoped too).
     "gwf-dis": _DIS,
-    "gwf-disv": _GRID_DIMS,
+    "gwf-disv": _DISV,
     "gwf-disu": _GRID_DIMS,
     "gwt-dis": _DIS,
-    "gwt-disv": _GRID_DIMS,
+    "gwt-disv": _DISV,
     "gwt-disu": _GRID_DIMS,
     "gwe-dis": _DIS,
-    "gwe-disv": _GRID_DIMS,
+    "gwe-disv": _DISV,
     "gwe-disu": _GRID_DIMS,
     "prt-dis": _DIS,
-    "prt-disv": _GRID_DIMS,
+    "prt-disv": _DISV,
     "chf-disv1d": _GRID_DIMS,
     "olf-dis2d": _GRID_DIMS,
     "olf-disv1d": _GRID_DIMS,

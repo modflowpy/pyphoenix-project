@@ -220,10 +220,8 @@ def disv_with_constant_arrays():
         top=30.0,
         botm=np.stack([np.full((1), val) for val in [20.0, 10.0, 0.0]]),
         # TODO support vertex_array (_detect_grid_reshape support) in ingress structure
-        iv=[0, 1, 2, 3],
-        xv=[0.0, 0.0, 1.0, 1.0],
-        yv=[0.0, 1.0, 1.0, 0.0],
-        cell2ddata=[Disv.Cell2dRecord(0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0))],
+        vertices=dict(iv=[0, 1, 2, 3], xv=[0.0, 0.0, 1.0, 1.0], yv=[0.0, 1.0, 1.0, 0.0]),
+        cell2d=[Disv.Cell2d(0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0))],
         length_units="feet",
     )
 

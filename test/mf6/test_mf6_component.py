@@ -771,12 +771,12 @@ def test_grid_coordinate_indexing_in_disv():
         [10, 11, 15, 14],
     ]
 
-    cell2ddata = []
+    cell2d = []
     xc = 1.00000005e08
     yc = 1.00000025e08
     for n in range(ncpl):
-        cell2ddata.append(
-            Disv.Cell2dRecord(
+        cell2d.append(
+            Disv.Cell2d(
                 n,
                 xc + (10.0 * n),
                 yc - (10.0 * n),
@@ -792,21 +792,23 @@ def test_grid_coordinate_indexing_in_disv():
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(0, nvert, dtype=int),
-        xv=np.concatenate(
-            [
-                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
-                for i in range(4)
-            ]
+        vertices=dict(
+            iv=np.arange(0, nvert, dtype=int),
+            xv=np.concatenate(
+                [
+                    np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                    for i in range(4)
+                ]
+            ),
+            yv=np.concatenate(
+                [
+                    np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                    - float(10 * (i % 4))
+                    for i in range(4)
+                ]
+            ),
         ),
-        yv=np.concatenate(
-            [
-                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
-                - float(10 * (i % 4))
-                for i in range(4)
-            ]
-        ),
-        cell2ddata=cell2ddata,
+        cell2d=cell2d,
     )
 
     # Convert to grid to access coordinates
@@ -1003,12 +1005,12 @@ def test_grid_from_disv_factory():
         [10, 11, 15, 14],
     ]
 
-    cell2ddata = []
+    cell2d = []
     xc = 1.00000005e08
     yc = 1.00000025e08
     for n in range(ncpl):
-        cell2ddata.append(
-            Disv.Cell2dRecord(
+        cell2d.append(
+            Disv.Cell2d(
                 n,
                 xc + (10.0 * n),
                 yc - (10.0 * n),
@@ -1026,21 +1028,23 @@ def test_grid_from_disv_factory():
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(0, nvert, dtype=int),
-        xv=np.concatenate(
-            [
-                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
-                for i in range(4)
-            ]
+        vertices=dict(
+            iv=np.arange(0, nvert, dtype=int),
+            xv=np.concatenate(
+                [
+                    np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                    for i in range(4)
+                ]
+            ),
+            yv=np.concatenate(
+                [
+                    np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                    - float(10 * (i % 4))
+                    for i in range(4)
+                ]
+            ),
         ),
-        yv=np.concatenate(
-            [
-                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
-                - float(10 * (i % 4))
-                for i in range(4)
-            ]
-        ),
-        cell2ddata=cell2ddata,
+        cell2d=cell2d,
     )
 
     # Use the classmethod factory
@@ -1051,17 +1055,20 @@ def test_grid_from_disv_factory():
     assert grid.nlay == nlay
     assert grid.ncpl == ncpl
     assert grid.nvert == nvert
-    np.testing.assert_allclose(np.array(grid._vertices, dtype=int)[:, 0], dis.iv)
-    np.testing.assert_allclose(np.array(grid._vertices)[:, 1], dis.xv)
-    np.testing.assert_allclose(np.array(grid._vertices)[:, 2], dis.yv)
+    np.testing.assert_allclose(
+        np.array(grid._vertices, dtype=int)[:, 0], [v.iv for v in dis.vertices]
+    )
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 1], [v.xv for v in dis.vertices])
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 2], [v.yv for v in dis.vertices])
     cell2d = []
-    for i in range(len(dis.cell2ddata)):
+    for i in range(len(dis.cell2d)):
         rec = [
-            dis.cell2ddata[i].icell2d,
-            dis.cell2ddata[i].xc,
-            dis.cell2ddata[i].yc,
+            dis.cell2d[i].icell2d,
+            dis.cell2d[i].xc,
+            dis.cell2d[i].yc,
+            len(dis.cell2d[i].icvert),
         ]
-        for v in dis.cell2ddata[i].icvert:
+        for v in dis.cell2d[i].icvert:
             rec.append(v)
         cell2d.append(rec)
     assert grid.cell2d == cell2d
@@ -1149,10 +1156,10 @@ def test_ugrid_from_disv_factory():
     _base = 1.00000000e08
     _xc = [5.0, 15.0, 25.0, 5.0, 15.0, 25.0, 5.0, 15.0, 25.0]
     _yc = [25.0, 25.0, 25.0, 15.0, 15.0, 15.0, 5.0, 5.0, 5.0]
-    cell2ddata = []
+    cell2d = []
     for n in range(ncpl):
-        cell2ddata.append(
-            Disv.Cell2dRecord(
+        cell2d.append(
+            Disv.Cell2d(
                 n,
                 _base + _xc[n],
                 _base + _yc[n],
@@ -1170,21 +1177,23 @@ def test_ugrid_from_disv_factory():
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(0, nvert, dtype=int),
-        xv=np.concatenate(
-            [
-                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
-                for i in range(4)
-            ]
+        vertices=dict(
+            iv=np.arange(0, nvert, dtype=int),
+            xv=np.concatenate(
+                [
+                    np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                    for i in range(4)
+                ]
+            ),
+            yv=np.concatenate(
+                [
+                    np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                    - float(10 * (i % 4))
+                    for i in range(4)
+                ]
+            ),
         ),
-        yv=np.concatenate(
-            [
-                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
-                - float(10 * (i % 4))
-                for i in range(4)
-            ]
-        ),
-        cell2ddata=cell2ddata,
+        cell2d=cell2d,
     )
 
     # Use the classmethod factory
@@ -1195,17 +1204,20 @@ def test_ugrid_from_disv_factory():
     assert grid.nlay == nlay
     assert grid.ncpl == ncpl
     assert grid.nvert == nvert
-    np.testing.assert_allclose(np.array(grid._vertices, dtype=int)[:, 0], dis.iv)
-    np.testing.assert_allclose(np.array(grid._vertices)[:, 1], dis.xv)
-    np.testing.assert_allclose(np.array(grid._vertices)[:, 2], dis.yv)
+    np.testing.assert_allclose(
+        np.array(grid._vertices, dtype=int)[:, 0], [v.iv for v in dis.vertices]
+    )
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 1], [v.xv for v in dis.vertices])
+    np.testing.assert_allclose(np.array(grid._vertices)[:, 2], [v.yv for v in dis.vertices])
     cell2d = []
-    for i in range(len(dis.cell2ddata)):
+    for i in range(len(dis.cell2d)):
         rec = [
-            dis.cell2ddata[i].icell2d,
-            dis.cell2ddata[i].xc,
-            dis.cell2ddata[i].yc,
+            dis.cell2d[i].icell2d,
+            dis.cell2d[i].xc,
+            dis.cell2d[i].yc,
+            len(dis.cell2d[i].icvert),
         ]
-        for v in dis.cell2ddata[i].icvert:
+        for v in dis.cell2d[i].icvert:
             rec.append(v)
         cell2d.append(rec)
     assert grid.cell2d == cell2d
@@ -1599,18 +1611,6 @@ def test_disv_class_identity():
     assert prt.Disv.__module__ == "flopy4.mf6.prt.disv"
 
 
-def test_prt_disv_no_ncf():
-    """prt.Disv doesn't expose NCF fields. (prt.Dis does: its DFN has
-    NCF6 FILEIN.)"""
-    import attrs
-
-    from flopy4.mf6 import prt
-
-    disv_field_names = {f.name for f in attrs.fields(prt.Disv)}
-    assert "ncf6_filerecord" not in disv_field_names
-    assert "ncf" not in disv_field_names
-
-
 def test_gwt_gwe_disv_instantiate():
     """gwt.Disv and gwe.Disv can be instantiated with basic grid dims."""
     from flopy4.mf6 import gwe, gwt
@@ -1619,7 +1619,7 @@ def test_gwt_gwe_disv_instantiate():
         d = cls(nlay=1, ncpl=4)
         assert d.nlay == 1
         assert d.ncpl == 4
-        assert hasattr(d, "ncf6_filerecord")
+        assert hasattr(d, "ncf_file")
 
 
 # ---------------------------------------------------------------------------

@@ -46,8 +46,14 @@ def field(
     cellid: bool = False,
     tagged: bool = False,
     array: bool = False,
+    count: str | None = None,
 ):
-    """Define a field: always a plain ``attrs.field()``."""
+    """Define a field: always a plain ``attrs.field()``.
+
+    ``count``: for an ``array`` Item column, the earlier column of the same
+    row that counts its values (DISV cell2d's ``icvert``, counted by
+    ``ncvert``).
+    """
     metadata = metadata or {}
     if block:
         metadata["block"] = block
@@ -85,6 +91,8 @@ def field(
         metadata["tagged"] = True
     if array:
         metadata["array"] = True
+    if count:
+        metadata["count"] = count
     return attrs.field(
         default=default,
         validator=validator,

@@ -14,15 +14,11 @@ _MF6_ROOT = _PROJ_ROOT / "flopy4" / "mf6"
 # These are skipped until their generation tier is implemented.
 #
 # nam files: model/simulation name files need special model-level handling.
-# disv: requires DisBase + grid conversion methods (disv tier).
 # *g / *a variants: gridded/array package variants, deferred.
 #
 # Subpackage child fields (e.g. ncf: Optional[Ncf]) come from make.SUBPACKAGES.
 # utl-ts also needs period values referencing timeseries by name written as strings.
-_SKIP = {
-    # vertex discretizations (require DisBase + grid methods)
-    "gwf-disv",
-}
+_SKIP: set[str] = set()
 
 
 def make(

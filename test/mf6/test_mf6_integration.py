@@ -188,12 +188,12 @@ def test_gwf_disv(function_tmpdir):
         [10, 11, 15, 14],
     ]
 
-    cell2ddata = []
+    cell2d = []
     xc = 1.00000005e08
     yc = 1.00000025e08
     for n in range(ncpl):
-        cell2ddata.append(
-            Disv.Cell2dRecord(
+        cell2d.append(
+            Disv.Cell2d(
                 n,
                 xc + float((n % 3) * 10.0),
                 yc - float(10.0 * int(n / 3)),
@@ -209,21 +209,23 @@ def test_gwf_disv(function_tmpdir):
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(0, nvert, dtype=int),
-        xv=np.concatenate(
-            [
-                np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
-                for i in range(4)
-            ]
+        vertices=dict(
+            iv=np.arange(0, nvert, dtype=int),
+            xv=np.concatenate(
+                [
+                    np.array([1.00000000e08, 1.00000010e08, 1.00000020e08, 1.00000030e08])
+                    for i in range(4)
+                ]
+            ),
+            yv=np.concatenate(
+                [
+                    np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
+                    - float(10 * (i % 4))
+                    for i in range(4)
+                ]
+            ),
         ),
-        yv=np.concatenate(
-            [
-                np.array([1.00000030e08, 1.00000030e08, 1.00000030e08, 1.00000030e08])
-                - float(10 * (i % 4))
-                for i in range(4)
-            ]
-        ),
-        cell2ddata=cell2ddata,
+        cell2d=cell2d,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, dis=disv, name=gwf_name)
@@ -383,12 +385,12 @@ def test_gwf_disv_uzf(function_tmpdir):
         [108, 109, 120, 119],
     ]
 
-    cell2ddata = []
+    cell2d = []
     xc = 0.50000000
     yc = 9.50000000
     for n in range(100):
-        cell2ddata.append(
-            Disv.Cell2dRecord(
+        cell2d.append(
+            Disv.Cell2d(
                 n,
                 float(n % 10) + xc,
                 yc - float(int(n / 10)),
@@ -408,45 +410,47 @@ def test_gwf_disv_uzf(function_tmpdir):
         top=top,
         botm=botm,
         idomain=1,
-        iv=np.arange(0, 121, dtype=int),
-        xv=np.tile(
-            [
-                0.00000000,
-                1.00000000,
-                2.00000000,
-                3.00000000,
-                4.00000000,
-                5.00000000,
-                6.00000000,
-                7.00000000,
-                8.00000000,
-                9.00000000,
-                10.00000000,
-            ],
-            11,
+        vertices=dict(
+            iv=np.arange(0, 121, dtype=int),
+            xv=np.tile(
+                [
+                    0.00000000,
+                    1.00000000,
+                    2.00000000,
+                    3.00000000,
+                    4.00000000,
+                    5.00000000,
+                    6.00000000,
+                    7.00000000,
+                    8.00000000,
+                    9.00000000,
+                    10.00000000,
+                ],
+                11,
+            ),
+            yv=np.concatenate(
+                [
+                    np.array(
+                        [
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                            10.00000000,
+                        ]
+                    )
+                    - float(i)
+                    for i in range(11)
+                ]
+            ),
         ),
-        yv=np.concatenate(
-            [
-                np.array(
-                    [
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                        10.00000000,
-                    ]
-                )
-                - float(i)
-                for i in range(11)
-            ]
-        ),
-        cell2ddata=cell2ddata,
+        cell2d=cell2d,
     )
 
     gwf = Gwf(parent=sim, save_flows=True, newton=True, dis=disv, name=gwf_name)

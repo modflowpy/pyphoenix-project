@@ -111,10 +111,8 @@ disv = flopy4.mf6.gwf.disv.Disv(
     top=top,
     botm=botm,
     idomain=idomain.reshape(nlay, ncpl),
-    iv=np.array([v[0] for v in vertices], dtype=int),
-    xv=np.array([v[1] for v in vertices], dtype=float),
-    yv=np.array([v[2] for v in vertices], dtype=float),
-    cell2ddata=flopy4.mf6.gwf.disv.Disv.grid_to_disv_cell2d(cell2d),
+    vertices=vertices,
+    cell2d=cell2d,
 )
 
 # Build the xugrid Ugrid2d mesh from the Disv package.
