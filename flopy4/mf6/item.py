@@ -320,6 +320,19 @@ class Item(Record):
     """Mixin for generated table-item types (plain items and keystring-union
     arms alike -- see module docstring)."""
 
+    def __attrs_post_init__(self) -> None:
+        """Fill each count column (cell2d's ncvert) from the array it counts,
+        so an item compares equal whether it was built or loaded."""
+        for count_name, array_field in _counted_fields(type(self)).items():
+            n = len(getattr(self, array_field.name))
+            if (given := getattr(self, count_name)) is None:
+                setattr(self, count_name, n)
+            elif given != n:
+                raise ValueError(
+                    f"{type(self).__name__}.{count_name}={given} "
+                    f"but {array_field.name} has {n} values"
+                )
+
     def to_tokens(self) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
         is emitted before the first non-row-key field. sized/boundname last.

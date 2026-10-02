@@ -2000,3 +2000,31 @@ def test_child_coerce_wrong_type():
         Gwf(dis=42)
     with pytest.raises(TypeError, match="Chd or Chdg"):
         Gwf(chd=[42])
+
+
+def test_disv_round_trip_equality(function_tmpdir):
+    from flopy4.mf6.codec import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    disv = Disv(
+        nlay=1,
+        ncpl=1,
+        nvert=3,
+        top=1.0,
+        botm=[0.0],
+        idomain=1,
+        vertices=[(0, 0.0, 0.0), (1, 1.0, 0.0), (2, 0.0, 1.0)],
+        cell2d=[Disv.Cell2d(icell2d=0, xc=0.3, yc=0.3, icvert=(0, 1, 2))],
+    )
+    path = function_tmpdir / "x.disv"
+    path.write_text(dumps(unstructure_component(disv)))
+    loaded = Disv.load(path)
+    assert loaded.cell2d[0].ncvert == 3
+    assert loaded == disv
+
+
+def test_count_column_filled_and_checked():
+    cell = Disv.Cell2d(icell2d=0, xc=0.0, yc=0.0, icvert=(0, 1, 2))
+    assert cell.ncvert == 3
+    with pytest.raises(ValueError, match="ncvert"):
+        Disv.Cell2d(icell2d=0, xc=0.0, yc=0.0, ncvert=4, icvert=(0, 1, 2))
