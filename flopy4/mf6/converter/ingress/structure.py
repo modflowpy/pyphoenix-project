@@ -16,6 +16,7 @@ from flopy4.mf6.item import (
     infer_ncelldim,
     item_list_type,
     parse_union_items,
+    resolve_dim,
     sized_by,
 )
 from flopy4.mf6.package import Package
@@ -810,12 +811,11 @@ def structure_component(
         if kwargs.get(name) is not None
     }
     # Dimensions counting item columns (numalphaj counts GNC's alphasj).
-    sizes |= {
-        name: int(kwargs[name])
-        for ic in item_types
-        for name in counted_by(ic)
-        if kwargs.get(name) is not None
-    }
+    count_dims = getattr(cls, "count_dims", {})
+    for ic in item_types:
+        for name in counted_by(ic):
+            if (n := resolve_dim(name, count_dims, kwargs)) is not None:
+                sizes[name] = n
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a

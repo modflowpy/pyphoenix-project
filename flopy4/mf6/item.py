@@ -82,6 +82,29 @@ def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
     return None if n is None else n + offset
 
 
+def _lookup(values: Mapping[str, Any], name: str) -> Any:
+    """A field's value by name, at the top level or in a record (utl-ts's
+    time_series_names, in its NAMES record)."""
+    if (v := values.get(name)) is not None:
+        return v
+    for v in values.values():
+        if isinstance(v, Record) and any(f.name == name for f in v.fields()):
+            return getattr(v, name)
+    return None
+
+
+def resolve_dim(dim: str, exprs: Mapping[str, str], values: Mapping[str, Any]) -> int | None:
+    """A counting dimension's value: the field of the same name, or as given
+    in ``exprs`` (a component's ``count_dims``), e.g. utl-ts's
+    "len(time_series_names)". None if the field isn't set."""
+    expr = exprs.get(dim, dim)
+    if m := re.fullmatch(r"len\((\w+)\)", expr):
+        v = _lookup(values, m.group(1))
+        return None if v is None else len(v)
+    v = _lookup(values, expr)
+    return None if v is None else int(v)
+
+
 def dim_counted_fields(cls: type) -> list[attrs.Attribute]:
     """An item class's array columns counted by a package dimension."""
     return [f for f in cast(type[Record], cls).fields() if _dim_counted(cls, f)]

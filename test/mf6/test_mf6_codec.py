@@ -463,6 +463,33 @@ def test_evt_segments_round_trip():
     assert evt2.stress_period_data == evt.stress_period_data
 
 
+def test_ts_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl import Ts
+
+    ts = Ts(
+        time_series_name=Ts.TimeSeriesName(time_series_names=["a", "b"]),
+        interpolation_method=Ts.InterpolationMethod(interpolation_method=["linear", "stepwise"]),
+        timeseries=[(0.0, (1.0, 2.0)), (10.0, (3.0, 4.0))],
+    )
+    raw = loads(dumps(unstructure_component(ts)))
+    assert raw["TIMESERIES"] == [[0.0, 1.0, 2.0], [10.0, 3.0, 4.0]]
+    ts2 = structure_component(raw, Ts)
+    assert ts2.time_series_name == ts.time_series_name
+    assert ts2.timeseries == ts.timeseries
+
+
+def test_ts_names_mismatch():
+    from flopy4.mf6.utl import Ts
+
+    with pytest.raises(ValueError, match="time_series_names=1 but ts_array has 2 values"):
+        Ts(
+            time_series_name=Ts.TimeSeriesName(time_series_names=["a"]),
+            timeseries=[(0.0, (1.0, 2.0))],
+        )
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 

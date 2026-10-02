@@ -156,6 +156,8 @@ class ComponentSpec:
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
     # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
+    # Dims counting item columns that aren't fields, name -> DFN expression
+    count_dims: dict[str, str] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -1103,8 +1105,8 @@ def build_component_spec(
 
     # Array fields can size list columns (auxiliary sizes aux).
     _arrays = frozenset(f.name for _, f in all_fields if isinstance(f, Array))
-    # DIMENSIONS fields can size inline arrays (GNC's numalphaj).
-    _dims = frozenset(f.name for b, f in all_fields if b == "dimensions")
+    # The component's dims can size inline arrays (GNC's numalphaj).
+    _dims = frozenset(component.dims or {})
 
     def _add_list_items(lf: ListField, class_name: str) -> str:
         specs, elem, union = _build_list_item_specs(
@@ -1370,6 +1372,15 @@ def build_component_spec(
     field_specs = _deduped
 
     _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
+    _counting = {
+        count_dim(e["count"])[0]
+        for ic in item_classes
+        for e in ic.schema
+        if e.get("role") == "counted"
+    }
+    _count_dims = {
+        d: v for d in sorted(_counting) if (v := component.dims[d].value) not in _seen_py_names
+    }
 
     base = _base_class(component)
     mixins = MIXINS.get(component.name, [])
@@ -1434,6 +1445,7 @@ def build_component_spec(
         item_unions=item_unions,
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
+        count_dims=_count_dims,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

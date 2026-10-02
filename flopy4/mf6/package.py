@@ -1,7 +1,7 @@
 import operator
 from abc import ABC
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
@@ -20,6 +20,7 @@ from flopy4.mf6.item import (
     count_dim,
     dim_counted_fields,
     item_list_type,
+    resolve_dim,
 )
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
@@ -47,6 +48,10 @@ _BOUND_OPS: dict = {
 
 @attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
+    # Dimensions counting item columns that aren't fields themselves, name ->
+    # DFN expression (utl-ts's {"time_series_names": "len(time_series_names)"}).
+    count_dims: ClassVar[dict[str, str]] = {}
+
     def __attrs_post_init__(self) -> None:
         """Post-init for Package subclasses.
 
@@ -169,6 +174,12 @@ class Package(Component, ABC):
             if not lengths:
                 continue
             (n,) = lengths
+            if dim in self.count_dims:
+                values = {a.name: getattr(self, a.name) for a in attrs.fields(type(self))}
+                declared = resolve_dim(dim, self.count_dims, values)
+                if declared is not None and declared + offset != n:
+                    raise ValueError(f"{dim}={declared} but {f.name} has {n} values")
+                continue
             declared = getattr(self, dim)
             if declared is None:
                 object.__setattr__(self, dim, n - offset)

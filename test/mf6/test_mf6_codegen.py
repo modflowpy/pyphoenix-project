@@ -107,6 +107,7 @@ UTL_TIER = {
     "utl-sfrtab": ("Sfrtab", "Package"),
     "utl-spca": ("Spca", "Package"),
     "utl-tas": ("Tas", "Package"),
+    "utl-ts": ("Ts", "Package"),
 }
 
 # Exchange packages (exg/) — only zero-field (pass-only) classes.
