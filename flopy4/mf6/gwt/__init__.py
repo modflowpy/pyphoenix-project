@@ -5,7 +5,6 @@ import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
 
-from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwt.adv import Adv
 from flopy4.mf6.gwt.api import Api
 from flopy4.mf6.gwt.cnc import Cnc
@@ -82,7 +81,7 @@ class Gwt(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)

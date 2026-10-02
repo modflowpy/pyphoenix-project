@@ -189,7 +189,7 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NCOL", 10], ["NROW", 10]]
+    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NROW", 10], ["NCOL", 10]]
     assert ["DELR"] in loaded["GRIDDATA"]
     assert ["DELC"] in loaded["GRIDDATA"]
 

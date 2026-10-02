@@ -724,6 +724,7 @@ def test_quickstart_netcdf(function_tmpdir):
         ncol=ncol,
         top=1.0,
         botm=0.0,
+        idomain=1,
     )
     sim = Simulation(
         tdis=time,
@@ -836,6 +837,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
         ncol=ncol,
         top=1.0,
         botm=0.0,
+        idomain=1,
     )
     sim = Simulation(
         tdis=time,

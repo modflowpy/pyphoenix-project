@@ -905,21 +905,22 @@ _SLN_PREFIX = "sln"
 # generated classes, as "module:Class" method-only mixins. Mixins declare no
 # fields; those come from the DFN only.
 _GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
+_DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
 MIXINS: dict[str, list[str]] = {
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
     # Grid packages provide the model's dimensions. Which components do
     # can't be told from the DFN (maxbound and friends are model-scoped too).
-    "gwf-dis": _GRID_DIMS,
+    "gwf-dis": _DIS,
     "gwf-disv": _GRID_DIMS,
     "gwf-disu": _GRID_DIMS,
-    "gwt-dis": _GRID_DIMS,
+    "gwt-dis": _DIS,
     "gwt-disv": _GRID_DIMS,
     "gwt-disu": _GRID_DIMS,
-    "gwe-dis": _GRID_DIMS,
+    "gwe-dis": _DIS,
     "gwe-disv": _GRID_DIMS,
     "gwe-disu": _GRID_DIMS,
-    "prt-dis": _GRID_DIMS,
+    "prt-dis": _DIS,
     "prt-disv": _GRID_DIMS,
     "chf-disv1d": _GRID_DIMS,
     "olf-dis2d": _GRID_DIMS,

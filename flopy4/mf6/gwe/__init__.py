@@ -17,7 +17,6 @@ from flopy4.mf6.gwe.lke import Lke
 from flopy4.mf6.gwe.mve import Mve
 from flopy4.mf6.gwe.oc import Oc
 from flopy4.mf6.gwe.ssm import Ssm
-from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.model import Model
 from flopy4.mf6.spec import field, path
 from flopy4.utils import to_path
@@ -80,7 +79,7 @@ class Gwe(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)

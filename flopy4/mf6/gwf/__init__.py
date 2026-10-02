@@ -14,7 +14,6 @@ from flopy4.mf6.gwf.chd import Chd
 from flopy4.mf6.gwf.chdg import Chdg
 from flopy4.mf6.gwf.csub import Csub
 from flopy4.mf6.gwf.dis import Dis
-from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwf.disv import Disv
 from flopy4.mf6.gwf.drn import Drn
 from flopy4.mf6.gwf.drng import Drng
@@ -173,7 +172,7 @@ class Gwf(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     npf: Npf | None = field(block="packages", default=None)

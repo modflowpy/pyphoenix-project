@@ -1301,33 +1301,33 @@ def test_ncf_subpackage_write(function_tmpdir):
 
 
 def test_ncf_subpackage_auto_sync_filerecord(function_tmpdir):
-    """ncf6_filerecord is auto-populated from ncf.filename when not pre-set."""
+    """ncf_file is auto-populated from ncf.filename when not pre-set."""
     ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
     ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
 
     dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     dis.filename = str(function_tmpdir / "gwf.dis")
     dis.ncf = ncf
-    assert dis.ncf6_filerecord is None
+    assert dis.ncf_file is None
 
     dis.write()
 
-    assert dis.ncf6_filerecord == Path("gwf.dis.ncf")
+    assert dis.ncf_file == Path("gwf.dis.ncf")
 
 
 def test_ncf_subpackage_no_overwrite_filerecord(function_tmpdir):
-    """Pre-set ncf6_filerecord is preserved — auto-sync is skipped."""
+    """Pre-set ncf_file is preserved — auto-sync is skipped."""
     ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
     ncf.filename = str(function_tmpdir / "actual.ncf")
 
     dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     dis.filename = str(function_tmpdir / "gwf.dis")
     dis.ncf = ncf
-    dis.ncf6_filerecord = Path("explicit.ncf")
+    dis.ncf_file = Path("explicit.ncf")
 
     dis.write()
 
-    assert dis.ncf6_filerecord == Path("explicit.ncf")
+    assert dis.ncf_file == Path("explicit.ncf")
 
 
 def test_ncf_subpackage_float_precision(function_tmpdir):
@@ -1599,15 +1599,12 @@ def test_disv_class_identity():
     assert prt.Disv.__module__ == "flopy4.mf6.prt.disv"
 
 
-def test_prt_dis_no_ncf():
-    """prt.Dis and prt.Disv must not expose NCF fields."""
+def test_prt_disv_no_ncf():
+    """prt.Disv doesn't expose NCF fields. (prt.Dis does: its DFN has
+    NCF6 FILEIN.)"""
     import attrs
 
     from flopy4.mf6 import prt
-
-    dis_field_names = {f.name for f in attrs.fields(prt.Dis)}
-    assert "ncf6_filerecord" not in dis_field_names
-    assert "ncf" not in dis_field_names
 
     disv_field_names = {f.name for f in attrs.fields(prt.Disv)}
     assert "ncf6_filerecord" not in disv_field_names

@@ -125,7 +125,7 @@ SOLUTION_TIER = {
 }
 
 # Future tiers (not yet implemented):
-# DIS_TIER = {"gwf-dis": ("Dis", "DisBase"), ...}
+# DISV_TIER: gwf/gwt/gwe/prt-disv and disu, once icvert is an array column.
 
 
 # Layer 1: Filter unit tests (no DFNs required)
@@ -707,7 +707,7 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
     [
         ("sim-tdis", "class Tdis(TdisMethods, Package):"),
         ("utl-ncf", "class Ncf(NcfMethods, Package):"),
-        ("gwf-dis", "class Dis(GridDimsMethods, Package):"),
+        ("gwf-dis", "class Dis(DisMethods, GridDimsMethods, Package):"),
     ],
 )
 def test_mixins(tmp_path, all_dfns, name, decl):
