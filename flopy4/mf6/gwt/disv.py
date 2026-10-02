@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.item import Item
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import field, path, subpackage
 from flopy4.mf6.utils.grid import VertexGrid
 from flopy4.mf6.utl.ncf import Ncf
 
@@ -45,7 +45,7 @@ class Disv(DisBase):
         direction="in",
         keyword="ncf6",
     )
-    ncf: Optional[Ncf] = attrs.field(default=None)
+    ncf: Optional[Ncf] = subpackage(file_field="ncf6_filerecord")
     nlay: int = field(default=0, block="dimensions")
     ncpl: int = field(default=0, block="dimensions")
     nvert: int = field(default=0, block="dimensions")

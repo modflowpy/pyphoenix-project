@@ -793,6 +793,7 @@ def _generated_imports(
     item_classes: "list[ItemClassSpec] | None" = None,
     repeating_blocks: "Mapping[str, str] | None" = None,
     has_derived_dims: bool = False,
+    subpackages: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
     repeating_blocks = repeating_blocks or {}
@@ -813,6 +814,7 @@ def _generated_imports(
         or has_inner_classes
         or bool(item_classes)
         or has_readarray_period
+        or bool(subpackages)
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
@@ -868,6 +870,8 @@ def _generated_imports(
         flopy4.append(f"from {module} import {name}")
     if has_derived_dims:
         flopy4.append("from flopy4.dimensions import DerivedDim")
+    for sub in subpackages or []:
+        flopy4.append(f"from {_component_module(sub)} import {filters.class_name(sub)}")
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
@@ -877,6 +881,8 @@ def _generated_imports(
         _spec_parts.append("field")
     if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
+    if subpackages:
+        _spec_parts.append("subpackage")
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
     _types_parts: list[str] = []
@@ -923,9 +929,37 @@ MIXINS: dict[str, list[str]] = {
 
 
 def check_mixins(dfns: Mapping[str, Component]) -> None:
-    """Raise if a `MIXINS` key names no DFN component."""
+    """Raise if a `MIXINS` key or a `SUBPACKAGES` value names no DFN component."""
     if unknown := sorted(set(MIXINS) - set(dfns)):
         raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
+    if unknown := sorted(set(SUBPACKAGES.values()) - set(dfns)):
+        raise ValueError(f"SUBPACKAGES values match no DFN component: {unknown}")
+
+
+# File records naming a subpackage's input file, record name -> component.
+# Each gets a typed child field next to its path field (DIS's `ncf` next to
+# `ncf_file`). The legacy DFNs' "# flopy subpackage" annotations say this,
+# but the dev3 DFNs drop them (see modflow-devtools'
+# subpackage-links-plan.md); until they carry the link, it's listed here.
+SUBPACKAGES: dict[str, str] = {
+    "ncf_filerecord": "utl-ncf",
+}
+
+
+def _component_module(name: str) -> str:
+    """The generated module for a component, e.g. utl-ncf -> flopy4.mf6.utl.ncf."""
+    return ".".join(("flopy4", "mf6", *filters.output_path(name, Path()).with_suffix("").parts))
+
+
+def _subpackage_field_spec(component: str, file_field: str) -> FieldSpec:
+    """The child field for a subpackage, named by its file field."""
+    return FieldSpec(
+        dfn_name=component,
+        py_name=filters.module_name(component),
+        type_annotation=f"Optional[{filters.class_name(component)}]",
+        spec_call=f'subpackage(file_field="{file_field}")',
+        generatable=True,
+    )
 
 
 def _base_class(component: Component) -> str:
@@ -1017,6 +1051,7 @@ def build_component_spec(
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
+    subpackages: list[str] = []  # components of subpackage fields (SUBPACKAGES)
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
@@ -1150,6 +1185,9 @@ def build_component_spec(
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
+            if spec.generatable and (sub := SUBPACKAGES.get(f.name)):
+                target.append(_subpackage_field_spec(sub, spec.py_name))
+                subpackages.append(sub)
 
     # Rendered before the other blocks' element classes.
     block_item_classes: list[ItemClassSpec] = []
@@ -1305,6 +1343,7 @@ def build_component_spec(
         item_classes=item_classes,
         repeating_blocks=_repeating_blocks,
         has_derived_dims=bool(_derived_dims),
+        subpackages=subpackages,
     )
 
     computed_field_specs = (

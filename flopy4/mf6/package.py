@@ -1,6 +1,7 @@
 import operator
 from abc import ABC
 from pathlib import Path
+from typing import Optional
 
 import attrs
 import numpy as np
@@ -11,6 +12,7 @@ from pandas.api.types import is_scalar
 
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component
+from flopy4.mf6.constants import MF6
 from flopy4.mf6.item import (
     Item,
     construct_item,
@@ -18,6 +20,7 @@ from flopy4.mf6.item import (
     item_list_type,
 )
 from flopy4.mf6.spec import to_field_type
+from flopy4.mf6.write_context import WriteContext
 
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
 # full array.
@@ -264,6 +267,22 @@ class Package(Component, ABC):
             elif isinstance(val, dict) and not val:
                 default = f.default if isinstance(f.default, (int, float)) else 0
                 self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
+
+    def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
+        self._sync_subpackage_files()
+        super().write(format=format, context=context)
+
+    def _sync_subpackage_files(self) -> None:
+        """Name each attached subpackage's file in the parent's path field
+        (e.g. DIS's ``NCF6 FILEIN <file>``), unless already given."""
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if (file_field := f.metadata.get("file_field")) is None:
+                continue
+            if (child := getattr(self, f.name)) is None:
+                continue
+            child.filename = child.filename or Path(child.default_filename())
+            if getattr(self, file_field) is None:
+                setattr(self, file_field, Path(child.filename.name))
 
     @classmethod
     def load(  # type: ignore[override]

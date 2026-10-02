@@ -805,10 +805,39 @@ def test_grid_package_dims(tmp_path, all_dfns):
     assert Disu(nodes=4, nja=10).get_dims()["njas"] == 3
 
 
-def test_check_mixins_rejects_unknown_component(all_dfns):
+def test_subpackage_field(tmp_path, all_dfns):
+    """A file record listed in SUBPACKAGES gets a typed child field; writing
+    names the child's file in the record and writes the child at full
+    precision."""
+    from flopy4.mf6.utl.ncf import Ncf
+    from flopy4.mf6.write_context import WriteContext
+
+    skip = {n for n in all_dfns if n != "gwf-dis"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert 'ncf: Optional[Ncf] = subpackage(file_field="ncf_file")' in spec.outpath.read_text()
+    Dis = _load_class_from_spec(spec, "_codegen_test_subpackage.dis", "Dis")
+
+    lat = 35.123456789012345
+    dis = Dis(nlay=1, nrow=1, ncol=1, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = tmp_path / "gwf.dis"
+    dis.ncf = Ncf(ncpl=1, latitude=[lat], longitude=[-120.0])
+    dis.ncf.filename = tmp_path / "gwf.dis.ncf"
+    dis.write(context=WriteContext(float_precision=4))
+
+    assert dis.ncf_file == Path("gwf.dis.ncf")
+    assert "NCF6 FILEIN gwf.dis.ncf" in (tmp_path / "gwf.dis").read_text()
+    assert repr(lat) in (tmp_path / "gwf.dis.ncf").read_text()
+
+
+def test_check_mixins_rejects_unknown_component(all_dfns, monkeypatch):
+    from flopy4.mf6.utils.codegen.make import SUBPACKAGES
+
     check_mixins(all_dfns)
     with pytest.raises(ValueError, match="sim-tdis"):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
+    monkeypatch.setitem(SUBPACKAGES, "foo_filerecord", "utl-foo")
+    with pytest.raises(ValueError, match="utl-foo"):
+        check_mixins(all_dfns)
 
 
 def test_list_block_dim_and_default(tmp_path, all_dfns):

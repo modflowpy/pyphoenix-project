@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from flopy4.mf6.gwf.disbase import DisBase
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import field, path, subpackage
 from flopy4.mf6.utils.grid import StructuredGrid
 from flopy4.mf6.utl.ncf import Ncf
 
@@ -30,7 +30,7 @@ class Dis(DisBase):
         direction="in",
         keyword="ncf6",
     )
-    ncf: Optional[Ncf] = attrs.field(default=None)
+    ncf: Optional[Ncf] = subpackage(file_field="ncf6_filerecord")
     nlay: int = field(default=1, block="dimensions")
     ncol: int = field(default=2, block="dimensions")
     nrow: int = field(default=2, block="dimensions")

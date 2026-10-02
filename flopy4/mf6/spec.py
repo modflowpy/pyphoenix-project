@@ -148,6 +148,14 @@ def path(
     )
 
 
+def subpackage(file_field: str):
+    """Define a subpackage field: a child component whose input file the
+    parent names in its `file_field` path field (e.g. DIS's `ncf` child,
+    named by `ncf_file`). On write, the path field is set from the child's
+    filename unless already given."""
+    return attrs.field(default=None, metadata={"file_field": file_field})
+
+
 Block = dict[str, Attribute]
 
 
