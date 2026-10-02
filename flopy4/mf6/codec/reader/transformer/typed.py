@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfns.schema import Array, Component, Keyword, List, Record, Union
+from modflow_devtools.dfns.schema import Array, Component, Double, Keyword, List, Record, Union
 
 from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
@@ -50,6 +50,10 @@ class TypedTransformer(Transformer):
                         merged[indexed_key] = data
                 elif block_name not in merged:
                     merged[block_name] = block_data
+                elif isinstance(block_data, dict) and all(
+                    isinstance(k, float) for k in block_data.keys()
+                ):
+                    merged[block_name].update(block_data)
                 else:
                     # This shouldn't happen for well-formed input
                     pass
@@ -256,6 +260,9 @@ class TypedTransformer(Transformer):
                 and (children[2] is None or isinstance(children[2], (int, float)))
             ):
                 block_index = children[0]
+                header = self.blocks[block_name].header
+                if header is not None and isinstance(header.field, Double):
+                    block_index = float(block_index)
                 fields_data = children[1]
                 return {block_name: {block_index: fields_data}}
             elif len(children) == 1:

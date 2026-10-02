@@ -45,9 +45,9 @@ block_index: number
 {% for block in blocks -%}
 {% if block.recarrays -%}
 {% set recarray_name = block.recarrays[0].name -%}
-{{ m.field_list(block.name, block.standalone_fields, recarray_name) }}
+{{ m.field_list(block.name, block.standalone_fields, recarray_name, block.redirect) }}
 {% else -%}
-{{ m.field_list(block.name, block.standalone_fields, none) }}
+{{ m.field_list(block.name, block.standalone_fields, none, block.redirect) }}
 {% endif -%}
 {% endfor -%}
 {% set generated_rules = [] -%}

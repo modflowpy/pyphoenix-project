@@ -25,8 +25,8 @@ attributes_block: "begin"i "attributes"i [_remark] _NL _NL* attributes_fields _N
 time_block: "begin"i "time"i block_index [_remark] _NL _NL* time_fields _NL* "end"i "time"i [block_index]
 block_index: number
 attributes_fields: ((time_series_namerecord | interpolation_methodrecord | sfacrecord | open_close_redirect) _NL*)*
-time_fields: ((tas_array | open_close_redirect) _NL*)*
+time_fields: ((tas_array) _NL*)*
 time_series_namerecord: "name"i word+ [_remark] _NL
 interpolation_methodrecord: "method"i word [_remark] _NL
 sfacrecord: "sfac"i double+ [_remark] _NL
-tas_array: "tas_array"i [_remark] [_NL] array
+tas_array: array
