@@ -152,6 +152,8 @@ class ComponentSpec:
     item_classes: list[ItemClassSpec] = dc_field(default_factory=list)
     item_unions: list[ItemUnionSpec] = dc_field(default_factory=list)
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
+    # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
+    derived_dims: dict[str, str] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -187,6 +189,14 @@ def _schema_dict_from_columns(
     nested_arm_classes = nested_arm_classes or {}
     schema = []
     pending_prefix: list[str] = []
+    # Columns counting a later array column's values (cell2d's ncvert, for
+    # icvert). Optional: filled in from the array's length when omitted.
+    counts = {
+        shape[0]
+        for col in columns
+        if isinstance(col.field, Array) and len(shape := col.field.shape or []) == 1
+    } & {col.name for col in columns}
+    seen: set[str] = set()
     for col in columns:
         if col.is_prefix:
             pending_prefix.append(col.name.upper())
@@ -212,6 +222,18 @@ def _schema_dict_from_columns(
         elif isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
             entry["role"] = "sized"
             entry["size_of"] = shape[0]
+        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in seen:
+            # Inline array counted by an earlier column of the same row
+            # (DISV/DISU cell2d's icvert, by ncvert). Rows vary in length,
+            # so it must be the last column.
+            if col is not columns[-1]:
+                raise ValueError(
+                    f"array column {col.name!r}, counted by {shape[0]!r}, isn't the last column"
+                )
+            entry["role"] = "array"
+            entry["count"] = shape[0]
+            if col.is_index:
+                entry["index"] = True
         elif col.is_cellid:
             entry["role"] = "cellid"
             if shape := getattr(f, "shape", None):
@@ -240,10 +262,13 @@ def _schema_dict_from_columns(
             entry["dtype"] = "np.object_"
         else:
             entry["role"] = "value"
+        if col.name in counts:
+            entry["optional"] = True
         if getattr(f, "time_series", False):
             entry["time_series"] = True
             entry["dtype"] = "np.object_"
         schema.append(entry)
+        seen.add(col.name)
     return schema
 
 
@@ -789,19 +814,13 @@ def _generated_imports(
     has_field_call: bool = False,
     has_path_call: bool = False,
     item_classes: "list[ItemClassSpec] | None" = None,
-    repeating_blocks: "Mapping[str, str] | None" = None,
+    has_derived_dims: bool = False,
+    subpackages: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
-    repeating_blocks = repeating_blocks or {}
+    # numeric arrays → Int/FloatArrayLike, not NDArray[np.xxx]
     has_array = any(
-        block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
-        and (
-            filters.is_keyword_array(f)
-            or filters.is_aux_list_field(f)
-            # repeating block's own array → dict[header, ...], not NDArray
-            or (filters.is_readarray(f) and block_name not in repeating_blocks)
-        )
-        for block_name, f in generatable_fields
+        filters.is_keyword_array(f) or filters.is_aux_list_field(f) for _, f in generatable_fields
     )
     has_file_records = any(filters.is_file_record(f) for _, f in generatable_fields)
     has_file_lists = any(filters.is_file_list(f) for _, f in generatable_fields)
@@ -810,6 +829,7 @@ def _generated_imports(
         or has_inner_classes
         or bool(item_classes)
         or has_readarray_period
+        or bool(subpackages)
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
@@ -863,6 +883,10 @@ def _generated_imports(
     for mixin in mixins or []:
         module, name = mixin.split(":")
         flopy4.append(f"from {module} import {name}")
+    if has_derived_dims:
+        flopy4.append("from flopy4.dimensions import DerivedDim")
+    for sub in subpackages or []:
+        flopy4.append(f"from {_component_module(sub)} import {filters.class_name(sub)}")
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
@@ -872,6 +896,8 @@ def _generated_imports(
         _spec_parts.append("field")
     if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
+    if subpackages:
+        _spec_parts.append("subpackage")
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
     _types_parts: list[str] = []
@@ -893,16 +919,65 @@ _SLN_PREFIX = "sln"
 # flopy API methods (factories, conversions to and from flopy types) for
 # generated classes, as "module:Class" method-only mixins. Mixins declare no
 # fields; those come from the DFN only.
+_GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
+_DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
+_DISV = ["flopy4.mf6.disv_methods:DisvMethods", *_GRID_DIMS]
+_DISU = ["flopy4.mf6.disu_methods:DisuMethods", *_GRID_DIMS]
 MIXINS: dict[str, list[str]] = {
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
+    # Grid packages provide the model's dimensions. Which components do
+    # can't be told from the DFN (maxbound and friends are model-scoped too).
+    "gwf-dis": _DIS,
+    "gwf-disv": _DISV,
+    "gwf-disu": _DISU,
+    "gwt-dis": _DIS,
+    "gwt-disv": _DISV,
+    "gwt-disu": _DISU,
+    "gwe-dis": _DIS,
+    "gwe-disv": _DISV,
+    "gwe-disu": _DISU,
+    "prt-dis": _DIS,
+    "prt-disv": _DISV,
+    "chf-disv1d": _GRID_DIMS,
+    "olf-dis2d": _GRID_DIMS,
+    "olf-disv1d": _GRID_DIMS,
+    "olf-disv2d": _GRID_DIMS,
 }
 
 
 def check_mixins(dfns: Mapping[str, Component]) -> None:
-    """Raise if a `MIXINS` key names no DFN component."""
+    """Raise if a `MIXINS` key or a `SUBPACKAGES` value names no DFN component."""
     if unknown := sorted(set(MIXINS) - set(dfns)):
         raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
+    if unknown := sorted(set(SUBPACKAGES.values()) - set(dfns)):
+        raise ValueError(f"SUBPACKAGES values match no DFN component: {unknown}")
+
+
+# File records naming a subpackage's input file, record name -> component.
+# Each gets a typed child field next to its path field (DIS's `ncf` next to
+# `ncf_file`). The legacy DFNs' "# flopy subpackage" annotations say this,
+# but the dev3 DFNs drop them (see modflow-devtools'
+# subpackage-links-plan.md); until they carry the link, it's listed here.
+SUBPACKAGES: dict[str, str] = {
+    "ncf_filerecord": "utl-ncf",
+}
+
+
+def _component_module(name: str) -> str:
+    """The generated module for a component, e.g. utl-ncf -> flopy4.mf6.utl.ncf."""
+    return ".".join(("flopy4", "mf6", *filters.output_path(name, Path()).with_suffix("").parts))
+
+
+def _subpackage_field_spec(component: str, file_field: str) -> FieldSpec:
+    """The child field for a subpackage, named by its file field."""
+    return FieldSpec(
+        dfn_name=component,
+        py_name=filters.module_name(component),
+        type_annotation=f"Optional[{filters.class_name(component)}]",
+        spec_call=f'subpackage(file_field="{file_field}")',
+        generatable=True,
+    )
 
 
 def _base_class(component: Component) -> str:
@@ -926,7 +1001,11 @@ def build_component_spec(
     developmode: bool = False,
 ) -> ComponentSpec:
     """Build all template context for a DFN component."""
-    all_fields = filters.flat_fields(component, developmode=developmode)
+    derived_dims = filters.derived_dims(component)
+    all_fields = [
+        (block_name, filters.canonical_shape(f, derived_dims))
+        for block_name, f in filters.flat_fields(component, developmode=developmode)
+    ]
 
     # Block names where Block.repeats is True (Block.header is not None),
     # mapped to their header field's Python key type (e.g. "float" for utl-tas's
@@ -990,6 +1069,7 @@ def build_component_spec(
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
+    subpackages: list[str] = []  # components of subpackage fields (SUBPACKAGES)
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
@@ -1123,6 +1203,9 @@ def build_component_spec(
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
+            if spec.generatable and (sub := SUBPACKAGES.get(f.name)):
+                target.append(_subpackage_field_spec(sub, spec.py_name))
+                subpackages.append(sub)
 
     # Rendered before the other blocks' element classes.
     block_item_classes: list[ItemClassSpec] = []
@@ -1217,6 +1300,8 @@ def build_component_spec(
             if shape := getattr(_ra_f, "shape", None):
                 _ra_meta["shape"] = tuple(shape)
             _ra_meta["layered"] = getattr(_ra_f, "layered", False)
+            if getattr(_ra_f, "index", False):
+                _ra_meta["index"] = True
             if getattr(_ra_f, "netcdf", False):
                 _ra_meta["netcdf"] = True
             _ra_meta["fill_forward"] = True
@@ -1235,11 +1320,24 @@ def build_component_spec(
 
     _seen_py_names: set[str] = set()
     _deduped: list[FieldSpec] = []
-    for _fs in prefix_specs + extra_specs + data_specs + period_specs:
+    # list blocks and other data blocks interleave in DFN block order (DISU:
+    # griddata, connectiondata, vertices, cell2d)
+    _block_order = list(dict.fromkeys(bn for bn, _ in all_fields))
+    _field_blocks = {f.name: bn for bn, f in all_fields}
+    _extra = {id(fs) for fs in extra_specs}
+
+    def _block_index(fs: FieldSpec) -> int:
+        bn = fs.dfn_name if id(fs) in _extra else _field_blocks.get(fs.dfn_name)
+        return _block_order.index(bn) if bn in _block_order else len(_block_order)
+
+    _data = sorted(extra_specs + data_specs, key=_block_index)
+    for _fs in prefix_specs + _data + period_specs:
         if _fs.py_name not in _seen_py_names:
             _seen_py_names.add(_fs.py_name)
             _deduped.append(_fs)
     field_specs = _deduped
+
+    _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
 
     base = _base_class(component)
     mixins = MIXINS.get(component.name, [])
@@ -1251,7 +1349,11 @@ def build_component_spec(
         bn == "griddata" and filters.is_readarray(f) for bn, f in generatable_field_objects
     )
     _arraylike_types = (
-        {getattr(f, "dtype", None) for bn, f in generatable_field_objects if bn == "griddata"}
+        {
+            f.dtype
+            for bn, f in generatable_field_objects
+            if filters.is_readarray(f) and bn not in _repeating_blocks
+        }
         | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
         | {getattr(f, "dtype", "double") for f in _repeating_array_fields}
     )
@@ -1274,7 +1376,8 @@ def build_component_spec(
         has_path_call=_has_path_call,
         has_readarray_period=bool(_readarray_period_fields),
         item_classes=item_classes,
-        repeating_blocks=_repeating_blocks,
+        has_derived_dims=bool(_derived_dims),
+        subpackages=subpackages,
     )
 
     computed_field_specs = (
@@ -1298,6 +1401,7 @@ def build_component_spec(
         item_classes=item_classes,
         item_unions=item_unions,
         computed_fields=computed_field_specs,
+        derived_dims=_derived_dims,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

@@ -12,6 +12,7 @@ Sources from the pydantic-native dev3 schema (Scalar | Array | Record | Union
 migration history and the reasoning behind specific choices below.
 """
 
+import ast
 import builtins
 import keyword
 import re
@@ -39,6 +40,8 @@ from modflow_devtools.dfns.schema import (
 from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
+
+from flopy4.dimensions import parse_dim_expr
 
 FieldV3: TypeAlias = (
     KeywordField | Integer | Double | String | Array | Record | UnionField | ListField | File
@@ -137,18 +140,10 @@ def has_dimensions_block(component: Component) -> bool:
 # dev3's Field union is a real discriminated union -- isinstance dispatch
 # replaces the legacy schema's string-set membership checks directly. No
 # equivalent of the legacy _has_complex_shape/_ALT_DIM_TOKENS/_DIM_ALIASES is
-# needed: verified against a broad corpus slice (gwf-npf, gwf-disu, gwf-evta,
-# gwf-rcha, gwf-dis) that dev3 shapes are already canonicalized (e.g.
-# ['ncpl'] uniformly for DIS/DISV cell-count dims, never 'ncol*nrow' or a
-# ';'-joined alternative-grid expression) -- the workaround those three
-# helpers existed for is gone at the source.
-
-ARRAY_NUMPY_DTYPES: dict[str, str] = {
-    "double": "np.float64",
-    "integer": "np.int64",
-    "string": "np.object_",
-    "keyword": "np.bool_",
-}
+# needed: dev3 shapes are lists of dimension names, never 'ncol*nrow' or a
+# ';'-joined alternative-grid expression. The grid packages' structured
+# griddata shapes (e.g. dis botm's ['ncol', 'nrow', 'nlay']) are flattened
+# by canonical_shape.
 
 
 def is_scalar(f: FieldV3) -> bool:
@@ -352,6 +347,60 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
     return result
 
 
+def derived_dims(component: Component) -> dict[str, str]:
+    """A component's arithmetic derived dimensions, name -> expression, e.g.
+    gwf-dis's ``{"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol",
+    "ncelldim": "3"}``. Other expressions (LAK's ``sum(...)``, ``len(...)``)
+    are left out."""
+    dims = {}
+    for name, dim in (component.dims or {}).items():
+        if dim.value == name:
+            continue
+        try:
+            parse_dim_expr(dim.value)
+        except ValueError:
+            continue
+        dims[name] = dim.value
+    return dims
+
+
+def _product_names(expr: str) -> list[str] | None:
+    """The names multiplied in a pure product expression ("nlay * ncpl"),
+    else None."""
+
+    def _names(node: ast.expr) -> list[str] | None:
+        if isinstance(node, ast.Name):
+            return [node.id]
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            left, right = _names(node.left), _names(node.right)
+            return None if left is None or right is None else left + right
+        return None
+
+    return _names(parse_dim_expr(expr))
+
+
+def canonical_shape(f: FieldV3, derived: dict[str, str]) -> FieldV3:
+    """Replace an array's structured shape with the derived dimension it
+    spans: ``(ncol, nrow)`` -> ``(ncpl,)``, ``(ncol, nrow, nlay)`` or
+    ``(ncpl, nlay)`` -> ``(nodes,)``.
+
+    flopy4 stores griddata flat, as MF6 does and as every other package's
+    DFN shapes it (NPF ``k`` is ``(nodes,)``); only the grid packages' DFNs
+    give the structured shape (in Fortran order). The match is on the
+    multiset of names, so order doesn't matter. Where several dimensions
+    match (olf-dis2d's ``ncpl`` and ``nodes`` are both ``nrow * ncol``),
+    the first declared wins.
+    """
+    shape = getattr(f, "shape", None)
+    if not isinstance(f, Array) or not shape or len(shape) < 2:
+        return f
+    names = Counter(shape)
+    for name, expr in derived.items():
+        if (factors := _product_names(expr)) and Counter(factors) == names:
+            return f.model_copy(update={"shape": [name]})
+    raise ValueError(f"{f.name}: shape {shape} matches no derived dimension in {derived}")
+
+
 # Python type annotations
 
 _SCALAR_PY_TYPES: dict[type, str] = {
@@ -374,11 +423,7 @@ def py_type(f: FieldV3, block_name: str) -> str:
         base = "NDArray[np.bool_]"
     elif is_readarray(f):
         assert isinstance(f, Array)
-        if block_name == "griddata":
-            base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
-        else:
-            dtype = ARRAY_NUMPY_DTYPES.get(f.dtype, "np.object_")
-            base = f"NDArray[{dtype}]"
+        base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
     elif is_dimensions_scalar(f, block_name):
         # dimensions fields are computed (init=False) and always nullable
         base = _SCALAR_PY_TYPES.get(type(f), "Any")
@@ -480,6 +525,9 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         kw["netcdf"] = True
     if getattr(f, "time_series", False):
         kw["time_series"] = True
+    if isinstance(f, Array) and f.index:
+        # 0-based, written as 1-based, as for item columns
+        kw["index"] = True
     if f.optional:
         kw["optional"] = True
     if is_file_record(f):
@@ -727,6 +775,10 @@ def item_class(
             meta["tagged"] = True
         elif role == "array":
             meta["array"] = True
+            if col.get("index"):
+                meta["index"] = True
+            if col.get("count"):
+                meta["count"] = col["count"]
         if col.get("time_series"):
             meta["time_series"] = True
         if _is_optional(col):
@@ -746,6 +798,11 @@ def item_class(
             # _build_arm_specs_from_union) -- forward-ref union annotation.
             arms = " | ".join(f"{package_class_name}.{c}" for c in col["arm_classes"])
             return f'        {col["name"]}: "{arms}" = field()'
+        if col["role"] == "array" and col.get("count"):
+            # As many values as an earlier column counts (cell2d's icvert).
+            elem = _DFN_PY.get(col.get("dfn_type", "double"), "float")
+            margs = ", ".join(f"{k}={_dq(v)}" for k, v in _field_meta(col).items())
+            return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), {margs})"
         if col["role"] == "array":
             # Consumes all remaining tokens as a tuple -- a
             # keyword-plus-trailing-values setting whose arity/type isn't

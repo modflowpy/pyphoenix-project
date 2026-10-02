@@ -883,10 +883,8 @@ class VertexGrid(LegacyVertexGrid):
         --------
         >>> from flopy4.mf6.gwf.disv import Disv
         >>> dis = Disv(nlay=3, ncpl=1, nvert=4, top=30.0, botm=[20.0, 10.0, 0.0],
-        ...            iv=[0, 1, 2, 3], xv=[0.0, 0.0, 1.0, 1.0], yv=[0.0, 1.0, 1.0, 0.0],
-        ...            cell2ddata=[Disv.Cell2dRecord(
-        ...                 0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0)
-        ...            )])
+        ...            vertices=[(0, 0.0, 0.0), (1, 0.0, 1.0), (2, 1.0, 1.0), (3, 1.0, 0.0)],
+        ...            cell2d=[(0, 0.5, 0.5, 5, (0, 1, 2, 3, 0))])
         >>> grid = VertexGrid.from_dis(dis)
         """
         _top = dis.top
@@ -906,10 +904,8 @@ class VertexGrid(LegacyVertexGrid):
             top=_top,
             botm=_botm,
             idomain=getattr(dis, "idomain", None),
-            iv=dis.iv,
-            xv=dis.xv,
-            yv=dis.yv,
-            cell2d=dis.disv_to_grid_cell2d(dis.cell2ddata),
+            vertices=dis.grid_vertices(),
+            cell2d=dis.grid_cell2d(),
             **kwargs,
         )
 
@@ -1318,12 +1314,13 @@ class VertexGrid(LegacyVertexGrid):
         node_x = self.verts[:, 0]
         node_y = self.verts[:, 1]
 
-        # 1-based CCW face-node connectivity, padded to max_face_nodes
-        cell_nverts = [len(cell) - 3 for cell in self.cell2d]
+        # 1-based CCW face-node connectivity, padded to max_face_nodes. Each
+        # cell2d row is [icell2d, xc, yc, ncvert, iv1, iv2, ...].
+        cell_nverts = [len(cell) - 4 for cell in self.cell2d]
         max_face_nodes = max(cell_nverts)
         face_nodes_list = []
         for cell in self.cell2d:
-            nodes = [np.int64(x + 1) for x in cell[3:]]
+            nodes = [np.int64(x + 1) for x in cell[4:]]
             nodes.reverse()
             if nodes[0] == nodes[-1]:
                 nodes.pop()

@@ -189,7 +189,7 @@ def test_dumps_dis_with_constant_arrays(dis_with_constant_arrays):
     pprint(loaded)
 
     assert ["LENGTH_UNITS", "feet"] in loaded["OPTIONS"]
-    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NCOL", 10], ["NROW", 10]]
+    assert loaded["DIMENSIONS"] == [["NLAY", 2], ["NROW", 10], ["NCOL", 10]]
     assert ["DELR"] in loaded["GRIDDATA"]
     assert ["DELC"] in loaded["GRIDDATA"]
 
@@ -220,10 +220,8 @@ def disv_with_constant_arrays():
         top=30.0,
         botm=np.stack([np.full((1), val) for val in [20.0, 10.0, 0.0]]),
         # TODO support vertex_array (_detect_grid_reshape support) in ingress structure
-        iv=[0, 1, 2, 3],
-        xv=[0.0, 0.0, 1.0, 1.0],
-        yv=[0.0, 1.0, 1.0, 0.0],
-        cell2ddata=[Disv.Cell2dRecord(0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0))],
+        vertices=dict(iv=[0, 1, 2, 3], xv=[0.0, 0.0, 1.0, 1.0], yv=[0.0, 1.0, 1.0, 0.0]),
+        cell2d=[Disv.Cell2d(0, 0.50000000, 0.50000000, 5, (0, 1, 2, 3, 0))],
         length_units="feet",
     )
 
@@ -361,6 +359,58 @@ def test_disv_vertices_roundtrip(disv_with_constant_arrays):
     assert vertices[0][2] == pytest.approx(0.0)
     assert vertices[2][1] == pytest.approx(1.0)
     assert vertices[2][2] == pytest.approx(1.0)
+
+
+def test_disu_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Disu
+
+    # two unit cells side by side
+    disu = Disu(
+        nodes=2,
+        nja=4,
+        nvert=6,
+        top=1.0,
+        bot=0.0,
+        area=1.0,
+        iac=[2, 2],
+        ja=[0, 1, 1, 0],
+        ihc=[0, 1, 0, 1],
+        cl12=[0.0, 0.5, 0.0, 0.5],
+        hwva=[0.0, 1.0, 0.0, 1.0],
+        vertices=[
+            (0, 0.0, 0.0),
+            (1, 0.0, 1.0),
+            (2, 1.0, 1.0),
+            (3, 1.0, 0.0),
+            (4, 2.0, 1.0),
+            (5, 2.0, 0.0),
+        ],
+        cell2d=[
+            Disu.Cell2d(0, 0.5, 0.5, 5, (0, 1, 2, 3, 0)),
+            Disu.Cell2d(1, 1.5, 0.5, 5, (3, 2, 4, 5, 3)),
+        ],
+    )
+    assert disu.get_dims() == {"nodes": 2, "nja": 4, "nvert": 6, "ncelldim": 1, "njas": 1}
+
+    text = dumps(unstructure_component(disu))
+    raw = loads(text)
+    # MF6 reads CONNECTIONDATA before VERTICES and CELL2D
+    assert list(raw)[-4:] == ["GRIDDATA", "CONNECTIONDATA", "VERTICES", "CELL2D"]
+    # ja is 0-based, 1-based in the file
+    conn = raw["CONNECTIONDATA"]
+    assert conn[conn.index(["JA"]) + 2] == [1, 2, 2, 1]
+
+    disu2 = structure_component(raw, Disu)
+    for name in ("top", "bot", "area", "iac", "ja", "ihc", "cl12", "hwva"):
+        np.testing.assert_array_equal(getattr(disu2, name), getattr(disu, name))
+    assert disu2.vertices == disu.vertices
+    assert disu2.cell2d == disu.cell2d
+
+    grid = disu2.to_grid()
+    assert grid.nnodes == 2
+    np.testing.assert_array_equal(grid.ja, [0, 1, 1, 0])
 
 
 def test_dumps_chd():
@@ -501,6 +551,26 @@ def test_dumps_rcha():
     loaded = loads(dumped)
     print("RCHA load:")
     pprint(loaded)
+
+
+def test_rcha_irch_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Rcha
+
+    nper, ncpl = 2, 3
+    dims = {"nper": nper, "nlay": 2, "ncpl": ncpl, "nodes": 2 * ncpl}
+    irch = np.full((nper, ncpl), 3.0e30)
+    irch[0] = [0, 1, 0]
+    rch = Rcha(irch=irch, recharge=np.full((nper, ncpl), 1e-3), dims=dims)
+
+    raw = loads(dumps(unstructure_component(rch)))
+    # irch is 0-based, 1-based in the file
+    period = raw["PERIOD 1"]
+    assert period[period.index(["IRCH"]) + 2] == [1, 2, 1]
+
+    rch2 = structure_component(raw, Rcha, dims=dims)
+    np.testing.assert_array_equal(rch2.irch[0], [0, 1, 0])
 
 
 def test_dumps_wel():

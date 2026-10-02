@@ -240,11 +240,6 @@ class Csub(Package):
         optional=True,
         longname="maximum number of stress offset cells",
     )
-    packagedata: Optional[list[Packagedata]] = field(
-        default=None,
-        block="packagedata",
-        dim="ninterbeds",
-    )
     cg_ske_cr: FloatArrayLike = field(
         default=1e-05,
         block="griddata",
@@ -278,6 +273,11 @@ class Csub(Package):
         netcdf=True,
         optional=True,
         longname="specific gravity of saturated sediments",
+    )
+    packagedata: Optional[list[Packagedata]] = field(
+        default=None,
+        block="packagedata",
+        dim="ninterbeds",
     )
     _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",

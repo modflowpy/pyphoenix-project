@@ -69,6 +69,12 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     # TODO: {{ f.dfn_name }} — {{ f.skip_reason }}
 {% endif %}
 {% endfor %}
+{% if spec.derived_dims %}
+
+{% for name, expr in spec.derived_dims.items() %}
+    {{ name }} = DerivedDim("{{ expr }}")
+{% endfor %}
+{% endif %}
 {% for cf in spec.computed_fields %}
 
     @property

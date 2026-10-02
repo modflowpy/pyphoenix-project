@@ -184,7 +184,7 @@ def _read_control_record(
     rows: list, i: int, workspace: "Path | None", dtype, length: int
 ) -> "tuple[np.ndarray, int]":
     """Read one CONSTANT/INTERNAL/OPEN-CLOSE array control record starting
-    at ``rows[i]``, shared by griddata (`_parse_griddata_block`) and
+    at ``rows[i]``, shared by array blocks (`_parse_array_block`) and
     READARRAY period (`_parse_readarray_period_block`) array ingress.
 
     Always returns a full ``length``-element ``ndarray`` (CONSTANT
@@ -209,6 +209,12 @@ def _read_control_record(
     return np.array(values[:length], dtype=dtype), j
 
 
+def _from_file_index(value: np.ndarray) -> np.ndarray:
+    """1-based file values to 0-based. A negative value is allowed (DISU's
+    ja marks each cell's own entry that way) and means the same as positive."""
+    return np.abs(value) - 1
+
+
 def _griddata_flat_length(f, dims: dict, default: int) -> int:
     """Target length for a non-layered griddata field's flat array --
     e.g. DIS's `delr`/`delc` are `(ncol,)`/`(nrow,)`, not `(nodes,)`. Falls
@@ -223,10 +229,11 @@ def _griddata_flat_length(f, dims: dict, default: int) -> int:
     return default
 
 
-def _parse_griddata_block(
+def _parse_array_block(
     rows: list, fields_by_name: dict, dims: dict, workspace: "Path | None" = None
 ) -> dict:
-    """Parse GRIDDATA token rows into {field_name: np.ndarray}.
+    """Parse an array block's (GRIDDATA, DISU's CONNECTIONDATA) token rows
+    into {field_name: np.ndarray}.
 
     Token rows alternate: [field_name, ?LAYERED] then one control record
     per layer (LAYERED) or a single one otherwise -- CONSTANT/INTERNAL/
@@ -247,7 +254,7 @@ def _parse_griddata_block(
             continue
         key = str(row[0]).lower()
         f = fields_by_name.get(key)
-        if f is None or f.metadata.get("block") != "griddata":
+        if f is None:
             i += 1
             continue
 
@@ -296,6 +303,8 @@ def _parse_griddata_block(
             length = _griddata_flat_length(f, dims, nodes)
             value, i = _read_control_record(rows, i, workspace, dtype, length)
             result[f.name] = value
+        if f.metadata.get("index") and f.name in result:
+            result[f.name] = _from_file_index(result[f.name])
 
     return result
 
@@ -308,7 +317,7 @@ def _self_dims_from_kwargs(kwargs: dict) -> dict:
     before it's registered as a sibling dims source for anyone else. A
     no-op ({}) for any other class, which simply has none of these fields.
     """
-    keys = ("nlay", "nrow", "ncol", "ncpl", "nvert", "nodes")
+    keys = ("nlay", "nrow", "ncol", "ncpl", "nvert", "nodes", "nja")
     local = {k: kwargs[k] for k in keys if isinstance(kwargs.get(k), int)}
     if "ncpl" not in local and "nrow" in local and "ncol" in local:
         local["ncpl"] = local["nrow"] * local["ncol"]
@@ -391,6 +400,8 @@ def _parse_readarray_period_block(
                 break
             value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
             result[f.name] = value
+        if f.metadata.get("index") and f.name in result:
+            result[f.name] = _from_file_index(result[f.name])
 
     return result
 
@@ -505,7 +516,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                     target_cls = matches[0]
                 else:
                     # Fall back to the ftype registry for abstract-typed
-                    # fields (Model/Exchange/Solution/DisBase), where the
+                    # fields (Model/Exchange/Solution), where the
                     # field's declared type can't be compared to a token
                     # directly.
                     resolved_cls = get_ftype(token, prefix=model_prefix)
@@ -698,6 +709,19 @@ def structure_component(
     }
     repeating_array_block_prefixes = {f.metadata["block"] for f in repeating_array_fields.values()}
 
+    # Blocks of plain numeric arrays, read by Pass 4: GRIDDATA, and DISU's
+    # CONNECTIONDATA.
+    array_fields: dict[str, dict[str, Any]] = {}
+    for f in all_fields.values():
+        if (
+            f.metadata.get("shape")
+            and not f.metadata.get("fill_forward")
+            and f.name not in repeating_array_fields
+            and item_list_type(f.type) is None
+            and to_field_type(f.type) in ("integer", "double")
+        ):
+            array_fields.setdefault(f.metadata["block"], {})[f.name] = f
+
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
@@ -706,7 +730,7 @@ def structure_component(
         if (
             block_name in block_item_fields
             or block_name.split()[0] in fill_forward_blocks
-            or block_name == "griddata"
+            or block_name in array_fields
             or block_name.split()[0] in repeating_array_block_prefixes
         ):
             continue
@@ -895,24 +919,17 @@ def structure_component(
                     init_key = f.alias if f.alias else fname
                     kwargs[init_key] = series
 
-    # ── Pass 4: griddata block ────────────────────────────────────────────────
-    griddata_rows = raw_lower.get("griddata", [])
-    if griddata_rows:
-        # A DimensionProvider (Dis/Disv/...) has no external `dims` the
-        # first time it's loaded -- it *is* the dims source. Its own
-        # GRIDDATA block still needs shapes, derived from the DIMENSIONS
-        # block Pass 1 already parsed into kwargs above. A no-op ({}) for
-        # any other class, which just falls through to the `dims` param
-        # threaded from an already-loaded sibling (unchanged behavior).
-        effective_dims = dims or _self_dims_from_kwargs(kwargs)
-        if effective_dims:
-            gd_fields = {
-                f.name: f
-                for f in attrs.fields(cls)
-                if f.metadata.get("block") == "griddata" and f.init is not False
-            }
-            parsed = _parse_griddata_block(griddata_rows, gd_fields, effective_dims, workspace)
-            kwargs.update(parsed)
+    # ── Pass 4: array blocks (griddata, connectiondata) ──────────────────────
+    # A DimensionProvider (Dis/Disv/Disu) has no external `dims` the first
+    # time it's loaded -- it *is* the dims source. Its own array blocks still
+    # need shapes, derived from the DIMENSIONS block Pass 1 already parsed
+    # into kwargs above. A no-op ({}) for any other class, which just falls
+    # through to the `dims` param threaded from an already-loaded sibling.
+    effective_dims = dims or _self_dims_from_kwargs(kwargs)
+    if effective_dims:
+        for block_name, block_fields in array_fields.items():
+            if rows := raw_lower.get(block_name):
+                kwargs.update(_parse_array_block(rows, block_fields, effective_dims, workspace))
 
     kwargs.update(binding_kwargs)
     if name is not None:

@@ -83,6 +83,7 @@ def test_load_simulation_resolves_dis_and_dims(written_sim):
         "ncol": 10,
         "nodes": 100,
         "ncpl": 100,
+        "ncelldim": 3,
     }
 
 

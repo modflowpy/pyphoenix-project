@@ -4,7 +4,6 @@ import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
 
-from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.model import Model
 from flopy4.mf6.prt.dis import Dis
 from flopy4.mf6.prt.disv import Disv
@@ -44,7 +43,7 @@ class Prt(Model):
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
-    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
     fmi: Fmi | None = field(block="packages", default=None)
     mip: Mip | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)

@@ -19,6 +19,7 @@ import warnings
 from pathlib import Path
 
 import attrs
+import numpy as np
 import pytest
 from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
 
@@ -123,9 +124,6 @@ SOLUTION_TIER = {
     "sln-pts": ("Pts", "Solution", "pts"),
 }
 
-# Future tiers (not yet implemented):
-# DIS_TIER = {"gwf-dis": ("Dis", "DisBase"), ...}
-
 
 # Layer 1: Filter unit tests (no DFNs required)
 class TestFilters:
@@ -200,11 +198,11 @@ class TestFilters:
             (Integer(name="x", optional=True), "options", "Optional[int]"),
             (Double(name="x"), "options", "float"),
             (String(name="x"), "options", "str"),
-            (Array(name="x", dtype="double", shape=["nodes"]), "options", "NDArray[np.float64]"),
+            (Array(name="x", dtype="double", shape=["nodes"]), "options", "FloatArrayLike"),
             (
                 Array(name="x", dtype="integer", shape=["nodes"], optional=True),
                 "options",
-                "Optional[NDArray[np.int64]]",
+                "Optional[IntArrayLike]",
             ),
             (
                 Array(name="x", dtype="keyword", shape=["nper"], optional=True),
@@ -706,6 +704,9 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
     [
         ("sim-tdis", "class Tdis(TdisMethods, Package):"),
         ("utl-ncf", "class Ncf(NcfMethods, Package):"),
+        ("gwf-disv", "class Disv(DisvMethods, GridDimsMethods, Package):"),
+        ("gwf-disu", "class Disu(DisuMethods, GridDimsMethods, Package):"),
+        ("gwf-dis", "class Dis(DisMethods, GridDimsMethods, Package):"),
     ],
 )
 def test_mixins(tmp_path, all_dfns, name, decl):
@@ -716,10 +717,126 @@ def test_mixins(tmp_path, all_dfns, name, decl):
     assert decl in spec.outpath.read_text()
 
 
-def test_check_mixins_rejects_unknown_component(all_dfns):
+@pytest.mark.parametrize(
+    "name,shapes",
+    [
+        ("gwf-dis", {"delr": ("ncol",), "top": ("ncpl",), "botm": ("nodes",)}),
+        ("gwf-disv", {"top": ("ncpl",), "botm": ("nodes",), "idomain": ("nodes",)}),
+        ("olf-dis2d", {"bottom": ("ncpl",), "idomain": ("ncpl",)}),
+    ],
+)
+def test_griddata_shapes_are_flat(all_dfns, name, shapes):
+    """The grid packages' structured griddata shapes (Fortran order in the
+    DFN) map to the derived dimension they span."""
+    spec = build_component_spec(all_dfns[name], root=Path("/fake"))
+    calls = {f.py_name: f.spec_call for f in spec.fields}
+    for field_name, shape in shapes.items():
+        assert f"shape={shape!r}".replace("'", '"') in calls[field_name]
+
+
+def test_canonical_shape_rejects_unmatched():
+    from flopy4.mf6.utils.codegen.filters import canonical_shape
+
+    f = Array(name="x", dtype="double", shape=["nrow", "nlay"])
+    with pytest.raises(ValueError, match="matches no derived dimension"):
+        canonical_shape(f, {"ncpl": "nrow * ncol"})
+
+
+@pytest.mark.parametrize(
+    "name,derived",
+    [
+        ("gwf-dis", {"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol", "ncelldim": "3"}),
+        ("gwf-disv", {"nodes": "nlay * ncpl", "ncelldim": "2"}),
+        ("gwf-disu", {"ncelldim": "1", "njas": "(nja - nodes) / 2"}),
+        ("gwf-lak", {}),  # sum(packagedata.nlakeconn) isn't arithmetic
+    ],
+)
+def test_derived_dims(all_dfns, name, derived):
+    """Arithmetic DFN dimension expressions that aren't fields become
+    DerivedDim descriptors."""
+    assert build_component_spec(all_dfns[name], root=Path("/fake")).derived_dims == derived
+
+
+def test_grid_package_dims(tmp_path, all_dfns):
+    """Generated grid packages provide their dimensions and take griddata as
+    lists, per-layer values, or structured arrays."""
+    from flopy4.dimensions import DimensionProvider
+
+    names = ("gwf-dis", "gwf-disv", "gwf-disu")
+    skip = {n for n in all_dfns if n not in names}
+    specs = {
+        s.dfn_name: s
+        for s in make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    }
+    Dis = _load_class_from_spec(specs["gwf-dis"], "_codegen_test_grid.dis", "Dis")
+    Disv = _load_class_from_spec(specs["gwf-disv"], "_codegen_test_grid.disv", "Disv")
+    Disu = _load_class_from_spec(specs["gwf-disu"], "_codegen_test_grid.disu", "Disu")
+
+    dis = Dis(
+        nlay=2,
+        nrow=3,
+        ncol=4,
+        delr=[1.0] * 4,
+        top=np.full((3, 4), 10.0),
+        botm=[5.0, 0.0],
+        idomain=np.ones((2, 3, 4), dtype=np.int64),
+    )
+    assert isinstance(dis, DimensionProvider)
+    assert dis.get_dims() == {
+        "nlay": 2,
+        "nrow": 3,
+        "ncol": 4,
+        "ncpl": 12,
+        "nodes": 24,
+        "ncelldim": 3,
+    }
+    assert isinstance(dis.delr, np.ndarray)
+    assert dis.top.shape == (12,)
+    assert dis.idomain.shape == (24,)
+    np.testing.assert_array_equal(dis.botm, np.repeat([5.0, 0.0], 12))
+    with pytest.raises(AttributeError, match="derived"):
+        dis.nodes = 5
+
+    disv = Disv(nlay=3, ncpl=5, nvert=8, top=1.0, botm=[0.0, -1.0, -2.0])
+    assert disv.get_dims()["nodes"] == 15
+    assert disv.botm.shape == (15,)
+
+    assert Disu(nodes=4, nja=10).get_dims()["njas"] == 3
+
+
+def test_subpackage_field(tmp_path, all_dfns):
+    """A file record listed in SUBPACKAGES gets a typed child field; writing
+    names the child's file in the record and writes the child at full
+    precision."""
+    from flopy4.mf6.utl.ncf import Ncf
+    from flopy4.mf6.write_context import WriteContext
+
+    skip = {n for n in all_dfns if n != "gwf-dis"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert 'ncf: Optional[Ncf] = subpackage(file_field="ncf_file")' in spec.outpath.read_text()
+    Dis = _load_class_from_spec(spec, "_codegen_test_subpackage.dis", "Dis")
+
+    lat = 35.123456789012345
+    dis = Dis(nlay=1, nrow=1, ncol=1, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = tmp_path / "gwf.dis"
+    dis.ncf = Ncf(ncpl=1, latitude=[lat], longitude=[-120.0])
+    dis.ncf.filename = tmp_path / "gwf.dis.ncf"
+    dis.write(context=WriteContext(float_precision=4))
+
+    assert dis.ncf_file == Path("gwf.dis.ncf")
+    assert "NCF6 FILEIN gwf.dis.ncf" in (tmp_path / "gwf.dis").read_text()
+    assert repr(lat) in (tmp_path / "gwf.dis.ncf").read_text()
+
+
+def test_check_mixins_rejects_unknown_component(all_dfns, monkeypatch):
+    from flopy4.mf6.utils.codegen.make import SUBPACKAGES
+
     check_mixins(all_dfns)
     with pytest.raises(ValueError, match="sim-tdis"):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
+    monkeypatch.setitem(SUBPACKAGES, "foo_filerecord", "utl-foo")
+    with pytest.raises(ValueError, match="utl-foo"):
+        check_mixins(all_dfns)
 
 
 def test_list_block_dim_and_default(tmp_path, all_dfns):
@@ -962,6 +1079,18 @@ def test_layered_griddata_metadata():
     assert not attrs.fields_dict(Ncf)["latitude"].metadata.get("layered", False)
 
 
+def test_griddata_list_and_layered_values():
+    """List griddata becomes an array; a layered array given one value per
+    layer is repeated over each layer's cells."""
+    from flopy4.mf6.gwf.npf import Npf
+
+    assert isinstance(Npf(k=[1.0, 2.0]).k, np.ndarray)
+    npf = Npf(k=[1.0, 2.0], dims={"nlay": 2, "ncpl": 3, "nodes": 6})
+    np.testing.assert_array_equal(npf.k, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0])
+    npf = Npf(k=np.ones((2, 3)), dims={"nlay": 2, "nodes": 6})
+    assert npf.k.shape == (6,)
+
+
 def _load_class_from_spec(spec, mod_name: str, expected_class: str):
     """Generate, load, and return the class from a ComponentSpec. Cleans up module state."""
     mod_spec = importlib.util.spec_from_file_location(mod_name, spec.outpath)
@@ -1108,3 +1237,50 @@ def test_sized_column_from_tokens():
     assert item.aux == (0.1, 0.2)
     assert item.boundname == "well1"
     assert item.to_tokens() == tuple(tokens)
+
+
+def test_counted_array_column():
+    """cell2d's icvert holds as many vertex indices as ncvert counts, each
+    renumbered like an index column; ncvert defaults to len(icvert)."""
+    from flopy4.mf6.gwf import Disv
+
+    meta = attrs.fields_dict(Disv.Cell2d)["icvert"].metadata
+    assert meta["array"] and meta["index"] and meta["count"] == "ncvert"
+
+    square = Disv.Cell2d.from_tokens([1, 0.5, 0.5, 4, 1, 2, 5, 4])
+    assert square.icell2d == 0
+    assert square.ncvert == 4
+    assert square.icvert == (0, 1, 4, 3)
+    assert square.to_tokens() == (1, 0.5, 0.5, 4, 1, 2, 5, 4)
+
+    triangle = Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, icvert=(1, 2, 4))
+    assert triangle.to_tokens() == (2, 1.5, 0.5, 3, 2, 3, 5)
+
+    with pytest.raises(ValueError, match="ncvert=4"):
+        Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, ncvert=4, icvert=(1, 2, 4)).to_tokens()
+
+    disv = Disv(
+        nlay=1,
+        top=1.0,
+        botm=0.0,
+        vertices=[(0, 0.0, 0.0), (1, 1.0, 0.0), (2, 1.0, 1.0), (3, 0.0, 1.0)],
+        cell2d=[(0, 0.5, 0.5, 4, (0, 1, 2, 3))],
+    )
+    assert (disv.ncpl, disv.nvert) == (1, 4)
+    assert disv.cell2d[0].icvert == (0, 1, 2, 3)
+
+
+def test_counted_array_column_must_be_last():
+    from flopy4.mf6.utils.codegen.filters import ColumnSpec
+    from flopy4.mf6.utils.codegen.make import _schema_dict_from_columns
+
+    def col(f):
+        return ColumnSpec(f.name, f, False, False, False, False)
+
+    columns = [
+        col(Integer(name="ncvert")),
+        col(Array(name="icvert", dtype="integer", shape=["ncvert"])),
+        col(Double(name="xc")),
+    ]
+    with pytest.raises(ValueError, match="isn't the last column"):
+        _schema_dict_from_columns(columns)

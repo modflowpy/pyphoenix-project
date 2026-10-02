@@ -229,21 +229,18 @@ def test_flopy3_package(tmp_path):
     # docstring (flopy4/attrs_xarray.py) for the scalar/array split rule.
     data_list = [
         "name",
-        "ncpl",
-        "nvert",
-        "nodes",
         "nogrb",
         "xorigin",
         "yorigin",
+        "export_array_ascii",
         "export_array_netcdf",
         "nlay",
-        "ncol",
         "nrow",
+        "ncol",
         "delr",
         "delc",
         "top",
         "botm",
-        "idomain",
     ]
     data = {
         "delr": grid.delr,

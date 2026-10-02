@@ -106,6 +106,11 @@ def _wrap_array(value: Any) -> xr.DataArray:
     return xr.DataArray(value)
 
 
+def _to_file_index(value: Any) -> Any:
+    """0-based index values to 1-based, leaving no-data values alone."""
+    return value + (value != FILL_DNODATA)
+
+
 def _normalize_kper(kper: Any) -> int | None:
     """Normalize a period key to a 0-based int; '*' wildcard → 0; invalid → None."""
     if str(kper) == "*":
@@ -164,6 +169,8 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                             aux_key = aux_names[i] if i < len(aux_names) else f"aux{i}"
                             readarray_period.setdefault(kper, {})[aux_key] = xr.DataArray(col)
                     continue
+                if meta.get("index"):
+                    field_value = _to_file_index(field_value)
                 for kper in range(nper):
                     layer_slice = field_value[kper]
                     if is_layered and layer_slice.ndim >= 2:
@@ -217,6 +224,8 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             blocks[block_name][f.name] = field_value
 
         elif meta.get("shape") and not isinstance(field_value, bool):
+            if meta.get("index"):
+                field_value = _to_file_index(field_value)
             if meta["shape"]:
                 # reshape layered array to (nlay, ncpl) with named
                 # dims to signal the writer to use layered format

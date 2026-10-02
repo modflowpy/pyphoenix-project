@@ -5,11 +5,11 @@ import attrs
 from flopy.discretization.structuredgrid import StructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
 
-from flopy4.mf6.gwf.disbase import DisBase
 from flopy4.mf6.gwt.adv import Adv
 from flopy4.mf6.gwt.api import Api
 from flopy4.mf6.gwt.cnc import Cnc
 from flopy4.mf6.gwt.dis import Dis
+from flopy4.mf6.gwt.disu import Disu
 from flopy4.mf6.gwt.disv import Disv
 from flopy4.mf6.gwt.dsp import Dsp
 from flopy4.mf6.gwt.ic import Ic
@@ -29,14 +29,15 @@ def convert_grid(value):
         return Dis.from_grid(value)
     if isinstance(value, VertexGrid):
         return Disv.from_grid(value)
-    if isinstance(value, (Dis, Disv)) or value is None:
+    if isinstance(value, (Dis, Disv, Disu)) or value is None:
         return value
-    raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
+    raise TypeError(f"Expected Grid or Dis/Disv/Disu, got {type(value)}")
 
 
 __all__ = [
     "Gwt",
     "Dis",
+    "Disu",
     "Disv",
     "Adv",
     "Api",
@@ -82,7 +83,7 @@ class Gwt(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: DisBase | None = field(converter=convert_grid, block="packages", default=None)
+    dis: Dis | Disv | Disu | None = field(converter=convert_grid, block="packages", default=None)
     ic: Ic | None = field(block="packages", default=None)
     oc: Oc | None = field(block="packages", default=None)
     adv: Adv | None = field(block="packages", default=None)

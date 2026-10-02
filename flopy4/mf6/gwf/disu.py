@@ -6,17 +6,16 @@ import attrs
 
 from flopy4.dimensions import DerivedDim
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
-from flopy4.mf6.disv_methods import DisvMethods
+from flopy4.mf6.disu_methods import DisuMethods
 from flopy4.mf6.grid_dims_methods import GridDimsMethods
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path, subpackage
-from flopy4.mf6.utl.ncf import Ncf
+from flopy4.mf6.spec import field, path
 
 
 @attrs.define(kw_only=True, slots=False)
-class Disv(DisvMethods, GridDimsMethods, Package):
-    dfn_name: ClassVar[str] = "gwt-disv"
+class Disu(DisuMethods, GridDimsMethods, Package):
+    dfn_name: ClassVar[str] = "gwf-disu"
 
     @attrs.define
     class Vertices(Item):
@@ -72,17 +71,17 @@ class Disv(DisvMethods, GridDimsMethods, Package):
         optional=True,
         longname="rotation angle",
     )
+    vertical_offset_tolerance: Optional[float] = field(
+        default=0.0,
+        block="options",
+        optional=True,
+        longname="vertical length dimension for top and bottom checking",
+    )
     export_array_ascii: bool = field(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
-    )
-    export_array_netcdf: bool = field(
-        default=False,
-        block="options",
-        optional=True,
-        longname="export array variables to netcdf output files.",
     )
     crs: Optional[str] = field(
         default=None,
@@ -90,53 +89,84 @@ class Disv(DisvMethods, GridDimsMethods, Package):
         optional=True,
         longname="CRS user input string",
     )
-    ncf_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="ncf6",
-    )
-    ncf: Optional[Ncf] = subpackage(file_field="ncf_file")
-    nlay: Optional[int] = field(
+    nodes: Optional[int] = field(
         default=None,
         block="dimensions",
         longname="number of layers",
     )
-    ncpl: Optional[int] = field(
+    nja: Optional[int] = field(
         default=None,
         block="dimensions",
-        longname="number of cells per layer",
+        longname="number of columns",
     )
     nvert: Optional[int] = field(
         default=None,
         block="dimensions",
+        optional=True,
         longname="number of vertices",
     )
     top: FloatArrayLike = field(
         default=None,
         block="griddata",
-        shape=("ncpl",),
-        netcdf=True,
-        longname="model top elevation",
+        shape=("nodes",),
+        longname="cell top elevation",
     )
-    botm: FloatArrayLike = field(
+    bot: FloatArrayLike = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
-        netcdf=True,
-        longname="model bottom elevation",
+        longname="cell bottom elevation",
+    )
+    area: FloatArrayLike = field(
+        default=None,
+        block="griddata",
+        shape=("nodes",),
+        longname="cell surface area",
     )
     idomain: Optional[IntArrayLike] = field(
         default=None,
         block="griddata",
         shape=("nodes",),
-        layered=True,
-        netcdf=True,
         optional=True,
         longname="idomain existence array",
+    )
+    iac: IntArrayLike = field(
+        default=None,
+        block="connectiondata",
+        shape=("nodes",),
+        longname="number of cell connections",
+    )
+    ja: IntArrayLike = field(
+        default=None,
+        block="connectiondata",
+        shape=("nja",),
+        index=True,
+        longname="grid connectivity",
+    )
+    ihc: IntArrayLike = field(
+        default=None,
+        block="connectiondata",
+        shape=("nja",),
+        longname="connection type",
+    )
+    cl12: FloatArrayLike = field(
+        default=None,
+        block="connectiondata",
+        shape=("nja",),
+        longname="connection lengths",
+    )
+    hwva: FloatArrayLike = field(
+        default=None,
+        block="connectiondata",
+        shape=("nja",),
+        longname="connection lengths",
+    )
+    angldegx: Optional[FloatArrayLike] = field(
+        default=None,
+        block="connectiondata",
+        shape=("nja",),
+        optional=True,
+        longname="angle of face normal to connection",
     )
     vertices: Optional[list[Vertices]] = field(
         default=None,
@@ -146,12 +176,12 @@ class Disv(DisvMethods, GridDimsMethods, Package):
     cell2d: Optional[list[Cell2d]] = field(
         default=None,
         block="cell2d",
-        dim="ncpl",
+        dim="nodes",
     )
 
-    nodes = DerivedDim("nlay * ncpl")
-    ncelldim = DerivedDim("2")
+    ncelldim = DerivedDim("1")
+    njas = DerivedDim("(nja - nodes) / 2")
 
 
-DisvVertices = Disv.Vertices
-DisvCell2d = Disv.Cell2d
+DisuVertices = Disu.Vertices
+DisuCell2d = Disu.Cell2d

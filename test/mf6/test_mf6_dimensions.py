@@ -15,6 +15,7 @@ def test_dis_get_dimensions():
         "ncol": 20,
         "nodes": 600,
         "ncpl": 200,
+        "ncelldim": 3,
     }
 
 
@@ -129,6 +130,7 @@ class TestComponentIntegration:
             "ncol": 20,
             "nodes": 600,
             "ncpl": 200,
+            "ncelldim": 3,
         }
 
     def test_package_delegates_to_parent_model(self):

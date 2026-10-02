@@ -47,6 +47,14 @@ def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
     return {f.metadata["shape"][0] for c in classes if (f := _sized_field(c)) is not None}
 
 
+def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
+    """Count column name -> the array column it counts (cell2d's ncvert ->
+    icvert)."""
+    return {
+        f.metadata["count"]: f for f in cast(type[Record], cls).fields() if f.metadata.get("count")
+    }
+
+
 def _has_boundname_field(cls: type) -> bool:
     return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
@@ -123,6 +131,9 @@ def construct_item(item_cls: type, values) -> "Item":
         values = values[:-1]
     before = values[:tuple_idx]
     trailing = values[tuple_idx:]
+    if arm_classes is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
+        # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
+        trailing = list(trailing[0])
     tuple_vals = (
         construct_union_item(trailing, arm_classes) if arm_classes is not None else tuple(trailing)
     )
@@ -217,16 +228,26 @@ class Item(Record):
         fields = cls.fields()
         sized = _sized_field(cls)
         keyword = cls.keyword()
+        counted = _counted_fields(cls)
         row: list[Any] = []
         keyword_emitted = not keyword
         for f in fields:
             if f is sized or f.name == "boundname":
                 continue
             val = getattr(self, f.name)
+            if f.name in counted:
+                n = len(getattr(self, counted[f.name].name))
+                if val is not None and val != n:
+                    raise ValueError(
+                        f"{cls.__name__}.{f.name}={val} but {counted[f.name].name} has {n} values"
+                    )
+                val = n
             if val is None:
                 continue
             if f.metadata.get("cellid"):
                 row.extend(int(c) + 1 for c in val)
+            elif f.metadata.get("array") and f.metadata.get("index"):
+                row.extend(int(v) + 1 for v in val)
             elif f.metadata.get("index"):
                 row.append(int(val) + 1)
             elif f.metadata.get("array"):
@@ -381,13 +402,18 @@ class Item(Record):
                 keyword_skipped = True
             f = array_fields[0]
             end = n - (1 if has_bn_token else 0) - nsized
-            vals = []
+            if (count := kwargs.get(f.metadata.get("count", ""))) is not None:
+                end = min(end, tok_idx + int(count))
+            vals: list[Any] = []
             while tok_idx < end:
                 tok = tokens[tok_idx]
-                try:
-                    vals.append(float(tok))
-                except (ValueError, TypeError):
-                    vals.append(tok)
+                if f.metadata.get("index"):
+                    vals.append(int(float(str(tok))) - 1)
+                else:
+                    try:
+                        vals.append(float(tok))
+                    except (ValueError, TypeError):
+                        vals.append(tok)
                 tok_idx += 1
             kwargs[f.name] = tuple(vals)
         elif nested_union_fields:
