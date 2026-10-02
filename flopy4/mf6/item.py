@@ -15,6 +15,7 @@ Item subclasses share one field (a Union of their types), each identified
 by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
+import re
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
@@ -57,20 +58,39 @@ def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
 
 def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
     """An array column counted by a package dimension rather than another
-    column (GNC's cellidsj, by numalphaj): fixed width, read in place."""
+    column (GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1): fixed
+    width, read in place."""
     count = f.metadata.get("count")
     return bool(count) and count not in attrs.fields_dict(cls)
+
+
+def count_dim(count: str) -> tuple[str, int]:
+    """Split a dimension count into the dimension and an offset:
+    "nseg-1" -> ("nseg", -1)."""
+    m = re.fullmatch(r"\s*(\w+)\s*(?:([+-])\s*(\d+))?\s*", count)
+    if m is None:
+        raise ValueError(f"invalid count: {count!r}")
+    name, sign, k = m.groups()
+    return name, (int(k) if sign == "+" else -int(k)) if k else 0
+
+
+def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
+    """How many values a dimension-counted column takes, or None if the
+    dimension isn't known."""
+    name, offset = count_dim(f.metadata["count"])
+    n = (sizes or {}).get(name)
+    return None if n is None else n + offset
+
+
+def dim_counted_fields(cls: type) -> list[attrs.Attribute]:
+    """An item class's array columns counted by a package dimension."""
+    return [f for f in cast(type[Record], cls).fields() if _dim_counted(cls, f)]
 
 
 def counted_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
     """Names of the package dimensions that count an item class's columns."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
-    return {
-        f.metadata["count"]
-        for c in classes
-        for f in cast(type[Record], c).fields()
-        if _dim_counted(c, f)
-    }
+    return {count_dim(f.metadata["count"])[0] for c in classes for f in dim_counted_fields(c)}
 
 
 def _has_boundname_field(cls: type) -> bool:
@@ -149,6 +169,12 @@ def construct_item(item_cls: type, values) -> "Item":
         values = values[:-1]
     before = values[:tuple_idx]
     trailing = values[tuple_idx:]
+    if not trailing:
+        # omitted optional columns before it, e.g. EVT's petm0 before aux
+        return cast(
+            "Item",
+            item_cls(*before, boundname=boundname_val) if boundname_val else item_cls(*before),
+        )
     if arm_classes is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
         # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
         trailing = list(trailing[0])
@@ -168,7 +194,7 @@ def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[
     n = 1 if cls.keyword() else 0
     ncellids = 0
     for f in cls.fields():
-        count = (sizes or {}).get(f.metadata["count"], 0) if _dim_counted(cls, f) else 1
+        count = (_count(f, sizes) or 0) if _dim_counted(cls, f) else 1
         if f.metadata.get("cellid"):
             ncellids += count
             continue
@@ -225,6 +251,14 @@ def infer_ncelldim(
     has_bn = isinstance(last, str) and not _token_fits(last, float)
     n_cell_tokens = len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0)
     return max(1, n_cell_tokens // max(1, ncellids))
+
+
+def _float_or_str(token: Any) -> Any:
+    """A numeric token as a float, else (a time series name) as is."""
+    try:
+        return float(token)
+    except (ValueError, TypeError):
+        return token
 
 
 def _token_fits(token: Any, kind: type) -> bool:
@@ -348,7 +382,11 @@ class Item(Record):
         def consume(f: attrs.Attribute) -> None:
             nonlocal tok_idx, keyword_skipped
             if _dim_counted(cls, f):
-                count = (sizes or {})[f.metadata["count"]]
+                count = _count(f, sizes)
+                if count is None and not f.metadata.get("optional"):
+                    raise ValueError(f"{cls.__name__}.{f.name}: {f.metadata['count']} unknown")
+                if not count:
+                    return
                 if f.metadata.get("cellid"):
                     kwargs[f.name] = tuple(cellid() for _ in range(count))
                     return
@@ -357,7 +395,7 @@ class Item(Record):
                 if f.metadata.get("index"):
                     kwargs[f.name] = tuple(int(float(str(v))) - 1 for v in vals)
                 else:
-                    kwargs[f.name] = tuple(float(v) for v in vals)
+                    kwargs[f.name] = tuple(_float_or_str(v) for v in vals)
                 return
             if f.metadata.get("cellid"):
                 kwargs[f.name] = cellid()
@@ -379,6 +417,8 @@ class Item(Record):
             tok_idx += 1
 
         def width(f: attrs.Attribute) -> int:
+            if _dim_counted(cls, f):
+                return _count(f, sizes) or 0
             w = 1 + (1 if f.metadata.get("_keyword") else 0)
             if f.metadata.get("direction"):
                 w += 1

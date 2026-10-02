@@ -420,20 +420,47 @@ def test_gnc_round_trip(dims):
     from flopy4.mf6.gwf import Gnc
 
     gnc = Gnc(
-        numgnc=2,
-        numalphaj=2,
         gncdata=[
             Gnc.Gncdata((0, 0, 1), (0, 0, 2), ((0, 1, 1), (0, 1, 2)), (0.25, 0.25)),
             # a zero (dummy) cellid in the file is -1 in python
             Gnc.Gncdata((0, 1, 1), (0, 1, 2), ((0, 0, 1), (-1, -1, -1)), (0.5, 0.0)),
         ],
     )
+    assert (gnc.numgnc, gnc.numalphaj) == (2, 2)
     raw = loads(dumps(unstructure_component(gnc)))
     assert raw["GNCDATA"] == [
         [1, 1, 2, 1, 1, 3, 1, 2, 2, 1, 2, 3, 0.25, 0.25],
         [1, 2, 2, 1, 2, 3, 1, 1, 2, 0, 0, 0, 0.5, 0.0],
     ]
     assert structure_component(raw, Gnc, dims=dims).gncdata == gnc.gncdata
+
+
+def test_gnc_numalphaj_mismatch():
+    from flopy4.mf6.gwf import Gnc
+
+    row = Gnc.Gncdata((0,), (1,), ((2,), (3,)), (0.25, 0.25))
+    with pytest.raises(ValueError, match="numalphaj=1 but cellidsj has 2 values"):
+        Gnc(numalphaj=1, gncdata=[row])
+
+
+def test_evt_segments_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Evt
+
+    evt = Evt(
+        stress_period_data={
+            0: [
+                ((0, 0, 0), 59.0, 0.01, 6.0, (0.5, 0.9), (1.0, 0.7)),
+                ((0, 0, 1), 59.0, "etrate", 6.0, (0.4, "pxdp2"), (0.9, 0.6)),
+            ]
+        },
+    )
+    assert evt.nseg == 3
+    raw = loads(dumps(unstructure_component(evt)))
+    assert raw["PERIOD 1"][0] == [1, 1, 1, 59.0, 0.01, 6.0, 0.5, 0.9, 1.0, 0.7]
+    evt2 = structure_component(raw, Evt, dims={"nlay": 1, "nrow": 1, "ncol": 2})
+    assert evt2.stress_period_data == evt.stress_period_data
 
 
 def test_dumps_chd():

@@ -37,6 +37,8 @@ from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
 
+from flopy4.mf6.item import count_dim
+
 from . import filters
 from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_repr
 
@@ -235,9 +237,10 @@ def _schema_dict_from_columns(
             entry["count"] = shape[0]
             if col.is_index:
                 entry["index"] = True
-        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in dims:
+        elif isinstance(f, Array) and len(shape) == 1 and _count_dim(shape[0]) in dims:
             # Inline array sized by a package dimension (GNC's cellidsj and
-            # alphasj, by numalphaj): fixed width, so it may be any column.
+            # alphasj, by numalphaj; EVT's pxdp, by nseg-1): fixed width, so
+            # it may be any column.
             entry["role"] = "counted"
             entry["count"] = shape[0]
             if col.is_cellid:
@@ -280,6 +283,14 @@ def _schema_dict_from_columns(
         schema.append(entry)
         seen.add(col.name)
     return schema
+
+
+def _count_dim(shape: str) -> str | None:
+    """The dimension in a count like "nseg-1", or None for anything else."""
+    try:
+        return count_dim(shape)[0]
+    except ValueError:
+        return None
 
 
 def _dfn_type_str(f: FieldV3) -> str:

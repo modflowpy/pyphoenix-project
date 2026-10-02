@@ -736,6 +736,8 @@ def item_class(
         if role == "counted":
             if col.get("cellid"):
                 return "tuple[tuple[int, ...], ...]"
+            if col.get("time_series"):
+                return "tuple[Union[float, str], ...]"
             return f"tuple[{_DFN_PY.get(col.get('dfn_type', 'double'), 'float')}, ...]"
         if role == "feature_id":
             return "int"

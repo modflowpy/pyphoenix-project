@@ -17,6 +17,8 @@ from flopy4.mf6.item import (
     Item,
     construct_item,
     construct_union_item,
+    count_dim,
+    dim_counted_fields,
     item_list_type,
 )
 from flopy4.mf6.spec import to_field_type
@@ -137,11 +139,14 @@ class Package(Component, ABC):
                     kper: self._coerce_item_list(rows, item_cls) for kper, rows in raw.items()
                 }
                 object.__setattr__(self, f.name, coerced)
+                rows = [r for kper_rows in coerced.values() for r in kper_rows]
             else:
-                coerced_list = self._coerce_item_list(raw, item_cls)
-                object.__setattr__(self, f.name, coerced_list)
+                rows = self._coerce_item_list(raw, item_cls)
+                object.__setattr__(self, f.name, rows)
                 if dim:
-                    self._set_dim_from_rows(dim, len(coerced_list), bound)
+                    self._set_dim_from_rows(dim, len(rows), bound)
+            if not isinstance(item_cls, tuple):
+                self._set_dims_from_counts(item_cls, rows)
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
@@ -151,6 +156,24 @@ class Package(Component, ABC):
             raise ValueError(
                 f"{dim}={declared} but {nrows} rows were given (need rows {bound or '=='} {dim})"
             )
+
+    def _set_dims_from_counts(self, item_cls: "type[Item]", rows: list) -> None:
+        """Set the dimensions counting array columns (GNC's numalphaj counts
+        cellidsj and alphasj, EVT's nseg-1 counts pxdp) from the columns'
+        lengths, unless given."""
+        for f in dim_counted_fields(item_cls):
+            dim, offset = count_dim(f.metadata["count"])
+            lengths = {len(v) for r in rows if (v := getattr(r, f.name)) is not None}
+            if len(lengths) > 1:
+                raise ValueError(f"{f.name} lengths differ across rows: {sorted(lengths)}")
+            if not lengths:
+                continue
+            (n,) = lengths
+            declared = getattr(self, dim)
+            if declared is None:
+                object.__setattr__(self, dim, n - offset)
+            elif declared + offset != n:
+                raise ValueError(f"{dim}={declared} but {f.name} has {n} values")
 
     @staticmethod
     def _coerce_item_list(data, item_cls: "type[Item] | tuple[type[Item], ...]") -> list:
