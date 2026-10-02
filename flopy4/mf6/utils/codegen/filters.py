@@ -746,12 +746,7 @@ def item_class(
         if col["role"] == "sized":
             shape = _dq(col["size_of"])
             return f"        {col['name']}: tuple = field(default=(), shape=({shape},))"
-        # File columns (e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields
-        # built via the same path() convention used for Package-level file
-        # fields, not the generic dtype-based Union[float, str] fallback below.
-        # A trigger keyword before FILEIN/FILEOUT (e.g. "tab6") is emitted as
-        # path(keyword=...) -- the same _keyword convention as a block-level
-        # file record (see field_call) and a Record class's own _keyword.
+        # File columns (e.g. LAK tables' "TAB6 FILEIN <file>") are path() fields.
         if col["role"] == "file":
             direction = col["direction"]
             file_kw = col.get("keyword")

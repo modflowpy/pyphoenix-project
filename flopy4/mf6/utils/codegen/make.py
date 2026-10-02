@@ -171,13 +171,11 @@ def _schema_dict_from_columns(
 ) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
-    File columns get role 'file' with the DFN's direction. An is_prefix column
-    (a non-optional tagged keyword, e.g. SSM's SPC6 in "SPC6 FILEIN <file>")
-    only ever precedes a File column and becomes that column's 'keyword'.
-    is_row_keyword columns (optional keywords, e.g. MIXED) get role
-    'inline_keyword'. A column whose
-    shape names one of the component's ``arrays`` (aux, shaped by
-    ``auxiliary``) gets role 'sized': as many values as that array has.
+    File columns get role 'file'; a preceding is_prefix column (e.g. SPC6)
+    becomes its 'keyword'. is_row_keyword columns (optional keywords, e.g.
+    MIXED) get role 'inline_keyword'. A column whose shape names one of the
+    component's ``arrays`` (aux, shaped by ``auxiliary``) gets role 'sized':
+    as many values as that array has.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
@@ -818,8 +816,7 @@ def _generated_imports(
         for col in _all_schema_cols
         if col.get("role") not in ("keystring_value", "boundname", "file")
     )
-    # File row columns (e.g. LAK tables' TAB6 FILEIN <file>) become Path
-    # fields via path() in item_class(), not Union[float, str].
+    # File row columns become Path fields, not Union[float, str].
     _row_path_cols = [col for col in _all_schema_cols if col.get("role") == "file"]
     has_row_path_cols = bool(_row_path_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
