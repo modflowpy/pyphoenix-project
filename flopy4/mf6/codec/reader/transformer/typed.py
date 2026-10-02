@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfns.schema import Component, Keyword, List, Record, Union
+from modflow_devtools.dfns.schema import Array, Component, Keyword, List, Record, Union
 
 from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
@@ -326,13 +326,21 @@ class TypedTransformer(Transformer):
                     for name, child in field.children.items()
                     if not isinstance(child, Keyword)
                 ]
+                pos = 0
                 for i, (child_name, child_field) in enumerate(non_keyword_children):
-                    if i < len(children):
-                        # Handle tuples from transformed fields
-                        if isinstance(children[i], tuple) and children[i][0] == child_name:
-                            record_dict[child_name] = children[i][1]
-                        else:
-                            record_dict[child_name] = children[i]
+                    if pos >= len(children):
+                        break
+                    if isinstance(child_field, Array):
+                        end = len(children) - (len(non_keyword_children) - i - 1)
+                        record_dict[child_name] = list(children[pos:end])
+                        pos = end
+                        continue
+                    # Handle tuples from transformed fields
+                    if isinstance(children[pos], tuple) and children[pos][0] == child_name:
+                        record_dict[child_name] = children[pos][1]
+                    else:
+                        record_dict[child_name] = children[pos]
+                    pos += 1
                 return data, record_dict
             elif isinstance(field, Union) and field.children:
                 # For union fields, return the transformed child

@@ -34,6 +34,8 @@ def record_child_type(field: InputField) -> str:
         return "word"  # Use word for strings in records to match single tokens
     if field.type in ("double", "integer"):
         return field.type
+    if isinstance(field, Array):
+        return f"{'word' if field.dtype == 'string' else field.dtype}+"
     if isinstance(field, Keyword):
         return ""
     if isinstance(field, Union):
