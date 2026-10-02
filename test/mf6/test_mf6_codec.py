@@ -1414,23 +1414,42 @@ def test_ims_inner_rclose_tagged_output():
     assert "0.1" in text
 
 
-def test_fmi_dumps_partial_paths():
-    """Fmi with two of three path fields set serialises only the present ones."""
-    from pathlib import Path
-
+def test_prt_fmi_packagedata_dump():
+    """prt.Fmi packagedata writes flowtype and FILEIN fname tokens, like gwt.Fmi."""
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.prt.fmi import Fmi
 
     fmi = Fmi(
-        gwfhead=Path("gwf.hds"),
-        gwfbudget=Path("gwf.cbc"),
+        packagedata={
+            "flowtype": np.array(["GWFHEAD", "GWFBUDGET"]),
+            "fname": np.array(["gwf.hds", "gwf.cbc"]),
+        }
     )
     text = dumps(unstructure_component(fmi))
-    assert "GWFHEAD" in text.upper()
-    assert "GWFBUDGET" in text.upper()
-    assert "FILEIN" in text.upper()
-    assert "GWFSPDIS" not in text.upper(), "unset optional path must not appear in output"
+    assert "BEGIN PACKAGEDATA" in text
+    assert "GWFHEAD FILEIN gwf.hds" in text
+    assert "GWFBUDGET FILEIN gwf.cbc" in text
+    assert "GWFGRID" not in text
+
+
+def test_prt_fmi_packagedata_roundtrip():
+    """prt.Fmi packagedata survives a dump→load→structure_component cycle."""
+    from flopy4.mf6.codec.writer import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.prt.fmi import Fmi
+
+    fmi = Fmi(
+        packagedata={
+            "flowtype": np.array(["GWFHEAD", "GWFBUDGET"]),
+            "fname": np.array(["gwf.hds", "gwf.cbc"]),
+        }
+    )
+    raw = loads(dumps(unstructure_component(fmi)))
+    pd = structure_component(raw, Fmi).packagedata
+    assert [r.flowtype for r in pd] == ["GWFHEAD", "GWFBUDGET"]
+    assert [str(r.fname) for r in pd] == ["gwf.hds", "gwf.cbc"]
 
 
 def test_gwf_netcdf_input_file_serializes():

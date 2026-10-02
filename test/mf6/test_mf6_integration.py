@@ -1820,8 +1820,10 @@ def test_prt_basic(function_tmpdir):
     Mip(parent=prt, porosity=0.3)
     Fmi(
         parent=prt,
-        gwfhead=Path(f"{gwf_name}.hds"),
-        gwfbudget=Path(f"{gwf_name}.cbc"),
+        packagedata={
+            "flowtype": np.array(["GWFHEAD", "GWFBUDGET"]),
+            "fname": np.array([f"{gwf_name}.hds", f"{gwf_name}.cbc"]),
+        },
     )
     PrtOc(parent=prt, track_file=f"{prt_name}.trk", trackcsv_file=f"{prt_name}.trk.csv")
     prt_sim.write()
@@ -1834,9 +1836,8 @@ def test_prt_basic(function_tmpdir):
     assert oc_path.is_file()
 
     fmi_content = fmi_path.read_text()
-    assert "GWFHEAD" in fmi_content
-    assert "GWFBUDGET" in fmi_content
-    assert "FILEIN" in fmi_content
+    assert f"GWFHEAD FILEIN {gwf_name}.hds" in fmi_content
+    assert f"GWFBUDGET FILEIN {gwf_name}.cbc" in fmi_content
 
     oc_content = oc_path.read_text()
     assert "TRACK FILEOUT" in oc_content

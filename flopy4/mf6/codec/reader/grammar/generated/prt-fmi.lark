@@ -24,8 +24,6 @@ block: options_block | packagedata_block
 options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 options_fields: ((save_flows | open_close_redirect) _NL*)*
-packagedata_fields: ((gwfhead | gwfbudget | gwfgrid | open_close_redirect) _NL*)*
+packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
 save_flows: "save_flows"i  [_remark] _NL
-gwfhead: "gwfhead"i "filein"i word [_remark] _NL
-gwfbudget: "gwfbudget"i "filein"i word [_remark] _NL
-gwfgrid: "gwfgrid"i "filein"i word [_remark] _NL
+packagedatadata: record+
