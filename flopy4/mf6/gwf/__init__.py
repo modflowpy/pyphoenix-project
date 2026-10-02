@@ -22,6 +22,7 @@ from flopy4.mf6.gwf.evt import Evt
 from flopy4.mf6.gwf.evta import Evta
 from flopy4.mf6.gwf.ghb import Ghb
 from flopy4.mf6.gwf.ghbg import Ghbg
+from flopy4.mf6.gwf.gnc import Gnc
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.lak import Lak
 from flopy4.mf6.gwf.mvr import Mvr
@@ -54,6 +55,7 @@ __all__ = [
     "Evta",
     "Ghb",
     "Ghbg",
+    "Gnc",
     "Ic",
     "Csub",
     "Lak",
@@ -176,6 +178,7 @@ class Gwf(Model):
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
     buy: Buy | None = field(block="packages", default=None)
+    gnc: Gnc | None = field(block="packages", default=None)
     chd: list[Union[Chd, Chdg]] = field(block="packages", default=attrs.Factory(list))
     drn: list[Union[Drn, Drng]] = field(block="packages", default=attrs.Factory(list))
     evt: list[Union[Evt, Evta]] = field(block="packages", default=attrs.Factory(list))

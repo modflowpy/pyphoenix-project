@@ -733,6 +733,10 @@ def item_class(
         role = col["role"]
         if role == "cellid":
             return "tuple"
+        if role == "counted":
+            if col.get("cellid"):
+                return "tuple[tuple[int, ...], ...]"
+            return f"tuple[{_DFN_PY.get(col.get('dfn_type', 'double'), 'float')}, ...]"
         if role == "feature_id":
             return "int"
         if role in ("keystring", "inline_keyword"):
@@ -773,8 +777,10 @@ def item_class(
                 meta["pk"] = True
         elif role == "inline_keyword":
             meta["tagged"] = True
-        elif role == "array":
+        elif role in ("array", "counted"):
             meta["array"] = True
+            if col.get("cellid"):
+                meta["cellid"] = True
             if col.get("index"):
                 meta["index"] = True
             if col.get("count"):
@@ -885,7 +891,7 @@ class ColumnSpec:
 
     name: str
     field: FieldV3  # the underlying dev3 field, for shape/dtype/time_series/fk access
-    is_cellid: bool  # shape=["ncelldim"] -- stored as object-dtype tuple attr
+    is_cellid: bool  # shape=["ncelldim"] or node -- stored as object-dtype tuple attr
     is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
     is_row_keyword: bool  # optional keyword -- stored as bool attr
     is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
@@ -939,7 +945,10 @@ def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
             ColumnSpec(
                 name=safe_name(col_name),
                 field=col,
-                is_cellid=isinstance(col, Array) and list(col.shape or []) == ["ncelldim"],
+                # a grid cell reference: a cellid array, or marked `node`
+                # (GNC's cellidn; `getattr` since only Integer has `node` yet)
+                is_cellid=(isinstance(col, Array) and list(col.shape or []) == ["ncelldim"])
+                or bool(getattr(col, "node", False)),
                 is_prefix=is_keyword and not is_optional,
                 is_row_keyword=is_keyword and is_optional,
                 # role="feature_id" implies MF6's numeric 0-based-Python/1-based-

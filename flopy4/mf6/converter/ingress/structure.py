@@ -10,7 +10,14 @@ import numpy as np
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items, sized_by
+from flopy4.mf6.item import (
+    Item,
+    counted_by,
+    infer_ncelldim,
+    item_list_type,
+    parse_union_items,
+    sized_by,
+)
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
@@ -800,6 +807,13 @@ def structure_component(
         name: len(kwargs[name])
         for ic in item_types
         for name in sized_by(ic)
+        if kwargs.get(name) is not None
+    }
+    # Dimensions counting item columns (numalphaj counts GNC's alphasj).
+    sizes |= {
+        name: int(kwargs[name])
+        for ic in item_types
+        for name in counted_by(ic)
         if kwargs.get(name) is not None
     }
     boundnames = bool(kwargs.get("boundnames", False))

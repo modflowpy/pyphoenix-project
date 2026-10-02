@@ -172,6 +172,7 @@ def _schema_dict_from_columns(
     columns: list[ColumnSpec],
     nested_arm_classes: "dict[str, list[str]] | None" = None,
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
@@ -233,6 +234,15 @@ def _schema_dict_from_columns(
             entry["role"] = "array"
             entry["count"] = shape[0]
             if col.is_index:
+                entry["index"] = True
+        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in dims:
+            # Inline array sized by a package dimension (GNC's cellidsj and
+            # alphasj, by numalphaj): fixed width, so it may be any column.
+            entry["role"] = "counted"
+            entry["count"] = shape[0]
+            if col.is_cellid:
+                entry["cellid"] = True
+            elif col.is_index:
                 entry["index"] = True
         elif col.is_cellid:
             entry["role"] = "cellid"
@@ -402,6 +412,7 @@ def _build_list_item_specs(
     class_name: str,
     used_names: set[str],
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> tuple[list[ItemClassSpec], str, ItemUnionSpec | None]:
     """Build the Item class(es) for a list's elements, wherever the list is
     (any block, repeating or not). Returns (classes, element type, union
@@ -426,7 +437,7 @@ def _build_list_item_specs(
             else []
         )
         specs = _build_arm_specs_from_union(
-            union, used_names, {}, shared_cols, name_hint=list_field.name, arrays=arrays
+            union, used_names, {}, shared_cols, name_hint=list_field.name, arrays=arrays, dims=dims
         )
         alias = f"_{class_name}Item"
         members = [s.class_name for s in specs if s.top_level]
@@ -440,9 +451,10 @@ def _build_list_item_specs(
             [],
             class_name=class_name,
             arrays=arrays,
+            dims=dims,
         )
         return specs, specs[-1].class_name, None
-    schema = _schema_dict_from_columns(filters.list_columns(list_field), arrays=arrays)
+    schema = _schema_dict_from_columns(filters.list_columns(list_field), arrays=arrays, dims=dims)
     used_names.add(class_name)
     spec = ItemClassSpec(class_name=class_name, keyword="", schema=schema)
     return [spec], class_name, None
@@ -457,6 +469,7 @@ def _build_arm_specs_from_union(
     name_hint: str = "",
     top_level: bool = True,
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[ItemClassSpec]:
     """Build one ItemClassSpec per arm of `union` (see _build_arm_spec).
 
@@ -488,6 +501,7 @@ def _build_arm_specs_from_union(
                 name_hint=name_hint,
                 top_level=top_level,
                 arrays=arrays,
+                dims=dims,
             )
         )
     return specs
@@ -504,6 +518,7 @@ def _build_arm_spec(
     top_level: bool = True,
     class_name: str = "",
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[ItemClassSpec]:
     """Build the keyword-led Item class for one union arm, or for a tagged
     list's record item -- each line starts with (or, LAK-style, contains)
@@ -554,13 +569,14 @@ def _build_arm_spec(
                 name_hint=field_name,
                 top_level=False,
                 arrays=arrays,
+                dims=dims,
             )
             nested_union_cache[cache_key] = cached
             specs.extend(cached)
         nested_arm_classes[field_name] = [s.class_name for s in cached]
 
     cols = filters._fields_to_columns(list(shared_cols) + rest)
-    schema = _schema_dict_from_columns(cols, nested_arm_classes, arrays)
+    schema = _schema_dict_from_columns(cols, nested_arm_classes, arrays, dims)
     if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -1076,9 +1092,13 @@ def build_component_spec(
 
     # Array fields can size list columns (auxiliary sizes aux).
     _arrays = frozenset(f.name for _, f in all_fields if isinstance(f, Array))
+    # DIMENSIONS fields can size inline arrays (GNC's numalphaj).
+    _dims = frozenset(f.name for b, f in all_fields if b == "dimensions")
 
     def _add_list_items(lf: ListField, class_name: str) -> str:
-        specs, elem, union = _build_list_item_specs(lf, class_name, _inner_class_names, _arrays)
+        specs, elem, union = _build_list_item_specs(
+            lf, class_name, _inner_class_names, _arrays, _dims
+        )
         item_classes.extend(specs)
         if union is not None:
             item_unions.append(union)
@@ -1221,6 +1241,7 @@ def build_component_spec(
             pascal_name(bp.block_name),
             _inner_class_names,
             _arrays,
+            _dims,
         )
         if not any(spec.schema or spec.keyword for spec in _specs):
             continue

@@ -413,6 +413,29 @@ def test_disu_round_trip():
     np.testing.assert_array_equal(grid.ja, [0, 1, 1, 0])
 
 
+@pytest.mark.parametrize("dims", [None, {"nlay": 1, "nrow": 2, "ncol": 3}])
+def test_gnc_round_trip(dims):
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Gnc
+
+    gnc = Gnc(
+        numgnc=2,
+        numalphaj=2,
+        gncdata=[
+            Gnc.Gncdata((0, 0, 1), (0, 0, 2), ((0, 1, 1), (0, 1, 2)), (0.25, 0.25)),
+            # a zero (dummy) cellid in the file is -1 in python
+            Gnc.Gncdata((0, 1, 1), (0, 1, 2), ((0, 0, 1), (-1, -1, -1)), (0.5, 0.0)),
+        ],
+    )
+    raw = loads(dumps(unstructure_component(gnc)))
+    assert raw["GNCDATA"] == [
+        [1, 1, 2, 1, 1, 3, 1, 2, 2, 1, 2, 3, 0.25, 0.25],
+        [1, 2, 2, 1, 2, 3, 1, 1, 2, 0, 0, 0, 0.5, 0.0],
+    ]
+    assert structure_component(raw, Gnc, dims=dims).gncdata == gnc.gncdata
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 

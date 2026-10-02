@@ -55,6 +55,24 @@ def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
     }
 
 
+def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
+    """An array column counted by a package dimension rather than another
+    column (GNC's cellidsj, by numalphaj): fixed width, read in place."""
+    count = f.metadata.get("count")
+    return bool(count) and count not in attrs.fields_dict(cls)
+
+
+def counted_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
+    """Names of the package dimensions that count an item class's columns."""
+    classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
+    return {
+        f.metadata["count"]
+        for c in classes
+        for f in cast(type[Record], c).fields()
+        if _dim_counted(c, f)
+    }
+
+
 def _has_boundname_field(cls: type) -> bool:
     return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
@@ -101,7 +119,7 @@ def construct_item(item_cls: type, values) -> "Item":
             i
             for i, f in enumerate(fields)
             if f.metadata.get("shape")
-            or f.metadata.get("array")
+            or (f.metadata.get("array") and not _dim_counted(item_cls, f))
             or (
                 (t := _field_type_str(f)) is not None
                 and _nested_union_classes(item_cls, t) is not None
@@ -142,20 +160,26 @@ def construct_item(item_cls: type, values) -> "Item":
     return cast("Item", item_cls(*before, tuple_vals))
 
 
-def _n_fixed_tokens(cls: type) -> int:
-    """Fixed (non-cellid/aux/boundname, non-optional) token slots -- used to
-    infer a variable-width cellid's element count from total token length."""
+def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[int, int]:
+    """Fixed (non-cellid/aux/boundname, non-optional) token slots, and the
+    number of cellids -- used to infer a variable-width cellid's element
+    count from total token length."""
     cls = cast(type[Record], cls)
     n = 1 if cls.keyword() else 0
+    ncellids = 0
     for f in cls.fields():
-        if f.metadata.get("cellid") or f.metadata.get("shape") or f.name == "boundname":
+        count = (sizes or {}).get(f.metadata["count"], 0) if _dim_counted(cls, f) else 1
+        if f.metadata.get("cellid"):
+            ncellids += count
+            continue
+        if f.metadata.get("shape") or f.name == "boundname":
             continue
         if f.metadata.get("optional"):
             continue
-        n += 1 + (1 if f.metadata.get("_keyword") else 0)
+        n += count + (1 if f.metadata.get("_keyword") else 0)
         if f.metadata.get("direction"):
             n += 1
-    return n
+    return n, ncellids
 
 
 def ncelldim_from_dims(dims: "dict | None") -> "int | None":
@@ -196,10 +220,11 @@ def infer_ncelldim(
     first = next((r for r in items if r), None)
     if not first:
         return 0
-    n_fixed = _n_fixed_tokens(item_cls)
+    n_fixed, ncellids = _n_fixed_tokens(item_cls, sizes)
     last = first[-1]
     has_bn = isinstance(last, str) and not _token_fits(last, float)
-    return max(1, len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0))
+    n_cell_tokens = len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0)
+    return max(1, n_cell_tokens // max(1, ncellids))
 
 
 def _token_fits(token: Any, kind: type) -> bool:
@@ -244,7 +269,9 @@ class Item(Record):
                 val = n
             if val is None:
                 continue
-            if f.metadata.get("cellid"):
+            if f.metadata.get("cellid") and f.metadata.get("array"):
+                row.extend(int(c) + 1 for cellid in val for c in cellid)
+            elif f.metadata.get("cellid"):
                 row.extend(int(c) + 1 for c in val)
             elif f.metadata.get("array") and f.metadata.get("index"):
                 row.extend(int(v) + 1 for v in val)
@@ -313,12 +340,27 @@ class Item(Record):
         tok_idx = 0
         n = len(tokens)
 
+        def cellid() -> tuple[int, ...]:
+            nonlocal tok_idx
+            tok_idx += ncelldim
+            return tuple(int(tokens[tok_idx - ncelldim + j]) - 1 for j in range(ncelldim))
+
         def consume(f: attrs.Attribute) -> None:
             nonlocal tok_idx, keyword_skipped
+            if _dim_counted(cls, f):
+                count = (sizes or {})[f.metadata["count"]]
+                if f.metadata.get("cellid"):
+                    kwargs[f.name] = tuple(cellid() for _ in range(count))
+                    return
+                vals = tokens[tok_idx : tok_idx + count]
+                tok_idx += count
+                if f.metadata.get("index"):
+                    kwargs[f.name] = tuple(int(float(str(v))) - 1 for v in vals)
+                else:
+                    kwargs[f.name] = tuple(float(v) for v in vals)
+                return
             if f.metadata.get("cellid"):
-                cellid = tuple(int(tokens[tok_idx + j]) - 1 for j in range(ncelldim))
-                kwargs[f.name] = cellid
-                tok_idx += ncelldim
+                kwargs[f.name] = cellid()
                 return
             if f.metadata.get("index"):
                 kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
@@ -351,8 +393,10 @@ class Item(Record):
             and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
         ]
         main_fields = [f for f in main_fields if f not in nested_union_fields]
-        array_fields = [f for f in main_fields if f.metadata.get("array")]
-        main_fields = [f for f in main_fields if not f.metadata.get("array")]
+        array_fields = [
+            f for f in main_fields if f.metadata.get("array") and not _dim_counted(cls, f)
+        ]
+        main_fields = [f for f in main_fields if f not in array_fields]
         required_fields = [f for f in main_fields if not f.metadata.get("optional")]
         optional_fields = [f for f in main_fields if f.metadata.get("optional")]
 
