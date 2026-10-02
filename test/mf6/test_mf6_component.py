@@ -2028,3 +2028,23 @@ def test_count_column_filled_and_checked():
     assert cell.ncvert == 3
     with pytest.raises(ValueError, match="ncvert"):
         Disv.Cell2d(icell2d=0, xc=0.0, yc=0.0, ncvert=4, icvert=(0, 1, 2))
+
+
+def test_count_column_follows_array_reassignment():
+    from flopy4.mf6.codec import dumps
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+
+    cell = Disv.Cell2d(icell2d=0, xc=0.0, yc=0.0, icvert=(0, 1, 2))
+    cell.icvert = (0, 1, 2, 3)
+    assert cell.ncvert == 4
+    disv = Disv(
+        nlay=1,
+        ncpl=1,
+        nvert=4,
+        top=1.0,
+        botm=[0.0],
+        idomain=1,
+        vertices=[(0, 0.0, 0.0), (1, 1.0, 0.0), (2, 1.0, 1.0), (3, 0.0, 1.0)],
+        cell2d=[cell],
+    )
+    assert "1 0.0 0.0 4 1 2 3 4" in dumps(unstructure_component(disv))

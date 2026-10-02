@@ -19,6 +19,18 @@ from flopy4.spec import fields_dict as flopy_fields_dict
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
 
+def _recount(count: str):
+    """An `on_setattr` hook setting the count column `count` to the length
+    of the array being assigned."""
+
+    def hook(instance, attribute, value):
+        if value is not None:
+            object.__setattr__(instance, count, len(value))
+        return value
+
+    return hook
+
+
 def field(
     default=NOTHING,
     validator=None,
@@ -94,6 +106,11 @@ def field(
         metadata["array"] = True
     if count:
         metadata["count"] = count
+        # keep the count column in step when the array is reassigned
+        hooks = [attrs.setters.convert, _recount(count)]
+        if on_setattr is not None:
+            hooks.append(on_setattr)
+        on_setattr = attrs.setters.pipe(*hooks)
     if signed:
         metadata["signed"] = True
         converter = converter or to_signed_indexes
