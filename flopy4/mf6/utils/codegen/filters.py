@@ -172,13 +172,6 @@ def is_file_record(f: FieldV3) -> bool:
     return isinstance(f, Record) and any(isinstance(c, File) for c in f.fields.values())
 
 
-def is_bare_file(f: FieldV3) -> bool:
-    """True for a File field with no wrapping Record (no fixed keyword token
-    precedes it -- just ``<path>`` directly, e.g. prt-fmi's packagedata File
-    fields). See is_file_record for the wrapped-in-a-Record case."""
-    return isinstance(f, File)
-
-
 def file_child(f: Record) -> File | None:
     """Return the File child of a file record, or None."""
     return next((c for c in f.fields.values() if isinstance(c, File)), None)
@@ -224,7 +217,6 @@ def is_generatable(f: FieldV3) -> bool:
         or is_readarray(f)
         or is_keyword_array(f)
         or is_file_record(f)
-        or is_bare_file(f)
         or is_aux_list_field(f)
         or is_file_list(f)
     )
@@ -376,7 +368,7 @@ def py_type(f: FieldV3, block_name: str) -> str:
         return "Optional[NDArray[np.str_]]"
     if is_file_list(f):
         return "Optional[list[Path]]"
-    if is_file_record(f) or is_bare_file(f):
+    if is_file_record(f):
         base = "Path"
     elif is_keyword_array(f):
         base = "NDArray[np.bool_]"
@@ -500,12 +492,6 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         if len(keywords) != 1:
             raise ValueError(f"file record {f.name!r}: expected one keyword, got {keywords}")
         kw["keyword"] = keywords[0].lower()
-    elif is_bare_file(f):
-        kw["direction"] = f.direction
-        # A tagged bare File (e.g. prt-fmi's "GWFHEAD FILEIN <file>") is its
-        # own trigger keyword.
-        if f.tagged:
-            kw["keyword"] = f.name.lower()
     if longname := getattr(f, "longname", None):
         # DFN longname text escapes underscores for LaTeX rendering (e.g.
         # AUTO\_FLOW\_REDUCE); harmless in the .dfn but `\_` isn't a valid
@@ -596,7 +582,7 @@ def field_call(f: FieldV3, block_name: str) -> str:
     type_ignore = ""
     if (is_readarray(f) and default != "None") or (_str_default and _numeric_field):
         type_ignore = "  # type: ignore[assignment]"
-    fn = "path" if (is_file_record(f) or is_bare_file(f)) else "field"
+    fn = "path" if is_file_record(f) else "field"
     lines = [f"{fn}(", f"        default={default},"]
     if conv := field_converter(f, block_name):
         lines.append(f"        converter={conv},")
@@ -658,7 +644,8 @@ def item_class(
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
     real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
-    ``prefix=``/``tagged=``, via ``field()``) -- the class itself is the schema.
+    ``tagged=``, via ``field()``; ``direction=``/``keyword=`` for a
+    ``role="file"`` column, via ``path()``) -- the class itself is the schema.
 
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.
@@ -717,21 +704,6 @@ def item_class(
             "sized",
         )
 
-    def _prefix_direction(col: dict) -> str:
-        """MF6 file direction implied by a row column's prefix tokens."""
-        return "out" if "FILEOUT" in (col.get("prefix") or "").upper().split() else "in"
-
-    def _file_keyword(col: dict) -> str | None:
-        """A row-level file column's trigger keyword preceding FILEIN/FILEOUT
-        (e.g. SSM fileinput's "spc6", LAK tables' "tab6"), emitted as
-        path(keyword=...) -- the same _keyword convention as a block-level
-        file record (see field_call) and a Record class's own _keyword. The
-        FILEIN/FILEOUT token is handled separately via direction=."""
-        parts = [p for p in (col.get("prefix") or "").split() if p not in ("FILEIN", "FILEOUT")]
-        if len(parts) > 1:
-            raise ValueError(f"file column {col['name']!r}: expected one keyword, got {parts}")
-        return parts[0].lower() if parts else None
-
     def _field_meta(col: dict) -> dict:
         role = col["role"]
         meta: dict = {}
@@ -774,24 +746,26 @@ def item_class(
         if col["role"] == "sized":
             shape = _dq(col["size_of"])
             return f"        {col['name']}: tuple = field(default=(), shape=({shape},))"
-        # File-reference columns (a fixed MF6 token or two before a filename,
-        # e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields built via the
-        # same path() convention used for Package-level file fields, not the
-        # generic dtype-based Union[float, str] fallback below.
-        if col.get("prefix"):
-            direction = _prefix_direction(col)
-            file_kw = _file_keyword(col)
-            prefix_kw = f", keyword={_dq(file_kw)}" if file_kw else ""
+        # File columns (e.g. LAK tables' "TAB6 FILEIN <file>") are Path fields
+        # built via the same path() convention used for Package-level file
+        # fields, not the generic dtype-based Union[float, str] fallback below.
+        # A trigger keyword before FILEIN/FILEOUT (e.g. "tab6") is emitted as
+        # path(keyword=...) -- the same _keyword convention as a block-level
+        # file record (see field_call) and a Record class's own _keyword.
+        if col["role"] == "file":
+            direction = col["direction"]
+            file_kw = col.get("keyword")
+            keyword_kw = f", keyword={_dq(file_kw)}" if file_kw else ""
             if optional:
                 return (
                     f"        {col['name']}: Optional[Path] = path(\n"
                     f"            default=None, converter={converter('Optional[Path]')}, "
-                    f'direction="{direction}"{prefix_kw}\n'
+                    f'direction="{direction}"{keyword_kw}\n'
                     f"        )"
                 )
             return (
                 f"        {col['name']}: Path = path(converter=Path, "
-                f'direction="{direction}"{prefix_kw})'
+                f'direction="{direction}"{keyword_kw})'
             )
         py_type = _py_type(col)
         meta = _field_meta(col)

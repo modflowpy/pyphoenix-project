@@ -22,6 +22,7 @@ from modflow_devtools.dfns.schema import (
     Array,
     Component,
     Double,
+    File,
     Integer,
     Record,
     String,
@@ -170,10 +171,11 @@ def _schema_dict_from_columns(
 ) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
-    is_prefix columns (non-optional tagged keywords, e.g. FILEIN, SPC6) are
-    accumulated and attached as a 'prefix' key on the next value column so the
-    codec can emit the fixed token(s) before the value. is_row_keyword columns
-    (optional keywords, e.g. MIXED) get role 'inline_keyword'. A column whose
+    File columns get role 'file' with the DFN's direction. An is_prefix column
+    (a non-optional tagged keyword, e.g. SSM's SPC6 in "SPC6 FILEIN <file>")
+    only ever precedes a File column and becomes that column's 'keyword'.
+    is_row_keyword columns (optional keywords, e.g. MIXED) get role
+    'inline_keyword'. A column whose
     shape names one of the component's ``arrays`` (aux, shaped by
     ``auxiliary``) gets role 'sized': as many values as that array has.
 
@@ -194,7 +196,20 @@ def _schema_dict_from_columns(
         if f.optional:
             entry["optional"] = True
         shape = getattr(f, "shape", None) or []
-        if isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
+        if isinstance(f, File):
+            entry["role"] = "file"
+            entry["direction"] = f.direction
+            if len(pending_prefix) > 1:
+                raise ValueError(
+                    f"file column {col.name!r}: expected one keyword, got {pending_prefix}"
+                )
+            if pending_prefix:
+                entry["keyword"] = pending_prefix.pop().lower()
+        elif pending_prefix:
+            raise ValueError(
+                f"fixed keyword(s) {pending_prefix} before non-file column {col.name!r}"
+            )
+        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
             entry["role"] = "sized"
             entry["size_of"] = shape[0]
         elif col.is_cellid:
@@ -228,9 +243,6 @@ def _schema_dict_from_columns(
         if getattr(f, "time_series", False):
             entry["time_series"] = True
             entry["dtype"] = "np.object_"
-        if pending_prefix:
-            entry["prefix"] = " ".join(pending_prefix)
-            pending_prefix = []
         schema.append(entry)
     return schema
 
@@ -241,7 +253,7 @@ def _dfn_type_str(f: FieldV3) -> str:
         return "integer"
     if isinstance(f, Double):
         return "double"
-    if isinstance(f, String):
+    if isinstance(f, (String, File)):
         return "string"
     if isinstance(f, KeywordField):
         return "keyword"
@@ -481,7 +493,7 @@ def _build_arm_spec(
         # KeywordField anywhere; everything else (including any leading
         # index) is a real column. A second required keyword later (e.g.
         # SFR's cross_sectionrecord: cross_section(kw), tab6(kw), ...) is
-        # left in `rest` and becomes a per-field prefix=, not _keyword.
+        # left in `rest` and becomes its file column's keyword=, not _keyword.
         arm_fields = list(arm.fields.items())
         kw_idx = next(
             (i for i, (_, fld) in enumerate(arm_fields) if isinstance(fld, KeywordField)), None
@@ -787,9 +799,7 @@ def _generated_imports(
         )
         for block_name, f in generatable_fields
     )
-    has_file_records = any(
-        filters.is_file_record(f) or filters.is_bare_file(f) for _, f in generatable_fields
-    )
+    has_file_records = any(filters.is_file_record(f) for _, f in generatable_fields)
     has_file_lists = any(filters.is_file_list(f) for _, f in generatable_fields)
     has_optional = (
         any(f.optional and not isinstance(f, KeywordField) for _, f in generatable_fields)
@@ -806,11 +816,11 @@ def _generated_imports(
     has_union = any(
         col.get("time_series") or col.get("dtype") == "np.object_"
         for col in _all_schema_cols
-        if col.get("role") not in ("keystring_value", "boundname") and not col.get("prefix")
+        if col.get("role") not in ("keystring_value", "boundname", "file")
     )
-    # prefix= row columns (file references, e.g. LAK tables' TAB6 FILEIN)
-    # become Path fields via path() in item_class(), not Union[float, str].
-    _row_path_cols = [col for col in _all_schema_cols if col.get("prefix")]
+    # File row columns (e.g. LAK tables' TAB6 FILEIN <file>) become Path
+    # fields via path() in item_class(), not Union[float, str].
+    _row_path_cols = [col for col in _all_schema_cols if col.get("role") == "file"]
     has_row_path_cols = bool(_row_path_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
     # field(), same as any other generated field -- checked separately from
@@ -820,7 +830,7 @@ def _generated_imports(
         col.get("role") in ("cellid", "feature_id", "inline_keyword", "sized")
         or col.get("time_series")
         for col in _all_schema_cols
-        if not col.get("prefix")
+        if col.get("role") != "file"
     )
 
     stdlib: list[str] = []
