@@ -2048,3 +2048,49 @@ def test_count_column_follows_array_reassignment():
         cell2d=[cell],
     )
     assert "1 0.0 0.0 4 1 2 3 4" in dumps(unstructure_component(disv))
+
+
+def test_disv_array_inputs_and_views():
+    iv = np.arange(3)
+    xv = np.array([0.0, 1.0, 0.0])
+    yv = np.array([0.0, 0.0, 1.0])
+    records = [Disv.Cell2dRecord(0, 0.3, 0.3, 3, (0, 1, 2))]
+    dis = Disv(
+        nlay=1,
+        ncpl=1,
+        nvert=3,
+        top=1.0,
+        botm=[0.0],
+        idomain=1,
+        iv=iv,
+        xv=xv,
+        yv=yv,
+        cell2ddata=records,
+    )
+    assert Disv.Cell2dRecord is Disv.Cell2d
+    np.testing.assert_array_equal(dis.iv, iv)
+    np.testing.assert_array_equal(dis.xv, xv)
+    np.testing.assert_array_equal(dis.yv, yv)
+    assert dis.cell2ddata is dis.cell2d
+    assert dis.cell2d[0].icvert == (0, 1, 2)
+    same = Disv(
+        nlay=1,
+        ncpl=1,
+        nvert=3,
+        top=1.0,
+        botm=[0.0],
+        idomain=1,
+        vertices=list(zip(iv, xv, yv)),
+        cell2d=records,
+    )
+    assert dis == same
+    assert Disv(nlay=1, ncpl=1).iv is None
+
+
+def test_disv_array_inputs_conflict():
+    with pytest.raises(ValueError, match="both"):
+        Disv(vertices=[(0, 0.0, 0.0)], xv=[0.0], yv=[0.0])
+    with pytest.raises(ValueError, match="both"):
+        Disv(cell2d=[], cell2ddata=[])
+    with pytest.raises(ValueError, match="xv and yv"):
+        Disv(xv=[0.0])

@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+from abc import ABCMeta
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from flopy.discretization import VertexGrid as LegacyVertexGrid
@@ -11,9 +12,66 @@ if TYPE_CHECKING:
 _LENGTH_UNITS = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
 
 
-class DisvMethods:
+class _Cell2dRecord:
+    """`Disv.Cell2dRecord`, the earlier name of `Disv.Cell2d`."""
+
+    def __get__(self, instance: Any, owner: type) -> type:
+        return owner.Cell2d  # type: ignore[attr-defined]
+
+
+class _LegacyInputs(ABCMeta):
+    """Accept the earlier array-style constructor inputs `iv`, `xv`, `yv` and
+    `cell2ddata` (0-based) and convert them into `vertices` and `cell2d`,
+    which are what `Disv` stores."""
+
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
+        iv, xv, yv, cell2ddata = (kwargs.pop(k, None) for k in ("iv", "xv", "yv", "cell2ddata"))
+        if xv is not None or yv is not None or iv is not None:
+            if xv is None or yv is None:
+                raise ValueError("xv and yv are both required to build vertices from arrays")
+            if kwargs.get("vertices") is not None:
+                raise ValueError("give vertices, or iv/xv/yv, not both")
+            xv, yv = np.asarray(xv, dtype=float), np.asarray(yv, dtype=float)
+            iv = np.arange(len(xv)) if iv is None else np.asarray(iv)
+            kwargs["vertices"] = [(int(i), float(x), float(y)) for i, x, y in zip(iv, xv, yv)]
+        if cell2ddata is not None:
+            if kwargs.get("cell2d") is not None:
+                raise ValueError("give cell2d, or cell2ddata, not both")
+            kwargs["cell2d"] = list(cell2ddata)
+        return super().__call__(*args, **kwargs)
+
+
+class DisvMethods(metaclass=_LegacyInputs):
     """Methods for the generated vertex discretizations (`Disv` in GWF, GWT,
     GWE and PRT); fields come from the DFN."""
+
+    Cell2dRecord = _Cell2dRecord()
+
+    @property
+    def iv(self: "Disv") -> "np.ndarray | None":  # type: ignore[misc]
+        """Vertex numbers (0-based), a view of `vertices`."""
+        if self.vertices is None:
+            return None
+        return np.array([v.iv for v in self.vertices], dtype=np.int64)
+
+    @property
+    def xv(self: "Disv") -> "np.ndarray | None":  # type: ignore[misc]
+        """Vertex x coordinates, a view of `vertices`."""
+        if self.vertices is None:
+            return None
+        return np.array([v.xv for v in self.vertices], dtype=np.float64)
+
+    @property
+    def yv(self: "Disv") -> "np.ndarray | None":  # type: ignore[misc]
+        """Vertex y coordinates, a view of `vertices`."""
+        if self.vertices is None:
+            return None
+        return np.array([v.yv for v in self.vertices], dtype=np.float64)
+
+    @property
+    def cell2ddata(self: "Disv") -> "list | None":  # type: ignore[misc]
+        """The cell records, an alias of `cell2d`."""
+        return self.cell2d
 
     def grid_vertices(self: "Disv") -> list:  # type: ignore[misc]
         """`vertices` in flopy's grid format, `[[iv, xv, yv], ...]`."""
