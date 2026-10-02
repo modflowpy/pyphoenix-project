@@ -64,9 +64,7 @@ class Package(Component, ABC):
            DimensionResolverMixin's chain and _set_child_parents(),
            which walks every attrs field) reads them -- so chaining
            before they're finalized breaks griddata broadcasting and
-           dims resolution. Matches the ordering DisBase/Dis already use
-           for their own __attrs_post_init__ chaining (super() called
-           last, after their own field setup).
+           dims resolution.
         """
         import attrs as _attrs
 

@@ -505,7 +505,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                     target_cls = matches[0]
                 else:
                     # Fall back to the ftype registry for abstract-typed
-                    # fields (Model/Exchange/Solution/DisBase), where the
+                    # fields (Model/Exchange/Solution), where the
                     # field's declared type can't be compared to a token
                     # directly.
                     resolved_cls = get_ftype(token, prefix=model_prefix)

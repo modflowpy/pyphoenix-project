@@ -393,9 +393,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     @classmethod
     def __attrs_init_subclass__(cls):
         # Only register classes that declare their own `dfn_name`.
-        # Abstract bases (Package, Context, Model, Exchange, Solution,
-        # DisBase, ...) have no `dfn_name` of their own and are silently
-        # skipped.
+        # Abstract bases (Package, Context, Model, Exchange, Solution, ...)
+        # have no `dfn_name` of their own and are silently skipped.
         dfn_name = cls.__dict__.get("dfn_name")
         if dfn_name is not None:
             FNAMES[dfn_name] = cls
