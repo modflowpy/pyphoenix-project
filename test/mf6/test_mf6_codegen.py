@@ -198,11 +198,11 @@ class TestFilters:
             (Integer(name="x", optional=True), "options", "Optional[int]"),
             (Double(name="x"), "options", "float"),
             (String(name="x"), "options", "str"),
-            (Array(name="x", dtype="double", shape=["nodes"]), "options", "NDArray[np.float64]"),
+            (Array(name="x", dtype="double", shape=["nodes"]), "options", "FloatArrayLike"),
             (
                 Array(name="x", dtype="integer", shape=["nodes"], optional=True),
                 "options",
-                "Optional[NDArray[np.int64]]",
+                "Optional[IntArrayLike]",
             ),
             (
                 Array(name="x", dtype="keyword", shape=["nper"], optional=True),

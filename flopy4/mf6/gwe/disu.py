@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-import numpy as np
-from numpy.typing import NDArray
 
 from flopy4.dimensions import DerivedDim
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
@@ -141,37 +139,37 @@ class Disu(GridDimsMethods, Package):
         optional=True,
         longname="idomain existence array",
     )
-    iac: NDArray[np.int64] = field(
+    iac: IntArrayLike = field(
         default=None,
         block="connectiondata",
         shape=("nodes",),
         longname="number of cell connections",
     )
-    ja: NDArray[np.int64] = field(
+    ja: IntArrayLike = field(
         default=None,
         block="connectiondata",
         shape=("nja",),
         longname="grid connectivity",
     )
-    ihc: NDArray[np.int64] = field(
+    ihc: IntArrayLike = field(
         default=None,
         block="connectiondata",
         shape=("nja",),
         longname="connection type",
     )
-    cl12: NDArray[np.float64] = field(
+    cl12: FloatArrayLike = field(
         default=None,
         block="connectiondata",
         shape=("nja",),
         longname="connection lengths",
     )
-    hwva: NDArray[np.float64] = field(
+    hwva: FloatArrayLike = field(
         default=None,
         block="connectiondata",
         shape=("nja",),
         longname="connection lengths",
     )
-    angldegx: Optional[NDArray[np.float64]] = field(
+    angldegx: Optional[FloatArrayLike] = field(
         default=None,
         block="connectiondata",
         shape=("nja",),

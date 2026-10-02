@@ -48,12 +48,6 @@ def field(
     array: bool = False,
     count: str | None = None,
 ):
-    """Define a field: always a plain ``attrs.field()``.
-
-    ``count``: for an ``array`` Item column, the earlier column of the same
-    row that counts its values (DISV cell2d's ``icvert``, counted by
-    ``ncvert``).
-    """
     metadata = metadata or {}
     if block:
         metadata["block"] = block
@@ -62,8 +56,6 @@ def field(
     if shape:
         metadata["shape"] = shape
     if layered is not None:
-        # Explicit False must round-trip: some consumers (netcdf.py) default
-        # a *missing* key to True, so omitting a deliberate False would flip it.
         metadata["layered"] = layered
     if optional:
         metadata["optional"] = True
@@ -124,15 +116,6 @@ def path(
     optional: bool = False,
     keyword: str | None = None,
 ):
-    """Define a path field: always a plain ``attrs.field()``.
-
-    ``keyword``: the file record's trigger keyword, stored as ``_keyword``
-    metadata (lowercase, same convention as a Record class's own
-    ``_keyword``) -- the token before FILEIN/FILEOUT+filename, e.g. ``ts6``
-    in ``TS6 FILEIN <file>`` (block level, where it's also the row's key on
-    ingress -- not derivable from the py name, ts_filerecord → ts_file) or
-    ``tab6`` in a LAK tables row (read by Item.to_tokens()/from_tokens()).
-    """
     metadata = metadata or {}
     if keyword:
         metadata["_keyword"] = keyword.lower()
@@ -157,10 +140,6 @@ def path(
 
 
 def subpackage(file_field: str):
-    """Define a subpackage field: a child component whose input file the
-    parent names in its `file_field` path field (e.g. DIS's `ncf` child,
-    named by `ncf_file`). On write, the path field is set from the child's
-    filename unless already given."""
     return attrs.field(default=None, metadata={"file_field": file_field})
 
 
@@ -202,35 +181,6 @@ def fields_dict(cls) -> dict[str, Attribute]:
     return {k: v for k, v in fields.items() if "block" in v.metadata}
 
 
-def _ndarray_field_type(t) -> FieldType | None:
-    """Map a bare ``NDArray[dtype]`` annotation to its DFN field type, if possible.
-
-    Hand-written DIS/DISV griddata fields (``delr``, ``top``, ``idomain``, ...)
-    are typed with plain ``NDArray[np.int64]``/``NDArray[np.float64]`` rather
-    than ``IntArrayLike``/``FloatArrayLike`` (those exist for fields that may
-    also be dask-backed; DIS/DISV griddata never is). Returns ``None`` for
-    anything that isn't a parameterized ``numpy.ndarray`` annotation.
-    """
-    if get_origin(t) is not np.ndarray:
-        return None
-    args = get_args(t)
-    if len(args) < 2:
-        return None
-    dtype_args = get_args(args[1])
-    if not dtype_args or not isinstance(dtype_args[0], type):
-        return None
-    scalar = dtype_args[0]
-    if issubclass(scalar, np.bool_):
-        return "keyword"
-    if issubclass(scalar, np.integer):
-        return "integer"
-    if issubclass(scalar, np.floating):
-        return "double"
-    if issubclass(scalar, (np.str_, np.object_)):
-        return "string"
-    return None
-
-
 def repeating_array_key_type(field_type) -> type | None:
     """For ``Optional[dict[K, IntArrayLike | FloatArrayLike]]``, return
     ``K`` -- the header type of a block that repeats (e.g. utl-tas's "time"
@@ -251,8 +201,6 @@ def repeating_array_key_type(field_type) -> type | None:
 
 
 def to_field_type(t: type) -> FieldType:
-    if (result := _ndarray_field_type(t)) is not None:
-        return result
     match t:
         case builtins.str | np.str_:
             return "string"
@@ -269,15 +217,11 @@ def to_field_type(t: type) -> FieldType:
         case t if t is FloatArrayLike:
             return "double"
         case t if get_origin(t) is dict:
-            # A time-array-series field (e.g. utl-tas.tas_array), typed
-            # dict[float, IntArrayLike | FloatArrayLike] -- the dtype lives
-            # in the dict's value type, not the field's own top-level type.
+            # e.g. a time-array-series field
             return to_field_type(get_args(t)[-1])
         case t if get_origin(t) in (Union, types.UnionType):
             args = get_args(t)
             if args[-1] is types.NoneType:
-                if (result := _ndarray_field_type(args[0])) is not None:
-                    return result
                 match args[0]:
                     case builtins.str | np.str_:
                         return "string"

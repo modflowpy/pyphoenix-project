@@ -814,21 +814,13 @@ def _generated_imports(
     has_field_call: bool = False,
     has_path_call: bool = False,
     item_classes: "list[ItemClassSpec] | None" = None,
-    repeating_blocks: "Mapping[str, str] | None" = None,
     has_derived_dims: bool = False,
     subpackages: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
-    repeating_blocks = repeating_blocks or {}
+    # numeric arrays → Int/FloatArrayLike, not NDArray[np.xxx]
     has_array = any(
-        block_name != "griddata"  # griddata fields → Int/FloatArrayLike, not NDArray[np.xxx]
-        and (
-            filters.is_keyword_array(f)
-            or filters.is_aux_list_field(f)
-            # repeating block's own array → dict[header, ...], not NDArray
-            or (filters.is_readarray(f) and block_name not in repeating_blocks)
-        )
-        for block_name, f in generatable_fields
+        filters.is_keyword_array(f) or filters.is_aux_list_field(f) for _, f in generatable_fields
     )
     has_file_records = any(filters.is_file_record(f) for _, f in generatable_fields)
     has_file_lists = any(filters.is_file_list(f) for _, f in generatable_fields)
@@ -1343,7 +1335,11 @@ def build_component_spec(
         bn == "griddata" and filters.is_readarray(f) for bn, f in generatable_field_objects
     )
     _arraylike_types = (
-        {getattr(f, "dtype", None) for bn, f in generatable_field_objects if bn == "griddata"}
+        {
+            f.dtype
+            for bn, f in generatable_field_objects
+            if filters.is_readarray(f) and bn not in _repeating_blocks
+        }
         | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
         | {getattr(f, "dtype", "double") for f in _repeating_array_fields}
     )
@@ -1366,7 +1362,6 @@ def build_component_spec(
         has_path_call=_has_path_call,
         has_readarray_period=bool(_readarray_period_fields),
         item_classes=item_classes,
-        repeating_blocks=_repeating_blocks,
         has_derived_dims=bool(_derived_dims),
         subpackages=subpackages,
     )

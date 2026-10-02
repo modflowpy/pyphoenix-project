@@ -145,13 +145,6 @@ def has_dimensions_block(component: Component) -> bool:
 # griddata shapes (e.g. dis botm's ['ncol', 'nrow', 'nlay']) are flattened
 # by canonical_shape.
 
-ARRAY_NUMPY_DTYPES: dict[str, str] = {
-    "double": "np.float64",
-    "integer": "np.int64",
-    "string": "np.object_",
-    "keyword": "np.bool_",
-}
-
 
 def is_scalar(f: FieldV3) -> bool:
     return isinstance(f, (KeywordField, Integer, Double, String))
@@ -430,11 +423,7 @@ def py_type(f: FieldV3, block_name: str) -> str:
         base = "NDArray[np.bool_]"
     elif is_readarray(f):
         assert isinstance(f, Array)
-        if block_name == "griddata":
-            base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
-        else:
-            dtype = ARRAY_NUMPY_DTYPES.get(f.dtype, "np.object_")
-            base = f"NDArray[{dtype}]"
+        base = "IntArrayLike" if f.dtype == "integer" else "FloatArrayLike"
     elif is_dimensions_scalar(f, block_name):
         # dimensions fields are computed (init=False) and always nullable
         base = _SCALAR_PY_TYPES.get(type(f), "Any")
