@@ -2,9 +2,10 @@
 
 from typing import Optional
 
+import pytest
 from attrs import define, field
 
-from flopy4.dimensions import DimensionResolverMixin
+from flopy4.dimensions import DerivedDim, DimensionResolverMixin, eval_dim_expr
 
 
 @define
@@ -235,3 +236,43 @@ def test_get_all_dimensions_none_fields():
 
     dims = container.resolve_dims()
     assert dims == {}
+
+
+@pytest.mark.parametrize(
+    "expr,expected",
+    [
+        ("3", 3),
+        ("nrow * ncol", 200),
+        ("nlay * nrow * ncol", 600),
+        ("(nja - nodes) / 2", 3),
+    ],
+)
+def test_eval_dim_expr(expr, expected):
+    dims = {"nlay": 3, "nrow": 10, "ncol": 20, "nja": 10, "nodes": 4}
+    assert eval_dim_expr(expr, dims.get) == expected
+
+
+def test_eval_dim_expr_none_operand():
+    assert eval_dim_expr("nrow * ncol", {"nrow": 10}.get) is None
+
+
+@pytest.mark.parametrize(
+    "expr", ["sum(packagedata.nlakeconn)", "len(auxiliary)", "nrow ** 2", "1.5", "nrow *"]
+)
+def test_eval_dim_expr_rejects(expr):
+    with pytest.raises(ValueError):
+        eval_dim_expr(expr, {}.get)
+
+
+def test_derived_dim():
+    @define
+    class Grid:
+        nrow: Optional[int] = None
+        ncol: Optional[int] = None
+        ncpl = DerivedDim("nrow * ncol")
+
+    assert Grid().ncpl is None
+    grid = Grid(nrow=2, ncol=3)
+    assert grid.ncpl == 6
+    with pytest.raises(AttributeError, match="derived"):
+        grid.ncpl = 7

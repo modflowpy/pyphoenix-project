@@ -152,6 +152,8 @@ class ComponentSpec:
     item_classes: list[ItemClassSpec] = dc_field(default_factory=list)
     item_unions: list[ItemUnionSpec] = dc_field(default_factory=list)
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
+    # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
+    derived_dims: dict[str, str] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -790,6 +792,7 @@ def _generated_imports(
     has_path_call: bool = False,
     item_classes: "list[ItemClassSpec] | None" = None,
     repeating_blocks: "Mapping[str, str] | None" = None,
+    has_derived_dims: bool = False,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
     repeating_blocks = repeating_blocks or {}
@@ -863,6 +866,8 @@ def _generated_imports(
     for mixin in mixins or []:
         module, name = mixin.split(":")
         flopy4.append(f"from {module} import {name}")
+    if has_derived_dims:
+        flopy4.append("from flopy4.dimensions import DerivedDim")
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
@@ -893,9 +898,27 @@ _SLN_PREFIX = "sln"
 # flopy API methods (factories, conversions to and from flopy types) for
 # generated classes, as "module:Class" method-only mixins. Mixins declare no
 # fields; those come from the DFN only.
+_GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
 MIXINS: dict[str, list[str]] = {
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
+    # Grid packages provide the model's dimensions. Which components do
+    # can't be told from the DFN (maxbound and friends are model-scoped too).
+    "gwf-dis": _GRID_DIMS,
+    "gwf-disv": _GRID_DIMS,
+    "gwf-disu": _GRID_DIMS,
+    "gwt-dis": _GRID_DIMS,
+    "gwt-disv": _GRID_DIMS,
+    "gwt-disu": _GRID_DIMS,
+    "gwe-dis": _GRID_DIMS,
+    "gwe-disv": _GRID_DIMS,
+    "gwe-disu": _GRID_DIMS,
+    "prt-dis": _GRID_DIMS,
+    "prt-disv": _GRID_DIMS,
+    "chf-disv1d": _GRID_DIMS,
+    "olf-dis2d": _GRID_DIMS,
+    "olf-disv1d": _GRID_DIMS,
+    "olf-disv2d": _GRID_DIMS,
 }
 
 
@@ -926,7 +949,11 @@ def build_component_spec(
     developmode: bool = False,
 ) -> ComponentSpec:
     """Build all template context for a DFN component."""
-    all_fields = filters.flat_fields(component, developmode=developmode)
+    derived_dims = filters.derived_dims(component)
+    all_fields = [
+        (block_name, filters.canonical_shape(f, derived_dims))
+        for block_name, f in filters.flat_fields(component, developmode=developmode)
+    ]
 
     # Block names where Block.repeats is True (Block.header is not None),
     # mapped to their header field's Python key type (e.g. "float" for utl-tas's
@@ -1241,6 +1268,8 @@ def build_component_spec(
             _deduped.append(_fs)
     field_specs = _deduped
 
+    _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
+
     base = _base_class(component)
     mixins = MIXINS.get(component.name, [])
     multi = bool(component.multi) if hasattr(component, "multi") else False
@@ -1275,6 +1304,7 @@ def build_component_spec(
         has_readarray_period=bool(_readarray_period_fields),
         item_classes=item_classes,
         repeating_blocks=_repeating_blocks,
+        has_derived_dims=bool(_derived_dims),
     )
 
     computed_field_specs = (
@@ -1298,6 +1328,7 @@ def build_component_spec(
         item_classes=item_classes,
         item_unions=item_unions,
         computed_fields=computed_field_specs,
+        derived_dims=_derived_dims,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

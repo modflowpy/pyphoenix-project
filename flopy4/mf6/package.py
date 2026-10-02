@@ -9,6 +9,7 @@ import xarray as xr
 from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
+from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component
 from flopy4.mf6.item import (
     Item,
@@ -47,8 +48,10 @@ class Package(Component, ABC):
         Handles three concerns in order:
         1. Coerce raw list/block/period data into Item-list fields, and
            set each list's row-count dimension.
-        2. Broadcast scalar griddata values to their DFN shape when dims
-           is supplied (e.g. IC(strt=1.0, dims={"nodes": 900})).
+        2. Normalize griddata (lists to arrays, per-layer values, flat
+           shapes), then broadcast scalar griddata values to their DFN
+           shape when dims is supplied (e.g. IC(strt=1.0, dims={"nodes":
+           900})) or the package provides its own (a grid package).
         3. Chain to Component.__attrs_post_init__() via super() -- LAST,
            after 1-2, in every exit path (including the two early
            returns below). Several of a package's own fields (e.g.
@@ -80,8 +83,14 @@ class Package(Component, ABC):
         # 1. Item-list coercion.
         self._init_item_lists(fields)
 
-        # 2. Griddata broadcasting.
-        dims: dict = self.__dict__.get("dims") or {}
+        # 2. Griddata normalization and broadcasting. A dimension provider
+        # (a grid package) sizes its own griddata.
+        dims: dict = (
+            self.get_dims()
+            if isinstance(self, DimensionProvider)
+            else (self.__dict__.get("dims") or {})
+        )
+        self._normalize_griddata(fields, dims)
         if dims:
             self._broadcast_griddata(fields, dims)
 
@@ -193,6 +202,28 @@ class Package(Component, ABC):
             else:
                 items.append(construct_item(item_cls, list(row)))
         return items
+
+    def _normalize_griddata(self, fields, dims: dict) -> None:
+        """Convert list griddata to arrays, repeat a `layered` array's
+        per-layer values across each layer's cells, and flatten structured
+        arrays to their flat DFN shape (e.g. `(nlay, nrow, ncol)` to
+        `(nodes,)`)."""
+        nlay = dims.get("nlay")
+        ncpl = dims.get("ncpl") or (dims["nodes"] // nlay if nlay and "nodes" in dims else None)
+        for f in fields:
+            if f.metadata.get("block") != "griddata":
+                continue
+            val = self.__dict__.get(f.name)
+            dtype = _DTYPE_MAP.get(to_field_type(f.type), np.float64)
+            if isinstance(val, (list, tuple)):
+                val = np.asarray(val, dtype=dtype)
+            if not isinstance(val, np.ndarray):
+                continue
+            if f.metadata.get("layered") and nlay and ncpl and val.shape == (nlay,):
+                val = np.repeat(val, ncpl).astype(dtype)
+            elif val.ndim > 1 and len(f.metadata.get("shape") or ()) == 1:
+                val = val.ravel()
+            self.__dict__[f.name] = val
 
     def _broadcast_griddata(self, fields, dims: dict) -> None:
         """Expand scalar griddata defaults to full arrays when dims is supplied."""
