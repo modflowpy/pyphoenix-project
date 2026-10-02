@@ -937,17 +937,6 @@ def list_dim_bound(f: ListField) -> str | None:
     return split_bound(shape[0])[0] if len(shape) == 1 else None
 
 
-def list_block_names(component: Component) -> list[str]:
-    """Return block names that contain list-type fields, in component order."""
-    seen: set[str] = set()
-    result = []
-    for block_name, f in flat_fields(component):
-        if is_list_field(f) and block_name not in seen:
-            seen.add(block_name)
-            result.append(block_name)
-    return result
-
-
 def collision_names(
     block_schemas: dict[str, list[ColumnSpec]],
     reserved: frozenset[str] = frozenset(),
