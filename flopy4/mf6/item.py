@@ -142,6 +142,15 @@ def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] |
     return tuple(cast("list[type[Item]]", resolved))
 
 
+def _array_elem_type(f: attrs.Attribute) -> "type | None":
+    """int or float for a ``tuple[int, ...]``/``tuple[float, ...]`` column
+    (OC's STEPS), else None."""
+    args = get_args(f.type)
+    if len(args) == 2 and args[1] is Ellipsis and args[0] in (int, float):
+        return args[0]
+    return None
+
+
 def _field_type_str(f: attrs.Attribute) -> "str | None":
     """attrs stubs type `Attribute.type` as `type | None`, but attrs
     actually stores the raw annotation there -- a string for a forward
@@ -522,6 +531,8 @@ class Item(Record):
                     vals.append(int(float(str(tok))))  # see spec.to_signed_indexes
                 elif f.metadata.get("index"):
                     vals.append(int(float(str(tok))) - 1)
+                elif (elem := _array_elem_type(f)) is not None:
+                    vals.append(elem(float(str(tok))))
                 else:
                     try:
                         vals.append(float(tok))

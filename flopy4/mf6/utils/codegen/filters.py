@@ -830,7 +830,11 @@ def item_class(
         if col["role"] == "array":
             # Consumes all remaining tokens as a tuple -- a
             # keyword-plus-trailing-values setting whose arity/type isn't
-            # fixed (PRP's Steps.steps/Fraction's leaf field).
+            # fixed (PRP's Steps.steps/Fraction's leaf field), typed when
+            # the DFN says (STEPS are integers).
+            if (dfn_type := col.get("dfn_type")) in ("integer", "double"):
+                elem = _DFN_PY[dfn_type]
+                return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), array=True)"
             return f"        {col['name']}: tuple = field(default=(), array=True)"
         if col["role"] == "sized":
             shape = _dq(col["size_of"])

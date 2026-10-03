@@ -327,8 +327,10 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             raw_value = getattr(value, field_name, None)
             if raw_value is None:
                 continue
+            # a private field's file name is its alias (Gwf's _list: LIST)
+            key = field.alias if field is not None and field_name.startswith("_") else field_name
             if isinstance(raw_value, Record):
-                blocks[block_name][field_name] = raw_value.to_tokens()
+                blocks[block_name][key] = raw_value.to_tokens()
                 continue
 
             # Dispatch on field value type
@@ -337,15 +339,15 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
                     continue
                 case bool():
                     if field_value:
-                        blocks[block_name][field_name] = field_value
+                        blocks[block_name][key] = field_value
                 case Path():
                     assert field is not None  # field_name comes from blocks_dict(type(value))
                     t = _path_to_tuple(field, field_value)
                     blocks[block_name][t[0]] = t
                 case datetime():
-                    blocks[block_name][field_name] = field_value.isoformat()
+                    blocks[block_name][key] = field_value.isoformat()
                 case _:
-                    blocks[block_name][field_name] = field_value
+                    blocks[block_name][key] = field_value
 
     blocks = dict(sorted(blocks.items(), key=block_sort_key))
 

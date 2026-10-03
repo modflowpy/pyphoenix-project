@@ -887,7 +887,7 @@ def test_bounded_array_arm_is_variadic(tmp_path, all_dfns, name):
     trailing-values tuple, not a fixed-length scalar column."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert "steps: tuple = field(default=(), array=True)" in spec.outpath.read_text()
+    assert "steps: tuple[int, ...] = field(default=(), array=True)" in spec.outpath.read_text()
 
 
 @pytest.mark.parametrize(

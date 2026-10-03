@@ -48,12 +48,12 @@ class Prp(Package):
     @attrs.define
     class Steps(Item):
         _keyword: ClassVar[str] = "steps"
-        steps: tuple = field(default=(), array=True)
+        steps: tuple[int, ...] = field(default=(), array=True)
 
     @attrs.define
     class Fraction(Item):
         _keyword: ClassVar[str] = "fraction"
-        fraction: tuple = field(default=(), array=True)
+        fraction: tuple[float, ...] = field(default=(), array=True)
 
     _StressPeriodDataItem = All | First | Last | Frequency | Steps | Fraction
 

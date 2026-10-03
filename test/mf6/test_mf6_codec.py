@@ -589,6 +589,60 @@ def test_sfr_signed_index_zero():
         Sfr.Connectiondata(ifno=0, ic=(0,))
 
 
+def test_gwf_list_option_name():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Gwf
+
+    text = dumps(unstructure_component(Gwf(name="m", list="m.lst")))
+    assert " LIST m.lst" in text
+    assert "_LIST" not in text
+
+
+def test_oc_head_file_and_print_format():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Oc
+
+    text = """BEGIN OPTIONS
+  HEAD FILEOUT m.hds
+  HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4 GENERAL
+END OPTIONS
+BEGIN PERIOD 1
+  SAVE HEAD STEPS 1 5 10
+END PERIOD
+"""
+    oc = structure_component(loads(text), Oc)
+    assert str(oc.head_file) == "m.hds"
+    assert oc.headprint.formatrecord.columns == 10
+    out = dumps(unstructure_component(oc))
+    assert "HEAD FILEOUT m.hds" in out
+    assert "HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4 GENERAL" in out
+    assert "STEPS 1 5 10\n" in out
+
+
+def test_ims_rclose_and_unknown_block():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.ims import Ims
+
+    text = """BEGIN LINEAR
+  INNER_MAXIMUM 50
+  INNER_RCLOSE 1.0e-5 STRICT
+  LINEAR_ACCELERATION bicgstab
+END LINEAR
+BEGIN XMD
+  INNER_MAXIMUM 30
+  LINEAR_ACCELERATION cg
+END XMD
+"""
+    with pytest.warns(UserWarning, match="unknown block XMD"):
+        ims = structure_component(loads(text), Ims)
+    assert ims.inner_maximum == 50
+    assert ims.linear_acceleration == "bicgstab"
+    assert (ims.rclose.inner_rclose, ims.rclose.rclose_option) == (1e-5, "STRICT")
+    assert "INNER_RCLOSE 1e-05 STRICT" in dumps(unstructure_component(ims))
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 

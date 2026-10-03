@@ -37,7 +37,7 @@ class Oc(Package):
     @attrs.define
     class Steps(Item):
         _keyword: ClassVar[str] = "steps"
-        steps: tuple = field(default=(), array=True)
+        steps: tuple[int, ...] = field(default=(), array=True)
 
     @attrs.define
     class Save(Item):

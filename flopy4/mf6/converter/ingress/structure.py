@@ -1,4 +1,5 @@
 import struct
+import warnings
 from abc import ABC
 from collections import Counter
 from pathlib import Path
@@ -677,6 +678,11 @@ def structure_component(
         if inner_cls is None:
             continue
         kw = vars(inner_cls).get("_keyword", "")
+        if not kw:
+            # no keyword of its own, led by a tagged field (IMS's Rclose:
+            # "INNER_RCLOSE <value> [option]")
+            first = next(iter(inner_cls.fields()), None)
+            kw = first.name if first is not None and first.metadata.get("tagged") else ""
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
@@ -740,9 +746,16 @@ def structure_component(
             array_fields.setdefault(f.metadata["block"], {})[f.name] = f
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
+    known_blocks = {f.metadata.get("block") for f in attrs.fields(cls)}
+    if isinstance(getattr(cls, "maxbound", None), property):
+        known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
         if not rows:
+            continue
+        if block_name.split()[0] not in known_blocks:
+            # MF6 ignores blocks it doesn't read (an old IMS file's XMD)
+            warnings.warn(f"{cls.__name__}: ignoring unknown block {block_name.upper()}")
             continue
         if (
             block_name in block_item_fields
@@ -755,12 +768,15 @@ def structure_component(
             if not row:
                 continue
             key = str(row[0]).lower()
-            if (ff := file_fields.get(key)) is not None:
+            has_direction = len(row) > 1 and str(row[1]).upper() in ("FILEIN", "FILEOUT")
+            # A file record has its direction token, so OC's "HEAD
+            # PRINT_FORMAT ..." isn't the "HEAD FILEOUT <path>" record.
+            if (ff := file_fields.get(key)) is not None and (
+                has_direction or not ff.metadata.get("direction")
+            ):
                 # KEYWORD FILEIN|FILEOUT <path>: the path follows the
                 # keyword and the direction token.
-                tokens = row[1:]
-                if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
-                    tokens = tokens[1:]
+                tokens = row[2:] if has_direction else row[1:]
                 if tokens:
                     path = Path(_strip_quotes(str(tokens[0])))
                     init_key = ff.alias or ff.name
