@@ -82,6 +82,7 @@ SIMPLE_TIER = {
     "gwf-maw": ("Maw", "Package"),
     "gwf-uzf": ("Uzf", "Package"),
     "gwf-hfb": ("Hfb", "Package"),
+    "gwf-sfr": ("Sfr", "Package"),
 }
 
 # Transport model packages: gwt-ist (immobile storage transport, multi=True).

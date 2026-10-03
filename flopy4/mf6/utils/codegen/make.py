@@ -10,6 +10,7 @@ migration history from the legacy modflow_devtools.dfn (flat TypedDict)
 schema this replaces.
 """
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -239,6 +240,20 @@ def _schema_dict_from_columns(
             entry["count"] = shape[0]
             if col.is_index:
                 entry["index"] = True
+        elif isinstance(f, Array) and len(shape) == 1 and _LOOKUP_RE.fullmatch(shape[0]):
+            # Inline array counted by a column of the row another column
+            # refers to (SFR's ic, by packagedata.ncon(ifno)): rows vary in
+            # length, so it must be the last column.
+            if col is not columns[-1]:
+                raise ValueError(
+                    f"array column {col.name!r}, counted by {shape[0]!r}, isn't the last column"
+                )
+            entry["role"] = "array"
+            entry["count"] = shape[0]
+            if col.is_index:
+                entry["index"] = True
+            if f.index == "signed":
+                entry["signed"] = True
         elif (
             isinstance(f, Array)
             and len(counts_by := shape[1:] if col.is_cellid else shape) == 1
@@ -289,6 +304,10 @@ def _schema_dict_from_columns(
         schema.append(entry)
         seen.add(col.name)
     return schema
+
+
+# A count looked up in another list's row: "packagedata.ncon(ifno)".
+_LOOKUP_RE = re.compile(r"(?:[\w-]+\.)?\w+\.\w+\(\w+\)")
 
 
 def _count_dim(shape: str) -> str | None:

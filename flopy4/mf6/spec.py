@@ -47,6 +47,7 @@ def field(
     tagged: bool = False,
     array: bool = False,
     count: str | None = None,
+    signed: bool = False,
 ):
     metadata = metadata or {}
     if block:
@@ -85,6 +86,9 @@ def field(
         metadata["array"] = True
     if count:
         metadata["count"] = count
+    if signed:
+        metadata["signed"] = True
+        converter = converter or to_signed_indexes
     return attrs.field(
         default=default,
         validator=validator,
@@ -96,6 +100,26 @@ def field(
         metadata=metadata,
         alias=alias,
     )
+
+
+def to_signed_indexes(values):
+    """Signed indexes (SFR's ic) as (0-based index, sign) pairs. Each value
+    is such a pair, or an int as in the file: a 1-based index carrying its
+    sign (-3 -> (2, -1)). There's no 0-based signed int: 0 has no negative."""
+    if values is None:
+        return None
+    pairs = []
+    for v in values:
+        if isinstance(v, (tuple, list)):
+            i, sign = v
+            if sign not in (1, -1):
+                raise ValueError(f"sign must be 1 or -1, got {sign!r}")
+            pairs.append((int(i), int(sign)))
+        elif (n := int(v)) == 0:
+            raise ValueError("a signed index as in the file is 1-based, got 0")
+        else:
+            pairs.append((abs(n) - 1, -1 if n < 0 else 1))
+    return tuple(pairs)
 
 
 FileDirection = Literal[None, "in", "out"]

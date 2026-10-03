@@ -61,7 +61,9 @@ def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
     column (GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1): fixed
     width, read in place."""
     count = f.metadata.get("count")
-    return bool(count) and count not in attrs.fields_dict(cls)
+    if not isinstance(count, str) or not count:
+        return False
+    return count not in attrs.fields_dict(cls) and "(" not in count
 
 
 def count_dim(count: str) -> tuple[str, int]:
@@ -330,6 +332,8 @@ class Item(Record):
                 row.extend(int(c) + 1 for cellid in val for c in cellid)
             elif f.metadata.get("cellid"):
                 row.extend(int(c) + 1 for c in val)
+            elif f.metadata.get("array") and f.metadata.get("signed"):
+                row.extend((int(i) + 1) * sign for i, sign in val)
             elif f.metadata.get("array") and f.metadata.get("index"):
                 row.extend(int(v) + 1 for v in val)
             elif f.metadata.get("index"):
@@ -514,7 +518,9 @@ class Item(Record):
             vals: list[Any] = []
             while tok_idx < end:
                 tok = tokens[tok_idx]
-                if f.metadata.get("index"):
+                if f.metadata.get("signed"):
+                    vals.append(int(float(str(tok))))  # see spec.to_signed_indexes
+                elif f.metadata.get("index"):
                     vals.append(int(float(str(tok))) - 1)
                 else:
                     try:

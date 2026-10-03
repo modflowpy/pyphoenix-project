@@ -34,6 +34,7 @@ from flopy4.mf6.gwf.rch import Rch
 from flopy4.mf6.gwf.rcha import Rcha
 from flopy4.mf6.gwf.riv import Riv
 from flopy4.mf6.gwf.rivg import Rivg
+from flopy4.mf6.gwf.sfr import Sfr
 from flopy4.mf6.gwf.sto import Sto
 from flopy4.mf6.gwf.uzf import Uzf
 from flopy4.mf6.gwf.vsc import Vsc
@@ -72,6 +73,7 @@ __all__ = [
     "Mvr",
     "Riv",
     "Rivg",
+    "Sfr",
     "Sto",
     "Uzf",
     "Vsc",
@@ -197,6 +199,7 @@ class Gwf(Model):
     maw: list[Maw] = field(block="packages", default=attrs.Factory(list))
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
+    sfr: list[Sfr] = field(block="packages", default=attrs.Factory(list))
     uzf: list[Uzf] = field(block="packages", default=attrs.Factory(list))
     wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
     output: Output = attrs.field(

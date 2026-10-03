@@ -1,4 +1,5 @@
 import operator
+import re
 from abc import ABC
 from pathlib import Path
 from typing import ClassVar, Optional
@@ -90,6 +91,7 @@ class Package(Component, ABC):
 
         # 1. Item-list coercion.
         self._init_item_lists(fields)
+        self._check_lookup_counts(fields)
         self._init_named_arrays(fields)
 
         # 2. Griddata normalization and broadcasting. A dimension provider
@@ -156,6 +158,36 @@ class Package(Component, ABC):
                     self._set_dim_from_rows(dim, len(rows), bound)
             if not isinstance(item_cls, tuple):
                 self._set_dims_from_counts(item_cls, rows)
+
+    def _check_lookup_counts(self, fields) -> None:
+        """Check array columns counted by a column of the row another column
+        refers to: SFR's ic has packagedata.ncon(ifno) values."""
+        for f in fields:
+            item_cls = item_list_type(f.type)
+            if item_cls is None or isinstance(item_cls, tuple) or f.metadata.get("fill_forward"):
+                continue
+            if not (rows := self.__dict__.get(f.name)):
+                continue
+            for col in item_cls.fields():
+                m = re.fullmatch(r"(\w+)\.(\w+)\((\w+)\)", col.metadata.get("count") or "")
+                if m is None:
+                    continue
+                block, count_col, ref = m.groups()
+                ref_field = next(g for g in item_cls.fields() if g.name == ref)
+                pk = ref_field.metadata["fk"].rsplit(".", 1)[-1]
+                target = next(
+                    (g for g in fields if g.metadata.get("block") == block and g is not f), None
+                )
+                if target is None or not (target_rows := self.__dict__.get(target.name)):
+                    continue
+                counts = {getattr(r, pk): getattr(r, count_col) for r in target_rows}
+                for r in rows:
+                    n, expected = len(getattr(r, col.name) or ()), counts.get(getattr(r, ref))
+                    if expected is not None and n != expected:
+                        raise ValueError(
+                            f"{f.name} {ref}={getattr(r, ref)}: {col.name} has {n} values "
+                            f"but {block}.{count_col} is {expected}"
+                        )
 
     def _init_named_arrays(self, fields) -> None:
         """Named arrays (RCHA's aux): convert each to an array, and check

@@ -799,6 +799,8 @@ def item_class(
                 meta["index"] = True
             if col.get("count"):
                 meta["count"] = col["count"]
+            if col.get("signed"):
+                meta["signed"] = True
         if col.get("time_series"):
             meta["time_series"] = True
         if _is_optional(col):
@@ -821,6 +823,8 @@ def item_class(
         if col["role"] == "array" and col.get("count"):
             # As many values as an earlier column counts (cell2d's icvert).
             elem = _DFN_PY.get(col.get("dfn_type", "double"), "float")
+            if col.get("signed"):
+                elem = "tuple[int, int]"
             margs = ", ".join(f"{k}={_dq(v)}" for k, v in _field_meta(col).items())
             return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), {margs})"
         if col["role"] == "array":

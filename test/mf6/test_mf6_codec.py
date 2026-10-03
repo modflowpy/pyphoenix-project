@@ -549,6 +549,46 @@ def test_uzf_round_trip():
     assert uzf2.stress_period_data == uzf.stress_period_data
 
 
+def test_sfr_connections_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    sfr = Sfr(
+        packagedata=[
+            (0, (0, 0, 0), *reach, 1, 1.0, 0),
+            (1, (0, 0, 1), *reach, 2, 1.0, 0),
+            (2, (0, 0, 2), *reach, 1, 1.0, 0),
+        ],
+        connectiondata=[(0, ((1, -1),)), (1, ((0, 1), (2, -1))), (2, ((1, 1),))],
+    )
+    # ints as in the file: 1-based, signed
+    assert Sfr(packagedata=sfr.packagedata, connectiondata=[(0, -2), (1, 1, -3), (2, 2)]) == sfr
+    raw = loads(dumps(unstructure_component(sfr)))
+    assert raw["CONNECTIONDATA"] == [[1, -2], [2, 1, -3], [3, 2]]
+    sfr2 = structure_component(raw, Sfr, dims={"nlay": 1, "nrow": 1, "ncol": 3})
+    assert sfr2.connectiondata == sfr.connectiondata
+
+
+def test_sfr_ncon_mismatch():
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    with pytest.raises(ValueError, match="ic has 2 values but packagedata.ncon is 1"):
+        Sfr(
+            packagedata=[(0, (0, 0, 0), *reach, 1, 1.0, 0), (1, (0, 0, 1), *reach, 1, 1.0, 0)],
+            connectiondata=[(0, ((1, -1), (1, 1))), (1, ((0, 1),))],
+        )
+
+
+def test_sfr_signed_index_zero():
+    from flopy4.mf6.gwf import Sfr
+
+    with pytest.raises(ValueError, match="1-based, got 0"):
+        Sfr.Connectiondata(ifno=0, ic=(0,))
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 
