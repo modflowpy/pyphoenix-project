@@ -100,11 +100,12 @@ class Drng(Package):
         netcdf=True,
         fill_forward=True,
     )
-    aux: Optional[FloatArrayLike] = field(
+    aux: Optional[dict[str, FloatArrayLike]] = field(
         default=None,
         block="period",
         shape=("nodes",),
         layered=True,
         netcdf=True,
         fill_forward=True,
+        fk="options.auxiliary",
     )

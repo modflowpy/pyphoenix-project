@@ -2967,7 +2967,7 @@ def test_rcha_period_aux_dump():
         parent=gwf,
         auxiliary=["tracer"],
         recharge=np.expand_dims(recharge, axis=0),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),  # (nper, ncpl, naux)
+        aux={"tracer": np.expand_dims(aux, axis=0)},  # name -> (nper, ncpl)
         dims={"nper": 1, "naux": 1},
     )
 
@@ -3008,7 +3008,7 @@ def test_chdg_period_aux_dump():
         parent=gwf,
         auxiliary=["well_id"],
         head=np.expand_dims(head, axis=0),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),
+        aux={"well_id": np.expand_dims(aux, axis=0)},
         dims={"nper": 1, "naux": 1},
     )
 
@@ -3048,7 +3048,7 @@ def test_rcha_period_double_aux_dump():
         parent=gwf,
         auxiliary=["tracer_a", "tracer_b"],
         recharge=np.expand_dims(recharge, axis=0),
-        aux=np.expand_dims(aux, axis=0),  # (nper, ncpl, naux)
+        aux={"tracer_a": aux[None, :, 0], "tracer_b": aux[None, :, 1]},
         dims={"nper": 1, "naux": 2},
     )
 
@@ -3062,6 +3062,31 @@ def test_rcha_period_double_aux_dump():
     period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0]
     assert "tracer_a" in period_section.lower()
     assert "tracer_b" in period_section.lower()
+
+
+def test_rcha_period_aux_roundtrip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Rcha
+
+    rch = Rcha(
+        auxiliary=["conc", "temp"],
+        recharge=np.full((2, 4), 1e-3),
+        aux={"conc": np.full((2, 4), 10.0), "temp": np.array([[15.0] * 4, [FILL_DNODATA] * 4])},
+    )
+    text = dumps(unstructure_component(rch))
+    assert "TEMP" not in text.split("BEGIN PERIOD 2")[1]
+    rch2 = structure_component(loads(text), Rcha, dims={"nlay": 1, "nodes": 4})
+    assert sorted(rch2.aux) == ["conc", "temp"]
+    for name in rch.aux:
+        np.testing.assert_array_equal(rch2.aux[name], rch.aux[name])
+
+
+def test_rcha_period_aux_unknown_name():
+    from flopy4.mf6.gwf import Rcha
+
+    with pytest.raises(ValueError, match=r"\['tmp'\] not in auxiliary"):
+        Rcha(auxiliary=["conc"], aux={"tmp": np.zeros((1, 4))})
 
 
 def test_evt_period_aux_roundtrip():

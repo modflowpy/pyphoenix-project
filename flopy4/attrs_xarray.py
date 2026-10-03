@@ -96,6 +96,13 @@ def _array_dims(field: attrs.Attribute, name: str, ndim: int) -> tuple:
     return tuple(f"{name}_dim{i}" for i in range(ndim))
 
 
+def _named_dim(field: attrs.Attribute) -> str | None:
+    """For named arrays (RCHA's aux), the dim to stack them along, labeled
+    by name ("aux_name")."""
+    named = field.metadata.get("fk") and field.metadata.get("fill_forward")
+    return f"{field.name}_name" if named else None
+
+
 def attrs_to_dataset(obj) -> xr.Dataset:
     """Flatten `obj`'s own scalar/array fields into a flat `xr.Dataset`.
 
@@ -111,6 +118,14 @@ def attrs_to_dataset(obj) -> xr.Dataset:
     for name, (field, value) in leaves.items():
         if isinstance(value, xr.DataArray):
             data_vars[name] = value
+        elif (key := _named_dim(field)) and isinstance(value, dict):
+            # named arrays (RCHA's aux), stacked along their names
+            if value:
+                arrays = [np.asarray(a) for a in value.values()]
+                dims = _array_dims(field, name, arrays[0].ndim)
+                data_vars[name] = xr.concat(
+                    [xr.DataArray(a, dims=dims) for a in arrays], dim=key
+                ).assign_coords({key: list(value)})
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
         elif field.metadata.get("shape") and isinstance(value, (list, tuple)):
@@ -136,9 +151,13 @@ def _init_field_names(cls: type) -> set:
 
 def _leaf_kwargs_from_dataset(cls: type, dataset: xr.Dataset) -> dict:
     field_names = _init_field_names(cls)
+    named = {f.name: key for f in attrs.fields(cls) if (key := _named_dim(f))}
     kwargs: dict = {}
     for name, da in dataset.data_vars.items():
-        if name in field_names:
+        if name in named and named[name] in da.dims:
+            key = named[name]
+            kwargs[name] = {str(n): da.sel({key: n}).values for n in da[key].values}
+        elif name in field_names:
             kwargs[name] = da.values
     for name, value in dataset.attrs.items():
         if name in field_names:

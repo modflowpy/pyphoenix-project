@@ -1034,7 +1034,6 @@ def build_component_spec(
     developmode: bool = False,
 ) -> ComponentSpec:
     """Build all template context for a DFN component."""
-    component = filters.collapse_named_arrays(component)
     derived_dims = filters.derived_dims(component)
     all_fields = [
         (block_name, filters.canonical_shape(f, derived_dims))
@@ -1069,7 +1068,9 @@ def build_component_spec(
     # maxbound becomes a computed property only with a real Item-list period
     # field to derive it from (see has_dimensions_block's docstring).
     _has_list_period = any(
-        block_name in _fill_forward_blocks and filters.is_list_field(f)
+        block_name in _fill_forward_blocks
+        and filters.is_list_field(f)
+        and filters.named_array(f) is None
         for block_name, f in all_fields
     )
     _maxbound_is_computed = has_maxbound and _has_list_period
@@ -1106,6 +1107,7 @@ def build_component_spec(
     subpackages: list[str] = []  # components of subpackage fields (SUBPACKAGES)
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
+    _named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
 
     # Array fields can size list columns (auxiliary sizes aux).
@@ -1125,6 +1127,11 @@ def build_component_spec(
     for block_name, f in all_fields:
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
+
+        # Lists of named arrays (RCHA's aux): one array per auxiliary name.
+        if block_name in _fill_forward_blocks and (named := filters.named_array(f)):
+            _named_period_fields.append((f, *named))
+            continue
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
             _period_item = _add_list_items(f, "StressPeriodData")
@@ -1318,7 +1325,12 @@ def build_component_spec(
         # The DIMENSIONS field bounding each period's rows, unless it's
         # computed (maxbound): HFB's "<=maxhfb".
         _ff_list = next(
-            (f for b, f in all_fields if b == _ff_block and filters.is_list_field(f)), None
+            (
+                f
+                for b, f in all_fields
+                if b == _ff_block and filters.is_list_field(f) and filters.named_array(f) is None
+            ),
+            None,
         )
         if (
             _ff_list is not None
@@ -1368,6 +1380,28 @@ def build_component_spec(
                 )
             )
 
+    # A dict of named arrays per list of them: RCHA's aux, keyed by the
+    # auxiliary names (the fk), each array like a READARRAY period field's.
+    for _lf, _arr, _fk in _named_period_fields:
+        _na_meta: dict = {"block": _ff_block}
+        if shape := getattr(_arr, "shape", None):
+            _na_meta["shape"] = tuple(shape)
+        _na_meta["layered"] = getattr(_arr, "layered", False)
+        if getattr(_arr, "netcdf", False):
+            _na_meta["netcdf"] = True
+        _na_meta["fill_forward"] = True
+        _na_meta["fk"] = _fk
+        _na_base = "IntArrayLike" if getattr(_arr, "dtype", "") == "integer" else "FloatArrayLike"
+        period_specs.append(
+            FieldSpec(
+                dfn_name=_lf.name,
+                py_name=filters.safe_name(_lf.name),
+                type_annotation=f"Optional[dict[str, {_na_base}]]",
+                spec_call=_ml_field(metadata=_na_meta),
+                generatable=True,
+            )
+        )
+
     _seen_py_names: set[str] = set()
     _deduped: list[FieldSpec] = []
     # list blocks and other data blocks interleave in DFN block order (DISU:
@@ -1414,6 +1448,7 @@ def build_component_spec(
             if filters.is_readarray(f) and bn not in _repeating_blocks
         }
         | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
+        | {getattr(arr, "dtype", "double") for _, arr, _ in _named_period_fields}
         | {getattr(f, "dtype", "double") for f in _repeating_array_fields}
     )
     _needs_int_arraylike = "integer" in _arraylike_types

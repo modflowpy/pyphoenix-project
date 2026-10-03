@@ -68,6 +68,24 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
     return blocks
 
 
+def _period_dataarrays(value: Any, meta: Mapping) -> list[xr.DataArray]:
+    """One DataArray per period of a (nper, ...) array, layered ones with
+    an nlay dim."""
+    if not hasattr(value, "shape"):
+        value = np.asarray(value)
+    if meta.get("index"):
+        value = _to_file_index(value)
+    das = []
+    for kper in range(value.shape[0]):
+        layer_slice = value[kper]
+        if meta.get("layered", False) and layer_slice.ndim >= 2:
+            extra_dims = tuple(f"x{i}" for i in range(layer_slice.ndim - 1))
+            das.append(xr.DataArray(layer_slice, dims=("nlay",) + extra_dims))
+        else:
+            das.append(xr.DataArray(layer_slice))
+    return das
+
+
 def _rows_to_tuples(row_list: list) -> list[tuple]:
     """Convert a list of Item instances to MF6 record tuples via each
     Item's own to_tokens()."""
@@ -154,30 +172,16 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         # fill-forward block
         if meta.get("fill_forward"):
             fill_forward_block = block_name
+            # named arrays (RCHA's aux): {name: (nper, ...)}, each written
+            # under its name
+            if meta.get("fk") and isinstance(field_value, dict):
+                for name, arr in field_value.items():
+                    for kper, da in enumerate(_period_dataarrays(arr, meta)):
+                        readarray_period.setdefault(kper, {})[name] = da
+                continue
             # array: ndarray shaped (nper, ...)
             if isinstance(field_value, (np.ndarray, _DaskArray)):
-                is_layered = meta.get("layered", False)
-                nper = field_value.shape[0]
-                # aux field: shape (nper, ncpl, naux)
-                if f.name == "aux" and field_value.ndim == 3:
-                    auxiliary = getattr(value, "auxiliary", None)
-                    aux_names = [] if auxiliary is None else [str(a) for a in auxiliary]
-                    naux = field_value.shape[2]
-                    for kper in range(nper):
-                        for i in range(naux):
-                            col = field_value[kper, :, i]
-                            aux_key = aux_names[i] if i < len(aux_names) else f"aux{i}"
-                            readarray_period.setdefault(kper, {})[aux_key] = xr.DataArray(col)
-                    continue
-                if meta.get("index"):
-                    field_value = _to_file_index(field_value)
-                for kper in range(nper):
-                    layer_slice = field_value[kper]
-                    if is_layered and layer_slice.ndim >= 2:
-                        extra_dims = tuple(f"x{i}" for i in range(layer_slice.ndim - 1))
-                        da = xr.DataArray(layer_slice, dims=("nlay",) + extra_dims)
-                    else:
-                        da = xr.DataArray(layer_slice)
+                for kper, da in enumerate(_period_dataarrays(field_value, meta)):
                     readarray_period.setdefault(kper, {})[f.name] = da
                 continue
             # list: dict[int, list[Item]]

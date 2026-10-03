@@ -334,9 +334,16 @@ def _self_dims_from_kwargs(kwargs: dict) -> dict:
     return local
 
 
+def _names(value: Any) -> list[str]:
+    """A string-array field's entries (AUXILIARY's names), or none."""
+    return [] if value is None else [str(v) for v in np.atleast_1d(value)]
+
+
 def _parse_readarray_period_block(
     rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
 ) -> "dict[str, np.ndarray]":
+    """Arrays by the (lowercase) name they're written under: a field's
+    name, or an auxiliary variable's, for its named array (see Pass 3b)."""
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
@@ -402,14 +409,14 @@ def _parse_readarray_period_block(
             if layers:
                 if len(layers) < nlay:
                     layers = (layers * nlay)[:nlay]
-                result[f.name] = np.stack(layers)  # (nlay, ncpl)
+                result[key] = np.stack(layers)  # (nlay, ncpl)
         else:
             if i >= len(rows):
                 break
             value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
-            result[f.name] = value
-        if f.metadata.get("index") and f.name in result:
-            result[f.name] = _from_file_index(result[f.name])
+            result[key] = value
+        if f.metadata.get("index") and key in result:
+            result[key] = _from_file_index(result[key])
 
     return result
 
@@ -713,7 +720,9 @@ def structure_component(
     repeating_array_fields = {
         f.name: f
         for f in attrs.fields(cls)
-        if repeating_array_key_type(f.type) is not None and f.init is not False
+        if repeating_array_key_type(f.type) is not None
+        and f.init is not False
+        and not f.metadata.get("fk")
     }
     repeating_array_block_prefixes = {f.metadata["block"] for f in repeating_array_fields.values()}
 
@@ -878,25 +887,44 @@ def structure_component(
                 and f.name not in repeating_array_fields
                 and to_field_type(f.type) in ("integer", "double")
                 and f.init is not False
+                and not f.metadata.get("fk")
+            }
+            # Named arrays (RCHA's aux), one per name in the field the fk
+            # points at: written under the name, not the field's.
+            named: dict[str, tuple[Any, str]] = {
+                str(n).lower(): (f, str(n))
+                for f in attrs.fields(cls)
+                if f.metadata.get("fill_forward") and (fk := f.metadata.get("fk"))
+                for n in _names(kwargs.get(fk.rsplit(".", 1)[-1]))
             }
             if ra_fields and dims:
                 nper = max(kper_rows.keys()) + 1
                 nlay = dims.get("nlay", 1)
                 nodes = dims.get("nodes", 1)
                 ncpl = nodes // nlay if nlay > 1 else nodes
+
                 # Pre-fill with FILL_DNODATA; periods absent from file use MF6
                 # fill-forward semantics (egress skips all-FILL_DNODATA periods).
-                accum: dict[str, np.ndarray] = {}
-                for fname, f in ra_fields.items():
-                    shape = (nper, nlay, ncpl) if f.metadata.get("layered", False) else (nper, ncpl)
-                    accum[fname] = np.full(shape, FILL_DNODATA)
+                def _empty(f) -> np.ndarray:
+                    layered = f.metadata.get("layered", False)
+                    return np.full((nper, nlay, ncpl) if layered else (nper, ncpl), FILL_DNODATA)
+
+                accum: dict[str, np.ndarray] = {fname: _empty(f) for fname, f in ra_fields.items()}
+                named_accum: dict[str, dict[str, np.ndarray]] = {}
+                lookup = ra_fields | {k: f for k, (f, _) in named.items()}
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
                         continue
-                    parsed = _parse_readarray_period_block(rows, ra_fields, dims, workspace)
-                    for fname, arr in parsed.items():
-                        accum[fname][kper] = arr
+                    parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
+                    for key, arr in parsed.items():
+                        if key in ra_fields:
+                            accum[key][kper] = arr
+                        else:
+                            f, name = named[key]
+                            arrays = named_accum.setdefault(f.name, {})
+                            arrays.setdefault(name, _empty(f))[kper] = arr
                 kwargs.update(accum)
+                kwargs.update(named_accum)
 
     # ── Pass 3c: array fields whose own block repeats (utl-tas.tas_array is
     # the only current DFN example) ──────────────────────────────────────────

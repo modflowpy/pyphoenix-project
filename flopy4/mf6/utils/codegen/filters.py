@@ -347,33 +347,16 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
     return result
 
 
-def _named_array(f) -> Array | None:
-    """The array in a list of named arrays (RCHA's period aux: an auxiliary
-    name, then its array), or None for any other field."""
+def named_array(f) -> tuple[Array, str] | None:
+    """For a list of named arrays (RCHA's period aux: an auxiliary name, then
+    its array), the array and the name's fk ("options.auxiliary"); None for
+    any other field."""
     if not isinstance(f, ListField) or not isinstance(f.item, Record):
         return None
     match list(f.item.fields.values()):
-        case [String(fk=str()) as name, Array() as arr] if arr.shape and name.fk.endswith(
-            "auxiliary"
-        ):
-            return arr
+        case [String(fk=str(fk)), Array(shape=[_, *_]) as arr]:
+            return arr, fk
     return None
-
-
-def collapse_named_arrays(component: Component) -> Component:
-    """Replace each list of named arrays with its array, as one field of
-    the list's name: the period ``aux`` array the runtime reads one array
-    per auxiliary variable into."""
-    blocks = {}
-    for block_name, block in (component.blocks or {}).items():
-        fields = {
-            name: arr.model_copy(update={"name": name, "optional": True})
-            if (arr := _named_array(f)) is not None
-            else f
-            for name, f in block.fields.items()
-        }
-        blocks[block_name] = block.model_copy(update={"fields": fields})
-    return component.model_copy(update={"blocks": blocks})
 
 
 def derived_dims(component: Component) -> dict[str, str]:

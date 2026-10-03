@@ -90,6 +90,7 @@ class Package(Component, ABC):
 
         # 1. Item-list coercion.
         self._init_item_lists(fields)
+        self._init_named_arrays(fields)
 
         # 2. Griddata normalization and broadcasting. A dimension provider
         # (a grid package) sizes its own griddata.
@@ -155,6 +156,23 @@ class Package(Component, ABC):
                     self._set_dim_from_rows(dim, len(rows), bound)
             if not isinstance(item_cls, tuple):
                 self._set_dims_from_counts(item_cls, rows)
+
+    def _init_named_arrays(self, fields) -> None:
+        """Named arrays (RCHA's aux): convert each to an array, and check
+        its name is one of the names the field's fk points at."""
+        for f in fields:
+            if not (f.metadata.get("fill_forward") and (fk := f.metadata.get("fk"))):
+                continue
+            if (arrays := self.__dict__.get(f.name)) is None:
+                continue
+            key = fk.rsplit(".", 1)[-1]
+            names = getattr(self, key, None)
+            allowed = {str(n).lower() for n in np.atleast_1d(names)} if names is not None else set()
+            if unknown := sorted(n for n in arrays if str(n).lower() not in allowed):
+                raise ValueError(f"{f.name}: {unknown} not in {key}")
+            self.__dict__[f.name] = {
+                n: a if hasattr(a, "shape") else np.asarray(a) for n, a in arrays.items()
+            }
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
