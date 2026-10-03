@@ -6,6 +6,7 @@ from os import PathLike
 from pathlib import PurePath
 from typing import Any, Protocol, TypeAlias, TypeVar
 
+import attrs
 import numpy as np
 
 _DT = TypeVar("_DT", bound=np.generic, covariant=True)
@@ -54,3 +55,47 @@ def to_list(convert: Callable) -> Callable[[Any], list]:
 def to_array(dtype) -> Callable[[Any], np.ndarray]:
     """attrs converter to a 1D array of `dtype`."""
     return lambda v: np.asarray(_wrap(v), dtype=dtype)
+
+
+def _is_dask(x: Any) -> bool:
+    return type(x).__module__.split(".")[0] == "dask"
+
+
+def array_eq(a: Any, b: Any) -> bool:
+    """Array-aware equality for component fields.
+
+    - ``None`` equals only ``None``; dicts (e.g. time-array series) are
+      compared key by key.
+    - Shape and dtype must match, NaNs at the same position compare equal
+      (float and complex dtypes only).
+    - Dask arrays are never computed: they are equal only if shape, dtype,
+      chunks and graph name match. A dask array never equals a numpy array.
+    """
+    if a is b:
+        return True
+    if a is None or b is None:
+        return False
+    if isinstance(a, dict) or isinstance(b, dict):
+        return (
+            isinstance(a, dict)
+            and isinstance(b, dict)
+            and a.keys() == b.keys()
+            and all(array_eq(a[k], b[k]) for k in a)
+        )
+    if _is_dask(a) or _is_dask(b):
+        return (
+            _is_dask(a)
+            and _is_dask(b)
+            and a.shape == b.shape
+            and a.dtype == b.dtype
+            and a.chunks == b.chunks
+            and a.name == b.name
+        )
+    a, b = np.asarray(a), np.asarray(b)
+    if a.shape != b.shape or a.dtype != b.dtype:
+        return False
+    return bool(np.array_equal(a, b, equal_nan=a.dtype.kind in "fc"))
+
+
+ARRAY_EQ = attrs.cmp_using(eq=array_eq)
+"""``eq=`` value for attrs fields holding arrays."""

@@ -203,7 +203,7 @@ class Gwf(Model):
     uzf: list[Uzf] = field(block="packages", default=attrs.Factory(list))
     wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
     output: Output = attrs.field(
-        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)
+        default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True), eq=False
     )
 
     @property

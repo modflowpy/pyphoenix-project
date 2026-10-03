@@ -1801,3 +1801,154 @@ def test_external_array_path_is_posix():
     macros = _JINJA_ENV.get_template("macros.jinja").module
     out = str(macros.array("top", PureWindowsPath("data\\top.dat"), how="external"))  # type: ignore[attr-defined]
     assert "OPEN/CLOSE data/top.dat" in out
+
+
+def _dis(**kwargs):
+    kw = dict(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1)
+    kw.update(kwargs)
+    return Dis(**kw)
+
+
+def test_eq_arrays():
+    assert _dis() == _dis()
+    assert _dis() != _dis(top=2.0)
+    idomain = np.ones(6, dtype=np.int64)
+    idomain[3] = 0
+    assert _dis(idomain=idomain) != _dis()
+    assert _dis(idomain=idomain) == _dis(idomain=idomain.copy())
+
+
+def test_eq_array_dtype_and_shape_matter():
+    from flopy4.mf6._types import array_eq
+
+    assert not array_eq(np.ones(3, dtype=np.int64), np.ones(3, dtype=np.float64))
+    assert not array_eq(np.ones(3), np.ones(4))
+    assert not array_eq(np.ones((1, 3)), np.ones(3))
+
+
+def test_eq_array_nan_equal():
+    from flopy4.mf6._types import array_eq
+
+    a = np.array([1.0, np.nan])
+    assert array_eq(a, a.copy())
+    assert not array_eq(a, np.array([np.nan, 1.0]))
+    assert array_eq(np.array(["a", "b"], dtype=object), np.array(["a", "b"], dtype=object))
+
+
+def test_eq_ignores_parent_and_dims():
+    assert Ims(dims={"nodes": 3}) == Ims(dims={"nodes": 4})
+    assert Ims(parent=Simulation()) == Ims()
+    assert Ims(inner_maximum=10) != Ims(inner_maximum=20)
+
+
+def test_eq_on_subclass_with_own_decorator():
+    import attrs
+
+    from flopy4.mf6.spec import field
+
+    @attrs.define(kw_only=True, slots=False)
+    class MyDis(Dis):
+        extra: int = field(default=0)
+
+    a = MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1)
+    b = MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1)
+    assert a == b
+    assert a != MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1, extra=1)
+
+
+def test_eq_dask_arrays_are_not_computed():
+    da = pytest.importorskip("dask.array")
+    from flopy4.mf6._types import array_eq
+
+    def boom(x):
+        raise AssertionError("computed")
+
+    lazy = da.ones(4, chunks=2).map_blocks(boom, dtype=float)
+    assert array_eq(lazy, lazy)
+    assert not array_eq(lazy, da.ones(4, chunks=2).map_blocks(boom, dtype=float, name="other"))
+    assert not array_eq(lazy, np.ones(4))
+    same = da.from_array(np.arange(4.0), chunks=2, name="x")
+    assert array_eq(same, da.from_array(np.arange(4.0), chunks=2, name="x"))
+    assert not array_eq(same, same.rechunk(4))
+
+
+def test_eq_disv():
+    def make(xv):
+        return Disv(
+            nlay=1,
+            ncpl=1,
+            nvert=3,
+            top=1.0,
+            botm=[0.0],
+            idomain=1,
+            vertices=[(0, 0.0, 0.0), (1, xv, 0.0), (2, 0.0, 1.0)],
+            cell2d=[Disv.Cell2d(icell2d=0, xc=0.3, yc=0.3, icvert=(0, 1, 2))],
+        )
+
+    assert make(1.0) == make(1.0)
+    assert make(1.0) != make(2.0)
+
+
+def test_eq_model_with_children():
+    def make(k):
+        return Gwf(
+            dis=Dis(nlay=2, nrow=1, ncol=3, top=1.0, botm=[0.0, -1.0], idomain=1),
+            npf=Npf(k=k),
+            ic=Ic(strt=1.0),
+        )
+
+    assert make(2.0) == make(2.0)
+    assert make(2.0) != make(3.0)
+
+
+def test_eq_simulation():
+    def make(head):
+        gwf = Gwf(
+            dis=Dis(nlay=1, nrow=1, ncol=3, top=1.0, botm=[0.0], idomain=1),
+            npf=Npf(k=2.0),
+            ic=Ic(strt=1.0),
+            chd=[Chd(stress_period_data={0: [[(0, 0, 0), head]]})],
+        )
+        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutions={"ims": Ims()})
+
+    assert make(1.0) == make(1.0)
+    assert make(1.0) != make(2.0)
+
+
+def test_eq_aux_names():
+    from flopy4.mf6.gwf import Wel
+
+    assert Wel(auxiliary=["a", "b"]) == Wel(auxiliary=["a", "b"])
+    assert Wel(auxiliary=["a", "b"]) != Wel(auxiliary=["a", "c"])
+
+
+def test_all_array_fields_have_array_eq():
+    """Every array-typed field must compare with array_eq: attrs' default
+    elementwise == is not a valid __eq__ result."""
+    import importlib
+    import pkgutil
+
+    import attrs
+
+    import flopy4.mf6 as mf6
+    from flopy4.mf6.component import Component
+
+    for info in pkgutil.walk_packages(mf6.__path__, "flopy4.mf6."):
+        if ".utils" not in info.name and ".codec" not in info.name:
+            importlib.import_module(info.name)
+
+    def subclasses(cls):
+        for sub in cls.__subclasses__():
+            yield sub
+            yield from subclasses(sub)
+
+    bad = [
+        f"{cls.__module__}.{cls.__name__}.{f.name}"
+        for cls in set(subclasses(Component))
+        if attrs.has(cls)
+        for f in attrs.fields(cls)
+        if f.eq
+        and f.eq_key is None
+        and any(s in repr(f.type) for s in ("ArrayLike", "ndarray", "NDArray"))
+    ]
+    assert not bad, sorted(bad)

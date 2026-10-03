@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import to_array, to_list
+from flopy4.mf6._types import ARRAY_EQ, to_array, to_list
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import field, path
@@ -29,6 +29,7 @@ class Ghb(Package):
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
+        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
