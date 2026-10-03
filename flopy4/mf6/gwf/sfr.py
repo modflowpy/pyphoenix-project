@@ -303,7 +303,6 @@ class Sfr(Package):
     crosssections: Optional[list[Crosssections]] = field(
         default=None,
         block="crosssections",
-        write_if_empty=True,
     )
     connectiondata: Optional[list[Connectiondata]] = field(
         default=None,
@@ -313,12 +312,10 @@ class Sfr(Package):
     diversions: Optional[list[Diversions]] = field(
         default=None,
         block="diversions",
-        write_if_empty=True,
     )
     initialstages: Optional[list[Initialstages]] = field(
         default=None,
         block="initialstages",
-        write_if_empty=True,
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",
