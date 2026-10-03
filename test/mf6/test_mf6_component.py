@@ -1623,11 +1623,11 @@ def test_gwt_gwe_disv_instantiate():
 
 
 # ---------------------------------------------------------------------------
-# convert_grid and grid property for gwt, gwe, prt
+# grid coercion and grid property for gwt, gwe, prt
 # ---------------------------------------------------------------------------
 
 
-def test_gwt_convert_grid_structured():
+def test_gwt_coerce_grid_structured():
     from flopy4.mf6.gwt import Dis as GwtDis
     from flopy4.mf6.gwt import Gwt
 
@@ -1638,7 +1638,7 @@ def test_gwt_convert_grid_structured():
     assert isinstance(gwt.grid, StructuredGrid)
 
 
-def test_gwt_convert_grid_vertex(vgrid):
+def test_gwt_coerce_grid_vertex(vgrid):
     from flopy4.mf6.gwt import Disv as GwtDisv
     from flopy4.mf6.gwt import Gwt
 
@@ -1654,7 +1654,7 @@ def test_gwt_convert_grid_vertex(vgrid):
     assert isinstance(gwt.grid, VertexGrid)
 
 
-def test_gwe_convert_grid_structured():
+def test_gwe_coerce_grid_structured():
     from flopy4.mf6.gwe import Dis as GweDis
     from flopy4.mf6.gwe import Gwe
 
@@ -1665,7 +1665,7 @@ def test_gwe_convert_grid_structured():
     assert isinstance(gwe.grid, StructuredGrid)
 
 
-def test_gwe_convert_grid_vertex(vgrid):
+def test_gwe_coerce_grid_vertex(vgrid):
     from flopy4.mf6.gwe import Disv as GweDisv
     from flopy4.mf6.gwe import Gwe
 
@@ -1681,7 +1681,7 @@ def test_gwe_convert_grid_vertex(vgrid):
     assert isinstance(gwe.grid, VertexGrid)
 
 
-def test_prt_convert_grid_structured():
+def test_prt_coerce_grid_structured():
     from flopy4.mf6.prt import Dis as PrtDis
     from flopy4.mf6.prt import Prt
 
@@ -1692,7 +1692,7 @@ def test_prt_convert_grid_structured():
     assert isinstance(prt.grid, StructuredGrid)
 
 
-def test_prt_convert_grid_vertex(vgrid):
+def test_prt_coerce_grid_vertex(vgrid):
     from flopy4.mf6.prt import Disv as PrtDisv
     from flopy4.mf6.prt import Prt
 
@@ -1952,3 +1952,18 @@ def test_all_array_fields_have_array_eq():
         and any(s in repr(f.type) for s in ("ArrayLike", "ndarray", "NDArray"))
     ]
     assert not bad, sorted(bad)
+
+
+def test_child_coerce_time():
+    sim = Simulation(tdis=Time(perlen=[1.0, 2.0], nstp=[1, 1], tsmult=[1.0, 1.0]))
+    assert isinstance(sim.tdis, Tdis)
+    assert sim.tdis.nper == 2
+
+
+def test_child_coerce_wrong_type():
+    with pytest.raises(TypeError, match="Tdis"):
+        Simulation(tdis="nope")
+    with pytest.raises(TypeError, match="Dis or Disv or Disu"):
+        Gwf(dis=42)
+    with pytest.raises(TypeError, match="Chd or Chdg"):
+        Gwf(chd=[42])

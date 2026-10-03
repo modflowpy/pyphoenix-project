@@ -868,6 +868,7 @@ def _generated_imports(
     needs_float_arraylike: bool = False,
     has_field_call: bool = False,
     has_path_call: bool = False,
+    has_child_call: bool = False,
     item_classes: "list[ItemClassSpec] | None" = None,
     has_derived_dims: bool = False,
     subpackages: list[str] | None = None,
@@ -953,6 +954,8 @@ def _generated_imports(
         _spec_parts.append("field")
     if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
+    if has_child_call:
+        _spec_parts.append("child")
     if subpackages:
         _spec_parts.append("subpackage")
     if _spec_parts:
@@ -1058,7 +1061,6 @@ class ChildField:
     type_annotation: str
     factory: str
     imports: tuple[str, ...]
-    converter: str | None = None
 
 
 # Binding lists: rows naming child components' files (`mtype mfname mname`).
@@ -1072,11 +1074,7 @@ BINDINGS: dict[str, dict[str, ChildField]] = {
             "tdis",
             "Tdis",
             "Tdis",
-            (
-                "from flopy4.mf6.tdis import Tdis",
-                "from flopy4.mf6.simulation_methods import convert_time",
-            ),
-            converter="convert_time",
+            ("from flopy4.mf6.tdis import Tdis",),
         ),
         "models": ChildField(
             "models", "dict[str, Model]", "dict", ("from flopy4.mf6.model import Model",)
@@ -1098,12 +1096,11 @@ BINDINGS: dict[str, dict[str, ChildField]] = {
 
 
 def _child_field_spec(dfn_name: str, block_name: str, child: ChildField) -> FieldSpec:
-    conv = f", converter={child.converter}" if child.converter else ""
     return FieldSpec(
         dfn_name=dfn_name,
         py_name=child.py_name,
         type_annotation=child.type_annotation,
-        spec_call=f'field(block="{block_name}"{conv}, default=attrs.Factory({child.factory}))',
+        spec_call=f'child(block="{block_name}", default=attrs.Factory({child.factory}))',
         generatable=True,
     )
 
@@ -1562,6 +1559,9 @@ def build_component_spec(
         fs.generatable and fs.spec_call.startswith("field(") for fs in field_specs
     )
     _has_path_call = any(fs.generatable and fs.spec_call.startswith("path(") for fs in field_specs)
+    _has_child_call = any(
+        fs.generatable and fs.spec_call.startswith("child(") for fs in field_specs
+    )
     imports = _generated_imports(
         generatable_field_objects,
         base_class=base,
@@ -1573,6 +1573,7 @@ def build_component_spec(
         needs_float_arraylike=_needs_float_arraylike,
         has_field_call=_has_field_call,
         has_path_call=_has_path_call,
+        has_child_call=_has_child_call,
         has_readarray_period=bool(_readarray_period_fields),
         item_classes=item_classes,
         has_derived_dims=bool(_derived_dims),

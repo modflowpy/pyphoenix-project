@@ -2,8 +2,6 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import attrs
-from flopy.discretization.structuredgrid import StructuredGrid
-from flopy.discretization.vertexgrid import VertexGrid
 
 from flopy4.mf6.gwt.adv import Adv
 from flopy4.mf6.gwt.api import Api
@@ -20,19 +18,8 @@ from flopy4.mf6.gwt.oc import Oc
 from flopy4.mf6.gwt.src import Src
 from flopy4.mf6.gwt.ssm import Ssm
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
 from flopy4.utils import to_path
-
-
-def convert_grid(value):
-    if isinstance(value, StructuredGrid):
-        return Dis.from_grid(value)
-    if isinstance(value, VertexGrid):
-        return Disv.from_grid(value)
-    if isinstance(value, (Dis, Disv, Disu)) or value is None:
-        return value
-    raise TypeError(f"Expected Grid or Dis/Disv/Disu, got {type(value)}")
-
 
 __all__ = [
     "Gwt",
@@ -83,18 +70,18 @@ class Gwt(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Dis | Disv | Disu | None = field(converter=convert_grid, block="packages", default=None)
-    ic: Ic | None = field(block="packages", default=None)
-    oc: Oc | None = field(block="packages", default=None)
-    adv: Adv | None = field(block="packages", default=None)
-    dsp: Dsp | None = field(block="packages", default=None)
-    mst: Mst | None = field(block="packages", default=None)
-    cnc: list[Cnc] = field(block="packages", default=attrs.Factory(list))
-    src: list[Src] = field(block="packages", default=attrs.Factory(list))
-    lkt: list[Lkt] = field(block="packages", default=attrs.Factory(list))
-    ssm: Ssm | None = field(block="packages", default=None)
-    mvt: Mvt | None = field(block="packages", default=None)
-    api: Api | None = field(block="packages", default=None)
+    dis: Dis | Disv | Disu | None = child(block="packages")
+    ic: Ic | None = child(block="packages")
+    oc: Oc | None = child(block="packages")
+    adv: Adv | None = child(block="packages")
+    dsp: Dsp | None = child(block="packages")
+    mst: Mst | None = child(block="packages")
+    cnc: list[Cnc] = child(block="packages", default=attrs.Factory(list))
+    src: list[Src] = child(block="packages", default=attrs.Factory(list))
+    lkt: list[Lkt] = child(block="packages", default=attrs.Factory(list))
+    ssm: Ssm | None = child(block="packages")
+    mvt: Mvt | None = child(block="packages")
+    api: Api | None = child(block="packages")
 
     @property
     def grid(self):

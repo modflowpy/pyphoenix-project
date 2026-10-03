@@ -6,8 +6,6 @@ import xarray as xr
 import xugrid as xu
 from attrs import define
 from flopy.discretization.grid import Grid
-from flopy.discretization.structuredgrid import StructuredGrid
-from flopy.discretization.vertexgrid import VertexGrid
 
 from flopy4.mf6.gwf.buy import Buy
 from flopy4.mf6.gwf.chd import Chd
@@ -41,7 +39,7 @@ from flopy4.mf6.gwf.vsc import Vsc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.gwf.welg import Welg
 from flopy4.mf6.model import Model
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
 from flopy4.mf6.utils import open_cbc, open_hds
 from flopy4.utils import to_path
 
@@ -80,16 +78,6 @@ __all__ = [
     "Wel",
     "Welg",
 ]
-
-
-def convert_grid(value):
-    if isinstance(value, StructuredGrid):
-        return Dis.from_grid(value)
-    elif isinstance(value, VertexGrid):
-        return Disv.from_grid(value)
-    if isinstance(value, (Dis, Disv, Disu)) or value is None:
-        return value
-    raise TypeError(f"Expected Grid or Dis/Disv/Disu, got {type(value)}")
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -180,28 +168,28 @@ class Gwf(Model):
         direction="in",
         keyword="netcdf",
     )
-    dis: Dis | Disv | Disu | None = field(converter=convert_grid, block="packages", default=None)
-    ic: Ic | None = field(block="packages", default=None)
-    oc: Oc | None = field(block="packages", default=None)
-    npf: Npf | None = field(block="packages", default=None)
-    sto: Sto | None = field(block="packages", default=None)
-    buy: Buy | None = field(block="packages", default=None)
-    gnc: Gnc | None = field(block="packages", default=None)
-    hfb: Hfb | None = field(block="packages", default=None)
-    chd: list[Union[Chd, Chdg]] = field(block="packages", default=attrs.Factory(list))
-    drn: list[Union[Drn, Drng]] = field(block="packages", default=attrs.Factory(list))
-    evt: list[Union[Evt, Evta]] = field(block="packages", default=attrs.Factory(list))
-    ghb: list[Union[Ghb, Ghbg]] = field(block="packages", default=attrs.Factory(list))
-    rch: list[Union[Rch, Rcha]] = field(block="packages", default=attrs.Factory(list))
-    riv: list[Union[Riv, Rivg]] = field(block="packages", default=attrs.Factory(list))
-    csub: list[Csub] = field(block="packages", default=attrs.Factory(list))
-    lak: list[Lak] = field(block="packages", default=attrs.Factory(list))
-    maw: list[Maw] = field(block="packages", default=attrs.Factory(list))
-    mvr: Mvr | None = field(block="packages", default=None)
-    vsc: Vsc | None = field(block="packages", default=None)
-    sfr: list[Sfr] = field(block="packages", default=attrs.Factory(list))
-    uzf: list[Uzf] = field(block="packages", default=attrs.Factory(list))
-    wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
+    dis: Dis | Disv | Disu | None = child(block="packages")
+    ic: Ic | None = child(block="packages")
+    oc: Oc | None = child(block="packages")
+    npf: Npf | None = child(block="packages")
+    sto: Sto | None = child(block="packages")
+    buy: Buy | None = child(block="packages")
+    gnc: Gnc | None = child(block="packages")
+    hfb: Hfb | None = child(block="packages")
+    chd: list[Union[Chd, Chdg]] = child(block="packages", default=attrs.Factory(list))
+    drn: list[Union[Drn, Drng]] = child(block="packages", default=attrs.Factory(list))
+    evt: list[Union[Evt, Evta]] = child(block="packages", default=attrs.Factory(list))
+    ghb: list[Union[Ghb, Ghbg]] = child(block="packages", default=attrs.Factory(list))
+    rch: list[Union[Rch, Rcha]] = child(block="packages", default=attrs.Factory(list))
+    riv: list[Union[Riv, Rivg]] = child(block="packages", default=attrs.Factory(list))
+    csub: list[Csub] = child(block="packages", default=attrs.Factory(list))
+    lak: list[Lak] = child(block="packages", default=attrs.Factory(list))
+    maw: list[Maw] = child(block="packages", default=attrs.Factory(list))
+    mvr: Mvr | None = child(block="packages")
+    vsc: Vsc | None = child(block="packages")
+    sfr: list[Sfr] = child(block="packages", default=attrs.Factory(list))
+    uzf: list[Uzf] = child(block="packages", default=attrs.Factory(list))
+    wel: list[Union[Wel, Welg]] = child(block="packages", default=attrs.Factory(list))
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True), eq=False
     )
