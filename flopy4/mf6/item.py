@@ -309,13 +309,20 @@ def _token_fits(token: Any, kind: type) -> bool:
     return False
 
 
+def _is_row_key(f: attrs.Attribute) -> bool:
+    """A pk/fk column identifying the row (e.g. SFR's ifno). These precede
+    a union arm's _keyword; every other field follows it, including other
+    index columns (`ifno DIVERSION idv divflow`)."""
+    return bool(f.metadata.get("pk") or f.metadata.get("fk"))
+
+
 class Item(Record):
     """Mixin for generated table-item types (plain items and keystring-union
     arms alike -- see module docstring)."""
 
     def to_tokens(self) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
-        is emitted before the first non-index field. sized/boundname last.
+        is emitted before the first non-row-key field. sized/boundname last.
         """
         cls = type(self)
         fields = cls.fields()
@@ -335,12 +342,16 @@ class Item(Record):
                         f"{cls.__name__}.{f.name}={val} but {counted[f.name].name} has {n} values"
                     )
                 val = n
-            if val is None:
+            if val is None and not (f.metadata.get("cellid") and not f.metadata.get("array")):
                 continue
+            if not keyword_emitted and not _is_row_key(f):
+                row.append(keyword.upper())
+                keyword_emitted = True
             if f.metadata.get("cellid") and f.metadata.get("array"):
                 row.extend(int(c) + 1 for cellid in val for c in cellid)
             elif f.metadata.get("cellid"):
-                row.extend(int(c) + 1 for c in val)
+                # see from_tokens' cellid()
+                row.extend(["NONE"] if val is None else (int(c) + 1 for c in val))
             elif f.metadata.get("array") and f.metadata.get("signed"):
                 row.extend((int(i) + 1) * sign for i, sign in val)
             elif f.metadata.get("array") and f.metadata.get("index"):
@@ -348,28 +359,16 @@ class Item(Record):
             elif f.metadata.get("index"):
                 row.append(int(val) + 1)
             elif f.metadata.get("array"):
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 row.extend(val)
             elif f.metadata.get("tagged"):
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 if val:
                     row.append(f.name.upper())
             elif isinstance(val, Record):
                 # Nested keystring-union field (OC's ocsetting) -- val is
                 # already the resolved arm instance and knows how to
                 # serialize itself.
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 row.extend(val.to_tokens())
             else:
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 if file_kw := f.metadata.get("_keyword"):
                     row.append(file_kw.upper())
                 if direction := f.metadata.get("direction"):
@@ -410,13 +409,21 @@ class Item(Record):
         tok_idx = 0
         n = len(tokens)
 
-        def cellid() -> tuple[int, ...]:
+        def cellid() -> tuple[int, ...] | None:
             nonlocal tok_idx
+            # one NONE token, whatever ncelldim (e.g. an SFR reach with
+            # no aquifer connection)
+            if str(tokens[tok_idx]).upper() == "NONE":
+                tok_idx += 1
+                return None
             tok_idx += ncelldim
             return tuple(int(tokens[tok_idx - ncelldim + j]) - 1 for j in range(ncelldim))
 
         def consume(f: attrs.Attribute) -> None:
             nonlocal tok_idx, keyword_skipped
+            if not keyword_skipped and not _is_row_key(f):
+                tok_idx += 1
+                keyword_skipped = True
             if _dim_counted(cls, f):
                 count = _count(f, sizes)
                 if count is None and not f.metadata.get("optional"):
@@ -440,9 +447,6 @@ class Item(Record):
                 kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
                 tok_idx += 1
                 return
-            if not keyword_skipped:
-                tok_idx += 1
-                keyword_skipped = True
             if f.metadata.get("_keyword"):
                 tok_idx += 1
             if f.metadata.get("direction"):

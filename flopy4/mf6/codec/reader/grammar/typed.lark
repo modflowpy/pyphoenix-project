@@ -7,6 +7,11 @@
 integer: SIGNED_INT | INT
 double: SIGNED_NUMBER | NUMBER
 number: SIGNED_NUMBER | NUMBER
+// A block header's period number (or utl-tas's time). Not `number`: its
+// reduce state merges with record rows' (see WORD_STR), so the contextual
+// lexer takes a trailing header remark (MAW's legacy `begin period 1
+// steady-state`) as WORD_STR, which the header can't accept.
+block_index: SIGNED_NUMBER | NUMBER
 string: (ESCAPED_STRING | _token+) _NL
 array: (single_array | layered_array)
 single_array: [netcdf] readarray

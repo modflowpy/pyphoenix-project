@@ -589,6 +589,37 @@ def test_sfr_signed_index_zero():
         Sfr.Connectiondata(ifno=0, ic=(0,))
 
 
+def test_sfr_diversion_keyword_after_row_key():
+    from flopy4.mf6.gwf import Sfr
+
+    # the keyword follows the row key (ifno) but precedes other index columns
+    div = Sfr.Diversion(ifno=0, idv=1, divflow=0.5)
+    assert div.to_tokens() == (1, "DIVERSION", 2, 0.5)
+    assert Sfr.Diversion.from_tokens([1, "diversion", 2, 0.5]) == div
+
+
+def test_sfr_unconnected_reach_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    sfr = Sfr(
+        packagedata=[(0, (0, 0, 0), *reach, 1, 1.0, 0), (1, None, *reach, 1, 1.0, 0)],
+        connectiondata=[(0, ((1, -1),)), (1, ((0, 1),))],
+    )
+    raw = loads(dumps(unstructure_component(sfr)))
+    assert raw["PACKAGEDATA"][1][1] == "NONE"
+    sfr2 = structure_component(raw, Sfr, dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    assert sfr2.packagedata == sfr.packagedata
+
+
+def test_loads_block_header_remark():
+    # MF6 ignores anything after the block index (MAW's legacy STEADY-STATE)
+    raw = loads("BEGIN PERIOD 1 STEADY-STATE\n  1 RATE -1.0\nEND PERIOD\n")
+    assert raw == {"PERIOD 1": [[1, "RATE", -1.0]]}
+
+
 def test_gwf_list_option_name():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwf import Gwf

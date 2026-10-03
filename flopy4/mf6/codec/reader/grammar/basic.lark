@@ -1,6 +1,8 @@
 start: [_NL*] (block [_NL*])*
 block: "begin"i block_name _NL _list "end"i block_name [_NL+]
-block_name: CNAME [TOKEN]
+// MF6 ignores anything after a block header's optional index (e.g. MAW's
+// legacy `begin period 1 steady-state`); the transformer drops it.
+block_name: CNAME TOKEN*
 _list: line*
 line: TOKEN* _NL+
 // Every whitespace-delimited token lexes as one terminal, and the

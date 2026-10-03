@@ -182,7 +182,7 @@ class TypedTransformer(Transformer):
 
     def block_index(self, items: list[Any]) -> int | float:
         """Extract block index (e.g., period number, or utl-tas's time)."""
-        return items[0]
+        return parse_number(str(items[0]))
 
     def stress_period_data(self, items: list[Any]) -> list[Any]:
         """Handle stress period data - now a list of stress_record trees.
