@@ -6,9 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike, to_array, to_list
+from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike, to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.tas import Tas
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -60,13 +61,8 @@ class Evta(Package):
         optional=True,
         longname="save EVTA flows to budget file",
     )
-    tas_file: Optional[list[Path]] = path(
-        default=None,
-        converter=attrs.converters.optional(to_list(Path)),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="tas6",
+    tas: list[Tas] = child(
+        block="options", keyword="tas6", direction="in", default=attrs.Factory(list)
     )
     obs_file: Optional[Path] = path(
         default=None,

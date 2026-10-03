@@ -374,7 +374,6 @@ class Package(Component, ABC):
         path: Path,
         dims: "dict[str, int] | None" = None,
         name: "str | None" = None,
-        workspace: "Path | None" = None,
     ) -> "Package":
         """Load from an MF6 text input file.
 
@@ -390,19 +389,13 @@ class Package(Component, ABC):
         name :
             Explicit component name (e.g. a namefile binding row's
             pname), overriding the default auto-assigned name.
-        workspace :
-            The simulation workspace, which the files the package names
-            (e.g. DIS's NCF file) are relative to. Default: the package
-            file's directory.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
 
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(
-            _raw, cls, dims=dims, workspace=workspace or path.parent, name=name
-        )
+        _pkg = structure_component(_raw, cls, dims=dims, workspace=path.parent, name=name)
 
         # Pre-populate dimension cache so to_xarray()/to_dataarray() work
         # on standalone packages (not attached to a parent model).
@@ -412,7 +405,11 @@ class Package(Component, ABC):
         return _pkg
 
     def default_filename(self) -> str:
-        name = self._parent.name if self._parent else self.name  # type: ignore
+        parent = self._parent  # type: ignore
+        if isinstance(parent, Package):  # named by a file record: gwf.chd.ts0
+            stem = Path(parent.filename or parent.default_filename()).name
+            return f"{stem}.{self.name}"
+        name = parent.name if parent else self.name
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 

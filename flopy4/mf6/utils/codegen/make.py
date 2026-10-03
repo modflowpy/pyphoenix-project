@@ -1053,6 +1053,8 @@ LINKS: dict[tuple[str, str], Link] = {
     ("sim-nam", "exchanges.exgfile"): Link("exchange", "exgtype"),
     ("sim-nam", "solutiongroup.slnfname"): Link("solution", "slntype"),
     ("*", "ncf_filerecord.ncf6_filename"): Link("utl-ncf"),
+    ("*", "ts_filerecord.ts6_filename"): Link("utl-ts"),
+    ("*", "tas_filerecord.tas6_filename"): Link("utl-tas"),
 }
 
 
@@ -1157,8 +1159,9 @@ def _child_field_spec(
     cls = filters.class_name(target)
     optional = f.optional if link.optional is None else link.optional
     args = f'block="{block_name}"'
-    if isinstance(f, Record):  # KEYWORD FILEIN <file>
-        members = list((f.fields or {}).values())
+    record = f.item if isinstance(f, ListField) else f
+    if isinstance(record, Record):  # KEYWORD FILEIN <file>, maybe repeated
+        members = list((record.fields or {}).values())
         keyword = next(m.name for m in members if isinstance(m, KeywordField))
         direction = next(m.direction for m in members if isinstance(m, File))
         args += f', keyword="{keyword}", direction="{direction}"'

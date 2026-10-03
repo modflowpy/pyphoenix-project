@@ -73,9 +73,9 @@ def _collect_package_files(sim_path: Path) -> list[tuple[Path, str]]:
     calls: list[tuple[Path, str]] = []
     original = Package.load.__func__
 
-    def wrapper(cls, path, **kwargs):
+    def wrapper(cls, path, dims=None, name=None):
         calls.append((Path(path), cls.dfn_name))
-        return original(cls, path, **kwargs)
+        return original(cls, path, dims=dims, name=name)
 
     with mock.patch.object(Package, "load", classmethod(wrapper)):
         Simulation.load(sim_path)

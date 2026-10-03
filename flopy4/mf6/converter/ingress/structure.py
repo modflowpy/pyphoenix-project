@@ -564,7 +564,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 else None
             )
             child = (
-                target_cls.load(workspace / fname, dims=dims, name=pname, workspace=workspace)
+                target_cls.load(workspace / fname, dims=dims, name=pname)
                 if issubclass(target_cls, Package)
                 else target_cls.load(workspace / fname, name=pname)
             )
@@ -594,17 +594,20 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
 
 
 def _load_file_child(field: Any, path: Path, workspace: Path | None, dims: dict | None) -> Any:
-    """Load the child a file record names (DIS's ``NCF6 FILEIN <path>``),
-    from the simulation workspace."""
+    """Load the child a file record names (DIS's ``NCF6 FILEIN <path>``).
+    Like mf6, resolve the path against the working directory, which loading
+    a simulation sets to its workspace; failing that, against the parent
+    file's directory (`workspace`), for a package loaded on its own."""
     from flopy4.attrs_xarray import child_field_candidates
 
-    if workspace is None:
-        raise ValueError(f"loading {field.name} from {path} needs a workspace")
     spec = child_field_candidates(field)
     assert spec is not None
     child_cls = spec[1][0]
     assert issubclass(child_cls, Package)
-    child = child_cls.load(workspace / path, dims=dims, workspace=workspace)
+    file = Path.cwd() / path
+    if not file.exists() and workspace is not None:
+        file = workspace / path
+    child = child_cls.load(file, dims=dims)
     child.filename = path
     return child
 
@@ -817,6 +820,13 @@ def structure_component(
                 f, item_cls = kf
                 kwargs.setdefault(f.alias or f.name, []).append(item_cls.from_tokens(row))
                 continue
+            # A record's keyword wins over a field's name: utl-ts's SFAC is
+            # sfacrecord_single's keyword, and the SFACS record's field name.
+            if key in inner_class_fields:
+                cand_f, inner_cls = inner_class_fields[key]
+                cand_init = cand_f.alias if cand_f.alias else cand_f.name
+                kwargs[cand_init] = inner_cls.from_tokens(row)
+                continue
             # keywords are renamed with a trailing underscore (CONTINUE: continue_)
             f = (
                 all_fields.get(key)
@@ -824,16 +834,11 @@ def structure_component(
                 or all_fields.get(f"{key}_")
             )
             if f is None or f.init is False:
-                if key in inner_class_fields:
-                    cand_f, inner_cls = inner_class_fields[key]
-                    cand_init = cand_f.alias if cand_f.alias else cand_f.name
-                    kwargs[cand_init] = inner_cls.from_tokens(row)
                 continue
             init_key = f.alias if f.alias else f.name
             # A Record-typed field must go through from_tokens(), even when
             # the matched token is the field's own name rather than the
-            # record's separate trigger keyword (e.g. sfacrecord's outer
-            # field is itself named "sfac").
+            # record's trigger keyword.
             inner_cls = _inner_class_type(f.type)
             if inner_cls is not None:
                 kwargs[init_key] = inner_cls.from_tokens(row)
@@ -859,17 +864,14 @@ def structure_component(
     if period_item_cls is not None:
         item_types.append(period_item_cls)
     sizes = {
-        name: len(kwargs[name])
-        for ic in item_types
-        for name in sized_by(ic)
-        if kwargs.get(name) is not None
+        k: len(kwargs[k]) for ic in item_types for k in sized_by(ic) if kwargs.get(k) is not None
     }
     # Dimensions counting item columns (numalphaj counts GNC's alphasj).
     count_dims = getattr(cls, "count_dims", {})
     for ic in item_types:
-        for name in counted_by(ic):
-            if (n := resolve_dim(name, count_dims, kwargs)) is not None:
-                sizes[name] = n
+        for dim in counted_by(ic):
+            if (n := resolve_dim(dim, count_dims, kwargs)) is not None:
+                sizes[dim] = n
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a

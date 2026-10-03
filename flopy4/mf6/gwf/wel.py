@@ -6,10 +6,11 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array, to_list
+from flopy4.mf6._types import ARRAY_EQ, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.ts import Ts
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -88,13 +89,8 @@ class Wel(Package):
         optional=True,
         longname="name of auxiliary variable for the per-well AUTO_FLOW_REDUCE value",
     )
-    ts_file: Optional[list[Path]] = path(
-        default=None,
-        converter=attrs.converters.optional(to_list(Path)),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="ts6",
+    ts: list[Ts] = child(
+        block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs_file: Optional[Path] = path(
         default=None,

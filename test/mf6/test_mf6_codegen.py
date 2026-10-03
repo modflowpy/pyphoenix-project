@@ -945,15 +945,32 @@ def test_scalar_columns_stay_scalar(tmp_path, all_dfns):
     assert "q: Union[float, str] = field(time_series=True)" in spec.outpath.read_text()
 
 
-@pytest.mark.parametrize("name,field", [("gwf-chd", "ts_file"), ("utl-spca", "tas_file")])
-def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
-    """A tagged list of file records (TS6/TAS6 FILEIN) is a repeatable
-    list[Path] options field, not a table filling the options block."""
+@pytest.mark.parametrize(
+    "name,field,cls,keyword", [("gwf-chd", "ts", "Ts", "ts6"), ("utl-spca", "tas", "Tas", "tas6")]
+)
+def test_tagged_file_list_is_child_list(tmp_path, all_dfns, name, field, cls, keyword):
+    """A linked tagged list of file records (TS6/TAS6 FILEIN) is a list of
+    children, not a table filling the options block."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     assert "options" not in {bp.block_name for bp in spec.block_properties}
+    text = " ".join(spec.outpath.read_text().split())
+    assert (
+        f'{field}: list[{cls}] = child( block="options", keyword="{keyword}", direction="in", '
+        "default=attrs.Factory(list) )"
+    ) in text
+
+
+def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, monkeypatch):
+    """An unlinked tagged list of file records is a repeatable list[Path]
+    options field."""
+    from flopy4.mf6.utils.codegen.make import LINKS
+
+    monkeypatch.delitem(LINKS, ("*", "ts_filerecord.ts6_filename"))
+    skip = {n for n in all_dfns if n != "gwf-chd"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     text = spec.outpath.read_text()
-    assert f"{field}: Optional[list[Path]] = path(" in text
+    assert "ts_file: Optional[list[Path]] = path(" in text
     assert "converter=attrs.converters.optional(to_list(Path))," in text
 
 
