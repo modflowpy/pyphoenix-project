@@ -239,12 +239,16 @@ def _schema_dict_from_columns(
             entry["count"] = shape[0]
             if col.is_index:
                 entry["index"] = True
-        elif isinstance(f, Array) and len(shape) == 1 and _count_dim(shape[0]) in dims:
+        elif (
+            isinstance(f, Array)
+            and len(counts_by := shape[1:] if col.is_cellid else shape) == 1
+            and _count_dim(counts_by[0]) in dims
+        ):
             # Inline array sized by a package dimension (GNC's cellidsj and
             # alphasj, by numalphaj; EVT's pxdp, by nseg-1): fixed width, so
-            # it may be any column.
+            # it may be any column. A cellid array's first axis is ncelldim.
             entry["role"] = "counted"
-            entry["count"] = shape[0]
+            entry["count"] = counts_by[0]
             if col.is_cellid:
                 entry["cellid"] = True
             elif col.is_index:
@@ -1030,6 +1034,7 @@ def build_component_spec(
     developmode: bool = False,
 ) -> ComponentSpec:
     """Build all template context for a DFN component."""
+    component = filters.collapse_named_arrays(component)
     derived_dims = filters.derived_dims(component)
     all_fields = [
         (block_name, filters.canonical_shape(f, derived_dims))

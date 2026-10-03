@@ -347,6 +347,35 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
     return result
 
 
+def _named_array(f) -> Array | None:
+    """The array in a list of named arrays (RCHA's period aux: an auxiliary
+    name, then its array), or None for any other field."""
+    if not isinstance(f, ListField) or not isinstance(f.item, Record):
+        return None
+    match list(f.item.fields.values()):
+        case [String(fk=str()) as name, Array() as arr] if arr.shape and name.fk.endswith(
+            "auxiliary"
+        ):
+            return arr
+    return None
+
+
+def collapse_named_arrays(component: Component) -> Component:
+    """Replace each list of named arrays with its array, as one field of
+    the list's name: the period ``aux`` array the runtime reads one array
+    per auxiliary variable into."""
+    blocks = {}
+    for block_name, block in (component.blocks or {}).items():
+        fields = {
+            name: arr.model_copy(update={"name": name, "optional": True})
+            if (arr := _named_array(f)) is not None
+            else f
+            for name, f in block.fields.items()
+        }
+        blocks[block_name] = block.model_copy(update={"fields": fields})
+    return component.model_copy(update={"blocks": blocks})
+
+
 def derived_dims(component: Component) -> dict[str, str]:
     """A component's arithmetic derived dimensions, name -> expression, e.g.
     gwf-dis's ``{"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol",
@@ -893,7 +922,7 @@ class ColumnSpec:
 
     name: str
     field: FieldV3  # the underlying dev3 field, for shape/dtype/time_series/fk access
-    is_cellid: bool  # shape=["ncelldim"] or node -- stored as object-dtype tuple attr
+    is_cellid: bool  # dev3 Array.cellid -- stored as object-dtype tuple attr
     is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
     is_row_keyword: bool  # optional keyword -- stored as bool attr
     is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
@@ -947,10 +976,7 @@ def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
             ColumnSpec(
                 name=safe_name(col_name),
                 field=col,
-                # a grid cell reference: a cellid array, or marked `node`
-                # (GNC's cellidn; `getattr` since only Integer has `node` yet)
-                is_cellid=(isinstance(col, Array) and list(col.shape or []) == ["ncelldim"])
-                or bool(getattr(col, "node", False)),
+                is_cellid=isinstance(col, Array) and col.cellid,
                 is_prefix=is_keyword and not is_optional,
                 is_row_keyword=is_keyword and is_optional,
                 # role="feature_id" implies MF6's numeric 0-based-Python/1-based-
