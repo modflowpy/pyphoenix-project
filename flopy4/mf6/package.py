@@ -354,20 +354,19 @@ class Package(Component, ABC):
                 self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
-        self._sync_subpackage_files()
+        self._name_file_children()
         super().write(format=format, context=context)
 
-    def _sync_subpackage_files(self) -> None:
-        """Name each attached subpackage's file in the parent's path field
-        (e.g. DIS's ``NCF6 FILEIN <file>``), unless already given."""
+    def _name_file_children(self) -> None:
+        """Give each child named by a file record (DIS's ``NCF6 FILEIN
+        <file>``) a filename, so the record can name it before it's written."""
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if (file_field := f.metadata.get("file_field")) is None:
+            if not (f.metadata.get("child") and f.metadata.get("_keyword")):
                 continue
-            if (child := getattr(self, f.name)) is None:
-                continue
-            child.filename = child.filename or Path(child.default_filename())
-            if getattr(self, file_field) is None:
-                setattr(self, file_field, Path(child.filename.name))
+            value = getattr(self, f.name)
+            for child in value if isinstance(value, list) else [value]:
+                if child is not None:
+                    child.filename = child.filename or Path(child.default_filename())
 
     @classmethod
     def load(  # type: ignore[override]
@@ -375,6 +374,7 @@ class Package(Component, ABC):
         path: Path,
         dims: "dict[str, int] | None" = None,
         name: "str | None" = None,
+        workspace: "Path | None" = None,
     ) -> "Package":
         """Load from an MF6 text input file.
 
@@ -390,13 +390,19 @@ class Package(Component, ABC):
         name :
             Explicit component name (e.g. a namefile binding row's
             pname), overriding the default auto-assigned name.
+        workspace :
+            The simulation workspace, which the files the package names
+            (e.g. DIS's NCF file) are relative to. Default: the package
+            file's directory.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
 
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(_raw, cls, dims=dims, workspace=path.parent, name=name)
+        _pkg = structure_component(
+            _raw, cls, dims=dims, workspace=workspace or path.parent, name=name
+        )
 
         # Pre-populate dimension cache so to_xarray()/to_dataarray() work
         # on standalone packages (not attached to a parent model).

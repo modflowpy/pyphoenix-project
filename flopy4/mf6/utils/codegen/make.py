@@ -871,7 +871,7 @@ def _generated_imports(
     has_child_call: bool = False,
     item_classes: "list[ItemClassSpec] | None" = None,
     has_derived_dims: bool = False,
-    subpackages: list[str] | None = None,
+    has_optional_child: bool = False,
     extra_imports: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
@@ -886,7 +886,7 @@ def _generated_imports(
         or has_inner_classes
         or bool(item_classes)
         or has_readarray_period
-        or bool(subpackages)
+        or has_optional_child
     )
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
@@ -942,8 +942,6 @@ def _generated_imports(
         flopy4.append(f"from {module} import {name}")
     if has_derived_dims:
         flopy4.append("from flopy4.dimensions import DerivedDim")
-    for sub in subpackages or []:
-        flopy4.append(f"from {_component_module(sub)} import {filters.class_name(sub)}")
     flopy4.extend(extra_imports or [])
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
@@ -956,8 +954,6 @@ def _generated_imports(
         _spec_parts.append("path")
     if has_child_call:
         _spec_parts.append("child")
-    if subpackages:
-        _spec_parts.append("subpackage")
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
     _types_parts: list[str] = []
@@ -1160,15 +1156,18 @@ def _child_field_spec(
     (target,) = targets
     cls = filters.class_name(target)
     optional = f.optional if link.optional is None else link.optional
+    args = f'block="{block_name}"'
+    if isinstance(f, Record):  # KEYWORD FILEIN <file>
+        members = list((f.fields or {}).values())
+        keyword = next(m.name for m in members if isinstance(m, KeywordField))
+        direction = next(m.direction for m in members if isinstance(m, File))
+        args += f', keyword="{keyword}", direction="{direction}"'
     if filters.is_list_field(f):
-        annotation, call = (
-            f"list[{cls}]",
-            f'child(block="{block_name}", default=attrs.Factory(list))',
-        )
+        annotation, call = f"list[{cls}]", f"child({args}, default=attrs.Factory(list))"
     elif optional:
-        annotation, call = f"Optional[{cls}]", f'child(block="{block_name}")'
+        annotation, call = f"Optional[{cls}]", f"child({args})"
     else:
-        annotation, call = cls, f'child(block="{block_name}", default=attrs.Factory({cls}))'
+        annotation, call = cls, f"child({args}, default=attrs.Factory({cls}))"
     return FieldSpec(
         dfn_name=f.name,
         py_name=filters.module_name(target),
@@ -1176,17 +1175,6 @@ def _child_field_spec(
         spec_call=call,
         generatable=True,
     ), [f"from {_component_module(target)} import {cls}"]
-
-
-def _subpackage_field_spec(component: str, file_field: str) -> FieldSpec:
-    """The child field for a subpackage, named by its file field."""
-    return FieldSpec(
-        dfn_name=component,
-        py_name=filters.module_name(component),
-        type_annotation=f"Optional[{filters.class_name(component)}]",
-        spec_call=f'subpackage(file_field="{file_field}")',
-        generatable=True,
-    )
 
 
 def _base_class(component: Component) -> str:
@@ -1277,12 +1265,9 @@ def build_component_spec(
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
-    # Linked fields, by name. A record keeps its path field next to the
-    # child; anything else is replaced by the child.
+    # Linked fields, by name, each replaced by a child field.
     links = {f.name: found for _, f in all_fields if (found := _find_link(component, f))}
-    child_fields = frozenset(
-        f.name for _, f in all_fields if f.name in links and not isinstance(f, Record)
-    )
+    child_fields = frozenset(links)
     block_properties, _bp_block_names = _build_block_property_specs(
         component,
         reserved_names=_period_keystring_names(component),
@@ -1291,7 +1276,6 @@ def build_component_spec(
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
-    subpackages: list[str] = []  # components of subpackage fields
     extra_imports: list[str] = []  # child fields' imports
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
@@ -1317,7 +1301,7 @@ def build_component_spec(
             path, link = links[f.name]
             targets = resolve_link(component, path, link, dfns)
             spec, child_imports = _child_field_spec(component, f, block_name, link, targets, dfns)
-            data_specs.append(spec)
+            (prefix_specs if block_name in ("options", "dimensions") else data_specs).append(spec)
             extra_imports.extend(child_imports)
             continue
 
@@ -1444,11 +1428,6 @@ def build_component_spec(
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
-            if spec.generatable and (found := links.get(f.name)):
-                path, link = found
-                (sub,) = resolve_link(component, path, link, dfns)
-                target.append(_subpackage_field_spec(sub, spec.py_name))
-                subpackages.append(sub)
 
     # Rendered before the other blocks' element classes.
     block_item_classes: list[ItemClassSpec] = []
@@ -1673,7 +1652,12 @@ def build_component_spec(
         has_readarray_period=bool(_readarray_period_fields),
         item_classes=item_classes,
         has_derived_dims=bool(_derived_dims),
-        subpackages=subpackages,
+        has_optional_child=any(
+            fs.generatable
+            and fs.spec_call.startswith("child(")
+            and "Optional[" in fs.type_annotation
+            for fs in field_specs
+        ),
         extra_imports=extra_imports,
     )
 

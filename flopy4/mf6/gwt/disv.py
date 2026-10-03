@@ -10,7 +10,7 @@ from flopy4.mf6.disv_methods import DisvMethods
 from flopy4.mf6.grid_dims_methods import GridDimsMethods
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path, subpackage
+from flopy4.mf6.spec import child, field, path
 from flopy4.mf6.utl.ncf import Ncf
 
 
@@ -90,15 +90,7 @@ class Disv(DisvMethods, GridDimsMethods, Package):
         optional=True,
         longname="CRS user input string",
     )
-    ncf_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="ncf6",
-    )
-    ncf: Optional[Ncf] = subpackage(file_field="ncf_file")
+    ncf: Optional[Ncf] = child(block="options", keyword="ncf6", direction="in")
     nlay: Optional[int] = field(
         default=None,
         block="dimensions",

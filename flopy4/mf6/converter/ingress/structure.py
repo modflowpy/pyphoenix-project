@@ -250,7 +250,8 @@ def _parse_array_block(
     """
     result: dict = {}
     nlay = dims.get("nlay", 1)
-    nodes = dims.get("nodes", 0)
+    # a component with cells but no layers of its own has only ncpl (NCF)
+    nodes = dims.get("nodes") or nlay * dims.get("ncpl", 0)
     if not nodes:
         return result
     ncpl = nodes // nlay if nlay else nodes
@@ -488,8 +489,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
         if spec is None:
             continue
         block_name = f.metadata.get("block")
-        if block_name is None:
-            continue
+        if block_name is None or f.metadata.get("_keyword"):
+            continue  # file records' children load with their records
         kind, candidates = spec
         fields_by_block.setdefault(block_name, []).append((f.name, kind, candidates))
 
@@ -563,7 +564,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 else None
             )
             child = (
-                target_cls.load(workspace / fname, dims=dims, name=pname)
+                target_cls.load(workspace / fname, dims=dims, name=pname, workspace=workspace)
                 if issubclass(target_cls, Package)
                 else target_cls.load(workspace / fname, name=pname)
             )
@@ -590,6 +591,22 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
         kwargs.update(collectors)
 
     return kwargs
+
+
+def _load_file_child(field: Any, path: Path, workspace: Path | None, dims: dict | None) -> Any:
+    """Load the child a file record names (DIS's ``NCF6 FILEIN <path>``),
+    from the simulation workspace."""
+    from flopy4.attrs_xarray import child_field_candidates
+
+    if workspace is None:
+        raise ValueError(f"loading {field.name} from {path} needs a workspace")
+    spec = child_field_candidates(field)
+    assert spec is not None
+    child_cls = spec[1][0]
+    assert issubclass(child_cls, Package)
+    child = child_cls.load(workspace / path, dims=dims, workspace=workspace)
+    child.filename = path
+    return child
 
 
 def _group_repeating_rows(
@@ -780,6 +797,13 @@ def structure_component(
                 if tokens:
                     path = Path(_strip_quotes(str(tokens[0])))
                     init_key = ff.alias or ff.name
+                    if ff.metadata.get("child"):
+                        child = _load_file_child(ff, path, workspace, dims)
+                        if get_origin(unwrap_optional(ff.type)) is list:
+                            kwargs.setdefault(init_key, []).append(child)
+                        else:
+                            kwargs[init_key] = child
+                        continue
                     # A list[Path] field (a DFN tagged list of file
                     # records) gets one element per row.
                     if get_origin(unwrap_optional(ff.type)) is list:

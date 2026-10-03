@@ -832,7 +832,9 @@ def test_subpackage_field(tmp_path, all_dfns):
 
     skip = {n for n in all_dfns if n != "gwf-dis"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert 'ncf: Optional[Ncf] = subpackage(file_field="ncf_file")' in spec.outpath.read_text()
+    text = spec.outpath.read_text()
+    assert 'ncf: Optional[Ncf] = child(block="options", keyword="ncf6", direction="in")' in text
+    assert "ncf_file" not in text
     Dis = _load_class_from_spec(spec, "_codegen_test_subpackage.dis", "Dis")
 
     lat = 35.123456789012345
@@ -842,7 +844,6 @@ def test_subpackage_field(tmp_path, all_dfns):
     dis.ncf.filename = tmp_path / "gwf.dis.ncf"
     dis.write(context=WriteContext(float_precision=4))
 
-    assert dis.ncf_file == Path("gwf.dis.ncf")
     assert "NCF6 FILEIN gwf.dis.ncf" in (tmp_path / "gwf.dis").read_text()
     assert repr(lat) in (tmp_path / "gwf.dis.ncf").read_text()
 

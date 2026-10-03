@@ -171,10 +171,6 @@ def path(
     )
 
 
-def subpackage(file_field: str):
-    return attrs.field(default=None, metadata={"file_field": file_field})
-
-
 def _coerce_one(value, candidates: tuple[type, ...]):
     if value is None or isinstance(value, candidates):
         return value
@@ -205,12 +201,23 @@ def coerce_child(value, field: Attribute):
     return _coerce_one(value, candidates)
 
 
-def child(block: str | None = None, default=None, converter=None):
+def child(
+    block: str | None = None,
+    default=None,
+    converter=None,
+    keyword: str | None = None,
+    direction: FileDirection | None = None,
+):
     """A child component field: the component itself, standing in for the
-    DFN field that names its file."""
+    DFN field that names its file. A child named by a file record
+    (``NCF6 FILEIN <file>``) has the record's keyword and direction."""
     metadata: dict = {"child": True}
     if block:
         metadata["block"] = block
+    if keyword:
+        metadata["_keyword"] = keyword.lower()
+    if direction:
+        metadata["direction"] = direction
     return attrs.field(
         default=default,
         converter=converter or attrs.Converter(coerce_child, takes_field=True),
