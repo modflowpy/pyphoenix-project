@@ -123,7 +123,7 @@ class Sfr(Package):
     class UpstreamFraction(Item):
         _keyword: ClassVar[str] = "upstream_fraction"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        upstream_fraction: float = field()
+        upstream_fraction: Union[float, str] = field(time_series=True)
 
     @attrs.define
     class CrossSection(Item):
@@ -307,7 +307,7 @@ class Sfr(Package):
     connectiondata: Optional[list[Connectiondata]] = field(
         default=None,
         block="connectiondata",
-        write_if_empty=True,
+        dim="nreaches",
     )
     diversions: Optional[list[Diversions]] = field(
         default=None,
@@ -316,6 +316,7 @@ class Sfr(Package):
     initialstages: Optional[list[Initialstages]] = field(
         default=None,
         block="initialstages",
+        dim="nreaches",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
         alias="stress_period_data",
