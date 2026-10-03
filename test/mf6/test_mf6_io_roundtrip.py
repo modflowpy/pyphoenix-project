@@ -20,15 +20,8 @@ from flopy4.mf6.simulation import Simulation
 
 from .test_mf6_load_all_models import KNOWN_PASSING
 
-XFAIL = {
-    # a TIMEARRAYSERIES-sourced period array is dropped on load (see
-    # test_tas_period_array_kept)
-    "ingress drops TAS period arrays": {
-        "mf6/test/test001h_rch_array3",
-        "mf6/test/test027_TimeseriesTest",
-        "mf6/test/test027_TimeseriesTest_idomain",
-    },
-}
+# cause -> models expected to fail the roundtrip
+XFAIL: dict[str, set[str]] = {}
 
 MODELS = sorted(m for m in KNOWN_PASSING if not m.startswith("mf6/large/"))
 
@@ -155,7 +148,6 @@ def _period_block(workspace, text):
     raise AssertionError(f"no written file contains {text!r}")
 
 
-@pytest.mark.xfail(reason="missing aux-named period arrays", strict=True)
 def test_aux_period_array_kept(tmp_path):
     """An `AUXILIARY`-named array in a READASARRAYS period block survives."""
     _, _, out = _roundtrip(tmp_path, "mf6/test/test027_TimeseriesTest")

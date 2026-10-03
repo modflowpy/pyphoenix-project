@@ -413,6 +413,267 @@ def test_disu_round_trip():
     np.testing.assert_array_equal(grid.ja, [0, 1, 1, 0])
 
 
+@pytest.mark.parametrize("dims", [None, {"nlay": 1, "nrow": 2, "ncol": 3}])
+def test_gnc_round_trip(dims):
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Gnc
+
+    gnc = Gnc(
+        gncdata=[
+            Gnc.Gncdata((0, 0, 1), (0, 0, 2), ((0, 1, 1), (0, 1, 2)), (0.25, 0.25)),
+            # a zero (dummy) cellid in the file is -1 in python
+            Gnc.Gncdata((0, 1, 1), (0, 1, 2), ((0, 0, 1), (-1, -1, -1)), (0.5, 0.0)),
+        ],
+    )
+    assert (gnc.numgnc, gnc.numalphaj) == (2, 2)
+    raw = loads(dumps(unstructure_component(gnc)))
+    assert raw["GNCDATA"] == [
+        [1, 1, 2, 1, 1, 3, 1, 2, 2, 1, 2, 3, 0.25, 0.25],
+        [1, 2, 2, 1, 2, 3, 1, 1, 2, 0, 0, 0, 0.5, 0.0],
+    ]
+    assert structure_component(raw, Gnc, dims=dims).gncdata == gnc.gncdata
+
+
+def test_gnc_numalphaj_mismatch():
+    from flopy4.mf6.gwf import Gnc
+
+    row = Gnc.Gncdata((0,), (1,), ((2,), (3,)), (0.25, 0.25))
+    with pytest.raises(ValueError, match="numalphaj=1 but cellidsj has 2 values"):
+        Gnc(numalphaj=1, gncdata=[row])
+
+
+def test_evt_segments_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Evt
+
+    evt = Evt(
+        stress_period_data={
+            0: [
+                ((0, 0, 0), 59.0, 0.01, 6.0, (0.5, 0.9), (1.0, 0.7)),
+                ((0, 0, 1), 59.0, "etrate", 6.0, (0.4, "pxdp2"), (0.9, 0.6)),
+            ]
+        },
+    )
+    assert evt.nseg == 3
+    raw = loads(dumps(unstructure_component(evt)))
+    assert raw["PERIOD 1"][0] == [1, 1, 1, 59.0, 0.01, 6.0, 0.5, 0.9, 1.0, 0.7]
+    evt2 = structure_component(raw, Evt, dims={"nlay": 1, "nrow": 1, "ncol": 2})
+    assert evt2.stress_period_data == evt.stress_period_data
+
+
+def test_ts_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl import Ts
+
+    ts = Ts(
+        time_series_name=Ts.TimeSeriesName(time_series_names=["a", "b"]),
+        interpolation_method=Ts.InterpolationMethod(interpolation_method=["linear", "stepwise"]),
+        timeseries=[(0.0, (1.0, 2.0)), (10.0, (3.0, 4.0))],
+    )
+    raw = loads(dumps(unstructure_component(ts)))
+    assert raw["TIMESERIES"] == [[0.0, 1.0, 2.0], [10.0, 3.0, 4.0]]
+    ts2 = structure_component(raw, Ts)
+    assert ts2.time_series_name == ts.time_series_name
+    assert ts2.timeseries == ts.timeseries
+
+
+def test_ts_names_mismatch():
+    from flopy4.mf6.utl import Ts
+
+    with pytest.raises(ValueError, match="time_series_names=1 but ts_array has 2 values"):
+        Ts(
+            time_series_name=Ts.TimeSeriesName(time_series_names=["a"]),
+            timeseries=[(0.0, (1.0, 2.0))],
+        )
+
+
+def test_maw_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Maw
+
+    maw = Maw(
+        packagedata=[(0, 0.1, -10.0, 5.0, "THIEM", 2), (1, 0.1, -10.0, 5.0, "SKIN", 1)],
+        connectiondata=[
+            (0, 0, (0, 0, 0), 0.0, -10.0, 1.0, 0.2),
+            (0, 1, (1, 0, 0), 0.0, -10.0, 1.0, 0.2),
+            (1, 0, (0, 0, 1), 0.0, -10.0, 1.0, 0.2),
+        ],
+        stress_period_data={
+            0: [Maw.Rate(ifno=0, rate=-100.0), Maw.Status(ifno=1, status="INACTIVE")]
+        },
+    )
+    raw = loads(dumps(unstructure_component(maw)))
+    assert raw["CONNECTIONDATA"][1] == [1, 2, 2, 1, 1, 0.0, -10.0, 1.0, 0.2]
+    maw2 = structure_component(raw, Maw, dims={"nlay": 2, "nrow": 1, "ncol": 2})
+    assert maw2.packagedata == maw.packagedata
+    assert maw2.connectiondata == maw.connectiondata
+    assert maw2.stress_period_data == maw.stress_period_data
+
+
+def test_hfb_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Hfb
+
+    hfb = Hfb(
+        stress_period_data={0: [((0, 0, 0), (0, 0, 1), 0.001), ((0, 1, 0), (0, 1, 1), 0.002)]}
+    )
+    assert hfb.maxhfb == 2
+    raw = loads(dumps(unstructure_component(hfb)))
+    assert raw["PERIOD 1"][0] == [1, 1, 1, 1, 1, 2, 0.001]
+    hfb2 = structure_component(raw, Hfb, dims={"nlay": 1, "nrow": 2, "ncol": 2})
+    assert hfb2.stress_period_data == hfb.stress_period_data
+
+
+def test_uzf_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Uzf
+
+    uzf = Uzf(
+        packagedata=[
+            (0, (0,), 1, 1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
+            (1, (1,), 0, -1, 0.001, 1.0, 0.05, 0.25, 0.05, 4.0),
+        ],
+        stress_period_data={0: [(0, 0.01, 0.001, 2.25, 0.05, 0.0, 0.0, 0.0)]},
+    )
+    raw = loads(dumps(unstructure_component(uzf)))
+    # ivertcon 1 -> 2; -1 (no underlying cell) -> 0
+    assert [r[3] for r in raw["PACKAGEDATA"]] == [2, 0]
+    uzf2 = structure_component(raw, Uzf, dims={"nodes": 2})
+    assert uzf2.packagedata == uzf.packagedata
+    assert uzf2.stress_period_data == uzf.stress_period_data
+
+
+def test_sfr_connections_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    sfr = Sfr(
+        packagedata=[
+            (0, (0, 0, 0), *reach, 1, 1.0, 0),
+            (1, (0, 0, 1), *reach, 2, 1.0, 0),
+            (2, (0, 0, 2), *reach, 1, 1.0, 0),
+        ],
+        connectiondata=[(0, ((1, -1),)), (1, ((0, 1), (2, -1))), (2, ((1, 1),))],
+    )
+    # ints as in the file: 1-based, signed
+    assert Sfr(packagedata=sfr.packagedata, connectiondata=[(0, -2), (1, 1, -3), (2, 2)]) == sfr
+    raw = loads(dumps(unstructure_component(sfr)))
+    assert raw["CONNECTIONDATA"] == [[1, -2], [2, 1, -3], [3, 2]]
+    sfr2 = structure_component(raw, Sfr, dims={"nlay": 1, "nrow": 1, "ncol": 3})
+    assert sfr2.connectiondata == sfr.connectiondata
+
+
+def test_sfr_ncon_mismatch():
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    with pytest.raises(ValueError, match="ic has 2 values but packagedata.ncon is 1"):
+        Sfr(
+            packagedata=[(0, (0, 0, 0), *reach, 1, 1.0, 0), (1, (0, 0, 1), *reach, 1, 1.0, 0)],
+            connectiondata=[(0, ((1, -1), (1, 1))), (1, ((0, 1),))],
+        )
+
+
+def test_sfr_signed_index_zero():
+    from flopy4.mf6.gwf import Sfr
+
+    with pytest.raises(ValueError, match="1-based, got 0"):
+        Sfr.Connectiondata(ifno=0, ic=(0,))
+
+
+def test_sfr_diversion_keyword_after_row_key():
+    from flopy4.mf6.gwf import Sfr
+
+    # the keyword follows the row key (ifno) but precedes other index columns
+    div = Sfr.Diversion(ifno=0, idv=1, divflow=0.5)
+    assert div.to_tokens() == (1, "DIVERSION", 2, 0.5)
+    assert Sfr.Diversion.from_tokens([1, "diversion", 2, 0.5]) == div
+
+
+def test_sfr_unconnected_reach_round_trip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Sfr
+
+    reach = (1.0, 1.0, 1e-3, 0.0, 0.1, 0.0, 0.03)
+    sfr = Sfr(
+        packagedata=[(0, (0, 0, 0), *reach, 1, 1.0, 0), (1, None, *reach, 1, 1.0, 0)],
+        connectiondata=[(0, ((1, -1),)), (1, ((0, 1),))],
+    )
+    raw = loads(dumps(unstructure_component(sfr)))
+    assert raw["PACKAGEDATA"][1][1] == "NONE"
+    sfr2 = structure_component(raw, Sfr, dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    assert sfr2.packagedata == sfr.packagedata
+
+
+def test_loads_block_header_remark():
+    # MF6 ignores anything after the block index (MAW's legacy STEADY-STATE)
+    raw = loads("BEGIN PERIOD 1 STEADY-STATE\n  1 RATE -1.0\nEND PERIOD\n")
+    assert raw == {"PERIOD 1": [[1, "RATE", -1.0]]}
+
+
+def test_gwf_list_option_name():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Gwf
+
+    text = dumps(unstructure_component(Gwf(name="m", list="m.lst")))
+    assert " LIST m.lst" in text
+    assert "_LIST" not in text
+
+
+def test_oc_head_file_and_print_format():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Oc
+
+    text = """BEGIN OPTIONS
+  HEAD FILEOUT m.hds
+  HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4 GENERAL
+END OPTIONS
+BEGIN PERIOD 1
+  SAVE HEAD STEPS 1 5 10
+END PERIOD
+"""
+    oc = structure_component(loads(text), Oc)
+    assert str(oc.head_file) == "m.hds"
+    assert oc.headprint.formatrecord.columns == 10
+    out = dumps(unstructure_component(oc))
+    assert "HEAD FILEOUT m.hds" in out
+    assert "HEAD PRINT_FORMAT COLUMNS 10 WIDTH 11 DIGITS 4 GENERAL" in out
+    assert "STEPS 1 5 10\n" in out
+
+
+def test_ims_rclose_and_unknown_block():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.ims import Ims
+
+    text = """BEGIN LINEAR
+  INNER_MAXIMUM 50
+  INNER_RCLOSE 1.0e-5 STRICT
+  LINEAR_ACCELERATION bicgstab
+END LINEAR
+BEGIN XMD
+  INNER_MAXIMUM 30
+  LINEAR_ACCELERATION cg
+END XMD
+"""
+    with pytest.warns(UserWarning, match="unknown block XMD"):
+        ims = structure_component(loads(text), Ims)
+    assert ims.inner_maximum == 50
+    assert ims.linear_acceleration == "bicgstab"
+    assert (ims.rclose.inner_rclose, ims.rclose.rclose_option) == (1e-5, "STRICT")
+    assert "INNER_RCLOSE 1e-05 STRICT" in dumps(unstructure_component(ims))
+
+
 def test_dumps_chd():
     from flopy4.mf6.gwf import Chd
 
@@ -2831,7 +3092,7 @@ def test_rcha_period_aux_dump():
         parent=gwf,
         auxiliary=["tracer"],
         recharge=np.expand_dims(recharge, axis=0),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),  # (nper, ncpl, naux)
+        aux={"tracer": np.expand_dims(aux, axis=0)},  # name -> (nper, ncpl)
         dims={"nper": 1, "naux": 1},
     )
 
@@ -2872,7 +3133,7 @@ def test_chdg_period_aux_dump():
         parent=gwf,
         auxiliary=["well_id"],
         head=np.expand_dims(head, axis=0),
-        aux=np.expand_dims(np.expand_dims(aux, axis=0), axis=-1),
+        aux={"well_id": np.expand_dims(aux, axis=0)},
         dims={"nper": 1, "naux": 1},
     )
 
@@ -2912,7 +3173,7 @@ def test_rcha_period_double_aux_dump():
         parent=gwf,
         auxiliary=["tracer_a", "tracer_b"],
         recharge=np.expand_dims(recharge, axis=0),
-        aux=np.expand_dims(aux, axis=0),  # (nper, ncpl, naux)
+        aux={"tracer_a": aux[None, :, 0], "tracer_b": aux[None, :, 1]},
         dims={"nper": 1, "naux": 2},
     )
 
@@ -2926,6 +3187,31 @@ def test_rcha_period_double_aux_dump():
     period_section = dumped.split("BEGIN PERIOD 1")[1].split("END PERIOD 1")[0]
     assert "tracer_a" in period_section.lower()
     assert "tracer_b" in period_section.lower()
+
+
+def test_rcha_period_aux_roundtrip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Rcha
+
+    rch = Rcha(
+        auxiliary=["conc", "temp"],
+        recharge=np.full((2, 4), 1e-3),
+        aux={"conc": np.full((2, 4), 10.0), "temp": np.array([[15.0] * 4, [FILL_DNODATA] * 4])},
+    )
+    text = dumps(unstructure_component(rch))
+    assert "TEMP" not in text.split("BEGIN PERIOD 2")[1]
+    rch2 = structure_component(loads(text), Rcha, dims={"nlay": 1, "nodes": 4})
+    assert sorted(rch2.aux) == ["conc", "temp"]
+    for name in rch.aux:
+        np.testing.assert_array_equal(rch2.aux[name], rch.aux[name])
+
+
+def test_rcha_period_aux_unknown_name():
+    from flopy4.mf6.gwf import Rcha
+
+    with pytest.raises(ValueError, match=r"\['tmp'\] not in auxiliary"):
+        Rcha(auxiliary=["conc"], aux={"tmp": np.zeros((1, 4))})
 
 
 def test_evt_period_aux_roundtrip():

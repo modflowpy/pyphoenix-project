@@ -64,14 +64,16 @@ class Ims(Solution):
         optional=True,
         longname="fraction of outer maximum used with ats",
     )
-    outer_dvclose: float = field(
+    outer_dvclose: Optional[float] = field(
         default=None,
         block="nonlinear",
+        optional=True,
         longname="dependent-variable change criterion",
     )
-    outer_maximum: int = field(
+    outer_maximum: Optional[int] = field(
         default=None,
         block="nonlinear",
+        optional=True,
         longname="outer maximum iterations",
     )
     under_relaxation: Optional[str] = field(
@@ -131,23 +133,26 @@ class Ims(Solution):
         optional=True,
         longname="limit to which the residual is reduced with backtracking",
     )
-    inner_maximum: int = field(
+    inner_maximum: Optional[int] = field(
         default=None,
         block="linear",
+        optional=True,
         longname="maximum number of inner iterations",
     )
-    inner_dvclose: float = field(
+    inner_dvclose: Optional[float] = field(
         default=None,
         block="linear",
+        optional=True,
         longname="dependent-variable change tolerance",
     )
     rclose: Optional[Rclose] = field(
         default=None,
         block="linear",
     )
-    linear_acceleration: str = field(
+    linear_acceleration: Optional[str] = field(
         default=None,
         block="linear",
+        optional=True,
         longname="linear acceleration method",
     )
     relaxation_factor: Optional[float] = field(

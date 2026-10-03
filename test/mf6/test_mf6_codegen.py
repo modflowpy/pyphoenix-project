@@ -78,10 +78,11 @@ SIMPLE_TIER = {
     "gwf-vsc": ("Vsc", "Package"),
     "gwf-mvr": ("Mvr", "Package"),
     # Tier 6: compressible storage
-    # (gwf-sfr, gwf-maw excluded: keystring period settings silently absent)
-    # (gwf-uzf excluded: duplicated ifno attribute and not currently functional)
-    # (gwf-hfb excluded: cell-pair recarray Tier 7, requires framework changes)
     "gwf-csub": ("Csub", "Package"),
+    "gwf-maw": ("Maw", "Package"),
+    "gwf-uzf": ("Uzf", "Package"),
+    "gwf-hfb": ("Hfb", "Package"),
+    "gwf-sfr": ("Sfr", "Package"),
 }
 
 # Transport model packages: gwt-ist (immobile storage transport, multi=True).
@@ -107,6 +108,7 @@ UTL_TIER = {
     "utl-sfrtab": ("Sfrtab", "Package"),
     "utl-spca": ("Spca", "Package"),
     "utl-tas": ("Tas", "Package"),
+    "utl-ts": ("Ts", "Package"),
 }
 
 # Exchange packages (exg/) — only zero-field (pass-only) classes.
@@ -885,7 +887,7 @@ def test_bounded_array_arm_is_variadic(tmp_path, all_dfns, name):
     trailing-values tuple, not a fixed-length scalar column."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert "steps: tuple = field(default=(), array=True)" in spec.outpath.read_text()
+    assert "steps: tuple[int, ...] = field(default=(), array=True)" in spec.outpath.read_text()
 
 
 @pytest.mark.parametrize(

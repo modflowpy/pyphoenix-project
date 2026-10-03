@@ -347,6 +347,18 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
     return result
 
 
+def named_array(f) -> tuple[Array, str] | None:
+    """For a list of named arrays (RCHA's period aux: an auxiliary name, then
+    its array), the array and the name's fk ("options.auxiliary"); None for
+    any other field."""
+    if not isinstance(f, ListField) or not isinstance(f.item, Record):
+        return None
+    match list(f.item.fields.values()):
+        case [String(fk=str(fk)), Array(shape=[_, *_]) as arr]:
+            return arr, fk
+    return None
+
+
 def derived_dims(component: Component) -> dict[str, str]:
     """A component's arithmetic derived dimensions, name -> expression, e.g.
     gwf-dis's ``{"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol",
@@ -733,6 +745,12 @@ def item_class(
         role = col["role"]
         if role == "cellid":
             return "tuple"
+        if role == "counted":
+            if col.get("cellid"):
+                return "tuple[tuple[int, ...], ...]"
+            if col.get("time_series"):
+                return "tuple[Union[float, str], ...]"
+            return f"tuple[{_DFN_PY.get(col.get('dfn_type', 'double'), 'float')}, ...]"
         if role == "feature_id":
             return "int"
         if role in ("keystring", "inline_keyword"):
@@ -773,12 +791,16 @@ def item_class(
                 meta["pk"] = True
         elif role == "inline_keyword":
             meta["tagged"] = True
-        elif role == "array":
+        elif role in ("array", "counted"):
             meta["array"] = True
+            if col.get("cellid"):
+                meta["cellid"] = True
             if col.get("index"):
                 meta["index"] = True
             if col.get("count"):
                 meta["count"] = col["count"]
+            if col.get("signed"):
+                meta["signed"] = True
         if col.get("time_series"):
             meta["time_series"] = True
         if _is_optional(col):
@@ -801,12 +823,18 @@ def item_class(
         if col["role"] == "array" and col.get("count"):
             # As many values as an earlier column counts (cell2d's icvert).
             elem = _DFN_PY.get(col.get("dfn_type", "double"), "float")
+            if col.get("signed"):
+                elem = "tuple[int, int]"
             margs = ", ".join(f"{k}={_dq(v)}" for k, v in _field_meta(col).items())
             return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), {margs})"
         if col["role"] == "array":
             # Consumes all remaining tokens as a tuple -- a
             # keyword-plus-trailing-values setting whose arity/type isn't
-            # fixed (PRP's Steps.steps/Fraction's leaf field).
+            # fixed (PRP's Steps.steps/Fraction's leaf field), typed when
+            # the DFN says (STEPS are integers).
+            if (dfn_type := col.get("dfn_type")) in ("integer", "double"):
+                elem = _DFN_PY[dfn_type]
+                return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), array=True)"
             return f"        {col['name']}: tuple = field(default=(), array=True)"
         if col["role"] == "sized":
             shape = _dq(col["size_of"])
@@ -885,7 +913,7 @@ class ColumnSpec:
 
     name: str
     field: FieldV3  # the underlying dev3 field, for shape/dtype/time_series/fk access
-    is_cellid: bool  # shape=["ncelldim"] -- stored as object-dtype tuple attr
+    is_cellid: bool  # dev3 Array.cellid -- stored as object-dtype tuple attr
     is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
     is_row_keyword: bool  # optional keyword -- stored as bool attr
     is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
@@ -939,7 +967,7 @@ def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
             ColumnSpec(
                 name=safe_name(col_name),
                 field=col,
-                is_cellid=isinstance(col, Array) and list(col.shape or []) == ["ncelldim"],
+                is_cellid=isinstance(col, Array) and col.cellid,
                 is_prefix=is_keyword and not is_optional,
                 is_row_keyword=is_keyword and is_optional,
                 # role="feature_id" implies MF6's numeric 0-based-Python/1-based-

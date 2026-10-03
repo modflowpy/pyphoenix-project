@@ -37,7 +37,12 @@ class BasicTransformer(Transformer):
         return {items[0]: items[1 : (len(items) - 1)]}
 
     def block_name(self, items: list[Any]) -> str:
-        return " ".join([str(item) for item in items if item is not None])
+        # name plus its index (period/solutiongroup number, utl-tas's time),
+        # if any -- anything after that is a remark (see basic.lark)
+        name, *rest = items
+        if rest and isinstance(rest[0], (int, float)):
+            return f"{name} {rest[0]}"
+        return str(name)
 
     def _list(self, items: list[Any]) -> list[Any]:
         return items[0] if items else []

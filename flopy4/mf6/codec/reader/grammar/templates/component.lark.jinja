@@ -40,7 +40,7 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {{ m.block_def(block.name, block.has_index) }}
 {% endfor -%}
 {% if blocks|selectattr('has_index')|list -%}
-block_index: number
+%import typed.block_index -> block_index
 {% endif -%}
 {% for block in blocks -%}
 {% if block.recarrays -%}

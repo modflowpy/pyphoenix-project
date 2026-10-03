@@ -1,7 +1,8 @@
 import operator
+import re
 from abc import ABC
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 import attrs
 import numpy as np
@@ -17,7 +18,10 @@ from flopy4.mf6.item import (
     Item,
     construct_item,
     construct_union_item,
+    count_dim,
+    dim_counted_fields,
     item_list_type,
+    resolve_dim,
 )
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
@@ -45,6 +49,10 @@ _BOUND_OPS: dict = {
 
 @attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
+    # Dimensions counting item columns that aren't fields themselves, name ->
+    # DFN expression (utl-ts's {"time_series_names": "len(time_series_names)"}).
+    count_dims: ClassVar[dict[str, str]] = {}
+
     def __attrs_post_init__(self) -> None:
         """Post-init for Package subclasses.
 
@@ -83,6 +91,8 @@ class Package(Component, ABC):
 
         # 1. Item-list coercion.
         self._init_item_lists(fields)
+        self._check_lookup_counts(fields)
+        self._init_named_arrays(fields)
 
         # 2. Griddata normalization and broadcasting. A dimension provider
         # (a grid package) sizes its own griddata.
@@ -137,11 +147,64 @@ class Package(Component, ABC):
                     kper: self._coerce_item_list(rows, item_cls) for kper, rows in raw.items()
                 }
                 object.__setattr__(self, f.name, coerced)
-            else:
-                coerced_list = self._coerce_item_list(raw, item_cls)
-                object.__setattr__(self, f.name, coerced_list)
+                rows = [r for kper_rows in coerced.values() for r in kper_rows]
                 if dim:
-                    self._set_dim_from_rows(dim, len(coerced_list), bound)
+                    nrows = max((len(r) for r in coerced.values()), default=0)
+                    self._set_dim_from_rows(dim, nrows, bound)
+            else:
+                rows = self._coerce_item_list(raw, item_cls)
+                object.__setattr__(self, f.name, rows)
+                if dim:
+                    self._set_dim_from_rows(dim, len(rows), bound)
+            if not isinstance(item_cls, tuple):
+                self._set_dims_from_counts(item_cls, rows)
+
+    def _check_lookup_counts(self, fields) -> None:
+        """Check array columns counted by a column of the row another column
+        refers to: SFR's ic has packagedata.ncon(ifno) values."""
+        for f in fields:
+            item_cls = item_list_type(f.type)
+            if item_cls is None or isinstance(item_cls, tuple) or f.metadata.get("fill_forward"):
+                continue
+            if not (rows := self.__dict__.get(f.name)):
+                continue
+            for col in item_cls.fields():
+                m = re.fullmatch(r"(\w+)\.(\w+)\((\w+)\)", col.metadata.get("count") or "")
+                if m is None:
+                    continue
+                block, count_col, ref = m.groups()
+                ref_field = next(g for g in item_cls.fields() if g.name == ref)
+                pk = ref_field.metadata["fk"].rsplit(".", 1)[-1]
+                target = next(
+                    (g for g in fields if g.metadata.get("block") == block and g is not f), None
+                )
+                if target is None or not (target_rows := self.__dict__.get(target.name)):
+                    continue
+                counts = {getattr(r, pk): getattr(r, count_col) for r in target_rows}
+                for r in rows:
+                    n, expected = len(getattr(r, col.name) or ()), counts.get(getattr(r, ref))
+                    if expected is not None and n != expected:
+                        raise ValueError(
+                            f"{f.name} {ref}={getattr(r, ref)}: {col.name} has {n} values "
+                            f"but {block}.{count_col} is {expected}"
+                        )
+
+    def _init_named_arrays(self, fields) -> None:
+        """Named arrays (RCHA's aux): convert each to an array, and check
+        its name is one of the names the field's fk points at."""
+        for f in fields:
+            if not (f.metadata.get("fill_forward") and (fk := f.metadata.get("fk"))):
+                continue
+            if (arrays := self.__dict__.get(f.name)) is None:
+                continue
+            key = fk.rsplit(".", 1)[-1]
+            names = getattr(self, key, None)
+            allowed = {str(n).lower() for n in np.atleast_1d(names)} if names is not None else set()
+            if unknown := sorted(n for n in arrays if str(n).lower() not in allowed):
+                raise ValueError(f"{f.name}: {unknown} not in {key}")
+            self.__dict__[f.name] = {
+                n: a if hasattr(a, "shape") else np.asarray(a) for n, a in arrays.items()
+            }
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
@@ -151,6 +214,30 @@ class Package(Component, ABC):
             raise ValueError(
                 f"{dim}={declared} but {nrows} rows were given (need rows {bound or '=='} {dim})"
             )
+
+    def _set_dims_from_counts(self, item_cls: "type[Item]", rows: list) -> None:
+        """Set the dimensions counting array columns (GNC's numalphaj counts
+        cellidsj and alphasj, EVT's nseg-1 counts pxdp) from the columns'
+        lengths, unless given."""
+        for f in dim_counted_fields(item_cls):
+            dim, offset = count_dim(f.metadata["count"])
+            lengths = {len(v) for r in rows if (v := getattr(r, f.name)) is not None}
+            if len(lengths) > 1:
+                raise ValueError(f"{f.name} lengths differ across rows: {sorted(lengths)}")
+            if not lengths:
+                continue
+            (n,) = lengths
+            if dim in self.count_dims:
+                values = {a.name: getattr(self, a.name) for a in attrs.fields(type(self))}
+                declared = resolve_dim(dim, self.count_dims, values)
+                if declared is not None and declared + offset != n:
+                    raise ValueError(f"{dim}={declared} but {f.name} has {n} values")
+                continue
+            declared = getattr(self, dim)
+            if declared is None:
+                object.__setattr__(self, dim, n - offset)
+            elif declared + offset != n:
+                raise ValueError(f"{dim}={declared} but {f.name} has {n} values")
 
     @staticmethod
     def _coerce_item_list(data, item_cls: "type[Item] | tuple[type[Item], ...]") -> list:

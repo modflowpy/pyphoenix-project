@@ -1,4 +1,5 @@
 import struct
+import warnings
 from abc import ABC
 from collections import Counter
 from pathlib import Path
@@ -10,7 +11,15 @@ import numpy as np
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.item import Item, infer_ncelldim, item_list_type, parse_union_items, sized_by
+from flopy4.mf6.item import (
+    Item,
+    counted_by,
+    infer_ncelldim,
+    item_list_type,
+    parse_union_items,
+    resolve_dim,
+    sized_by,
+)
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
@@ -326,9 +335,16 @@ def _self_dims_from_kwargs(kwargs: dict) -> dict:
     return local
 
 
+def _names(value: Any) -> list[str]:
+    """A string-array field's entries (AUXILIARY's names), or none."""
+    return [] if value is None else [str(v) for v in np.atleast_1d(value)]
+
+
 def _parse_readarray_period_block(
     rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
 ) -> "dict[str, np.ndarray]":
+    """Arrays by the (lowercase) name they're written under: a field's
+    name, or an auxiliary variable's, for its named array (see Pass 3b)."""
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
@@ -394,14 +410,14 @@ def _parse_readarray_period_block(
             if layers:
                 if len(layers) < nlay:
                     layers = (layers * nlay)[:nlay]
-                result[f.name] = np.stack(layers)  # (nlay, ncpl)
+                result[key] = np.stack(layers)  # (nlay, ncpl)
         else:
             if i >= len(rows):
                 break
             value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
-            result[f.name] = value
-        if f.metadata.get("index") and f.name in result:
-            result[f.name] = _from_file_index(result[f.name])
+            result[key] = value
+        if f.metadata.get("index") and key in result:
+            result[key] = _from_file_index(result[key])
 
     return result
 
@@ -662,6 +678,11 @@ def structure_component(
         if inner_cls is None:
             continue
         kw = vars(inner_cls).get("_keyword", "")
+        if not kw:
+            # no keyword of its own, led by a tagged field (IMS's Rclose:
+            # "INNER_RCLOSE <value> [option]")
+            first = next(iter(inner_cls.fields()), None)
+            kw = first.name if first is not None and first.metadata.get("tagged") else ""
         if kw:
             inner_class_fields[kw.lower()] = (f, inner_cls)
 
@@ -705,7 +726,9 @@ def structure_component(
     repeating_array_fields = {
         f.name: f
         for f in attrs.fields(cls)
-        if repeating_array_key_type(f.type) is not None and f.init is not False
+        if repeating_array_key_type(f.type) is not None
+        and f.init is not False
+        and not f.metadata.get("fk")
     }
     repeating_array_block_prefixes = {f.metadata["block"] for f in repeating_array_fields.values()}
 
@@ -723,9 +746,16 @@ def structure_component(
             array_fields.setdefault(f.metadata["block"], {})[f.name] = f
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
+    known_blocks = {f.metadata.get("block") for f in attrs.fields(cls)}
+    if isinstance(getattr(cls, "maxbound", None), property):
+        known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
     for block_name, rows in raw_lower.items():
         if not rows:
+            continue
+        if block_name.split()[0] not in known_blocks:
+            # MF6 ignores blocks it doesn't read (an old IMS file's XMD)
+            warnings.warn(f"{cls.__name__}: ignoring unknown block {block_name.upper()}")
             continue
         if (
             block_name in block_item_fields
@@ -738,12 +768,15 @@ def structure_component(
             if not row:
                 continue
             key = str(row[0]).lower()
-            if (ff := file_fields.get(key)) is not None:
+            has_direction = len(row) > 1 and str(row[1]).upper() in ("FILEIN", "FILEOUT")
+            # A file record has its direction token, so OC's "HEAD
+            # PRINT_FORMAT ..." isn't the "HEAD FILEOUT <path>" record.
+            if (ff := file_fields.get(key)) is not None and (
+                has_direction or not ff.metadata.get("direction")
+            ):
                 # KEYWORD FILEIN|FILEOUT <path>: the path follows the
                 # keyword and the direction token.
-                tokens = row[1:]
-                if tokens and str(tokens[0]).upper() in ("FILEIN", "FILEOUT"):
-                    tokens = tokens[1:]
+                tokens = row[2:] if has_direction else row[1:]
                 if tokens:
                     path = Path(_strip_quotes(str(tokens[0])))
                     init_key = ff.alias or ff.name
@@ -802,6 +835,12 @@ def structure_component(
         for name in sized_by(ic)
         if kwargs.get(name) is not None
     }
+    # Dimensions counting item columns (numalphaj counts GNC's alphasj).
+    count_dims = getattr(cls, "count_dims", {})
+    for ic in item_types:
+        for name in counted_by(ic):
+            if (n := resolve_dim(name, count_dims, kwargs)) is not None:
+                sizes[name] = n
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a
@@ -864,25 +903,44 @@ def structure_component(
                 and f.name not in repeating_array_fields
                 and to_field_type(f.type) in ("integer", "double")
                 and f.init is not False
+                and not f.metadata.get("fk")
+            }
+            # Named arrays (RCHA's aux), one per name in the field the fk
+            # points at: written under the name, not the field's.
+            named: dict[str, tuple[Any, str]] = {
+                str(n).lower(): (f, str(n))
+                for f in attrs.fields(cls)
+                if f.metadata.get("fill_forward") and (fk := f.metadata.get("fk"))
+                for n in _names(kwargs.get(fk.rsplit(".", 1)[-1]))
             }
             if ra_fields and dims:
                 nper = max(kper_rows.keys()) + 1
                 nlay = dims.get("nlay", 1)
                 nodes = dims.get("nodes", 1)
                 ncpl = nodes // nlay if nlay > 1 else nodes
+
                 # Pre-fill with FILL_DNODATA; periods absent from file use MF6
                 # fill-forward semantics (egress skips all-FILL_DNODATA periods).
-                accum: dict[str, np.ndarray] = {}
-                for fname, f in ra_fields.items():
-                    shape = (nper, nlay, ncpl) if f.metadata.get("layered", False) else (nper, ncpl)
-                    accum[fname] = np.full(shape, FILL_DNODATA)
+                def _empty(f) -> np.ndarray:
+                    layered = f.metadata.get("layered", False)
+                    return np.full((nper, nlay, ncpl) if layered else (nper, ncpl), FILL_DNODATA)
+
+                accum: dict[str, np.ndarray] = {fname: _empty(f) for fname, f in ra_fields.items()}
+                named_accum: dict[str, dict[str, np.ndarray]] = {}
+                lookup = ra_fields | {k: f for k, (f, _) in named.items()}
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
                         continue
-                    parsed = _parse_readarray_period_block(rows, ra_fields, dims, workspace)
-                    for fname, arr in parsed.items():
-                        accum[fname][kper] = arr
+                    parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
+                    for key, arr in parsed.items():
+                        if key in ra_fields:
+                            accum[key][kper] = arr
+                        else:
+                            f, name = named[key]
+                            arrays = named_accum.setdefault(f.name, {})
+                            arrays.setdefault(name, _empty(f))[kper] = arr
                 kwargs.update(accum)
+                kwargs.update(named_accum)
 
     # ── Pass 3c: array fields whose own block repeats (utl-tas.tas_array is
     # the only current DFN example) ──────────────────────────────────────────

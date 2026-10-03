@@ -10,6 +10,7 @@ migration history from the legacy modflow_devtools.dfn (flat TypedDict)
 schema this replaces.
 """
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -36,6 +37,8 @@ from modflow_devtools.dfns.schema import (
 from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
+
+from flopy4.mf6.item import count_dim
 
 from . import filters
 from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_repr
@@ -154,6 +157,8 @@ class ComponentSpec:
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
     # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
+    # Dims counting item columns that aren't fields, name -> DFN expression
+    count_dims: dict[str, str] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -172,6 +177,7 @@ def _schema_dict_from_columns(
     columns: list[ColumnSpec],
     nested_arm_classes: "dict[str, list[str]] | None" = None,
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
@@ -234,6 +240,34 @@ def _schema_dict_from_columns(
             entry["count"] = shape[0]
             if col.is_index:
                 entry["index"] = True
+        elif isinstance(f, Array) and len(shape) == 1 and _LOOKUP_RE.fullmatch(shape[0]):
+            # Inline array counted by a column of the row another column
+            # refers to (SFR's ic, by packagedata.ncon(ifno)): rows vary in
+            # length, so it must be the last column.
+            if col is not columns[-1]:
+                raise ValueError(
+                    f"array column {col.name!r}, counted by {shape[0]!r}, isn't the last column"
+                )
+            entry["role"] = "array"
+            entry["count"] = shape[0]
+            if col.is_index:
+                entry["index"] = True
+            if f.index == "signed":
+                entry["signed"] = True
+        elif (
+            isinstance(f, Array)
+            and len(counts_by := shape[1:] if col.is_cellid else shape) == 1
+            and _count_dim(counts_by[0]) in dims
+        ):
+            # Inline array sized by a package dimension (GNC's cellidsj and
+            # alphasj, by numalphaj; EVT's pxdp, by nseg-1): fixed width, so
+            # it may be any column. A cellid array's first axis is ncelldim.
+            entry["role"] = "counted"
+            entry["count"] = counts_by[0]
+            if col.is_cellid:
+                entry["cellid"] = True
+            elif col.is_index:
+                entry["index"] = True
         elif col.is_cellid:
             entry["role"] = "cellid"
             if shape := getattr(f, "shape", None):
@@ -270,6 +304,18 @@ def _schema_dict_from_columns(
         schema.append(entry)
         seen.add(col.name)
     return schema
+
+
+# A count looked up in another list's row: "packagedata.ncon(ifno)".
+_LOOKUP_RE = re.compile(r"(?:[\w-]+\.)?\w+\.\w+\(\w+\)")
+
+
+def _count_dim(shape: str) -> str | None:
+    """The dimension in a count like "nseg-1", or None for anything else."""
+    try:
+        return count_dim(shape)[0]
+    except ValueError:
+        return None
 
 
 def _dfn_type_str(f: FieldV3) -> str:
@@ -402,6 +448,7 @@ def _build_list_item_specs(
     class_name: str,
     used_names: set[str],
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> tuple[list[ItemClassSpec], str, ItemUnionSpec | None]:
     """Build the Item class(es) for a list's elements, wherever the list is
     (any block, repeating or not). Returns (classes, element type, union
@@ -426,7 +473,7 @@ def _build_list_item_specs(
             else []
         )
         specs = _build_arm_specs_from_union(
-            union, used_names, {}, shared_cols, name_hint=list_field.name, arrays=arrays
+            union, used_names, {}, shared_cols, name_hint=list_field.name, arrays=arrays, dims=dims
         )
         alias = f"_{class_name}Item"
         members = [s.class_name for s in specs if s.top_level]
@@ -440,9 +487,10 @@ def _build_list_item_specs(
             [],
             class_name=class_name,
             arrays=arrays,
+            dims=dims,
         )
         return specs, specs[-1].class_name, None
-    schema = _schema_dict_from_columns(filters.list_columns(list_field), arrays=arrays)
+    schema = _schema_dict_from_columns(filters.list_columns(list_field), arrays=arrays, dims=dims)
     used_names.add(class_name)
     spec = ItemClassSpec(class_name=class_name, keyword="", schema=schema)
     return [spec], class_name, None
@@ -457,6 +505,7 @@ def _build_arm_specs_from_union(
     name_hint: str = "",
     top_level: bool = True,
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[ItemClassSpec]:
     """Build one ItemClassSpec per arm of `union` (see _build_arm_spec).
 
@@ -488,6 +537,7 @@ def _build_arm_specs_from_union(
                 name_hint=name_hint,
                 top_level=top_level,
                 arrays=arrays,
+                dims=dims,
             )
         )
     return specs
@@ -504,6 +554,7 @@ def _build_arm_spec(
     top_level: bool = True,
     class_name: str = "",
     arrays: "frozenset[str] | set[str]" = frozenset(),
+    dims: "frozenset[str] | set[str]" = frozenset(),
 ) -> list[ItemClassSpec]:
     """Build the keyword-led Item class for one union arm, or for a tagged
     list's record item -- each line starts with (or, LAK-style, contains)
@@ -554,13 +605,14 @@ def _build_arm_spec(
                 name_hint=field_name,
                 top_level=False,
                 arrays=arrays,
+                dims=dims,
             )
             nested_union_cache[cache_key] = cached
             specs.extend(cached)
         nested_arm_classes[field_name] = [s.class_name for s in cached]
 
     cols = filters._fields_to_columns(list(shared_cols) + rest)
-    schema = _schema_dict_from_columns(cols, nested_arm_classes, arrays)
+    schema = _schema_dict_from_columns(cols, nested_arm_classes, arrays, dims)
     if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -1035,7 +1087,9 @@ def build_component_spec(
     # maxbound becomes a computed property only with a real Item-list period
     # field to derive it from (see has_dimensions_block's docstring).
     _has_list_period = any(
-        block_name in _fill_forward_blocks and filters.is_list_field(f)
+        block_name in _fill_forward_blocks
+        and filters.is_list_field(f)
+        and filters.named_array(f) is None
         for block_name, f in all_fields
     )
     _maxbound_is_computed = has_maxbound and _has_list_period
@@ -1072,13 +1126,18 @@ def build_component_spec(
     subpackages: list[str] = []  # components of subpackage fields (SUBPACKAGES)
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
+    _named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
 
     # Array fields can size list columns (auxiliary sizes aux).
     _arrays = frozenset(f.name for _, f in all_fields if isinstance(f, Array))
+    # The component's dims can size inline arrays (GNC's numalphaj).
+    _dims = frozenset(component.dims or {})
 
     def _add_list_items(lf: ListField, class_name: str) -> str:
-        specs, elem, union = _build_list_item_specs(lf, class_name, _inner_class_names, _arrays)
+        specs, elem, union = _build_list_item_specs(
+            lf, class_name, _inner_class_names, _arrays, _dims
+        )
         item_classes.extend(specs)
         if union is not None:
             item_unions.append(union)
@@ -1087,6 +1146,11 @@ def build_component_spec(
     for block_name, f in all_fields:
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
+
+        # Lists of named arrays (RCHA's aux): one array per auxiliary name.
+        if block_name in _fill_forward_blocks and (named := filters.named_array(f)):
+            _named_period_fields.append((f, *named))
+            continue
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
             _period_item = _add_list_items(f, "StressPeriodData")
@@ -1221,6 +1285,7 @@ def build_component_spec(
             pascal_name(bp.block_name),
             _inner_class_names,
             _arrays,
+            _dims,
         )
         if not any(spec.schema or spec.keyword for spec in _specs):
             continue
@@ -1276,6 +1341,22 @@ def build_component_spec(
     # block gets, in a dict keyed by period.
     if _period_item is not None:
         _spd_meta = {"block": _ff_block, "fill_forward": True}
+        # The DIMENSIONS field bounding each period's rows, unless it's
+        # computed (maxbound): HFB's "<=maxhfb".
+        _ff_list = next(
+            (
+                f
+                for b, f in all_fields
+                if b == _ff_block and filters.is_list_field(f) and filters.named_array(f) is None
+            ),
+            None,
+        )
+        if (
+            _ff_list is not None
+            and (_ff_dim := filters.list_col_dim(_ff_list, component))
+            and not (_ff_dim == "maxbound" and _maxbound_is_computed)
+        ):
+            _spd_meta["dim"] = f"{filters.list_dim_bound(_ff_list) or ''}{_ff_dim}"
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",
@@ -1318,6 +1399,28 @@ def build_component_spec(
                 )
             )
 
+    # A dict of named arrays per list of them: RCHA's aux, keyed by the
+    # auxiliary names (the fk), each array like a READARRAY period field's.
+    for _lf, _arr, _fk in _named_period_fields:
+        _na_meta: dict = {"block": _ff_block}
+        if shape := getattr(_arr, "shape", None):
+            _na_meta["shape"] = tuple(shape)
+        _na_meta["layered"] = getattr(_arr, "layered", False)
+        if getattr(_arr, "netcdf", False):
+            _na_meta["netcdf"] = True
+        _na_meta["fill_forward"] = True
+        _na_meta["fk"] = _fk
+        _na_base = "IntArrayLike" if getattr(_arr, "dtype", "") == "integer" else "FloatArrayLike"
+        period_specs.append(
+            FieldSpec(
+                dfn_name=_lf.name,
+                py_name=filters.safe_name(_lf.name),
+                type_annotation=f"Optional[dict[str, {_na_base}]]",
+                spec_call=_ml_field(metadata=_na_meta),
+                generatable=True,
+            )
+        )
+
     _seen_py_names: set[str] = set()
     _deduped: list[FieldSpec] = []
     # list blocks and other data blocks interleave in DFN block order (DISU:
@@ -1338,6 +1441,15 @@ def build_component_spec(
     field_specs = _deduped
 
     _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
+    _counting = {
+        count_dim(e["count"])[0]
+        for ic in item_classes
+        for e in ic.schema
+        if e.get("role") == "counted"
+    }
+    _count_dims = {
+        d: v for d in sorted(_counting) if (v := component.dims[d].value) not in _seen_py_names
+    }
 
     base = _base_class(component)
     mixins = MIXINS.get(component.name, [])
@@ -1355,6 +1467,7 @@ def build_component_spec(
             if filters.is_readarray(f) and bn not in _repeating_blocks
         }
         | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
+        | {getattr(arr, "dtype", "double") for _, arr, _ in _named_period_fields}
         | {getattr(f, "dtype", "double") for f in _repeating_array_fields}
     )
     _needs_int_arraylike = "integer" in _arraylike_types
@@ -1402,6 +1515,7 @@ def build_component_spec(
         item_unions=item_unions,
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
+        count_dims=_count_dims,
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

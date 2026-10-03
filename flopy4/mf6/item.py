@@ -15,6 +15,7 @@ Item subclasses share one field (a Union of their types), each identified
 by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
+import re
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
@@ -55,6 +56,68 @@ def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
     }
 
 
+def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
+    """An array column counted by a package dimension rather than another
+    column (GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1): fixed
+    width, read in place."""
+    count = f.metadata.get("count")
+    if not isinstance(count, str) or not count:
+        return False
+    return count not in attrs.fields_dict(cls) and "(" not in count
+
+
+def count_dim(count: str) -> tuple[str, int]:
+    """Split a dimension count into the dimension and an offset:
+    "nseg-1" -> ("nseg", -1)."""
+    m = re.fullmatch(r"\s*(\w+)\s*(?:([+-])\s*(\d+))?\s*", count)
+    if m is None:
+        raise ValueError(f"invalid count: {count!r}")
+    name, sign, k = m.groups()
+    return name, (int(k) if sign == "+" else -int(k)) if k else 0
+
+
+def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
+    """How many values a dimension-counted column takes, or None if the
+    dimension isn't known."""
+    name, offset = count_dim(f.metadata["count"])
+    n = (sizes or {}).get(name)
+    return None if n is None else n + offset
+
+
+def _lookup(values: Mapping[str, Any], name: str) -> Any:
+    """A field's value by name, at the top level or in a record (utl-ts's
+    time_series_names, in its NAMES record)."""
+    if (v := values.get(name)) is not None:
+        return v
+    for v in values.values():
+        if isinstance(v, Record) and any(f.name == name for f in v.fields()):
+            return getattr(v, name)
+    return None
+
+
+def resolve_dim(dim: str, exprs: Mapping[str, str], values: Mapping[str, Any]) -> int | None:
+    """A counting dimension's value: the field of the same name, or as given
+    in ``exprs`` (a component's ``count_dims``), e.g. utl-ts's
+    "len(time_series_names)". None if the field isn't set."""
+    expr = exprs.get(dim, dim)
+    if m := re.fullmatch(r"len\((\w+)\)", expr):
+        v = _lookup(values, m.group(1))
+        return None if v is None else len(v)
+    v = _lookup(values, expr)
+    return None if v is None else int(v)
+
+
+def dim_counted_fields(cls: type) -> list[attrs.Attribute]:
+    """An item class's array columns counted by a package dimension."""
+    return [f for f in cast(type[Record], cls).fields() if _dim_counted(cls, f)]
+
+
+def counted_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
+    """Names of the package dimensions that count an item class's columns."""
+    classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
+    return {count_dim(f.metadata["count"])[0] for c in classes for f in dim_counted_fields(c)}
+
+
 def _has_boundname_field(cls: type) -> bool:
     return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
@@ -79,6 +142,15 @@ def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] |
     return tuple(cast("list[type[Item]]", resolved))
 
 
+def _array_elem_type(f: attrs.Attribute) -> "type | None":
+    """int or float for a ``tuple[int, ...]``/``tuple[float, ...]`` column
+    (OC's STEPS), else None."""
+    args = get_args(f.type)
+    if len(args) == 2 and args[1] is Ellipsis and args[0] in (int, float):
+        return args[0]
+    return None
+
+
 def _field_type_str(f: attrs.Attribute) -> "str | None":
     """attrs stubs type `Attribute.type` as `type | None`, but attrs
     actually stores the raw annotation there -- a string for a forward
@@ -101,7 +173,7 @@ def construct_item(item_cls: type, values) -> "Item":
             i
             for i, f in enumerate(fields)
             if f.metadata.get("shape")
-            or f.metadata.get("array")
+            or (f.metadata.get("array") and not _dim_counted(item_cls, f))
             or (
                 (t := _field_type_str(f)) is not None
                 and _nested_union_classes(item_cls, t) is not None
@@ -131,6 +203,12 @@ def construct_item(item_cls: type, values) -> "Item":
         values = values[:-1]
     before = values[:tuple_idx]
     trailing = values[tuple_idx:]
+    if not trailing:
+        # omitted optional columns before it, e.g. EVT's petm0 before aux
+        return cast(
+            "Item",
+            item_cls(*before, boundname=boundname_val) if boundname_val else item_cls(*before),
+        )
     if arm_classes is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
         # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
         trailing = list(trailing[0])
@@ -142,20 +220,26 @@ def construct_item(item_cls: type, values) -> "Item":
     return cast("Item", item_cls(*before, tuple_vals))
 
 
-def _n_fixed_tokens(cls: type) -> int:
-    """Fixed (non-cellid/aux/boundname, non-optional) token slots -- used to
-    infer a variable-width cellid's element count from total token length."""
+def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[int, int]:
+    """Fixed (non-cellid/aux/boundname, non-optional) token slots, and the
+    number of cellids -- used to infer a variable-width cellid's element
+    count from total token length."""
     cls = cast(type[Record], cls)
     n = 1 if cls.keyword() else 0
+    ncellids = 0
     for f in cls.fields():
-        if f.metadata.get("cellid") or f.metadata.get("shape") or f.name == "boundname":
+        count = (_count(f, sizes) or 0) if _dim_counted(cls, f) else 1
+        if f.metadata.get("cellid"):
+            ncellids += count
+            continue
+        if f.metadata.get("shape") or f.name == "boundname":
             continue
         if f.metadata.get("optional"):
             continue
-        n += 1 + (1 if f.metadata.get("_keyword") else 0)
+        n += count + (1 if f.metadata.get("_keyword") else 0)
         if f.metadata.get("direction"):
             n += 1
-    return n
+    return n, ncellids
 
 
 def ncelldim_from_dims(dims: "dict | None") -> "int | None":
@@ -196,10 +280,19 @@ def infer_ncelldim(
     first = next((r for r in items if r), None)
     if not first:
         return 0
-    n_fixed = _n_fixed_tokens(item_cls)
+    n_fixed, ncellids = _n_fixed_tokens(item_cls, sizes)
     last = first[-1]
     has_bn = isinstance(last, str) and not _token_fits(last, float)
-    return max(1, len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0))
+    n_cell_tokens = len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0)
+    return max(1, n_cell_tokens // max(1, ncellids))
+
+
+def _float_or_str(token: Any) -> Any:
+    """A numeric token as a float, else (a time series name) as is."""
+    try:
+        return float(token)
+    except (ValueError, TypeError):
+        return token
 
 
 def _token_fits(token: Any, kind: type) -> bool:
@@ -216,13 +309,20 @@ def _token_fits(token: Any, kind: type) -> bool:
     return False
 
 
+def _is_row_key(f: attrs.Attribute) -> bool:
+    """A pk/fk column identifying the row (e.g. SFR's ifno). These precede
+    a union arm's _keyword; every other field follows it, including other
+    index columns (`ifno DIVERSION idv divflow`)."""
+    return bool(f.metadata.get("pk") or f.metadata.get("fk"))
+
+
 class Item(Record):
     """Mixin for generated table-item types (plain items and keystring-union
     arms alike -- see module docstring)."""
 
     def to_tokens(self) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
-        is emitted before the first non-index field. sized/boundname last.
+        is emitted before the first non-row-key field. sized/boundname last.
         """
         cls = type(self)
         fields = cls.fields()
@@ -242,37 +342,33 @@ class Item(Record):
                         f"{cls.__name__}.{f.name}={val} but {counted[f.name].name} has {n} values"
                     )
                 val = n
-            if val is None:
+            if val is None and not (f.metadata.get("cellid") and not f.metadata.get("array")):
                 continue
-            if f.metadata.get("cellid"):
-                row.extend(int(c) + 1 for c in val)
+            if not keyword_emitted and not _is_row_key(f):
+                row.append(keyword.upper())
+                keyword_emitted = True
+            if f.metadata.get("cellid") and f.metadata.get("array"):
+                row.extend(int(c) + 1 for cellid in val for c in cellid)
+            elif f.metadata.get("cellid"):
+                # see from_tokens' cellid()
+                row.extend(["NONE"] if val is None else (int(c) + 1 for c in val))
+            elif f.metadata.get("array") and f.metadata.get("signed"):
+                row.extend((int(i) + 1) * sign for i, sign in val)
             elif f.metadata.get("array") and f.metadata.get("index"):
                 row.extend(int(v) + 1 for v in val)
             elif f.metadata.get("index"):
                 row.append(int(val) + 1)
             elif f.metadata.get("array"):
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 row.extend(val)
             elif f.metadata.get("tagged"):
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 if val:
                     row.append(f.name.upper())
             elif isinstance(val, Record):
                 # Nested keystring-union field (OC's ocsetting) -- val is
                 # already the resolved arm instance and knows how to
                 # serialize itself.
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 row.extend(val.to_tokens())
             else:
-                if not keyword_emitted:
-                    row.append(keyword.upper())
-                    keyword_emitted = True
                 if file_kw := f.metadata.get("_keyword"):
                     row.append(file_kw.upper())
                 if direction := f.metadata.get("direction"):
@@ -313,20 +409,44 @@ class Item(Record):
         tok_idx = 0
         n = len(tokens)
 
+        def cellid() -> tuple[int, ...] | None:
+            nonlocal tok_idx
+            # one NONE token, whatever ncelldim (e.g. an SFR reach with
+            # no aquifer connection)
+            if str(tokens[tok_idx]).upper() == "NONE":
+                tok_idx += 1
+                return None
+            tok_idx += ncelldim
+            return tuple(int(tokens[tok_idx - ncelldim + j]) - 1 for j in range(ncelldim))
+
         def consume(f: attrs.Attribute) -> None:
             nonlocal tok_idx, keyword_skipped
+            if not keyword_skipped and not _is_row_key(f):
+                tok_idx += 1
+                keyword_skipped = True
+            if _dim_counted(cls, f):
+                count = _count(f, sizes)
+                if count is None and not f.metadata.get("optional"):
+                    raise ValueError(f"{cls.__name__}.{f.name}: {f.metadata['count']} unknown")
+                if not count:
+                    return
+                if f.metadata.get("cellid"):
+                    kwargs[f.name] = tuple(cellid() for _ in range(count))
+                    return
+                vals = tokens[tok_idx : tok_idx + count]
+                tok_idx += count
+                if f.metadata.get("index"):
+                    kwargs[f.name] = tuple(int(float(str(v))) - 1 for v in vals)
+                else:
+                    kwargs[f.name] = tuple(_float_or_str(v) for v in vals)
+                return
             if f.metadata.get("cellid"):
-                cellid = tuple(int(tokens[tok_idx + j]) - 1 for j in range(ncelldim))
-                kwargs[f.name] = cellid
-                tok_idx += ncelldim
+                kwargs[f.name] = cellid()
                 return
             if f.metadata.get("index"):
                 kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
                 tok_idx += 1
                 return
-            if not keyword_skipped:
-                tok_idx += 1
-                keyword_skipped = True
             if f.metadata.get("_keyword"):
                 tok_idx += 1
             if f.metadata.get("direction"):
@@ -337,6 +457,8 @@ class Item(Record):
             tok_idx += 1
 
         def width(f: attrs.Attribute) -> int:
+            if _dim_counted(cls, f):
+                return _count(f, sizes) or 0
             w = 1 + (1 if f.metadata.get("_keyword") else 0)
             if f.metadata.get("direction"):
                 w += 1
@@ -351,8 +473,10 @@ class Item(Record):
             and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
         ]
         main_fields = [f for f in main_fields if f not in nested_union_fields]
-        array_fields = [f for f in main_fields if f.metadata.get("array")]
-        main_fields = [f for f in main_fields if not f.metadata.get("array")]
+        array_fields = [
+            f for f in main_fields if f.metadata.get("array") and not _dim_counted(cls, f)
+        ]
+        main_fields = [f for f in main_fields if f not in array_fields]
         required_fields = [f for f in main_fields if not f.metadata.get("optional")]
         optional_fields = [f for f in main_fields if f.metadata.get("optional")]
 
@@ -407,8 +531,12 @@ class Item(Record):
             vals: list[Any] = []
             while tok_idx < end:
                 tok = tokens[tok_idx]
-                if f.metadata.get("index"):
+                if f.metadata.get("signed"):
+                    vals.append(int(float(str(tok))))  # see spec.to_signed_indexes
+                elif f.metadata.get("index"):
                     vals.append(int(float(str(tok))) - 1)
+                elif (elem := _array_elem_type(f)) is not None:
+                    vals.append(elem(float(str(tok))))
                 else:
                     try:
                         vals.append(float(tok))

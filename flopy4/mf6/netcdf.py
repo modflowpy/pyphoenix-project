@@ -114,6 +114,10 @@ class _PackageSpec:
         self.arrays = {
             f.name: _ArrayInfo(f) for f in _attrs.fields(cls) if f.metadata.get("netcdf")
         }
+        # Named arrays (RCHA's aux), one variable per auxiliary name.
+        self.named = {
+            f.name for f in _attrs.fields(cls) if f.metadata.get("netcdf") and f.metadata.get("fk")
+        }
 
 
 def _field_shape(package_name: str, field_name: str) -> tuple | None:
@@ -213,7 +217,6 @@ class NetCDFModel(BaseModel, NetCDFInput):
         for package in model._children.values():
             packagetype = package.__class__.__name__.lower()
             distype = packagetype if packagetype.startswith("dis") else distype
-            # TODO: auxiliary
             p: dict[str, Any] = {
                 "package_name": package.name,
                 "package_type": f"{modeltype}-{packagetype}",
@@ -246,6 +249,20 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     if "nodes" in shape_meta and arr.size < _nodes:
                         arr = np.full(_nodes, float(arr.ravel()[0]))
                     p["params"].append({"name": f.name, "data": arr})
+                elif f.metadata.get("fk"):
+                    # named arrays (RCHA's aux): one param per auxiliary name
+                    if not (arrays := getattr(package, f.name)):
+                        continue
+                    names = [str(n).lower() for n in package.auxiliary]  # type: ignore[attr-defined]
+                    p["auxiliary"] = names
+                    for name, val in arrays.items():
+                        p["params"].append(
+                            {
+                                "name": f.name,
+                                "attrs": {"modflow_iaux": names.index(str(name).lower()) + 1},
+                                "data": np.asarray(val, dtype=np.float64),
+                            }
+                        )
                 else:
                     val = getattr(package, f.name)
                     if val is None:
@@ -483,8 +500,9 @@ class NetCDFPackage(BaseModel, NetCDFInput):
         self._context = __context
 
         if len(self.auxiliary) > 0:
+            named = get_spec(self.package_type).named
             for p in self.params:
-                if p.name == "aux":
+                if p.name in named:
                     p._context["auxiliary"] = self.auxiliary
 
     @classmethod
@@ -578,8 +596,11 @@ class NetCDFPackage(BaseModel, NetCDFInput):
             if "attrs" not in p:
                 p["attrs"] = {}
 
-            if p["name"].lower() == "aux" and (auxiliary is None or len(auxiliary) == 0):
+            named = p["name"].lower() in get_spec(pkg_type).named
+            if named and (auxiliary is None or len(auxiliary) == 0):
                 raise ValueError("AUX parameter requires auxiliary list input.")
+            # one variable per auxiliary name, unless the param names its own
+            expand = named and "modflow_iaux" not in p["attrs"]
 
             shape = _field_shape(pkg_type, p["name"])
             assert shape is not None, f"no shape for field {p['name']!r} in {pkg_type}"
@@ -587,7 +608,7 @@ class NetCDFPackage(BaseModel, NetCDFInput):
 
             if not gridded or mesh is None:
                 assert "layer" not in p["attrs"]
-                if p["name"].lower() == "aux":
+                if expand:
                     for i, aux in enumerate(auxiliary):  # type: ignore
                         p["attrs"]["modflow_iaux"] = i + 1
                         _params.append(NetCDFParam.from_dict(p, context=paramctx))
@@ -595,7 +616,7 @@ class NetCDFPackage(BaseModel, NetCDFInput):
                     _params.append(NetCDFParam.from_dict(p, context=paramctx))
 
             else:
-                if p["name"].lower() == "aux":
+                if expand:
                     for i, aux in enumerate(auxiliary):  # type: ignore
                         p["attrs"]["modflow_iaux"] = i + 1
                         _add_layered_param(p)
@@ -660,7 +681,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
                 if auxiliary is not None
                 else f"aux{meta['attrs']['modflow_iaux']}"
             )
-            if meta["name"] == "aux"
+            if meta["name"] in spec.named
             else meta["name"]
         )
         param = (
@@ -758,8 +779,10 @@ class NetCDFParam(BaseModel, NetCDFInput):
         gridded = "nodes" in shape or "nlay" in shape
         if gridded and mesh is not None and ("layer" not in v or v["layer"] is None):
             raise AssertionError(f"expected layer attribute for mesh param '{param}'")
-        if param is not None and param == "aux" and "modflow_iaux" not in v:
-            raise AssertionError("expected modflow_iaux attribute for aux param")
+        package_type = (info.context or {}).get("package_type")
+        named = get_spec(package_type).named if package_type else set()
+        if param is not None and param in named and "modflow_iaux" not in v:
+            raise AssertionError(f"expected modflow_iaux attribute for {param} param")
         return v
 
     @field_validator("encodings", mode="before")

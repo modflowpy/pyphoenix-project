@@ -774,7 +774,7 @@ def test_typed_grammar_repeating_block_double_header(tmp_path):
     )
     make_grammar(dfn, tmp_path)
     grammar_text = (tmp_path / "test-repeating-double.lark").read_text()
-    assert "block_index: number" in grammar_text
+    assert "%import typed.block_index -> block_index" in grammar_text
 
     grammar_module = BASE_GRAMMAR_PATH.parent
     parser = Lark(grammar_text, parser="lalr", debug=True, import_paths=[str(grammar_module)])
@@ -866,3 +866,9 @@ def test_typed_loads_iso_datetime(dfn_path):
         dfn_path=dfn_path,
     )
     assert result["options"]["start_date_time"] == "1997-07-16T19:20:30.45+01:00"
+
+
+@pytest.mark.parametrize("component", ["gwf-maw", "gwf-wel"])
+def test_parse_block_header_remark(component):
+    """A remark after a block's index (MAW's legacy `STEADY-STATE`) parses."""
+    get_typed_parser(component).parse("BEGIN PERIOD 1 STEADY-STATE\nEND PERIOD\n")

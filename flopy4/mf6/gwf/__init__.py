@@ -22,8 +22,11 @@ from flopy4.mf6.gwf.evt import Evt
 from flopy4.mf6.gwf.evta import Evta
 from flopy4.mf6.gwf.ghb import Ghb
 from flopy4.mf6.gwf.ghbg import Ghbg
+from flopy4.mf6.gwf.gnc import Gnc
+from flopy4.mf6.gwf.hfb import Hfb
 from flopy4.mf6.gwf.ic import Ic
 from flopy4.mf6.gwf.lak import Lak
+from flopy4.mf6.gwf.maw import Maw
 from flopy4.mf6.gwf.mvr import Mvr
 from flopy4.mf6.gwf.npf import Npf
 from flopy4.mf6.gwf.oc import Oc
@@ -31,7 +34,9 @@ from flopy4.mf6.gwf.rch import Rch
 from flopy4.mf6.gwf.rcha import Rcha
 from flopy4.mf6.gwf.riv import Riv
 from flopy4.mf6.gwf.rivg import Rivg
+from flopy4.mf6.gwf.sfr import Sfr
 from flopy4.mf6.gwf.sto import Sto
+from flopy4.mf6.gwf.uzf import Uzf
 from flopy4.mf6.gwf.vsc import Vsc
 from flopy4.mf6.gwf.wel import Wel
 from flopy4.mf6.gwf.welg import Welg
@@ -54,9 +59,12 @@ __all__ = [
     "Evta",
     "Ghb",
     "Ghbg",
+    "Gnc",
+    "Hfb",
     "Ic",
     "Csub",
     "Lak",
+    "Maw",
     "Npf",
     "Oc",
     "Rch",
@@ -65,7 +73,9 @@ __all__ = [
     "Mvr",
     "Riv",
     "Rivg",
+    "Sfr",
     "Sto",
+    "Uzf",
     "Vsc",
     "Wel",
     "Welg",
@@ -176,6 +186,8 @@ class Gwf(Model):
     npf: Npf | None = field(block="packages", default=None)
     sto: Sto | None = field(block="packages", default=None)
     buy: Buy | None = field(block="packages", default=None)
+    gnc: Gnc | None = field(block="packages", default=None)
+    hfb: Hfb | None = field(block="packages", default=None)
     chd: list[Union[Chd, Chdg]] = field(block="packages", default=attrs.Factory(list))
     drn: list[Union[Drn, Drng]] = field(block="packages", default=attrs.Factory(list))
     evt: list[Union[Evt, Evta]] = field(block="packages", default=attrs.Factory(list))
@@ -184,8 +196,11 @@ class Gwf(Model):
     riv: list[Union[Riv, Rivg]] = field(block="packages", default=attrs.Factory(list))
     csub: list[Csub] = field(block="packages", default=attrs.Factory(list))
     lak: list[Lak] = field(block="packages", default=attrs.Factory(list))
+    maw: list[Maw] = field(block="packages", default=attrs.Factory(list))
     mvr: Mvr | None = field(block="packages", default=None)
     vsc: Vsc | None = field(block="packages", default=None)
+    sfr: list[Sfr] = field(block="packages", default=attrs.Factory(list))
+    uzf: list[Uzf] = field(block="packages", default=attrs.Factory(list))
     wel: list[Union[Wel, Welg]] = field(block="packages", default=attrs.Factory(list))
     output: Output = attrs.field(
         default=attrs.Factory(lambda self: Gwf.Output(self), takes_self=True)

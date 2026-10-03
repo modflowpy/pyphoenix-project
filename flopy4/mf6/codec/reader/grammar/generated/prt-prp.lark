@@ -26,7 +26,7 @@ dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _N
 packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
 releasetimes_block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes_fields _NL* "end"i "releasetimes"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
-block_index: number
+%import typed.block_index -> block_index
 options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window | open_close_redirect) _NL*)*
 dimensions_fields: ((nreleasepts | nreleasetimes | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
