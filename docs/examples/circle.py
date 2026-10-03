@@ -265,7 +265,7 @@ sim = flopy4.mf6.simulation.Simulation(
     name="circle",
     tdis=tdis,
     models={"gwf": gwf},
-    solutions={"ims": ims},
+    solutiongroup={"ims": ims},
     workspace=workspace,
 )
 

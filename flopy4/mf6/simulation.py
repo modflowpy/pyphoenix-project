@@ -70,4 +70,4 @@ class Simulation(SimulationMethods, Context):
         optional=True,
         longname="maximum solution group iterations",
     )
-    solutions: dict[str, Solution] = child(block="solutiongroup", default=attrs.Factory(dict))
+    solutiongroup: dict[str, Solution] = child(block="solutiongroup", default=attrs.Factory(dict))

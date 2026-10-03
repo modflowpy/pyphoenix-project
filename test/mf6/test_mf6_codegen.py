@@ -375,7 +375,7 @@ class TestSimpleTierComponentSpec:
 
 def test_simulation_spec(all_dfns):
     root = Path("/fake/mf6")
-    spec = build_component_spec(all_dfns["sim-nam"], root=root)
+    spec = build_component_spec(all_dfns["sim-nam"], root=root, dfns=all_dfns)
     assert spec.class_name == "Simulation"
     assert spec.base_class == "Context"
     assert spec.mixins == ["SimulationMethods"]
@@ -385,7 +385,7 @@ def test_simulation_spec(all_dfns):
     assert types["tdis"] == "Tdis"
     assert types["models"] == "dict[str, Model]"
     assert types["exchanges"] == "dict[str, Exchange]"
-    assert types["solutions"] == "dict[str, Solution]"
+    assert types["solutiongroup"] == "dict[str, Solution]"
     assert not spec.item_classes
     assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
 
@@ -824,7 +824,7 @@ def test_grid_package_dims(tmp_path, all_dfns):
 
 
 def test_subpackage_field(tmp_path, all_dfns):
-    """A file record listed in SUBPACKAGES gets a typed child field; writing
+    """A file record linked in LINKS gets a typed child field; writing
     names the child's file in the record and writes the child at full
     precision."""
     from flopy4.mf6.utl.ncf import Ncf
@@ -848,14 +848,29 @@ def test_subpackage_field(tmp_path, all_dfns):
 
 
 def test_check_mixins_rejects_unknown_component(all_dfns, monkeypatch):
-    from flopy4.mf6.utils.codegen.make import SUBPACKAGES
+    from flopy4.mf6.utils.codegen.make import LINKS, Link
 
     check_mixins(all_dfns)
     with pytest.raises(ValueError, match="sim-tdis"):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
-    monkeypatch.setitem(SUBPACKAGES, "foo_filerecord", "utl-foo")
+    monkeypatch.setitem(LINKS, ("*", "foo_filerecord.foo6_filename"), Link("utl-foo"))
     with pytest.raises(ValueError, match="utl-foo"):
         check_mixins(all_dfns)
+
+
+@pytest.mark.parametrize(
+    "link,match",
+    [
+        (("bogus", "mtype"), "matches no component"),
+        (("model", None), "no component_ref"),
+    ],
+)
+def test_link_selector_errors(all_dfns, monkeypatch, link, match):
+    from flopy4.mf6.utils.codegen.make import LINKS, Link
+
+    monkeypatch.setitem(LINKS, ("sim-nam", "models.mfname"), Link(*link))
+    with pytest.raises(ValueError, match=match):
+        build_component_spec(all_dfns["sim-nam"], root=Path("/fake"), dfns=all_dfns)
 
 
 def test_list_block_dim_and_default(tmp_path, all_dfns):

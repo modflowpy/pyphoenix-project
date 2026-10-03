@@ -135,7 +135,7 @@ def main():
             name="test1000",
             tdis=flopy4.mf6.simulation.Tdis.from_time(time4),
             models={"test1000": gwf},
-            solutions={"ims": make_ims4()},
+            solutiongroup={"ims": make_ims4()},
             workspace=ws,
         )
 

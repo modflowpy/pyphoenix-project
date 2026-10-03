@@ -322,7 +322,7 @@ def main():
         name="ff",
         tdis=tdis,
         models={"ff": gwf},
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
         workspace=ws,
     )
     if args.profile:

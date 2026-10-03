@@ -369,5 +369,5 @@ def test_load_simulation(tmp_path, model_name):
 
     assert isinstance(sim, Simulation)
     assert sim.tdis is not None
-    for children in (sim.models, sim.exchanges, sim.solutions):
+    for children in (sim.models, sim.exchanges, sim.solutiongroup):
         assert children is None or isinstance(children, Mapping)

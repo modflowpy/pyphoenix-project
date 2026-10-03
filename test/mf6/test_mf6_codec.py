@@ -1115,7 +1115,7 @@ def test_dumps_simulation():
         name="test_sim",
         models={"model1": gwf},
         exchanges={},
-        solutions={},
+        solutiongroup={},
         tdis=tdis,
     )
 

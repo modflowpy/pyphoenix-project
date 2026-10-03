@@ -1018,28 +1018,164 @@ MIXINS: dict[str, list[str]] = {
 
 
 def check_mixins(dfns: Mapping[str, Component]) -> None:
-    """Raise if a `MIXINS` key or a `SUBPACKAGES` value names no DFN component."""
+    """Raise if a `MIXINS` or `LINKS` key, or a concrete `LINKS` target,
+    names no DFN component."""
     if unknown := sorted(set(MIXINS) - set(dfns)):
         raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
-    if unknown := sorted(set(SUBPACKAGES.values()) - set(dfns)):
-        raise ValueError(f"SUBPACKAGES values match no DFN component: {unknown}")
-    if unknown := sorted(set(BINDINGS) - set(dfns)):
-        raise ValueError(f"BINDINGS keys match no DFN component: {unknown}")
+    if unknown := sorted({c for c, _ in LINKS if c != "*"} - set(dfns)):
+        raise ValueError(f"LINKS keys match no DFN component: {unknown}")
+    targets = {t for link in LINKS.values() for t in link.targets if "-" in t}
+    if unknown := sorted(targets - set(dfns)):
+        raise ValueError(f"LINKS targets match no DFN component: {unknown}")
 
 
-# File records naming a subpackage's input file, record name -> component.
-# Each gets a typed child field next to its path field (DIS's `ncf` next to
-# `ncf_file`). The legacy DFNs' "# flopy subpackage" annotations say this,
-# but the dev3 DFNs drop them (see modflow-devtools'
-# subpackage-links-plan.md); until they carry the link, it's listed here.
-SUBPACKAGES: dict[str, str] = {
-    "ncf_filerecord": "utl-ncf",
+@dataclass(frozen=True)
+class Link:
+    """A file field's link to the component the file is input for.
+
+    `component` selects the target by name, type (`model`) or subtype
+    (`exchange`, `solution`); a type or subtype matches only this
+    component's children. `component_ref` names the sibling column whose
+    value picks the target per row. `optional` overrides the DFN's."""
+
+    component: str | tuple[str, ...]
+    component_ref: str | None = None
+    optional: bool | None = None
+
+    @property
+    def targets(self) -> tuple[str, ...]:
+        return (self.component,) if isinstance(self.component, str) else self.component
+
+
+# (component, field path) -> link, "*" for any component. The dev3 DFNs
+# don't link file fields to components yet; remove once they carry
+# File.component (see modflow-devtools' subpackage-links-plan.md).
+LINKS: dict[tuple[str, str], Link] = {
+    # mf6 requires TDIS6, though the DFN marks it optional
+    ("sim-nam", "tdis6"): Link("sim-tdis", optional=False),
+    ("sim-nam", "models.mfname"): Link("model", "mtype"),
+    ("sim-nam", "exchanges.exgfile"): Link("exchange", "exgtype"),
+    ("sim-nam", "solutiongroup.slnfname"): Link("solution", "slntype"),
+    ("*", "ncf_filerecord.ncf6_filename"): Link("utl-ncf"),
 }
+
+
+def field_link(component: str, path: str, field: Any = None) -> Link | None:
+    """The link on the field at `path` in `component`: the DFN's if it has
+    one, else `LINKS`'s."""
+    if (target := getattr(field, "component", None)) is not None:
+        return Link(target, getattr(field, "component_ref", None))
+    return LINKS.get((component, path)) or LINKS.get(("*", path))
+
+
+def _find_link(component: Component, f: FieldV3) -> tuple[str, Link] | None:
+    """The first linked path in a top-level field: itself, a record's
+    member or a list's column."""
+    paths: list[tuple[str, Any]] = [(f.name, f)]
+    if isinstance(f, Record):
+        paths += [(f"{f.name}.{n}", m) for n, m in (f.fields or {}).items()]
+    elif filters.is_list_field(f):
+        paths += [(f"{f.name}.{c.name}", None) for c in filters.list_columns(f)]
+    for path, member in paths:
+        if (link := field_link(component.name, path, member)) is not None:
+            return path, link
+    return None
+
+
+def _is_child_of(child: Component, parent: str) -> bool:
+    parents = child.parent if isinstance(child.parent, list) else [child.parent]
+    return parent in parents
+
+
+def resolve_link(
+    component: Component, path: str, link: Link, dfns: Mapping[str, Component] | None
+) -> list[str]:
+    """The concrete components a link can target."""
+    found: list[str] = []
+    for sel in link.targets:
+        if "-" in sel:  # a concrete name; utilities' DFN parents aren't reliable
+            found.append(sel)
+            continue
+        if dfns is None:
+            raise ValueError(f"{component.name}.{path}: resolving {sel!r} needs the DFNs")
+        found += [
+            n
+            for n, c in dfns.items()
+            if sel in (c.type, getattr(c, "subtype", None)) and _is_child_of(c, component.name)
+        ]
+    if not found:
+        raise ValueError(f"{component.name}.{path}: {link.component!r} matches no component")
+    if len(found) > 1 and link.component_ref is None:
+        raise ValueError(
+            f"{component.name}.{path}: {link.component!r} matches {found}, "
+            "but there is no component_ref to choose between them"
+        )
+    return found
 
 
 def _component_module(name: str) -> str:
     """The generated module for a component, e.g. utl-ncf -> flopy4.mf6.utl.ncf."""
     return ".".join(("flopy4", "mf6", *filters.output_path(name, Path()).with_suffix("").parts))
+
+
+# flopy4 base classes of hand-written components, by DFN type or subtype.
+_CHILD_BASES = {
+    "model": "flopy4.mf6.model:Model",
+    "exchange": "flopy4.mf6.exchange:Exchange",
+    "solution": "flopy4.mf6.solution:Solution",
+}
+
+
+def _child_base(component: Component) -> str:
+    for kind in (component.type, getattr(component, "subtype", None)):
+        if kind in _CHILD_BASES:
+            return _CHILD_BASES[kind]
+    raise NotImplementedError(f"no flopy4 base class for {component.name}'s children")
+
+
+def _child_field_spec(
+    component: Component,
+    f: FieldV3,
+    block_name: str,
+    link: Link,
+    targets: list[str],
+    dfns: Mapping[str, Component] | None,
+) -> tuple[FieldSpec, list[str]]:
+    """The child field standing in for a linked field, and its imports."""
+    if link.component_ref is not None:
+        if not filters.is_list_field(f):
+            raise ValueError(f"{component.name}.{f.name}: component_ref outside a list")
+        assert dfns is not None  # resolve_link needed them
+        bases = {_child_base(dfns[t]) for t in targets}
+        if len(bases) != 1:
+            raise NotImplementedError(f"{component.name}.{f.name}: children of {sorted(bases)}")
+        module, base = bases.pop().split(":")
+        return FieldSpec(
+            dfn_name=f.name,
+            py_name=filters.safe_name(f.name),
+            type_annotation=f"dict[str, {base}]",
+            spec_call=f'child(block="{block_name}", default=attrs.Factory(dict))',
+            generatable=True,
+        ), [f"from {module} import {base}"]
+    (target,) = targets
+    cls = filters.class_name(target)
+    optional = f.optional if link.optional is None else link.optional
+    if filters.is_list_field(f):
+        annotation, call = (
+            f"list[{cls}]",
+            f'child(block="{block_name}", default=attrs.Factory(list))',
+        )
+    elif optional:
+        annotation, call = f"Optional[{cls}]", f'child(block="{block_name}")'
+    else:
+        annotation, call = cls, f'child(block="{block_name}", default=attrs.Factory({cls}))'
+    return FieldSpec(
+        dfn_name=f.name,
+        py_name=filters.module_name(target),
+        type_annotation=annotation,
+        spec_call=call,
+        generatable=True,
+    ), [f"from {_component_module(target)} import {cls}"]
 
 
 def _subpackage_field_spec(component: str, file_field: str) -> FieldSpec:
@@ -1049,58 +1185,6 @@ def _subpackage_field_spec(component: str, file_field: str) -> FieldSpec:
         py_name=filters.module_name(component),
         type_annotation=f"Optional[{filters.class_name(component)}]",
         spec_call=f'subpackage(file_field="{file_field}")',
-        generatable=True,
-    )
-
-
-@dataclass
-class ChildField:
-    """A typed child field replacing a binding list."""
-
-    py_name: str
-    type_annotation: str
-    factory: str
-    imports: tuple[str, ...]
-
-
-# Binding lists: rows naming child components' files (`mtype mfname mname`).
-# flopy4 holds the children instead, and the binding code reads and writes
-# the rows from them (`_resolve_bindings`, `_make_binding_blocks`). The DFN
-# doesn't say which components a row names, so it's listed here, by
-# component and DFN field.
-BINDINGS: dict[str, dict[str, ChildField]] = {
-    "sim-nam": {
-        "tdis6": ChildField(
-            "tdis",
-            "Tdis",
-            "Tdis",
-            ("from flopy4.mf6.tdis import Tdis",),
-        ),
-        "models": ChildField(
-            "models", "dict[str, Model]", "dict", ("from flopy4.mf6.model import Model",)
-        ),
-        "exchanges": ChildField(
-            "exchanges",
-            "dict[str, Exchange]",
-            "dict",
-            ("from flopy4.mf6.exchange import Exchange",),
-        ),
-        "solutiongroup": ChildField(
-            "solutions",
-            "dict[str, Solution]",
-            "dict",
-            ("from flopy4.mf6.solution import Solution",),
-        ),
-    },
-}
-
-
-def _child_field_spec(dfn_name: str, block_name: str, child: ChildField) -> FieldSpec:
-    return FieldSpec(
-        dfn_name=dfn_name,
-        py_name=child.py_name,
-        type_annotation=child.type_annotation,
-        spec_call=f'child(block="{block_name}", default=attrs.Factory({child.factory}))',
         generatable=True,
     )
 
@@ -1126,8 +1210,10 @@ def build_component_spec(
     *,
     root: Path,
     developmode: bool = False,
+    dfns: Mapping[str, Component] | None = None,
 ) -> ComponentSpec:
-    """Build all template context for a DFN component."""
+    """Build all template context for a DFN component. `dfns`, all the
+    components, resolves links to other components by type."""
     derived_dims = filters.derived_dims(component)
     all_fields = [
         (block_name, filters.canonical_shape(f, derived_dims))
@@ -1191,17 +1277,22 @@ def build_component_spec(
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
-    bindings = BINDINGS.get(component.name, {})
+    # Linked fields, by name. A record keeps its path field next to the
+    # child; anything else is replaced by the child.
+    links = {f.name: found for _, f in all_fields if (found := _find_link(component, f))}
+    child_fields = frozenset(
+        f.name for _, f in all_fields if f.name in links and not isinstance(f, Record)
+    )
     block_properties, _bp_block_names = _build_block_property_specs(
         component,
         reserved_names=_period_keystring_names(component),
-        skip=frozenset(bindings),
+        skip=child_fields,
     )
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
-    subpackages: list[str] = []  # components of subpackage fields (SUBPACKAGES)
-    extra_imports: list[str] = []  # child fields' imports (BINDINGS)
+    subpackages: list[str] = []  # components of subpackage fields
+    extra_imports: list[str] = []  # child fields' imports
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
@@ -1222,9 +1313,12 @@ def build_component_spec(
         return elem
 
     for block_name, f in all_fields:
-        if (child := bindings.get(f.name)) is not None:
-            data_specs.append(_child_field_spec(f.name, block_name, child))
-            extra_imports.extend(child.imports)
+        if f.name in child_fields:
+            path, link = links[f.name]
+            targets = resolve_link(component, path, link, dfns)
+            spec, child_imports = _child_field_spec(component, f, block_name, link, targets, dfns)
+            data_specs.append(spec)
+            extra_imports.extend(child_imports)
             continue
 
         if filters.is_list_field(f) and block_name in _bp_block_names:
@@ -1350,7 +1444,9 @@ def build_component_spec(
             target.append(spec)
             if spec.generatable:
                 generatable_field_objects.append((block_name, f))
-            if spec.generatable and (sub := SUBPACKAGES.get(f.name)):
+            if spec.generatable and (found := links.get(f.name)):
+                path, link = found
+                (sub,) = resolve_link(component, path, link, dfns)
                 target.append(_subpackage_field_spec(sub, spec.py_name))
                 subpackages.append(sub)
 
@@ -1686,7 +1782,7 @@ def make_modules(
     for name, component in dfns.items():
         if name in skip:
             continue
-        spec = build_component_spec(component, root=outdir, developmode=developmode)
+        spec = build_component_spec(component, root=outdir, developmode=developmode, dfns=dfns)
         if existing_only:
             if not spec.outpath.exists():
                 if verbose:

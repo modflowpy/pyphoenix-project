@@ -28,7 +28,9 @@ def dis_model_output(function_tmpdir):
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name, solutions={"ims": ims})
+    sim = Simulation(
+        tdis=time, workspace=function_tmpdir, name=sim_name, solutiongroup={"ims": ims}
+    )
 
     nlay, nrow, ncol = 2, 3, 4
     botm = np.stack([np.full((nrow, ncol), 0.0), np.full((nrow, ncol), -10.0)])
@@ -97,7 +99,9 @@ def disv_model_output(function_tmpdir):
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, workspace=function_tmpdir, name=sim_name, solutions={"ims": ims})
+    sim = Simulation(
+        tdis=time, workspace=function_tmpdir, name=sim_name, solutiongroup={"ims": ims}
+    )
 
     nlay = 2
     ncpl = 9

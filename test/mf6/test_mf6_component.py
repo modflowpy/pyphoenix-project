@@ -363,7 +363,7 @@ def test_write_ascii(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -476,7 +476,7 @@ def test_to_dict_on_context():
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, solutions={"ims": ims})
+    sim = Simulation(tdis=time, solutiongroup={"ims": ims})
 
     result = sim.to_dict()
 
@@ -534,7 +534,7 @@ def test_to_xarray_on_context(function_tmpdir):
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, solutions={"ims": ims}, workspace=function_tmpdir)
+    sim = Simulation(tdis=time, solutiongroup={"ims": ims}, workspace=function_tmpdir)
     dt = sim.to_xarray()
     assert isinstance(dt, xr.DataTree)
     assert isinstance(dt.kper, xr.DataArray)
@@ -1909,7 +1909,7 @@ def test_eq_simulation():
             ic=Ic(strt=1.0),
             chd=[Chd(stress_period_data={0: [[(0, 0, 0), head]]})],
         )
-        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutions={"ims": Ims()})
+        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutiongroup={"ims": Ims()})
 
     assert make(1.0) == make(1.0)
     assert make(1.0) != make(2.0)
