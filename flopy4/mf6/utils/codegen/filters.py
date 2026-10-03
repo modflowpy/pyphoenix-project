@@ -654,6 +654,9 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
     lines = [f"{fn}(", f"        default={default},"]
     if conv := field_converter(f, block_name):
         lines.append(f"        converter={conv},")
+        if "to_array(" in conv:
+            # inline arrays have no shape for field() to key on
+            lines.append("        eq=ARRAY_EQ,")
     for k, v in kw.items():
         lines.append(_wrap_kwarg_line(k, v))
     lines.append(f"    ){type_ignore}")

@@ -433,9 +433,6 @@ def _ml_field(
     lines.append(f"        default={default},")
     if converter is not None:
         lines.append(f"        converter={converter},")
-        if "to_array(" in converter:
-            # inline arrays have no shape for field() to key on
-            lines.append("        eq=ARRAY_EQ,")
     if not repr_:
         lines.append("        repr=False,")
     if metadata is not None:
