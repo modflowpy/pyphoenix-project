@@ -1834,31 +1834,39 @@ def test_gwf_netcdf_input_file_serializes():
     assert "NETCDF FILEIN model.input.nc" in text
 
 
-def test_file_records_roundtrip():
+def test_file_records_roundtrip(tmp_path):
     """Options-block file records are keyed by their trigger keyword (TS6,
-    OBS6, HEAD), not the py field name (ts_file, obs_file, head_file) --
-    both on load and on write."""
+    OBS6, HEAD), not the py field name (ts, obs_file, head_file) -- both on
+    load and on write. A record naming a child (TS6) loads the child."""
     from pathlib import Path
+
+    from modflow_devtools.misc import set_dir
 
     from flopy4.mf6.codec.reader import loads
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwf import Oc, Wel
+    from flopy4.mf6.utl.ts import Ts
 
-    raw = loads("BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
+    raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
     wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
-    assert wel.ts_file == [Path("a.ts")]
     assert wel.obs_file == Path("w.obs")
-    text = dumps(unstructure_component(wel))
-    assert "TS6 FILEIN a.ts" in text
-    assert "OBS6 FILEIN w.obs" in text
+    assert "OBS6 FILEIN w.obs" in dumps(unstructure_component(wel))
 
+    for name in ("a", "b"):
+        (tmp_path / f"{name}.ts").write_text(
+            f"BEGIN ATTRIBUTES\n  NAMES {name}\n  METHODS linear\nEND ATTRIBUTES\n"
+            "BEGIN TIMESERIES\n  0.0 1.0\n  1.0 2.0\nEND TIMESERIES\n"
+        )
     raw = loads(
         "BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN w.obs\n  TS6 FILEIN b.ts\nEND OPTIONS\n"
     )
-    wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
-    assert wel.ts_file == [Path("a.ts"), Path("b.ts")]
+    with set_dir(tmp_path):
+        wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    assert all(isinstance(ts, Ts) for ts in wel.ts)
+    assert [ts.filename for ts in wel.ts] == [Path("a.ts"), Path("b.ts")]
+    assert [ts.time_series_name.time_series_names for ts in wel.ts] == [["a"], ["b"]]
     lines = [line.strip() for line in dumps(unstructure_component(wel)).splitlines()]
     ts_lines = [line for line in lines if line.startswith("TS6")]
     assert ts_lines == ["TS6 FILEIN a.ts", "TS6 FILEIN b.ts"]
@@ -3322,3 +3330,32 @@ def test_tdis_start_date_time_is_str(text, expected):
     tdis = structure_component(raw, Tdis)
     assert isinstance(tdis.start_date_time, str)
     assert tdis.start_date_time == expected
+
+
+def test_bang_comment_and_block_keyword_remarks():
+    """`!` starts a comment, like `#`, and begin/end after a line's first
+    token are data (a remark), not a block boundary."""
+    from flopy4.mf6.codec.reader import loads
+
+    raw = loads("BEGIN TIMESERIES\n! time rate\n0.0 1.0 begin SP 1\n1.0 2.0 end\nEND TIMESERIES\n")
+    rows = [r for r in raw["TIMESERIES"] if r]
+    assert rows == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
+
+
+@pytest.mark.parametrize(
+    "line,single,multi", [("SFAC 1.5", 1.5, None), ("SFACS 2.0 3.0", None, [2.0, 3.0])]
+)
+def test_ts_sfac_load(tmp_path, line, single, multi):
+    """SFAC and SFACS load into their own records, and a loaded Ts keeps
+    its default name."""
+    from flopy4.mf6.utl.ts import Ts
+
+    path = tmp_path / "a.ts"
+    path.write_text(
+        f"BEGIN ATTRIBUTES\n  NAMES a b\n  METHODS linear linear\n  {line}\nEND ATTRIBUTES\n"
+        "BEGIN TIMESERIES\n  0.0 1.0 2.0\nEND TIMESERIES\n"
+    )
+    ts = Ts.load(path)
+    assert ts.name == "ts"
+    assert (ts.sfacrecord_single.sfacval if ts.sfacrecord_single else None) == single
+    assert (ts.sfac.sfacval if ts.sfac else None) == multi

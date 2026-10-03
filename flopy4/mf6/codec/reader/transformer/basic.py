@@ -34,7 +34,8 @@ class BasicTransformer(Transformer):
         return blocks
 
     def block(self, items: list[Any]) -> dict[str, Any]:
-        return {items[0]: items[1 : (len(items) - 1)]}
+        # BEGIN name line... END name
+        return {items[1]: items[2:-2]}
 
     def block_name(self, items: list[Any]) -> str:
         # name plus its index (period/solutiongroup number, utl-tas's time),
@@ -48,7 +49,7 @@ class BasicTransformer(Transformer):
         return items[0] if items else []
 
     def line(self, items: list[Any]) -> list[Any]:
-        return items
+        return [str(i) if isinstance(i, Token) else i for i in items]
 
     def TOKEN(self, token: Token) -> str | int | float:
         value = str(token)

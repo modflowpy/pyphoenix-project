@@ -1,10 +1,12 @@
 start: [_NL*] (block [_NL*])*
-block: "begin"i block_name _NL _list "end"i block_name [_NL+]
+block: BEGIN block_name _NL _list END block_name [_NL+]
 // MF6 ignores anything after a block header's optional index (e.g. MAW's
 // legacy `begin period 1 steady-state`); the transformer drops it.
 block_name: CNAME TOKEN*
 _list: line*
-line: TOKEN* _NL+
+// BEGIN/END only open and close a block at the start of a line; after a
+// line's first token they're data (test106's `0.0 ... begin SP 1` remark).
+line: (TOKEN (TOKEN | BEGIN | END)*)? _NL+
 // Every whitespace-delimited token lexes as one terminal, and the
 // transformer decides whether it's a number. Separate NUMBER and word
 // terminals overlap, and the lexer takes the first that matches rather
@@ -12,6 +14,8 @@ line: TOKEN* _NL+
 // `1997` and `-07-16T19:20:30`.
 TOKEN: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 COMMA: ","
+BEGIN: "begin"i
+END: "end"i
 
 %import common.NEWLINE -> _NL
 %import common.WS_INLINE
@@ -23,4 +27,7 @@ COMMA: ","
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+// mf6 also takes `!` for a comment
+BANG_COMMENT: /![^\n]*/
+%ignore BANG_COMMENT
 %ignore COMMA

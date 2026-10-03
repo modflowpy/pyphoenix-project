@@ -14,9 +14,11 @@
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
+%import typed.BANG_COMMENT -> BANG_COMMENT
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
+%ignore BANG_COMMENT
 %ignore COMMA
 
 {% set ns = namespace(alts=[]) -%}
