@@ -793,6 +793,7 @@ def _build_block_property_specs(
     component: Component,
     *,
     reserved_names: frozenset[str] = frozenset(),
+    skip: frozenset[str] = frozenset(),
 ) -> tuple[list[BlockPropertySpec], set[str]]:
     """Compute BlockPropertySpec for all static (non-period) list blocks.
 
@@ -808,6 +809,8 @@ def _build_block_property_specs(
         # only field; a tagged list is one field among the block's others
         # (see is_tagged_list).
         for f in block.fields.values():
+            if f.name in skip:
+                continue
             if filters.is_list_field(f) and not filters.is_tagged_list(f):
                 list_fields_map[block_name] = f
                 break
@@ -868,6 +871,7 @@ def _generated_imports(
     item_classes: "list[ItemClassSpec] | None" = None,
     has_derived_dims: bool = False,
     subpackages: list[str] | None = None,
+    extra_imports: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
     # numeric arrays → Int/FloatArrayLike, not NDArray[np.xxx]
@@ -939,6 +943,7 @@ def _generated_imports(
         flopy4.append("from flopy4.dimensions import DerivedDim")
     for sub in subpackages or []:
         flopy4.append(f"from {_component_module(sub)} import {filters.class_name(sub)}")
+    flopy4.extend(extra_imports or [])
     if has_inner_classes:
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
@@ -961,7 +966,15 @@ def _generated_imports(
     _types_parts += [fn for fn in ("to_array", "to_list") if f"{fn}(" in _converters]
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
-    flopy4.sort()
+    # merge lines importing from the same module
+    names: dict[str, list[str]] = {}
+    for line in flopy4:
+        module, _, imported = line.removeprefix("from ").partition(" import ")
+        names.setdefault(module, []).extend(n for n in imported.split(", ") if n)
+    flopy4 = sorted(
+        f"from {m} import {', '.join(sorted(set(ns), key=lambda n: (n[0].islower(), n)))}"
+        for m, ns in names.items()
+    )
 
     return {"stdlib": stdlib, "third_party": third_party, "flopy4": flopy4}
 
@@ -976,6 +989,7 @@ _DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods", *_GRID_DIMS]
 _DISU = ["flopy4.mf6.disu_methods:DisuMethods", *_GRID_DIMS]
 MIXINS: dict[str, list[str]] = {
+    "sim-nam": ["flopy4.mf6.simulation_methods:SimulationMethods"],
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
     # Grid packages provide the model's dimensions. Which components do
@@ -1004,6 +1018,8 @@ def check_mixins(dfns: Mapping[str, Component]) -> None:
         raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
     if unknown := sorted(set(SUBPACKAGES.values()) - set(dfns)):
         raise ValueError(f"SUBPACKAGES values match no DFN component: {unknown}")
+    if unknown := sorted(set(BINDINGS) - set(dfns)):
+        raise ValueError(f"BINDINGS keys match no DFN component: {unknown}")
 
 
 # File records naming a subpackage's input file, record name -> component.
@@ -1032,8 +1048,68 @@ def _subpackage_field_spec(component: str, file_field: str) -> FieldSpec:
     )
 
 
+@dataclass
+class ChildField:
+    """A typed child field replacing a binding list."""
+
+    py_name: str
+    type_annotation: str
+    factory: str
+    imports: tuple[str, ...]
+    converter: str | None = None
+
+
+# Binding lists: rows naming child components' files (`mtype mfname mname`).
+# flopy4 holds the children instead, and the binding code reads and writes
+# the rows from them (`_resolve_bindings`, `_make_binding_blocks`). The DFN
+# doesn't say which components a row names, so it's listed here, by
+# component and DFN field.
+BINDINGS: dict[str, dict[str, ChildField]] = {
+    "sim-nam": {
+        "tdis6": ChildField(
+            "tdis",
+            "Tdis",
+            "Tdis",
+            (
+                "from flopy4.mf6.tdis import Tdis",
+                "from flopy4.mf6.simulation_methods import convert_time",
+            ),
+            converter="convert_time",
+        ),
+        "models": ChildField(
+            "models", "dict[str, Model]", "dict", ("from flopy4.mf6.model import Model",)
+        ),
+        "exchanges": ChildField(
+            "exchanges",
+            "dict[str, Exchange]",
+            "dict",
+            ("from flopy4.mf6.exchange import Exchange",),
+        ),
+        "solutiongroup": ChildField(
+            "solutions",
+            "dict[str, Solution]",
+            "dict",
+            ("from flopy4.mf6.solution import Solution",),
+        ),
+    },
+}
+
+
+def _child_field_spec(dfn_name: str, block_name: str, child: ChildField) -> FieldSpec:
+    conv = f", converter={child.converter}" if child.converter else ""
+    return FieldSpec(
+        dfn_name=dfn_name,
+        py_name=child.py_name,
+        type_annotation=child.type_annotation,
+        spec_call=f'field(block="{block_name}"{conv}, default=attrs.Factory({child.factory}))',
+        generatable=True,
+    )
+
+
 def _base_class(component: Component) -> str:
     """Determine the Python base class for a component."""
+    if component.type == "simulation":
+        return "Context"
     if component.name.split("-")[0] == _SLN_PREFIX:
         return "Solution"
     return "Package"
@@ -1116,14 +1192,17 @@ def build_component_spec(
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
+    bindings = BINDINGS.get(component.name, {})
     block_properties, _bp_block_names = _build_block_property_specs(
         component,
         reserved_names=_period_keystring_names(component),
+        skip=frozenset(bindings),
     )
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
     subpackages: list[str] = []  # components of subpackage fields (SUBPACKAGES)
+    extra_imports: list[str] = []  # child fields' imports (BINDINGS)
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
     _named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
@@ -1144,6 +1223,11 @@ def build_component_spec(
         return elem
 
     for block_name, f in all_fields:
+        if (child := bindings.get(f.name)) is not None:
+            data_specs.append(_child_field_spec(f.name, block_name, child))
+            extra_imports.extend(child.imports)
+            continue
+
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
 
@@ -1491,6 +1575,7 @@ def build_component_spec(
         item_classes=item_classes,
         has_derived_dims=bool(_derived_dims),
         subpackages=subpackages,
+        extra_imports=extra_imports,
     )
 
     computed_field_specs = (

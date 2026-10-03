@@ -629,6 +629,43 @@ def test_gwf_list_option_name():
     assert "_LIST" not in text
 
 
+def test_gwt_list_option_name():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwt import Gwt
+
+    text = dumps(unstructure_component(Gwt(name="m", list_="m.lst")))
+    assert " LIST m.lst" in text
+    assert "LIST_" not in text
+
+
+def test_simulation_options_roundtrip():
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.simulation import Simulation
+
+    text = """BEGIN OPTIONS
+  CONTINUE
+  NOCHECK
+  MEMORY_PRINT_OPTION summary
+  MAXERRORS 5
+  PRINT_INPUT
+END OPTIONS
+BEGIN SOLUTIONGROUP 1
+  MXITER 3
+END SOLUTIONGROUP
+"""
+    sim = structure_component(loads(text), Simulation)
+    assert sim.continue_ and sim.nocheck and sim.print_input
+    assert sim.memory_print_option == "summary"
+    assert sim.maxerrors == 5
+    assert sim.mxiter == 3
+
+    out = dumps(unstructure_component(sim))
+    for line in ("CONTINUE", "NOCHECK", "MEMORY_PRINT_OPTION summary", "MAXERRORS 5", "MXITER 3"):
+        assert f" {line}\n" in out
+    assert "CONTINUE_" not in out
+
+
 def test_oc_head_file_and_print_format():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component

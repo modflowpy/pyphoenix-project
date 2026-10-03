@@ -66,6 +66,10 @@ def model_abbr(dfn_name: str) -> str | None:
     return None if prefix in _ROOT_PREFIXES else prefix
 
 
+# Components not named by their suffix.
+_NAMES = {"sim-nam": "simulation"}
+
+
 def pkg_abbr(dfn_name: str) -> str:
     """Return the package suffix of a DFN name.
 
@@ -73,8 +77,9 @@ def pkg_abbr(dfn_name: str) -> str:
     --------
     "gwf-ic"  -> "ic"
     "sln-ims" -> "ims"
+    "sim-nam" -> "simulation"
     """
-    return dfn_name.split("-")[-1]
+    return _NAMES.get(dfn_name, dfn_name.split("-")[-1])
 
 
 def class_name(dfn_name: str) -> str:

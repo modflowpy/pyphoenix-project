@@ -373,6 +373,23 @@ class TestSimpleTierComponentSpec:
         assert spec.outpath == root / "gwf" / f"{expected_class.lower()}.py"
 
 
+def test_simulation_spec(all_dfns):
+    root = Path("/fake/mf6")
+    spec = build_component_spec(all_dfns["sim-nam"], root=root)
+    assert spec.class_name == "Simulation"
+    assert spec.base_class == "Context"
+    assert spec.mixins == ["SimulationMethods"]
+    assert spec.outpath == root / "simulation.py"
+    types = {f.py_name: f.type_annotation for f in spec.fields}
+    # binding lists become typed child fields
+    assert types["tdis"] == "Tdis"
+    assert types["models"] == "dict[str, Model]"
+    assert types["exchanges"] == "dict[str, Exchange]"
+    assert types["solutions"] == "dict[str, Solution]"
+    assert not spec.item_classes
+    assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
+
+
 # Layer 2: Solution-tier ComponentSpec tests
 @pytest.mark.parametrize(
     "dfn_name,expected_class,expected_base,expected_slntype",
