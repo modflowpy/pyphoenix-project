@@ -327,8 +327,10 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             raw_value = getattr(value, field_name, None)
             if raw_value is None:
                 continue
-            # a private field's file name is its alias (Gwf's _list: LIST)
+            # a private field's file name is its alias (Gwf's _list: LIST), a
+            # renamed keyword's is its name without the underscore (continue_)
             key = field.alias if field is not None and field_name.startswith("_") else field_name
+            key = key.removesuffix("_")
             if isinstance(raw_value, Record):
                 blocks[block_name][key] = raw_value.to_tokens()
                 continue

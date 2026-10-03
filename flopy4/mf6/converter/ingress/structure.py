@@ -793,7 +793,12 @@ def structure_component(
                 f, item_cls = kf
                 kwargs.setdefault(f.alias or f.name, []).append(item_cls.from_tokens(row))
                 continue
-            f = all_fields.get(key) or all_fields.get(alias_map.get(key, ""))
+            # keywords are renamed with a trailing underscore (CONTINUE: continue_)
+            f = (
+                all_fields.get(key)
+                or all_fields.get(alias_map.get(key, ""))
+                or all_fields.get(f"{key}_")
+            )
             if f is None or f.init is False:
                 if key in inner_class_fields:
                     cand_f, inner_cls = inner_class_fields[key]
