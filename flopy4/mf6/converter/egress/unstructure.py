@@ -39,6 +39,16 @@ def _child_path(child: Component) -> Path:
     return Path(path.name) if path.is_absolute() else path
 
 
+def _put_child_file_records(block: dict, field: attrs.Attribute, value: Any) -> None:
+    """File records naming children: NCF6 FILEIN <child's file>."""
+    children = value if isinstance(value, list) else [value]
+    rows = [_path_to_tuple(field, _child_path(c)) for c in children if c is not None]
+    if rows and isinstance(value, list):
+        block[field.name] = rows
+    elif rows:
+        block[rows[0][0].lower()] = rows[0]
+
+
 def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
     if not isinstance(value, Context):
         return {}
@@ -56,6 +66,9 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
             continue
         if block_name not in blocks:
             blocks[block_name] = {}
+        if f.metadata.get("_keyword"):
+            _put_child_file_records(blocks[block_name], f, child)
+            continue
         match child:
             case Component():
                 blocks[block_name][child_name] = [Binding.from_component(child).to_tuple()]
@@ -229,13 +242,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             blocks[block_name][t[0].lower()] = t
 
         elif meta.get("child") and meta.get("_keyword"):
-            # file records naming children: NCF6 FILEIN <child's file>
-            children = field_value if isinstance(field_value, list) else [field_value]
-            rows = [_path_to_tuple(f, _child_path(c)) for c in children if c is not None]
-            if rows and isinstance(field_value, list):
-                blocks[block_name][f.name] = rows
-            elif rows:
-                blocks[block_name][rows[0][0].lower()] = rows[0]
+            _put_child_file_records(blocks[block_name], f, field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
             blocks[block_name][f.name] = _rows_to_tuples(field_value)

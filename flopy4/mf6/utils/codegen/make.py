@@ -10,6 +10,7 @@ migration history from the legacy modflow_devtools.dfn (flat TypedDict)
 schema this replaces.
 """
 
+import importlib.util
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -1018,67 +1019,23 @@ MIXINS: dict[str, list[str]] = {
 
 
 def check_mixins(dfns: Mapping[str, Component]) -> None:
-    """Raise if a `MIXINS` or `LINKS` key, or a concrete `LINKS` target,
-    names no DFN component."""
+    """Raise if a `MIXINS` key names no DFN component."""
     if unknown := sorted(set(MIXINS) - set(dfns)):
         raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
-    if unknown := sorted({c for c, _ in LINKS if c != "*"} - set(dfns)):
-        raise ValueError(f"LINKS keys match no DFN component: {unknown}")
-    targets = {t for link in LINKS.values() for t in link.targets if "-" in t}
-    if unknown := sorted(targets - set(dfns)):
-        raise ValueError(f"LINKS targets match no DFN component: {unknown}")
 
 
-@dataclass(frozen=True)
-class Link:
-    """A file field's link to the component the file is input for.
-
-    `component` selects the target by name, type (`model`) or subtype
-    (`exchange`, `solution`); a type or subtype matches only this
-    component's children. `component_ref` names the sibling column whose
-    value picks the target per row. `optional` overrides the DFN's."""
-
-    component: str | tuple[str, ...]
-    component_ref: str | None = None
-    optional: bool | None = None
-
-    @property
-    def targets(self) -> tuple[str, ...]:
-        return (self.component,) if isinstance(self.component, str) else self.component
-
-
-# (component, field path) -> link, "*" for any component. The dev3 DFNs
-# don't link file fields to components yet; remove once they carry
-# File.component (see modflow-devtools' subpackage-links-plan.md).
-LINKS: dict[tuple[str, str], Link] = {
-    # mf6 requires TDIS6, though the DFN marks it optional
-    ("sim-nam", "tdis6"): Link("sim-tdis", optional=False),
-    ("sim-nam", "models.mfname"): Link("model", "mtype"),
-    ("sim-nam", "exchanges.exgfile"): Link("exchange", "exgtype"),
-    ("sim-nam", "solutiongroup.slnfname"): Link("solution", "slntype"),
-    ("*", "ncf_filerecord.ncf6_filename"): Link("utl-ncf"),
-    ("*", "ts_filerecord.ts6_filename"): Link("utl-ts"),
-    ("*", "tas_filerecord.tas6_filename"): Link("utl-tas"),
-}
-
-
-def field_link(component: str, path: str) -> Link | None:
-    """The link on the field at `path` in `component`. Only `LINKS` for now,
-    not the DFN's own links, which name targets flopy4 lacks classes for."""
-    return LINKS.get((component, path)) or LINKS.get(("*", path))
-
-
-def _find_link(component: Component, f: FieldV3) -> tuple[str, Link] | None:
-    """The first linked path in a top-level field: itself, a record's
-    member or a list's column."""
-    paths = [f.name]
-    if isinstance(f, Record):
-        paths += [f"{f.name}.{n}" for n in f.fields or {}]
-    elif filters.is_list_field(f):
-        paths += [f"{f.name}.{c.name}" for c in filters.list_columns(f)]
-    for path in paths:
-        if (link := field_link(component.name, path)) is not None:
-            return path, link
+def _find_link(f: FieldV3) -> tuple[str, File, bool] | None:
+    """The first linked file in a top-level field (itself, a record's member
+    or a list's column), its path, and whether the rest of its record or row
+    is just the file's keyword."""
+    members: dict[str, FieldV3] = {f.name: f}
+    record = f.item if isinstance(f, ListField) else f
+    if isinstance(record, Record):
+        members |= {f"{f.name}.{n}": m for n, m in (record.fields or {}).items()}
+    for path, m in members.items():
+        if isinstance(m, File) and m.component:
+            rest = [o for o in members.values() if o is not m and o is not f]
+            return path, m, all(isinstance(o, KeywordField) for o in rest)
     return None
 
 
@@ -1088,11 +1045,13 @@ def _is_child_of(child: Component, parent: str) -> bool:
 
 
 def resolve_link(
-    component: Component, path: str, link: Link, dfns: Mapping[str, Component] | None
+    component: Component, path: str, link: File, dfns: Mapping[str, Component] | None
 ) -> list[str]:
     """The concrete components a link can target."""
+    assert link.component is not None
+    selectors = [link.component] if isinstance(link.component, str) else link.component
     found: list[str] = []
-    for sel in link.targets:
+    for sel in selectors:
         if "-" in sel:  # a concrete name; utilities' DFN parents aren't reliable
             found.append(sel)
             continue
@@ -1105,12 +1064,39 @@ def resolve_link(
         ]
     if not found:
         raise ValueError(f"{component.name}.{path}: {link.component!r} matches no component")
-    if len(found) > 1 and link.component_ref is None:
+    if len(found) > 1 and link.component_ftype is None:
         raise ValueError(
             f"{component.name}.{path}: {link.component!r} matches {found}, "
-            "but there is no component_ref to choose between them"
+            "but there is no component_ftype to choose between them"
         )
     return found
+
+
+def _has_class(target: str, link: File, dfns: Mapping[str, Component] | None) -> bool:
+    """Whether flopy4 has a class for a link's target: a hand-written base
+    for a family picked per row, otherwise a generated module."""
+    if link.component_ftype is not None:
+        c = dfns[target] if dfns is not None else None
+        return c is not None and bool({c.type, getattr(c, "subtype", None)} & set(_CHILD_BASES))
+    return importlib.util.find_spec(_component_module(target)) is not None
+
+
+def _child_link(
+    component: Component, f: FieldV3, dfns: Mapping[str, Component] | None
+) -> tuple[File, list[str]] | None:
+    """The link a top-level field becomes a child for, and its targets, or
+    None to keep the field as is. Links flopy4 can't load yet stay paths:
+    those to targets without a class, and files sharing a row with other data
+    but no column picking the target's type (LAK/SFR tables, SSM sources)."""
+    if (found := _find_link(f)) is None:
+        return None
+    path, link, file_only = found
+    if not file_only and link.component_ftype is None:
+        return None
+    targets = resolve_link(component, path, link, dfns)
+    if not all(_has_class(t, link, dfns) for t in targets):
+        return None
+    return link, targets
 
 
 def _component_module(name: str) -> str:
@@ -1137,14 +1123,14 @@ def _child_field_spec(
     component: Component,
     f: FieldV3,
     block_name: str,
-    link: Link,
+    link: File,
     targets: list[str],
     dfns: Mapping[str, Component] | None,
 ) -> tuple[FieldSpec, list[str]]:
     """The child field standing in for a linked field, and its imports."""
-    if link.component_ref is not None:
+    if link.component_ftype is not None:
         if not filters.is_list_field(f):
-            raise ValueError(f"{component.name}.{f.name}: component_ref outside a list")
+            raise ValueError(f"{component.name}.{f.name}: component_ftype outside a list")
         assert dfns is not None  # resolve_link needed them
         bases = {_child_base(dfns[t]) for t in targets}
         if len(bases) != 1:
@@ -1159,7 +1145,6 @@ def _child_field_spec(
         ), [f"from {module} import {base}"]
     (target,) = targets
     cls = filters.class_name(target)
-    optional = f.optional if link.optional is None else link.optional
     args = f'block="{block_name}"'
     record = f.item if isinstance(f, ListField) else f
     if isinstance(record, Record):  # KEYWORD FILEIN <file>, maybe repeated
@@ -1167,9 +1152,11 @@ def _child_field_spec(
         keyword = next(m.name for m in members if isinstance(m, KeywordField))
         direction = next(m.direction for m in members if isinstance(m, File))
         args += f', keyword="{keyword}", direction="{direction}"'
+    elif isinstance(f, File) and not f.mode_keyword:  # KEYWORD <file>, e.g. TDIS6
+        args += f', keyword="{f.name}"'
     if filters.is_list_field(f):
         annotation, call = f"list[{cls}]", f"child({args}, default=attrs.Factory(list))"
-    elif optional:
+    elif f.optional:
         annotation, call = f"Optional[{cls}]", f"child({args})"
     else:
         annotation, call = cls, f"child({args}, default=attrs.Factory({cls}))"
@@ -1271,7 +1258,7 @@ def build_component_spec(
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
     # Linked fields, by name, each replaced by a child field.
-    links = {f.name: found for _, f in all_fields if (found := _find_link(component, f))}
+    links = {f.name: found for _, f in all_fields if (found := _child_link(component, f, dfns))}
     child_fields = frozenset(links)
     block_properties, _bp_block_names = _build_block_property_specs(
         component,
@@ -1303,8 +1290,7 @@ def build_component_spec(
 
     for block_name, f in all_fields:
         if f.name in child_fields:
-            path, link = links[f.name]
-            targets = resolve_link(component, path, link, dfns)
+            link, targets = links[f.name]
             spec, child_imports = _child_field_spec(component, f, block_name, link, targets, dfns)
             (prefix_specs if block_name in ("options", "dimensions") else data_specs).append(spec)
             extra_imports.extend(child_imports)
