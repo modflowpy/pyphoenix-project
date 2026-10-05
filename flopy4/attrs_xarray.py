@@ -97,7 +97,7 @@ def _array_dims(field: attrs.Attribute, name: str, ndim: int) -> tuple:
 
 
 def _named_dim(field: attrs.Attribute) -> str | None:
-    """For named arrays (RCHA's aux), the dim to stack them along, labeled
+    """For dynamically named arrays (RCHA's aux), the dim to stack them along, labeled
     by name ("aux_name")."""
     named = field.metadata.get("fk") and field.metadata.get("fill_forward")
     return f"{field.name}_name" if named else None
@@ -119,7 +119,7 @@ def attrs_to_dataset(obj) -> xr.Dataset:
         if isinstance(value, xr.DataArray):
             data_vars[name] = value
         elif (key := _named_dim(field)) and isinstance(value, dict):
-            # named arrays (RCHA's aux), stacked along their names
+            # dynamically named arrays (RCHA's aux), stacked along their names
             if value:
                 arrays = [np.asarray(a) for a in value.values()]
                 dims = _array_dims(field, name, arrays[0].ndim)

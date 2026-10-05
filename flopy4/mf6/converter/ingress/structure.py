@@ -937,7 +937,7 @@ def structure_component(
                 and f.init is not False
                 and not f.metadata.get("fk")
             }
-            # Named arrays (RCHA's aux), one per name in the field the fk
+            # Dynamically named arrays (RCHA's aux), one per name in the field the fk
             # points at: written under the name, not the field's.
             named: dict[str, tuple[Any, str]] = {
                 str(n).lower(): (f, str(n))

@@ -371,7 +371,7 @@ def test_make_grammar_with_file_fields(tmp_path):
     assert 'ats6: "ats6"i "filein"i word [_remark] _NL' in content
 
 
-def test_make_grammar_with_named_arrays(tmp_path):
+def test_make_grammar_with_dynamically_named_arrays(tmp_path):
     item = Record(
         name="aux",
         fields={

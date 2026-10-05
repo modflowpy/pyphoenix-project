@@ -114,7 +114,7 @@ class _PackageSpec:
         self.arrays = {
             f.name: _ArrayInfo(f) for f in _attrs.fields(cls) if f.metadata.get("netcdf")
         }
-        # Named arrays (RCHA's aux), one variable per auxiliary name.
+        # Dynamically named arrays (RCHA's aux), one variable per auxiliary name.
         self.named = {
             f.name for f in _attrs.fields(cls) if f.metadata.get("netcdf") and f.metadata.get("fk")
         }
@@ -250,7 +250,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
                         arr = np.full(_nodes, float(arr.ravel()[0]))
                     p["params"].append({"name": f.name, "data": arr})
                 elif f.metadata.get("fk"):
-                    # named arrays (RCHA's aux): one param per auxiliary name
+                    # dynamically named arrays (RCHA's aux): one param per auxiliary name
                     if not (arrays := getattr(package, f.name)):
                         continue
                     names = [str(n).lower() for n in package.auxiliary]  # type: ignore[attr-defined]

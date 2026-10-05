@@ -93,7 +93,7 @@
 {%- endif -%}
 {%- endmacro %}
 
-{% macro named_array_field(field_name) -%}
+{% macro dynamically_named_array_field(field_name) -%}
 {# The name isn't known until the file is read (it's one of the AUXILIARY
    variables), so accept any word. The array's own rule ends the line. #}
 {{ field_name|to_rule_name }}: word [_remark] [_NL] array

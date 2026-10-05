@@ -44,10 +44,7 @@ def field_type(field: InputField) -> str:
     return field.type
 
 
-def is_named_array(field: InputField) -> bool:
-    """A record of a name keyed to a string array, then a grid array: one of
-    a tagged list of arrays, each introduced by its own name (e.g. RCHA's
-    aux, one array per auxiliary variable)."""
+def is_dynamically_named_array(field: InputField) -> bool:
     if not isinstance(field, Record) or len(field.fields or {}) < 2:
         return False
     first, *_, last = field.fields.values()

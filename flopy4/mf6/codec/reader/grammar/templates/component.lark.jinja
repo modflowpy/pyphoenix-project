@@ -58,8 +58,8 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {% if field_name not in generated_rules -%}
 {% set field = fields[field_name] -%}
 {% set field_type = field|field_type -%}
-{% if field is named_array -%}
-{{ m.named_array_field(field_name) }}
+{% if field is dynamically_named_array -%}
+{{ m.dynamically_named_array_field(field_name) }}
 {% elif field.type == 'record' and field.children is not none -%}
 {{ m.record_field(field_name, field) }}
 {% elif field.type == 'union' and field.children is not none -%}

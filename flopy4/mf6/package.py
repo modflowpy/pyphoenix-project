@@ -92,7 +92,7 @@ class Package(Component, ABC):
         # 1. Item-list coercion.
         self._init_item_lists(fields)
         self._check_lookup_counts(fields)
-        self._init_named_arrays(fields)
+        self._init_dynamically_named_arrays(fields)
 
         # 2. Griddata normalization and broadcasting. A dimension provider
         # (a grid package) sizes its own griddata.
@@ -189,8 +189,8 @@ class Package(Component, ABC):
                             f"but {block}.{count_col} is {expected}"
                         )
 
-    def _init_named_arrays(self, fields) -> None:
-        """Named arrays (RCHA's aux): convert each to an array, and check
+    def _init_dynamically_named_arrays(self, fields) -> None:
+        """Dynamically named arrays (RCHA's aux): convert each to an array, and check
         its name is one of the names the field's fk points at."""
         for f in fields:
             if not (f.metadata.get("fill_forward") and (fk := f.metadata.get("fk"))):

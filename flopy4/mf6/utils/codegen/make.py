@@ -1230,7 +1230,7 @@ def build_component_spec(
     _has_list_period = any(
         block_name in _fill_forward_blocks
         and filters.is_list_field(f)
-        and filters.named_array(f) is None
+        and filters.dynamically_named_array(f) is None
         for block_name, f in all_fields
     )
     _maxbound_is_computed = has_maxbound and _has_list_period
@@ -1271,7 +1271,7 @@ def build_component_spec(
     extra_imports: list[str] = []  # child fields' imports
     _period_item: str | None = None  # element type of the fill-forward block's list
     _readarray_period_fields: list[FieldV3] = []  # READARRAY period fields (CHDG, DRNG …)
-    _named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
+    _dynamically_named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
 
     # Array fields can size list columns (auxiliary sizes aux).
@@ -1299,9 +1299,9 @@ def build_component_spec(
         if filters.is_list_field(f) and block_name in _bp_block_names:
             continue  # covered by BlockPropertySpec; column attrs generated below
 
-        # Lists of named arrays (RCHA's aux): one array per auxiliary name.
-        if block_name in _fill_forward_blocks and (named := filters.named_array(f)):
-            _named_period_fields.append((f, *named))
+        # Lists of dynamically named arrays (RCHA's aux): one array per auxiliary name.
+        if block_name in _fill_forward_blocks and (named := filters.dynamically_named_array(f)):
+            _dynamically_named_period_fields.append((f, *named))
             continue
 
         if block_name in _fill_forward_blocks and filters.is_list_field(f):
@@ -1496,7 +1496,9 @@ def build_component_spec(
             (
                 f
                 for b, f in all_fields
-                if b == _ff_block and filters.is_list_field(f) and filters.named_array(f) is None
+                if b == _ff_block
+                and filters.is_list_field(f)
+                and filters.dynamically_named_array(f) is None
             ),
             None,
         )
@@ -1548,9 +1550,9 @@ def build_component_spec(
                 )
             )
 
-    # A dict of named arrays per list of them: RCHA's aux, keyed by the
+    # A dict of dynamically named arrays per list of them: RCHA's aux, keyed by the
     # auxiliary names (the fk), each array like a READARRAY period field's.
-    for _lf, _arr, _fk in _named_period_fields:
+    for _lf, _arr, _fk in _dynamically_named_period_fields:
         _na_meta: dict = {"block": _ff_block}
         if shape := getattr(_arr, "shape", None):
             _na_meta["shape"] = tuple(shape)
@@ -1616,7 +1618,7 @@ def build_component_spec(
             if filters.is_readarray(f) and bn not in _repeating_blocks
         }
         | {getattr(f, "dtype", "double") for f in _readarray_period_fields}
-        | {getattr(arr, "dtype", "double") for _, arr, _ in _named_period_fields}
+        | {getattr(arr, "dtype", "double") for _, arr, _ in _dynamically_named_period_fields}
         | {getattr(f, "dtype", "double") for f in _repeating_array_fields}
     )
     _needs_int_arraylike = "integer" in _arraylike_types

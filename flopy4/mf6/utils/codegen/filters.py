@@ -352,8 +352,8 @@ def flat_fields(component: Component, *, developmode: bool = False) -> list[tupl
     return result
 
 
-def named_array(f) -> tuple[Array, str] | None:
-    """For a list of named arrays (RCHA's period aux: an auxiliary name, then
+def dynamically_named_array(f) -> tuple[Array, str] | None:
+    """For a list of dynamically named arrays (RCHA's period aux: an auxiliary name, then
     its array), the array and the name's fk ("options.auxiliary"); None for
     any other field."""
     if not isinstance(f, ListField) or not isinstance(f.item, Record):
