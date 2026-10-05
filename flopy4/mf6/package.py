@@ -374,6 +374,7 @@ class Package(Component, ABC):
         path: Path,
         dims: "dict[str, int] | None" = None,
         name: "str | None" = None,
+        parent: "type | None" = None,
     ) -> "Package":
         """Load from an MF6 text input file.
 
@@ -389,13 +390,18 @@ class Package(Component, ABC):
         name :
             Explicit component name (e.g. a namefile binding row's
             pname), overriding the default auto-assigned name.
+        parent :
+            The class of the component whose file named this one, which
+            tells how to read some of its values (see OBS's ids).
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
 
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(_raw, cls, dims=dims, workspace=path.parent, name=name)
+        _pkg = structure_component(
+            _raw, cls, dims=dims, workspace=path.parent, name=name, parent=parent
+        )
 
         # Pre-populate dimension cache so to_xarray()/to_dataarray() work
         # on standalone packages (not attached to a parent model).

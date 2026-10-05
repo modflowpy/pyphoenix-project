@@ -1837,8 +1837,8 @@ def test_gwf_netcdf_input_file_serializes():
 
 def test_file_records_roundtrip(tmp_path):
     """Options-block file records are keyed by their trigger keyword (TS6,
-    OBS6, HEAD), not the py field name (ts, obs_file, head_file) -- both on
-    load and on write. A record naming a child (TS6) loads the child."""
+    OBS6, HEAD), not the py field name (ts, obs, head_file) -- both on
+    load and on write. A record naming a child (TS6, OBS6) loads the child."""
     from pathlib import Path
 
     from modflow_devtools.misc import set_dir
@@ -1848,11 +1848,18 @@ def test_file_records_roundtrip(tmp_path):
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwf import Oc, Wel
+    from flopy4.mf6.utl.obs import Obs
     from flopy4.mf6.utl.ts import Ts
 
+    (tmp_path / "w.obs").write_text(
+        "BEGIN CONTINUOUS FILEOUT w.obs.csv\n  q1 wel 1\nEND CONTINUOUS\n"
+    )
     raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
-    wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
-    assert wel.obs_file == Path("w.obs")
+    with set_dir(tmp_path):
+        wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    assert isinstance(wel.obs, Obs)
+    assert wel.obs.filename == Path("w.obs")
+    assert wel.obs.name == "obs"  # not its block's name
     assert "OBS6 FILEIN w.obs" in dumps(unstructure_component(wel))
 
     for name in ("a", "b"):
@@ -3473,6 +3480,70 @@ def test_obs_header_blocks_round_trip(tmp_path):
     assert "END CONTINUOUS FILEOUT" not in dumped
     path.write_text(dumped)
     assert Obs.load(path).continuous == obs.continuous
+
+
+@pytest.mark.parametrize(
+    "tokens, ncelldim, union_arm, id_, id2",
+    [
+        # a boundname, whatever the parent
+        (["well-a"], 3, "cellid", "well-a", None),
+        (["well-a"], 0, "index", "well-a", None),
+        # a model's or stress package's cellids
+        (["1", "2", "3"], 3, "cellid", (0, 1, 2), None),
+        (["1", "2", "3", "1", "2", "4"], 3, "cellid", (0, 1, 2), (0, 1, 3)),
+        (["1", "5", "1", "6"], 2, "cellid", (0, 4), (0, 5)),
+        # an advanced package's or exchange's indexes
+        (["1"], 3, "index", 0, None),
+        (["2", "3"], 3, "index", 1, 2),
+        (["lake-1", "3"], 3, "index", "lake-1", 2),
+        # CSUB: indexes by default, but a row as wide as a cellid is one
+        (["1", "2", "3"], 3, "index", (0, 1, 2), None),
+        # UZF's water-content depth fits no arm: kept as is
+        (["2", "0.5"], 3, "index", 1, 0.5),
+        # no grid: a cellid as wide as the row
+        (["1", "2", "3"], 0, "cellid", (0, 1, 2), None),
+    ],
+)
+def test_obs_ids(tokens, ncelldim, union_arm, id_, id2):
+    """An OBS id is a cellid, an index or a boundname, by the parent's kind
+    and the row's width."""
+    from flopy4.mf6.utl import Obs
+
+    row = Obs.Continuous.from_tokens(
+        ["o1", "head", *tokens], ncelldim=ncelldim, union_arm=union_arm
+    )
+    assert (row.id_, row.id2) == (id_, id2)
+    assert [str(t) for t in row.to_tokens()[2:]] == tokens
+
+
+def test_obs_ids_ignore_trailing_tokens():
+    """Like MF6, tokens past the ids are ignored (test051's notes)."""
+    from flopy4.mf6.utl import Obs
+
+    tokens = ["o1", "water-content", "1", "1.0", "(UZF", "CELL", "1)"]
+    row = Obs.Continuous.from_tokens(tokens, ncelldim=3, union_arm="index")
+    assert (row.id_, row.id2) == (0, 0)
+
+
+def test_obs_ids_by_parent(tmp_path):
+    """A package keyed by an index (LAK) reads its OBS ids as indexes; one
+    keyed by cellids (WEL) as cellids."""
+    from modflow_devtools.misc import set_dir
+
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Lak, Wel
+
+    (tmp_path / "p.obs").write_text("BEGIN CONTINUOUS FILEOUT p.csv\n  o1 x 1 2\nEND CONTINUOUS\n")
+    raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
+    dims = {"nlay": 1, "ncpl": 10, "nodes": 10}
+    with set_dir(tmp_path):
+        lak = structure_component(raw, Lak, dims={**dims, "nrow": 2, "ncol": 5})
+        wel = structure_component(raw, Wel, dims=dims)
+    (lak_row,) = lak.obs.continuous[0].continuous
+    (wel_row,) = wel.obs.continuous[0].continuous
+    assert (lak_row.id_, lak_row.id2) == (0, 1)
+    assert (wel_row.id_, wel_row.id2) == ((0, 1), None)
 
 
 def test_block_end_keeps_only_an_index():

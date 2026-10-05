@@ -20,8 +20,10 @@ class Obs(Package):
     class Continuous(Item):
         obsname: Union[float, str] = field()
         obstype: Union[float, str] = field()
-        id_: Union[float, str] = field()
-        id2: Optional[Union[float, str]] = field(default=None, optional=True)
+        id_: Union[tuple[int, ...], int, str] = field(union=("cellid", "index", "string"))
+        id2: Optional[Union[tuple[int, ...], int, str]] = field(
+            default=None, union=("cellid", "index", "string"), optional=True
+        )
 
     @attrs.define
     class Output(Item):

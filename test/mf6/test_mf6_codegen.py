@@ -879,6 +879,9 @@ def test_link_selector_errors(all_dfns, selector, match):
         ("exg-gwfgwf", "gnc", "Gnc"),
         ("exg-gwtgwt", "mvt", "Mvt"),
         ("exg-gwegwe", "mve", "Mve"),
+        ("gwf-wel", "obs", "Obs"),
+        ("gwf-lak", "obs", "Obs"),
+        ("exg-gwfgwf", "obs", "Obs"),
     ],
 )
 def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
@@ -892,7 +895,6 @@ def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
 @pytest.mark.parametrize(
     "name,target",
     [
-        ("gwf-wel", "obs"),  # no OBS class
         ("gwf-lak", "laktab"),  # a table column, not a file record
         ("gwt-ssm", "spca"),
     ],

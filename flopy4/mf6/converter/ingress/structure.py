@@ -3,7 +3,7 @@ import warnings
 from abc import ABC
 from collections import Counter
 from pathlib import Path
-from typing import Any, get_args, get_origin
+from typing import Any, cast, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -47,6 +47,7 @@ def _parse_rows(
     sizes: "dict[str, int] | None" = None,
     boundnames: bool = False,
     dims: "dict | None" = None,
+    union_arm: str = "cellid",
 ) -> list | None:
     """Parse lists of tokens (rows) into a list of Items."""
     if not rows:
@@ -55,7 +56,9 @@ def _parse_rows(
         return parse_union_items(rows, item_cls, sizes=sizes, boundnames=boundnames, dims=dims)
     ncelldim = infer_ncelldim(rows, item_cls, sizes=sizes, dims=dims)
     result = [
-        item_cls.from_tokens(row, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames)
+        item_cls.from_tokens(
+            row, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames, union_arm=union_arm
+        )
         for row in rows
         if row
     ]
@@ -594,7 +597,27 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     return kwargs
 
 
-def _load_file_child(field: Any, path: Path, workspace: Path | None, dims: dict | None) -> Any:
+def _union_arm(parent: "type | None") -> str:
+    """The arm a child's untagged union columns prefer for numbers (OBS's
+    ids): an index under an exchange or a package keyed by one (LAK's lake
+    number, a pk column), else a cellid."""
+    from flopy4.mf6.exchange import Exchange
+
+    if parent is None:
+        return "cellid"
+    if issubclass(parent, Exchange):
+        return "index"
+    for f in attrs.fields(cast(type[attrs.AttrsInstance], parent)):
+        item = item_list_type(f.type)
+        for c in item if isinstance(item, tuple) else (item,) if item else ():
+            if any(g.metadata.get("pk") for g in c.fields()):
+                return "index"
+    return "cellid"
+
+
+def _load_file_child(
+    field: Any, path: Path, workspace: Path | None, dims: dict | None, parent: type
+) -> Any:
     """Load the child a file record names (DIS's ``NCF6 FILEIN <path>``).
     Like mf6, resolve the path against the working directory, which loading
     a simulation sets to its workspace; failing that, against the parent
@@ -608,7 +631,7 @@ def _load_file_child(field: Any, path: Path, workspace: Path | None, dims: dict 
     file = Path.cwd() / path
     if not file.exists() and workspace is not None:
         file = workspace / path
-    child = child_cls.load(file, dims=dims)
+    child = child_cls.load(file, dims=dims, parent=parent)
     child.filename = path
     return child
 
@@ -636,6 +659,7 @@ def structure_component(
     dims: dict | None = None,
     workspace: Path | None = None,
     name: str | None = None,
+    parent: type | None = None,
 ) -> Any:
     """Reconstruct a component instance from a raw parsed MF6 input dict.
 
@@ -661,6 +685,9 @@ def structure_component(
         derivable from the file's own content -- passed down by a
         parent's `_resolve_bindings` call when loading this component
         as a child.
+    parent : type, optional
+        The class of the component whose file named this one, if any (see
+        `_union_arm`).
 
     Returns
     -------
@@ -809,7 +836,7 @@ def structure_component(
                     path = Path(_strip_quotes(str(tokens[0])))
                     init_key = ff.alias or ff.name
                     if ff.metadata.get("child"):
-                        child = _load_file_child(ff, path, workspace, dims)
+                        child = _load_file_child(ff, path, workspace, dims, cls)
                         if get_origin(unwrap_optional(ff.type)) is list:
                             kwargs.setdefault(init_key, []).append(child)
                         else:
@@ -887,6 +914,7 @@ def structure_component(
     # Same "self dims, since a DimensionProvider has none threaded to it
     # yet" fallback as Pass 4's griddata parsing.
     effective_dims = dims or _self_dims_from_kwargs(kwargs)
+    union_arm = _union_arm(parent)
 
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
@@ -895,7 +923,12 @@ def structure_component(
             continue
         rows = _resolve_open_close_rows(rows, workspace)
         row_list = _parse_rows(
-            rows, item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
+            rows,
+            item_cls,
+            sizes=sizes,
+            boundnames=boundnames,
+            dims=effective_dims,
+            union_arm=union_arm,
         )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
@@ -907,12 +940,17 @@ def structure_component(
         header_cls, list_name, item_cls = block_cls.parts()
         blocks = []
         for raw_name, rows in raw.items():
-            name, *header = raw_name.split()
-            if name.lower() != block_name or not header:
+            prefix, *header = raw_name.split()
+            if prefix.lower() != block_name or not header:
                 continue
             rows = _resolve_open_close_rows(rows, workspace)
             items = _parse_rows(
-                rows, item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
+                rows,
+                item_cls,
+                sizes=sizes,
+                boundnames=boundnames,
+                dims=effective_dims,
+                union_arm=union_arm,
             )
             blocks.append(
                 block_cls(
@@ -940,7 +978,12 @@ def structure_component(
                     continue
                 rows = _resolve_open_close_rows(rows, workspace)
                 row_list = _parse_rows(
-                    rows, period_item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
+                    rows,
+                    period_item_cls,
+                    sizes=sizes,
+                    boundnames=boundnames,
+                    dims=effective_dims,
+                    union_arm=union_arm,
                 )
                 if row_list is not None:
                     spd[kper] = row_list

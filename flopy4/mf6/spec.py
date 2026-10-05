@@ -60,6 +60,7 @@ def field(
     array: bool = False,
     count: str | None = None,
     signed: bool = False,
+    union: tuple[str, ...] | None = None,
 ):
     """Define a field: always a plain ``attrs.field()``.
 
@@ -111,6 +112,8 @@ def field(
         if on_setattr is not None:
             hooks.append(on_setattr)
         on_setattr = attrs.setters.pipe(*hooks)
+    if union:
+        metadata["union"] = union
     if signed:
         metadata["signed"] = True
         converter = converter or to_signed_indexes

@@ -300,6 +300,11 @@ def _schema_dict_from_columns(
         elif col.is_row_keyword:
             entry["role"] = "inline_keyword"
             entry["optional"] = True
+        elif isinstance(f, UnionField) and not f.tagged:
+            # One column, any of the arms (OBS's id: a cellid, an index or
+            # a boundname), told apart when read (see Item.from_tokens).
+            entry["role"] = "union"
+            entry["arms"] = tuple(_arm_kind(arm) for arm in f.arms.values())
         elif isinstance(f, UnionField) and col.name in nested_arm_classes:
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
@@ -324,6 +329,18 @@ def _schema_dict_from_columns(
 
 # A count looked up in another list's row: "packagedata.ncon(ifno)".
 _LOOKUP_RE = re.compile(r"(?:[\w-]+\.)?\w+\.\w+\(\w+\)")
+
+
+def _arm_kind(arm: FieldV3) -> str:
+    """An untagged union arm's kind: "cellid", "index", or its DFN type."""
+    if isinstance(arm, Array) and arm.cellid:
+        return "cellid"
+    if getattr(arm, "index", False):
+        return "index"
+    kind = _dfn_type_str(arm)
+    if kind not in ("integer", "double", "string"):
+        raise ValueError(f"unsupported union arm {arm.name!r}: {type(arm).__name__}")
+    return kind
 
 
 def _count_dim(shape: str) -> str | None:

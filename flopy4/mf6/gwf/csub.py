@@ -8,6 +8,7 @@ from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -217,14 +218,7 @@ class Csub(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    obs_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="obs6",
-    )
+    obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
     ninterbeds: Optional[int] = field(
         default=None,
         block="dimensions",

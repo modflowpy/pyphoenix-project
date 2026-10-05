@@ -700,6 +700,16 @@ def pascal_name(name: str) -> str:
     return "".join(part.capitalize() for part in re.split(r"[_-]", name))
 
 
+# An untagged union column's Python type, by arm kind (see make._arm_kind).
+_UNION_ARM_PY = {
+    "cellid": "tuple[int, ...]",
+    "index": "int",
+    "integer": "int",
+    "double": "float",
+    "string": "str",
+}
+
+
 def item_class(
     schema_list: list[dict],
     class_name: str,
@@ -761,6 +771,9 @@ def item_class(
             return f"tuple[{_DFN_PY.get(col.get('dfn_type', 'double'), 'float')}, ...]"
         if role == "feature_id":
             return "int"
+        if role == "union":
+            types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in col["arms"])
+            return f"Union[{', '.join(types)}]"
         if role in ("keystring", "inline_keyword"):
             return "str"
         if role == "keystring_value":
@@ -799,6 +812,8 @@ def item_class(
                 meta["pk"] = True
         elif role == "inline_keyword":
             meta["tagged"] = True
+        elif role == "union":
+            meta["union"] = col["arms"]
         elif role in ("array", "counted"):
             meta["array"] = True
             if col.get("cellid"):
@@ -956,7 +971,8 @@ def find_keystring_union(list_field: ListField) -> UnionField | None:
         return item
     if isinstance(item, Record):
         for f in item.fields.values():
-            if isinstance(f, UnionField):
+            # An untagged union (OBS's id) is one column, not a keystring.
+            if isinstance(f, UnionField) and f.tagged:
                 return f
     return None
 
