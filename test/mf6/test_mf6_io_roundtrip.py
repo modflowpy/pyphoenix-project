@@ -164,31 +164,11 @@ def test_tas_period_array_kept(tmp_path):
     assert "timearrayseries" in block and "rchseries" in block
 
 
-def _strings(value):
-    """Yield every str/Path nested in `value`, as a str."""
-    if isinstance(value, (str, Path)):
-        yield str(value)
-    elif isinstance(value, Mapping):
-        for v in value.values():
-            yield from _strings(v)
-    elif isinstance(value, (list, tuple)):
-        for v in value:
-            yield from _strings(v)
-    elif attrs.has(type(value)) and not isinstance(value, Component):
-        for f in attrs.fields(type(value)):
-            yield from _strings(getattr(value, f.name))
-
-
 def test_repeated_ts6_kept(tmp_path):
     """Every `TS6 FILEIN` row in a package's options is kept."""
     # `alt_model` isn't referenced from mfsim.nam, so load the WEL directly
     workspace = copy_to(tmp_path, "mf6/test/test106_tsnodata", verbose=False)
     wel = Wel.load(workspace / "alt_model" / "model.wel")
-    loaded = {
-        Path(s).name
-        for f in attrs.fields(Wel)
-        if f.metadata.get("block") == "options"
-        for s in _strings(getattr(wel, f.name))
-    }
+    loaded = {Path(ts.filename).name for ts in wel.ts}
     expected = {f"model_well{i}_pump.ts" for i in range(1, 6)}
     assert expected <= loaded
