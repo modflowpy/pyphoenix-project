@@ -356,7 +356,7 @@ def block_sort_key(item) -> int:
         return 1
     elif k == "griddata":
         return 2
-    elif "period" in k:
+    elif k.split()[0] == "period":
         return 4
     else:
         return 3

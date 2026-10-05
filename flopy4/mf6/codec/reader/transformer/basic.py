@@ -39,10 +39,14 @@ class BasicTransformer(Transformer):
 
     def block_name(self, items: list[Any]) -> str:
         # name plus its index (period/solutiongroup number, utl-tas's time),
-        # if any -- anything after that is a remark (see basic.lark)
+        # if any -- anything after that is a remark (see basic.lark). A
+        # record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]") is kept
+        # whole, in its own case.
         name, *rest = items
         if rest and isinstance(rest[0], (int, float)):
             return f"{name} {rest[0]}"
+        if rest:
+            return " ".join([str(name), *map(str, rest)])
         return str(name)
 
     def _list(self, items: list[Any]) -> list[Any]:

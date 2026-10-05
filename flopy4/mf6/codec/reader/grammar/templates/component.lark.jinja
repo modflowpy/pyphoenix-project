@@ -39,7 +39,10 @@ start: _NL* (block _NL*)*
 block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 
 {% for block in blocks -%}
-{{ m.block_def(block.name, block.has_index) }}
+{{ m.block_def(block.name, block.has_index, block.header) }}
+{% if block.header -%}
+{{ m.nested_record(block.header, fields[block.header]) }}
+{% endif -%}
 {% endfor -%}
 {% if blocks|selectattr('has_index')|list -%}
 %import typed.block_index -> block_index

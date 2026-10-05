@@ -13,6 +13,8 @@ _JINJA_ENV = Environment(
 )
 _JINJA_ENV.filters["field_type"] = shared_filters.field_type
 _JINJA_ENV.filters["array_how"] = writer_filters.array_how
+_JINJA_ENV.filters["block_begin"] = writer_filters.block_begin
+_JINJA_ENV.filters["block_end"] = writer_filters.block_end
 _JINJA_ENV.filters["array2const"] = writer_filters.array2const
 _JINJA_ENV.filters["array2chunks"] = writer_filters.array2chunks
 _JINJA_ENV.filters["array2string"] = writer_filters.array2string

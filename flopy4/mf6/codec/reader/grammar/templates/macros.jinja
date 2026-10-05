@@ -127,8 +127,12 @@
    component.lark.jinja), so the BEGIN line's own line ending must be
    consumed explicitly before the block's fields start, and a run of blank
    lines before END is tolerated defensively (mirrors basic.lark). #}
-{%- macro block_def(block_name, has_index) -%}
-{%- if has_index -%}
+{%- macro block_def(block_name, has_index, header=none) -%}
+{%- if header -%}
+{# A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"), which
+   the END line may repeat. #}
+{{ block_name }}_block: "begin"i "{{ block_name }}"i {{ header|to_rule_name }} [_remark] _NL _NL* {{ block_name }}_fields _NL* "end"i "{{ block_name }}"i [{{ header|to_rule_name }}]
+{%- elif has_index -%}
 {# Real corpus files overwhelmingly close an indexed block as bare
    "END <name>", not repeating the index -- confirmed ~91% (1503/1651)
    across a random corpus sample. The trailing index is still accepted

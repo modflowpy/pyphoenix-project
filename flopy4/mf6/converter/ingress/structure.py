@@ -9,6 +9,7 @@ import attrs
 import numpy as np
 
 from flopy4.dimensions import DimensionProvider
+from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import (
@@ -766,6 +767,11 @@ def structure_component(
         ):
             array_fields.setdefault(f.metadata["block"], {})[f.name] = f
 
+    # Blocks repeating under a record header (OBS's CONTINUOUS), by block.
+    header_block_fields = {
+        f.metadata["block"]: (f, b) for f in attrs.fields(cls) if (b := block_list_type(f.type))
+    }
+
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     known_blocks = {f.metadata.get("block") for f in attrs.fields(cls)}
     if isinstance(getattr(cls, "maxbound", None), property):
@@ -783,6 +789,7 @@ def structure_component(
             or block_name.split()[0] in fill_forward_blocks
             or block_name in array_fields
             or block_name.split()[0] in repeating_array_block_prefixes
+            or block_name.split()[0] in header_block_fields
         ):
             continue
         for row in rows:
@@ -893,6 +900,27 @@ def structure_component(
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
             kwargs[init_key] = row_list
+
+    # ── Pass 2b: blocks repeating under a record header ──────────────────────
+    # Read from `raw`, not `raw_lower`: the header keeps its case (a file name).
+    for block_name, (f, block_cls) in header_block_fields.items():
+        header_cls, list_name, item_cls = block_cls.parts()
+        blocks = []
+        for raw_name, rows in raw.items():
+            name, *header = raw_name.split()
+            if name.lower() != block_name or not header:
+                continue
+            rows = _resolve_open_close_rows(rows, workspace)
+            items = _parse_rows(
+                rows, item_cls, sizes=sizes, boundnames=boundnames, dims=effective_dims
+            )
+            blocks.append(
+                block_cls(
+                    **{block_cls._header: header_cls.from_tokens(header), list_name: items or []}
+                )
+            )
+        if blocks:
+            kwargs[f.alias or f.name] = blocks
 
     # ── Pass 3: period blocks ────────────────────────────────────────────────
     # At most one fill-forward block per component (enforced by codegen).

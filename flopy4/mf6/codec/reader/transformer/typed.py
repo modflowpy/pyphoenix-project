@@ -5,7 +5,16 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfns.schema import Array, Component, Double, Keyword, List, Record, Union
+from modflow_devtools.dfns.schema import (
+    Array,
+    Component,
+    Double,
+    File,
+    Keyword,
+    List,
+    Record,
+    Union,
+)
 
 from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
@@ -254,6 +263,19 @@ class TypedTransformer(Transformer):
             # itself is usually an int (period/solutiongroup) but can be a
             # float (utl-tas's "time" block) -- see block_index/the `number`
             # grammar rule.
+            header = self.blocks[block_name].header
+            if header is not None and isinstance(header.field, Record) and len(children) == 3:
+                # A record header (OBS's "CONTINUOUS FILEOUT <file>"), keyed
+                # like the basic transformer's. Its optional keywords (BINARY)
+                # are anonymous in the grammar, so they're lost here.
+                _, values = children[0]
+                tokens = [block_name]
+                for name, f in header.field.fields.items():
+                    if name in values:
+                        if isinstance(f, File) and f.mode_keyword:
+                            tokens.append(f"FILE{f.direction.upper()}")
+                        tokens.append(str(values[name]))
+                return {" ".join(tokens): children[1]}
             if (
                 len(children) == 3
                 and isinstance(children[0], (int, float))

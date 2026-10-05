@@ -128,6 +128,19 @@ class ItemUnionSpec:
 
 
 @dataclass
+class BlockClassSpec:
+    """A repeating block whose header is a record (OBS's ``CONTINUOUS
+    FILEOUT <file> [BINARY]``), as a class holding the header record and
+    the block's list: one instance per occurrence of the block."""
+
+    class_name: str
+    header: str  # the header record's field name
+    header_class: str
+    list_name: str
+    list_elem: str
+
+
+@dataclass
 class ComputedFieldSpec:
     """Pre-computed context for a read-only computed property, replacing a
     stored attrs field entirely -- e.g. ``maxbound``, derived live from
@@ -157,6 +170,7 @@ class ComponentSpec:
     item_classes: list[ItemClassSpec] = dc_field(default_factory=list)
     item_unions: list[ItemUnionSpec] = dc_field(default_factory=list)
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
+    block_classes: list[BlockClassSpec] = dc_field(default_factory=list)
     # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
     # Dims counting item columns that aren't fields, name -> DFN expression
@@ -1257,6 +1271,7 @@ def build_component_spec(
     # see _build_list_item_specs.
     item_classes: list[ItemClassSpec] = []
     item_unions: list[ItemUnionSpec] = []
+    block_classes: list[BlockClassSpec] = []
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
@@ -1445,6 +1460,30 @@ def build_component_spec(
         if _union is not None:
             item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
+        _header = component.blocks[bp.block_name].header
+        if _header is not None and isinstance(_header.field, Record):
+            # The block repeats under a record header: a list of block
+            # classes, each holding its header and the block's list.
+            _header_specs, _header_elem, _ = _build_list_item_specs(
+                ListField(name=_header.field.name, item=_header.field),
+                pascal_name(_header.field.name),
+                _inner_class_names,
+                _arrays,
+                _dims,
+            )
+            block_item_classes.extend(_header_specs)
+            _block_cls = f"{pascal_name(bp.block_name)}Block"
+            _inner_class_names.add(_block_cls)
+            block_classes.append(
+                BlockClassSpec(
+                    class_name=_block_cls,
+                    header=_header.field.name,
+                    header_class=_header_elem,
+                    list_name=_list_field.name,
+                    list_elem=_elem,
+                )
+            )
+            _elem = _block_cls
         # The DIMENSIONS field counting this block's rows, in the DFN's shape
         # syntax: exact ("nper") or a bound ("<=maxats").
         if bp.dim_is_dfn_declared:
@@ -1468,8 +1507,10 @@ def build_component_spec(
         # connectiondata) where write_if_empty isn't set anywhere yet; drop
         # it once modflow6 (or a devtools fixup) covers those too.
         _block = (component.blocks or {}).get(bp.block_name)
-        if _block is not None and (
-            _block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared)
+        if (
+            _block is not None
+            and _block.header is None
+            and (_block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared))
         ):
             _meta["write_if_empty"] = True
         extra_specs.append(
@@ -1654,7 +1695,10 @@ def build_component_spec(
             and "Optional[" in fs.type_annotation
             for fs in field_specs
         ),
-        extra_imports=extra_imports,
+        extra_imports=[
+            *extra_imports,
+            *(["from flopy4.mf6.block import Block"] if block_classes else []),
+        ],
     )
 
     computed_field_specs = (
@@ -1677,6 +1721,7 @@ def build_component_spec(
         block_properties=block_properties,
         item_classes=item_classes,
         item_unions=item_unions,
+        block_classes=block_classes,
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
         count_dims=_count_dims,

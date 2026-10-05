@@ -400,3 +400,38 @@ def test_make_grammar_with_dynamically_named_arrays(tmp_path):
     content = (tmp_path / "test-named-arrays.lark").read_text()
     assert "aux: word [_remark] [_NL] array" in content
     assert "period_fields: ((recharge | aux | open_close_redirect) _NL*)*" in content
+
+
+def test_make_grammar_with_record_header(tmp_path):
+    header = Record(
+        name="output",
+        fields={
+            "fname": File(name="fname", direction="out", tagged=False),
+            "binary": Keyword(name="binary", optional=True),
+        },
+    )
+    row = Record(
+        name="continuous",
+        fields={
+            "obsname": String(name="obsname", tagged=False),
+            "obstype": String(name="obstype", tagged=False),
+        },
+    )
+    dfn = Package(
+        name="test-header",
+        blocks={
+            "continuous": Block(
+                name="continuous",
+                header=BlockHeader(field=header),
+                fields={"continuous": List(name="continuous", item=row)},
+            ),
+        },
+    )
+    make_grammar(dfn, tmp_path)
+    content = (tmp_path / "test-header.lark").read_text()
+    assert (
+        'continuous_block: "begin"i "continuous"i output [_remark] _NL _NL* '
+        'continuous_fields _NL* "end"i "continuous"i [output]'
+    ) in content
+    assert 'output: "fileout"i word ["binary"i]' in content
+    assert "block_index" not in content

@@ -1,5 +1,6 @@
 """Test the MF6 input file reading/writing capability."""
 
+from pathlib import Path
 from pprint import pprint
 
 import numpy as np
@@ -3435,3 +3436,50 @@ def test_spc_round_trip(tmp_path):
     assert "2 CONCENTRATION myts" in dumped
     path.write_text(dumped)
     assert Spc.load(path).stress_period_data == rows
+
+
+OBS_TEXT = """BEGIN OPTIONS
+  DIGITS 10
+END OPTIONS
+
+BEGIN CONTINUOUS FILEOUT Heads.csv
+  h1 HEAD well-a
+  h2 HEAD well-b
+END CONTINUOUS
+
+BEGIN CONTINUOUS FILEOUT flows.bsv BINARY
+  w1 WEL well-a
+END CONTINUOUS FILEOUT flows.bsv BINARY
+"""
+
+
+def test_obs_header_blocks_round_trip(tmp_path):
+    """Each CONTINUOUS block keeps its own header (file name case, BINARY)
+    and rows through load and write."""
+    from flopy4.mf6.utl import Obs
+
+    path = tmp_path / "a.obs"
+    path.write_text(OBS_TEXT)
+    obs = Obs.load(path)
+    first, second = obs.continuous
+    assert first.output == Obs.Output(obs_output_file_name=Path("Heads.csv"))
+    assert second.output.binary
+    assert [r.obsname for r in first.continuous] == ["h1", "h2"]
+    assert [r.obsname for r in second.continuous] == ["w1"]
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(obs))
+    assert "BEGIN CONTINUOUS FILEOUT Heads.csv\n" in dumped
+    assert "BEGIN CONTINUOUS FILEOUT flows.bsv BINARY\n" in dumped
+    assert "END CONTINUOUS FILEOUT" not in dumped
+    path.write_text(dumped)
+    assert Obs.load(path).continuous == obs.continuous
+
+
+def test_block_end_keeps_only_an_index():
+    assert writer.filters.block_begin("continuous FILEOUT Heads.csv") == (
+        "CONTINUOUS FILEOUT Heads.csv"
+    )
+    assert writer.filters.block_end("continuous FILEOUT Heads.csv") == "CONTINUOUS"
+    assert writer.filters.block_end("period 1") == "PERIOD 1"
+    assert writer.filters.block_end("time 0.5") == "TIME 0.5"
+    assert writer.filters.block_end("options") == "OPTIONS"
