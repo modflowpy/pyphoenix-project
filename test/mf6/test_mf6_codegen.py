@@ -954,10 +954,11 @@ def test_tagged_file_list_is_child_list(tmp_path, all_dfns, name, field, cls, ke
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     assert "options" not in {bp.block_name for bp in spec.block_properties}
-    text = " ".join(spec.outpath.read_text().split())
+    # ignore whitespace: output is ruff-formatted only if ruff is installed
+    text = "".join(spec.outpath.read_text().split())
     assert (
-        f'{field}: list[{cls}] = child( block="options", keyword="{keyword}", direction="in", '
-        "default=attrs.Factory(list) )"
+        f'{field}:list[{cls}]=child(block="options",keyword="{keyword}",direction="in",'
+        "default=attrs.Factory(list))"
     ) in text
 
 
