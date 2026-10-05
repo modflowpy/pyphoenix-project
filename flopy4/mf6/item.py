@@ -310,10 +310,10 @@ def _token_fits(token: Any, kind: type) -> bool:
 
 
 def _is_row_key(f: attrs.Attribute) -> bool:
-    """A pk/fk column identifying the row (e.g. SFR's ifno). These precede
-    a union arm's _keyword; every other field follows it, including other
-    index columns (`ifno DIVERSION idv divflow`)."""
-    return bool(f.metadata.get("pk") or f.metadata.get("fk"))
+    """A pk/fk or cellid column identifying the row (e.g. SFR's ifno, TVK's
+    cellid). These precede a union arm's _keyword; every other field follows
+    it, including other index columns (`ifno DIVERSION idv divflow`)."""
+    return bool(f.metadata.get("pk") or f.metadata.get("fk") or f.metadata.get("cellid"))
 
 
 class Item(Record):
@@ -671,6 +671,7 @@ def parse_union_items(
     *,
     sizes: Mapping[str, int] | None = None,
     boundnames: bool = False,
+    dims: "dict | None" = None,
 ) -> list | None:
     """Parse raw token items into Item instances, dispatching each by
     keyword (see dispatch_union_item); unmatched items are skipped."""
@@ -683,5 +684,8 @@ def parse_union_items(
         arm_cls = dispatch_union_item(item, arm_classes)
         if arm_cls is None:
             continue
-        result.append(arm_cls.from_tokens(item, sizes=sizes, boundnames=boundnames))
+        ncelldim = infer_ncelldim([item], arm_cls, sizes=sizes, dims=dims)
+        result.append(
+            arm_cls.from_tokens(item, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames)
+        )
     return result or None

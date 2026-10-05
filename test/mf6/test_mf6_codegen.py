@@ -868,7 +868,12 @@ def test_link_selector_errors(all_dfns, selector, match):
 
 @pytest.mark.parametrize(
     "name,field,cls",
-    [("sim-nam", "hpc", "Hpc"), ("sim-tdis", "ats", "Ats"), ("sim-nam", "tdis", "Tdis")],
+    [
+        ("sim-nam", "hpc", "Hpc"),
+        ("sim-tdis", "ats", "Ats"),
+        ("sim-nam", "tdis", "Tdis"),
+        ("gwf-npf", "tvk", "Tvk"),
+    ],
 )
 def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
     """A DFN file link to a component with a class is a child field."""
@@ -881,7 +886,7 @@ def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
 @pytest.mark.parametrize(
     "name,target",
     [
-        ("gwf-npf", "tvk"),  # no TVK class
+        ("gwf-sto", "tvs"),  # no TVS class
         ("gwf-lak", "laktab"),  # a table column, not a file record
         ("gwt-ssm", "spca"),
     ],
