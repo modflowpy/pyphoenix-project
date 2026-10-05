@@ -290,7 +290,10 @@ class TestFilters:
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
         result = item_class(schema, "StressPeriodData")
-        assert 'aux: tuple = field(default=(), shape=("auxiliary",))' in result
+        assert (
+            'aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))'
+            in result
+        )
         assert result.index("aux:") < result.index("boundname:")
 
     def test_item_class_field_order_matches_schema(self):

@@ -23,7 +23,7 @@ class Rch(Package):
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         recharge: Union[float, str] = field(time_series=True)
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     fixed_cell: bool = field(

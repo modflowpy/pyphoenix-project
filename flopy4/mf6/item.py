@@ -57,19 +57,23 @@ def _sized_by_package(cls: type, f: attrs.Attribute) -> bool:
     return _shape_dim(f) is not None and not _sized_by_field(cls, f) and not _sized_by_lookup(f)
 
 
-def _sized_field(cls: type) -> attrs.Attribute | None:
-    """The trailing field sized by a package field (aux, by ``auxiliary``): as
-    many values as that field has, collected after every other field."""
+def _tail_fields(cls: type) -> list[attrs.Attribute]:
+    """The optional fields sized by a package field that end the row (aux, by
+    ``auxiliary``), before any boundname. Optional untagged fields before them
+    have no marker token, so their width is reserved when inferring which are
+    present."""
     fields = [f for f in cast(type[Record], cls).fields() if f.name != "boundname"]
-    if fields and _sized_by_package(cls, f := fields[-1]) and not f.metadata.get("array"):
-        return f
-    return None
+    tail: list[attrs.Attribute] = []
+    for f in reversed(fields):
+        if not (_sized_by_package(cls, f) and f.metadata.get("optional")):
+            break
+        tail.insert(0, f)
+    return tail
 
 
 def _size(cls: type, sizes: Mapping[str, int] | None) -> int:
-    """How many tokens the class's sized field takes."""
-    f = _sized_field(cls)
-    return (_count(f, sizes) or 0) if f is not None else 0
+    """How many tokens the class's tail fields take."""
+    return sum(_count(f, sizes) or 0 for f in _tail_fields(cls))
 
 
 def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
@@ -83,10 +87,10 @@ def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
 
 
 def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
-    """An array field counted by a package dimension rather than another
-    field of the record (GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1): fixed
-    width, read in place."""
-    return _sized_by_package(cls, f) and f is not _sized_field(cls)
+    """An array field counted by a package field or dimension rather than
+    another field of the record (GNC's cellidsj, by numalphaj; EVT's pxdp, by
+    nseg-1; aux, by auxiliary): fixed width, read in place."""
+    return _sized_by_package(cls, f)
 
 
 def count_dim(count: str) -> tuple[str, int]:
@@ -136,12 +140,6 @@ def resolve_dim(dim: str, exprs: Mapping[str, str], values: Mapping[str, Any]) -
 def package_sized_fields(cls: type) -> list[attrs.Attribute]:
     """An item class's array fields sized by a package field or dimension."""
     return [f for f in cast(type[Record], cls).fields() if _sized_by_package(cls, f)]
-
-
-def dim_counted_fields(cls: type) -> list[attrs.Attribute]:
-    """An item class's array fields counted by a package dimension (not
-    the trailing field sized by a package array)."""
-    return [f for f in cast(type[Record], cls).fields() if _dim_counted(cls, f)]
 
 
 def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
@@ -205,7 +203,7 @@ def construct_item(item_cls: type, values) -> "Item":
         (
             i
             for i, f in enumerate(fields)
-            if f is _sized_field(item_cls)
+            if f in _tail_fields(item_cls)
             or (f.metadata.get("array") and not _dim_counted(item_cls, f))
             or (
                 (t := _field_type_str(f)) is not None
@@ -265,7 +263,7 @@ def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[
         if f.metadata.get("cellid"):
             ncellids += count
             continue
-        if f is _sized_field(cls) or f.name == "boundname":
+        if f in _tail_fields(cls) or f.name == "boundname":
             continue
         if f.metadata.get("optional"):
             continue
@@ -382,19 +380,18 @@ class Item(Record):
 
     def to_tokens(self) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
-        is emitted before the first non-row-key field. sized/boundname last.
+        is emitted before the first non-row-key field. boundname last.
         """
         cls = type(self)
         fields = cls.fields()
         if cls._columns:
             fields = _in_columns(cls, fields)
-        sized = _sized_field(cls)
         keyword = cls.keyword()
         counted = _counted_fields(cls)
         row: list[Any] = []
         keyword_emitted = not keyword
         for f in fields:
-            if f is sized or f.name == "boundname":
+            if f.name == "boundname":
                 continue
             val = getattr(self, f.name)
             if f.name in counted:
@@ -438,8 +435,6 @@ class Item(Record):
                 row.append(val.as_posix() if isinstance(val, Path) else val)
         if not keyword_emitted:
             row.append(keyword.upper())
-        if sized is not None and (values := getattr(self, sized.name)):
-            row.extend(values)
         boundname = getattr(self, "boundname", None)
         if boundname:
             row.append(boundname)
@@ -465,7 +460,7 @@ class Item(Record):
         keyword = cls.keyword()
         keyword_skipped = not keyword
         has_boundname = _has_boundname_field(cls) and boundnames
-        sized = _sized_field(cls)
+        tail = _tail_fields(cls)
         nsized = _size(cls, sizes)
         kwargs: dict[str, Any] = {}
         tok_idx = 0
@@ -526,7 +521,7 @@ class Item(Record):
                 w += 1
             return w
 
-        main_fields = [f for f in fields if f is not sized and f.name != "boundname"]
+        main_fields = [f for f in fields if f not in tail and f.name != "boundname"]
         nested_union_fields = [
             f
             for f in main_fields
@@ -651,17 +646,8 @@ class Item(Record):
         elif not keyword_skipped:
             tok_idx += 1
 
-        if sized is not None:
-            sized_vals = []
-            end = n - (1 if has_bn_token else 0)
-            while tok_idx < end:
-                tok = tokens[tok_idx]
-                try:
-                    sized_vals.append(float(tok))
-                except (ValueError, TypeError):
-                    sized_vals.append(tok)
-                tok_idx += 1
-            kwargs[sized.name] = tuple(sized_vals)
+        for f in tail:
+            consume(f)
 
         if has_bn_token:
             kwargs["boundname"] = str(tokens[-1])

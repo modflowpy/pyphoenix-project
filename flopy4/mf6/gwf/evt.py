@@ -32,7 +32,7 @@ class Evt(Package):
             default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
         )
         petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     fixed_cell: bool = field(
