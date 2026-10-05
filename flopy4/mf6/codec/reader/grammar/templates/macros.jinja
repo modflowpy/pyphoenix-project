@@ -12,6 +12,16 @@
 
 {% macro record_field(field_name, field) -%}
 {{ nested_record(field_name, field) }} [_remark] _NL
+{{- record_keywords(field_name, field) }}
+{%- endmacro %}
+
+{# A record's optional keywords as named rules, so the parse tree shows
+   whether each was given (an anonymous literal is dropped from it). #}
+{% macro record_keywords(field_name, field) -%}
+{% for child_name, child in field.children.items() if child.type == 'keyword' and child.optional %}
+
+{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {{ child|keyword_literal }}
+{%- endfor %}
 {%- endmacro %}
 
 {% macro nested_record(field_name, field) -%}
@@ -20,9 +30,9 @@
 {%- if child.type == 'keyword' and child.optional -%}
 {# A record's optional Keyword child (e.g. NPF's xt3doptions -- "xt3d rhs",
    where "rhs" is `optional true`) is routinely omitted in real files --
-   confirmed against a real fixture ("XT3D" alone, no trailing "RHS"). This
-   was previously always rendered mandatory regardless of `.optional`. #}
-[{{ child|keyword_literal }}]
+   confirmed against a real fixture ("XT3D" alone, no trailing "RHS"). Its
+   rule comes from record_keywords. #}
+[{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}]
 {%- elif child.type == 'keyword' -%}
 {{ child|keyword_literal }}
 {%- elif child.type == 'union' or child.type == 'record' -%}

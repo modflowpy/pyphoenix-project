@@ -36,10 +36,12 @@ alternative_cell_averaging_amt_lmk: "amt-lmk"i
 alternative_cell_averaging_amt_hmk: "amt-hmk"i
 
 thickstrt: "thickstrt"i  [_remark] _NL
-cvoptions: "variablecv"i ["dewatered"i] [_remark] _NL
+cvoptions: "variablecv"i [cvoptions_dewatered] [_remark] _NL
+cvoptions_dewatered: "dewatered"i
 perched: "perched"i  [_remark] _NL
 rewet_record: "rewet"i "wetfct"i double "iwetit"i integer "ihdwet"i integer [_remark] _NL
-xt3doptions: "xt3d"i ["rhs"i] [_remark] _NL
+xt3doptions: "xt3d"i [xt3doptions_rhs] [_remark] _NL
+xt3doptions_rhs: "rhs"i
 highest_cell_saturation: "highest_cell_saturation"i  [_remark] _NL
 save_specific_discharge: "save_specific_discharge"i  [_remark] _NL
 save_saturation: "save_saturation"i  [_remark] _NL

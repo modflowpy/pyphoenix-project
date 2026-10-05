@@ -31,5 +31,6 @@ list: "list"i string
 print_input: "print_input"i  [_remark] _NL
 print_flows: "print_flows"i  [_remark] _NL
 save_flows: "save_flows"i  [_remark] _NL
-newtonoptions: "newton"i ["under_relaxation"i] [_remark] _NL
+newtonoptions: "newton"i [newtonoptions_under_relaxation] [_remark] _NL
+newtonoptions_under_relaxation: "under_relaxation"i
 packagesdata: record+

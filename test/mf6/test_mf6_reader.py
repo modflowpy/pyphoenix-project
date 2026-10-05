@@ -872,3 +872,35 @@ def test_typed_loads_iso_datetime(dfn_path):
 def test_parse_block_header_remark(component):
     """A remark after a block's index (MAW's legacy `STEADY-STATE`) parses."""
     get_typed_parser(component).parse("BEGIN PERIOD 1 STEADY-STATE\nEND PERIOD\n")
+
+
+@pytest.mark.parametrize(
+    "component, line, expected",
+    [
+        ("gwf-npf", "XT3D RHS", {"xt3doptions": {"rhs": True}}),
+        ("gwf-npf", "XT3D", {"xt3doptions": {}}),
+        ("gwf-npf", "VARIABLECV DEWATERED", {"cvoptions": {"dewatered": True}}),
+        ("gwf-nam", "NEWTON UNDER_RELAXATION", {"newtonoptions": {"under_relaxation": True}}),
+    ],
+)
+def test_transform_record_optional_keyword(component, line, expected):
+    """A record's optional keyword is kept when given."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    assert loads_typed(f"BEGIN OPTIONS\n  {line}\nEND OPTIONS\n", component) == {
+        "options": expected
+    }
+
+
+def test_transform_record_header():
+    """Each block under a record header is keyed by its header, as the basic
+    transformer keys it."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+
+    text = (
+        "BEGIN CONTINUOUS FILEOUT Heads.csv\n  h1 HEAD 1 1 1\nEND CONTINUOUS\n"
+        "BEGIN CONTINUOUS FILEOUT flows.bsv BINARY\n  w1 WEL a\nEND CONTINUOUS\n"
+    )
+    keys = ["continuous FILEOUT Heads.csv", "continuous FILEOUT flows.bsv BINARY"]
+    assert list(loads_typed(text, "utl-obs")) == keys
+    assert [k.lower() for k in loads(text)] == [k.lower() for k in keys]

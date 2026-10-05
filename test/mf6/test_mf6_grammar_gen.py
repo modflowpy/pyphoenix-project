@@ -433,5 +433,6 @@ def test_make_grammar_with_record_header(tmp_path):
         'continuous_block: "begin"i "continuous"i output [_remark] _NL _NL* '
         'continuous_fields _NL* "end"i "continuous"i [output]'
     ) in content
-    assert 'output: "fileout"i word ["binary"i]' in content
+    assert 'output: "fileout"i word [output_binary]' in content
+    assert 'output_binary: "binary"i' in content
     assert "block_index" not in content

@@ -41,7 +41,7 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {% for block in blocks -%}
 {{ m.block_def(block.name, block.has_index, block.header) }}
 {% if block.header -%}
-{{ m.nested_record(block.header, fields[block.header]) }}
+{{ m.nested_record(block.header, fields[block.header]) }}{{ m.record_keywords(block.header, fields[block.header]) }}
 {% endif -%}
 {% endfor -%}
 {% if blocks|selectattr('has_index')|list -%}
@@ -85,7 +85,7 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {{ m.nested_union(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% elif child.type == 'record' and child.children is not none and child_name not in unions_generated -%}
-{{ m.nested_record(child_name, child) }}
+{{ m.nested_record(child_name, child) }}{{ m.record_keywords(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% endif -%}
 {% endfor -%}
