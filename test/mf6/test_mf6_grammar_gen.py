@@ -369,3 +369,34 @@ def test_make_grammar_with_file_fields(tmp_path):
     content = (tmp_path / "test-files.lark").read_text()
     assert 'tdis6: "tdis6"i word [_remark] _NL' in content
     assert 'ats6: "ats6"i "filein"i word [_remark] _NL' in content
+
+
+def test_make_grammar_with_named_arrays(tmp_path):
+    item = Record(
+        name="aux",
+        fields={
+            "auxname": String(name="auxname", tagged=False, fk="options.auxiliary"),
+            "aux": Array(name="aux", dtype="double", shape=["ncpl"], tagged=False),
+        },
+    )
+    dfn = Package(
+        name="test-named-arrays",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={"auxiliary": Array(name="auxiliary", dtype="string", shape=["naux"])},
+            ),
+            "period": Block(
+                name="period",
+                header=BlockHeader(field=Integer(name="iper")),
+                fields={
+                    "recharge": Array(name="recharge", dtype="double", shape=["ncpl"]),
+                    "aux": List(name="aux", tagged=True, item=item, shape=["<=auxiliary"]),
+                },
+            ),
+        },
+    )
+    make_grammar(dfn, tmp_path)
+    content = (tmp_path / "test-named-arrays.lark").read_text()
+    assert "aux: word [_remark] [_NL] array" in content
+    assert "period_fields: ((recharge | aux | open_close_redirect) _NL*)*" in content

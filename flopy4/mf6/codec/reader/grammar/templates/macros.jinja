@@ -79,17 +79,7 @@
 {%- endmacro %}
 
 {% macro simple_field(field_name, field, field_type) -%}
-{%- if field_type == 'array' and field.name|lower == 'aux' -%}
-{# The DFN's "aux" field is a documentation placeholder for READASARRAYS-
-   style packages (e.g. RCHA) -- real files write the *user-declared*
-   AUXILIARY variable name as the field's own keyword instead of a literal
-   "AUX" (confirmed against a real fixture: AUXILIARY MYRCHMULT in OPTIONS,
-   then a bare "MYRCHMULT" array field in PERIOD, never "AUX"). That name is
-   only known at options-parse time, not grammar-generation time, so accept
-   any word here rather than a fixed literal -- still bound to the "aux"
-   rule name so the transformer's field lookup keeps working. #}
-{{ field_name|to_rule_name }}: word [_remark] [_NL] {{ field_type }}
-{%- elif field_type == 'array' and not field.tagged -%}
+{%- if field_type == 'array' and not field.tagged -%}
 {{ field_name|to_rule_name }}: {{ field_type }}
 {%- elif field_type == 'array' -%}
 {# Real files write an array field's name alone on its own line about as
@@ -101,6 +91,12 @@
 {{ field_name|to_rule_name }}: {{ field|keyword_literal }} {{ field_type }}
 {%- if field_type != 'string' %} [_remark] _NL{% endif -%}
 {%- endif -%}
+{%- endmacro %}
+
+{% macro named_array_field(field_name) -%}
+{# The name isn't known until the file is read (it's one of the AUXILIARY
+   variables), so accept any word. The array's own rule ends the line. #}
+{{ field_name|to_rule_name }}: word [_remark] [_NL] array
 {%- endmacro %}
 
 {% macro file_field(field_name, field) -%}

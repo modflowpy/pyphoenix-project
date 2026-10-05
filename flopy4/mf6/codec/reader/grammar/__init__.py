@@ -16,6 +16,7 @@ def _get_env():
         keep_trailing_newline=True,
     )
     env.filters["field_type"] = filters.field_type
+    env.tests["named_array"] = filters.is_named_array
     env.filters["keyword_literal"] = filters.keyword_literal
     env.filters["record_child_type"] = filters.record_child_type
     env.filters["to_rule_name"] = filters.to_rule_name
