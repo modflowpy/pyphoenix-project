@@ -1,4 +1,12 @@
-from modflow_devtools.dfns.schema import Array, InputField, Keyword, Union, split_bound
+from modflow_devtools.dfns.schema import (
+    Array,
+    InputField,
+    Keyword,
+    Record,
+    String,
+    Union,
+    split_bound,
+)
 
 
 def valid_as_union(field: InputField) -> InputField:
@@ -34,6 +42,20 @@ def field_type(field: InputField) -> str:
     if isinstance(field, Union):
         return ""
     return field.type
+
+
+def is_dynamically_named_array(field: InputField) -> bool:
+    if not isinstance(field, Record) or len(field.fields or {}) < 2:
+        return False
+    first, *_, last = field.fields.values()
+    return (
+        isinstance(first, String)
+        and not first.tagged
+        and first.fk is not None
+        and isinstance(last, Array)
+        and not last.tagged
+        and field_type(last) == "array"
+    )
 
 
 def record_child_type(field: InputField) -> str:

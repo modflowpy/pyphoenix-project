@@ -31,7 +31,7 @@ tables_block: "begin"i "tables"i [_remark] _NL _NL* tables_fields _NL* "end"i "t
 outlets_block: "begin"i "outlets"i [_remark] _NL _NL* outlets_fields _NL* "end"i "outlets"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_force_fallback | dev_groundwater_head_conductance | dev_maximum_outlet_depth | surfdep | implicit | maximum_iterations | maximum_stage_change | time_conversion | length_conversion | open_close_redirect) _NL*)*
+options_fields: ((auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | dev_force_legacy | dev_force_legacy_lake | dev_groundwater_head_conductance | dev_maximum_outlet_depth | surfdep | implicit | maximum_iterations | maximum_stage_change | time_conversion | length_conversion | open_close_redirect) _NL*)*
 dimensions_fields: ((nlakes | noutlets | ntables | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
 connectiondata_fields: ((connectiondatadata | open_close_redirect) _NL*)*
@@ -51,7 +51,8 @@ package_convergence_filerecord: "package_convergence"i "fileout"i word [_remark]
 ts_filerecord: "ts6"i "filein"i word [_remark] _NL
 obs_filerecord: "obs6"i "filein"i word [_remark] _NL
 mover: "mover"i  [_remark] _NL
-dev_force_fallback: "dev_force_fallback"i  [_remark] _NL
+dev_force_legacy: "dev_force_legacy"i  [_remark] _NL
+dev_force_legacy_lake: "dev_force_legacy_lake"i integer [_remark] _NL
 dev_groundwater_head_conductance: "dev_groundwater_head_conductance"i  [_remark] _NL
 dev_maximum_outlet_depth: "dev_maximum_outlet_depth"i double [_remark] _NL
 surfdep: "surfdep"i double [_remark] _NL

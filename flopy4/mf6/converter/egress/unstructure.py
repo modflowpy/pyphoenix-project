@@ -192,7 +192,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         # fill-forward block
         if meta.get("fill_forward"):
             fill_forward_block = block_name
-            # named arrays (RCHA's aux): {name: (nper, ...)}, each written
+            # dynamically named arrays (RCHA's aux): {name: (nper, ...)}, each written
             # under its name
             if meta.get("fk") and isinstance(field_value, dict):
                 for name, arr in field_value.items():
