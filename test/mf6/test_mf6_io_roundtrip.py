@@ -197,3 +197,27 @@ def test_tvk_child_kept(tmp_path):
     diffs: list[str] = []
     _diff(rows, reloaded.models["flow15"].npf.tvk.stress_period_data[0], "tvk", diffs)
     assert not diffs, "\n".join(diffs)
+
+
+def test_tvs_child_kept(tmp_path):
+    """STO's TVS6 file loads as a child and is written back."""
+    workspace = copy_to(tmp_path / "source", "mf6/test/test003_gwfs_tr", verbose=False)
+    sto = workspace / "model.sto"
+    sto.write_text(sto.read_text().replace("SAVE_FLOWS", "SAVE_FLOWS\n  TVS6 FILEIN model.tvs"))
+    (workspace / "model.tvs").write_text(
+        "BEGIN PERIOD 2\n  1 1 1 SS 2.0e-5\n  1 1 2 SY 0.1\nEND PERIOD\n"
+    )
+    sim = Simulation.load(workspace / "mfsim.nam")
+    rows = sim.models["GWF_1"].sto.tvs.stress_period_data[1]
+    assert [(type(r).__name__, r.cellid) for r in rows] == [("Ss", (0, 0, 0)), ("Sy", (0, 0, 1))]
+    assert (rows[0].ss, rows[1].sy) == (2.0e-5, 0.1)
+
+    out = tmp_path / "written"
+    out.mkdir()
+    sim.workspace = out
+    sim.write()
+    assert "TVS6 FILEIN model.tvs" in (out / "model.sto").read_text()
+    reloaded = Simulation.load(out / "mfsim.nam")
+    diffs: list[str] = []
+    _diff(rows, reloaded.models["GWF_1"].sto.tvs.stress_period_data[1], "tvs", diffs)
+    assert not diffs, "\n".join(diffs)
