@@ -104,7 +104,9 @@
 {%- endmacro %}
 
 {% macro file_field(field_name, field) -%}
-{{ field_name|to_rule_name }}: "{{ field.name }}"i "file{{ field.direction }}"i word [_remark] _NL
+{# A name-file entry (mode_keyword false, e.g. sim-nam's "TDIS6 <file>")
+   has no FILEIN/FILEOUT. #}
+{{ field_name|to_rule_name }}: "{{ field.name }}"i {% if field.mode_keyword %}"file{{ field.direction }}"i {% endif %}word [_remark] _NL
 {%- endmacro %}
 
 {% macro nested_union(child_name, child) -%}
