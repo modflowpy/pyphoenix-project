@@ -41,7 +41,7 @@ profile_option: "profile_option"i string
 maxerrors: "maxerrors"i integer [_remark] _NL
 print_input: "print_input"i  [_remark] _NL
 hpc_filerecord: "hpc6"i "filein"i word [_remark] _NL
-tdis6: "tdis6"i string
+tdis6: "tdis6"i word [_remark] _NL
 mxiter: "mxiter"i integer [_remark] _NL
 modelsdata: record+
 exchangesdata: record+

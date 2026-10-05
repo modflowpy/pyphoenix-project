@@ -4,6 +4,7 @@ from modflow_devtools.dfns.schema import (
     Block,
     BlockHeader,
     Double,
+    File,
     Integer,
     Keyword,
     List,
@@ -349,3 +350,22 @@ def test_make_grammar_with_untagged_array(tmp_path):
     assert "time_fields: ((vals) _NL*)*" in content
     assert 'strt: "strt"i' in content
     assert "griddata_fields: ((strt | open_close_redirect) _NL*)*" in content
+
+
+def test_make_grammar_with_file_fields(tmp_path):
+    dfn = Package(
+        name="test-files",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={
+                    "tdis6": File(name="tdis6", direction="in", mode_keyword=False),
+                    "ats6": File(name="ats6", direction="in"),
+                },
+            ),
+        },
+    )
+    make_grammar(dfn, tmp_path)
+    content = (tmp_path / "test-files.lark").read_text()
+    assert 'tdis6: "tdis6"i word [_remark] _NL' in content
+    assert 'ats6: "ats6"i "filein"i word [_remark] _NL' in content
