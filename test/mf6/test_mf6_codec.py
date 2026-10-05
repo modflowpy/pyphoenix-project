@@ -3372,3 +3372,39 @@ def test_ts_names_alias_load(tmp_path, keyword):
         "BEGIN TIMESERIES\n  0.0 1.0 2.0\nEND TIMESERIES\n"
     )
     assert Ts.load(path).time_series_name.time_series_names == ["a", "b"]
+
+
+def test_ats_hpc_children_load_and_write(tmp_path):
+    """TDIS's ATS6 and the simulation's HPC6 files load as children and are
+    written back."""
+    from flopy4.mf6.simulation import Simulation
+
+    src, out = tmp_path / "src", tmp_path / "out"
+    src.mkdir()
+    (src / "mfsim.nam").write_text(
+        "BEGIN OPTIONS\n  HPC6 FILEIN sim.hpc\nEND OPTIONS\n"
+        "BEGIN TIMING\n  TDIS6 sim.tdis\nEND TIMING\n"
+    )
+    (src / "sim.tdis").write_text(
+        "BEGIN OPTIONS\n  ATS6 FILEIN sim.ats\nEND OPTIONS\n"
+        "BEGIN DIMENSIONS\n  NPER 1\nEND DIMENSIONS\n"
+        "BEGIN PERIODDATA\n  1.0 1 1.0\nEND PERIODDATA\n"
+    )
+    (src / "sim.ats").write_text(
+        "BEGIN DIMENSIONS\n  MAXATS 1\nEND DIMENSIONS\n"
+        "BEGIN PERIODDATA\n  1 0.5 0.1 1.0 2.0 2.0\nEND PERIODDATA\n"
+    )
+    (src / "sim.hpc").write_text("BEGIN PARTITIONS\n  gwf 0\nEND PARTITIONS\n")
+
+    sim = Simulation.load(src / "mfsim.nam")
+    assert [r.dt0 for r in sim.tdis.ats.perioddata] == [0.5]
+    assert [r.mname for r in sim.hpc.partitions] == ["gwf"]
+
+    out.mkdir()
+    sim.workspace = out
+    sim.write()
+    assert "HPC6 FILEIN sim.hpc" in (out / "mfsim.nam").read_text()
+    assert "ATS6 FILEIN sim.ats" in (out / "sim.tdis").read_text()
+    reloaded = Simulation.load(out / "mfsim.nam")
+    assert [r.dt0 for r in reloaded.tdis.ats.perioddata] == [0.5]
+    assert [r.mname for r in reloaded.hpc.partitions] == ["gwf"]

@@ -13,6 +13,7 @@ To add a new tier:
   - Add assertions specific to that tier's expected base class / extras.
 """
 
+import importlib
 import importlib.util
 import sys
 import warnings
@@ -824,7 +825,7 @@ def test_grid_package_dims(tmp_path, all_dfns):
 
 
 def test_subpackage_field(tmp_path, all_dfns):
-    """A file record linked in LINKS gets a typed child field; writing
+    """A linked file record gets a typed child field; writing
     names the child's file in the record and writes the child at full
     precision."""
     from flopy4.mf6.utl.ncf import Ncf
@@ -848,30 +849,48 @@ def test_subpackage_field(tmp_path, all_dfns):
     assert repr(lat) in (tmp_path / "gwf.dis.ncf").read_text()
 
 
-def test_check_mixins_rejects_unknown_component(all_dfns, monkeypatch):
-    from flopy4.mf6.utils.codegen.make import LINKS, Link
-
+def test_check_mixins_rejects_unknown_component(all_dfns):
     check_mixins(all_dfns)
     with pytest.raises(ValueError, match="sim-tdis"):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
-    monkeypatch.setitem(LINKS, ("*", "foo_filerecord.foo6_filename"), Link("utl-foo"))
-    with pytest.raises(ValueError, match="utl-foo"):
-        check_mixins(all_dfns)
 
 
 @pytest.mark.parametrize(
-    "link,match",
+    "selector,match",
+    [("bogus", "matches no component"), ("model", "no component_ftype")],
+)
+def test_link_selector_errors(all_dfns, selector, match):
+    sim = all_dfns["sim-nam"].model_copy(deep=True)
+    sim.blocks["timing"].fields["tdis6"].component = selector
+    with pytest.raises(ValueError, match=match):
+        build_component_spec(sim, root=Path("/fake"), dfns=all_dfns)
+
+
+@pytest.mark.parametrize(
+    "name,field,cls",
+    [("sim-nam", "hpc", "Hpc"), ("sim-tdis", "ats", "Ats"), ("sim-nam", "tdis", "Tdis")],
+)
+def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
+    """A DFN file link to a component with a class is a child field."""
+    skip = {n for n in all_dfns if n != name}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    text = "".join(spec.outpath.read_text().split())
+    assert f"{field}:Optional[{cls}]=child(" in text or f"{field}:{cls}=child(" in text
+
+
+@pytest.mark.parametrize(
+    "name,target",
     [
-        (("bogus", "mtype"), "matches no component"),
-        (("model", None), "no component_ref"),
+        ("gwf-npf", "tvk"),  # no TVK class
+        ("gwf-lak", "laktab"),  # a table column, not a file record
+        ("gwt-ssm", "spca"),
     ],
 )
-def test_link_selector_errors(all_dfns, monkeypatch, link, match):
-    from flopy4.mf6.utils.codegen.make import LINKS, Link
-
-    monkeypatch.setitem(LINKS, ("sim-nam", "models.mfname"), Link(*link))
-    with pytest.raises(ValueError, match=match):
-        build_component_spec(all_dfns["sim-nam"], root=Path("/fake"), dfns=all_dfns)
+def test_dfn_link_stays_path(tmp_path, all_dfns, name, target):
+    """A DFN file link flopy4 can't load as a child yet stays a path."""
+    skip = {n for n in all_dfns if n != name}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert f"flopy4.mf6.utl.{target}" not in spec.outpath.read_text()
 
 
 def test_list_block_dim_and_default(tmp_path, all_dfns):
@@ -963,11 +982,10 @@ def test_tagged_file_list_is_child_list(tmp_path, all_dfns, name, field, cls, ke
 
 
 def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, monkeypatch):
-    """An unlinked tagged list of file records is a repeatable list[Path]
-    options field."""
-    from flopy4.mf6.utils.codegen.make import LINKS
-
-    monkeypatch.delitem(LINKS, ("*", "ts_filerecord.ts6_filename"))
+    """A tagged list of file records with no class to link to is a
+    repeatable list[Path] options field."""
+    make = importlib.import_module("flopy4.mf6.utils.codegen.make")
+    monkeypatch.setattr(make, "_has_class", lambda *_: False)
     skip = {n for n in all_dfns if n != "gwf-chd"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     text = spec.outpath.read_text()
