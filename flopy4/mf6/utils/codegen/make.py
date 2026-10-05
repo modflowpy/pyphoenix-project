@@ -1058,24 +1058,22 @@ LINKS: dict[tuple[str, str], Link] = {
 }
 
 
-def field_link(component: str, path: str, field: Any = None) -> Link | None:
-    """The link on the field at `path` in `component`: the DFN's if it has
-    one, else `LINKS`'s."""
-    if (target := getattr(field, "component", None)) is not None:
-        return Link(target, getattr(field, "component_ref", None))
+def field_link(component: str, path: str) -> Link | None:
+    """The link on the field at `path` in `component`. Only `LINKS` for now,
+    not the DFN's own links, which name targets flopy4 lacks classes for."""
     return LINKS.get((component, path)) or LINKS.get(("*", path))
 
 
 def _find_link(component: Component, f: FieldV3) -> tuple[str, Link] | None:
     """The first linked path in a top-level field: itself, a record's
     member or a list's column."""
-    paths: list[tuple[str, Any]] = [(f.name, f)]
+    paths = [f.name]
     if isinstance(f, Record):
-        paths += [(f"{f.name}.{n}", m) for n, m in (f.fields or {}).items()]
+        paths += [f"{f.name}.{n}" for n in f.fields or {}]
     elif filters.is_list_field(f):
-        paths += [(f"{f.name}.{c.name}", None) for c in filters.list_columns(f)]
-    for path, member in paths:
-        if (link := field_link(component.name, path, member)) is not None:
+        paths += [f"{f.name}.{c.name}" for c in filters.list_columns(f)]
+    for path in paths:
+        if (link := field_link(component.name, path)) is not None:
             return path, link
     return None
 
