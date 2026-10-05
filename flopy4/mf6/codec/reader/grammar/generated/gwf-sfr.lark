@@ -32,7 +32,7 @@ diversions_block: "begin"i "diversions"i [_remark] _NL _NL* diversions_fields _N
 initialstages_block: "begin"i "initialstages"i [_remark] _NL _NL* initialstages_fields _NL* "end"i "initialstages"i
 period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((storage | ats_courant | auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight | dev_no_check | open_close_redirect) _NL*)*
+options_fields: ((storage | ats_courant | auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight | dev_no_check | dev_no_final_check | open_close_redirect) _NL*)*
 dimensions_fields: ((nreaches | open_close_redirect) _NL*)*
 packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
 crosssections_fields: ((crosssectionsdata | open_close_redirect) _NL*)*
@@ -63,6 +63,7 @@ length_conversion: "length_conversion"i double [_remark] _NL
 time_conversion: "time_conversion"i double [_remark] _NL
 dev_storage_weight: "dev_storage_weight"i double [_remark] _NL
 dev_no_check: "dev_no_check"i  [_remark] _NL
+dev_no_final_check: "dev_no_final_check"i  [_remark] _NL
 nreaches: "nreaches"i integer [_remark] _NL
 packagedatadata: record+
 crosssectionsdata: record+
