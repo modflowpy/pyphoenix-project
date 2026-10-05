@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+from flopy.discretization import VertexGrid as LegacyVertexGrid
 
 from flopy4.mf6.utils.grid import VertexGrid
 
@@ -44,6 +45,11 @@ class DisvMethods:
             vertices=self.grid_vertices(),
             cell2d=self.grid_cell2d(),
         )
+
+    @classmethod
+    def coerce(cls: type["Disv"], value) -> "Disv | None":  # type: ignore[misc]
+        """Convert a `VertexGrid` to a discretization; `None` for anything else."""
+        return cls.from_grid(value) if isinstance(value, LegacyVertexGrid) else None
 
     @classmethod
     def from_grid(cls: type["Disv"], grid: VertexGrid) -> "Disv":  # type: ignore[misc]

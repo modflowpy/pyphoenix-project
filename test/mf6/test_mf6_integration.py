@@ -81,7 +81,7 @@ def test_gwf_chd01(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(
@@ -167,7 +167,7 @@ def test_gwf_disv(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     nlay = 3
@@ -279,7 +279,7 @@ def test_gwf_disv_uzf(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     cells = [
@@ -556,7 +556,7 @@ def test_quickstart(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -603,7 +603,7 @@ def test_quickstart_grid(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -668,7 +668,7 @@ def test_quickstart_grid_explicit_maxbound(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     Ic(parent=gwf)
@@ -734,7 +734,7 @@ def test_quickstart_netcdf(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -847,7 +847,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -948,7 +948,7 @@ def test_gwf_wel(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -994,7 +994,7 @@ def test_gwf_drn(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1042,7 +1042,7 @@ def test_gwf_riv(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1090,7 +1090,7 @@ def test_gwf_rch(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1149,7 +1149,7 @@ def test_gwf_rcha(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=nrow, ncol=ncol, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1203,7 +1203,7 @@ def test_gwf_evt(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1264,7 +1264,7 @@ def test_gwf_evta(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=nrow, ncol=ncol, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1329,7 +1329,7 @@ def test_gwf_mvr(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=1, ncol=10, delr=10.0, delc=10.0, top=10.0, botm=0.0)
@@ -1437,7 +1437,7 @@ def test_gwt_basic(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+        solutiongroup={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
     )
 
     # GWF model: uniform left-to-right flow
@@ -1522,7 +1522,7 @@ def test_gwe_basic(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
+        solutiongroup={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
     )
 
     # GWF model: uniform left-to-right flow
@@ -1608,7 +1608,7 @@ def test_gwf_buy(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+        solutiongroup={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
     )
 
     gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
@@ -1698,7 +1698,7 @@ def test_gwf_vsc(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
+        solutiongroup={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
     )
 
     gwf_dis = Dis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
@@ -1779,7 +1779,7 @@ def test_prt_basic(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name="gwf_sim",
-        solutions={
+        solutiongroup={
             "ims": Ims(
                 filename="gwf.ims",
                 models=[gwf_name],
@@ -1819,7 +1819,7 @@ def test_prt_basic(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name="prt_sim",
-        solutions={"ems": Ems(filename="prt.ems", models=[prt_name])},
+        solutiongroup={"ems": Ems(filename="prt.ems", models=[prt_name])},
     )
     prt_dis = PrtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=10.0, botm=0.0)
     prt = Prt(parent=prt_sim, dis=prt_dis, name=prt_name)
@@ -1889,7 +1889,7 @@ def test_gwf_oc_period_variations(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(nlay=1, nrow=3, ncol=3, delr=1.0, delc=1.0, top=1.0, botm=0.0, idomain=1)
@@ -1966,7 +1966,7 @@ def test_gwt_ssm_sources(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+        solutiongroup={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
     )
 
     # GWF: left boundary head=1, right=0; CHD carries auxiliary "conc" = 1.0 at inflow
@@ -2076,7 +2076,7 @@ def test_gwf_lak_status(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     dis = Dis(
@@ -2263,7 +2263,7 @@ def test_gwt_lkt01(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+        solutiongroup={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
     )
 
     # GWF model
@@ -2472,7 +2472,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
+        solutiongroup={"gwf_ims": ims_gwf, "gwt_ims": ims_gwt},
     )
 
     # GWF model
@@ -2680,7 +2680,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
+        solutiongroup={"gwf_ims": ims_gwf, "gwe_ims": ims_gwe},
     )
 
     # GWF model

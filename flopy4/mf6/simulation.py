@@ -7,9 +7,9 @@ import attrs
 from flopy4.mf6.context import Context
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
-from flopy4.mf6.simulation_methods import SimulationMethods, convert_time
+from flopy4.mf6.simulation_methods import SimulationMethods
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
 from flopy4.mf6.tdis import Tdis
 
 
@@ -61,13 +61,13 @@ class Simulation(SimulationMethods, Context):
         direction="in",
         keyword="hpc6",
     )
-    tdis: Tdis = field(block="timing", converter=convert_time, default=attrs.Factory(Tdis))
-    models: dict[str, Model] = field(block="models", default=attrs.Factory(dict))
-    exchanges: dict[str, Exchange] = field(block="exchanges", default=attrs.Factory(dict))
+    tdis: Tdis = child(block="timing", default=attrs.Factory(Tdis))
+    models: dict[str, Model] = child(block="models", default=attrs.Factory(dict))
+    exchanges: dict[str, Exchange] = child(block="exchanges", default=attrs.Factory(dict))
     mxiter: Optional[int] = field(
         default=None,
         block="solutiongroup",
         optional=True,
         longname="maximum solution group iterations",
     )
-    solutions: dict[str, Solution] = field(block="solutiongroup", default=attrs.Factory(dict))
+    solutiongroup: dict[str, Solution] = child(block="solutiongroup", default=attrs.Factory(dict))

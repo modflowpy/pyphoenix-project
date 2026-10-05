@@ -225,7 +225,7 @@ sim = flopy4.mf6.simulation.Simulation(
     name="twri",
     tdis=tdis,
     models={"gwf": gwf},
-    solutions={"ims": ims},
+    solutiongroup={"ims": ims},
     workspace=workspace,
 )
 

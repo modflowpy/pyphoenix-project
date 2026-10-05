@@ -1,8 +1,6 @@
 from typing import ClassVar, Optional
 
 import attrs
-from flopy.discretization.structuredgrid import StructuredGrid
-from flopy.discretization.vertexgrid import VertexGrid
 
 from flopy4.mf6.model import Model
 from flopy4.mf6.prt.dis import Dis
@@ -11,18 +9,7 @@ from flopy4.mf6.prt.fmi import Fmi
 from flopy4.mf6.prt.mip import Mip
 from flopy4.mf6.prt.oc import Oc
 from flopy4.mf6.prt.prp import Prp
-from flopy4.mf6.spec import field
-
-
-def convert_grid(value):
-    if isinstance(value, StructuredGrid):
-        return Dis.from_grid(value)
-    if isinstance(value, VertexGrid):
-        return Disv.from_grid(value)
-    if isinstance(value, (Dis, Disv)) or value is None:
-        return value
-    raise TypeError(f"Expected Grid or Dis/Disv, got {type(value)}")
-
+from flopy4.mf6.spec import child, field
 
 __all__ = [
     "Prt",
@@ -43,11 +30,11 @@ class Prt(Model):
     print_input: bool = field(block="options", default=False)
     print_flows: bool = field(block="options", default=False)
     save_flows: bool = field(block="options", default=False)
-    dis: Dis | Disv | None = field(converter=convert_grid, block="packages", default=None)
-    fmi: Fmi | None = field(block="packages", default=None)
-    mip: Mip | None = field(block="packages", default=None)
-    oc: Oc | None = field(block="packages", default=None)
-    prp: list[Prp] = field(block="packages", default=attrs.Factory(list))
+    dis: Dis | Disv | None = child(block="packages")
+    fmi: Fmi | None = child(block="packages")
+    mip: Mip | None = child(block="packages")
+    oc: Oc | None = child(block="packages")
+    prp: list[Prp] = child(block="packages", default=attrs.Factory(list))
 
     @property
     def grid(self):

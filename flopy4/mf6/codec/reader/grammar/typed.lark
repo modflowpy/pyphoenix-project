@@ -33,7 +33,10 @@ binary: "(binary)"i
 filename: ESCAPED_STRING | word
 data: _data_line+
 _data_line: double+ [_remark] _NL
-record: token+ _NL
+// begin/end after a record's first token are a remark (test106's
+// `0.0 ... begin SP 1`); dropped, like the literals they match.
+record: token (token | _block_kw)* _NL
+_block_kw: "begin"i | "end"i
 token: number | word
 word: WORD_STR
 // Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
@@ -69,6 +72,9 @@ open_close_redirect: "open/close"i filename [_remark] _NL
 COMMA: ","
 %ignore WS_INLINE
 %ignore SH_COMMENT
+// mf6 also takes `!` for a comment
+BANG_COMMENT: /![^\n]*/
+%ignore BANG_COMMENT
 %ignore COMMA
 
 // common's number terminals, but only as a whole token. Otherwise a token

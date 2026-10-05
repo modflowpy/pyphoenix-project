@@ -125,7 +125,7 @@ def test_component_write_with_context(function_tmpdir):
         name="test",
         workspace=function_tmpdir,
         tdis=time,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     gwf = Gwf(parent=sim, name="gwf", dis=dis)
@@ -160,7 +160,7 @@ def test_write_context_manager_with_component(function_tmpdir):
         name="test",
         workspace=function_tmpdir,
         tdis=time,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
 
     gwf = Gwf(parent=sim, name="gwf", dis=dis)

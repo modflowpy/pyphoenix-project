@@ -354,20 +354,19 @@ class Package(Component, ABC):
                 self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
-        self._sync_subpackage_files()
+        self._name_file_children()
         super().write(format=format, context=context)
 
-    def _sync_subpackage_files(self) -> None:
-        """Name each attached subpackage's file in the parent's path field
-        (e.g. DIS's ``NCF6 FILEIN <file>``), unless already given."""
+    def _name_file_children(self) -> None:
+        """Give each child named by a file record (DIS's ``NCF6 FILEIN
+        <file>``) a filename, so the record can name it before it's written."""
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if (file_field := f.metadata.get("file_field")) is None:
+            if not (f.metadata.get("child") and f.metadata.get("_keyword")):
                 continue
-            if (child := getattr(self, f.name)) is None:
-                continue
-            child.filename = child.filename or Path(child.default_filename())
-            if getattr(self, file_field) is None:
-                setattr(self, file_field, Path(child.filename.name))
+            value = getattr(self, f.name)
+            for child in value if isinstance(value, list) else [value]:
+                if child is not None:
+                    child.filename = child.filename or Path(child.default_filename())
 
     @classmethod
     def load(  # type: ignore[override]
@@ -406,7 +405,11 @@ class Package(Component, ABC):
         return _pkg
 
     def default_filename(self) -> str:
-        name = self._parent.name if self._parent else self.name  # type: ignore
+        parent = self._parent  # type: ignore
+        if isinstance(parent, Package):  # named by a file record: gwf.chd.ts0
+            stem = Path(parent.filename or parent.default_filename()).name
+            return f"{stem}.{self.name}"
+        name = parent.name if parent else self.name
         cls_name = self.__class__.__name__.lower()
         return f"{name}.{cls_name}"
 

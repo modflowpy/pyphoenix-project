@@ -87,7 +87,7 @@ def build_sim(n: int, ws: Path):
             flopy4.mf6.utils.time.Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
         ),
         models={"diag": gwf},
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
         workspace=ws,
     )
 

@@ -4,10 +4,11 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike, to_list
+from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.ts import Ts
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -213,13 +214,8 @@ class Csub(Package):
         direction="out",
         keyword="package_convergence",
     )
-    ts_file: Optional[list[Path]] = path(
-        default=None,
-        converter=attrs.converters.optional(to_list(Path)),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="ts6",
+    ts: list[Ts] = child(
+        block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs_file: Optional[Path] = path(
         default=None,

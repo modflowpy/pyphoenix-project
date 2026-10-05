@@ -250,7 +250,8 @@ def _parse_array_block(
     """
     result: dict = {}
     nlay = dims.get("nlay", 1)
-    nodes = dims.get("nodes", 0)
+    # a component with cells but no layers of its own has only ncpl (NCF)
+    nodes = dims.get("nodes") or nlay * dims.get("ncpl", 0)
     if not nodes:
         return result
     ncpl = nodes // nlay if nlay else nodes
@@ -488,8 +489,8 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
         if spec is None:
             continue
         block_name = f.metadata.get("block")
-        if block_name is None:
-            continue
+        if block_name is None or f.metadata.get("_keyword"):
+            continue  # file records' children load with their records
         kind, candidates = spec
         fields_by_block.setdefault(block_name, []).append((f.name, kind, candidates))
 
@@ -592,6 +593,25 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     return kwargs
 
 
+def _load_file_child(field: Any, path: Path, workspace: Path | None, dims: dict | None) -> Any:
+    """Load the child a file record names (DIS's ``NCF6 FILEIN <path>``).
+    Like mf6, resolve the path against the working directory, which loading
+    a simulation sets to its workspace; failing that, against the parent
+    file's directory (`workspace`), for a package loaded on its own."""
+    from flopy4.attrs_xarray import child_field_candidates
+
+    spec = child_field_candidates(field)
+    assert spec is not None
+    child_cls = spec[1][0]
+    assert issubclass(child_cls, Package)
+    file = Path.cwd() / path
+    if not file.exists() and workspace is not None:
+        file = workspace / path
+    child = child_cls.load(file, dims=dims)
+    child.filename = path
+    return child
+
+
 def _group_repeating_rows(
     raw_lower: dict, prefixes: "set[str]", cast
 ) -> "dict[str, dict[Any, list]]":
@@ -684,7 +704,8 @@ def structure_component(
             first = next(iter(inner_cls.fields()), None)
             kw = first.name if first is not None and first.metadata.get("tagged") else ""
         if kw:
-            inner_class_fields[kw.lower()] = (f, inner_cls)
+            for k in (kw, *vars(inner_cls).get("_aliases", ())):
+                inner_class_fields[k.lower()] = (f, inner_cls)
 
     # Identify Item-list fields (packagedata, connectiondata, partitions …) --
     # the field's own type annotation (Optional[list[ItemClass]] or
@@ -780,6 +801,13 @@ def structure_component(
                 if tokens:
                     path = Path(_strip_quotes(str(tokens[0])))
                     init_key = ff.alias or ff.name
+                    if ff.metadata.get("child"):
+                        child = _load_file_child(ff, path, workspace, dims)
+                        if get_origin(unwrap_optional(ff.type)) is list:
+                            kwargs.setdefault(init_key, []).append(child)
+                        else:
+                            kwargs[init_key] = child
+                        continue
                     # A list[Path] field (a DFN tagged list of file
                     # records) gets one element per row.
                     if get_origin(unwrap_optional(ff.type)) is list:
@@ -793,6 +821,13 @@ def structure_component(
                 f, item_cls = kf
                 kwargs.setdefault(f.alias or f.name, []).append(item_cls.from_tokens(row))
                 continue
+            # A record's keyword wins over a field's name: utl-ts's SFAC is
+            # sfacrecord_single's keyword, and the SFACS record's field name.
+            if key in inner_class_fields:
+                cand_f, inner_cls = inner_class_fields[key]
+                cand_init = cand_f.alias if cand_f.alias else cand_f.name
+                kwargs[cand_init] = inner_cls.from_tokens(row)
+                continue
             # keywords are renamed with a trailing underscore (CONTINUE: continue_)
             f = (
                 all_fields.get(key)
@@ -800,16 +835,11 @@ def structure_component(
                 or all_fields.get(f"{key}_")
             )
             if f is None or f.init is False:
-                if key in inner_class_fields:
-                    cand_f, inner_cls = inner_class_fields[key]
-                    cand_init = cand_f.alias if cand_f.alias else cand_f.name
-                    kwargs[cand_init] = inner_cls.from_tokens(row)
                 continue
             init_key = f.alias if f.alias else f.name
             # A Record-typed field must go through from_tokens(), even when
             # the matched token is the field's own name rather than the
-            # record's separate trigger keyword (e.g. sfacrecord's outer
-            # field is itself named "sfac").
+            # record's trigger keyword.
             inner_cls = _inner_class_type(f.type)
             if inner_cls is not None:
                 kwargs[init_key] = inner_cls.from_tokens(row)
@@ -835,17 +865,14 @@ def structure_component(
     if period_item_cls is not None:
         item_types.append(period_item_cls)
     sizes = {
-        name: len(kwargs[name])
-        for ic in item_types
-        for name in sized_by(ic)
-        if kwargs.get(name) is not None
+        k: len(kwargs[k]) for ic in item_types for k in sized_by(ic) if kwargs.get(k) is not None
     }
     # Dimensions counting item columns (numalphaj counts GNC's alphasj).
     count_dims = getattr(cls, "count_dims", {})
     for ic in item_types:
-        for name in counted_by(ic):
-            if (n := resolve_dim(name, count_dims, kwargs)) is not None:
-                sizes[name] = n
+        for dim in counted_by(ic):
+            if (n := resolve_dim(dim, count_dims, kwargs)) is not None:
+                sizes[dim] = n
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a

@@ -171,8 +171,58 @@ def path(
     )
 
 
-def subpackage(file_field: str):
-    return attrs.field(default=None, metadata={"file_field": file_field})
+def _coerce_one(value, candidates: tuple[type, ...]):
+    if value is None or isinstance(value, candidates):
+        return value
+    for cls in candidates:
+        if (coerce := getattr(cls, "coerce", None)) is not None and (
+            coerced := coerce(value)
+        ) is not None:
+            return coerced
+    names = " or ".join(c.__name__ for c in candidates)
+    raise TypeError(f"Expected {names} (or a value one accepts), got {type(value).__name__}")
+
+
+def coerce_child(value, field: Attribute):
+    """Convert a child field's value with its candidate classes' `coerce`
+    classmethods, which return an instance or `None` if they don't accept
+    the value. Lists and dicts are converted element-wise."""
+    from flopy4.attrs_xarray import child_field_candidates
+
+    if (spec := child_field_candidates(field)) is None:
+        return value
+    kind, candidates = spec
+    if kind == "list" and isinstance(value, (list, tuple)):
+        items = [_coerce_one(v, candidates) for v in value]
+        return value if all(a is b for a, b in zip(items, value)) else items
+    if kind == "dict" and isinstance(value, dict):
+        coerced = {k: _coerce_one(v, candidates) for k, v in value.items()}
+        return value if all(coerced[k] is v for k, v in value.items()) else coerced
+    return _coerce_one(value, candidates)
+
+
+def child(
+    block: str | None = None,
+    default=None,
+    converter=None,
+    keyword: str | None = None,
+    direction: FileDirection | None = None,
+):
+    """A child component field: the component itself, standing in for the
+    DFN field that names its file. A child named by a file record
+    (``NCF6 FILEIN <file>``) has the record's keyword and direction."""
+    metadata: dict = {"child": True}
+    if block:
+        metadata["block"] = block
+    if keyword:
+        metadata["_keyword"] = keyword.lower()
+    if direction:
+        metadata["direction"] = direction
+    return attrs.field(
+        default=default,
+        converter=converter or attrs.Converter(coerce_child, takes_field=True),
+        metadata=metadata,
+    )
 
 
 Block = dict[str, Attribute]

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from modflow_devtools.misc import set_dir
 
 from flopy4.mf6.component import FNAMES
 from flopy4.mf6.enums import NetCDFFormat
@@ -363,7 +364,7 @@ def test_write_ascii(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutions={"ims": ims},
+        solutiongroup={"ims": ims},
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -476,7 +477,7 @@ def test_to_dict_on_context():
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, solutions={"ims": ims})
+    sim = Simulation(tdis=time, solutiongroup={"ims": ims})
 
     result = sim.to_dict()
 
@@ -534,7 +535,7 @@ def test_to_xarray_on_context(function_tmpdir):
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, solutions={"ims": ims}, workspace=function_tmpdir)
+    sim = Simulation(tdis=time, solutiongroup={"ims": ims}, workspace=function_tmpdir)
     dt = sim.to_xarray()
     assert isinstance(dt, xr.DataTree)
     assert isinstance(dt.kper, xr.DataArray)
@@ -1312,34 +1313,66 @@ def test_ncf_subpackage_write(function_tmpdir):
     assert "NCF6 FILEIN gwf.dis.ncf" in dis_text
 
 
-def test_ncf_subpackage_auto_sync_filerecord(function_tmpdir):
-    """ncf_file is auto-populated from ncf.filename when not pre-set."""
+def test_ncf_subpackage_default_filename(function_tmpdir):
+    """An NCF without a filename gets a default one, which DIS's record names."""
+    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(function_tmpdir / "gwf.dis")
+    dis.ncf = ncf
+    assert ncf.filename is None
+
+    with set_dir(function_tmpdir):
+        dis.write()
+
+    assert ncf.filename is not None
+    assert f"NCF6 FILEIN {ncf.filename.name}" in (function_tmpdir / "gwf.dis").read_text()
+
+
+def test_ncf_subpackage_load(function_tmpdir):
+    """Loading a DIS loads the NCF file its record names."""
     ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
     ncf.filename = str(function_tmpdir / "gwf.dis.ncf")
-
     dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     dis.filename = str(function_tmpdir / "gwf.dis")
     dis.ncf = ncf
-    assert dis.ncf_file is None
-
     dis.write()
 
-    assert dis.ncf_file == Path("gwf.dis.ncf")
+    loaded = Dis.load(function_tmpdir / "gwf.dis")
+    assert isinstance(loaded.ncf, Ncf)
+    assert loaded.ncf.filename == Path("gwf.dis.ncf")
+    np.testing.assert_array_equal(loaded.ncf.latitude, [35.0, 36.0])
+
+    out = function_tmpdir / "out"
+    out.mkdir()
+    loaded.filename = out / "gwf.dis"
+    loaded.ncf.filename = out / "gwf.dis.ncf"
+    loaded.write()
+    assert "NCF6 FILEIN gwf.dis.ncf" in (out / "gwf.dis").read_text()
+    assert (out / "gwf.dis.ncf").read_text() == (function_tmpdir / "gwf.dis.ncf").read_text()
 
 
-def test_ncf_subpackage_no_overwrite_filerecord(function_tmpdir):
-    """Pre-set ncf_file is preserved — auto-sync is skipped."""
-    ncf = Ncf(ncpl=2, latitude=[35.0, 36.0], longitude=[-120.0, -121.0])
-    ncf.filename = str(function_tmpdir / "actual.ncf")
+def test_ncf_subpackage_simulation_load(function_tmpdir):
+    """A simulation's DIS loads its NCF from the simulation workspace."""
+    ncf = Ncf(ncpl=3, latitude=[35.0, 35.5, 36.0], longitude=[-120.0, -120.5, -121.0])
+    gwf = Gwf(
+        dis=Dis(nlay=1, nrow=1, ncol=3, top=1.0, botm=[0.0], idomain=1, ncf=ncf),
+        npf=Npf(k=2.0),
+        ic=Ic(strt=1.0),
+    )
+    sim = Simulation(
+        name="sim",
+        workspace=function_tmpdir,
+        tdis=Tdis(nper=1),
+        models={"gwf": gwf},
+        solutiongroup={"ims": Ims()},
+    )
+    sim.write()
 
-    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
-    dis.filename = str(function_tmpdir / "gwf.dis")
-    dis.ncf = ncf
-    dis.ncf_file = Path("explicit.ncf")
-
-    dis.write()
-
-    assert dis.ncf_file == Path("explicit.ncf")
+    loaded = Simulation.load(function_tmpdir / "mfsim.nam")
+    dis = loaded.models["gwf"].dis
+    assert isinstance(dis.ncf, Ncf)
+    assert dis.ncf.filename == ncf.filename
+    np.testing.assert_array_equal(dis.ncf.latitude, ncf.latitude)
 
 
 def test_ncf_subpackage_float_precision(function_tmpdir):
@@ -1619,15 +1652,15 @@ def test_gwt_gwe_disv_instantiate():
         d = cls(nlay=1, ncpl=4)
         assert d.nlay == 1
         assert d.ncpl == 4
-        assert hasattr(d, "ncf_file")
+        assert hasattr(d, "ncf")
 
 
 # ---------------------------------------------------------------------------
-# convert_grid and grid property for gwt, gwe, prt
+# grid coercion and grid property for gwt, gwe, prt
 # ---------------------------------------------------------------------------
 
 
-def test_gwt_convert_grid_structured():
+def test_gwt_coerce_grid_structured():
     from flopy4.mf6.gwt import Dis as GwtDis
     from flopy4.mf6.gwt import Gwt
 
@@ -1638,7 +1671,7 @@ def test_gwt_convert_grid_structured():
     assert isinstance(gwt.grid, StructuredGrid)
 
 
-def test_gwt_convert_grid_vertex(vgrid):
+def test_gwt_coerce_grid_vertex(vgrid):
     from flopy4.mf6.gwt import Disv as GwtDisv
     from flopy4.mf6.gwt import Gwt
 
@@ -1654,7 +1687,7 @@ def test_gwt_convert_grid_vertex(vgrid):
     assert isinstance(gwt.grid, VertexGrid)
 
 
-def test_gwe_convert_grid_structured():
+def test_gwe_coerce_grid_structured():
     from flopy4.mf6.gwe import Dis as GweDis
     from flopy4.mf6.gwe import Gwe
 
@@ -1665,7 +1698,7 @@ def test_gwe_convert_grid_structured():
     assert isinstance(gwe.grid, StructuredGrid)
 
 
-def test_gwe_convert_grid_vertex(vgrid):
+def test_gwe_coerce_grid_vertex(vgrid):
     from flopy4.mf6.gwe import Disv as GweDisv
     from flopy4.mf6.gwe import Gwe
 
@@ -1681,7 +1714,7 @@ def test_gwe_convert_grid_vertex(vgrid):
     assert isinstance(gwe.grid, VertexGrid)
 
 
-def test_prt_convert_grid_structured():
+def test_prt_coerce_grid_structured():
     from flopy4.mf6.prt import Dis as PrtDis
     from flopy4.mf6.prt import Prt
 
@@ -1692,7 +1725,7 @@ def test_prt_convert_grid_structured():
     assert isinstance(prt.grid, StructuredGrid)
 
 
-def test_prt_convert_grid_vertex(vgrid):
+def test_prt_coerce_grid_vertex(vgrid):
     from flopy4.mf6.prt import Disv as PrtDisv
     from flopy4.mf6.prt import Prt
 
@@ -1909,7 +1942,7 @@ def test_eq_simulation():
             ic=Ic(strt=1.0),
             chd=[Chd(stress_period_data={0: [[(0, 0, 0), head]]})],
         )
-        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutions={"ims": Ims()})
+        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutiongroup={"ims": Ims()})
 
     assert make(1.0) == make(1.0)
     assert make(1.0) != make(2.0)
@@ -1952,3 +1985,18 @@ def test_all_array_fields_have_array_eq():
         and any(s in repr(f.type) for s in ("ArrayLike", "ndarray", "NDArray"))
     ]
     assert not bad, sorted(bad)
+
+
+def test_child_coerce_time():
+    sim = Simulation(tdis=Time(perlen=[1.0, 2.0], nstp=[1, 1], tsmult=[1.0, 1.0]))
+    assert isinstance(sim.tdis, Tdis)
+    assert sim.tdis.nper == 2
+
+
+def test_child_coerce_wrong_type():
+    with pytest.raises(TypeError, match="Tdis"):
+        Simulation(tdis="nope")
+    with pytest.raises(TypeError, match="Dis or Disv or Disu"):
+        Gwf(dis=42)
+    with pytest.raises(TypeError, match="Chd or Chdg"):
+        Gwf(chd=[42])

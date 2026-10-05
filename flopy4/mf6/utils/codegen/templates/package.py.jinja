@@ -38,6 +38,9 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     @attrs.define
     class {{ rec.class_name }}(Record):
         _keyword: ClassVar[str] = "{{ rec.keyword }}"
+{% if rec.aliases_repr %}
+        _aliases: ClassVar[tuple[str, ...]] = {{ rec.aliases_repr }}
+{% endif %}
 {% if rec.extra_tokens_repr %}
         _extra_tokens: ClassVar[tuple[str, ...]] = {{ rec.extra_tokens_repr }}
 {% endif %}

@@ -28,6 +28,11 @@ class TdisMethods:
         )
 
     @classmethod
+    def coerce(cls: type["Tdis"], value) -> Optional["Tdis"]:  # type: ignore[misc]
+        """Convert a `Time` to a time discretization; `None` for anything else."""
+        return cls.from_time(value) if isinstance(value, Time) else None
+
+    @classmethod
     def from_time(cls: type["Tdis"], time: Time) -> "Tdis":  # type: ignore[misc]
         """Create a time discretization from a `Time` object."""
         start = time.start_datetime

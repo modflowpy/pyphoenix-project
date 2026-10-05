@@ -32,6 +32,13 @@ def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
     return tuple(t)
 
 
+def _child_path(child: Component) -> Path:
+    """A child's file as its parent's file record names it: relative to the
+    simulation workspace, or just the name if it's absolute."""
+    path = Path(child.filename or child.default_filename())
+    return Path(path.name) if path.is_absolute() else path
+
+
 def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str, ...]]]]:
     if not isinstance(value, Context):
         return {}
@@ -220,6 +227,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif meta.get("direction") and isinstance(field_value, Path):
             t = _path_to_tuple(f, field_value)
             blocks[block_name][t[0].lower()] = t
+
+        elif meta.get("child") and meta.get("_keyword"):
+            # file records naming children: NCF6 FILEIN <child's file>
+            children = field_value if isinstance(field_value, list) else [field_value]
+            rows = [_path_to_tuple(f, _child_path(c)) for c in children if c is not None]
+            if rows and isinstance(field_value, list):
+                blocks[block_name][f.name] = rows
+            elif rows:
+                blocks[block_name][rows[0][0].lower()] = rows[0]
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
             blocks[block_name][f.name] = _rows_to_tuples(field_value)

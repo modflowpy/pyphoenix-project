@@ -5,7 +5,7 @@ Builds a small Gwf model via the existing, working Python construction API
 working egress path, then loads it back and checks the tree was resolved
 correctly: dis attached (with the right model-scoped class), dims threaded
 into npf's griddata shapes, chd's list-input round-tripped, and ims
-attached under the simulation's solutions.
+attached under the simulation's solutiongroup.
 """
 
 import numpy as np
@@ -67,8 +67,8 @@ def test_load_simulation_resolves_model_and_solution(written_sim):
     gwf = next(iter(loaded.models.values()))
     assert isinstance(gwf, Gwf)
 
-    assert len(loaded.solutions) == 1
-    ims = next(iter(loaded.solutions.values()))
+    assert len(loaded.solutiongroup) == 1
+    ims = next(iter(loaded.solutiongroup.values()))
     assert isinstance(ims, Ims)
     assert ims.models == ["mymodel"]
 
@@ -124,7 +124,7 @@ def test_load_gwf_directly(written_sim):
 
 
 def test_load_preserves_model_pname(tmp_path):
-    """A dict-kind binding field (Simulation.models/exchanges/solutions)
+    """A dict-kind binding field (Simulation.models/exchanges/solutiongroup)
     round-trips a custom pname via the child's own `.name` -- child
     attachment reconciles a dict child's name to the key it's attached
     under, so the namefile row's pname (not the referenced file's name,

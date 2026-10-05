@@ -7,20 +7,11 @@ from attrs import fields_dict
 from modflow_devtools.misc import cd, run_cmd
 
 from flopy4.mf6.context import update_child_attr
-from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utils.time import Time
 
 if TYPE_CHECKING:
     from flopy4.mf6.context import Context
     from flopy4.mf6.simulation import Simulation
-
-
-def convert_time(value):
-    if isinstance(value, Time):
-        return Tdis.from_time(value)
-    if isinstance(value, Tdis):
-        return value
-    raise TypeError(f"Expected Time or Tdis, got {type(value)}")
 
 
 class SimulationMethods:

@@ -375,7 +375,7 @@ class TestSimpleTierComponentSpec:
 
 def test_simulation_spec(all_dfns):
     root = Path("/fake/mf6")
-    spec = build_component_spec(all_dfns["sim-nam"], root=root)
+    spec = build_component_spec(all_dfns["sim-nam"], root=root, dfns=all_dfns)
     assert spec.class_name == "Simulation"
     assert spec.base_class == "Context"
     assert spec.mixins == ["SimulationMethods"]
@@ -385,7 +385,7 @@ def test_simulation_spec(all_dfns):
     assert types["tdis"] == "Tdis"
     assert types["models"] == "dict[str, Model]"
     assert types["exchanges"] == "dict[str, Exchange]"
-    assert types["solutions"] == "dict[str, Solution]"
+    assert types["solutiongroup"] == "dict[str, Solution]"
     assert not spec.item_classes
     assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
 
@@ -824,7 +824,7 @@ def test_grid_package_dims(tmp_path, all_dfns):
 
 
 def test_subpackage_field(tmp_path, all_dfns):
-    """A file record listed in SUBPACKAGES gets a typed child field; writing
+    """A file record linked in LINKS gets a typed child field; writing
     names the child's file in the record and writes the child at full
     precision."""
     from flopy4.mf6.utl.ncf import Ncf
@@ -832,7 +832,9 @@ def test_subpackage_field(tmp_path, all_dfns):
 
     skip = {n for n in all_dfns if n != "gwf-dis"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert 'ncf: Optional[Ncf] = subpackage(file_field="ncf_file")' in spec.outpath.read_text()
+    text = spec.outpath.read_text()
+    assert 'ncf: Optional[Ncf] = child(block="options", keyword="ncf6", direction="in")' in text
+    assert "ncf_file" not in text
     Dis = _load_class_from_spec(spec, "_codegen_test_subpackage.dis", "Dis")
 
     lat = 35.123456789012345
@@ -842,20 +844,34 @@ def test_subpackage_field(tmp_path, all_dfns):
     dis.ncf.filename = tmp_path / "gwf.dis.ncf"
     dis.write(context=WriteContext(float_precision=4))
 
-    assert dis.ncf_file == Path("gwf.dis.ncf")
     assert "NCF6 FILEIN gwf.dis.ncf" in (tmp_path / "gwf.dis").read_text()
     assert repr(lat) in (tmp_path / "gwf.dis.ncf").read_text()
 
 
 def test_check_mixins_rejects_unknown_component(all_dfns, monkeypatch):
-    from flopy4.mf6.utils.codegen.make import SUBPACKAGES
+    from flopy4.mf6.utils.codegen.make import LINKS, Link
 
     check_mixins(all_dfns)
     with pytest.raises(ValueError, match="sim-tdis"):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
-    monkeypatch.setitem(SUBPACKAGES, "foo_filerecord", "utl-foo")
+    monkeypatch.setitem(LINKS, ("*", "foo_filerecord.foo6_filename"), Link("utl-foo"))
     with pytest.raises(ValueError, match="utl-foo"):
         check_mixins(all_dfns)
+
+
+@pytest.mark.parametrize(
+    "link,match",
+    [
+        (("bogus", "mtype"), "matches no component"),
+        (("model", None), "no component_ref"),
+    ],
+)
+def test_link_selector_errors(all_dfns, monkeypatch, link, match):
+    from flopy4.mf6.utils.codegen.make import LINKS, Link
+
+    monkeypatch.setitem(LINKS, ("sim-nam", "models.mfname"), Link(*link))
+    with pytest.raises(ValueError, match=match):
+        build_component_spec(all_dfns["sim-nam"], root=Path("/fake"), dfns=all_dfns)
 
 
 def test_list_block_dim_and_default(tmp_path, all_dfns):
@@ -929,15 +945,33 @@ def test_scalar_columns_stay_scalar(tmp_path, all_dfns):
     assert "q: Union[float, str] = field(time_series=True)" in spec.outpath.read_text()
 
 
-@pytest.mark.parametrize("name,field", [("gwf-chd", "ts_file"), ("utl-spca", "tas_file")])
-def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, name, field):
-    """A tagged list of file records (TS6/TAS6 FILEIN) is a repeatable
-    list[Path] options field, not a table filling the options block."""
+@pytest.mark.parametrize(
+    "name,field,cls,keyword", [("gwf-chd", "ts", "Ts", "ts6"), ("utl-spca", "tas", "Tas", "tas6")]
+)
+def test_tagged_file_list_is_child_list(tmp_path, all_dfns, name, field, cls, keyword):
+    """A linked tagged list of file records (TS6/TAS6 FILEIN) is a list of
+    children, not a table filling the options block."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     assert "options" not in {bp.block_name for bp in spec.block_properties}
+    # ignore whitespace: output is ruff-formatted only if ruff is installed
+    text = "".join(spec.outpath.read_text().split())
+    assert (
+        f'{field}:list[{cls}]=child(block="options",keyword="{keyword}",direction="in",'
+        "default=attrs.Factory(list))"
+    ) in text
+
+
+def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, monkeypatch):
+    """An unlinked tagged list of file records is a repeatable list[Path]
+    options field."""
+    from flopy4.mf6.utils.codegen.make import LINKS
+
+    monkeypatch.delitem(LINKS, ("*", "ts_filerecord.ts6_filename"))
+    skip = {n for n in all_dfns if n != "gwf-chd"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     text = spec.outpath.read_text()
-    assert f"{field}: Optional[list[Path]] = path(" in text
+    assert "ts_file: Optional[list[Path]] = path(" in text
     assert "converter=attrs.converters.optional(to_list(Path))," in text
 
 

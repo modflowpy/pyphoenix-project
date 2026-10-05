@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
+from flopy.discretization import StructuredGrid as LegacyStructuredGrid
 
 from flopy4.mf6.utils.grid import StructuredGrid
 
@@ -39,6 +40,11 @@ class DisMethods:
             angrot=self.angrot,
             crs=self.crs,
         )
+
+    @classmethod
+    def coerce(cls: type["Dis"], value) -> "Dis | None":  # type: ignore[misc]
+        """Convert a `StructuredGrid` to a discretization; `None` for anything else."""
+        return cls.from_grid(value) if isinstance(value, LegacyStructuredGrid) else None
 
     @classmethod
     def from_grid(cls: type["Dis"], grid: StructuredGrid) -> "Dis":  # type: ignore[misc]
