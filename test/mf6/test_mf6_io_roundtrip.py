@@ -172,3 +172,28 @@ def test_repeated_ts6_kept(tmp_path):
     loaded = {Path(ts.filename).name for ts in wel.ts}
     expected = {f"model_well{i}_pump.ts" for i in range(1, 6)}
     assert expected <= loaded
+
+
+def test_tvk_child_kept(tmp_path):
+    """NPF's TVK6 file loads as a child and is written back."""
+    workspace = copy_to(tmp_path / "source", "mf6/test/test001a_Tharmonic", verbose=False)
+    npf = workspace / "flow15.npf"
+    npf.write_text(npf.read_text().replace("SAVE_FLOWS", "SAVE_FLOWS\n  TVK6 FILEIN flow15.tvk"))
+    (workspace / "flow15.tvk").write_text(
+        "BEGIN PERIOD 1\n  1 1 3 K 5.0\n  1 1 4 K33 2.5\nEND PERIOD\n"
+    )
+    sim = Simulation.load(workspace / "mfsim.nam")
+    tvk = sim.models["flow15"].npf.tvk
+    rows = tvk.stress_period_data[0]
+    assert [(type(r).__name__, r.cellid) for r in rows] == [("K", (0, 0, 2)), ("K33", (0, 0, 3))]
+    assert (rows[0].k, rows[1].k33) == (5.0, 2.5)
+
+    out = tmp_path / "written"
+    out.mkdir()
+    sim.workspace = out
+    sim.write()
+    assert "TVK6 FILEIN flow15.tvk" in (out / "flow15.npf").read_text()
+    reloaded = Simulation.load(out / "mfsim.nam")
+    diffs: list[str] = []
+    _diff(rows, reloaded.models["flow15"].npf.tvk.stress_period_data[0], "tvk", diffs)
+    assert not diffs, "\n".join(diffs)

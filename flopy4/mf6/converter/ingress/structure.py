@@ -51,7 +51,7 @@ def _parse_rows(
     if not rows:
         return None
     if isinstance(item_cls, tuple):
-        return parse_union_items(rows, item_cls, sizes=sizes, boundnames=boundnames)
+        return parse_union_items(rows, item_cls, sizes=sizes, boundnames=boundnames, dims=dims)
     ncelldim = infer_ncelldim(rows, item_cls, sizes=sizes, dims=dims)
     result = [
         item_cls.from_tokens(row, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames)

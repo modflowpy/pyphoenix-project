@@ -5,6 +5,7 @@ from flopy4.mf6.utl.sfrtab import Sfrtab
 from flopy4.mf6.utl.spca import Spca
 from flopy4.mf6.utl.tas import Tas
 from flopy4.mf6.utl.ts import Ts
+from flopy4.mf6.utl.tvk import Tvk
 
 __all__ = [
     "Ats",
@@ -14,4 +15,5 @@ __all__ = [
     "Spca",
     "Tas",
     "Ts",
+    "Tvk",
 ]
