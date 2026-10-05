@@ -48,7 +48,7 @@ class Sfr(Package):
             default=(),
             array=True,
             index=True,
-            count="packagedata.ncon(ifno)",
+            shape=("packagedata.ncon(ifno)",),
             signed=True,
             optional=True,
         )

@@ -30,7 +30,7 @@ class Disu(DisuMethods, GridDimsMethods, Package):
         yc: float = field()
         ncvert: Optional[int] = field(default=None, optional=True)
         icvert: tuple[int, ...] = field(
-            default=(), array=True, index=True, count="ncvert", optional=True
+            default=(), array=True, index=True, shape=("ncvert",), optional=True
         )
 
     length_units: Optional[str] = field(

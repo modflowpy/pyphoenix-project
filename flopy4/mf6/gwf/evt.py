@@ -26,10 +26,10 @@ class Evt(Package):
         rate: Union[float, str] = field(time_series=True)
         depth: Union[float, str] = field(time_series=True)
         pxdp: Optional[tuple[Union[float, str], ...]] = field(
-            default=None, array=True, count="nseg-1", time_series=True, optional=True
+            default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
         )
         petm: Optional[tuple[Union[float, str], ...]] = field(
-            default=None, array=True, count="nseg-1", time_series=True, optional=True
+            default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
         )
         petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
         aux: tuple = field(default=(), shape=("auxiliary",))

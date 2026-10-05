@@ -806,7 +806,7 @@ def item_class(
             if col.get("index"):
                 meta["index"] = True
             if col.get("count"):
-                meta["count"] = col["count"]
+                meta["shape"] = (col["count"],)
             if col.get("signed"):
                 meta["signed"] = True
         if col.get("time_series"):

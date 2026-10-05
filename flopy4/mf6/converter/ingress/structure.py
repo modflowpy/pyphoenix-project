@@ -13,7 +13,6 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import (
     Item,
-    counted_by,
     infer_ncelldim,
     item_list_type,
     parse_union_items,
@@ -860,17 +859,15 @@ def structure_component(
             else:
                 kwargs[init_key] = row[1]
 
-    # Lengths of the fields sizing item columns (auxiliary sizes aux).
     item_types = [ic for _, ic in block_item_fields.values()]
     if period_item_cls is not None:
         item_types.append(period_item_cls)
-    sizes = {
-        k: len(kwargs[k]) for ic in item_types for k in sized_by(ic) if kwargs.get(k) is not None
-    }
-    # Dimensions counting item columns (numalphaj counts GNC's alphasj).
+    # Sizes of the package fields and dimensions sizing item columns
+    # (aux by auxiliary, GNC's alphasj by numalphaj).
     count_dims = getattr(cls, "count_dims", {})
+    sizes = {}
     for ic in item_types:
-        for dim in counted_by(ic):
+        for dim in sized_by(ic):
             if (n := resolve_dim(dim, count_dims, kwargs)) is not None:
                 sizes[dim] = n
     boundnames = bool(kwargs.get("boundnames", False))

@@ -1345,7 +1345,7 @@ def test_counted_array_column():
     from flopy4.mf6.gwf import Disv
 
     meta = attrs.fields_dict(Disv.Cell2d)["icvert"].metadata
-    assert meta["array"] and meta["index"] and meta["count"] == "ncvert"
+    assert meta["array"] and meta["index"] and meta["shape"] == ("ncvert",)
 
     square = Disv.Cell2d.from_tokens([1, 0.5, 0.5, 4, 1, 2, 5, 4])
     assert square.icell2d == 0

@@ -30,56 +30,79 @@ def _cellid_field(cls: type) -> attrs.Attribute | None:
     return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
 
 
+_LOOKUP = re.compile(r"(\w+)\.(\w+)\((\w+)\)")
+
+
+def _shape_dim(f: attrs.Attribute) -> str | None:
+    """The dimension an inline array field's ``shape`` names."""
+    shape = f.metadata.get("shape")
+    return shape[0] if shape else None
+
+
+def _sized_by_field(cls: type, f: attrs.Attribute) -> bool:
+    """Whether another field of the record sizes the array field ``f`` (cell2d's
+    icvert, by ncvert)."""
+    return _shape_dim(f) in attrs.fields_dict(cls)  # type: ignore[arg-type]
+
+
+def _sized_by_lookup(f: attrs.Attribute) -> bool:
+    """Whether the array field ``f`` is sized by a field of the row another
+    field refers to (SFR's ic, by packagedata.ncon(ifno))."""
+    return bool((dim := _shape_dim(f)) and _LOOKUP.fullmatch(dim))
+
+
+def _sized_by_package(cls: type, f: attrs.Attribute) -> bool:
+    """Whether a package field or dimension sizes the array field ``f`` (aux,
+    by auxiliary; GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1)."""
+    return _shape_dim(f) is not None and not _sized_by_field(cls, f) and not _sized_by_lookup(f)
+
+
 def _sized_field(cls: type) -> attrs.Attribute | None:
-    """The column sized by a package field (its ``shape``, e.g. aux by
-    ``auxiliary``), if any."""
-    return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("shape")), None)
+    """The trailing field sized by a package field (aux, by ``auxiliary``): as
+    many values as that field has, collected after every other field."""
+    fields = [f for f in cast(type[Record], cls).fields() if f.name != "boundname"]
+    if fields and _sized_by_package(cls, f := fields[-1]) and not f.metadata.get("array"):
+        return f
+    return None
 
 
 def _size(cls: type, sizes: Mapping[str, int] | None) -> int:
-    """How many tokens the class's sized column takes."""
+    """How many tokens the class's sized field takes."""
     f = _sized_field(cls)
-    return (sizes or {}).get(f.metadata["shape"][0], 0) if f is not None else 0
-
-
-def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
-    """Names of the package fields that size an item class's columns."""
-    classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
-    return {f.metadata["shape"][0] for c in classes if (f := _sized_field(c)) is not None}
+    return (_count(f, sizes) or 0) if f is not None else 0
 
 
 def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
-    """Count column name -> the array column it counts (cell2d's ncvert ->
+    """Count field name -> the array field it counts (cell2d's ncvert ->
     icvert)."""
     return {
-        f.metadata["count"]: f for f in cast(type[Record], cls).fields() if f.metadata.get("count")
+        _shape_dim(f): f  # type: ignore[misc]
+        for f in cast(type[Record], cls).fields()
+        if _sized_by_field(cls, f)
     }
 
 
 def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
-    """An array column counted by a package dimension rather than another
-    column (GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1): fixed
+    """An array field counted by a package dimension rather than another
+    field of the record (GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1): fixed
     width, read in place."""
-    count = f.metadata.get("count")
-    if not isinstance(count, str) or not count:
-        return False
-    return count not in attrs.fields_dict(cls) and "(" not in count
+    return _sized_by_package(cls, f) and f is not _sized_field(cls)
 
 
 def count_dim(count: str) -> tuple[str, int]:
-    """Split a dimension count into the dimension and an offset:
+    """Split a dimension into its name and an offset:
     "nseg-1" -> ("nseg", -1)."""
     m = re.fullmatch(r"\s*(\w+)\s*(?:([+-])\s*(\d+))?\s*", count)
     if m is None:
-        raise ValueError(f"invalid count: {count!r}")
+        raise ValueError(f"invalid shape dimension: {count!r}")
     name, sign, k = m.groups()
     return name, (int(k) if sign == "+" else -int(k)) if k else 0
 
 
 def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
-    """How many values a dimension-counted column takes, or None if the
+    """How many values a package-sized field takes, or None if the
     dimension isn't known."""
-    name, offset = count_dim(f.metadata["count"])
+    name, offset = count_dim(f.metadata["shape"][0])
     n = (sizes or {}).get(name)
     return None if n is None else n + offset
 
@@ -96,26 +119,36 @@ def _lookup(values: Mapping[str, Any], name: str) -> Any:
 
 
 def resolve_dim(dim: str, exprs: Mapping[str, str], values: Mapping[str, Any]) -> int | None:
-    """A counting dimension's value: the field of the same name, or as given
-    in ``exprs`` (a component's ``count_dims``), e.g. utl-ts's
-    "len(time_series_names)". None if the field isn't set."""
+    """A sizing dimension's value: the field of the same name (its length, if
+    it holds an array: aux's ``auxiliary``), or as given in ``exprs`` (a
+    component's ``count_dims``), e.g. utl-ts's "len(time_series_names)". None
+    if the field isn't set."""
     expr = exprs.get(dim, dim)
     if m := re.fullmatch(r"len\((\w+)\)", expr):
         v = _lookup(values, m.group(1))
         return None if v is None else len(v)
     v = _lookup(values, expr)
-    return None if v is None else int(v)
+    if v is None:
+        return None
+    return len(v) if hasattr(v, "__len__") else int(v)
+
+
+def package_sized_fields(cls: type) -> list[attrs.Attribute]:
+    """An item class's array fields sized by a package field or dimension."""
+    return [f for f in cast(type[Record], cls).fields() if _sized_by_package(cls, f)]
 
 
 def dim_counted_fields(cls: type) -> list[attrs.Attribute]:
-    """An item class's array columns counted by a package dimension."""
+    """An item class's array fields counted by a package dimension (not
+    the trailing field sized by a package array)."""
     return [f for f in cast(type[Record], cls).fields() if _dim_counted(cls, f)]
 
 
-def counted_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
-    """Names of the package dimensions that count an item class's columns."""
+def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
+    """Names of the package fields and dimensions that size an item class's
+    columns."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
-    return {count_dim(f.metadata["count"])[0] for c in classes for f in dim_counted_fields(c)}
+    return {count_dim(f.metadata["shape"][0])[0] for c in classes for f in package_sized_fields(c)}
 
 
 def _has_boundname_field(cls: type) -> bool:
@@ -172,7 +205,7 @@ def construct_item(item_cls: type, values) -> "Item":
         (
             i
             for i, f in enumerate(fields)
-            if f.metadata.get("shape")
+            if f is _sized_field(item_cls)
             or (f.metadata.get("array") and not _dim_counted(item_cls, f))
             or (
                 (t := _field_type_str(f)) is not None
@@ -232,7 +265,7 @@ def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[
         if f.metadata.get("cellid"):
             ncellids += count
             continue
-        if f.metadata.get("shape") or f.name == "boundname":
+        if f is _sized_field(cls) or f.name == "boundname":
             continue
         if f.metadata.get("optional"):
             continue
@@ -332,7 +365,7 @@ class Item(Record):
     _columns: ClassVar[tuple[str, ...]] = ()
 
     def __attrs_post_init__(self) -> None:
-        """Fill each count column (cell2d's ncvert) from the array it counts,
+        """Fill each count field (cell2d's ncvert) from the array it counts,
         so an item compares equal whether it was built or loaded."""
         columns = attrs.fields_dict(type(self))  # type: ignore[arg-type]
         for count_name, array_field in _counted_fields(type(self)).items():
@@ -456,7 +489,7 @@ class Item(Record):
             if _dim_counted(cls, f):
                 count = _count(f, sizes)
                 if count is None and not f.metadata.get("optional"):
-                    raise ValueError(f"{cls.__name__}.{f.name}: {f.metadata['count']} unknown")
+                    raise ValueError(f"{cls.__name__}.{f.name}: {_shape_dim(f)} unknown")
                 if not count:
                     return
                 if f.metadata.get("cellid"):
@@ -575,7 +608,7 @@ class Item(Record):
                 keyword_skipped = True
             f = array_fields[0]
             end = n - (1 if has_bn_token else 0) - nsized
-            if (count := kwargs.get(f.metadata.get("count", ""))) is not None:
+            if (count := kwargs.get(_shape_dim(f) or "")) is not None:
                 end = min(end, tok_idx + int(count))
             vals: list[Any] = []
             while tok_idx < end:
