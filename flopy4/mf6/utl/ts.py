@@ -22,6 +22,7 @@ class Ts(Package):
     @attrs.define
     class TimeSeriesName(Record):
         _keyword: ClassVar[str] = "names"
+        _aliases: ClassVar[tuple[str, ...]] = ("name",)
         time_series_names: list[str] = attrs.field()
 
     @attrs.define

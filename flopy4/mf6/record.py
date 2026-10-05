@@ -191,6 +191,8 @@ class Record:
 
         skip: list[str] = []
         if kw := cls.keyword():
+            if tokens and str(tokens[0]).lower() in vars(cls).get("_aliases", ()):
+                tokens = [kw, *tokens[1:]]
             skip.append(kw.upper())
         skip.extend(t.upper() for t in vars(cls).get("_extra_tokens", ()))
         if [str(t).upper() for t in tokens[: len(skip)]] == skip:

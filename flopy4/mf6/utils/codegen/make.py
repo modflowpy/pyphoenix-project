@@ -78,6 +78,7 @@ class InnerClassSpec:
     extra_tokens: list[str]
     extra_tokens_repr: str  # pre-formatted Python tuple literal, e.g. '("PRINT_FORMAT",)'
     fields: list[InnerClassFieldSpec]
+    aliases_repr: str = ""  # the keyword's other spellings, formatted likewise
 
 
 @dataclass
@@ -677,9 +678,11 @@ def _build_record_class_specs(
     first = children[0]
     if isinstance(first, KeywordField):
         kw = first.name
+        aliases = first.aliases
         data_children = children[1:]
     else:
         kw = ""
+        aliases = []
         data_children = children
 
     extra_tokens: list[str] = []
@@ -761,6 +764,7 @@ def _build_record_class_specs(
         extra_tokens=extra_tokens,
         extra_tokens_repr=extra_tokens_repr,
         fields=inner_fields,
+        aliases_repr="(" + ", ".join(f'"{a}"' for a in aliases) + ",)" if aliases else "",
     )
     return nested_specs + [this_spec]
 

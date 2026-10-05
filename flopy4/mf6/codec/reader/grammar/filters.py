@@ -16,6 +16,14 @@ def valid_as_union(field: InputField) -> InputField:
     )
 
 
+def keyword_literal(field: InputField) -> str:
+    """A field's keyword as a case-insensitive literal, or an alternation
+    if MF6 accepts other spellings (utl-ts's NAMES or NAME)."""
+    names = [field.name, *getattr(field, "aliases", [])]
+    literals = " | ".join(f'"{n}"i' for n in names)
+    return literals if len(names) == 1 else f"({literals})"
+
+
 def field_type(field: InputField) -> str:
     if isinstance(field, Array):
         if not field.shape or any(split_bound(s)[0] for s in field.shape):

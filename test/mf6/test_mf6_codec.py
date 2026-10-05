@@ -3359,3 +3359,16 @@ def test_ts_sfac_load(tmp_path, line, single, multi):
     assert ts.name == "ts"
     assert (ts.sfacrecord_single.sfacval if ts.sfacrecord_single else None) == single
     assert (ts.sfac.sfacval if ts.sfac else None) == multi
+
+
+@pytest.mark.parametrize("keyword", ["NAMES", "NAME"])
+def test_ts_names_alias_load(tmp_path, keyword):
+    """MF6 takes NAME for NAMES."""
+    from flopy4.mf6.utl.ts import Ts
+
+    path = tmp_path / "a.ts"
+    path.write_text(
+        f"BEGIN ATTRIBUTES\n  {keyword} a b\n  METHODS linear linear\nEND ATTRIBUTES\n"
+        "BEGIN TIMESERIES\n  0.0 1.0 2.0\nEND TIMESERIES\n"
+    )
+    assert Ts.load(path).time_series_name.time_series_names == ["a", "b"]

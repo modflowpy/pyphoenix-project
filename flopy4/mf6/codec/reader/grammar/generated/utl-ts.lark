@@ -27,7 +27,7 @@ attributes_block: "begin"i "attributes"i [_remark] _NL _NL* attributes_fields _N
 timeseries_block: "begin"i "timeseries"i [_remark] _NL _NL* timeseries_fields _NL* "end"i "timeseries"i
 attributes_fields: ((time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | sfacrecord | sfacrecord_single | open_close_redirect) _NL*)*
 timeseries_fields: ((timeseriesdata | open_close_redirect) _NL*)*
-time_series_namerecord: "names"i word+ [_remark] _NL
+time_series_namerecord: ("names"i | "name"i) word+ [_remark] _NL
 interpolation_methodrecord: "methods"i word+ [_remark] _NL
 interpolation_methodrecord_single: "method"i word [_remark] _NL
 sfacrecord: "sfacs"i double+ [_remark] _NL

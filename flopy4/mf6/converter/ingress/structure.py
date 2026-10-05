@@ -704,7 +704,8 @@ def structure_component(
             first = next(iter(inner_cls.fields()), None)
             kw = first.name if first is not None and first.metadata.get("tagged") else ""
         if kw:
-            inner_class_fields[kw.lower()] = (f, inner_cls)
+            for k in (kw, *vars(inner_cls).get("_aliases", ())):
+                inner_class_fields[k.lower()] = (f, inner_cls)
 
     # Identify Item-list fields (packagedata, connectiondata, partitions …) --
     # the field's own type annotation (Optional[list[ItemClass]] or
