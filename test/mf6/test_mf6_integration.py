@@ -5,8 +5,9 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from flopy4.mf6 import Ems, GwfGwe, GwfGwt
+from flopy4.mf6 import Ems
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.exg import Gwfgwe, Gwfgwt
 from flopy4.mf6.gwe import Adv as GweAdv
 from flopy4.mf6.gwe import Cnd as GweCnd
 from flopy4.mf6.gwe import Ctp as GweCtp
@@ -1401,7 +1402,7 @@ def test_gwf_mvr(function_tmpdir):
 def test_gwt_basic(function_tmpdir):
     """1D GWF+GWT coupled test: advection-dispersion transport in a uniform flow field.
 
-    Exercises ic, adv, mst, dsp, cnc packages and the GwfGwt exchange.
+    Exercises ic, adv, mst, dsp, cnc packages and the Gwfgwt exchange.
     """
     sim_name = "gwt_basic"
     gwf_name = "gwf"
@@ -1458,7 +1459,7 @@ def test_gwt_basic(function_tmpdir):
     )
 
     # GWF-GWT exchange
-    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+    Gwfgwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
 
     # GWT model: tracer introduced at left boundary
     gwt_dis = GwtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
@@ -1486,7 +1487,7 @@ def test_gwt_basic(function_tmpdir):
 def test_gwe_basic(function_tmpdir):
     """1D GWF+GWE coupled test: heat transport in a uniform flow field.
 
-    Exercises ic, adv, est, cnd, ctp packages and the GwfGwe exchange.
+    Exercises ic, adv, est, cnd, ctp packages and the Gwfgwe exchange.
     """
     sim_name = "gwe_basic"
     gwf_name = "gwf"
@@ -1543,7 +1544,7 @@ def test_gwe_basic(function_tmpdir):
     )
 
     # GWF-GWE exchange
-    GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
+    Gwfgwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
 
     # GWE model: heat tracer introduced at left boundary
     gwe_dis = GweDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
@@ -1634,7 +1635,7 @@ def test_gwf_buy(function_tmpdir):
         packagedata=[(0, 0.7143, 0.0, gwt_name, "conc")],
     )
 
-    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+    Gwfgwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
 
     gwt_dis = GwtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     gwt = Gwt(parent=sim, dis=gwt_dis, name=gwt_name)
@@ -1727,7 +1728,7 @@ def test_gwf_vsc(function_tmpdir):
         packagedata=[(0, 0.0, 20.0, gwe_name, "temperature")],
     )
 
-    GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
+    Gwfgwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
 
     gwe_dis = GweDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
     gwe = Gwe(parent=sim, dis=gwe_dis, name=gwe_name)
@@ -1991,7 +1992,7 @@ def test_gwt_ssm_sources(function_tmpdir):
     # registered name (e.g. "chd-10") so SSM sources can reference it correctly.
     chd_registered_name = chd.name
 
-    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+    Gwfgwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
 
     # GWT: SSM reads concentration from CHD auxiliary variable
     gwt_dis = GwtDis(nlay=nlay, nrow=nrow, ncol=ncol, delr=1.0, delc=1.0, top=1.0, botm=0.0)
@@ -2331,7 +2332,7 @@ def test_gwt_lkt01(function_tmpdir):
     # Use lak.name so flow_package_name always matches the PNAME written to the nam file.
 
     # GWF-GWT exchange
-    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+    Gwfgwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
 
     # GWT model
     gwt_dis = GwtDis(
@@ -2538,7 +2539,7 @@ def test_gwt_lkt_flow_package_auxiliary_name(function_tmpdir):
         name="LAK-1",
     )
 
-    GwfGwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
+    Gwfgwt(parent=sim, name="gwfgwt", exgmnamea=gwf_name, exgmnameb=gwt_name)
 
     # GWT model
     gwt_dis = GwtDis(
@@ -2743,7 +2744,7 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
         name="LAK-1",
     )
 
-    GwfGwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
+    Gwfgwe(parent=sim, name="gwfgwe", exgmnamea=gwf_name, exgmnameb=gwe_name)
 
     # GWE model
     gwe_dis = GweDis(

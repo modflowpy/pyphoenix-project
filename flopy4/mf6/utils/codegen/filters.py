@@ -894,6 +894,12 @@ def item_class(
     lines.append(f"    class {class_name}(Item):")
     if keyword:
         lines.append(f'        _keyword: ClassVar[str] = "{keyword}"')
+    # Declaring required columns first reorders a row whose optional
+    # columns come before required ones (MVR's mname1 pname1 ...).
+    columns = [col["name"] for col in schema_list]
+    if columns != [col["name"] for col in required + optional]:
+        names = ", ".join(f'"{c}"' for c in columns)
+        lines.append(f"        _columns: ClassVar[tuple[str, ...]] = ({names},)")
     for col in required:
         lines.append(_field_line(col, optional=False))
     for col in optional_non_boundname:

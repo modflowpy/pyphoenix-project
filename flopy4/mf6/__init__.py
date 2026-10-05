@@ -12,7 +12,7 @@ except ImportError:
     MF6_VERSION = "unknown"
 
 # Import submodules to make them accessible via flopy4.mf6.*
-from flopy4.mf6 import gwe, gwf, gwt, prt, simulation, solution, utils
+from flopy4.mf6 import exg, gwe, gwf, gwt, prt, simulation, solution, utils
 from flopy4.mf6._compat import check_mf6_compatibility
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
@@ -21,7 +21,6 @@ from flopy4.mf6.context import Context
 from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.ems import Ems
 from flopy4.mf6.enums import NetCDFFormat
-from flopy4.mf6.exchange import GwfGwe, GwfGwt
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.mf6.simulation import Simulation
@@ -29,6 +28,7 @@ from flopy4.mf6.tdis import Tdis
 from flopy4.uio import DEFAULT_REGISTRY
 
 __all__ = [
+    "exg",
     "gwf",
     "gwt",
     "gwe",
@@ -38,8 +38,6 @@ __all__ = [
     "utils",
     "Ems",
     "NetCDFFormat",
-    "GwfGwe",
-    "GwfGwt",
     "Ims",
     "NetCDFModel",
     "Tdis",

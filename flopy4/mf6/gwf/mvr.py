@@ -15,11 +15,25 @@ class Mvr(Package):
 
     @attrs.define
     class Packages(Item):
+        _columns: ClassVar[tuple[str, ...]] = (
+            "mname",
+            "pname",
+        )
         pname: Union[float, str] = field()
         mname: Optional[Union[float, str]] = field(default=None, optional=True)
 
     @attrs.define
     class StressPeriodData(Item):
+        _columns: ClassVar[tuple[str, ...]] = (
+            "mname1",
+            "pname1",
+            "id1",
+            "mname2",
+            "pname2",
+            "id2",
+            "mvrtype",
+            "value",
+        )
         pname1: Union[float, str] = field()
         id1: int = field(index=True)
         pname2: Union[float, str] = field()

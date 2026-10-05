@@ -940,6 +940,7 @@ def _generated_imports(
         "Package": "from flopy4.mf6.package import Package",
         "Solution": "from flopy4.mf6.solution import Solution",
         "Context": "from flopy4.mf6.context import Context",
+        "Exchange": "from flopy4.mf6.exchange import Exchange",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     for mixin in mixins or []:
@@ -1175,6 +1176,8 @@ def _base_class(component: Component) -> str:
         return "Context"
     if component.name.split("-")[0] == _SLN_PREFIX:
         return "Solution"
+    if getattr(component, "subtype", None) == "exchange":
+        return "Exchange"
     return "Package"
 
 

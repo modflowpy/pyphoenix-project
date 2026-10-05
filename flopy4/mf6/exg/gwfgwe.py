@@ -3,9 +3,9 @@ from typing import ClassVar
 
 import attrs
 
-from flopy4.mf6.package import Package
+from flopy4.mf6.exchange import Exchange
 
 
 @attrs.define(kw_only=True, slots=False)
-class Gwfgwe(Package):
+class Gwfgwe(Exchange):
     dfn_name: ClassVar[str] = "exg-gwfgwe"
