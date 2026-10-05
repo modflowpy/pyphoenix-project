@@ -1152,6 +1152,8 @@ def _child_field_spec(
         keyword = next(m.name for m in members if isinstance(m, KeywordField))
         direction = next(m.direction for m in members if isinstance(m, File))
         args += f', keyword="{keyword}", direction="{direction}"'
+    elif isinstance(f, File) and not f.mode_keyword:  # KEYWORD <file>, e.g. TDIS6
+        args += f', keyword="{f.name}"'
     if filters.is_list_field(f):
         annotation, call = f"list[{cls}]", f"child({args}, default=attrs.Factory(list))"
     elif f.optional:

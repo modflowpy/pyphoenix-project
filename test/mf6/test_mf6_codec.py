@@ -3375,8 +3375,8 @@ def test_ts_names_alias_load(tmp_path, keyword):
 
 
 def test_ats_hpc_children_load_and_write(tmp_path):
-    """TDIS's ATS6 and the simulation's HPC6 files load as children and are
-    written back."""
+    """TDIS's ATS6 and the simulation's HPC6 and TDIS6 files load as children
+    and are written back."""
     from flopy4.mf6.simulation import Simulation
 
     src, out = tmp_path / "src", tmp_path / "out"
@@ -3403,7 +3403,9 @@ def test_ats_hpc_children_load_and_write(tmp_path):
     out.mkdir()
     sim.workspace = out
     sim.write()
-    assert "HPC6 FILEIN sim.hpc" in (out / "mfsim.nam").read_text()
+    simnam = (out / "mfsim.nam").read_text()
+    assert "HPC6 FILEIN sim.hpc" in simnam
+    assert "TDIS6 sim.tdis\n" in simnam
     assert "ATS6 FILEIN sim.ats" in (out / "sim.tdis").read_text()
     reloaded = Simulation.load(out / "mfsim.nam")
     assert [r.dt0 for r in reloaded.tdis.ats.perioddata] == [0.5]

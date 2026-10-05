@@ -54,7 +54,7 @@ class Simulation(SimulationMethods, Context):
         longname="print input to listing file",
     )
     hpc: Optional[Hpc] = child(block="options", keyword="hpc6", direction="in")
-    tdis: Tdis = child(block="timing", default=attrs.Factory(Tdis))
+    tdis: Tdis = child(block="timing", keyword="tdis6", default=attrs.Factory(Tdis))
     models: dict[str, Model] = child(block="models", default=attrs.Factory(dict))
     exchanges: dict[str, Exchange] = child(block="exchanges", default=attrs.Factory(dict))
     mxiter: Optional[int] = field(
