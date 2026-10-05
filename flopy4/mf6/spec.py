@@ -24,7 +24,7 @@ def _recount(count: str):
     of the array being assigned."""
 
     def hook(instance, attribute, value):
-        if value is not None:
+        if value is not None and count in attrs.fields_dict(type(instance)):
             object.__setattr__(instance, count, len(value))
         return value
 

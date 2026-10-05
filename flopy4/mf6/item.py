@@ -323,7 +323,10 @@ class Item(Record):
     def __attrs_post_init__(self) -> None:
         """Fill each count column (cell2d's ncvert) from the array it counts,
         so an item compares equal whether it was built or loaded."""
+        columns = attrs.fields_dict(type(self))  # type: ignore[arg-type]
         for count_name, array_field in _counted_fields(type(self)).items():
+            if count_name not in columns:
+                continue  # counted by a package dimension, not a column
             n = len(getattr(self, array_field.name))
             if (given := getattr(self, count_name)) is None:
                 setattr(self, count_name, n)
