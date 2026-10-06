@@ -140,6 +140,7 @@ class TestFilters:
             ("sln-ims", "Ims"),
             ("sim-tdis", "Tdis"),
             ("gwf-chd", "Chd"),
+            ("gwf-nam", "Gwf"),
         ],
     )
     def test_class_name(self, dfn_name, expected):
@@ -174,6 +175,7 @@ class TestFilters:
             ("gwf-ic", "gwf/ic.py"),
             ("sln-ims", "ims.py"),
             ("sim-tdis", "tdis.py"),
+            ("gwf-nam", "gwf/__init__.py"),
         ],
     )
     def test_output_path(self, dfn_name, rel_path):
@@ -393,6 +395,46 @@ def test_simulation_spec(all_dfns):
     assert types["solutiongroup"] == "dict[str, Solution]"
     assert not spec.item_classes
     assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
+
+
+def test_model_spec(all_dfns):
+    root = Path("/fake/mf6")
+    spec = build_component_spec(all_dfns["gwt-nam"], root=root, dfns=all_dfns)
+    assert spec.class_name == "Gwt"
+    assert spec.base_class == "Model"
+    assert spec.mixins == ["ModelMethods"]
+    assert spec.outpath == root / "gwt" / "__init__.py"
+    types = {f.py_name: f.type_annotation for f in spec.fields}
+    # one discretization, first; repeating packages are lists
+    assert next(iter(types)) == "list_"
+    packages = [f.py_name for f in spec.fields if f.spec_call.startswith("child(")]
+    assert packages[0] == "dis"
+    assert types["dis"] == "Optional[Union[Dis, Disu, Disv]]"
+    assert types["fmi"] == "Optional[Fmi]"
+    assert types["ist"] == "list[Ist]"
+    assert types["api"] == "list[Api]"
+    # packages without a class yet are left out
+    assert not {"mwt", "sft", "uzt"} & set(types)
+    assert "netcdf_input_file" in types
+    assert "packages" not in types
+    assert spec.exports[0] == "Gwt"
+    assert {"Dis", "Disu", "Disv", "Fmi", "Ist"} <= set(spec.exports)
+
+
+def test_model_spec_shares_variant_field(all_dfns):
+    spec = build_component_spec(all_dfns["gwf-nam"], root=Path("/fake"), dfns=all_dfns)
+    types = {f.py_name: f.type_annotation for f in spec.fields}
+    assert types["chd"] == "list[Union[Chd, Chdg]]"
+    assert types["rch"] == "list[Union[Rch, Rcha]]"
+    assert types["csub"] == "Optional[Csub]"
+    assert types["newtonoptions"] == "Optional[Newtonoptions]"
+    calls = {f.py_name: f.spec_call for f in spec.fields}
+    assert "converter=Newtonoptions.from_flag" in calls["newtonoptions"]
+    # NPF's other records have required members
+    npf = build_component_spec(all_dfns["gwf-npf"], root=Path("/fake"), dfns=all_dfns)
+    flags = {f.py_name for f in npf.fields if ".from_flag" in f.spec_call}
+    assert flags == {"xt3doptions", "cvoptions"}
+    assert spec.mixins == ["GwfMethods", "ModelMethods"]
 
 
 # Layer 2: Solution-tier ComponentSpec tests

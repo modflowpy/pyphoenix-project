@@ -621,20 +621,35 @@ def test_loads_block_header_remark():
     assert raw == {"PERIOD 1": [[1, "RATE", -1.0]]}
 
 
-def test_gwf_list_option_name():
+def test_record_flag_options():
+    """A record that's a keyword and its options, all optional, can be
+    given as a bool: True is the bare record, False leaves it out."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
-    from flopy4.mf6.gwf import Gwf
+    from flopy4.mf6.gwf import Gwf, Npf
 
-    text = dumps(unstructure_component(Gwf(name="m", list="m.lst")))
-    assert " LIST m.lst" in text
-    assert "_LIST" not in text
+    gwf = Gwf(name="m", newtonoptions=True)
+    assert gwf.newtonoptions == Gwf.Newtonoptions()
+    assert "\n NEWTON\n" in dumps(unstructure_component(gwf))
+    gwf.newtonoptions = False
+    assert gwf.newtonoptions is None
+    assert "NEWTON" not in dumps(unstructure_component(gwf))
+    gwf.newtonoptions = Gwf.Newtonoptions(under_relaxation=True)
+    assert "NEWTON UNDER_RELAXATION" in dumps(unstructure_component(gwf))
+
+    npf = Npf(xt3doptions=True, cvoptions=np.True_, k=1.0)
+    text = dumps(unstructure_component(npf))
+    assert "\n XT3D\n" in text
+    assert "\n VARIABLECV\n" in text
 
 
-def test_gwt_list_option_name():
+@pytest.mark.parametrize("model", ["gwf", "gwt", "gwe", "prt"])
+def test_model_list_option_name(model):
+    import importlib
+
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
-    from flopy4.mf6.gwt import Gwt
 
-    text = dumps(unstructure_component(Gwt(name="m", list_="m.lst")))
+    cls = getattr(importlib.import_module(f"flopy4.mf6.{model}"), model.capitalize())
+    text = dumps(unstructure_component(cls(name="m", list_="m.lst")))
     assert " LIST m.lst" in text
     assert "LIST_" not in text
 

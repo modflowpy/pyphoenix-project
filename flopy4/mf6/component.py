@@ -546,10 +546,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             in terms of fields (flat) or blocks (nested).
         """
         # Exclude any field literally named "parent" or "_parent" at every
-        # recursion level, not just this component's own: e.g.
-        # Gwf.Output.parent is a genuine back-reference to the owning Gwf,
-        # unrelated to Component._parent, but recursing into it the same
-        # way would infinitely loop (output -> parent -> output -> ...).
+        # recursion level, not just this component's own: a back-reference
+        # to the owner would loop forever (child -> parent -> child -> ...).
         data = attrs.asdict(
             self, recurse=True, filter=lambda attr, value: attr.name not in ("parent", "_parent")
         )

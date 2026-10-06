@@ -1992,7 +1992,7 @@ def test_child_coerce_time():
 def test_child_coerce_wrong_type():
     with pytest.raises(TypeError, match="Tdis"):
         Simulation(tdis="nope")
-    with pytest.raises(TypeError, match="Dis or Disv or Disu"):
+    with pytest.raises(TypeError, match="Dis or Disu or Disv"):
         Gwf(dis=42)
     with pytest.raises(TypeError, match="Chd or Chdg"):
         Gwf(chd=[42])
@@ -2090,3 +2090,59 @@ def test_disv_array_inputs_conflict():
         Disv(cell2d=[], cell2ddata=[])
     with pytest.raises(ValueError, match="xv and yv"):
         Disv(xv=[0.0])
+
+
+# ---------------------------------------------------------------------------
+# generated model classes
+# ---------------------------------------------------------------------------
+
+
+def _gwt_sim(workspace, **packages):
+    from flopy4.mf6.gwt import Dis as GwtDis
+    from flopy4.mf6.gwt import Gwt
+
+    gwt = Gwt(dis=GwtDis(nlay=1, nrow=1, ncol=3, top=1.0, botm=[0.0]), **packages)
+    return Simulation(
+        name="sim",
+        workspace=workspace,
+        tdis=Tdis(nper=1),
+        models={"gwt": gwt},
+        solutiongroup={"ims": Ims()},
+    )
+
+
+def test_gwt_fmi_ist_api_round_trip(function_tmpdir):
+    """GWT's FMI, IST and API come from its name file, IST and API as lists."""
+    from flopy4.mf6.gwt import Api, Fmi, Ist
+
+    fmi = Fmi(
+        flow_imbalance_correction=True,
+        packagedata=[Fmi.Packagedata(flowtype="GWFHEAD", fname=Path("gwf.hds"))],
+    )
+    packages = [Ist(porosity=0.1 * i, volfrac=0.2, zetaim=0.3) for i in (1, 2)]
+    sim = _gwt_sim(function_tmpdir, fmi=fmi, ist=packages, api=[Api(), Api()])
+    sim.write()
+
+    text = (function_tmpdir / "gwt.nam").read_text()
+    assert "FMI6" in text
+    assert text.count("IST6") == 2
+    assert text.count("API6") == 2
+
+    gwt = Simulation.load(function_tmpdir / "mfsim.nam").models["gwt"]
+    assert gwt.fmi.flow_imbalance_correction
+    assert [r.flowtype for r in gwt.fmi.packagedata] == ["GWFHEAD"]
+    assert [r.fname for r in gwt.fmi.packagedata] == [Path("gwf.hds")]
+    assert len(gwt.ist) == 2
+    np.testing.assert_allclose(gwt.ist[1].porosity, 0.2)
+    assert len(gwt.api) == 2
+
+
+def test_model_unmatched_package_warns(function_tmpdir):
+    """A name-file package no field takes, like one flopy4 has no class
+    for yet, warns instead of vanishing."""
+    _gwt_sim(function_tmpdir).write()
+    nam = function_tmpdir / "gwt.nam"
+    nam.write_text(nam.read_text().replace("END PACKAGES", " MWT6 gwt.mwt mwt\nEND PACKAGES"))
+
+    with pytest.warns(UserWarning, match="MWT6"):
+        Simulation.load(function_tmpdir / "mfsim.nam")

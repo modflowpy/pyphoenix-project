@@ -179,6 +179,8 @@ class ComponentSpec:
     observations: dict[str, tuple[tuple[str, ...], ...]] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
+    # A model subpackage's __all__: the model and its packages
+    exports: list[str] = dc_field(default_factory=list)
 
 
 # Column-schema-dict builders
@@ -387,6 +389,15 @@ def _dfn_type_str(f: FieldV3) -> str:
 # Context builders
 
 
+# Fields named for their keyword rather than their DFN name: the model name
+# files' NetCDF records (NETCDF_MESH2D FILEOUT <file>, NETCDF FILEIN <file>).
+_PY_NAMES = {
+    "nc_mesh2d_filerecord": "netcdf_mesh2d_file",
+    "nc_structured_filerecord": "netcdf_structured_file",
+    "nc_filerecord": "netcdf_input_file",
+}
+
+
 def _build_field_spec(
     f: FieldV3, block_name: str, linked_dims: frozenset[str] | set[str] = frozenset()
 ) -> FieldSpec:
@@ -395,7 +406,9 @@ def _build_field_spec(
     # (e.g. head_filerecord → head_file, budget_filerecord → budget_file).
     # Compound records get the same treatment via _strip_record_words in
     # build_component_spec; this keeps the two paths consistent.
-    if filters.is_file_record(f) or filters.is_file_list(f):
+    if f.name in _PY_NAMES:
+        py_name = _PY_NAMES[f.name]
+    elif filters.is_file_record(f) or filters.is_file_list(f):
         py_name = filters.safe_name("_".join(_strip_record_words(f.name)))
     else:
         py_name = filters.safe_name(f.name)
@@ -932,6 +945,7 @@ def _generated_imports(
     item_classes: "list[ItemClassSpec] | None" = None,
     has_derived_dims: bool = False,
     has_optional_child: bool = False,
+    has_union_child: bool = False,
     extra_imports: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
@@ -954,7 +968,7 @@ def _generated_imports(
     # Union[float, str] is used by item_class() for time_series and np.object_ columns.
     # Check every generated Item class's columns.
     _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
-    has_union = any(
+    has_union = has_union_child or any(
         col.get("time_series") or col.get("dtype") == "np.object_"
         for col in _all_schema_cols
         if col.get("role") not in ("keystring_value", "boundname", "file")
@@ -996,6 +1010,7 @@ def _generated_imports(
         "Solution": "from flopy4.mf6.solution import Solution",
         "Context": "from flopy4.mf6.context import Context",
         "Exchange": "from flopy4.mf6.exchange import Exchange",
+        "Model": "from flopy4.mf6.model import Model",
     }
     flopy4: list[str] = [_base_imports.get(base_class, _base_imports["Package"])]
     for mixin in mixins or []:
@@ -1050,8 +1065,13 @@ _GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
 _DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods", *_GRID_DIMS]
 _DISU = ["flopy4.mf6.disu_methods:DisuMethods", *_GRID_DIMS]
+_MODEL = ["flopy4.mf6.model_methods:ModelMethods"]
 MIXINS: dict[str, list[str]] = {
     "sim-nam": ["flopy4.mf6.simulation_methods:SimulationMethods"],
+    "gwf-nam": ["flopy4.mf6.gwf_methods:GwfMethods", *_MODEL],
+    "gwt-nam": _MODEL,
+    "gwe-nam": _MODEL,
+    "prt-nam": _MODEL,
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
     # Grid packages provide the model's dimensions. Which components do
@@ -1134,7 +1154,15 @@ def _has_class(target: str, link: File, dfns: Mapping[str, Component] | None) ->
     if link.component_ftype is not None:
         c = dfns[target] if dfns is not None else None
         return c is not None and bool({c.type, getattr(c, "subtype", None)} & set(_CHILD_BASES))
-    return importlib.util.find_spec(_component_module(target)) is not None
+    return _has_module(target)
+
+
+def _has_module(target: str) -> bool:
+    """Whether a component's generated module exists."""
+    try:
+        return importlib.util.find_spec(_component_module(target)) is not None
+    except ModuleNotFoundError:  # no subpackage either (chf-dis)
+        return False
 
 
 def _child_link(
@@ -1150,6 +1178,8 @@ def _child_link(
     if not file_only and link.component_ftype is None:
         return None
     targets = resolve_link(component, path, link, dfns)
+    if filters.is_model_nam(component.name) and link.component_ftype is not None:
+        return link, targets  # a field per package type, see _model_package_specs
     if not all(_has_class(t, link, dfns) for t in targets):
         return None
     return link, targets
@@ -1157,7 +1187,8 @@ def _child_link(
 
 def _component_module(name: str) -> str:
     """The generated module for a component, e.g. utl-ncf -> flopy4.mf6.utl.ncf."""
-    return ".".join(("flopy4", "mf6", *filters.output_path(name, Path()).with_suffix("").parts))
+    parts = filters.output_path(name, Path()).with_suffix("").parts
+    return ".".join(("flopy4", "mf6", *(p for p in parts if p != "__init__")))
 
 
 # flopy4 base classes of hand-written components, by DFN type or subtype.
@@ -1225,10 +1256,59 @@ def _child_field_spec(
     ), [f"from {_component_module(target)} import {cls}"]
 
 
+# Package types sharing one model field: a model has one discretization.
+_SLOTS = {"DIS6": "dis", "DISV6": "dis", "DISU6": "dis"}
+
+
+def _model_package_specs(
+    component: Component, block_name: str, targets: list[str], dfns: Mapping[str, Component]
+) -> tuple[list[FieldSpec], list[str]]:
+    """A model's package fields, one per package type in its name file's
+    packages block, and their imports. Variants sharing a type (CHD and
+    CHDG) share a field typed as their union; a type MF6 reads more than
+    once (``multi``) is a list. Packages without a generated class are left
+    out until they have one. The discretization comes first."""
+    slots: dict[str, list[str]] = {}
+    for t in targets:
+        if not _has_module(t):
+            continue
+        ftype = dfns[t].ftype
+        if ftype is None:
+            raise ValueError(f"{component.name}: package {t} has no ftype")
+        name = _SLOTS.get(ftype, ftype.lower().removesuffix("6"))
+        slots.setdefault(name, []).append(t)
+    if "dis" in slots:
+        slots = {"dis": slots.pop("dis"), **slots}
+    specs, imports = [], []
+    for name, members in slots.items():
+        if len({bool(dfns[t].multi) for t in members}) > 1:
+            raise ValueError(f"{component.name}.{name}: {members} disagree on multi")
+        classes = [filters.class_name(t) for t in members]
+        imports += [f"from {_component_module(t)} import {c}" for t, c in zip(members, classes)]
+        cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
+        if dfns[members[0]].multi:
+            annotation = f"list[{cls}]"
+            call = f'child(block="{block_name}", default=attrs.Factory(list))'
+        else:
+            annotation, call = f"Optional[{cls}]", f'child(block="{block_name}")'
+        specs.append(
+            FieldSpec(
+                dfn_name=name,
+                py_name=filters.safe_name(name),
+                type_annotation=annotation,
+                spec_call=call,
+                generatable=True,
+            )
+        )
+    return specs, imports
+
+
 def _base_class(component: Component) -> str:
     """Determine the Python base class for a component."""
     if component.type == "simulation":
         return "Context"
+    if filters.is_model_nam(component.name):
+        return "Model"
     if component.name.split("-")[0] == _SLN_PREFIX:
         return "Solution"
     if getattr(component, "subtype", None) == "exchange":
@@ -1350,8 +1430,15 @@ def build_component_spec(
     for block_name, f in all_fields:
         if f.name in child_fields:
             link, targets = links[f.name]
-            spec, child_imports = _child_field_spec(component, f, block_name, link, targets, dfns)
-            (prefix_specs if block_name in ("options", "dimensions") else data_specs).append(spec)
+            if filters.is_model_nam(component.name) and link.component_ftype is not None:
+                assert dfns is not None  # resolve_link needed them
+                specs, child_imports = _model_package_specs(component, block_name, targets, dfns)
+            else:
+                spec, child_imports = _child_field_spec(
+                    component, f, block_name, link, targets, dfns
+                )
+                specs = [spec]
+            (prefix_specs if block_name in ("options", "dimensions") else data_specs).extend(specs)
             extra_imports.extend(child_imports)
             continue
 
@@ -1458,7 +1545,12 @@ def build_component_spec(
             inner_class_specs.extend(record_specs)
             outer_spec = record_specs[-1]
             clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
-            inner_spec_call = _ml_field(metadata={"block": block_name})
+            # a keyword and its options, all optional, can be given as a bool
+            flag = bool(outer_spec.keyword) and all(c.optional for c in outer_spec.fields)
+            inner_spec_call = _ml_field(
+                metadata={"block": block_name},
+                converter=f"{outer_spec.class_name}.from_flag" if flag else None,
+            )
             target.append(
                 FieldSpec(
                     dfn_name=f.name,
@@ -1735,10 +1827,28 @@ def build_component_spec(
             and "Optional[" in fs.type_annotation
             for fs in field_specs
         ),
+        has_union_child=any(
+            fs.spec_call.startswith("child(") and "Union[" in fs.type_annotation
+            for fs in field_specs
+        ),
         extra_imports=[
             *extra_imports,
             *(["from flopy4.mf6.block import Block"] if block_classes else []),
         ],
+    )
+
+    # a model's subpackage exports its packages
+    _exports = (
+        [
+            filters.class_name(component.name),
+            *sorted(
+                line.rpartition(" import ")[2]
+                for line in extra_imports
+                if line.startswith(f"from flopy4.mf6.{filters.model_abbr(component.name)}.")
+            ),
+        ]
+        if filters.is_model_nam(component.name)
+        else []
     )
 
     computed_field_specs = (
@@ -1770,6 +1880,7 @@ def build_component_spec(
         },
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
+        exports=_exports,
     )
 
 

@@ -70,6 +70,13 @@ def model_abbr(dfn_name: str) -> str | None:
 _NAMES = {"sim-nam": "simulation"}
 
 
+def is_model_nam(dfn_name: str) -> bool:
+    """Whether a DFN is a model's name file, which becomes the model class
+    in its subpackage's ``__init__.py`` (gwf-nam -> flopy4.mf6.gwf.Gwf)."""
+    prefix, _, suffix = dfn_name.partition("-")
+    return suffix == "nam" and prefix not in _ROOT_PREFIXES
+
+
 def pkg_abbr(dfn_name: str) -> str:
     """Return the package suffix of a DFN name.
 
@@ -78,7 +85,10 @@ def pkg_abbr(dfn_name: str) -> str:
     "gwf-ic"  -> "ic"
     "sln-ims" -> "ims"
     "sim-nam" -> "simulation"
+    "gwf-nam" -> "gwf"
     """
+    if is_model_nam(dfn_name):
+        return dfn_name.split("-")[0]
     return _NAMES.get(dfn_name, dfn_name.split("-")[-1])
 
 
@@ -89,6 +99,7 @@ def class_name(dfn_name: str) -> str:
     --------
     "gwf-ic"  -> "Ic"
     "sln-ims" -> "Ims"
+    "gwf-nam" -> "Gwf"
     """
     return pkg_abbr(dfn_name).capitalize()
 
@@ -107,6 +118,8 @@ def output_path(dfn_name: str, root: Path) -> Path:
     """Compute the output file path for a DFN's generated module."""
     abbr = model_abbr(dfn_name)
     mod = module_name(dfn_name)
+    if is_model_nam(dfn_name):
+        return root / mod / "__init__.py"
     if abbr is None:
         return root / f"{mod}.py"
     return root / abbr / f"{mod}.py"

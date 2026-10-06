@@ -495,8 +495,15 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     model_prefix = cls.__name__.lower() if issubclass(cls, Model) else None
 
     fields_by_block: dict[str, list] = {}
+    # Blocks with other fields too. In the rest, every row names a child (a
+    # model's packages, the simulation's models), and a row no field takes,
+    # as for a package flopy4 has no class for yet, warns.
+    mixed: set[str] = set()
     for f in attrs.fields(cls):  # type: ignore[arg-type]
-        spec = child_field_candidates(f)
+        spec = child_field_candidates(f) if f.metadata.get("child") else None
+        if spec is None or f.metadata.get("_keyword"):
+            if (block := f.metadata.get("block")) is not None:
+                mixed.add(block)
         if spec is None:
             continue
         block_name = f.metadata.get("block")
@@ -556,6 +563,15 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
 
                 resolved.append((row, target_cls, child_name, kind))
                 break
+            else:
+                if block_name in mixed:
+                    continue
+                warnings.warn(
+                    f"{cls.__name__}: no field takes {block_name} entry "
+                    f"{str(row[0]).upper()} ({row[1] if len(row) > 1 else ''}), skipped",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         resolved.sort(key=lambda r: 0 if issubclass(r[1], DimensionProvider) else 1)
 

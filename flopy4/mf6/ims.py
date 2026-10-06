@@ -56,6 +56,7 @@ class Ims(Solution):
     )
     no_ptc: Optional[NoPtc] = field(
         default=None,
+        converter=NoPtc.from_flag,
         block="options",
     )
     ats_outer_maximum_fraction: Optional[float] = field(

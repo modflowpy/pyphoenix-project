@@ -80,6 +80,7 @@ class Gwfgwf(Exchange):
     )
     cvoptions: Optional[Cvoptions] = field(
         default=None,
+        converter=Cvoptions.from_flag,
         block="options",
     )
     newton: bool = field(

@@ -12,6 +12,14 @@
 {% for line in spec.imports.flopy4 %}
 {{ line }}
 {% endfor %}
+{% if spec.exports %}
+
+__all__ = [
+{% for name in spec.exports %}
+    "{{ name }}",
+{% endfor %}
+]
+{% endif %}
 
 
 @attrs.define(kw_only=True, slots=False)
