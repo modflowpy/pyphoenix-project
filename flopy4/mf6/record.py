@@ -18,6 +18,7 @@ from pathlib import Path, PurePath
 from typing import Any, Union, cast, get_args, get_origin
 
 import attrs
+import numpy as np
 
 
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
@@ -146,6 +147,15 @@ class Record:
     @classmethod
     def keyword(cls: type["Record"]) -> str:
         return vars(cls).get("_keyword", "")
+
+    @classmethod
+    def from_flag(cls, value: "Record | bool | None") -> "Record | None":
+        """Convert a record that's a keyword and its options, all optional
+        (NPF's ``XT3D [RHS]``): True is the bare record, False leaves it
+        out, and anything else is kept as given."""
+        if isinstance(value, (bool, np.bool_)):
+            return cls() if value else None
+        return value
 
     def to_tokens(self) -> tuple:
         cls = type(self)

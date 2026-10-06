@@ -621,6 +621,27 @@ def test_loads_block_header_remark():
     assert raw == {"PERIOD 1": [[1, "RATE", -1.0]]}
 
 
+def test_record_flag_options():
+    """A record that's a keyword and its options, all optional, can be
+    given as a bool: True is the bare record, False leaves it out."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Gwf, Npf
+
+    gwf = Gwf(name="m", newtonoptions=True)
+    assert gwf.newtonoptions == Gwf.Newtonoptions()
+    assert "\n NEWTON\n" in dumps(unstructure_component(gwf))
+    gwf.newtonoptions = False
+    assert gwf.newtonoptions is None
+    assert "NEWTON" not in dumps(unstructure_component(gwf))
+    gwf.newtonoptions = Gwf.Newtonoptions(under_relaxation=True)
+    assert "NEWTON UNDER_RELAXATION" in dumps(unstructure_component(gwf))
+
+    npf = Npf(xt3doptions=True, cvoptions=np.True_, k=1.0)
+    text = dumps(unstructure_component(npf))
+    assert "\n XT3D\n" in text
+    assert "\n VARIABLECV\n" in text
+
+
 @pytest.mark.parametrize("model", ["gwf", "gwt", "gwe", "prt"])
 def test_model_list_option_name(model):
     import importlib
