@@ -375,7 +375,7 @@ def test_param_mesh():
 
 
 def _welg_chdg_model():
-    from flopy4.mf6.constants import FILL_DNODATA as ND
+    from flopy4.mf6.constants import FILL_DNODATA as NODATA
     from flopy4.mf6.gwf import Chdg, Dis, Gwf, Welg
     from flopy4.mf6.simulation import Simulation
     from flopy4.mf6.utils.time import Time
@@ -385,10 +385,18 @@ def _welg_chdg_model():
     Welg(
         parent=gwf,
         auxiliary=["a1", "a2"],
-        q={0: np.array([-1.0, ND, ND, ND])},
-        aux={0: {"a1": np.array([1.0, ND, ND, ND]), "a2": np.array([2.0, ND, ND, ND])}},
+        q={0: np.array([-1.0, NODATA, NODATA, NODATA])},
+        aux={
+            0: {
+                "a1": np.array([1.0, NODATA, NODATA, NODATA]),
+                "a2": np.array([2.0, NODATA, NODATA, NODATA]),
+            }
+        },
     )
-    Chdg(parent=gwf, head={0: np.array([1.0, 2.0, ND, ND]), 3: np.array([3.0, 4.0, ND, ND])})
+    Chdg(
+        parent=gwf,
+        head={0: np.array([1.0, 2.0, NODATA, NODATA]), 3: np.array([3.0, 4.0, NODATA, NODATA])},
+    )
     return gwf
 
 
@@ -397,7 +405,7 @@ def test_from_model_aux_variable_per_name():
     a layered mesh. Periods not given are filled."""
     import pytest
 
-    from flopy4.mf6.constants import FILL_DNODATA as ND
+    from flopy4.mf6.constants import FILL_DNODATA as NODATA
     from flopy4.mf6.netcdf import NetCDFFormat
 
     gwf = _welg_chdg_model()
@@ -407,7 +415,7 @@ def test_from_model_aux_variable_per_name():
         var = ds[f"wel0_{name}"]
         assert var.attrs["modflow_iaux"] == n + 1
         assert var.values[0].ravel()[0] == n + 1.0
-        assert (var.values[1] == ND).all()
+        assert (var.values[1] == NODATA).all()
 
     with pytest.warns(UserWarning, match="past NPER"):
         ds = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH).to_xarray()
