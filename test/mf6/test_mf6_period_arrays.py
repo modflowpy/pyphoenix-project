@@ -214,10 +214,14 @@ def test_tas_reference_needs_time_series_field():
         Welg(q={0: "qseries"})
 
 
-def test_tas_reference_must_name_a_series(function_tmpdir):
+def test_tas_reference_must_name_a_series(function_tmpdir, monkeypatch):
     """Writing checks that each reference names a series the package's
     TAS6 files define, in any case, as MF6 needs."""
     from flopy4.mf6.utl.tas import Tas
+
+    # a package written on its own writes its children's files relative
+    # to the working directory
+    monkeypatch.chdir(function_tmpdir)
 
     def tas(name):
         return Tas(
