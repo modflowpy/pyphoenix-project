@@ -2,7 +2,7 @@ from os import PathLike
 from pathlib import Path
 
 import jinja2
-from modflow_devtools.dfns.schema import Array, Block, Component, List, Union
+from modflow_devtools.dfns.schema import Array, Block, Component, List, Record, Union
 
 from flopy4.mf6.codec.reader.grammar import filters
 
@@ -29,7 +29,10 @@ def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]
     all_fields = {}
 
     for block_name, block in blocks.items():
-        has_index = block.header is not None
+        header = block.header.field if block.header is not None else None
+        has_index = header is not None and not isinstance(header, Record)
+        if isinstance(header, Record):
+            all_fields[header.name] = header
         recarrays = []
         standalone_fields = []
 
@@ -62,6 +65,7 @@ def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]
             {
                 "name": block_name,
                 "has_index": has_index,
+                "header": header.name if isinstance(header, Record) else None,
                 "standalone_fields": standalone_fields,
                 "recarrays": recarrays,
                 "redirect": not bare_array,

@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 
 from flopy4.attrs_xarray import child_field_candidates
+from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
@@ -238,6 +239,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                     else []
                 )
                 spd_period.setdefault(kper_int, []).extend(rows)
+            continue
+
+        # blocks repeating under a record header (OBS's CONTINUOUS), one per
+        # header: list[Block]
+        if (block_cls := block_list_type(f.type)) is not None:
+            _, list_name, _ = block_cls.parts()
+            for block in field_value:
+                key = " ".join([block_name, *map(str, block.header_tokens())])
+                blocks[key] = {list_name: _rows_to_tuples(getattr(block, list_name))}
             continue
 
         if isinstance(field_value, dict):

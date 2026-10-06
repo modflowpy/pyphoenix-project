@@ -40,7 +40,8 @@ cell_averaging_harmonic: "harmonic"i
 cell_averaging_logarithmic: "logarithmic"i
 cell_averaging_amt_lmk: "amt-lmk"i
 
-cvoptions: "variablecv"i ["dewatered"i] [_remark] _NL
+cvoptions: "variablecv"i [cvoptions_dewatered] [_remark] _NL
+cvoptions_dewatered: "dewatered"i
 newton: "newton"i  [_remark] _NL
 xt3d: "xt3d"i  [_remark] _NL
 gnc_filerecord: "gnc6"i "filein"i word [_remark] _NL

@@ -8,12 +8,52 @@ from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
 
 @attrs.define(kw_only=True, slots=False)
 class Csub(Package):
     dfn_name: ClassVar[str] = "gwf-csub"
+
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "coarse-compaction": (("cellid",),),
+        "coarse-csub": (("cellid",),),
+        "coarse-theta": (("cellid",),),
+        "coarse-thickness": (("cellid",),),
+        "compaction-cell": (("cellid",),),
+        "csub": (("index",), ("string",)),
+        "csub-cell": (("cellid",),),
+        "delay-compaction": (("index", "index"),),
+        "delay-estress": (("index", "index"),),
+        "delay-flowbot": (("index",), ("string",)),
+        "delay-flowtop": (("index",), ("string",)),
+        "delay-gstress": (("index", "index"),),
+        "delay-head": (("index", "index"),),
+        "delay-preconstress": (("index", "index"),),
+        "delay-theta": (("index", "index"),),
+        "delay-thickness": (("index", "index"),),
+        "elastic-compaction": (("index",),),
+        "elastic-compaction-cell": (("cellid",),),
+        "elastic-csub": (("index",), ("string",)),
+        "estress-cell": (("cellid",),),
+        "gstress-cell": (("cellid",),),
+        "inelastic-compaction": (("index",),),
+        "inelastic-compaction-cell": (("cellid",),),
+        "inelastic-csub": (("index",), ("string",)),
+        "interbed-compaction": (("index",),),
+        "interbed-compaction-pct": (("index",),),
+        "preconstress-cell": (("cellid",),),
+        "sk": (("index",),),
+        "sk-cell": (("cellid",),),
+        "ske": (("index",),),
+        "ske-cell": (("cellid",),),
+        "theta": (("index",),),
+        "theta-cell": (("cellid",),),
+        "thickness": (("index",),),
+        "thickness-cell": (("cellid",),),
+        "wcomp-csub-cell": (("cellid",),),
+    }
 
     @attrs.define
     class Packagedata(Item):
@@ -217,14 +257,7 @@ class Csub(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    obs_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="obs6",
-    )
+    obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
     ninterbeds: Optional[int] = field(
         default=None,
         block="dimensions",

@@ -8,7 +8,8 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -16,6 +17,12 @@ class Welg(Package):
     dfn_name: ClassVar[str] = "gwf-welg"
 
     multi_package: ClassVar[bool] = True
+
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "to-mvr": (("cellid",), ("string",)),
+        "wel": (("cellid",), ("string",)),
+        "wel-reduction": (("cellid",), ("string",)),
+    }
 
     readarraygrid: bool = field(
         default=True,
@@ -74,14 +81,7 @@ class Welg(Package):
         optional=True,
         longname="flow reduction length keyword",
     )
-    obs_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="obs6",
-    )
+    obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
     mover: bool = field(
         default=False,
         block="options",

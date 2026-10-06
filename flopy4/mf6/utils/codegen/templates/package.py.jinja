@@ -26,6 +26,14 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     slntype: ClassVar[str] = "{{ spec.slntype }}"
 
 {% endif %}
+{% if spec.observations %}
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+{% for name, forms in spec.observations.items() %}
+        "{{ name }}": {{ forms | tuple_repr }},
+{% endfor %}
+    }
+
+{% endif %}
 {% if spec.count_dims %}
     count_dims: ClassVar[dict[str, str]] = {
 {% for name, expr in spec.count_dims.items() %}
@@ -63,6 +71,14 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
 {% endfor %}
 {% for ic in spec.item_classes %}
 {{ ic.schema | item_class(ic.class_name, ic.keyword, package_class_name=spec.class_name) }}
+
+{% endfor %}
+{% for bc in spec.block_classes %}
+    @attrs.define(kw_only=True)
+    class {{ bc.class_name }}(Block):
+        _header: ClassVar[str] = "{{ bc.header }}"
+        {{ bc.header }}: "{{ spec.class_name }}.{{ bc.header_class }}" = attrs.field()
+        {{ bc.list_name }}: "list[{{ spec.class_name }}.{{ bc.list_elem }}]" = attrs.field(factory=list)
 
 {% endfor %}
 {% for union in spec.item_unions %}

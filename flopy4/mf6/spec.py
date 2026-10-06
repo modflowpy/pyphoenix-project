@@ -65,6 +65,7 @@ def field(
     tagged: bool = False,
     array: bool = False,
     signed: bool = False,
+    union: tuple[str, ...] | None = None,
 ):
     """Define a field: always a plain ``attrs.field()``.
 
@@ -116,6 +117,8 @@ def field(
         if on_setattr is not None:
             hooks.append(on_setattr)
         on_setattr = attrs.setters.pipe(*hooks)
+    if union:
+        metadata["union"] = union
     if signed:
         metadata["signed"] = True
         converter = converter or to_signed_indexes
@@ -362,7 +365,7 @@ def block_sort_key(item) -> int:
         return 1
     elif k == "griddata":
         return 2
-    elif "period" in k:
+    elif k.split()[0] == "period":
         return 4
     else:
         return 3

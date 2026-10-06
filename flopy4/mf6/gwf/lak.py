@@ -10,6 +10,7 @@ from flopy4.mf6._types import ARRAY_EQ, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -18,6 +19,28 @@ class Lak(Package):
     dfn_name: ClassVar[str] = "gwf-lak"
 
     multi_package: ClassVar[bool] = True
+
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "conductance": (("index", "index"), ("string",)),
+        "constant": (("index",), ("string",)),
+        "evaporation": (("index",), ("string",)),
+        "ext-inflow": (("index",), ("string",)),
+        "ext-outflow": (("index",), ("string",)),
+        "from-mvr": (("index",), ("string",)),
+        "inflow": (("index",), ("string",)),
+        "lak": (("index", "index"), ("string",)),
+        "outlet": (("index",), ("string",)),
+        "outlet-inflow": (("index",), ("string",)),
+        "rainfall": (("index",), ("string",)),
+        "runoff": (("index",), ("string",)),
+        "stage": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+        "surface-area": (("index",), ("string",)),
+        "to-mvr": (("index",), ("string",)),
+        "volume": (("index",), ("string",)),
+        "wetted-area": (("index", "index"), ("string",)),
+        "withdrawal": (("index",), ("string",)),
+    }
 
     @attrs.define
     class Packagedata(Item):
@@ -222,14 +245,7 @@ class Lak(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    obs_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="obs6",
-    )
+    obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
     mover: bool = field(
         default=False,
         block="options",

@@ -10,6 +10,7 @@ from flopy4.mf6._types import ARRAY_EQ, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -18,6 +19,21 @@ class Uzf(Package):
     dfn_name: ClassVar[str] = "gwf-uzf"
 
     multi_package: ClassVar[bool] = True
+
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "from-mvr": (("index",), ("string",)),
+        "infiltration": (("index",), ("string",)),
+        "net-infiltration": (("index",), ("string",)),
+        "rej-inf": (("index",), ("string",)),
+        "rej-inf-to-mvr": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+        "uzet": (("index",), ("string",)),
+        "uzf-gwd": (("index",), ("string",)),
+        "uzf-gwd-to-mvr": (("index",), ("string",)),
+        "uzf-gwet": (("index",), ("string",)),
+        "uzf-gwrch": (("index",), ("string",)),
+        "water-content": (("index", "double"), ("string", "double")),
+    }
 
     @attrs.define
     class Packagedata(Item):
@@ -117,14 +133,7 @@ class Uzf(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    obs_file: Optional[Path] = path(
-        default=None,
-        converter=attrs.converters.optional(Path),
-        block="options",
-        optional=True,
-        direction="in",
-        keyword="obs6",
-    )
+    obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
     mover: bool = field(
         default=False,
         block="options",

@@ -16,7 +16,7 @@ by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, ClassVar, Union, cast, get_args, get_origin
@@ -304,7 +304,8 @@ def infer_ncelldim(
     trailing token the current Item class doesn't model (e.g. a field
     dropped from a newer DFN revision than the fixture predates)."""
     if _cellid_field(item_cls) is None:
-        return 0
+        # A union column's cellid arm takes the grid's width, if known.
+        return (ncelldim_from_dims(dims) or 0) if _union_fields(item_cls) else 0
     from_dims = ncelldim_from_dims(dims)
     if from_dims is not None:
         return from_dims
@@ -338,6 +339,104 @@ def _token_fits(token: Any, kind: type) -> bool:
         except ValueError:
             return False
     return False
+
+
+def _union_fields(cls: type) -> list[attrs.Attribute]:
+    """Untagged union columns (OBS's id/id2), each holding any of its arms."""
+    return [f for f in cast(type[Record], cls).fields() if f.metadata.get("union")]
+
+
+def _integral(token: Any) -> bool:
+    try:
+        return float(str(token)).is_integer()
+    except ValueError:
+        return False
+
+
+def _read_unions(
+    fields: list[attrs.Attribute],
+    tokens: list,
+    ncelldim: int,
+    prefer: str,
+    forms: "tuple[tuple[str, ...], ...] | None" = None,
+) -> dict[str, Any]:
+    """Read trailing untagged union columns, choosing each one's arm.
+
+    ``forms``, if known, are the ones the row's observation type takes
+    (see a package's ``observations``), each the kinds of the columns it
+    fills, in order: the first form the tokens fit wins, and columns past
+    it are absent. Otherwise guess: a non-numeric token is a string arm (a
+    boundname). Numbers could be a cellid or an index: take the reading
+    that uses every token, preferring the ``prefer`` arm (the parent's:
+    indexes for a package keyed by one, e.g. LAK's lake number, or an
+    exchange; cellids otherwise), so a row unlike its parent's (CSUB's
+    cellid observations) still reads by its width. A number no arm fits is
+    kept as is. Unknown grid width: any of 3, 2 or 1."""
+    widths = (ncelldim,) if ncelldim else (3, 2, 1)
+
+    def arms(kinds: tuple[str, ...], pos: int):
+        """(value, width, cost) for each arm the tokens at pos can be."""
+        tok = tokens[pos]
+        numeric = _token_fits(tok, float)
+        fits = False
+        for kind in kinds:
+            cost = 0 if kind == prefer else 1
+            if kind == "string" and not numeric:
+                yield str(tok), 1, 0
+                fits = True
+            elif kind in ("index", "integer") and _integral(tok):
+                yield int(float(str(tok))) - (kind == "index"), 1, cost
+                fits = True
+            elif kind == "double" and numeric:
+                yield float(tok), 1, cost
+                fits = True
+            elif kind == "cellid":
+                for w in widths:
+                    cell = tokens[pos : pos + w]
+                    if len(cell) == w and all(_integral(t) for t in cell):
+                        yield tuple(int(float(str(t))) - 1 for t in cell), w, cost
+                        fits = True
+        if numeric and not fits and forms is None:
+            yield _float_or_str(tok), 1, 10
+
+    def solve(i: int, pos: int, form: "tuple[str, ...] | None") -> "tuple[int, list] | None":
+        if i == len(fields):
+            return (0, []) if pos == len(tokens) else None
+        if pos == len(tokens) or (form is not None and i == len(form)):
+            # trailing optional columns may be absent, but not a form's
+            ends = pos == len(tokens) and (i == len(form) if form else True)
+            absent = ends and fields[i].metadata.get("optional")
+            return (0, [None] * (len(fields) - i)) if absent else None
+        best = None
+        kinds = fields[i].metadata["union"] if form is None else (form[i],)
+        for value, w, cost in arms(kinds, pos):
+            if (rest := solve(i + 1, pos + w, form)) is not None and (
+                best is None or cost + rest[0] < best[0]
+            ):
+                best = (cost + rest[0], [value, *rest[1]])
+        return best
+
+    # Like MF6, ignore any tokens past what the columns take (a note after
+    # a row, as in "1 1.0 (UZF CELL 1)").
+    full = tokens
+    for end in range(len(full), 0, -1):
+        tokens = full[:end]
+        for form in forms or (None,):
+            if (solved := solve(0, 0, form)) is not None:
+                return {f.name: v for f, v in zip(fields, solved[1]) if v is not None}
+    if forms:  # ids its observation type doesn't take: guess
+        return _read_unions(fields, full, ncelldim, prefer)
+    names = ", ".join(f.name for f in fields)
+    raise ValueError(f"can't read {names} from {full}")
+
+
+def _union_tokens(val: Any, arms: tuple[str, ...]) -> list:
+    """A union column's tokens: cellids and indexes 1-based."""
+    if isinstance(val, tuple):
+        return [int(c) + 1 for c in val]
+    if isinstance(val, int) and "index" in arms:
+        return [val + 1]
+    return [val]
 
 
 def _in_columns(cls: "type[Item]", fields: list[attrs.Attribute]) -> list[attrs.Attribute]:
@@ -411,6 +510,8 @@ class Item(Record):
             elif f.metadata.get("cellid"):
                 # see from_tokens' cellid()
                 row.extend(["NONE"] if val is None else (int(c) + 1 for c in val))
+            elif arms := f.metadata.get("union"):
+                row.extend(_union_tokens(val, arms))
             elif f.metadata.get("array") and f.metadata.get("signed"):
                 row.extend((int(i) + 1) * sign for i, sign in val)
             elif f.metadata.get("array") and f.metadata.get("index"):
@@ -448,13 +549,18 @@ class Item(Record):
         ncelldim: int = 0,
         sizes: Mapping[str, int] | None = None,
         boundnames: bool = False,
+        union_arm: str = "cellid",
+        union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
     ) -> "Item":
-        """Mirror of to_tokens. Optional untagged columns (e.g. EVT's
-        pxdp/petm/petm0) have no marker token -- MF6 writes a whole trailing
-        group or none, gated by an unrelated OPTIONS flag -- so presence is
-        inferred once from the token budget left after reserving sized/
-        boundname, not per-field. Tagged optional fields self-identify by
-        keyword and skip that budget.
+        """Mirror of to_tokens. ``union_arm`` is the arm untagged union
+        columns prefer for numbers, and ``union_forms`` gives the forms
+        they take given the row's other columns (see _read_unions).
+
+        Optional untagged columns (e.g. EVT's pxdp/petm/petm0) have no
+        marker token -- MF6 writes a whole trailing group or none, gated by
+        an unrelated OPTIONS flag -- so presence is inferred once from the
+        token budget left after reserving sized/boundname, not per-field.
+        Tagged optional fields self-identify by keyword and skip that budget.
         """
         fields = cls.fields()
         keyword = cls.keyword()
@@ -530,6 +636,8 @@ class Item(Record):
             and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
         ]
         main_fields = [f for f in main_fields if f not in nested_union_fields]
+        union_fields = [f for f in main_fields if f.metadata.get("union")]
+        main_fields = [f for f in main_fields if f not in union_fields]
         array_fields = [
             f for f in main_fields if f.metadata.get("array") and not _dim_counted(cls, f)
         ]
@@ -592,7 +700,18 @@ class Item(Record):
             if present:
                 consume(f)
 
-        if array_fields:
+        if union_fields:
+            # The last columns, of varying width (see _read_unions).
+            if not keyword_skipped:
+                tok_idx += 1
+                keyword_skipped = True
+            end = n - (1 if has_bn_token else 0) - nsized
+            forms = union_forms(kwargs) if union_forms else None
+            kwargs.update(
+                _read_unions(union_fields, tokens[tok_idx:end], ncelldim, union_arm, forms)
+            )
+            tok_idx = end
+        elif array_fields:
             # Consumes everything left up to sized/boundname's own reserved
             # slots -- a keyword-plus-trailing-values setting (PRP's
             # Steps.steps/Fraction's leaf field: "n1 n2 ..."), coerced

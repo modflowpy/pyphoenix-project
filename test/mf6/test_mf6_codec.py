@@ -1,5 +1,6 @@
 """Test the MF6 input file reading/writing capability."""
 
+from pathlib import Path
 from pprint import pprint
 
 import numpy as np
@@ -1923,8 +1924,8 @@ def test_gwf_netcdf_input_file_serializes():
 
 def test_file_records_roundtrip(tmp_path):
     """Options-block file records are keyed by their trigger keyword (TS6,
-    OBS6, HEAD), not the py field name (ts, obs_file, head_file) -- both on
-    load and on write. A record naming a child (TS6) loads the child."""
+    OBS6, HEAD), not the py field name (ts, obs, head_file) -- both on
+    load and on write. A record naming a child (TS6, OBS6) loads the child."""
     from pathlib import Path
 
     from modflow_devtools.misc import set_dir
@@ -1934,11 +1935,18 @@ def test_file_records_roundtrip(tmp_path):
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwf import Oc, Wel
+    from flopy4.mf6.utl.obs import Obs
     from flopy4.mf6.utl.ts import Ts
 
+    (tmp_path / "w.obs").write_text(
+        "BEGIN CONTINUOUS FILEOUT w.obs.csv\n  q1 wel 1\nEND CONTINUOUS\n"
+    )
     raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
-    wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
-    assert wel.obs_file == Path("w.obs")
+    with set_dir(tmp_path):
+        wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    assert isinstance(wel.obs, Obs)
+    assert wel.obs.filename == Path("w.obs")
+    assert wel.obs.name == "obs"  # not its block's name
     assert "OBS6 FILEIN w.obs" in dumps(unstructure_component(wel))
 
     for name in ("a", "b"):
@@ -3524,3 +3532,146 @@ def test_spc_round_trip(tmp_path):
     assert "2 CONCENTRATION myts" in dumped
     path.write_text(dumped)
     assert Spc.load(path).stress_period_data == rows
+
+
+OBS_TEXT = """BEGIN OPTIONS
+  DIGITS 10
+END OPTIONS
+
+BEGIN CONTINUOUS FILEOUT Heads.csv
+  h1 HEAD well-a
+  h2 HEAD well-b
+END CONTINUOUS
+
+BEGIN CONTINUOUS FILEOUT flows.bsv BINARY
+  w1 WEL well-a
+END CONTINUOUS FILEOUT flows.bsv BINARY
+"""
+
+
+def test_obs_header_blocks_round_trip(tmp_path):
+    """Each CONTINUOUS block keeps its own header (file name case, BINARY)
+    and rows through load and write."""
+    from flopy4.mf6.utl import Obs
+
+    path = tmp_path / "a.obs"
+    path.write_text(OBS_TEXT)
+    obs = Obs.load(path)
+    first, second = obs.continuous
+    assert first.output == Obs.Output(obs_output_file_name=Path("Heads.csv"))
+    assert second.output.binary
+    assert [r.obsname for r in first.continuous] == ["h1", "h2"]
+    assert [r.obsname for r in second.continuous] == ["w1"]
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(obs))
+    assert "BEGIN CONTINUOUS FILEOUT Heads.csv\n" in dumped
+    assert "BEGIN CONTINUOUS FILEOUT flows.bsv BINARY\n" in dumped
+    assert "END CONTINUOUS FILEOUT" not in dumped
+    path.write_text(dumped)
+    assert Obs.load(path).continuous == obs.continuous
+
+
+@pytest.mark.parametrize(
+    "tokens, ncelldim, union_arm, id_, id2",
+    [
+        # a boundname, whatever the parent
+        (["well-a"], 3, "cellid", "well-a", None),
+        (["well-a"], 0, "index", "well-a", None),
+        # a model's or stress package's cellids
+        (["1", "2", "3"], 3, "cellid", (0, 1, 2), None),
+        (["1", "2", "3", "1", "2", "4"], 3, "cellid", (0, 1, 2), (0, 1, 3)),
+        (["1", "5", "1", "6"], 2, "cellid", (0, 4), (0, 5)),
+        # an advanced package's or exchange's indexes
+        (["1"], 3, "index", 0, None),
+        (["2", "3"], 3, "index", 1, 2),
+        (["lake-1", "3"], 3, "index", "lake-1", 2),
+        # CSUB: indexes by default, but a row as wide as a cellid is one
+        (["1", "2", "3"], 3, "index", (0, 1, 2), None),
+        # UZF's water-content depth fits no arm: kept as is
+        (["2", "0.5"], 3, "index", 1, 0.5),
+        # no grid: a cellid as wide as the row
+        (["1", "2", "3"], 0, "cellid", (0, 1, 2), None),
+    ],
+)
+def test_obs_ids(tokens, ncelldim, union_arm, id_, id2):
+    """An OBS id is a cellid, an index or a boundname, by the parent's kind
+    and the row's width."""
+    from flopy4.mf6.utl import Obs
+
+    row = Obs.Continuous.from_tokens(
+        ["o1", "head", *tokens], ncelldim=ncelldim, union_arm=union_arm
+    )
+    assert (row.id_, row.id2) == (id_, id2)
+    assert [str(t) for t in row.to_tokens()[2:]] == tokens
+
+
+def test_obs_ids_ignore_trailing_tokens():
+    """Like MF6, tokens past the ids are ignored (test051's notes)."""
+    from flopy4.mf6.utl import Obs
+
+    tokens = ["o1", "water-content", "1", "1.0", "(UZF", "CELL", "1)"]
+    row = Obs.Continuous.from_tokens(tokens, ncelldim=3, union_arm="index")
+    assert (row.id_, row.id2) == (0, 0)
+
+
+def test_obs_ids_by_parent(tmp_path):
+    """A package keyed by an index (LAK) reads its OBS ids as indexes; one
+    keyed by cellids (WEL) as cellids."""
+    from modflow_devtools.misc import set_dir
+
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Lak, Wel
+
+    (tmp_path / "p.obs").write_text("BEGIN CONTINUOUS FILEOUT p.csv\n  o1 x 1 2\nEND CONTINUOUS\n")
+    raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
+    dims = {"nlay": 1, "ncpl": 10, "nodes": 10}
+    with set_dir(tmp_path):
+        lak = structure_component(raw, Lak, dims={**dims, "nrow": 2, "ncol": 5})
+        wel = structure_component(raw, Wel, dims=dims)
+    (lak_row,) = lak.obs.continuous[0].continuous
+    (wel_row,) = wel.obs.continuous[0].continuous
+    assert (lak_row.id_, lak_row.id2) == (0, 1)
+    assert (wel_row.id_, wel_row.id2) == ((0, 1), None)
+
+
+_DISV = {"nlay": 1, "ncpl": 10, "nodes": 10}
+_DISU = {"nodes": 10}
+
+
+@pytest.mark.parametrize(
+    "parent,dims,row,ids",
+    [
+        ("Csub", _DISV, "csub-cell 1 5", ((0, 4), None)),
+        ("Csub", _DISU, "csub-cell 7", ((6,), None)),
+        ("Csub", _DISV, "csub 3", (2, None)),
+        ("Csub", _DISV, "delay-head 1 2", (0, 1)),
+        ("Uzf", _DISV, "water-content 2 3", (1, 3.0)),  # a whole-number depth
+        ("Uzf", _DISV, "uzf-gwrch 4 (UZF CELLS 16-24)", (3, None)),  # a note
+        ("Lak", _DISV, "stage lake-a", ("lake-a", None)),
+    ],
+)
+def test_obs_ids_by_obstype(tmp_path, parent, dims, row, ids):
+    """OBS ids read as the parent's observation type takes them."""
+    from modflow_devtools.misc import set_dir
+
+    from flopy4.mf6 import gwf
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    (tmp_path / "p.obs").write_text(f"BEGIN CONTINUOUS FILEOUT p.csv\n  o1 {row}\nEND CONTINUOUS\n")
+    raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
+    with set_dir(tmp_path):
+        pkg = structure_component(raw, getattr(gwf, parent), dims=dims)
+    (obs_row,) = pkg.obs.continuous[0].continuous
+    assert (obs_row.id_, obs_row.id2) == ids
+
+
+def test_block_end_keeps_only_an_index():
+    assert writer.filters.block_begin("continuous FILEOUT Heads.csv") == (
+        "CONTINUOUS FILEOUT Heads.csv"
+    )
+    assert writer.filters.block_end("continuous FILEOUT Heads.csv") == "CONTINUOUS"
+    assert writer.filters.block_end("period 1") == "PERIOD 1"
+    assert writer.filters.block_end("time 0.5") == "TIME 0.5"
+    assert writer.filters.block_end("options") == "OPTIONS"

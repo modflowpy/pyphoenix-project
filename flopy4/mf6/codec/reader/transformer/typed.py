@@ -5,7 +5,16 @@ from typing import Any
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfns.schema import Array, Component, Double, Keyword, List, Record, Union
+from modflow_devtools.dfns.schema import (
+    Array,
+    Component,
+    Double,
+    File,
+    Keyword,
+    List,
+    Record,
+    Union,
+)
 
 from flopy4.mf6.codec.reader.dfns import get_component_dfn
 from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
@@ -254,6 +263,22 @@ class TypedTransformer(Transformer):
             # itself is usually an int (period/solutiongroup) but can be a
             # float (utl-tas's "time" block) -- see block_index/the `number`
             # grammar rule.
+            header = self.blocks[block_name].header
+            if header is not None and isinstance(header.field, Record) and len(children) == 3:
+                # A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"),
+                # keyed like the basic transformer's.
+                _, values = children[0]
+                tokens = [block_name]
+                for name, f in header.field.fields.items():
+                    if name not in values:
+                        continue
+                    if isinstance(f, Keyword):
+                        tokens.append(name.upper())
+                        continue
+                    if isinstance(f, File) and f.mode_keyword:
+                        tokens.append(f"FILE{f.direction.upper()}")
+                    tokens.append(str(values[name]))
+                return {" ".join(tokens): children[1]}
             if (
                 len(children) == 3
                 and isinstance(children[0], (int, float))
@@ -324,21 +349,27 @@ class TypedTransformer(Transformer):
             if isinstance(field, Keyword):
                 return data, True
             elif isinstance(field, Record) and field.children:
-                # Transform record fields into dicts with child field names as keys
-                # Keyword children are literals in the grammar and don't appear in children list
-                # Only non-keyword children appear in the children list
+                # Transform record fields into dicts with child field names as keys.
+                # A required keyword is an anonymous literal, absent from
+                # children; an optional one is a named rule (see
+                # record_keywords), True when given and None when not.
                 record_dict = {}
-                non_keyword_children = [
+                slots = [
                     (name, child)
                     for name, child in field.children.items()
-                    if not isinstance(child, Keyword)
+                    if not (isinstance(child, Keyword) and not child.optional)
                 ]
                 pos = 0
-                for i, (child_name, child_field) in enumerate(non_keyword_children):
+                for i, (child_name, child_field) in enumerate(slots):
                     if pos >= len(children):
                         break
+                    if isinstance(child_field, Keyword):
+                        if children[pos] is not None:
+                            record_dict[child_name] = True
+                        pos += 1
+                        continue
                     if isinstance(child_field, Array):
-                        end = len(children) - (len(non_keyword_children) - i - 1)
+                        end = len(children) - (len(slots) - i - 1)
                         record_dict[child_name] = list(children[pos:end])
                         pos = end
                         continue

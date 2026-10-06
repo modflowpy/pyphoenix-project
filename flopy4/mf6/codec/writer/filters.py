@@ -1,3 +1,4 @@
+import re
 from collections.abc import Hashable, Mapping
 from io import StringIO
 from pathlib import PurePath
@@ -11,9 +12,28 @@ from numpy.typing import NDArray
 from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_DNODATA
 
+_NUMBER_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
+
 ArrayHow = Literal[
     "constant", "internal", "external", "layered constant", "layered internal", "netcdf"
 ]
+
+
+def block_begin(block_name: str) -> str:
+    """A block's BEGIN line after the keyword: its name, then its index
+    (PERIOD 1) or header record (CONTINUOUS FILEOUT <file>), whose case is
+    kept."""
+    name, _, header = block_name.partition(" ")
+    return f"{name.upper()} {header}".rstrip()
+
+
+def block_end(block_name: str) -> str:
+    """A block's END line after the keyword: its name, and its index if any,
+    but not a header record."""
+    name, _, header = block_name.partition(" ")
+    if header and len(header.split()) == 1 and _NUMBER_RE.fullmatch(header):
+        return f"{name.upper()} {header}"
+    return name.upper()
 
 
 def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:

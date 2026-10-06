@@ -128,6 +128,19 @@ class ItemUnionSpec:
 
 
 @dataclass
+class BlockClassSpec:
+    """A repeating block whose header is a record (OBS's ``CONTINUOUS
+    FILEOUT <file> [BINARY]``), as a class holding the header record and
+    the block's list: one instance per occurrence of the block."""
+
+    class_name: str
+    header: str  # the header record's field name
+    header_class: str
+    list_name: str
+    list_elem: str
+
+
+@dataclass
 class ComputedFieldSpec:
     """Pre-computed context for a read-only computed property, replacing a
     stored attrs field entirely -- e.g. ``maxbound``, derived live from
@@ -157,10 +170,13 @@ class ComponentSpec:
     item_classes: list[ItemClassSpec] = dc_field(default_factory=list)
     item_unions: list[ItemUnionSpec] = dc_field(default_factory=list)
     computed_fields: list[ComputedFieldSpec] = dc_field(default_factory=list)
+    block_classes: list[BlockClassSpec] = dc_field(default_factory=list)
     # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
     # Dims counting item columns that aren't fields, name -> DFN expression
     count_dims: dict[str, str] = dc_field(default_factory=dict)
+    # Observation types the component's OBS file takes, name -> id forms
+    observations: dict[str, tuple[tuple[str, ...], ...]] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -286,6 +302,11 @@ def _schema_dict_from_columns(
         elif col.is_row_keyword:
             entry["role"] = "inline_keyword"
             entry["optional"] = True
+        elif isinstance(f, UnionField) and not f.tagged:
+            # One column, any of the arms (OBS's id: a cellid, an index or
+            # a boundname), told apart when read (see Item.from_tokens).
+            entry["role"] = "union"
+            entry["arms"] = tuple(_arm_kind(arm) for arm in f.arms.values())
         elif isinstance(f, UnionField) and col.name in nested_arm_classes:
             entry["role"] = "nested_union"
             entry["arm_classes"] = nested_arm_classes[col.name]
@@ -310,6 +331,32 @@ def _schema_dict_from_columns(
 
 # A count looked up in another list's row: "packagedata.ncon(ifno)".
 _LOOKUP_RE = re.compile(r"(?:[\w-]+\.)?\w+\.\w+\(\w+\)")
+
+
+def _arm_kind(arm: FieldV3) -> str:
+    """An untagged union arm's kind: "cellid", "index", or its DFN type."""
+    if isinstance(arm, Array) and arm.cellid:
+        return "cellid"
+    if getattr(arm, "index", False):
+        return "index"
+    kind = _dfn_type_str(arm)
+    if kind not in ("integer", "double", "string"):
+        raise ValueError(f"unsupported union arm {arm.name!r}: {type(arm).__name__}")
+    return kind
+
+
+def _obs_forms(f: FieldV3) -> list[tuple[str, ...]]:
+    """The forms an observation type's ids take, each the kinds of the
+    utl-obs columns it fills (see _arm_kind): UZF's water-content is
+    ``[("index", "double"), ("string", "double")]``."""
+    if isinstance(f, UnionField):
+        return [form for arm in f.arms.values() for form in _obs_forms(arm)]
+    if isinstance(f, Record):
+        forms: list[tuple[str, ...]] = [()]
+        for sub in (f.fields or {}).values():
+            forms = [a + b for a in forms for b in _obs_forms(sub)]
+        return forms
+    return [(_arm_kind(f),)]
 
 
 def _count_dim(shape: str) -> str | None:
@@ -1265,6 +1312,7 @@ def build_component_spec(
     # see _build_list_item_specs.
     item_classes: list[ItemClassSpec] = []
     item_unions: list[ItemUnionSpec] = []
+    block_classes: list[BlockClassSpec] = []
 
     # BlockPropertySpec for static list blocks — must precede the main field loop
     # since _bp_block_names is used there as a skip-set.
@@ -1453,6 +1501,30 @@ def build_component_spec(
         if _union is not None:
             item_unions.append(_union)
         _meta: dict = {"block": bp.block_name}
+        _header = component.blocks[bp.block_name].header
+        if _header is not None and isinstance(_header.field, Record):
+            # The block repeats under a record header: a list of block
+            # classes, each holding its header and the block's list.
+            _header_specs, _header_elem, _ = _build_list_item_specs(
+                ListField(name=_header.field.name, item=_header.field),
+                pascal_name(_header.field.name),
+                _inner_class_names,
+                _arrays,
+                _dims,
+            )
+            block_item_classes.extend(_header_specs)
+            _block_cls = f"{pascal_name(bp.block_name)}Block"
+            _inner_class_names.add(_block_cls)
+            block_classes.append(
+                BlockClassSpec(
+                    class_name=_block_cls,
+                    header=_header.field.name,
+                    header_class=_header_elem,
+                    list_name=_list_field.name,
+                    list_elem=_elem,
+                )
+            )
+            _elem = _block_cls
         # The DIMENSIONS field counting this block's rows, in the DFN's shape
         # syntax: exact ("nper") or a bound ("<=maxats").
         if bp.dim_is_dfn_declared:
@@ -1476,8 +1548,10 @@ def build_component_spec(
         # connectiondata) where write_if_empty isn't set anywhere yet; drop
         # it once modflow6 (or a devtools fixup) covers those too.
         _block = (component.blocks or {}).get(bp.block_name)
-        if _block is not None and (
-            _block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared)
+        if (
+            _block is not None
+            and _block.header is None
+            and (_block.write_if_empty or (not _block.optional and not bp.dim_is_dfn_declared))
         ):
             _meta["write_if_empty"] = True
         extra_specs.append(
@@ -1661,7 +1735,10 @@ def build_component_spec(
             and "Optional[" in fs.type_annotation
             for fs in field_specs
         ),
-        extra_imports=extra_imports,
+        extra_imports=[
+            *extra_imports,
+            *(["from flopy4.mf6.block import Block"] if block_classes else []),
+        ],
     )
 
     computed_field_specs = (
@@ -1684,9 +1761,13 @@ def build_component_spec(
         block_properties=block_properties,
         item_classes=item_classes,
         item_unions=item_unions,
+        block_classes=block_classes,
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
         count_dims=_count_dims,
+        observations={
+            name: tuple(_obs_forms(f)) for name, f in sorted((component.observations or {}).items())
+        },
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )
@@ -1707,6 +1788,7 @@ def _get_env() -> jinja2.Environment:
         undefined=jinja2.StrictUndefined,
     )
     env.filters["python_repr"] = python_repr
+    env.filters["tuple_repr"] = filters.tuple_repr
     env.filters["item_class"] = item_class
     env.filters["pascal_name"] = pascal_name
     return env
