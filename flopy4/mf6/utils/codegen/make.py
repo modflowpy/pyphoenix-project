@@ -655,8 +655,11 @@ def _build_record_class_specs(
 
     When the first child is a keyword type it becomes the trigger token
     (``_keyword``) and is not emitted as a data field. When the first child
-    is a tagged scalar there is no leading keyword token (``_keyword = ""``)
-    and all children become data fields.
+    is a required tagged scalar (IMS ``INNER_RCLOSE <value> ...``), its tag
+    is the trigger token: it becomes ``_keyword`` and the child an untagged
+    data field, so the record is found by its leading token like any other.
+    Otherwise there is no trigger token (``_keyword = ""``) and all children
+    become data fields.
 
     Required keyword children after the trigger are treated as fixed tokens
     (always emitted, not user-facing fields) stored in ``_extra_tokens``.
@@ -681,6 +684,10 @@ def _build_record_class_specs(
         kw = first.name
         aliases = first.aliases
         data_children = children[1:]
+    elif getattr(first, "tagged", False) and not first.optional:
+        kw = first.name
+        aliases = getattr(first, "aliases", None) or []
+        data_children = children
     else:
         kw = ""
         aliases = []
@@ -692,7 +699,8 @@ def _build_record_class_specs(
 
     def _process_child(child: FieldV3) -> None:
         is_optional = child.optional
-        tagged = getattr(child, "tagged", False)
+        # a child whose tag is the trigger token is written after it, untagged
+        tagged = getattr(child, "tagged", False) and child.name != kw
 
         if isinstance(child, Record):
             child_specs = _build_record_class_specs(child, dfn_name, used_names, parent_hint=f.name)

@@ -22,8 +22,8 @@ class Ims(Solution):
 
     @attrs.define
     class Rclose(Record):
-        _keyword: ClassVar[str] = ""
-        inner_rclose: float = attrs.field(metadata={"tagged": True})
+        _keyword: ClassVar[str] = "inner_rclose"
+        inner_rclose: float = attrs.field()
         rclose_option: Optional[str] = attrs.field(default=None)
 
     print_option: Optional[str] = field(

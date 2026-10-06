@@ -597,6 +597,11 @@ def test_ims_compound_records_expanded(all_dfns):
     assert field_map["rclose"].type_annotation == "Optional[Rclose]"
     assert any(r.class_name == "Rclose" for r in spec.inner_classes)
 
+    # no leading keyword: the first child's tag (INNER_RCLOSE) is the trigger
+    rclose = next(r for r in spec.inner_classes if r.class_name == "Rclose")
+    assert rclose.keyword == "inner_rclose"
+    assert not next(f for f in rclose.fields if f.py_name == "inner_rclose").tagged
+
     # inner_rclose is now inside Rclose, not a standalone flat field
     assert "inner_rclose" not in field_map, "inner_rclose should not be a standalone field"
 
