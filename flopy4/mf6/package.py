@@ -25,6 +25,7 @@ from flopy4.mf6.item import (
 )
 from flopy4.mf6.period_arrays import (
     dense,
+    is_cleared,
     is_grid_package,
     split_tas,
     to_named_period_dict,
@@ -240,7 +241,9 @@ class Package(Component, ABC):
         ``{kper: {name: array}}`` for dynamically named ones, whose names must
         be among those the field's fk points at. Dense ``(nper, ...)`` input
         is split by period (see ``flopy4.mf6.period_arrays``). In a grid
-        package, aux can only be given in periods the stress arrays are."""
+        package, a period with no stress in any cell is stored as ``None``,
+        and aux can only be given in periods the stress arrays are."""
+        grid = is_grid_package(type(self))
         stress_periods: set[int] = set()
         named: list = []
         for f in fields:
@@ -253,7 +256,14 @@ class Package(Component, ABC):
             flat = len(f.metadata.get("shape") or ()) == 1
             integer = to_field_type(f.type) == "integer"
 
-            def _normalize(a):
+            def _normalize(a, kper):
+                if a is None:
+                    if not grid or f.metadata.get("fk"):
+                        raise ValueError(
+                            f"{f.name}: period {kper} is None, but only a grid "
+                            "package's stress arrays can be cleared"
+                        )
+                    return None
                 if isinstance(a, TimeArraySeriesRef):
                     if not f.metadata.get("time_series"):
                         raise ValueError(f"{f.name} can't come from a time-array series ({a})")
@@ -262,16 +272,24 @@ class Package(Component, ABC):
                     a = a.ravel()
                 if integer and isinstance(a, np.ndarray):
                     a = a.astype(np.int64)
+                # (not computing a dask array to check)
+                if (
+                    grid
+                    and not f.metadata.get("fk")
+                    and isinstance(a, np.ndarray)
+                    and is_cleared(a)
+                ):
+                    return None
                 return a
 
             if f.metadata.get("fk"):
                 periods = {
-                    k: {n: _normalize(a) for n, a in arrays.items()}
+                    k: {n: _normalize(a, k) for n, a in arrays.items()}
                     for k, arrays in (to_named_period_dict(value) or {}).items()
                 }
                 named.append((f, periods))
             else:
-                periods = {k: _normalize(a) for k, a in (to_period_dict(value) or {}).items()}
+                periods = {k: _normalize(a, k) for k, a in (to_period_dict(value) or {}).items()}
                 stress_periods.update(periods)
             self.__dict__[f.name] = periods
         for f, periods in named:
@@ -281,7 +299,7 @@ class Package(Component, ABC):
             given = {n for arrays in periods.values() for n in arrays}
             if unknown := sorted(n for n in given if n.lower() not in allowed):
                 raise ValueError(f"{f.name}: {unknown} not in {key}")
-            if is_grid_package(type(self)) and (extra := sorted(set(periods) - stress_periods)):
+            if grid and (extra := sorted(set(periods) - stress_periods)):
                 raise ValueError(
                     f"{f.name} given in periods {extra} with no stress arrays; "
                     "a grid package's period is one unit"

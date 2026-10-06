@@ -9,8 +9,10 @@ How a period carries forward depends on the package:
 
 - Grid packages (CHDG, WELG, ...; those with a ``readarraygrid`` option)
   read a period as one unit. Every period block resets the boundary set, so
-  a field missing from a period that's given is empty, not carried. A period
-  whose stress arrays are entirely ``FILL_DNODATA`` clears every boundary.
+  a field missing from a period that's given is empty, not carried. A
+  ``None`` period, ``q={3: None}``, is given with no stress: it clears every
+  boundary, as an empty period block does. An array that's entirely
+  ``FILL_DNODATA`` means the same, and is stored as ``None``.
 - Layer-array packages (RCHA, EVTA, SPCA) carry each array forward on its
   own until it's given again.
 
@@ -46,9 +48,17 @@ def all_nodata(arr: Any) -> bool:
     return bool((arr == FILL_DNODATA).all())
 
 
+def is_cleared(value: Any) -> bool:
+    """Whether a grid package's period array means no stress in any cell:
+    ``None``, or a float array entirely ``FILL_DNODATA``."""
+    return value is None or (hasattr(value, "shape") and not _is_int(value) and all_nodata(value))
+
+
 def _as_array(value: Any) -> Any:
-    # Keep anything array-like (dask included) as it is, and a time-array
-    # series reference, given by name or not.
+    # Keep anything array-like (dask included) as it is, a time-array series
+    # reference, given by name or not, and None (a cleared grid period).
+    if value is None:
+        return None
     if isinstance(value, str):
         return TimeArraySeriesRef(value)
     if hasattr(value, "shape") or isinstance(value, TimeArraySeriesRef):
@@ -148,7 +158,8 @@ def dense(
     ``FILL_INT64`` for integers. With ``given`` (a grid package's periods,
     over all its fields), a period that's given but missing from ``periods``
     is filled, not carried: a grid period block replaces the whole period.
-    Periods past ``nper`` are dropped, with a warning.
+    A ``None`` (cleared) period is filled too. Periods past ``nper`` are
+    dropped, with a warning.
     """
     if not periods:
         raise ValueError("no periods to stack")
@@ -158,7 +169,10 @@ def dense(
         )
     if past := [kper for kper in periods if kper >= nper]:
         warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=2)
-    first = _as_array(next(iter(periods.values())))
+    arrays = [a for a in periods.values() if a is not None]
+    if not arrays:
+        raise ValueError("every period is cleared, so no array gives the shape")
+    first = _as_array(arrays[0])
     fill = _fill_value(first)
     out = np.full((nper, *first.shape), fill, dtype=first.dtype)
     starts = sorted(set(given or ()) | set(periods))
@@ -166,6 +180,6 @@ def dense(
         if kper >= nper:
             break
         stop = (starts[i + 1] if i + 1 < len(starts) else nper) if carry_forward else kper + 1
-        if kper in periods:
+        if periods.get(kper) is not None:
             out[kper:stop] = np.asarray(periods[kper])
     return out

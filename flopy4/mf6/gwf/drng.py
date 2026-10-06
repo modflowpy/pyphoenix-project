@@ -83,7 +83,7 @@ class Drng(Package):
         optional=True,
         longname="maximum number of drain cells in any stress period",
     )
-    elev: Optional[dict[int, FloatArrayLike]] = field(
+    elev: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),
@@ -91,7 +91,7 @@ class Drng(Package):
         netcdf=True,
         fill_forward=True,
     )
-    cond: Optional[dict[int, FloatArrayLike]] = field(
+    cond: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),

@@ -235,8 +235,9 @@ def test_chdg_period_ingress_layered(chdg_file):
     assert chd.head[0][0] == pytest.approx(1.0)
     assert chd.head[0][8] == pytest.approx(0.0)
     assert np.all(chd.head[0][9:] == FILL_DNODATA)
-    # period 1: all FILL_DNODATA (CONSTANT fill), clearing every boundary
-    assert np.all(chd.head[1] == FILL_DNODATA)
+    # period 1: all FILL_DNODATA (CONSTANT fill), clearing every boundary,
+    # stored as None
+    assert chd.head[1] is None
 
 
 # ---------------------------------------------------------------------------

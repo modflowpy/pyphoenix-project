@@ -77,7 +77,7 @@ class Rivg(Package):
         optional=True,
         longname="maximum number of river cells in any stress period",
     )
-    stage: Optional[dict[int, FloatArrayLike]] = field(
+    stage: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),
@@ -85,7 +85,7 @@ class Rivg(Package):
         netcdf=True,
         fill_forward=True,
     )
-    cond: Optional[dict[int, FloatArrayLike]] = field(
+    cond: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),
@@ -93,7 +93,7 @@ class Rivg(Package):
         netcdf=True,
         fill_forward=True,
     )
-    rbot: Optional[dict[int, FloatArrayLike]] = field(
+    rbot: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),

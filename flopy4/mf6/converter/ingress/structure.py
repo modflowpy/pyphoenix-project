@@ -14,7 +14,6 @@ from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component, get_ftype
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import (
     Item,
     dim_lookup,
@@ -154,7 +153,7 @@ def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.n
 
 
 def _resolve_open_close_rows(rows: list, workspace: "Path | None") -> list:
-    """A period/list block's row data can itself be OPEN/CLOSE-redirected
+    """A block's row data can itself be OPEN/CLOSE-redirected
     to an external file instead of written inline -- MF6 syntax:
     ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> / END PERIOD 1``. Same keyword as
     griddata's OPEN/CLOSE control record, but a different mechanism: the
@@ -838,6 +837,13 @@ def structure_component(
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     known_blocks = {f.metadata.get("block") for f in attrs.fields(cls)}
+    # Blocks naming children (a model's packages, the simulation's
+    # solutions), whose rows _resolve_bindings takes, and warns for.
+    binding_blocks = {
+        f.metadata.get("block")
+        for f in attrs.fields(cls)
+        if f.metadata.get("child") and not f.metadata.get("_keyword")
+    }
     if isinstance(getattr(cls, "maxbound", None), property):
         known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
@@ -856,6 +862,7 @@ def structure_component(
             or block_name.split()[0] in header_block_fields
         ):
             continue
+        rows = _resolve_open_close_rows(rows, workspace)
         for row in rows:
             if not row:
                 continue
@@ -905,7 +912,19 @@ def structure_component(
                 or all_fields.get(alias_map.get(key, ""))
                 or all_fields.get(f"{key}_")
             )
-            if f is None or f.init is False:
+            if f is None:
+                # MF6 rejects a keyword it doesn't know, so this is likely
+                # one flopy4 doesn't support yet. A computed one (a list
+                # package's MAXBOUND) is derived, not read.
+                if block_name.split()[0] not in binding_blocks and not isinstance(
+                    getattr(cls, key, None), property
+                ):
+                    warnings.warn(
+                        f"{cls.__name__}: no field takes {block_name.upper()} entry "
+                        f"{str(row[0]).upper()}, skipped",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                 continue
             init_key = f.alias if f.alias else f.name
             # A Record-typed field must go through from_tokens(), even when
@@ -1062,19 +1081,12 @@ def structure_component(
                 for n in _names(kwargs.get(fk.rsplit(".", 1)[-1]))
             }
             if ra_fields and dims:
-                nlay = dims.get("nlay", 1)
-                nodes = dims.get("nodes", 1)
-                ncpl = nodes // nlay if nlay > 1 else nodes
                 grid = is_grid_package(cls)
 
                 # Each field holds the periods the file gives (see
                 # flopy4.mf6.period_arrays). An empty grid period block
-                # clears every boundary: all its stress arrays are DNODATA.
-                def _cleared(f) -> np.ndarray:
-                    layered = f.metadata.get("layered", False)
-                    return np.full((nlay, ncpl) if layered else (ncpl,), FILL_DNODATA)
-
-                periods: dict[str, dict[int, np.ndarray | TimeArraySeriesRef]] = {}
+                # clears every boundary: its stress arrays are None.
+                periods: dict[str, dict[int, np.ndarray | TimeArraySeriesRef | None]] = {}
                 named_periods: dict[str, dict[int, dict[str, np.ndarray | TimeArraySeriesRef]]] = {}
                 # An auxiliary name that matches a field's (Q) is the aux
                 # array, as in MF6.
@@ -1082,8 +1094,8 @@ def structure_component(
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
                         if grid:
-                            for fname, f in ra_fields.items():
-                                periods.setdefault(fname, {})[kper] = _cleared(f)
+                            for fname in ra_fields:
+                                periods.setdefault(fname, {})[kper] = None
                         continue
                     parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
                     for key, arr in parsed.items():

@@ -912,11 +912,29 @@ def test_welg_cleared_period_round_trip():
     assert cleared.strip() == ""
 
     welg2 = structure_component(loads(text), Welg, dims=dims)
+    assert welg2.q[2] is None
     assert array_eq(welg2.q, welg.q)
     assert array_eq(welg2.aux, welg.aux)
     np.testing.assert_array_equal(
         welg2.period_array("q", nper=4)[:, 0], [-1, -1, FILL_DNODATA, FILL_DNODATA]
     )
+
+
+def test_drng_partly_cleared_period_writes_dnodata():
+    """A cleared (None) array in a period other arrays are given in is
+    written as DNODATA, a constant."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Drng
+
+    drng = Drng(
+        elev={0: np.array([1.0, 2.0, 3.0]), 1: None},
+        cond={0: np.array([10.0, 10.0, 10.0]), 1: np.array([5.0, FILL_DNODATA, 5.0])},
+    )
+    assert drng.elev[1] is None
+    text = dumps(unstructure_component(drng)).upper()
+    period2 = text.split("BEGIN PERIOD 2")[1].split("END PERIOD")[0]
+    assert "ELEV" in period2 and "CONSTANT 3" in period2
+    assert "COND" in period2
 
 
 def test_welg_aux_period_without_stress():
@@ -3726,3 +3744,39 @@ def test_block_end_keeps_only_an_index():
     assert writer.filters.block_end("period 1") == "PERIOD 1"
     assert writer.filters.block_end("time 0.5") == "TIME 0.5"
     assert writer.filters.block_end("options") == "OPTIONS"
+
+
+def test_unknown_option_warns():
+    """A row no field takes, in a block with other fields, warns: MF6 would
+    reject it, so it's likely one flopy4 doesn't support yet."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Npf
+
+    raw = loads("BEGIN OPTIONS\n  SAVE_FLOWS\n  NOT_AN_OPTION 1\nEND OPTIONS\n")
+    with pytest.warns(UserWarning, match="Npf: no field takes OPTIONS entry NOT_AN_OPTION"):
+        npf = structure_component(raw, Npf)
+    assert npf.save_flows
+
+
+def test_computed_dimension_does_not_warn():
+    """A list package's MAXBOUND is computed from its rows, not read."""
+    import warnings
+
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Chd
+
+    raw = loads("BEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        structure_component(raw, Chd)
+
+
+def test_options_open_close(tmp_path):
+    """An options block can be OPEN/CLOSE-redirected to a file."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Npf
+
+    (tmp_path / "npf_options.ref").write_text("SAVE_FLOWS\nPERCHED\n")
+    raw = loads("BEGIN OPTIONS\n  OPEN/CLOSE npf_options.ref\nEND OPTIONS\n")
+    npf = structure_component(raw, Npf, workspace=tmp_path)
+    assert npf.save_flows and npf.perched

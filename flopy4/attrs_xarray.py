@@ -117,7 +117,8 @@ def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.Data
     """Stack a period array field's given periods. A period from a time-array
     series is FILL_DNODATA, naming the series in the "<name>_tas" coordinate
     along the period dim ('' for arrays), so the stack has every period the
-    field gives. Aux names missing from a period are FILL_DNODATA there."""
+    field gives. Aux names missing from a period are FILL_DNODATA there, as
+    is a cleared grid period (None), which loads back as cleared."""
     from flopy4.mf6._types import TimeArraySeriesRef
     from flopy4.mf6.constants import FILL_DNODATA
 
@@ -139,10 +140,19 @@ def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.Data
             coords[tas] = ((period, key), refs.astype(str))
         dims = (period, key, *_array_dims(field, name, len(shape)))
         return xr.DataArray(stacked, dims=dims, coords=coords)
-    shape = next((np.shape(a) for a in value.values() if not isinstance(a, TimeArraySeriesRef)), ())
+    shape = next(
+        (
+            np.shape(a)
+            for a in value.values()
+            if a is not None and not isinstance(a, TimeArraySeriesRef)
+        ),
+        (),
+    )
     stacked = np.stack(
         [
-            np.full(shape, FILL_DNODATA) if isinstance(a, TimeArraySeriesRef) else np.asarray(a)
+            np.full(shape, FILL_DNODATA)
+            if a is None or isinstance(a, TimeArraySeriesRef)
+            else np.asarray(a)
             for a in value.values()
         ]
     )

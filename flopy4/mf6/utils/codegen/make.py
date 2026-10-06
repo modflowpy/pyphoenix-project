@@ -1673,6 +1673,8 @@ def build_component_spec(
     # period array separately, keyed by the 0-based periods it's given in
     # (see flopy4.mf6.period_arrays).
     if _readarray_period_fields:
+        # a grid package's period can be cleared, None (see period_arrays)
+        _grid = any(f.name == "readarraygrid" for _, f in all_fields)
         for _ra_f in _readarray_period_fields:
             # shape/netcdf are the per-block DFN values, as for griddata;
             # shape is each period's array's.
@@ -1693,6 +1695,8 @@ def build_component_spec(
                 _ra_meta["time_series"] = True
                 _ra_base += " | TimeArraySeriesRef"
                 extra_imports.append("from flopy4.mf6._types import TimeArraySeriesRef")
+            if _grid:
+                _ra_base += " | None"
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f.name,
