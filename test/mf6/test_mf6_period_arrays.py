@@ -177,6 +177,38 @@ def test_rcha_tas_reference_round_trip():
         rcha.period_array("recharge", nper=3)
 
 
+def test_tas_reference_xarray_coordinate(tmp_path):
+    """In xarray a reference period stays in the stack, as FILL_DNODATA,
+    naming its series in a coordinate along the period dim. The dataset
+    saves to NetCDF and comes back the same."""
+    import xarray as xr
+
+    from flopy4.attrs_xarray import attrs_to_dataset, dataset_to_attrs
+
+    rcha = Rcha(
+        auxiliary=["conc"],
+        recharge={0: TimeArraySeriesRef("rch"), 2: np.array([0.3, 0.4])},
+        aux={0: {"conc": TimeArraySeriesRef("cs")}, 1: {"conc": np.array([1.0, 2.0])}},
+    )
+    ds = attrs_to_dataset(rcha)
+    recharge = ds["recharge"]
+    assert list(recharge["recharge_period"].values) == [0, 2]
+    assert list(recharge["recharge_tas"].values) == ["rch", ""]
+    assert (recharge.sel(recharge_period=0) == FILL_DNODATA).all()
+    # the coordinate goes along with the data
+    assert recharge.isel(recharge_period=0)["recharge_tas"].item() == "rch"
+    assert ds["aux"]["aux_tas"].sel(aux_period=0, aux_name="conc").item() == "cs"
+
+    path = tmp_path / "rcha.nc"
+    ds.drop_attrs().to_netcdf(path)
+    loaded = xr.load_dataset(path).assign_attrs(ds.attrs)
+    assert dataset_to_attrs(Rcha, loaded) == rcha
+
+    # every period from a series
+    only = Rcha(recharge={0: TimeArraySeriesRef("rch")})
+    assert dataset_to_attrs(Rcha, attrs_to_dataset(only)) == only
+
+
 def test_tas_reference_needs_time_series_field():
     with pytest.raises(ValueError, match="can't come from a time-array series"):
         Welg(q={0: "qseries"})

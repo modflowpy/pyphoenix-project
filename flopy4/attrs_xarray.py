@@ -74,7 +74,10 @@ def _leaf_fields_and_children(
         value = getattr(obj, field.name, None)
         if value is None:
             continue
-        if _is_attrs_instance(value):
+        if _period_dim(field):
+            # period arrays, even all from time-array series (attrs instances)
+            leaves[field.name] = (field, value)
+        elif _is_attrs_instance(value):
             single_children[field.name] = value
         elif (
             isinstance(value, dict) and value and all(_is_attrs_instance(v) for v in value.values())
@@ -111,44 +114,71 @@ def _period_dim(field: attrs.Attribute) -> str | None:
 
 
 def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.DataArray:
-    """Stack a period array field's given periods. Aux names missing from a
-    period are FILL_DNODATA there."""
+    """Stack a period array field's given periods. A period from a time-array
+    series is FILL_DNODATA, naming the series in the "<name>_tas" coordinate
+    along the period dim ('' for arrays), so the stack has every period the
+    field gives. Aux names missing from a period are FILL_DNODATA there."""
+    from flopy4.mf6._types import TimeArraySeriesRef
     from flopy4.mf6.constants import FILL_DNODATA
 
-    period = f"{name}_period"
+    period, tas = f"{name}_period", f"{name}_tas"
     if key := _named_dim(field):
         names = list(dict.fromkeys(n for arrays in value.values() for n in arrays))
-        first = np.asarray(next(a for arrays in value.values() for a in arrays.values()))
-        dims = _array_dims(field, name, first.ndim)
-        stacked = np.full((len(value), len(names), *first.shape), FILL_DNODATA)
+        cells = [a for arrays in value.values() for a in arrays.values()]
+        shape = next((np.shape(a) for a in cells if not isinstance(a, TimeArraySeriesRef)), ())
+        stacked = np.full((len(value), len(names), *shape), FILL_DNODATA)
+        refs = np.full((len(value), len(names)), "", dtype=object)
         for i, arrays in enumerate(value.values()):
             for j, n in enumerate(names):
-                if n in arrays:
-                    stacked[i, j] = np.asarray(arrays[n])
-        return xr.DataArray(
-            stacked, dims=(period, key, *dims), coords={period: list(value), key: names}
-        )
-    arrays = [np.asarray(a) for a in value.values()]
-    dims = _array_dims(field, name, arrays[0].ndim)
-    return xr.DataArray(np.stack(arrays), dims=(period, *dims), coords={period: list(value)})
+                if isinstance(a := arrays.get(n), TimeArraySeriesRef):
+                    refs[i, j] = a.name
+                elif a is not None:
+                    stacked[i, j] = np.asarray(a)
+        coords: dict = {period: list(value), key: names}
+        if (refs != "").any():
+            coords[tas] = ((period, key), refs.astype(str))
+        dims = (period, key, *_array_dims(field, name, len(shape)))
+        return xr.DataArray(stacked, dims=dims, coords=coords)
+    shape = next((np.shape(a) for a in value.values() if not isinstance(a, TimeArraySeriesRef)), ())
+    stacked = np.stack(
+        [
+            np.full(shape, FILL_DNODATA) if isinstance(a, TimeArraySeriesRef) else np.asarray(a)
+            for a in value.values()
+        ]
+    )
+    refs = np.array([a.name if isinstance(a, TimeArraySeriesRef) else "" for a in value.values()])
+    coords = {period: list(value)}
+    if (refs != "").any():
+        coords[tas] = (period, refs)
+    dims = (period, *_array_dims(field, name, len(shape)))
+    return xr.DataArray(stacked, dims=dims, coords=coords)
 
 
 def _period_value(field: attrs.Attribute, da: xr.DataArray) -> dict:
     """Inverse of `_period_dataarray`."""
+    from flopy4.mf6._types import TimeArraySeriesRef
     from flopy4.mf6.constants import FILL_DNODATA
 
     period = f"{field.name}_period"
+    tas = da.coords.get(f"{field.name}_tas")
     periods = [int(k) for k in da[period].values]
+
+    def ref(**at) -> TimeArraySeriesRef | None:
+        name = str(tas.sel(at).item()) if tas is not None else ""
+        return TimeArraySeriesRef(name) if name else None
+
     if key := _named_dim(field):
-        return {
-            k: {
-                str(n): a
-                for n in da[key].values
-                if not ((a := da.sel({period: k, key: n}).values) == FILL_DNODATA).all()
-            }
-            for k in periods
-        }
-    return {k: da.sel({period: k}).values for k in periods}
+        value: dict = {}
+        for k in periods:
+            arrays: dict = {}
+            for n in da[key].values:
+                if r := ref(**{period: k, key: n}):
+                    arrays[str(n)] = r
+                elif not ((a := da.sel({period: k, key: n}).values) == FILL_DNODATA).all():
+                    arrays[str(n)] = a
+            value[k] = arrays
+        return value
+    return {k: ref(**{period: k}) or da.sel({period: k}).values for k in periods}
 
 
 def attrs_to_dataset(obj) -> xr.Dataset:
@@ -167,19 +197,9 @@ def attrs_to_dataset(obj) -> xr.Dataset:
         if isinstance(value, xr.DataArray):
             data_vars[name] = value
         elif _period_dim(field) and isinstance(value, dict):
-            # period arrays, stacked along the periods given; time-array
-            # series references (names) kept as an attr
-            from flopy4.mf6.period_arrays import split_tas
-
-            arrays, refs = split_tas(value)
-            if arrays:
-                data_vars[name] = _period_dataarray(field, name, arrays)
-            if refs:
-                # by name, so the attr serializes
-                ds_attrs[f"{name}_tas"] = {
-                    k: {n: str(r) for n, r in v.items()} if isinstance(v, dict) else str(v)
-                    for k, v in refs.items()
-                }
+            # period arrays, stacked along the periods given
+            if value:
+                data_vars[name] = _period_dataarray(field, name, value)
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
         elif field.metadata.get("shape") and isinstance(value, (list, tuple)):
@@ -215,15 +235,6 @@ def _leaf_kwargs_from_dataset(cls: type, dataset: xr.Dataset) -> dict:
     for name, value in dataset.attrs.items():
         if name in field_names:
             kwargs[name] = value
-        elif name.endswith("_tas") and (field := name[: -len("_tas")]) in periods:
-            # time-array series references, back among the period's arrays
-            merged = kwargs.setdefault(field, {})
-            for kper, ref in value.items():
-                if isinstance(ref, dict):
-                    merged.setdefault(int(kper), {}).update(ref)
-                else:
-                    merged[int(kper)] = ref
-            kwargs[field] = dict(sorted(merged.items()))
     return kwargs
 
 
