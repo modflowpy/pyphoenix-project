@@ -289,7 +289,7 @@ class TestFilters:
         schema = [
             cellid_column("cellid"),
             value_column("head"),
-            array_column("aux", "auxiliary", empty_default=True),
+            array_column("aux", "auxiliary", optional=True),
             boundname_column("boundname"),
         ]
         result = item_class(schema, "StressPeriodData")

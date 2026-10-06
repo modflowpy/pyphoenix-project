@@ -757,7 +757,6 @@ class ItemColumn:
     annotation: str
     rhs: str
     optional: bool = False  # declared after the required columns
-    shape: str | None = None  # shape expression counting an inline array
     arm_classes: tuple[str, ...] = ()
 
     @property
@@ -798,10 +797,11 @@ def _attr_column(
     *,
     optional: bool,
     time_series: bool = False,
+    default: str = "None",
     **kwargs,
 ) -> ItemColumn:
-    """The generic rendering: ``name: T = field(meta)``, or ``Optional[T]``
-    with a ``None`` default when optional."""
+    """The generic rendering: ``name: T = field(meta)``, or, when optional,
+    ``Optional[T]`` with a ``None`` default (or ``T`` with ``default``)."""
     meta = dict(meta)
     if time_series:
         meta["time_series"] = True
@@ -815,8 +815,8 @@ def _attr_column(
         meta["optional"] = True
     margs = _margs(meta)
     if optional:
-        annotation = f"Optional[{py_type}]"
-        rhs = f"field(default=None, {margs})" if meta else "None"
+        annotation = py_type if default != "None" else f"Optional[{py_type}]"
+        rhs = f"field(default={default}, {margs})" if meta else default
     else:
         annotation = py_type
         # A bare annotation here is equivalent to field() at runtime (both
@@ -935,16 +935,10 @@ def array_column(
     signed: bool = False,
     optional: bool = False,
     time_series: bool = False,
-    empty_default: bool = False,
 ) -> ItemColumn:
     """An inline array with as many values as the shape expression ``shape``
     gives (``nseg-1``, ``auxiliary``, ``packagedata.ncon(ifno)``), emitted
-    as-is for the runtime to evaluate.
-
-    ``empty_default`` makes the column optional with an empty tuple default,
-    for an array whose count is filled in from it or checked against it
-    (cell2d's icvert, by ncvert; aux, by auxiliary).
-    """
+    as-is for the runtime to evaluate. Empty when omitted."""
     if cellid:
         py_type = "tuple[tuple[int, ...], ...]"
     elif signed:
@@ -961,24 +955,8 @@ def array_column(
     meta["shape"] = (shape,)
     if signed:
         meta["signed"] = True
-    if empty_default:
-        if time_series:
-            meta["time_series"] = True
-        meta["optional"] = True
-        return ItemColumn(
-            name=name,
-            annotation=py_type,
-            rhs=f"field(default=(), {_margs(meta)})",
-            optional=True,
-            shape=shape,
-        )
     return _attr_column(
-        name,
-        py_type,
-        meta,
-        optional=optional,
-        time_series=time_series,
-        shape=shape,
+        name, py_type, meta, optional=optional, time_series=time_series, default="()"
     )
 
 

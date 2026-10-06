@@ -23,12 +23,6 @@ class Ctp(Package):
         "ctp": (("cellid",), ("string",)),
     }
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "maxbound": "maxbound",
-        "auxiliary": "len(auxiliary)",
-        "naux": "len(auxiliary)",
-    }
-
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)

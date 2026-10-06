@@ -42,14 +42,6 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     }
 
 {% endif %}
-{% if spec.dim_exprs %}
-    dim_exprs: ClassVar[dict[str, str]] = {
-{% for name, expr in spec.dim_exprs.items() %}
-        "{{ name }}": "{{ expr }}",
-{% endfor %}
-    }
-
-{% endif %}
 {% for rec in spec.inner_classes %}
     @attrs.define
     class {{ rec.class_name }}(Record):

@@ -23,24 +23,17 @@ class Evt(Package):
         "evt": (("cellid",), ("string",)),
     }
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "maxbound": "maxbound",
-        "nseg": "nseg",
-        "auxiliary": "len(auxiliary)",
-        "naux": "len(auxiliary)",
-    }
-
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         surface: Union[float, str] = field(time_series=True)
         rate: Union[float, str] = field(time_series=True)
         depth: Union[float, str] = field(time_series=True)
-        pxdp: Optional[tuple[Union[float, str], ...]] = field(
-            default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
+        pxdp: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
         )
-        petm: Optional[tuple[Union[float, str], ...]] = field(
-            default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
+        petm: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
         )
         petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
         aux: tuple[Union[float, str], ...] = field(

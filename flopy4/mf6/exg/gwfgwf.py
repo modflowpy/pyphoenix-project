@@ -25,12 +25,6 @@ class Gwfgwf(Exchange):
         "flow-ja-face": (("index",), ("string",)),
     }
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "nexg": "nexg",
-        "auxiliary": "len(auxiliary)",
-        "naux": "len(auxiliary)",
-    }
-
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"

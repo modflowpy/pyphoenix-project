@@ -35,13 +35,6 @@ class Uzf(Package):
         "water-content": (("index", "double"), ("string", "double")),
     }
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "nuzfcells": "nuzfcells",
-        "ntrailwaves": "ntrailwaves",
-        "nwavesets": "nwavesets",
-        "auxiliary": "len(auxiliary)",
-    }
-
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)

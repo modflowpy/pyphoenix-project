@@ -36,10 +36,6 @@ class Lke(Package):
         "withdrawal": (("index",), ("string",)),
     }
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "auxiliary": "len(auxiliary)",
-    }
-
     @attrs.define
     class Packagedata(Item):
         lakeno: int = field(index=True, pk=True)

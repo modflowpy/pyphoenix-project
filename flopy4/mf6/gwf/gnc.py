@@ -12,11 +12,6 @@ from flopy4.mf6.spec import field
 class Gnc(Package):
     dfn_name: ClassVar[str] = "gwf-gnc"
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "numgnc": "numgnc",
-        "numalphaj": "numalphaj",
-    }
-
     @attrs.define
     class Gncdata(Item):
         cellidn: tuple = field(cellid=True)

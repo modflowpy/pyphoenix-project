@@ -18,14 +18,6 @@ from flopy4.mf6.utl.ncf import Ncf
 class Disv(DisvMethods, GridDimsMethods, Package):
     dfn_name: ClassVar[str] = "gwt-disv"
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "nlay": "nlay",
-        "ncpl": "ncpl",
-        "nvert": "nvert",
-        "nodes": "nlay * ncpl",
-        "ncelldim": "2",
-    }
-
     @attrs.define
     class Vertices(Item):
         iv: int = field(index=True, pk=True)

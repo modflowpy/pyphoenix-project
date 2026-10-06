@@ -107,6 +107,13 @@ def _lookup(values: Mapping[str, Any], name: str) -> Any:
     return None
 
 
+def dim_lookup(values: Mapping[str, Any], name: str) -> Any:
+    """The value of a dim a shape names: the field of that name, or its length
+    if it holds an array (aux's ``auxiliary``). None if it isn't set."""
+    v = _lookup(values, name)
+    return len(v) if hasattr(v, "__len__") else v
+
+
 def package_sized_fields(cls: type) -> list[attrs.Attribute]:
     """An item class's array fields sized by a package field or dimension."""
     return [f for f in cast(type[Record], cls).fields() if _sized_by_package(cls, f)]

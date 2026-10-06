@@ -15,10 +15,6 @@ class Ts(Package):
 
     multi_package: ClassVar[bool] = True
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "time_series_names": "len(time_series_names)",
-    }
-
     @attrs.define
     class TimeSeriesName(Record):
         _keyword: ClassVar[str] = "names"

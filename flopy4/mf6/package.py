@@ -1,7 +1,7 @@
 import operator
 from abc import ABC
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, Optional
 
 import attrs
 import numpy as np
@@ -17,9 +17,9 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.item import (
     Item,
-    _lookup,
     construct_item,
     construct_union_item,
+    dim_lookup,
     item_list_type,
     package_sized_fields,
 )
@@ -58,7 +58,6 @@ _BOUND_OPS: dict = {
 class Package(Component, ABC):
     # Dimensions counting item columns that aren't fields themselves, name ->
     # DFN expression (utl-ts's {"time_series_names": "len(time_series_names)"}).
-    dim_exprs: ClassVar[dict[str, str]] = {}
 
     def __attrs_post_init__(self) -> None:
         """Post-init for Package subclasses.
@@ -229,7 +228,7 @@ class Package(Component, ABC):
                 for r in rows:
                     n = len(getattr(r, col.name) or ())
                     expected = dim_value(
-                        shape, self.dim_exprs, lambda name, r=r: getattr(r, name, None), select
+                        shape, lookup=lambda name, r=r: getattr(r, name, None), select=select
                     )
                     if expected is not None and n != expected:
                         raise ValueError(
@@ -304,7 +303,7 @@ class Package(Component, ABC):
         values = {a.name: getattr(self, a.name) for a in attrs.fields(type(self))}
 
         def lookup(name: str) -> Any:
-            return _lookup(values, name)
+            return dim_lookup(values, name)
 
         for f in package_sized_fields(item_cls):
             shape = f.metadata["shape"][0]
@@ -314,12 +313,10 @@ class Package(Component, ABC):
             if not lengths:
                 continue
             (n,) = lengths
-            if (unset := dim_input(shape, self.dim_exprs, lookup, length=n)) is not None:
+            if (unset := dim_input(shape, lookup=lookup, length=n)) is not None:
                 object.__setattr__(self, *unset)
                 values[unset[0]] = unset[1]
-            elif (
-                declared := dim_value(shape, self.dim_exprs, lookup)
-            ) is not None and declared != n:
+            elif (declared := dim_value(shape, lookup=lookup)) is not None and declared != n:
                 raise ValueError(f"{shape}={declared} but {f.name} has {n} values")
 
     @staticmethod

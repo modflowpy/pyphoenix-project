@@ -17,7 +17,7 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import (
     Item,
-    _lookup,
+    dim_lookup,
     infer_ncelldim,
     item_list_type,
     parse_union_items,
@@ -936,11 +936,10 @@ def structure_component(
         item_types.append(period_item_cls)
     # Sizes of the package fields and dimensions sizing item columns
     # (aux by auxiliary, GNC's alphasj by numalphaj).
-    dim_exprs = getattr(cls, "dim_exprs", {})
     sizes = {}
     for ic in item_types:
         for shape in sized_by(ic):
-            if (n := dim_value(shape, dim_exprs, lambda name: _lookup(kwargs, name))) is not None:
+            if (n := dim_value(shape, lookup=lambda name: dim_lookup(kwargs, name))) is not None:
                 sizes[shape] = n
     boundnames = bool(kwargs.get("boundnames", False))
 

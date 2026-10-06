@@ -17,14 +17,6 @@ from flopy4.mf6.spec import field, path
 class Disu(DisuMethods, GridDimsMethods, Package):
     dfn_name: ClassVar[str] = "gwf-disu"
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "nodes": "nodes",
-        "nja": "nja",
-        "nvert": "nvert",
-        "ncelldim": "1",
-        "njas": "(nja - nodes) / 2",
-    }
-
     @attrs.define
     class Vertices(Item):
         iv: int = field(index=True, pk=True)

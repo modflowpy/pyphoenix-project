@@ -34,11 +34,6 @@ class Maw(Package):
         "storage": (("index",), ("string",)),
     }
 
-    dim_exprs: ClassVar[dict[str, str]] = {
-        "nmawwells": "nmawwells",
-        "auxiliary": "len(auxiliary)",
-    }
-
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
