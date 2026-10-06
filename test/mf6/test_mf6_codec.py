@@ -858,17 +858,104 @@ def test_rcha_irch_round_trip():
 
     nper, ncpl = 2, 3
     dims = {"nper": nper, "nlay": 2, "ncpl": ncpl, "nodes": 2 * ncpl}
-    irch = np.full((nper, ncpl), 3.0e30)
-    irch[0] = [0, 1, 0]
-    rch = Rcha(irch=irch, recharge=np.full((nper, ncpl), 1e-3), dims=dims)
+    # irch given only in period 0: an int array, no fill value
+    rch = Rcha(irch={0: np.array([0, 1, 0])}, recharge=np.full((nper, ncpl), 1e-3), dims=dims)
 
     raw = loads(dumps(unstructure_component(rch)))
     # irch is 0-based, 1-based in the file
     period = raw["PERIOD 1"]
     assert period[period.index(["IRCH"]) + 2] == [1, 2, 1]
+    assert ["IRCH"] not in raw["PERIOD 2"]
 
     rch2 = structure_component(raw, Rcha, dims=dims)
+    assert list(rch2.irch) == [0]
+    assert rch2.irch[0].dtype == np.int64
     np.testing.assert_array_equal(rch2.irch[0], [0, 1, 0])
+    np.testing.assert_array_equal(rch2.period_array("irch", nper=nper)[1], [0, 1, 0])
+
+
+def test_welg_cleared_period_round_trip():
+    """A grid period whose stress arrays are all DNODATA clears every boundary:
+    an empty period block, which loads back as a clear. A period not given
+    carries forward."""
+    from flopy4.mf6._types import array_eq
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Welg
+
+    dims = {"nper": 4, "nlay": 1, "ncpl": 3, "nodes": 3}
+    welg = Welg(
+        auxiliary=["conc"],
+        q={0: np.array([-1.0, FILL_DNODATA, -2.0]), 2: np.full(3, FILL_DNODATA)},
+        aux={0: {"conc": np.array([5.0, FILL_DNODATA, 6.0])}},
+    )
+
+    text = dumps(unstructure_component(welg))
+    assert "BEGIN PERIOD 2" not in text.upper()
+    cleared = text.upper().split("BEGIN PERIOD 3")[1].split("END PERIOD")[0]
+    assert cleared.strip() == ""
+
+    welg2 = structure_component(loads(text), Welg, dims=dims)
+    assert array_eq(welg2.q, welg.q)
+    assert array_eq(welg2.aux, welg.aux)
+    np.testing.assert_array_equal(
+        welg2.period_array("q", nper=4)[:, 0], [-1, -1, FILL_DNODATA, FILL_DNODATA]
+    )
+
+
+def test_welg_aux_period_without_stress():
+    from flopy4.mf6.gwf import Welg
+
+    with pytest.raises(ValueError, match=r"periods \[1\] with no stress arrays"):
+        Welg(auxiliary=["conc"], q={0: np.ones(2)}, aux={1: {"conc": np.ones(2)}})
+
+
+def test_rcha_aux_name_collision():
+    """An AUXILIARY name matching a field's (RECHARGE) loads into aux, as in MF6."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Rcha
+
+    text = """BEGIN OPTIONS
+  AUXILIARY recharge
+  READASARRAYS
+END OPTIONS
+BEGIN PERIOD 1
+  RECHARGE
+    CONSTANT 5.0
+END PERIOD
+"""
+    rcha = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    assert rcha.recharge is None
+    np.testing.assert_array_equal(rcha.aux[0]["recharge"], [5.0, 5.0])
+
+
+def test_wel_empty_period_round_trip():
+    """An empty list period block turns off every boundary: it loads as an
+    empty period and is written back."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Wel
+
+    text = """BEGIN DIMENSIONS
+  MAXBOUND 1
+END DIMENSIONS
+BEGIN PERIOD 1
+  1 1 1 -1.0
+END PERIOD
+BEGIN PERIOD 3
+END PERIOD
+"""
+    dims = {"nlay": 1, "nrow": 1, "ncol": 2, "ncpl": 2, "nodes": 2}
+    wel = structure_component(loads(text), Wel, dims=dims)
+    assert list(wel.stress_period_data) == [0, 2]
+    assert wel.stress_period_data[2] == []
+
+    out = dumps(unstructure_component(wel))
+    cleared = out.upper().split("BEGIN PERIOD 3")[1].split("END PERIOD")[0]
+    assert cleared.strip() == ""
+    assert structure_component(loads(out), Wel, dims=dims).stress_period_data == (
+        wel.stress_period_data
+    )
 
 
 def test_dumps_wel():
@@ -3247,9 +3334,11 @@ def test_rcha_period_aux_roundtrip():
     text = dumps(unstructure_component(rch))
     assert "TEMP" not in text.split("BEGIN PERIOD 2")[1]
     rch2 = structure_component(loads(text), Rcha, dims={"nlay": 1, "nodes": 4})
-    assert sorted(rch2.aux) == ["conc", "temp"]
-    for name in rch.aux:
-        np.testing.assert_array_equal(rch2.aux[name], rch.aux[name])
+    # temp's all-DNODATA period 2 isn't given: aux[kper][name]
+    assert {k: sorted(v) for k, v in rch2.aux.items()} == {0: ["conc", "temp"], 1: ["conc"]}
+    for kper, arrays in rch.aux.items():
+        for name, arr in arrays.items():
+            np.testing.assert_array_equal(rch2.aux[kper][name], arr)
 
 
 def test_rcha_period_aux_unknown_name():

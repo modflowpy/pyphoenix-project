@@ -808,7 +808,7 @@ def test_quickstart_netcdf(function_tmpdir):
     assert np.allclose(ds["ic_strt"].values.ravel(), ic.strt)
     assert np.allclose(ds["npf_icelltype"].values.ravel(), npf.icelltype)
     assert np.allclose(ds["npf_k"].values.ravel(), npf.k)
-    assert np.allclose(ds["chd0_head"].values.ravel(), chd.head.ravel())
+    assert np.allclose(ds["chd0_head"].values.ravel(), chd.period_array("head").ravel())
 
     # requires mf6 extended to run
     # sim.run()
@@ -921,7 +921,7 @@ def test_quickstart_netcdf_mesh(function_tmpdir):
     assert np.allclose(ds["ic_strt_l1"].values.ravel(), np.asarray(ic.strt).ravel())
     assert np.allclose(ds["npf_icelltype_l1"].values.ravel(), np.asarray(npf.icelltype).ravel())
     assert np.allclose(ds["npf_k_l1"].values.ravel(), np.asarray(npf.k).ravel())
-    assert np.allclose(ds["chd0_head_l1"].values.ravel(), chd.head.ravel())
+    assert np.allclose(ds["chd0_head_l1"].values.ravel(), chd.period_array("head").ravel())
 
     # requires mf6 extended to run
     # sim.run()

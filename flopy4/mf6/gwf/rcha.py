@@ -78,7 +78,7 @@ class Rcha(Package):
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    irch: Optional[IntArrayLike] = field(
+    irch: Optional[dict[int, IntArrayLike]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
@@ -87,7 +87,7 @@ class Rcha(Package):
         netcdf=True,
         fill_forward=True,
     )
-    recharge: Optional[FloatArrayLike] = field(
+    recharge: Optional[dict[int, FloatArrayLike]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
@@ -95,7 +95,7 @@ class Rcha(Package):
         netcdf=True,
         fill_forward=True,
     )
-    aux: Optional[dict[str, FloatArrayLike]] = field(
+    aux: Optional[dict[int, dict[str, FloatArrayLike]]] = field(
         default=None,
         block="period",
         shape=("ncpl",),

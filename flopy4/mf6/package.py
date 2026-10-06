@@ -23,6 +23,12 @@ from flopy4.mf6.item import (
     package_sized_fields,
     resolve_dim,
 )
+from flopy4.mf6.period_arrays import (
+    dense,
+    is_grid_package,
+    to_named_period_dict,
+    to_period_dict,
+)
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
 
@@ -92,7 +98,7 @@ class Package(Component, ABC):
         # 1. Item-list coercion.
         self._init_item_lists(fields)
         self._check_lookup_counts(fields)
-        self._init_dynamically_named_arrays(fields)
+        self._init_period_arrays(fields)
 
         # 2. Griddata normalization and broadcasting. A dimension provider
         # (a grid package) sizes its own griddata.
@@ -216,22 +222,53 @@ class Package(Component, ABC):
                             f"but {block}.{count_col} is {expected}"
                         )
 
-    def _init_dynamically_named_arrays(self, fields) -> None:
-        """Dynamically named arrays (RCHA's aux): convert each to an array, and check
-        its name is one of the names the field's fk points at."""
+    def _init_period_arrays(self, fields) -> None:
+        """Period array fields (WELG's q, RCHA's aux) to ``{kper: array}``, or
+        ``{kper: {name: array}}`` for dynamically named ones, whose names must
+        be among those the field's fk points at. Dense ``(nper, ...)`` input
+        is split by period (see ``flopy4.mf6.period_arrays``). In a grid
+        package, aux can only be given in periods the stress arrays are."""
+        stress_periods: set[int] = set()
+        named: list = []
         for f in fields:
-            if not (f.metadata.get("fill_forward") and (fk := f.metadata.get("fk"))):
+            if not f.metadata.get("fill_forward") or item_list_type(f.type) is not None:
                 continue
-            if (arrays := self.__dict__.get(f.name)) is None:
+            if (value := self.__dict__.get(f.name)) is None:
                 continue
-            key = fk.rsplit(".", 1)[-1]
+            # like griddata, each period's array has the field's flat DFN
+            # shape: (nlay, nrow, ncol) to (nodes,)
+            flat = len(f.metadata.get("shape") or ()) == 1
+            integer = to_field_type(f.type) == "integer"
+
+            def _normalize(a):
+                if flat and a.ndim > 1:
+                    a = a.ravel()
+                if integer and isinstance(a, np.ndarray):
+                    a = a.astype(np.int64)
+                return a
+
+            if f.metadata.get("fk"):
+                periods = {
+                    k: {n: _normalize(a) for n, a in arrays.items()}
+                    for k, arrays in (to_named_period_dict(value) or {}).items()
+                }
+                named.append((f, periods))
+            else:
+                periods = {k: _normalize(a) for k, a in (to_period_dict(value) or {}).items()}
+                stress_periods.update(periods)
+            self.__dict__[f.name] = periods
+        for f, periods in named:
+            key = f.metadata["fk"].rsplit(".", 1)[-1]
             names = getattr(self, key, None)
             allowed = {str(n).lower() for n in np.atleast_1d(names)} if names is not None else set()
-            if unknown := sorted(n for n in arrays if str(n).lower() not in allowed):
+            given = {n for arrays in periods.values() for n in arrays}
+            if unknown := sorted(n for n in given if n.lower() not in allowed):
                 raise ValueError(f"{f.name}: {unknown} not in {key}")
-            self.__dict__[f.name] = {
-                n: a if hasattr(a, "shape") else np.asarray(a) for n, a in arrays.items()
-            }
+            if is_grid_package(type(self)) and (extra := sorted(set(periods) - stress_periods)):
+                raise ValueError(
+                    f"{f.name} given in periods {extra} with no stress arrays; "
+                    "a grid package's period is one unit"
+                )
 
     def _set_dim_from_rows(self, dim: str, nrows: int, bound: str | None = None) -> None:
         declared = getattr(self, dim)
@@ -540,26 +577,90 @@ class Package(Component, ABC):
     def stress_period_data(self, value) -> None:  # type: ignore[override]
         self.__dict__["_stress_period_data"] = value
 
+    def _period_array_fields(self) -> list:
+        """Period array fields (not list ones): READARRAY packages' q, recharge, aux, ..."""
+        return [
+            f
+            for f in attrs.fields(type(self))  # type: ignore[arg-type]
+            if f.metadata.get("fill_forward") and item_list_type(f.type) is None
+        ]
+
+    def _period_dict(self, f) -> Optional[dict]:
+        value = self.__dict__.get(f.name)
+        return to_named_period_dict(value) if f.metadata.get("fk") else to_period_dict(value)
+
+    def period_array(
+        self, name: str, nper: Optional[int] = None, carry_forward: bool = True
+    ) -> "np.ndarray | dict[str, np.ndarray] | None":
+        """A period array field as a dense ``(nper, ...)`` array.
+
+        With ``carry_forward`` (the default), each period holds the values in
+        effect then. Without it, periods the field doesn't give are filled
+        with ``FILL_DNODATA`` (floats) or ``FILL_INT64`` (integers). In a grid
+        package a given period replaces the previous one as a whole, so a
+        field missing from it is filled, not carried.
+
+        Dynamically named arrays (aux) give ``{name: (nper, ...)}``. ``nper``
+        defaults to the simulation's, else to one past the last given period.
+        """
+        fields = self._period_array_fields()
+        f = next((f for f in fields if f.name == name), None)
+        if f is None:
+            raise ValueError(f"{type(self).__name__} has no period array field {name!r}")
+        periods = self._period_dict(f)
+        if not periods:
+            return None
+        given = None
+        if is_grid_package(type(self)):
+            given = sorted({k for g in fields for k in (self._period_dict(g) or {})})
+        if nper is None:
+            nper = self.resolve_dims("nper").get("nper") or max(given or periods) + 1
+        if not f.metadata.get("fk"):
+            return dense(periods, nper, carry_forward, given)
+        names = list(dict.fromkeys(n for arrays in periods.values() for n in arrays))
+        return {
+            n: dense(
+                {k: arrays[n] for k, arrays in periods.items() if n in arrays},
+                nper,
+                carry_forward,
+                given,
+            )
+            for n in names
+        }
+
     def to_dataarray(self, field_name: str) -> "xr.DataArray":
-        """Single griddata field as xr.DataArray. Stays lazy if dask-backed."""
-        arr = getattr(self, field_name)
+        """Single griddata or period array field as xr.DataArray. A period
+        array is the values in effect each period (see `period_array`), with
+        a leading "per" dim. Stays lazy if dask-backed."""
+        period = any(f.name == field_name for f in self._period_array_fields())
+        arr = self.period_array(field_name) if period else getattr(self, field_name)
         if arr is None:
             raise ValueError(f"{field_name!r} is not set")
+        if isinstance(arr, dict):
+            raise ValueError(f"{field_name!r} holds named arrays, not one array")
+        nper = arr.shape[0] if period else None
         _d = self.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
         _nlay = _d.get("nlay", 1)
+        f = attrs.fields_dict(type(self))[field_name]  # type: ignore[arg-type]
+        if f.metadata.get("shape") == ("ncpl",) and not f.metadata.get("layered"):
+            _nlay = 1  # one layer's worth (RCHA's recharge, DIS's top)
         _nrow = _d.get("nrow")
         _ncol = _d.get("ncol")
         _ncpl = _d.get("ncpl")
         if _ncpl is None and "nodes" in _d and _nlay > 0:
             _ncpl = _d["nodes"] // _nlay
+        lead: tuple[int, ...] = () if nper is None else (nper,)
         if _nrow is not None and _ncol is not None:
-            arr = arr.reshape(_nlay, _nrow, _ncol)
+            arr = arr.reshape(*lead, _nlay, _nrow, _ncol)
             dims: tuple[str, ...] = ("layer", "y", "x")
         elif _ncpl is not None:
-            arr = arr.reshape(_nlay, _ncpl)
+            arr = arr.reshape(*lead, _nlay, _ncpl)
             dims = ("layer", "face")
         else:
+            arr = arr.reshape(*lead, -1)
             dims = ("node",)
+        if nper is not None:
+            dims = ("per", *dims)
         return xr.DataArray(arr, dims=dims, name=field_name)
 
     def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
@@ -577,7 +678,9 @@ class Package(Component, ABC):
             data_vars = {
                 a.name: self.to_dataarray(a.name)
                 for a in fields
-                if a.metadata.get("block") == _block and getattr(self, a.name) is not None
+                if a.metadata.get("block") == _block
+                and getattr(self, a.name) is not None
+                and not a.metadata.get("fk")
             }
             if data_vars:
                 return xr.Dataset(data_vars)

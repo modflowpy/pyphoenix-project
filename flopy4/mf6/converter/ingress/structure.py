@@ -20,6 +20,7 @@ from flopy4.mf6.item import (
     sized_by,
 )
 from flopy4.mf6.package import Package
+from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.utils import unwrap_optional
@@ -741,6 +742,7 @@ def structure_component(
         f.name: f
         for f in attrs.fields(cls)
         if repeating_array_key_type(f.type) is not None
+        and not f.metadata.get("fill_forward")
         and f.init is not False
         and not f.metadata.get("fk")
     }
@@ -900,6 +902,8 @@ def structure_component(
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
+                    # an empty period block turns off every boundary
+                    spd[kper] = []
                     continue
                 rows = _resolve_open_close_rows(rows, workspace)
                 row_list = _parse_rows(
@@ -915,10 +919,9 @@ def structure_component(
         else:
             # ── Pass 3b: READARRAY period fields (G/A variants) ─────────────
             # Packages like Rcha/Chdg store full-grid arrays per stress period.
-            # Each field is fill_forward and a plain Optional[Int|
-            # FloatArrayLike] -- not an Item-list (else period_field would be
-            # set above) and not dict-wrapped (else it'd be a
-            # repeating_array_field instead, see below).
+            # Each field is fill_forward and a dict[int, Int|FloatArrayLike]
+            # keyed by period -- not an Item-list (else period_field would be
+            # set above).
             ra_fields = {
                 f.name: f
                 for f in attrs.fields(cls)
@@ -937,33 +940,38 @@ def structure_component(
                 for n in _names(kwargs.get(fk.rsplit(".", 1)[-1]))
             }
             if ra_fields and dims:
-                nper = max(kper_rows.keys()) + 1
                 nlay = dims.get("nlay", 1)
                 nodes = dims.get("nodes", 1)
                 ncpl = nodes // nlay if nlay > 1 else nodes
+                grid = is_grid_package(cls)
 
-                # Pre-fill with FILL_DNODATA; periods absent from file use MF6
-                # fill-forward semantics (egress skips all-FILL_DNODATA periods).
-                def _empty(f) -> np.ndarray:
+                # Each field holds the periods the file gives (see
+                # flopy4.mf6.period_arrays). An empty grid period block
+                # clears every boundary: all its stress arrays are DNODATA.
+                def _cleared(f) -> np.ndarray:
                     layered = f.metadata.get("layered", False)
-                    return np.full((nper, nlay, ncpl) if layered else (nper, ncpl), FILL_DNODATA)
+                    return np.full((nlay, ncpl) if layered else (ncpl,), FILL_DNODATA)
 
-                accum: dict[str, np.ndarray] = {fname: _empty(f) for fname, f in ra_fields.items()}
-                named_accum: dict[str, dict[str, np.ndarray]] = {}
+                periods: dict[str, dict[int, np.ndarray]] = {}
+                named_periods: dict[str, dict[int, dict[str, np.ndarray]]] = {}
+                # An auxiliary name that matches a field's (Q) is the aux
+                # array, as in MF6.
                 lookup = ra_fields | {k: f for k, (f, _) in named.items()}
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
+                        if grid:
+                            for fname, f in ra_fields.items():
+                                periods.setdefault(fname, {})[kper] = _cleared(f)
                         continue
                     parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
                     for key, arr in parsed.items():
-                        if key in ra_fields:
-                            accum[key][kper] = arr
-                        else:
+                        if key in named:
                             f, name = named[key]
-                            arrays = named_accum.setdefault(f.name, {})
-                            arrays.setdefault(name, _empty(f))[kper] = arr
-                kwargs.update(accum)
-                kwargs.update(named_accum)
+                            named_periods.setdefault(f.name, {}).setdefault(kper, {})[name] = arr
+                        else:
+                            periods.setdefault(key, {})[kper] = arr
+                kwargs.update(periods)
+                kwargs.update(named_periods)
 
     # ── Pass 3c: array fields whose own block repeats (utl-tas.tas_array is
     # the only current DFN example) ──────────────────────────────────────────

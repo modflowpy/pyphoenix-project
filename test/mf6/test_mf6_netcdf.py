@@ -372,3 +372,64 @@ def test_param_mesh():
         meta = nc_param.meta
         assert isinstance(meta, dict)
         nc_param = NetCDFParam.model_validate(meta, context=context)
+
+
+def _welg_chdg_model():
+    from flopy4.mf6.constants import FILL_DNODATA as NODATA
+    from flopy4.mf6.gwf import Chdg, Dis, Gwf, Welg
+    from flopy4.mf6.simulation import Simulation
+    from flopy4.mf6.utils.time import Time
+
+    sim = Simulation(tdis=Time(perlen=[1.0, 1.0], nstp=[1, 1], tsmult=[1.0, 1.0]), name="s")
+    gwf = Gwf(parent=sim, dis=Dis(nlay=2, nrow=1, ncol=2), name="m")
+    Welg(
+        parent=gwf,
+        auxiliary=["a1", "a2"],
+        q={0: np.array([-1.0, NODATA, NODATA, NODATA])},
+        aux={
+            0: {
+                "a1": np.array([1.0, NODATA, NODATA, NODATA]),
+                "a2": np.array([2.0, NODATA, NODATA, NODATA]),
+            }
+        },
+    )
+    Chdg(
+        parent=gwf,
+        head={0: np.array([1.0, 2.0, NODATA, NODATA]), 3: np.array([3.0, 4.0, NODATA, NODATA])},
+    )
+    return gwf
+
+
+def test_from_model_aux_variable_per_name():
+    """Each aux name gets its own variable and modflow_iaux, with and without
+    a layered mesh. Periods not given are filled."""
+    import pytest
+
+    from flopy4.mf6.constants import FILL_DNODATA as NODATA
+    from flopy4.mf6.netcdf import NetCDFFormat
+
+    gwf = _welg_chdg_model()
+    with pytest.warns(UserWarning, match="past NPER"):
+        ds = NetCDFModel.from_model(gwf).to_xarray()
+    for n, name in enumerate(["a1", "a2"]):
+        var = ds[f"wel0_{name}"]
+        assert var.attrs["modflow_iaux"] == n + 1
+        assert var.values[0].ravel()[0] == n + 1.0
+        assert (var.values[1] == NODATA).all()
+
+    with pytest.warns(UserWarning, match="past NPER"):
+        ds = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.LAYERED_MESH).to_xarray()
+    for n, name in enumerate(["a1", "a2"]):
+        for k in range(2):
+            assert ds[f"wel0_{name}_l{k + 1}"].attrs["modflow_iaux"] == n + 1
+
+
+def test_from_model_periods_past_nper_dropped():
+    """Period data past NPER is dropped, with a warning."""
+    import pytest
+
+    gwf = _welg_chdg_model()
+    with pytest.warns(UserWarning, match=r"periods \[3\] are past NPER \(2\)"):
+        ds = NetCDFModel.from_model(gwf).to_xarray()
+    assert ds.sizes["time"] == 2
+    assert np.allclose(ds["chd0_head"].values[0].ravel()[:2], [1.0, 2.0])

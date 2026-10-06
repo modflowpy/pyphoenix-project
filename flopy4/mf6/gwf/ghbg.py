@@ -79,7 +79,7 @@ class Ghbg(Package):
         optional=True,
         longname="maximum number of general-head boundaries in any stress period",
     )
-    bhead: Optional[FloatArrayLike] = field(
+    bhead: Optional[dict[int, FloatArrayLike]] = field(
         default=None,
         block="period",
         shape=("nodes",),
@@ -87,7 +87,7 @@ class Ghbg(Package):
         netcdf=True,
         fill_forward=True,
     )
-    cond: Optional[FloatArrayLike] = field(
+    cond: Optional[dict[int, FloatArrayLike]] = field(
         default=None,
         block="period",
         shape=("nodes",),
@@ -95,7 +95,7 @@ class Ghbg(Package):
         netcdf=True,
         fill_forward=True,
     )
-    aux: Optional[dict[str, FloatArrayLike]] = field(
+    aux: Optional[dict[int, dict[str, FloatArrayLike]]] = field(
         default=None,
         block="period",
         shape=("nodes",),
