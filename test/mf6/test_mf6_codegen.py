@@ -112,13 +112,14 @@ UTL_TIER = {
     "utl-ts": ("Ts", "Package"),
 }
 
-# Exchange packages (exg/) — only zero-field (pass-only) classes.
-# Packages with cellidm1/cellidm2 fields (gwfgwf, gwegwe, gwtgwt, olfgwf, chfgwf)
-# are excluded: ncelldim resolution is not yet implemented in the ingress/egress layers.
+# Exchange packages (exg/) for the model types flopy4 has classes for.
 EXG_TIER = {
-    "exg-gwfgwe": ("Gwfgwe", "Package"),
-    "exg-gwfgwt": ("Gwfgwt", "Package"),
-    "exg-gwfprt": ("Gwfprt", "Package"),
+    "exg-gwegwe": ("Gwegwe", "Exchange"),
+    "exg-gwfgwe": ("Gwfgwe", "Exchange"),
+    "exg-gwfgwf": ("Gwfgwf", "Exchange"),
+    "exg-gwfgwt": ("Gwfgwt", "Exchange"),
+    "exg-gwfprt": ("Gwfprt", "Exchange"),
+    "exg-gwtgwt": ("Gwtgwt", "Exchange"),
 }
 
 SOLUTION_TIER = {
@@ -874,6 +875,10 @@ def test_link_selector_errors(all_dfns, selector, match):
         ("sim-nam", "tdis", "Tdis"),
         ("gwf-npf", "tvk", "Tvk"),
         ("gwf-sto", "tvs", "Tvs"),
+        ("exg-gwfgwf", "mvr", "Mvr"),
+        ("exg-gwfgwf", "gnc", "Gnc"),
+        ("exg-gwtgwt", "mvt", "Mvt"),
+        ("exg-gwegwe", "mve", "Mve"),
     ],
 )
 def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
@@ -1268,7 +1273,7 @@ def test_utl_tier_generates_importable_files(tmp_path, all_dfns):
 
 
 def test_exg_tier_generates_importable_files(tmp_path, all_dfns):
-    """exg-* packages generate importable Package subclasses (including 0-field pass-only)."""
+    """exg-* packages generate importable Exchange subclasses (including 0-field pass-only)."""
     (tmp_path / "exg").mkdir()
 
     target = {n for n in EXG_TIER if n in all_dfns}
@@ -1276,7 +1281,7 @@ def test_exg_tier_generates_importable_files(tmp_path, all_dfns):
     specs = make_modules(dfns=all_dfns, outdir=tmp_path, makedirs=True, skip=skip)
     generated = {s.dfn_name: s for s in specs}
 
-    from flopy4.mf6.package import Package
+    from flopy4.mf6.exchange import Exchange
 
     for dfn_name, (expected_class, _) in EXG_TIER.items():
         if dfn_name not in all_dfns:
@@ -1285,7 +1290,7 @@ def test_exg_tier_generates_importable_files(tmp_path, all_dfns):
         spec = generated[dfn_name]
         assert spec.outpath == tmp_path / "exg" / f"{expected_class.lower()}.py"
         cls = _load_class_from_spec(spec, f"_codegen_test_exg.{dfn_name}", expected_class)
-        assert issubclass(cls, Package)
+        assert issubclass(cls, Exchange)
 
 
 def test_aux_columns_follow_dfn():
@@ -1313,6 +1318,24 @@ def test_sized_column_from_tokens():
     assert item.q == -5.0
     assert item.aux == (0.1, 0.2)
     assert item.boundname == "well1"
+    assert item.to_tokens() == tuple(tokens)
+
+
+@pytest.mark.parametrize(
+    "tokens,mnames",
+    [
+        (["sfr-1", 8, "sfr-2", 1, "FACTOR", 1.0], (None, None)),
+        (["parent", "sfr-1", 8, "child", "sfr-2", 1, "FACTOR", 1.0], ("parent", "child")),
+    ],
+)
+def test_optional_leading_columns(tokens, mnames):
+    """MVR's optional model name columns come before its required ones."""
+    from flopy4.mf6.gwf import Mvr
+
+    item = Mvr.StressPeriodData.from_tokens(tokens)
+    assert (item.mname1, item.mname2) == mnames
+    assert (item.pname1, item.id1, item.pname2, item.id2) == ("sfr-1", 7, "sfr-2", 0)
+    assert (item.mvrtype, item.value) == ("FACTOR", 1.0)
     assert item.to_tokens() == tuple(tokens)
 
 

@@ -19,7 +19,7 @@ import re
 from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Union, cast, get_args, get_origin
+from typing import Any, ClassVar, Union, cast, get_args, get_origin
 
 import attrs
 
@@ -309,6 +309,14 @@ def _token_fits(token: Any, kind: type) -> bool:
     return False
 
 
+def _in_columns(cls: "type[Item]", fields: list[attrs.Attribute]) -> list[attrs.Attribute]:
+    """Fields in the class's column order; any not listed go last."""
+    columns = cls._columns
+    return sorted(
+        fields, key=lambda f: columns.index(f.name) if f.name in columns else len(columns)
+    )
+
+
 def _is_row_key(f: attrs.Attribute) -> bool:
     """A pk/fk or cellid column identifying the row (e.g. SFR's ifno, TVK's
     cellid). These precede a union arm's _keyword; every other field follows
@@ -319,6 +327,9 @@ def _is_row_key(f: attrs.Attribute) -> bool:
 class Item(Record):
     """Mixin for generated table-item types (plain items and keystring-union
     arms alike -- see module docstring)."""
+
+    # Column order, when it differs from the field order (see from_tokens).
+    _columns: ClassVar[tuple[str, ...]] = ()
 
     def __attrs_post_init__(self) -> None:
         """Fill each count column (cell2d's ncvert) from the array it counts,
@@ -342,6 +353,8 @@ class Item(Record):
         """
         cls = type(self)
         fields = cls.fields()
+        if cls._columns:
+            fields = _in_columns(cls, fields)
         sized = _sized_field(cls)
         keyword = cls.keyword()
         counted = _counted_fields(cls)
@@ -496,14 +509,26 @@ class Item(Record):
         required_fields = [f for f in main_fields if not f.metadata.get("optional")]
         optional_fields = [f for f in main_fields if f.metadata.get("optional")]
 
-        for f in required_fields:
-            consume(f)
+        # An optional column before a required one (MVR's "mname1 pname1
+        # id1 mname2 ...") means reading in column order, so the budget
+        # comes from the required columns' widths instead. Those optional
+        # columns come all together or not at all (MVR's MODELNAMES).
+        columns = cls._columns
+        if columns:
+            optional_fields = _in_columns(cls, optional_fields)
+            fixed = (0 if keyword_skipped else 1) + sum(
+                ncelldim if f.metadata.get("cellid") else width(f) for f in required_fields
+            )
+        else:
+            for f in required_fields:
+                consume(f)
+            fixed = tok_idx
 
         has_bn_token = False
-        if has_boundname and n > tok_idx:
+        if has_boundname and n > fixed:
             last = tokens[-1]
             has_bn_token = isinstance(last, str) and not _token_fits(last, float)
-        remaining = n - tok_idx - (1 if has_bn_token else 0) - nsized
+        remaining = n - fixed - (1 if has_bn_token else 0) - nsized
 
         budget_fields = [f for f in optional_fields if not f.metadata.get("tagged")]
         n_opt_present = 0
@@ -514,9 +539,17 @@ class Item(Record):
                 break
             used += w
             n_opt_present += 1
+        if columns and n_opt_present < len(budget_fields):
+            n_opt_present = 0
 
         budget_idx = 0
-        for f in optional_fields:
+        ordered = (
+            _in_columns(cls, required_fields + optional_fields) if columns else optional_fields
+        )
+        for f in ordered:
+            if not f.metadata.get("optional"):
+                consume(f)
+                continue
             if f.metadata.get("tagged"):
                 if not keyword_skipped:
                     tok_idx += 1
