@@ -27,14 +27,12 @@ from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record
 from flopy4.mf6.component import FNAMES
 from flopy4.mf6.utils.codegen.filters import (
     array_column,
-    boundname_column,
+    attr_column,
     can_expand_record,
-    cellid_column,
     class_name,
     feature_id_column,
     is_generatable,
     item_class,
-    keyword_column,
     model_abbr,
     module_name,
     output_path,
@@ -261,7 +259,7 @@ class TestFilters:
         schema = [
             feature_id_column("ifno", pk=True),
             value_column("strt"),
-            boundname_column("boundname"),
+            attr_column("boundname", "str", {}, optional=True),
         ]
         result = item_class(schema, "Packagedata")
         assert "@attrs.define" in result
@@ -287,10 +285,10 @@ class TestFilters:
         # A column sized by a package field (aux by auxiliary) is a tuple
         # with that shape, in DFN order before boundname.
         schema = [
-            cellid_column("cellid"),
+            attr_column("cellid", "tuple", {"cellid": True}, optional=False),
             value_column("head"),
             array_column("aux", "auxiliary", optional=True),
-            boundname_column("boundname"),
+            attr_column("boundname", "str", {}, optional=True),
         ]
         result = item_class(schema, "StressPeriodData")
         assert (
@@ -305,7 +303,7 @@ class TestFilters:
             feature_id_column("ifno"),
             value_column("strt"),
             value_column("nlakeconn", "integer"),
-            boundname_column("boundname"),
+            attr_column("boundname", "str", {}, optional=True),
         ]
         result = item_class(schema, "Packagedata")
         lines = [ln.strip() for ln in result.splitlines() if ":" in ln and "class" not in ln]
@@ -317,13 +315,13 @@ class TestFilters:
         # record.py's Record uses for optional keyword tokens).
         schema = [
             value_column("pname", "string", object_dtype=True),
-            keyword_column("mixed"),
+            attr_column("mixed", "str", {"tagged": True}, optional=True),
         ]
         result = item_class(schema, "Fileinput")
         assert "mixed: Optional[str] = field(default=None, tagged=True, optional=True)" in result
 
     def test_item_class_cellid_metadata(self):
-        schema = [cellid_column("cellid")]
+        schema = [attr_column("cellid", "tuple", {"cellid": True}, optional=False)]
         result = item_class(schema, "StressPeriodData")
         assert "cellid: tuple = field(cellid=True)" in result
 

@@ -264,15 +264,17 @@ def _item_columns(
                 time_series=ts,
             )
         elif col.is_cellid:
-            item = filters.cellid_column(name, optional=optional, time_series=ts)
+            item = filters.attr_column(
+                name, "tuple", {"cellid": True}, optional=optional, time_series=ts
+            )
         elif col.is_index:
             fk = getattr(f, "fk", None)
             pk = not fk and bool(getattr(f, "pk", False))
             item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
         elif name == "boundname":
-            item = filters.boundname_column(name)
+            item = filters.attr_column(name, "str", {}, optional=True)
         elif col.is_row_keyword:
-            item = filters.keyword_column(name, time_series=ts)
+            item = filters.attr_column(name, "str", {"tagged": True}, optional=True, time_series=ts)
         elif isinstance(f, UnionField) and not f.tagged:
             # One column, any of the arms (OBS's id: a cellid, an index or
             # a boundname), told apart when read (see Item.from_tokens).
@@ -287,7 +289,7 @@ def _item_columns(
         elif isinstance(f, UnionField) or (
             isinstance(f, Array) and not filters.is_fixed_length_array(f)
         ):
-            item = filters.rest_column(name, dfn_type)
+            item = filters.array_column(name, None, dfn_type)
         else:
             item = filters.value_column(
                 name,
@@ -1447,7 +1449,7 @@ def build_component_spec(
                 ItemClassSpec(
                     class_name="StressPeriodData",
                     keyword="",
-                    schema=[filters.required_str_column(f.name)],
+                    schema=[filters.attr_column(f.name, "str", {}, optional=False)],
                 )
             )
             _period_item = "StressPeriodData"

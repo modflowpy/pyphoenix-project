@@ -743,7 +743,7 @@ _DFN_PY: dict[str, str] = {
 class ItemColumn:
     """One rendered column of a generated Item class.
 
-    Built by the per-kind functions below (``value_column``, ``cellid_column``,
+    Built by the per-kind functions below (``value_column``, ``feature_id_column``,
     ...), each of which decides a column's whole rendering -- annotation,
     right-hand side, optionality -- in one place. ``item_class`` only orders
     and emits them.
@@ -790,7 +790,7 @@ def _margs(meta: dict) -> str:
     return ", ".join(f"{k}={_dq(v)}" for k, v in meta.items())
 
 
-def _attr_column(
+def attr_column(
     name: str,
     py_type: str,
     meta: dict,
@@ -849,20 +849,10 @@ def value_column(
     """A plain scalar. A time series or object-dtype value may be a string."""
     object_dtype = object_dtype or time_series
     py_type = "Union[float, str]" if object_dtype else _DFN_PY.get(dfn_type, "float")
-    return _attr_column(
+    return attr_column(
         name,
         py_type,
         {},
-        optional=optional,
-        time_series=time_series,
-    )
-
-
-def cellid_column(name: str, *, optional: bool = False, time_series: bool = False) -> ItemColumn:
-    return _attr_column(
-        name,
-        "tuple",
-        {"cellid": True},
         optional=optional,
         time_series=time_series,
     )
@@ -881,26 +871,11 @@ def feature_id_column(
         meta["fk"] = fk
     elif pk:
         meta["pk"] = True
-    return _attr_column(
+    return attr_column(
         name,
         "int",
         meta,
         optional=optional,
-        time_series=time_series,
-    )
-
-
-def boundname_column(name: str) -> ItemColumn:
-    return _attr_column(name, "str", {}, optional=True)
-
-
-def keyword_column(name: str, *, time_series: bool = False) -> ItemColumn:
-    """An optional keyword, stored as a tagged string."""
-    return _attr_column(
-        name,
-        "str",
-        {"tagged": True},
-        optional=True,
         time_series=time_series,
     )
 
@@ -911,7 +886,7 @@ def union_column(
     """One column that is any of several arm kinds (OBS's id: a cellid, an
     index or a boundname), told apart when read."""
     types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in arms)
-    return _attr_column(
+    return attr_column(
         name,
         f"Union[{', '.join(types)}]",
         {"union": arms},
@@ -920,14 +895,9 @@ def union_column(
     )
 
 
-def required_str_column(name: str) -> ItemColumn:
-    """A required string with no metadata, e.g. a lone keystring selector."""
-    return _attr_column(name, "str", {}, optional=False)
-
-
 def array_column(
     name: str,
-    shape: str,
+    shape: str | None,
     dfn_type: str = "double",
     *,
     cellid: bool = False,
@@ -938,7 +908,20 @@ def array_column(
 ) -> ItemColumn:
     """An inline array with as many values as the shape expression ``shape``
     gives (``nseg-1``, ``auxiliary``, ``packagedata.ncon(ifno)``), emitted
-    as-is for the runtime to evaluate. Empty when omitted."""
+    as-is for the runtime to evaluate. Empty when omitted.
+
+    Without a ``shape`` it consumes all remaining tokens -- a keyword-plus-
+    trailing-values setting whose arity isn't fixed (PRP's Steps.steps/
+    Fraction's leaf field), typed when the DFN says (STEPS are integers).
+    """
+    if shape is None:
+        elem = _DFN_PY[dfn_type] if dfn_type in ("integer", "double") else None
+        return ItemColumn(
+            name=name,
+            annotation=f"tuple[{elem}, ...]" if elem else "tuple",
+            rhs="field(default=(), array=True)",
+            optional=True,
+        )
     if cellid:
         py_type = "tuple[tuple[int, ...], ...]"
     elif signed:
@@ -955,21 +938,8 @@ def array_column(
     meta["shape"] = (shape,)
     if signed:
         meta["signed"] = True
-    return _attr_column(
+    return attr_column(
         name, py_type, meta, optional=optional, time_series=time_series, default="()"
-    )
-
-
-def rest_column(name: str, dfn_type: str | None = None) -> ItemColumn:
-    """Consumes all remaining tokens as a tuple -- a keyword-plus-trailing-
-    values setting whose arity/type isn't fixed (PRP's Steps.steps/Fraction's
-    leaf field), typed when the DFN says (STEPS are integers)."""
-    elem = _DFN_PY[dfn_type] if dfn_type in ("integer", "double") else None
-    return ItemColumn(
-        name=name,
-        annotation=f"tuple[{elem}, ...]" if elem else "tuple",
-        rhs="field(default=(), array=True)",
-        optional=True,
     )
 
 
