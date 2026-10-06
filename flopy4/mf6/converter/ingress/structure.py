@@ -152,7 +152,7 @@ def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.n
 
 
 def _resolve_open_close_rows(rows: list, workspace: "Path | None") -> list:
-    """A period/list block's row data can itself be OPEN/CLOSE-redirected
+    """A block's row data can itself be OPEN/CLOSE-redirected
     to an external file instead of written inline -- MF6 syntax:
     ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> / END PERIOD 1``. Same keyword as
     griddata's OPEN/CLOSE control record, but a different mechanism: the
@@ -836,6 +836,13 @@ def structure_component(
 
     # ── Pass 1: scalar blocks (options, dimensions, etc.) ────────────────────
     known_blocks = {f.metadata.get("block") for f in attrs.fields(cls)}
+    # Blocks naming children (a model's packages, the simulation's
+    # solutions), whose rows _resolve_bindings takes, and warns for.
+    binding_blocks = {
+        f.metadata.get("block")
+        for f in attrs.fields(cls)
+        if f.metadata.get("child") and not f.metadata.get("_keyword")
+    }
     if isinstance(getattr(cls, "maxbound", None), property):
         known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
@@ -854,6 +861,7 @@ def structure_component(
             or block_name.split()[0] in header_block_fields
         ):
             continue
+        rows = _resolve_open_close_rows(rows, workspace)
         for row in rows:
             if not row:
                 continue
@@ -903,7 +911,19 @@ def structure_component(
                 or all_fields.get(alias_map.get(key, ""))
                 or all_fields.get(f"{key}_")
             )
-            if f is None or f.init is False:
+            if f is None:
+                # MF6 rejects a keyword it doesn't know, so this is likely
+                # one flopy4 doesn't support yet. A computed one (a list
+                # package's MAXBOUND) is derived, not read.
+                if block_name.split()[0] not in binding_blocks and not isinstance(
+                    getattr(cls, key, None), property
+                ):
+                    warnings.warn(
+                        f"{cls.__name__}: no field takes {block_name.upper()} entry "
+                        f"{str(row[0]).upper()}, skipped",
+                        UserWarning,
+                        stacklevel=2,
+                    )
                 continue
             init_key = f.alias if f.alias else f.name
             # A Record-typed field must go through from_tokens(), even when
