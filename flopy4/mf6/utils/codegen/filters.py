@@ -757,11 +757,27 @@ class ItemColumn:
     annotation: str
     rhs: str
     optional: bool = False  # declared after the required columns
-    path: bool = False  # a Path field, so the module needs ``Path``
-    uses_union: bool = False  # may need ``Union`` (time series / object dtype)
-    uses_field: bool = False  # needs ``field`` imported, beyond the package's own
     counted_by: str | None = None  # package dimension sizing an inline array
     arm_classes: tuple[str, ...] = ()
+
+    @property
+    def uses_path(self) -> bool:
+        """Whether the module needs ``Path`` and ``path`` imported."""
+        return "path(" in self.rhs
+
+    @property
+    def uses_union(self) -> bool:
+        """Whether the module needs ``Union`` imported."""
+        return "Union[" in self.annotation
+
+    @property
+    def uses_child(self) -> bool:
+        return "child(" in self.rhs
+
+    @property
+    def uses_field(self) -> bool:
+        """Whether the module needs ``field`` imported."""
+        return "field(" in self.rhs
 
     def line(self, package_class_name: str = "") -> str:
         annotation = self.annotation
@@ -782,8 +798,6 @@ def _attr_column(
     *,
     optional: bool,
     time_series: bool = False,
-    object_dtype: bool = False,
-    uses_field: bool = False,
     **kwargs,
 ) -> ItemColumn:
     """The generic rendering: ``name: T = field(meta)``, or ``Optional[T]``
@@ -820,8 +834,6 @@ def _attr_column(
         annotation=annotation,
         rhs=rhs,
         optional=optional,
-        uses_union=time_series or object_dtype,
-        uses_field=uses_field or time_series,
         **kwargs,
     )
 
@@ -843,7 +855,6 @@ def value_column(
         {},
         optional=optional,
         time_series=time_series,
-        object_dtype=object_dtype,
     )
 
 
@@ -854,8 +865,6 @@ def cellid_column(name: str, *, optional: bool = False, time_series: bool = Fals
         {"cellid": True},
         optional=optional,
         time_series=time_series,
-        object_dtype=time_series,
-        uses_field=True,
     )
 
 
@@ -878,8 +887,6 @@ def feature_id_column(
         meta,
         optional=optional,
         time_series=time_series,
-        object_dtype=time_series,
-        uses_field=True,
     )
 
 
@@ -895,8 +902,6 @@ def keyword_column(name: str, *, time_series: bool = False) -> ItemColumn:
         {"tagged": True},
         optional=True,
         time_series=time_series,
-        object_dtype=time_series,
-        uses_field=True,
     )
 
 
@@ -947,7 +952,6 @@ def counted_column(
         meta,
         optional=optional,
         time_series=time_series,
-        object_dtype=time_series,
         counted_by=dim,
     )
 
@@ -978,12 +982,10 @@ def row_counted_column(
         annotation=f"tuple[{elem}, ...]",
         rhs=f"field(default=(), {_margs(meta)})",
         optional=True,
-        uses_union=time_series,
-        uses_field=time_series,
     )
 
 
-def rest_column(name: str, dfn_type: str | None = None, *, time_series: bool = False) -> ItemColumn:
+def rest_column(name: str, dfn_type: str | None = None) -> ItemColumn:
     """Consumes all remaining tokens as a tuple -- a keyword-plus-trailing-
     values setting whose arity/type isn't fixed (PRP's Steps.steps/Fraction's
     leaf field), typed when the DFN says (STEPS are integers)."""
@@ -993,20 +995,16 @@ def rest_column(name: str, dfn_type: str | None = None, *, time_series: bool = F
         annotation=f"tuple[{elem}, ...]" if elem else "tuple",
         rhs="field(default=(), array=True)",
         optional=True,
-        uses_union=time_series,
-        uses_field=time_series,
     )
 
 
-def sized_column(name: str, size_of: str, *, time_series: bool = False) -> ItemColumn:
+def sized_column(name: str, size_of: str) -> ItemColumn:
     """As many values as package field ``size_of`` (aux, by ``auxiliary``)."""
     return ItemColumn(
         name=name,
         annotation="tuple",
         rhs=f"field(default=(), array=True, optional=True, shape=({_dq(size_of)},))",
         optional=True,
-        uses_union=time_series,
-        uses_field=True,
     )
 
 
@@ -1026,13 +1024,11 @@ def file_column(
                 "        )"
             ),
             optional=True,
-            path=True,
         )
     return ItemColumn(
         name=name,
         annotation="Path",
         rhs=f'path(converter=Path, direction="{direction}"{keyword_kw})',
-        path=True,
     )
 
 
@@ -1056,13 +1052,11 @@ def child_column(
             annotation=f"Optional[{cls}]",
             rhs=f"child({args})",
             optional=True,
-            uses_child=True,
         )
     return ItemColumn(
         name=name,
         annotation=cls,
         rhs=f"child({args}, default=attrs.NOTHING)",
-        uses_child=True,
     )
 
 
@@ -1076,8 +1070,6 @@ def nested_union_column(
         annotation="",
         rhs="field()",
         optional=optional,
-        uses_union=time_series,
-        uses_field=time_series,
         arm_classes=tuple(arm_classes),
     )
 

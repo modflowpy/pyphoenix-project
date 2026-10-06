@@ -255,7 +255,7 @@ def _item_columns(
         elif pending_prefix:
             raise ValueError(f"fixed keyword(s) {pending_prefix} before non-file column {name!r}")
         elif isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
-            item = filters.sized_column(name, shape[0], time_series=ts)
+            item = filters.sized_column(name, shape[0])
         elif isinstance(f, Array) and len(shape) == 1 and shape[0] in seen:
             # Inline array counted by an earlier column of the same row
             # (DISV/DISU cell2d's icvert, by ncvert). Rows vary in length,
@@ -318,13 +318,11 @@ def _item_columns(
                 name, tuple(_arm_kind(arm) for arm in f.arms.values()), optional=optional, time_series=ts
             )
         elif isinstance(f, UnionField) and name in nested_arm_classes:
-            item = filters.nested_union_column(
-                name, nested_arm_classes[name], optional=optional, time_series=ts
-            )
+            item = filters.nested_union_column(name, nested_arm_classes[name], optional=optional)
         elif isinstance(f, UnionField) or (
             isinstance(f, Array) and not filters.is_fixed_length_array(f)
         ):
-            item = filters.rest_column(name, dfn_type, time_series=ts)
+            item = filters.rest_column(name, dfn_type)
         else:
             item = filters.value_column(
                 name,
@@ -980,7 +978,7 @@ def _generated_imports(
     _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
     has_union = has_union_child or any(col.uses_union for col in _all_schema_cols)
     # File row columns become Path fields, not Union[float, str].
-    has_row_path_cols = any(col.path for col in _all_schema_cols)
+    has_row_path_cols = any(col.uses_path for col in _all_schema_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
     # field(), same as any other generated field -- checked separately from
     # has_field_call since these live inside item_class()'s rendered text, not
