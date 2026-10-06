@@ -3,7 +3,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike
+from flopy4.mf6._types import FloatArrayLike, TimeArraySeriesRef
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
 from flopy4.mf6.utl.tas import Tas
@@ -29,17 +29,19 @@ class Spca(Package):
     tas: list[Tas] = child(
         block="options", keyword="tas6", direction="in", default=attrs.Factory(list)
     )
-    concentration: Optional[dict[int, FloatArrayLike]] = field(
+    concentration: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
         layered=False,
         fill_forward=True,
+        time_series=True,
     )
-    temperature: Optional[dict[int, FloatArrayLike]] = field(
+    temperature: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
         layered=False,
         fill_forward=True,
+        time_series=True,
     )

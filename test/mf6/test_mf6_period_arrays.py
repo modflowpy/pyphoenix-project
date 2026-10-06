@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from flopy4.mf6 import TimeArraySeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
 from flopy4.mf6.gwf import Rcha, Welg
 from flopy4.mf6.period_arrays import (
@@ -146,3 +147,95 @@ def test_dense_drops_periods_past_nper():
     with pytest.warns(UserWarning, match="past NPER"):
         out = dense({0: np.array([1.0]), 2: np.array([2.0])}, nper=2)
     np.testing.assert_array_equal(out.ravel(), [1.0, 1.0])
+
+
+def test_rcha_tas_reference_round_trip():
+    """A period's array can be a time-array series, by name, written as a
+    reference to it. A plain name is taken as a reference."""
+    from flopy4.attrs_xarray import attrs_to_dataset, dataset_to_attrs
+    from flopy4.mf6.codec import dumps, loads
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    rcha = Rcha(
+        auxiliary=["conc"],
+        recharge={0: TimeArraySeriesRef("rchseries"), 2: np.array([0.3, 0.4])},
+        aux={0: {"conc": "concseries"}, 1: {"conc": np.array([1.0, 2.0])}},
+    )
+    assert rcha.aux[0] == {"conc": TimeArraySeriesRef("concseries")}
+    text = dumps(unstructure_component(rcha))
+    assert "RECHARGE TIMEARRAYSERIES rchseries" in text
+    assert "CONC TIMEARRAYSERIES concseries" in text
+
+    loaded = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    assert loaded.recharge[0] == TimeArraySeriesRef("rchseries")
+    assert loaded.aux[0] == {"conc": TimeArraySeriesRef("concseries")}
+    np.testing.assert_array_equal(loaded.recharge[2], [0.3, 0.4])
+
+    assert dataset_to_attrs(Rcha, attrs_to_dataset(rcha)) == rcha
+    with pytest.raises(ValueError, match="time-array series"):
+        rcha.period_array("recharge", nper=3)
+
+
+def test_tas_reference_xarray_coordinate(tmp_path):
+    """In xarray a reference period stays in the stack, as FILL_DNODATA,
+    naming its series in a coordinate along the period dim. The dataset
+    saves to NetCDF and comes back the same."""
+    import xarray as xr
+
+    from flopy4.attrs_xarray import attrs_to_dataset, dataset_to_attrs
+
+    rcha = Rcha(
+        auxiliary=["conc"],
+        recharge={0: TimeArraySeriesRef("rch"), 2: np.array([0.3, 0.4])},
+        aux={0: {"conc": TimeArraySeriesRef("cs")}, 1: {"conc": np.array([1.0, 2.0])}},
+    )
+    ds = attrs_to_dataset(rcha)
+    recharge = ds["recharge"]
+    assert list(recharge["recharge_period"].values) == [0, 2]
+    assert list(recharge["recharge_tas"].values) == ["rch", ""]
+    assert (recharge.sel(recharge_period=0) == FILL_DNODATA).all()
+    # the coordinate goes along with the data
+    assert recharge.isel(recharge_period=0)["recharge_tas"].item() == "rch"
+    assert ds["aux"]["aux_tas"].sel(aux_period=0, aux_name="conc").item() == "cs"
+
+    path = tmp_path / "rcha.nc"
+    ds.drop_attrs().to_netcdf(path)
+    loaded = xr.load_dataset(path).assign_attrs(ds.attrs)
+    assert dataset_to_attrs(Rcha, loaded) == rcha
+
+    # every period from a series
+    only = Rcha(recharge={0: TimeArraySeriesRef("rch")})
+    assert dataset_to_attrs(Rcha, attrs_to_dataset(only)) == only
+
+
+def test_tas_reference_needs_time_series_field():
+    with pytest.raises(ValueError, match="can't come from a time-array series"):
+        Welg(q={0: "qseries"})
+
+
+def test_tas_reference_must_name_a_series(function_tmpdir):
+    """Writing checks that each reference names a series the package's
+    TAS6 files define, in any case, as MF6 needs."""
+    from flopy4.mf6.utl.tas import Tas
+
+    def tas(name):
+        return Tas(
+            time_series_name=Tas.TimeSeriesName(time_series_name=[name]),
+            interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
+            tas_array={0.0: np.array([0.1, 0.2]), 1.0: np.array([0.3, 0.4])},
+        )
+
+    rcha = Rcha(
+        auxiliary=["conc"],
+        recharge={0: TimeArraySeriesRef("RchSeries")},
+        aux={0: {"conc": TimeArraySeriesRef("concseries")}},
+        tas=[tas("rchseries")],
+        filename=function_tmpdir / "gwf.rcha",
+    )
+    with pytest.raises(ValueError, match=r"aux: period 0 names .*'concseries'.*\['rchseries'\]"):
+        rcha.write()
+
+    rcha.tas.append(tas("concseries"))
+    rcha.write()
+    assert "RECHARGE TIMEARRAYSERIES RchSeries" in (function_tmpdir / "gwf.rcha").read_text()

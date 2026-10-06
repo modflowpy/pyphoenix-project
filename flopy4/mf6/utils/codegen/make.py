@@ -979,11 +979,15 @@ def _generated_imports(
     # Union[float, str] is used by item_class() for time_series and np.object_ columns.
     # Check every generated Item class's columns.
     _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
-    has_union = has_union_child or any(
-        col.get("time_series") or col.get("dtype") == "np.object_"
-        for col in _all_schema_cols
-        if col.get("role") not in ("keystring_value", "boundname", "file", "child")
-    ) or any(len(col.get("classes", ())) > 1 for col in _all_schema_cols)
+    has_union = (
+        has_union_child
+        or any(
+            col.get("time_series") or col.get("dtype") == "np.object_"
+            for col in _all_schema_cols
+            if col.get("role") not in ("keystring_value", "boundname", "file", "child")
+        )
+        or any(len(col.get("classes", ())) > 1 for col in _all_schema_cols)
+    )
     # File row columns become Path fields, not Union[float, str].
     _row_path_cols = [col for col in _all_schema_cols if col.get("role") == "file"]
     has_row_path_cols = bool(_row_path_cols)
@@ -1760,6 +1764,11 @@ def build_component_spec(
             _ra_base = (
                 "IntArrayLike" if getattr(_ra_f, "dtype", "") == "integer" else "FloatArrayLike"
             )
+            # a period's array can come from a time-array series, by name
+            if getattr(_ra_f, "time_series", False):
+                _ra_meta["time_series"] = True
+                _ra_base += " | TimeArraySeriesRef"
+                extra_imports.append("from flopy4.mf6._types import TimeArraySeriesRef")
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f.name,
@@ -1783,6 +1792,10 @@ def build_component_spec(
         _na_meta["fill_forward"] = True
         _na_meta["fk"] = _fk
         _na_base = "IntArrayLike" if getattr(_arr, "dtype", "") == "integer" else "FloatArrayLike"
+        if getattr(_arr, "time_series", False) or getattr(_lf, "time_series", False):
+            _na_meta["time_series"] = True
+            _na_base += " | TimeArraySeriesRef"
+            extra_imports.append("from flopy4.mf6._types import TimeArraySeriesRef")
         period_specs.append(
             FieldSpec(
                 dfn_name=_lf.name,

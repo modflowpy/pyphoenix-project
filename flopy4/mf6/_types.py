@@ -39,6 +39,17 @@ IntArrayLike: TypeAlias = _ArrayLike[np.int64]
 FloatArrayLike: TypeAlias = _ArrayLike[np.float64]
 
 
+@attrs.frozen
+class TimeArraySeriesRef:
+    """A period's array given by a time-array series, by its name, which
+    MF6 interpolates in time: ``RECHARGE TIMEARRAYSERIES <name>``."""
+
+    name: str
+
+    def __str__(self) -> str:
+        return self.name
+
+
 def _wrap(v) -> list:
     """A single value (a str or path is one value, not an iterable) as a
     one-element list, else the values as a list."""
@@ -75,6 +86,8 @@ def array_eq(a: Any, b: Any) -> bool:
         return True
     if a is None or b is None:
         return False
+    if isinstance(a, TimeArraySeriesRef) or isinstance(b, TimeArraySeriesRef):
+        return a == b
     if isinstance(a, dict) or isinstance(b, dict):
         return (
             isinstance(a, dict)

@@ -13,7 +13,7 @@ import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
 
-from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike
+from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike, TimeArraySeriesRef
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
@@ -349,6 +349,9 @@ def to_field_type(t: type) -> FieldType:
                         return to_field_type(get_args(tt)[-1])
                     case _:
                         return "record"
+            if set(args) - {TimeArraySeriesRef} in ({IntArrayLike}, {FloatArrayLike}):
+                # an array, or a time-array series giving it
+                return to_field_type(next(a for a in args if a is not TimeArraySeriesRef))
             return "list"
         # TODO handle arrays
         case _:

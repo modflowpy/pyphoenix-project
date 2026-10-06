@@ -17,7 +17,7 @@ from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import Package
-from flopy4.mf6.period_arrays import dense
+from flopy4.mf6.period_arrays import dense, split_tas
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
@@ -268,7 +268,8 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     p["params"].append({"name": f.name, "data": arr})
                 elif f.metadata.get("fk"):
                     # dynamically named arrays (RCHA's aux): one param per auxiliary name
-                    if not (periods := getattr(package, f.name)):
+                    # time-array series references stay in the package file
+                    if not (periods := split_tas(getattr(package, f.name) or {})[0]):
                         continue
                     names = [str(n).lower() for n in package.auxiliary]  # type: ignore[attr-defined]
                     p["auxiliary"] = names
@@ -285,8 +286,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
                             }
                         )
                 else:
-                    # period arrays: {kper: array}, periods not given filled
-                    if not (periods := getattr(package, f.name)):
+                    # period arrays: {kper: array}, periods not given filled.
+                    # Time-array series references stay in the package file.
+                    if not (periods := split_tas(getattr(package, f.name) or {})[0]):
                         continue
                     if f.metadata.get("index"):
                         # 1-based in the file

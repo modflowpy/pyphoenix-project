@@ -2823,3 +2823,61 @@ def test_gwe_lke_flow_package_auxiliary_name(function_tmpdir):
     # Center cell (0,0,2) — directly below lake — should have highest temperature
     assert taq[2] > taq[0], f"Center cell should have higher temp than edge: {taq}"
     assert taq[2] > taq[4], f"Center cell should have higher temp than edge: {taq}"
+
+
+def test_rcha_tas_reference_netcdf(function_tmpdir):
+    """With NetCDF input, a period whose recharge comes from a time-array
+    series still references it in the package file; the NetCDF variable
+    holds only the periods given as arrays."""
+    import os
+
+    from flopy4.mf6 import TimeArraySeriesRef
+    from flopy4.mf6.netcdf import NetCDFModel
+    from flopy4.mf6.utl.tas import Tas
+
+    name = "tasnc"
+    nrow, ncol = 1, 10
+    sim = Simulation(
+        tdis=Time(perlen=[1.0, 1.0], nstp=[1, 1], tsmult=[1.0, 1.0]),
+        workspace=function_tmpdir,
+        name=name,
+        solutiongroup={"ims": Ims(models=[name], linear_acceleration="cg")},
+    )
+    gwf = Gwf(parent=sim, name=name)
+    Dis(parent=gwf, nlay=1, nrow=nrow, ncol=ncol, top=10.0, botm=0.0)
+    Ic(parent=gwf, strt=10.0)
+    Npf(parent=gwf, k=1.0)
+    head = np.full((1, nrow * ncol), FILL_DNODATA)
+    head[0, 0] = 10.0
+    Chdg(parent=gwf, head=head)
+    tas = Tas(
+        time_series_name=Tas.TimeSeriesName(time_series_name=["rch"]),
+        interpolation_method=Tas.InterpolationMethod(interpolation_method="stepwise"),
+        tas_array={0.0: np.full(ncol, 1e-3), 2.0: np.full(ncol, 1e-3)},
+    )
+    rcha = Rcha(
+        parent=gwf,
+        recharge={0: TimeArraySeriesRef("rch"), 1: np.full(ncol, 2e-3)},
+        tas=[tas],
+    )
+
+    nc_fpth = function_tmpdir / f"{name}.input.nc"
+    gwf.netcdf_input_file = nc_fpth
+    ds = NetCDFModel.from_model(gwf).to_xarray()
+    ds.to_netcdf(nc_fpth)
+    with WriteContext(use_netcdf=True):
+        sim.write()
+
+    text = (function_tmpdir / rcha.filename).read_text()
+    period0, period1 = text.split("BEGIN PERIOD")[1:]
+    assert "RECHARGE TIMEARRAYSERIES rch" in period0
+    assert "RECHARGE NETCDF" in period1
+    assert (function_tmpdir / tas.filename).exists()
+
+    recharge = xr.load_dataset(nc_fpth, mask_and_scale=False)["rch0_recharge"].values
+    assert (recharge[0] == FILL_DNODATA).all()
+    assert np.allclose(recharge[1], 2e-3)
+
+    # NetCDF input needs the extended build
+    if os.getenv("MF6_EXTENDED"):
+        sim.run()
