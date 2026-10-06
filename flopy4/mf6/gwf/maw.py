@@ -21,14 +21,14 @@ class Maw(Package):
     multi_package: ClassVar[bool] = True
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "conductance": (("index", "index"), ("string",)),
+        "conductance": (("index", "index"), ("index", "string"), ("string",)),
         "constant": (("index",), ("string",)),
         "from-mvr": (("index",), ("string",)),
         "fw-conductance": (("index",), ("string",)),
         "fw-rate": (("index",), ("string",)),
         "fw-to-mvr": (("index",), ("string",)),
         "head": (("index",), ("string",)),
-        "maw": (("index", "index"), ("string",)),
+        "maw": (("index", "index"), ("index", "string"), ("string",)),
         "rate": (("index",), ("string",)),
         "rate-to-mvr": (("index",), ("string",)),
         "storage": (("index",), ("string",)),
@@ -42,7 +42,9 @@ class Maw(Package):
         strt: Union[float, str] = field(time_series=True)
         condeqn: Union[float, str] = field()
         ngwfnodes: int = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

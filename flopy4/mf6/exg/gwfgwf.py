@@ -38,7 +38,7 @@ class Gwfgwf(Exchange):
         cl1: float = field()
         cl2: float = field()
         hwva: float = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[float, ...] = field(default=(), array=True, shape=("auxiliary",), optional=True)
         boundname: Optional[str] = field(default=None, optional=True)
 
     auxiliary: Optional[NDArray[np.str_]] = field(

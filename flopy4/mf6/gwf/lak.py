@@ -22,14 +22,14 @@ class Lak(Package):
     multi_package: ClassVar[bool] = True
 
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
-        "conductance": (("index", "index"), ("string",)),
+        "conductance": (("index", "index"), ("index", "string"), ("string",)),
         "constant": (("index",), ("string",)),
         "evaporation": (("index",), ("string",)),
         "ext-inflow": (("index",), ("string",)),
         "ext-outflow": (("index",), ("string",)),
         "from-mvr": (("index",), ("string",)),
         "inflow": (("index",), ("string",)),
-        "lak": (("index", "index"), ("string",)),
+        "lak": (("index", "index"), ("index", "string"), ("string",)),
         "outlet": (("index",), ("string",)),
         "outlet-inflow": (("index",), ("string",)),
         "rainfall": (("index",), ("string",)),
@@ -39,7 +39,7 @@ class Lak(Package):
         "surface-area": (("index",), ("string",)),
         "to-mvr": (("index",), ("string",)),
         "volume": (("index",), ("string",)),
-        "wetted-area": (("index", "index"), ("string",)),
+        "wetted-area": (("index", "index"), ("index", "string"), ("string",)),
         "withdrawal": (("index",), ("string",)),
     }
 
@@ -48,7 +48,9 @@ class Lak(Package):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

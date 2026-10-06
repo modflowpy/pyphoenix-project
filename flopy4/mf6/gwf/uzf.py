@@ -59,7 +59,9 @@ class Uzf(Package):
         ha: Union[float, str] = field(time_series=True)
         hroot: Union[float, str] = field(time_series=True)
         rootact: Union[float, str] = field(time_series=True)
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,

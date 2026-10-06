@@ -29,14 +29,16 @@ class Evt(Package):
         surface: Union[float, str] = field(time_series=True)
         rate: Union[float, str] = field(time_series=True)
         depth: Union[float, str] = field(time_series=True)
-        pxdp: Optional[tuple[Union[float, str], ...]] = field(
-            default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
+        pxdp: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
         )
-        petm: Optional[tuple[Union[float, str], ...]] = field(
-            default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
+        petm: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
         )
         petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     fixed_cell: bool = field(

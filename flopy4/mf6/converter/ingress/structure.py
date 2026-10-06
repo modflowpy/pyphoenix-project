@@ -8,6 +8,7 @@ from typing import Any, cast, get_args, get_origin
 
 import attrs
 import numpy as np
+from modflow_devtools.dfns import dim_value
 
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
@@ -16,10 +17,10 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import (
     Item,
+    dim_lookup,
     infer_ncelldim,
     item_list_type,
     parse_union_items,
-    resolve_dim,
     sized_by,
 )
 from flopy4.mf6.package import Package
@@ -935,12 +936,11 @@ def structure_component(
         item_types.append(period_item_cls)
     # Sizes of the package fields and dimensions sizing item columns
     # (aux by auxiliary, GNC's alphasj by numalphaj).
-    count_dims = getattr(cls, "count_dims", {})
     sizes = {}
     for ic in item_types:
-        for dim in sized_by(ic):
-            if (n := resolve_dim(dim, count_dims, kwargs)) is not None:
-                sizes[dim] = n
+        for shape in sized_by(ic):
+            if (n := dim_value(shape, lookup=lambda name: dim_lookup(kwargs, name))) is not None:
+                sizes[shape] = n
     boundnames = bool(kwargs.get("boundnames", False))
 
     # Prefer grid dims (unambiguous) over row-width guessing for a

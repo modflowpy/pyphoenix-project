@@ -55,7 +55,9 @@ class Sfr(Package):
         ncon: int = field()
         ustrf: Union[float, str] = field(time_series=True)
         ndv: int = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
