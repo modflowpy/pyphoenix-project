@@ -1,7 +1,7 @@
 import operator
 from abc import ABC
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 import attrs
 import numpy as np
@@ -27,6 +27,7 @@ from flopy4.mf6.item import (
 from flopy4.mf6.period_arrays import (
     dense,
     is_grid_package,
+    split_tas,
     to_named_period_dict,
     to_period_dict,
 )
@@ -427,8 +428,31 @@ class Package(Component, ABC):
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         self._sync_dims()
+        self._check_tas_refs()
         self._name_file_children()
         super().write(format=format, context=context)
+
+    def _check_tas_refs(self) -> None:
+        """Raise if a time-array series reference names a series none of
+        the package's TAS6 files define, which MF6 would fail on."""
+        defined: set[str] = set()
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            value = getattr(self, f.name) if f.metadata.get("child") else None
+            children: list[Any] = value if isinstance(value, list) else [value]
+            for child in children:
+                if getattr(child, "dfn_name", None) == "utl-tas" and child.time_series_name:
+                    defined |= {n.lower() for n in child.time_series_name.time_series_name}
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if not f.metadata.get("time_series") or not f.metadata.get("fill_forward"):
+                continue
+            for kper, ref in split_tas(getattr(self, f.name) or {})[1].items():
+                for r in ref.values() if isinstance(ref, dict) else [ref]:
+                    if r.name.lower() not in defined:
+                        raise ValueError(
+                            f"{type(self).__name__}.{f.name}: period {kper} names "
+                            f"time-array series {r.name!r}, which no TAS6 file defines "
+                            f"(defined: {sorted(defined) or 'none'})"
+                        )
 
     def _name_file_children(self) -> None:
         """Give each child named by a file record (DIS's ``NCF6 FILEIN

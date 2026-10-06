@@ -180,3 +180,30 @@ def test_rcha_tas_reference_round_trip():
 def test_tas_reference_needs_time_series_field():
     with pytest.raises(ValueError, match="can't come from a time-array series"):
         Welg(q={0: "qseries"})
+
+
+def test_tas_reference_must_name_a_series(function_tmpdir):
+    """Writing checks that each reference names a series the package's
+    TAS6 files define, in any case, as MF6 needs."""
+    from flopy4.mf6.utl.tas import Tas
+
+    def tas(name):
+        return Tas(
+            time_series_name=Tas.TimeSeriesName(time_series_name=[name]),
+            interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
+            tas_array={0.0: np.array([0.1, 0.2]), 1.0: np.array([0.3, 0.4])},
+        )
+
+    rcha = Rcha(
+        auxiliary=["conc"],
+        recharge={0: TimeArraySeriesRef("RchSeries")},
+        aux={0: {"conc": TimeArraySeriesRef("concseries")}},
+        tas=[tas("rchseries")],
+        filename=function_tmpdir / "gwf.rcha",
+    )
+    with pytest.raises(ValueError, match=r"aux: period 0 names .*'concseries'.*\['rchseries'\]"):
+        rcha.write()
+
+    rcha.tas.append(tas("concseries"))
+    rcha.write()
+    assert "RECHARGE TIMEARRAYSERIES RchSeries" in (function_tmpdir / "gwf.rcha").read_text()
