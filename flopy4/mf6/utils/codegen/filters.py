@@ -884,7 +884,15 @@ def item_class(
                 f"        {col['name']}: tuple = "
                 f"field(default=(), array=True, optional=True, shape=({shape},))"
             )
-        # File columns (e.g. LAK tables' "TAB6 FILEIN <file>") are path() fields.
+        # A file column naming a component holds the component itself.
+        if col["role"] == "child":
+            classes = col["classes"]
+            cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
+            args = f'keyword={_dq(col["keyword"])}, direction="{col["direction"]}"'
+            if optional:
+                return f"        {col['name']}: Optional[{cls}] = child({args})"
+            return f"        {col['name']}: {cls} = child({args}, default=attrs.NOTHING)"
+        # Other file columns are path() fields.
         if col["role"] == "file":
             direction = col["direction"]
             file_kw = col.get("keyword")

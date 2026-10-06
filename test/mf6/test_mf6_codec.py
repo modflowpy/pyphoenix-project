@@ -2024,15 +2024,16 @@ def test_gwe_netcdf_fields_serialize():
 
 
 def test_ssm_fileinput_row_format():
-    """fileinput rows must serialise as 'pname SPC6 FILEIN spc6_filename [MIXED]'."""
+    """fileinput rows must serialise as 'pname SPC6 FILEIN <spc file> [MIXED]'."""
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwt.ssm import Ssm
+    from flopy4.mf6.utl.spc import Spc
 
     ssm = Ssm(
         fileinput={
             "pname": np.array(["rch-1", "wel-1"]),
-            "spc6_filename": np.array(["rch.spc6", "wel.spc6"]),
+            "spc": [Spc(filename=Path("rch.spc6")), Spc(filename=Path("wel.spc6"))],
             "mixed": np.array([True, False]),
         },
     )
@@ -2055,11 +2056,12 @@ def test_ssm_fileinput_no_mixed():
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwt.ssm import Ssm
+    from flopy4.mf6.utl.spc import Spc
 
     ssm = Ssm(
         fileinput={
             "pname": np.array(["rch-1"]),
-            "spc6_filename": np.array(["rch.spc6"]),
+            "spc": [Spc(filename=Path("rch.spc6"))],
         },
     )
     text = dumps(unstructure_component(ssm))
@@ -2083,6 +2085,7 @@ def test_ssm_sources_and_fileinput_together():
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.gwt.ssm import Ssm
+    from flopy4.mf6.utl.spc import Spc
 
     ssm = Ssm(
         sources={
@@ -2092,7 +2095,7 @@ def test_ssm_sources_and_fileinput_together():
         },
         fileinput={
             "pname": np.array(["rch-1"]),
-            "spc6_filename": np.array(["rch.spc6"]),
+            "spc": [Spc(filename=Path("rch.spc6"))],
         },
     )
     text = dumps(unstructure_component(ssm))
@@ -2102,6 +2105,39 @@ def test_ssm_sources_and_fileinput_together():
     assert "rch-1 SPC6 FILEIN rch.spc6" in text
     # block order: SOURCES before FILEINPUT
     assert text.index("BEGIN SOURCES") < text.index("BEGIN FILEINPUT")
+
+
+def test_ssm_fileinput_children(tmp_path):
+    """Each FILEINPUT row's SPC6 file loads as an Spc, or an Spca if it reads
+    arrays, and is written back with its parent."""
+    from flopy4.mf6.gwt.ssm import Ssm
+    from flopy4.mf6.utl.spc import Spc
+    from flopy4.mf6.utl.spca import Spca
+
+    (tmp_path / "gwt.ssm").write_text(
+        "BEGIN FILEINPUT\n  wel-1 SPC6 FILEIN wel.spc MIXED\n  rch-1 SPC6 FILEIN rch.spc\n"
+        "END FILEINPUT\n"
+    )
+    (tmp_path / "wel.spc").write_text(
+        "BEGIN DIMENSIONS\n  MAXBOUND 1\nEND DIMENSIONS\n"
+        "BEGIN PERIOD 1\n  1 CONCENTRATION 100.0\nEND PERIOD\n"
+    )
+    (tmp_path / "rch.spc").write_text(
+        "BEGIN OPTIONS\n  READASARRAYS\nEND OPTIONS\n"
+        "BEGIN PERIOD 1\n  CONCENTRATION\n    CONSTANT 2.0\nEND PERIOD\n"
+    )
+    ssm = Ssm.load(tmp_path / "gwt.ssm", dims={"nlay": 1, "nrow": 1, "ncol": 2, "ncpl": 2})
+    wel, rch = ssm.fileinput
+    assert isinstance(wel.spc, Spc) and wel.mixed
+    assert isinstance(rch.spc, Spca)
+    assert wel.spc.filename == Path("wel.spc")
+    assert [r.concentration for r in wel.spc.stress_period_data[0]] == [100.0]
+    assert sorted(ssm._children) == ["fileinput0", "fileinput1"]
+    assert wel.spc.parent is ssm
+
+    text = dumps(COMPONENT_CONVERTER.unstructure(ssm))
+    assert "wel-1 SPC6 FILEIN wel.spc MIXED" in text
+    assert "rch-1 SPC6 FILEIN rch.spc" in text
 
 
 # ---------------------------------------------------------------------------

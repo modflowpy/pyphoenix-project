@@ -198,14 +198,16 @@ def _schema_dict_from_columns(
     nested_arm_classes: "dict[str, list[str]] | None" = None,
     arrays: "frozenset[str] | set[str]" = frozenset(),
     dims: "frozenset[str] | set[str]" = frozenset(),
+    children: "Mapping[str, list[str]] | None" = None,
 ) -> list[dict]:
     """Build a __*_schema__ list[dict] from ColumnSpecs.
 
-    File columns get role 'file'; a preceding is_prefix column (e.g. SPC6)
-    becomes its 'keyword'. is_row_keyword columns (optional keywords, e.g.
-    MIXED) get role 'inline_keyword'. A column whose shape names one of the
-    component's ``arrays`` (aux, shaped by ``auxiliary``) gets role 'sized':
-    as many values as that array has.
+    File columns get role 'file', or 'child' if ``children`` maps them to
+    the components they name (LAK's TAB6 file, a utl-laktab); a preceding
+    is_prefix column (e.g. SPC6) becomes its 'keyword'. is_row_keyword
+    columns (optional keywords, e.g. MIXED) get role 'inline_keyword'. A
+    column whose shape names one of the component's ``arrays`` (aux, shaped
+    by ``auxiliary``) gets role 'sized': as many values as that array has.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
@@ -213,6 +215,7 @@ def _schema_dict_from_columns(
     untyped-union ``role="array"`` below.
     """
     nested_arm_classes = nested_arm_classes or {}
+    children = children or {}
     schema = []
     pending_prefix: list[str] = []
     # Columns counting a later array column's values (cell2d's ncvert, for
@@ -235,6 +238,10 @@ def _schema_dict_from_columns(
         if isinstance(f, File):
             entry["role"] = "file"
             entry["direction"] = f.direction
+            if targets := children.get(col.name):
+                entry["role"] = "child"
+                entry["name"] = filters.module_name(targets[0])
+                entry["classes"] = [filters.class_name(t) for t in targets]
             if len(pending_prefix) > 1:
                 raise ValueError(
                     f"file column {col.name!r}: expected one keyword, got {pending_prefix}"
@@ -511,6 +518,7 @@ def _build_list_item_specs(
     used_names: set[str],
     arrays: "frozenset[str] | set[str]" = frozenset(),
     dims: "frozenset[str] | set[str]" = frozenset(),
+    children: "Mapping[str, list[str]] | None" = None,
 ) -> tuple[list[ItemClassSpec], str, ItemUnionSpec | None]:
     """Build the Item class(es) for a list's elements, wherever the list is
     (any block, repeating or not). Returns (classes, element type, union
@@ -523,8 +531,9 @@ def _build_list_item_specs(
     - an untagged record item (packagedata, CHD's stress_period_data): one
       class of positional columns
 
-    ``arrays`` names the component's array fields, which can size a column
-    (see _schema_dict_from_columns).
+    ``arrays`` names the component's array fields, which can size a column,
+    and ``children`` an untagged row's child columns, by name, with the
+    components they name (see _schema_dict_from_columns).
     """
     union = filters.find_keystring_union(list_field)
     if union is not None:
@@ -552,7 +561,9 @@ def _build_list_item_specs(
             dims=dims,
         )
         return specs, specs[-1].class_name, None
-    schema = _schema_dict_from_columns(filters.list_columns(list_field), arrays=arrays, dims=dims)
+    schema = _schema_dict_from_columns(
+        filters.list_columns(list_field), arrays=arrays, dims=dims, children=children
+    )
     used_names.add(class_name)
     spec = ItemClassSpec(class_name=class_name, keyword="", schema=schema)
     return [spec], class_name, None
@@ -971,8 +982,8 @@ def _generated_imports(
     has_union = has_union_child or any(
         col.get("time_series") or col.get("dtype") == "np.object_"
         for col in _all_schema_cols
-        if col.get("role") not in ("keystring_value", "boundname", "file")
-    )
+        if col.get("role") not in ("keystring_value", "boundname", "file", "child")
+    ) or any(len(col.get("classes", ())) > 1 for col in _all_schema_cols)
     # File row columns become Path fields, not Union[float, str].
     _row_path_cols = [col for col in _all_schema_cols if col.get("role") == "file"]
     has_row_path_cols = bool(_row_path_cols)
@@ -1028,7 +1039,7 @@ def _generated_imports(
         _spec_parts.append("field")
     if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
-    if has_child_call:
+    if has_child_call or any(col.get("role") == "child" for col in _all_schema_cols):
         _spec_parts.append("child")
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
@@ -1121,9 +1132,15 @@ def _is_child_of(child: Component, parent: str) -> bool:
 
 
 def resolve_link(
-    component: Component, path: str, link: File, dfns: Mapping[str, Component] | None
+    component: Component,
+    path: str,
+    link: File,
+    dfns: Mapping[str, Component] | None,
+    by_content: bool = False,
 ) -> list[str]:
-    """The concrete components a link can target."""
+    """The concrete components a link can target. Several need a
+    component_ftype to pick one, unless the file's content does
+    (``by_content``: SSM's SPC6 file is a utl-spca if it reads arrays)."""
     assert link.component is not None
     selectors = [link.component] if isinstance(link.component, str) else link.component
     found: list[str] = []
@@ -1140,7 +1157,7 @@ def resolve_link(
         ]
     if not found:
         raise ValueError(f"{component.name}.{path}: {link.component!r} matches no component")
-    if len(found) > 1 and link.component_ftype is None:
+    if len(found) > 1 and link.component_ftype is None and not by_content:
         raise ValueError(
             f"{component.name}.{path}: {link.component!r} matches {found}, "
             "but there is no component_ftype to choose between them"
@@ -1183,6 +1200,23 @@ def _child_link(
     if not all(_has_class(t, link, dfns) for t in targets):
         return None
     return link, targets
+
+
+def _column_children(
+    component: Component, f: FieldV3, dfns: Mapping[str, Component] | None
+) -> dict[str, list[str]]:
+    """A list's file column naming a component flopy4 has a class for, with
+    the components it can name (LAK's ``ifno TAB6 FILEIN <file>``, a
+    utl-laktab; SSM's SPC6 file, a utl-spc or utl-spca), or nothing."""
+    if not isinstance(f, ListField) or (found := _find_link(f)) is None:
+        return {}
+    path, link, file_only = found
+    if file_only or link.component_ftype is not None or "." not in path:
+        return {}  # the list itself is the child (see _child_link)
+    targets = resolve_link(component, path, link, dfns, by_content=True)
+    if not all(_has_class(t, link, dfns) for t in targets):
+        return {}
+    return {path.split(".", 1)[1]: targets}
 
 
 def _component_module(name: str) -> str:
@@ -1418,9 +1452,19 @@ def build_component_spec(
     # The component's dims can size inline arrays (GNC's numalphaj).
     _dims = frozenset(component.dims or {})
 
+    # Lists' file columns naming components, by list (LAK's tables).
+    _column_links = {
+        f.name: columns for _, f in all_fields if (columns := _column_children(component, f, dfns))
+    }
+    for columns in _column_links.values():
+        for targets in columns.values():
+            extra_imports.extend(
+                f"from {_component_module(t)} import {filters.class_name(t)}" for t in targets
+            )
+
     def _add_list_items(lf: ListField, class_name: str) -> str:
         specs, elem, union = _build_list_item_specs(
-            lf, class_name, _inner_class_names, _arrays, _dims
+            lf, class_name, _inner_class_names, _arrays, _dims, _column_links.get(lf.name)
         )
         item_classes.extend(specs)
         if union is not None:
@@ -1586,6 +1630,7 @@ def build_component_spec(
             _inner_class_names,
             _arrays,
             _dims,
+            _column_links.get(_list_field.name),
         )
         if not any(spec.schema or spec.keyword for spec in _specs):
             continue

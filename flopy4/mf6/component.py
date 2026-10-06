@@ -102,6 +102,14 @@ def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Co
     return f"{field_name}{i}"
 
 
+def _row_children(row: Any) -> "list[Component]":
+    """The children in a list's row (LAK's ``ifno TAB6 FILEIN <file>``)."""
+    if isinstance(row, Component) or not attrs.has(type(row)):
+        return []
+    children = (getattr(row, f.name) for f in fields(type(row)) if f.metadata.get("child"))
+    return [c for c in children if isinstance(c, Component)]
+
+
 def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | None":
     """Find the single field on `parent_cls` that accepts `child_cls` as a
     child, by type annotation (`child_field_candidates()`).
@@ -265,6 +273,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                 for child in value:
                     if isinstance(child, Component):
                         result[child.name] = child
+                    for c in _row_children(child):
+                        result[c.name] = c
             elif kind == "dict":
                 for child in value.values():
                     if isinstance(child, Component):
@@ -300,10 +310,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     used.add(value.name)  # type: ignore[attr-defined]
             elif kind == "list":
                 for child in value:
-                    if isinstance(child, Component):
-                        child.__dict__["_parent"] = self
-                        child.name = _resolve_child_name(used, kind, f.name, child)  # type: ignore[attr-defined]
-                        used.add(child.name)  # type: ignore[attr-defined]
+                    for c in [child] if isinstance(child, Component) else _row_children(child):
+                        c.__dict__["_parent"] = self
+                        c.name = _resolve_child_name(used, kind, f.name, c)  # type: ignore[attr-defined]
+                        used.add(c.name)  # type: ignore[attr-defined]
             elif kind == "dict":
                 for key, child in value.items():
                     if isinstance(child, Component):

@@ -10,6 +10,7 @@ from flopy4.mf6._types import ARRAY_EQ, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.laktab import Laktab
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -65,7 +66,7 @@ class Lak(Package):
     @attrs.define
     class Tables(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        tab6_filename: Path = path(converter=Path, direction="in", keyword="tab6")
+        laktab: Laktab = child(keyword="tab6", direction="in", default=attrs.NOTHING)
 
     @attrs.define
     class Outlets(Item):
