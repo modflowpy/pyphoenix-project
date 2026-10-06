@@ -901,17 +901,25 @@ def test_dfn_link_is_child(tmp_path, all_dfns, name, field, cls):
 
 
 @pytest.mark.parametrize(
-    "name,target",
+    "name,column",
     [
-        ("gwf-lak", "laktab"),  # a table column, not a file record
-        ("gwt-ssm", "spca"),
+        ("gwf-lak", "laktab:Laktab=child("),
+        ("gwf-sfr", "sfrtab:Sfrtab=child("),
+        ("gwt-ssm", "spc:Union[Spc,Spca]=child("),  # the file says which
     ],
 )
-def test_dfn_link_stays_path(tmp_path, all_dfns, name, target):
-    """A DFN file link flopy4 can't load as a child yet stays a path."""
+def test_dfn_link_in_row_is_child(tmp_path, all_dfns, name, column):
+    """A DFN file link in a list's row is a child column."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert f"flopy4.mf6.utl.{target}" not in spec.outpath.read_text()
+    assert column in "".join(spec.outpath.read_text().split())
+
+
+def test_dfn_link_in_period_setting_stays_path(tmp_path, all_dfns):
+    """SFR's period CROSS_SECTION setting still names its table file."""
+    skip = {n for n in all_dfns if n != "gwf-sfr"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    assert "tab6_filename:Path=path(" in "".join(spec.outpath.read_text().split())
 
 
 def test_observation_forms(tmp_path, all_dfns):

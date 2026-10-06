@@ -11,6 +11,7 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
 from flopy4.mf6.utl.obs import Obs
+from flopy4.mf6.utl.sfrtab import Sfrtab
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -60,7 +61,7 @@ class Sfr(Package):
     @attrs.define
     class Crosssections(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        tab6_filename: Path = path(converter=Path, direction="in", keyword="tab6")
+        sfrtab: Sfrtab = child(keyword="tab6", direction="in", default=attrs.NOTHING)
 
     @attrs.define
     class Connectiondata(Item):

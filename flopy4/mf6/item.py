@@ -533,6 +533,10 @@ class Item(Record):
                     row.append(file_kw.upper())
                 if direction := f.metadata.get("direction"):
                     row.append("FILEOUT" if direction == "out" else "FILEIN")
+                if f.metadata.get("child"):
+                    from flopy4.mf6.converter.egress.unstructure import _child_path
+
+                    val = _child_path(val)
                 row.append(val.as_posix() if isinstance(val, Path) else val)
         if not keyword_emitted:
             row.append(keyword.upper())
@@ -551,10 +555,13 @@ class Item(Record):
         boundnames: bool = False,
         union_arm: str = "cellid",
         union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
+        load_child: Callable[[attrs.Attribute, str], Any] | None = None,
     ) -> "Item":
         """Mirror of to_tokens. ``union_arm`` is the arm untagged union
         columns prefer for numbers, and ``union_forms`` gives the forms
         they take given the row's other columns (see _read_unions).
+        ``load_child`` loads a child column's component from the file the
+        row names.
 
         Optional untagged columns (e.g. EVT's pxdp/petm/petm0) have no
         marker token -- MF6 writes a whole trailing group or none, gated by
@@ -616,7 +623,12 @@ class Item(Record):
                 tok_idx += 1
             if tok_idx >= n:
                 return
-            kwargs[f.name] = _coerce(tokens[tok_idx], f)
+            if f.metadata.get("child"):
+                if load_child is None:
+                    raise ValueError(f"{cls.__name__}.{f.name}: no way to load {tokens[tok_idx]}")
+                kwargs[f.name] = load_child(f, str(tokens[tok_idx]))
+            else:
+                kwargs[f.name] = _coerce(tokens[tok_idx], f)
             tok_idx += 1
 
         def width(f: attrs.Attribute) -> int:

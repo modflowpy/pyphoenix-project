@@ -50,6 +50,7 @@ def _parse_rows(
     dims: "dict | None" = None,
     union_arm: str = "cellid",
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
+    load_child: Callable[[Any, str], Any] | None = None,
 ) -> list | None:
     """Parse lists of tokens (rows) into a list of Items."""
     if not rows:
@@ -65,6 +66,7 @@ def _parse_rows(
             boundnames=boundnames,
             union_arm=union_arm,
             union_forms=union_forms,
+            load_child=load_child,
         )
         for row in rows
         if row
@@ -635,19 +637,21 @@ def _union_arm(parent: "type | None") -> str:
 def _load_file_child(
     field: Any, path: Path, workspace: Path | None, dims: dict | None, parent: type
 ) -> Any:
-    """Load the child a file record names (DIS's ``NCF6 FILEIN <path>``).
-    Like mf6, resolve the path against the working directory, which loading
+    """Load the child a file record or row names (DIS's ``NCF6 FILEIN
+    <path>``, LAK's ``ifno TAB6 FILEIN <path>``), picking SPC or SPCA by
+    the file's content. Like mf6, resolve the path against the working directory, which loading
     a simulation sets to its workspace; failing that, against the parent
     file's directory (`workspace`), for a package loaded on its own."""
     from flopy4.attrs_xarray import child_field_candidates
 
     spec = child_field_candidates(field)
     assert spec is not None
-    child_cls = spec[1][0]
-    assert issubclass(child_cls, Package)
     file = Path.cwd() / path
     if not file.exists() and workspace is not None:
         file = workspace / path
+    candidates = list(spec[1])
+    child_cls = _disambiguate_ga_variant(candidates, file) if len(candidates) > 1 else candidates[0]
+    assert issubclass(child_cls, Package)
     child = child_cls.load(file, dims=dims, parent=parent)
     child.filename = path
     return child
@@ -927,6 +931,11 @@ def structure_component(
     union_arm = _union_arm(parent)
     union_forms = _union_forms(parent)
 
+    def load_child(f: Any, token: str) -> Any:
+        """A row's child column (LAK's TAB6 file), loaded from its file."""
+        path = Path(_strip_quotes(token))
+        return _load_file_child(f, path, workspace, effective_dims, cls)
+
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
         rows = raw_lower.get(block_name, [])
@@ -941,6 +950,7 @@ def structure_component(
             dims=effective_dims,
             union_arm=union_arm,
             union_forms=union_forms,
+            load_child=load_child,
         )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
