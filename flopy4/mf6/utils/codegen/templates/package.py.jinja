@@ -29,7 +29,7 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
 {% if spec.observations %}
     observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
 {% for name, forms in spec.observations.items() %}
-        "{{ name }}": {{ forms }},
+        "{{ name }}": {{ forms | tuple_repr }},
 {% endfor %}
     }
 

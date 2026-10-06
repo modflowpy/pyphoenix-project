@@ -668,6 +668,12 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
     return "\n".join(lines)
 
 
+def tuple_repr(v: tuple) -> str:
+    """A tuple of strings (or of such tuples) as Python, double-quoted like
+    ruff would, so the output doesn't depend on running it."""
+    return repr(v).replace("'", '"')
+
+
 def python_repr(v) -> str:
     """Format a list[dict] schema as multi-line Python for class-body assignment.
 

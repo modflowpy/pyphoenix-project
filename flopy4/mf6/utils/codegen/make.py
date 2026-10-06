@@ -1781,6 +1781,7 @@ def _get_env() -> jinja2.Environment:
         undefined=jinja2.StrictUndefined,
     )
     env.filters["python_repr"] = python_repr
+    env.filters["tuple_repr"] = filters.tuple_repr
     env.filters["item_class"] = item_class
     env.filters["pascal_name"] = pascal_name
     return env
