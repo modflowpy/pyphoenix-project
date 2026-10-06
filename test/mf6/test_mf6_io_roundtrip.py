@@ -155,7 +155,6 @@ def test_aux_period_array_kept(tmp_path):
     assert "auxarray1" in _period_block(out, "readasarrays")
 
 
-@pytest.mark.xfail(reason="missing TAS period arrays", strict=True)
 def test_tas_period_array_kept(tmp_path):
     """A `TIMEARRAYSERIES` reference in a READASARRAYS period block survives."""
     _, _, out = _roundtrip(tmp_path, "mf6/test/test027_TimeseriesTest")

@@ -84,15 +84,16 @@ class Rcha(Package):
         netcdf=True,
         fill_forward=True,
     )
-    recharge: Optional[dict[int, FloatArrayLike]] = field(
+    recharge: Optional[dict[int, FloatArrayLike | str]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
         layered=False,
         netcdf=True,
         fill_forward=True,
+        time_series=True,
     )
-    aux: Optional[dict[int, dict[str, FloatArrayLike]]] = field(
+    aux: Optional[dict[int, dict[str, FloatArrayLike | str]]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
@@ -100,4 +101,5 @@ class Rcha(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        time_series=True,
     )

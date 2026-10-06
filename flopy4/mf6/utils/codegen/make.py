@@ -1760,6 +1760,10 @@ def build_component_spec(
             _ra_base = (
                 "IntArrayLike" if getattr(_ra_f, "dtype", "") == "integer" else "FloatArrayLike"
             )
+            # a period's array can come from a time-array series, by name
+            if getattr(_ra_f, "time_series", False):
+                _ra_meta["time_series"] = True
+                _ra_base += " | str"
             period_specs.append(
                 FieldSpec(
                     dfn_name=_ra_f.name,
@@ -1783,6 +1787,9 @@ def build_component_spec(
         _na_meta["fill_forward"] = True
         _na_meta["fk"] = _fk
         _na_base = "IntArrayLike" if getattr(_arr, "dtype", "") == "integer" else "FloatArrayLike"
+        if getattr(_arr, "time_series", False) or getattr(_lf, "time_series", False):
+            _na_meta["time_series"] = True
+            _na_base += " | str"
         period_specs.append(
             FieldSpec(
                 dfn_name=_lf.name,

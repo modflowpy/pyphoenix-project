@@ -241,6 +241,10 @@ class Package(Component, ABC):
             integer = to_field_type(f.type) == "integer"
 
             def _normalize(a):
+                if isinstance(a, str):
+                    if not f.metadata.get("time_series"):
+                        raise ValueError(f"{f.name} can't come from a time-array series ({a!r})")
+                    return a
                 if flat and a.ndim > 1:
                     a = a.ravel()
                 if integer and isinstance(a, np.ndarray):

@@ -167,9 +167,15 @@ def attrs_to_dataset(obj) -> xr.Dataset:
         if isinstance(value, xr.DataArray):
             data_vars[name] = value
         elif _period_dim(field) and isinstance(value, dict):
-            # period arrays, stacked along the periods given
-            if value:
-                data_vars[name] = _period_dataarray(field, name, value)
+            # period arrays, stacked along the periods given; time-array
+            # series references (names) kept as an attr
+            from flopy4.mf6.period_arrays import split_tas
+
+            arrays, refs = split_tas(value)
+            if arrays:
+                data_vars[name] = _period_dataarray(field, name, arrays)
+            if refs:
+                ds_attrs[f"{name}_tas"] = refs
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
         elif field.metadata.get("shape") and isinstance(value, (list, tuple)):
@@ -205,6 +211,15 @@ def _leaf_kwargs_from_dataset(cls: type, dataset: xr.Dataset) -> dict:
     for name, value in dataset.attrs.items():
         if name in field_names:
             kwargs[name] = value
+        elif name.endswith("_tas") and (field := name[: -len("_tas")]) in periods:
+            # time-array series references, back among the period's arrays
+            merged = kwargs.setdefault(field, {})
+            for kper, ref in value.items():
+                if isinstance(ref, dict):
+                    merged.setdefault(int(kper), {}).update(ref)
+                else:
+                    merged[int(kper)] = ref
+            kwargs[field] = dict(sorted(merged.items()))
     return kwargs
 
 

@@ -29,17 +29,19 @@ class Spca(Package):
     tas: list[Tas] = child(
         block="options", keyword="tas6", direction="in", default=attrs.Factory(list)
     )
-    concentration: Optional[dict[int, FloatArrayLike]] = field(
+    concentration: Optional[dict[int, FloatArrayLike | str]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
         layered=False,
         fill_forward=True,
+        time_series=True,
     )
-    temperature: Optional[dict[int, FloatArrayLike]] = field(
+    temperature: Optional[dict[int, FloatArrayLike | str]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
         layered=False,
         fill_forward=True,
+        time_series=True,
     )

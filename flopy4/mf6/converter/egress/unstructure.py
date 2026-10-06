@@ -105,9 +105,14 @@ def _grid_dims(value: Package) -> tuple[int, tuple[int, ...]]:
     return nlay, (ncpl,) if ncpl else ()
 
 
-def _period_dataarray(value: Any, meta: Mapping, nlay: int, layer: tuple[int, ...]) -> xr.DataArray:
+def _period_dataarray(
+    name: str, value: Any, meta: Mapping, nlay: int, layer: tuple[int, ...]
+) -> xr.DataArray | tuple:
     """One period's array, shaped like the grid so it's written a row per
-    line. A layered one is written by layer, with an nlay dim."""
+    line. A layered one is written by layer, with an nlay dim. A time-array
+    series' name is written as a reference to it."""
+    if isinstance(value, str):
+        return (name.upper(), "TIMEARRAYSERIES", value)
     if not hasattr(value, "shape"):
         value = np.asarray(value)
     if meta.get("index"):
@@ -214,14 +219,14 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 for kper, arrays in field_value.items():
                     for name, arr in arrays.items():
                         readarray_period.setdefault(kper, {})[name] = _period_dataarray(
-                            arr, meta, *grid_dims
+                            name, arr, meta, *grid_dims
                         )
                 continue
             # arrays: {kper: array}
             if item_list_type(f.type) is None:
                 for kper, arr in field_value.items():
                     readarray_period.setdefault(kper, {})[f.name] = _period_dataarray(
-                        arr, meta, *grid_dims
+                        f.name, arr, meta, *grid_dims
                     )
                     if grid and all_nodata(arr):
                         nodata_period.setdefault(kper, set()).add(f.name)

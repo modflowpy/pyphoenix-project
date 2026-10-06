@@ -146,3 +146,35 @@ def test_dense_drops_periods_past_nper():
     with pytest.warns(UserWarning, match="past NPER"):
         out = dense({0: np.array([1.0]), 2: np.array([2.0])}, nper=2)
     np.testing.assert_array_equal(out.ravel(), [1.0, 1.0])
+
+
+def test_rcha_tas_reference_round_trip():
+    """A period's array can be a time-array series' name, written as a
+    reference to it."""
+    from flopy4.attrs_xarray import attrs_to_dataset, dataset_to_attrs
+    from flopy4.mf6.codec import dumps, loads
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    rcha = Rcha(
+        auxiliary=["conc"],
+        recharge={0: "rchseries", 2: np.array([0.3, 0.4])},
+        aux={0: {"conc": "concseries"}, 1: {"conc": np.array([1.0, 2.0])}},
+    )
+    text = dumps(unstructure_component(rcha))
+    assert "RECHARGE TIMEARRAYSERIES rchseries" in text
+    assert "CONC TIMEARRAYSERIES concseries" in text
+
+    loaded = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    assert loaded.recharge[0] == "rchseries"
+    assert loaded.aux[0] == {"conc": "concseries"}
+    np.testing.assert_array_equal(loaded.recharge[2], [0.3, 0.4])
+
+    assert dataset_to_attrs(Rcha, attrs_to_dataset(rcha)) == rcha
+    with pytest.raises(ValueError, match="time-array series"):
+        rcha.period_array("recharge", nper=3)
+
+
+def test_tas_reference_needs_time_series_field():
+    with pytest.raises(ValueError, match="can't come from a time-array series"):
+        Welg(q={0: "qseries"})

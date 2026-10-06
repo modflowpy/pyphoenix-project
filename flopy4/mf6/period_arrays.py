@@ -13,6 +13,10 @@ How a period carries forward depends on the package:
   whose stress arrays are entirely ``FILL_DNODATA`` clears every boundary.
 - Layer-array packages (RCHA, EVTA, SPCA) carry each array forward on its
   own until it's given again.
+
+In layer-array packages a period's value can instead be the name of a
+time-array series (a ``str``), whose arrays MF6 interpolates in time:
+``recharge={0: "rchseries"}``, written ``RECHARGE TIMEARRAYSERIES rchseries``.
 """
 
 import warnings
@@ -41,8 +45,30 @@ def all_nodata(arr: Any) -> bool:
 
 
 def _as_array(value: Any) -> Any:
-    # Keep anything array-like (dask included) as it is.
-    return value if hasattr(value, "shape") else np.asarray(value)
+    # Keep anything array-like (dask included) as it is, and a time-array
+    # series' name.
+    return value if hasattr(value, "shape") or isinstance(value, str) else np.asarray(value)
+
+
+def split_tas(periods: Mapping[int, Any]) -> tuple[dict[int, Any], dict[int, Any]]:
+    """Split ``{kper: value}`` into its arrays and its time-array series
+    references (names), for either form (aux's ``{kper: {name: value}}`` too).
+    """
+    arrays: dict[int, Any] = {}
+    refs: dict[int, Any] = {}
+    for kper, value in periods.items():
+        if isinstance(value, Mapping):
+            a = {n: v for n, v in value.items() if not isinstance(v, str)}
+            r = {n: v for n, v in value.items() if isinstance(v, str)}
+            if a or not r:
+                arrays[kper] = a
+            if r:
+                refs[kper] = r
+        elif isinstance(value, str):
+            refs[kper] = value
+        else:
+            arrays[kper] = value
+    return arrays, refs
 
 
 def split_periods(value: Any) -> dict[int, Any]:
@@ -120,6 +146,10 @@ def dense(
     """
     if not periods:
         raise ValueError("no periods to stack")
+    if refs := split_tas(periods)[1]:
+        raise ValueError(
+            f"periods {sorted(refs)} come from a time-array series, which can't be made dense yet"
+        )
     if past := [kper for kper in periods if kper >= nper]:
         warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=2)
     first = _as_array(next(iter(periods.values())))

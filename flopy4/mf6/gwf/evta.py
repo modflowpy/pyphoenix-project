@@ -92,13 +92,14 @@ class Evta(Package):
         netcdf=True,
         fill_forward=True,
     )
-    rate: Optional[dict[int, FloatArrayLike]] = field(
+    rate: Optional[dict[int, FloatArrayLike | str]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
         layered=False,
         netcdf=True,
         fill_forward=True,
+        time_series=True,
     )
     depth: Optional[dict[int, FloatArrayLike]] = field(
         default=None,
@@ -108,7 +109,7 @@ class Evta(Package):
         netcdf=True,
         fill_forward=True,
     )
-    aux: Optional[dict[int, dict[str, FloatArrayLike]]] = field(
+    aux: Optional[dict[int, dict[str, FloatArrayLike | str]]] = field(
         default=None,
         block="period",
         shape=("ncpl",),
@@ -116,4 +117,5 @@ class Evta(Package):
         netcdf=True,
         fill_forward=True,
         fk="options.auxiliary",
+        time_series=True,
     )

@@ -349,6 +349,9 @@ def to_field_type(t: type) -> FieldType:
                         return to_field_type(get_args(tt)[-1])
                     case _:
                         return "record"
+            if set(args) - {builtins.str} in ({IntArrayLike}, {FloatArrayLike}):
+                # an array, or the name of a time-array series giving it
+                return to_field_type(next(a for a in args if a is not builtins.str))
             return "list"
         # TODO handle arrays
         case _:
