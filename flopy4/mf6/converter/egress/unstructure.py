@@ -11,11 +11,12 @@ from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component
+from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.item import Item, item_list_type
 from flopy4.mf6.package import Package
-from flopy4.mf6.period_arrays import all_nodata, is_grid_package
+from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
@@ -226,10 +227,11 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             # arrays: {kper: array}
             if item_list_type(f.type) is None:
                 for kper, arr in field_value.items():
-                    readarray_period.setdefault(kper, {})[f.name] = _period_dataarray(
-                        f.name, arr, meta, *grid_dims
+                    # a cleared grid period's array is None, filled below
+                    readarray_period.setdefault(kper, {})[f.name] = (
+                        None if arr is None else _period_dataarray(f.name, arr, meta, *grid_dims)
                     )
-                    if grid and all_nodata(arr):
+                    if grid and is_cleared(arr):
                         nodata_period.setdefault(kper, set()).add(f.name)
                     stress_period.setdefault(kper, set()).add(f.name)
                 continue
@@ -346,7 +348,12 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 blocks[key] = {}
                 write_if_empty_set.add(key)
             else:
-                blocks[key] = readarray_period[kper]
+                arrays = readarray_period[kper]
+                like = next(a for a in arrays.values() if a is not None)
+                blocks[key] = {
+                    n: xr.full_like(like, FILL_DNODATA, dtype=np.float64) if a is None else a
+                    for n, a in arrays.items()
+                }
 
     return {
         name: block

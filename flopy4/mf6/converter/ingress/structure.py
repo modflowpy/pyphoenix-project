@@ -13,7 +13,6 @@ from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component, get_ftype
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.item import (
     Item,
     infer_ncelldim,
@@ -1062,19 +1061,12 @@ def structure_component(
                 for n in _names(kwargs.get(fk.rsplit(".", 1)[-1]))
             }
             if ra_fields and dims:
-                nlay = dims.get("nlay", 1)
-                nodes = dims.get("nodes", 1)
-                ncpl = nodes // nlay if nlay > 1 else nodes
                 grid = is_grid_package(cls)
 
                 # Each field holds the periods the file gives (see
                 # flopy4.mf6.period_arrays). An empty grid period block
-                # clears every boundary: all its stress arrays are DNODATA.
-                def _cleared(f) -> np.ndarray:
-                    layered = f.metadata.get("layered", False)
-                    return np.full((nlay, ncpl) if layered else (ncpl,), FILL_DNODATA)
-
-                periods: dict[str, dict[int, np.ndarray | TimeArraySeriesRef]] = {}
+                # clears every boundary: its stress arrays are None.
+                periods: dict[str, dict[int, np.ndarray | TimeArraySeriesRef | None]] = {}
                 named_periods: dict[str, dict[int, dict[str, np.ndarray | TimeArraySeriesRef]]] = {}
                 # An auxiliary name that matches a field's (Q) is the aux
                 # array, as in MF6.
@@ -1082,8 +1074,8 @@ def structure_component(
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
                         if grid:
-                            for fname, f in ra_fields.items():
-                                periods.setdefault(fname, {})[kper] = _cleared(f)
+                            for fname in ra_fields:
+                                periods.setdefault(fname, {})[kper] = None
                         continue
                     parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
                     for key, arr in parsed.items():

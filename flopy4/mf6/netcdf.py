@@ -288,11 +288,16 @@ class NetCDFModel(BaseModel, NetCDFInput):
                 else:
                     # period arrays: {kper: array}, periods not given filled.
                     # Time-array series references stay in the package file.
-                    if not (periods := split_tas(getattr(package, f.name) or {})[0]):
+                    # A grid package's cleared (None) periods are filled too;
+                    # with no array in any period, there's nothing to write.
+                    periods = split_tas(getattr(package, f.name) or {})[0]
+                    if all(a is None for a in periods.values()):
                         continue
                     if f.metadata.get("index"):
                         # 1-based in the file
-                        periods = {k: np.asarray(a) + 1 for k, a in periods.items()}
+                        periods = {
+                            k: None if a is None else np.asarray(a) + 1 for k, a in periods.items()
+                        }
                     arr = dense(periods, _nper, carry_forward=False).astype(np.float64)
                     p["params"].append({"name": f.name, "data": arr})
 

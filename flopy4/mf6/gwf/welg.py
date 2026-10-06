@@ -99,7 +99,7 @@ class Welg(Package):
         optional=True,
         longname="maximum number of wells in any stress period",
     )
-    q: Optional[dict[int, FloatArrayLike]] = field(
+    q: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),

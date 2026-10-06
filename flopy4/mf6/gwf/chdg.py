@@ -71,7 +71,7 @@ class Chdg(Package):
         optional=True,
         longname="maximum number of constant head cells in any stress period",
     )
-    head: Optional[dict[int, FloatArrayLike]] = field(
+    head: Optional[dict[int, FloatArrayLike | None]] = field(
         default=None,
         block="period",
         shape=("nodes",),

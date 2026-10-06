@@ -912,11 +912,29 @@ def test_welg_cleared_period_round_trip():
     assert cleared.strip() == ""
 
     welg2 = structure_component(loads(text), Welg, dims=dims)
+    assert welg2.q[2] is None
     assert array_eq(welg2.q, welg.q)
     assert array_eq(welg2.aux, welg.aux)
     np.testing.assert_array_equal(
         welg2.period_array("q", nper=4)[:, 0], [-1, -1, FILL_DNODATA, FILL_DNODATA]
     )
+
+
+def test_drng_partly_cleared_period_writes_dnodata():
+    """A cleared (None) array in a period other arrays are given in is
+    written as DNODATA, a constant."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Drng
+
+    drng = Drng(
+        elev={0: np.array([1.0, 2.0, 3.0]), 1: None},
+        cond={0: np.array([10.0, 10.0, 10.0]), 1: np.array([5.0, FILL_DNODATA, 5.0])},
+    )
+    assert drng.elev[1] is None
+    text = dumps(unstructure_component(drng)).upper()
+    period2 = text.split("BEGIN PERIOD 2")[1].split("END PERIOD")[0]
+    assert "ELEV" in period2 and "CONSTANT 3" in period2
+    assert "COND" in period2
 
 
 def test_welg_aux_period_without_stress():

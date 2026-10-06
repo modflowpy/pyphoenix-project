@@ -91,9 +91,36 @@ def test_welg_period_array_dense_input():
 
 
 def test_welg_period_array_cleared_period():
-    welg = Welg(q={0: np.array([-1.0, NODATA]), 2: np.full(2, NODATA)})
+    welg = Welg(q={0: np.array([-1.0, NODATA]), 2: None})
     out = welg.period_array("q", nper=4)
     np.testing.assert_array_equal(out[:, 0], [-1.0, -1.0, NODATA, NODATA])
+
+
+def test_welg_all_nodata_period_stored_as_none():
+    """A grid period with no stress in any cell is stored as None, not as a
+    full array of DNODATA."""
+    welg = Welg(q={0: np.array([-1.0, NODATA]), 2: np.full(2, NODATA)})
+    assert welg.q[2] is None
+    assert np.array_equal(welg.q[0], [-1.0, NODATA])
+
+
+def test_dense_input_cleared_period_is_none():
+    """In the dense form, an all-DNODATA period isn't given (it carries
+    forward); a grid package stores only the periods it's given."""
+    welg = Welg(q=np.array([[-1.0, NODATA], [NODATA, NODATA], [NODATA, -2.0]]))
+    assert list(welg.q) == [0, 2]
+
+
+def test_cleared_period_only_in_grid_packages():
+    with pytest.raises(ValueError, match="only a grid package's stress arrays can be cleared"):
+        Rcha(recharge={0: np.array([0.1, 0.2]), 1: None})
+    with pytest.raises(ValueError, match="only a grid package's stress arrays can be cleared"):
+        Welg(auxiliary=["conc"], q={0: np.ones(2)}, aux={0: {"conc": None}})
+
+
+def test_dense_every_period_cleared():
+    with pytest.raises(ValueError, match="every period is cleared"):
+        dense({0: None, 1: None}, nper=2)
 
 
 def test_welg_aux_missing_from_given_period_is_empty():
@@ -130,10 +157,14 @@ def test_welg_xarray_round_trip_keeps_periods():
         q={0: np.array([-1.0, NODATA]), 2: np.full(2, NODATA)},
         aux={0: {"conc": np.array([5.0, NODATA])}},
     )
+    assert welg.q[2] is None
     ds = attrs_to_dataset(welg)
     assert ds["q"].dims == ("q_period", "nodes")
     assert list(ds["q_period"].values) == [0, 2]
-    assert dataset_to_attrs(Welg, ds) == welg
+    np.testing.assert_array_equal(ds["q"].values[1], [NODATA, NODATA])
+    loaded = dataset_to_attrs(Welg, ds)
+    assert loaded == welg
+    assert loaded.q[2] is None
 
 
 def test_rcha_to_dataarray_carries_forward():
