@@ -729,8 +729,362 @@ _UNION_ARM_PY = {
 }
 
 
+_DFN_PY: dict[str, str] = {
+    "double": "float",
+    "double precision": "float",
+    "integer": "int",
+    "string": "str",
+    "keyword": "str",
+    "object": "object",
+}
+
+
+@dataclass
+class ItemColumn:
+    """One rendered column of a generated Item class.
+
+    Built by the per-kind functions below (``value_column``, ``cellid_column``,
+    ...), each of which decides a column's whole rendering -- annotation,
+    right-hand side, optionality -- in one place. ``item_class`` only orders
+    and emits them.
+
+    ``annotation`` and ``rhs`` render as ``name: annotation = rhs``. A
+    nested-union column sets ``arm_classes`` instead of ``annotation``, as
+    its forward-reference union needs the package class name.
+    """
+
+    name: str
+    annotation: str
+    rhs: str
+    optional: bool = False  # declared after the required columns
+    boundname: bool = False  # declared after every other optional column
+    path: bool = False  # a Path field, so the module needs ``Path``
+    uses_union: bool = False  # may need ``Union`` (time series / object dtype)
+    uses_field: bool = False  # needs ``field`` imported, beyond the package's own
+    counted_by: str | None = None  # package dimension sizing an inline array
+    arm_classes: tuple[str, ...] = ()
+
+    def line(self, package_class_name: str = "") -> str:
+        annotation = self.annotation
+        if self.arm_classes:
+            arms = " | ".join(f"{package_class_name}.{c}" for c in self.arm_classes)
+            annotation = f'"{arms}"'
+        return f"        {self.name}: {annotation} = {self.rhs}"
+
+
+def _margs(meta: dict) -> str:
+    return ", ".join(f"{k}={_dq(v)}" for k, v in meta.items())
+
+
+def _attr_column(
+    name: str,
+    py_type: str,
+    meta: dict,
+    *,
+    optional: bool,
+    time_series: bool = False,
+    object_dtype: bool = False,
+    uses_field: bool = False,
+    **kwargs,
+) -> ItemColumn:
+    """The generic rendering: ``name: T = field(meta)``, or ``Optional[T]``
+    with a ``None`` default when optional."""
+    meta = dict(meta)
+    if time_series:
+        meta["time_series"] = True
+    if optional:
+        # Needed even for time_series fields: _n_fixed_tokens() (item.py)
+        # uses this to tell "always present" fixed columns apart from
+        # trailing columns that may be entirely absent from a given row
+        # (e.g. EVT's pxdp/petm/petm0, only written when
+        # surf_rate_specified) when inferring a variable-width cellid's
+        # element count from raw token counts.
+        meta["optional"] = True
+    margs = _margs(meta)
+    if optional:
+        annotation = f"Optional[{py_type}]"
+        rhs = f"field(default=None, {margs})" if meta else "None"
+    else:
+        annotation = py_type
+        # A bare annotation here is equivalent to field() at runtime (both
+        # mean "no default") -- but mypy's attrs plugin doesn't recognize
+        # field() (a flopy4.mf6.spec wrapper, not attrs.field itself) as a
+        # field specifier, so it can't tell field()-declared columns above
+        # (e.g. pk=/cellid=) don't actually have a default either. Left
+        # bare, that misreading makes mypy treat *this* column as a
+        # "non-default attribute after a default attribute". Always going
+        # through field() keeps every column's mypy-visible shape
+        # consistent and side-steps the false positive.
+        rhs = f"field({margs})"
+    return ItemColumn(
+        name=name,
+        annotation=annotation,
+        rhs=rhs,
+        optional=optional,
+        uses_union=time_series or object_dtype,
+        uses_field=uses_field or time_series,
+        **kwargs,
+    )
+
+
+def value_column(
+    name: str,
+    dfn_type: str = "double",
+    *,
+    optional: bool = False,
+    time_series: bool = False,
+    object_dtype: bool = False,
+) -> ItemColumn:
+    """A plain scalar. A time series or object-dtype value may be a string."""
+    object_dtype = object_dtype or time_series
+    py_type = "Union[float, str]" if object_dtype else _DFN_PY.get(dfn_type, "float")
+    return _attr_column(
+        name,
+        py_type,
+        {},
+        optional=optional,
+        time_series=time_series,
+        object_dtype=object_dtype,
+    )
+
+
+def cellid_column(name: str, *, optional: bool = False, time_series: bool = False) -> ItemColumn:
+    return _attr_column(
+        name,
+        "tuple",
+        {"cellid": True},
+        optional=optional,
+        time_series=time_series,
+        object_dtype=time_series,
+        uses_field=True,
+    )
+
+
+def feature_id_column(
+    name: str,
+    *,
+    fk: str | None = None,
+    pk: bool = False,
+    optional: bool = False,
+    time_series: bool = False,
+) -> ItemColumn:
+    meta: dict = {"index": True}
+    if fk:
+        meta["fk"] = fk
+    elif pk:
+        meta["pk"] = True
+    return _attr_column(
+        name,
+        "int",
+        meta,
+        optional=optional,
+        time_series=time_series,
+        object_dtype=time_series,
+        uses_field=True,
+    )
+
+
+def boundname_column(name: str) -> ItemColumn:
+    return _attr_column(name, "str", {}, optional=True, boundname=True)
+
+
+def keyword_column(name: str, *, time_series: bool = False) -> ItemColumn:
+    """An optional keyword, stored as a tagged string."""
+    return _attr_column(
+        name,
+        "str",
+        {"tagged": True},
+        optional=True,
+        time_series=time_series,
+        object_dtype=time_series,
+        uses_field=True,
+    )
+
+
+def union_column(
+    name: str, arms: tuple[str, ...], *, optional: bool = False, time_series: bool = False
+) -> ItemColumn:
+    """One column that is any of several arm kinds (OBS's id: a cellid, an
+    index or a boundname), told apart when read."""
+    types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in arms)
+    return _attr_column(
+        name, f"Union[{', '.join(types)}]", {"union": arms}, optional=optional, time_series=time_series
+    )
+
+
+def required_str_column(name: str) -> ItemColumn:
+    """A required string with no metadata, e.g. a lone keystring selector."""
+    return _attr_column(name, "str", {}, optional=False)
+
+
+def counted_column(
+    name: str,
+    count: str,
+    dim: str,
+    dfn_type: str = "double",
+    *,
+    cellid: bool = False,
+    index: bool = False,
+    optional: bool = False,
+    time_series: bool = False,
+) -> ItemColumn:
+    """An inline array sized by package dimension ``dim`` (``count`` is the
+    shape expression, e.g. ``nseg-1``): fixed width, so any column."""
+    if cellid:
+        py_type = "tuple[tuple[int, ...], ...]"
+    elif time_series:
+        py_type = "tuple[Union[float, str], ...]"
+    else:
+        py_type = f"tuple[{_DFN_PY.get(dfn_type, 'float')}, ...]"
+    meta: dict = {"array": True}
+    if cellid:
+        meta["cellid"] = True
+    if index:
+        meta["index"] = True
+    meta["shape"] = (count,)
+    return _attr_column(
+        name,
+        py_type,
+        meta,
+        optional=optional,
+        time_series=time_series,
+        object_dtype=time_series,
+        counted_by=dim,
+    )
+
+
+def row_counted_column(
+    name: str,
+    count: str,
+    dfn_type: str = "double",
+    *,
+    index: bool = False,
+    signed: bool = False,
+    time_series: bool = False,
+) -> ItemColumn:
+    """The row's last column: as many values as an earlier column counts
+    (cell2d's icvert by ncvert) or a lookup gives (SFR's ic)."""
+    elem = "tuple[int, int]" if signed else _DFN_PY.get(dfn_type, "float")
+    meta: dict = {"array": True}
+    if index:
+        meta["index"] = True
+    meta["shape"] = (count,)
+    if signed:
+        meta["signed"] = True
+    if time_series:
+        meta["time_series"] = True
+    meta["optional"] = True
+    return ItemColumn(
+        name=name,
+        annotation=f"tuple[{elem}, ...]",
+        rhs=f"field(default=(), {_margs(meta)})",
+        optional=True,
+        uses_union=time_series,
+        uses_field=time_series,
+    )
+
+
+def rest_column(name: str, dfn_type: str | None = None, *, time_series: bool = False) -> ItemColumn:
+    """Consumes all remaining tokens as a tuple -- a keyword-plus-trailing-
+    values setting whose arity/type isn't fixed (PRP's Steps.steps/Fraction's
+    leaf field), typed when the DFN says (STEPS are integers)."""
+    elem = _DFN_PY[dfn_type] if dfn_type in ("integer", "double") else None
+    return ItemColumn(
+        name=name,
+        annotation=f"tuple[{elem}, ...]" if elem else "tuple",
+        rhs="field(default=(), array=True)",
+        optional=True,
+        uses_union=time_series,
+        uses_field=time_series,
+    )
+
+
+def sized_column(name: str, size_of: str, *, time_series: bool = False) -> ItemColumn:
+    """As many values as package field ``size_of`` (aux, by ``auxiliary``)."""
+    return ItemColumn(
+        name=name,
+        annotation="tuple",
+        rhs=f"field(default=(), array=True, optional=True, shape=({_dq(size_of)},))",
+        optional=True,
+        uses_union=time_series,
+        uses_field=True,
+    )
+
+
+def file_column(
+    name: str, direction: str, keyword: str | None = None, *, optional: bool = False
+) -> ItemColumn:
+    """A path() field (e.g. LAK tables' "TAB6 FILEIN <file>")."""
+    keyword_kw = f", keyword={_dq(keyword)}" if keyword else ""
+    if optional:
+        return ItemColumn(
+            name=name,
+            annotation="Optional[Path]",
+            rhs=(
+                "path(\n"
+                f"            default=None, converter={converter('Optional[Path]')}, "
+                f'direction="{direction}"{keyword_kw}\n'
+                "        )"
+            ),
+            optional=True,
+            path=True,
+        )
+    return ItemColumn(
+        name=name,
+        annotation="Path",
+        rhs=f'path(converter=Path, direction="{direction}"{keyword_kw})',
+        path=True,
+    )
+
+
+def child_column(
+    name: str,
+    classes: list[str],
+    direction: str,
+    keyword: str | None = None,
+    *,
+    optional: bool = False,
+) -> ItemColumn:
+    """A file column naming components holds the component itself (LAK's
+    "TAB6 FILEIN <file>" holds a utl-laktab)."""
+    cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
+    args = f'direction="{direction}"'
+    if keyword:
+        args = f"keyword={_dq(keyword)}, {args}"
+    if optional:
+        return ItemColumn(
+            name=name,
+            annotation=f"Optional[{cls}]",
+            rhs=f"child({args})",
+            optional=True,
+            uses_child=True,
+        )
+    return ItemColumn(
+        name=name,
+        annotation=cls,
+        rhs=f"child({args}, default=attrs.NOTHING)",
+        uses_child=True,
+    )
+
+
+def nested_union_column(
+    name: str, arm_classes: list[str], *, optional: bool = False, time_series: bool = False
+) -> ItemColumn:
+    """A union nested inside this arm (OC's ocsetting), arms already built as
+    sibling classes (see make.py's _build_arm_specs_from_union)."""
+    return ItemColumn(
+        name=name,
+        annotation="",
+        rhs="field()",
+        optional=optional,
+        uses_union=time_series,
+        uses_field=time_series,
+        arm_classes=tuple(arm_classes),
+    )
+
+
 def item_class(
-    schema_list: list[dict],
+    schema_list: list[ItemColumn],
     class_name: str,
     keyword: str = "",
     package_class_name: str = "",
@@ -743,20 +1097,17 @@ def item_class(
         {{ block_schema | item_class("Packagedata") }}
         {{ arm_schema | item_class("Status", keyword="STATUS") }}
 
-    ``package_class_name`` (e.g. ``"Oc"``) is only needed for a
-    ``role="nested_union"`` column -- it qualifies that field's
-    forward-reference union annotation (``"Oc.All | Oc.First | ..."``).
+    ``package_class_name`` (e.g. ``"Oc"``) is only needed for a nested-union
+    column -- it qualifies that field's forward-reference union annotation
+    (``"Oc.All | Oc.First | ..."``).
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
     real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
-    ``tagged=``, via ``field()``; ``direction=``/``keyword=`` for a
-    ``role="file"`` column, via ``path()``) -- the class itself is the schema.
+    ``tagged=``, via ``field()``; ``direction=``/``keyword=`` for a file
+    column, via ``path()``) -- the class itself is the schema.
 
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.
-
-    A ``role="sized"`` column (aux) is a tuple with ``shape`` metadata
-    naming the package field that sizes it (``auxiliary``).
 
     ``keyword``, when given, is one arm of a keystring-union period field
     (e.g. LAK's STAGE/RATE/STATUS settings, OC's SAVE/PRINT records) --
@@ -769,171 +1120,12 @@ def item_class(
     if not schema_list and not keyword:
         return ""
 
-    _DFN_PY: dict[str, str] = {
-        "double": "float",
-        "double precision": "float",
-        "integer": "int",
-        "string": "str",
-        "keyword": "str",
-        "object": "object",
-    }
-
-    def _py_type(col: dict) -> str:
-        role = col["role"]
-        if role == "cellid":
-            return "tuple"
-        if role == "counted":
-            if col.get("cellid"):
-                return "tuple[tuple[int, ...], ...]"
-            if col.get("time_series"):
-                return "tuple[Union[float, str], ...]"
-            return f"tuple[{_DFN_PY.get(col.get('dfn_type', 'double'), 'float')}, ...]"
-        if role == "feature_id":
-            return "int"
-        if role == "union":
-            types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in col["arms"])
-            return f"Union[{', '.join(types)}]"
-        if role in ("keystring", "inline_keyword"):
-            return "str"
-        if role == "keystring_value":
-            return "object"
-        if role == "boundname":
-            return "str"
-        if role in ("array", "sized"):
-            return "tuple"
-        if col.get("time_series") or col.get("dtype") == "np.object_":
-            return "Union[float, str]"
-        return _DFN_PY.get(col.get("dfn_type", "double"), "float")
-
-    def _is_optional(col: dict) -> bool:
-        # keystring_value is always optional: some keystring arms are bare
-        # keywords with no payload at all (e.g. PRT-PRP's FIRST/LAST/ALL --
-        # confirmed via the v1 DFN, no feature-id/value field), so a
-        # required "value" would fail to parse those rows from file tokens.
-        return bool(col.get("optional")) or col["role"] in (
-            "boundname",
-            "inline_keyword",
-            "keystring_value",
-            "array",
-            "sized",
-        )
-
-    def _field_meta(col: dict) -> dict:
-        role = col["role"]
-        meta: dict = {}
-        if role == "cellid":
-            meta["cellid"] = True
-        elif role == "feature_id":
-            meta["index"] = True
-            if col.get("fk"):
-                meta["fk"] = col["fk"]
-            elif col.get("pk"):
-                meta["pk"] = True
-        elif role == "inline_keyword":
-            meta["tagged"] = True
-        elif role == "union":
-            meta["union"] = col["arms"]
-        elif role in ("array", "counted"):
-            meta["array"] = True
-            if col.get("cellid"):
-                meta["cellid"] = True
-            if col.get("index"):
-                meta["index"] = True
-            if col.get("count"):
-                meta["shape"] = (col["count"],)
-            if col.get("signed"):
-                meta["signed"] = True
-        if col.get("time_series"):
-            meta["time_series"] = True
-        if _is_optional(col):
-            # Needed even for time_series fields: _n_fixed_tokens() (item.py)
-            # uses this to tell "always present" fixed columns apart from
-            # trailing columns that may be entirely absent from a given row
-            # (e.g. EVT's pxdp/petm/petm0, only written when
-            # surf_rate_specified) when inferring a variable-width cellid's
-            # element count from raw token counts.
-            meta["optional"] = True
-        return meta
-
-    def _field_line(col: dict, *, optional: bool) -> str:
-        if col["role"] == "nested_union":
-            # Union nested inside this arm (OC's ocsetting), arms already
-            # built as sibling classes (see make.py's
-            # _build_arm_specs_from_union) -- forward-ref union annotation.
-            arms = " | ".join(f"{package_class_name}.{c}" for c in col["arm_classes"])
-            return f'        {col["name"]}: "{arms}" = field()'
-        if col["role"] == "array" and col.get("count"):
-            # As many values as an earlier column counts (cell2d's icvert).
-            elem = _DFN_PY.get(col.get("dfn_type", "double"), "float")
-            if col.get("signed"):
-                elem = "tuple[int, int]"
-            margs = ", ".join(f"{k}={_dq(v)}" for k, v in _field_meta(col).items())
-            return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), {margs})"
-        if col["role"] == "array":
-            # Consumes all remaining tokens as a tuple -- a
-            # keyword-plus-trailing-values setting whose arity/type isn't
-            # fixed (PRP's Steps.steps/Fraction's leaf field), typed when
-            # the DFN says (STEPS are integers).
-            if (dfn_type := col.get("dfn_type")) in ("integer", "double"):
-                elem = _DFN_PY[dfn_type]
-                return f"        {col['name']}: tuple[{elem}, ...] = field(default=(), array=True)"
-            return f"        {col['name']}: tuple = field(default=(), array=True)"
-        if col["role"] == "sized":
-            shape = _dq(col["size_of"])
-            return (
-                f"        {col['name']}: tuple = "
-                f"field(default=(), array=True, optional=True, shape=({shape},))"
-            )
-        # A file column naming a component holds the component itself.
-        if col["role"] == "child":
-            classes = col["classes"]
-            cls = classes[0] if len(classes) == 1 else f"Union[{', '.join(classes)}]"
-            args = f'keyword={_dq(col["keyword"])}, direction="{col["direction"]}"'
-            if optional:
-                return f"        {col['name']}: Optional[{cls}] = child({args})"
-            return f"        {col['name']}: {cls} = child({args}, default=attrs.NOTHING)"
-        # Other file columns are path() fields.
-        if col["role"] == "file":
-            direction = col["direction"]
-            file_kw = col.get("keyword")
-            keyword_kw = f", keyword={_dq(file_kw)}" if file_kw else ""
-            if optional:
-                return (
-                    f"        {col['name']}: Optional[Path] = path(\n"
-                    f"            default=None, converter={converter('Optional[Path]')}, "
-                    f'direction="{direction}"{keyword_kw}\n'
-                    f"        )"
-                )
-            return (
-                f"        {col['name']}: Path = path(converter=Path, "
-                f'direction="{direction}"{keyword_kw})'
-            )
-        py_type = _py_type(col)
-        meta = _field_meta(col)
-        margs = ", ".join(f"{k}={_dq(v)}" for k, v in meta.items())
-        if optional:
-            if meta:
-                return f"        {col['name']}: Optional[{py_type}] = field(default=None, {margs})"
-            return f"        {col['name']}: Optional[{py_type}] = None"
-        if meta:
-            return f"        {col['name']}: {py_type} = field({margs})"
-        # A bare annotation here is equivalent to field() at runtime (both
-        # mean "no default") -- but mypy's attrs plugin doesn't recognize
-        # field() (a flopy4.mf6.spec wrapper, not attrs.field itself) as a
-        # field specifier, so it can't tell field()-declared columns above
-        # (e.g. pk=/cellid=) don't actually have a default either. Left
-        # bare, that misreading makes mypy treat *this* column as a
-        # "non-default attribute after a default attribute". Always going
-        # through field() keeps every column's mypy-visible shape
-        # consistent and side-steps the false positive.
-        return f"        {col['name']}: {py_type} = field()"
-
-    required = [col for col in schema_list if not _is_optional(col)]
-    optional = [col for col in schema_list if _is_optional(col)]
+    required = [col for col in schema_list if not col.optional]
+    optional = [col for col in schema_list if col.optional]
     # Optional columns keep DFN order (e.g. EVT: ..., pxdp, petm, petm0, aux),
     # with boundname last.
-    optional_non_boundname = [col for col in optional if col["role"] != "boundname"]
-    boundname_cols = [col for col in optional if col["role"] == "boundname"]
+    optional_non_boundname = [col for col in optional if not col.boundname]
+    boundname_cols = [col for col in optional if col.boundname]
 
     lines = ["    @attrs.define"]
     lines.append(f"    class {class_name}(Item):")
@@ -941,16 +1133,12 @@ def item_class(
         lines.append(f'        _keyword: ClassVar[str] = "{keyword}"')
     # Declaring required columns first reorders a row whose optional
     # columns come before required ones (MVR's mname1 pname1 ...).
-    columns = [col["name"] for col in schema_list]
-    if columns != [col["name"] for col in required + optional]:
+    columns = [col.name for col in schema_list]
+    if columns != [col.name for col in required + optional]:
         names = ", ".join(f'"{c}"' for c in columns)
         lines.append(f"        _columns: ClassVar[tuple[str, ...]] = ({names},)")
-    for col in required:
-        lines.append(_field_line(col, optional=False))
-    for col in optional_non_boundname:
-        lines.append(_field_line(col, optional=True))
-    for col in boundname_cols:
-        lines.append(_field_line(col, optional=True))
+    for col in required + optional_non_boundname + boundname_cols:
+        lines.append(col.line(package_class_name))
     return "\n".join(lines)
 
 
@@ -1030,7 +1218,7 @@ def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
                 is_cellid=isinstance(col, Array) and col.cellid,
                 is_prefix=is_keyword and not is_optional,
                 is_row_keyword=is_keyword and is_optional,
-                # role="feature_id" implies MF6's numeric 0-based-Python/1-based-
+                # a feature id implies MF6's numeric 0-based-Python/1-based-
                 # file conversion (structure.py: int(...) - 1). dev3's `index`
                 # attribute (split out of the old overloaded pk/fk semantics,
                 # modflow-devtools 41dca93) is now the direct, authoritative

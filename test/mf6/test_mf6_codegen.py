@@ -26,15 +26,21 @@ from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record
 
 from flopy4.mf6.component import FNAMES
 from flopy4.mf6.utils.codegen.filters import (
+    boundname_column,
     can_expand_record,
+    cellid_column,
     class_name,
+    feature_id_column,
     is_generatable,
     item_class,
+    keyword_column,
     model_abbr,
     module_name,
     output_path,
     py_type,
     safe_name,
+    sized_column,
+    value_column,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, check_mixins, make_modules
 
@@ -253,9 +259,9 @@ class TestFilters:
         # No sized column in the schema, no aux field. Real field()
         # metadata (pk=/etc.) is the schema.
         schema = [
-            {"name": "ifno", "role": "feature_id", "dfn_type": "integer", "pk": True},
-            {"name": "strt", "role": "value", "dfn_type": "double"},
-            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+            feature_id_column("ifno", pk=True),
+            value_column("strt"),
+            boundname_column("boundname"),
         ]
         result = item_class(schema, "Packagedata")
         assert "@attrs.define" in result
@@ -270,13 +276,8 @@ class TestFilters:
         # 1-based conversion); one with a real fk target also carries fk=,
         # not pk= (pk and fk are mutually exclusive relational roles).
         schema = [
-            {
-                "name": "ifno",
-                "role": "feature_id",
-                "dfn_type": "integer",
-                "fk": "packagedata.ifno",
-            },
-            {"name": "iconn", "role": "feature_id", "dfn_type": "integer", "pk": True},
+            feature_id_column("ifno", fk="packagedata.ifno"),
+            feature_id_column("iconn", pk=True),
         ]
         result = item_class(schema, "Connectiondata")
         assert 'ifno: int = field(index=True, fk="packagedata.ifno")' in result
@@ -286,10 +287,10 @@ class TestFilters:
         # A column sized by a package field (aux by auxiliary) is a tuple
         # with that shape, in DFN order before boundname.
         schema = [
-            {"name": "cellid", "role": "cellid", "dfn_type": "integer"},
-            {"name": "head", "role": "value", "dfn_type": "double"},
-            {"name": "aux", "role": "sized", "dfn_type": "double", "size_of": "auxiliary"},
-            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+            cellid_column("cellid"),
+            value_column("head"),
+            sized_column("aux", "auxiliary"),
+            boundname_column("boundname"),
         ]
         result = item_class(schema, "StressPeriodData")
         assert (
@@ -301,10 +302,10 @@ class TestFilters:
     def test_item_class_field_order_matches_schema(self):
         # Required fields declared in schema order, then optional.
         schema = [
-            {"name": "ifno", "role": "feature_id", "dfn_type": "integer"},
-            {"name": "strt", "role": "value", "dfn_type": "double"},
-            {"name": "nlakeconn", "role": "value", "dfn_type": "integer"},
-            {"name": "boundname", "role": "boundname", "dfn_type": "string"},
+            feature_id_column("ifno"),
+            value_column("strt"),
+            value_column("nlakeconn", "integer"),
+            boundname_column("boundname"),
         ]
         result = item_class(schema, "Packagedata")
         lines = [ln.strip() for ln in result.splitlines() if ":" in ln and "class" not in ln]
@@ -312,23 +313,23 @@ class TestFilters:
         assert names == ["ifno", "strt", "nlakeconn", "boundname"]
 
     def test_item_class_inline_keyword_optional(self):
-        # inline_keyword role -> Optional[str], tagged=True (same convention
+        # keyword column -> Optional[str], tagged=True (same convention
         # record.py's Record uses for optional keyword tokens).
         schema = [
-            {"name": "pname", "role": "value", "dfn_type": "string", "dtype": "np.object_"},
-            {"name": "mixed", "role": "inline_keyword", "dfn_type": "keyword", "optional": True},
+            value_column("pname", "string", object_dtype=True),
+            keyword_column("mixed"),
         ]
         result = item_class(schema, "Fileinput")
         assert "mixed: Optional[str] = field(default=None, tagged=True, optional=True)" in result
 
     def test_item_class_cellid_metadata(self):
-        schema = [{"name": "cellid", "role": "cellid", "dfn_type": "integer"}]
+        schema = [cellid_column("cellid")]
         result = item_class(schema, "StressPeriodData")
         assert "cellid: tuple = field(cellid=True)" in result
 
     def test_item_class_time_series_metadata(self):
         schema = [
-            {"name": "head", "role": "value", "dfn_type": "double", "time_series": True},
+            value_column("head", time_series=True),
         ]
         result = item_class(schema, "StressPeriodData")
         assert "head: Union[float, str] = field(time_series=True)" in result
@@ -500,9 +501,9 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns):
     assert "Connectiondata" in item_classes
     assert "packagedata" in field_map
     assert "connectiondata" in field_map
-    # Schemas contain feature_id roles (advanced package, no spatial cellid in packagedata)
+    # Schemas contain feature ids (advanced package, no spatial cellid in packagedata)
     pd_schema = item_classes["Packagedata"].schema
-    assert any(col.get("role") == "feature_id" for col in pd_schema)
+    assert any("index=True" in col.rhs for col in pd_schema)
 
 
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
@@ -1449,7 +1450,7 @@ def test_counted_array_column():
 
 def test_counted_array_column_must_be_last():
     from flopy4.mf6.utils.codegen.filters import ColumnSpec
-    from flopy4.mf6.utils.codegen.make import _schema_dict_from_columns
+    from flopy4.mf6.utils.codegen.make import _item_columns
 
     def col(f):
         return ColumnSpec(f.name, f, False, False, False, False)
@@ -1460,4 +1461,4 @@ def test_counted_array_column_must_be_last():
         col(Double(name="xc")),
     ]
     with pytest.raises(ValueError, match="isn't the last column"):
-        _schema_dict_from_columns(columns)
+        _item_columns(columns)

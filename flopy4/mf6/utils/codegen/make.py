@@ -42,7 +42,7 @@ from modflow_devtools.dfns.schema import (
 from flopy4.mf6.item import count_dim
 
 from . import filters
-from .filters import ColumnSpec, FieldV3, _dq, item_class, pascal_name, python_repr
+from .filters import ColumnSpec, FieldV3, ItemColumn, _dq, item_class, pascal_name, python_repr
 
 # Pre-computed context dataclasses
 
@@ -114,7 +114,7 @@ class ItemClassSpec:
 
     class_name: str
     keyword: str  # lowercase, matches Record's _keyword convention; "" if none
-    schema: list[dict]
+    schema: list[ItemColumn]
     top_level: bool = True
 
 
@@ -193,30 +193,30 @@ class ComponentSpec:
 # vs fill_forward= metadata) differs between them.
 
 
-def _schema_dict_from_columns(
+def _item_columns(
     columns: list[ColumnSpec],
     nested_arm_classes: "dict[str, list[str]] | None" = None,
     arrays: "frozenset[str] | set[str]" = frozenset(),
     dims: "frozenset[str] | set[str]" = frozenset(),
     children: "Mapping[str, list[str]] | None" = None,
-) -> list[dict]:
-    """Build a __*_schema__ list[dict] from ColumnSpecs.
+) -> list[ItemColumn]:
+    """Build the rendered columns of an Item class from ColumnSpecs.
 
-    File columns get role 'file', or 'child' if ``children`` maps them to
-    the components they name (LAK's TAB6 file, a utl-laktab); a preceding
-    is_prefix column (e.g. SPC6) becomes its 'keyword'. is_row_keyword
-    columns (optional keywords, e.g. MIXED) get role 'inline_keyword'. A
-    column whose shape names one of the component's ``arrays`` (aux, shaped
-    by ``auxiliary``) gets role 'sized': as many values as that array has.
+    File columns become path() fields; a preceding is_prefix column (e.g.
+    SPC6) becomes its keyword. A file column ``children`` maps to the
+    components it names (LAK's TAB6 file, a utl-laktab) holds them. is_row_keyword columns (optional keywords,
+    e.g. MIXED) are tagged strings. A column whose shape names one of the
+    component's ``arrays`` (aux, shaped by ``auxiliary``) is sized by it: as
+    many values as that array has.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
-    -- such a column gets ``role="nested_union"`` instead of the generic
-    untyped-union ``role="array"`` below.
+    -- such a column is a nested union instead of the generic untyped-union
+    array below.
     """
     nested_arm_classes = nested_arm_classes or {}
     children = children or {}
-    schema = []
+    items: list[ItemColumn] = []
     pending_prefix: list[str] = []
     # Columns counting a later array column's values (cell2d's ncvert, for
     # icvert). Optional: filled in from the array's length when omitted.
@@ -231,56 +231,58 @@ def _schema_dict_from_columns(
             pending_prefix.append(col.name.upper())
             continue
         f = col.field
-        entry: dict = {"name": col.name, "dfn_type": _dfn_type_str(f)}
-        if f.optional:
-            entry["optional"] = True
+        name = col.name
+        dfn_type = _dfn_type_str(f)
+        optional = bool(f.optional) or name in counts
+        ts = bool(getattr(f, "time_series", False))
         shape = getattr(f, "shape", None) or []
         if isinstance(f, File):
-            entry["role"] = "file"
-            entry["direction"] = f.direction
-            if targets := children.get(col.name):
-                entry["role"] = "child"
-                entry["name"] = filters.module_name(targets[0])
-                entry["classes"] = [filters.class_name(t) for t in targets]
             if len(pending_prefix) > 1:
                 raise ValueError(
-                    f"file column {col.name!r}: expected one keyword, got {pending_prefix}"
+                    f"file column {name!r}: expected one keyword, got {pending_prefix}"
                 )
-            if pending_prefix:
-                entry["keyword"] = pending_prefix.pop().lower()
+            keyword = pending_prefix.pop().lower() if pending_prefix else None
+            if targets := children.get(name):
+                item = filters.child_column(
+                    filters.module_name(targets[0]),
+                    [filters.class_name(t) for t in targets],
+                    f.direction,
+                    keyword,
+                    optional=optional,
+                )
+            else:
+                item = filters.file_column(name, f.direction, keyword, optional=optional)
         elif pending_prefix:
-            raise ValueError(
-                f"fixed keyword(s) {pending_prefix} before non-file column {col.name!r}"
-            )
+            raise ValueError(f"fixed keyword(s) {pending_prefix} before non-file column {name!r}")
         elif isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
-            entry["role"] = "sized"
-            entry["size_of"] = shape[0]
+            item = filters.sized_column(name, shape[0], time_series=ts)
         elif isinstance(f, Array) and len(shape) == 1 and shape[0] in seen:
             # Inline array counted by an earlier column of the same row
             # (DISV/DISU cell2d's icvert, by ncvert). Rows vary in length,
             # so it must be the last column.
             if col is not columns[-1]:
                 raise ValueError(
-                    f"array column {col.name!r}, counted by {shape[0]!r}, isn't the last column"
+                    f"array column {name!r}, counted by {shape[0]!r}, isn't the last column"
                 )
-            entry["role"] = "array"
-            entry["count"] = shape[0]
-            if col.is_index:
-                entry["index"] = True
+            item = filters.row_counted_column(
+                name, shape[0], dfn_type, index=col.is_index, time_series=ts
+            )
         elif isinstance(f, Array) and len(shape) == 1 and _LOOKUP_RE.fullmatch(shape[0]):
             # Inline array counted by a column of the row another column
             # refers to (SFR's ic, by packagedata.ncon(ifno)): rows vary in
             # length, so it must be the last column.
             if col is not columns[-1]:
                 raise ValueError(
-                    f"array column {col.name!r}, counted by {shape[0]!r}, isn't the last column"
+                    f"array column {name!r}, counted by {shape[0]!r}, isn't the last column"
                 )
-            entry["role"] = "array"
-            entry["count"] = shape[0]
-            if col.is_index:
-                entry["index"] = True
-            if f.index == "signed":
-                entry["signed"] = True
+            item = filters.row_counted_column(
+                name,
+                shape[0],
+                dfn_type,
+                index=col.is_index,
+                signed=f.index == "signed",
+                time_series=ts,
+            )
         elif (
             isinstance(f, Array)
             and len(counts_by := shape[1:] if col.is_cellid else shape) == 1
@@ -289,53 +291,51 @@ def _schema_dict_from_columns(
             # Inline array sized by a package dimension (GNC's cellidsj and
             # alphasj, by numalphaj; EVT's pxdp, by nseg-1): fixed width, so
             # it may be any column. A cellid array's first axis is ncelldim.
-            entry["role"] = "counted"
-            entry["count"] = counts_by[0]
-            if col.is_cellid:
-                entry["cellid"] = True
-            elif col.is_index:
-                entry["index"] = True
+            item = filters.counted_column(
+                name,
+                counts_by[0],
+                count_dim(counts_by[0])[0],
+                dfn_type,
+                cellid=col.is_cellid,
+                index=col.is_index and not col.is_cellid,
+                optional=optional,
+                time_series=ts,
+            )
         elif col.is_cellid:
-            entry["role"] = "cellid"
-            if shape := getattr(f, "shape", None):
-                entry["shape"] = ",".join(shape)
+            item = filters.cellid_column(name, optional=optional, time_series=ts)
         elif col.is_index:
-            entry["role"] = "feature_id"
-            if getattr(f, "fk", None):
-                entry["fk"] = f.fk
-            elif getattr(f, "pk", False):
-                entry["pk"] = True
-        elif col.name == "boundname":
-            entry["role"] = "boundname"
-            entry["dtype"] = "np.object_"
+            fk = getattr(f, "fk", None)
+            pk = not fk and bool(getattr(f, "pk", False))
+            item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
+        elif name == "boundname":
+            item = filters.boundname_column(name)
         elif col.is_row_keyword:
-            entry["role"] = "inline_keyword"
-            entry["optional"] = True
+            item = filters.keyword_column(name, time_series=ts)
         elif isinstance(f, UnionField) and not f.tagged:
             # One column, any of the arms (OBS's id: a cellid, an index or
             # a boundname), told apart when read (see Item.from_tokens).
-            entry["role"] = "union"
-            entry["arms"] = tuple(_arm_kind(arm) for arm in f.arms.values())
-        elif isinstance(f, UnionField) and col.name in nested_arm_classes:
-            entry["role"] = "nested_union"
-            entry["arm_classes"] = nested_arm_classes[col.name]
+            item = filters.union_column(
+                name, tuple(_arm_kind(arm) for arm in f.arms.values()), optional=optional, time_series=ts
+            )
+        elif isinstance(f, UnionField) and name in nested_arm_classes:
+            item = filters.nested_union_column(
+                name, nested_arm_classes[name], optional=optional, time_series=ts
+            )
         elif isinstance(f, UnionField) or (
             isinstance(f, Array) and not filters.is_fixed_length_array(f)
         ):
-            entry["role"] = "array"
-        elif isinstance(f, String):
-            entry["role"] = "value"
-            entry["dtype"] = "np.object_"
+            item = filters.rest_column(name, dfn_type, time_series=ts)
         else:
-            entry["role"] = "value"
-        if col.name in counts:
-            entry["optional"] = True
-        if getattr(f, "time_series", False):
-            entry["time_series"] = True
-            entry["dtype"] = "np.object_"
-        schema.append(entry)
-        seen.add(col.name)
-    return schema
+            item = filters.value_column(
+                name,
+                dfn_type,
+                optional=optional,
+                time_series=ts,
+                object_dtype=isinstance(f, String),
+            )
+        items.append(item)
+        seen.add(name)
+    return items
 
 
 # A count looked up in another list's row: "packagedata.ncon(ifno)".
@@ -387,8 +387,7 @@ def _dfn_type_str(f: FieldV3) -> str:
     if isinstance(f, KeywordField):
         return "keyword"
     if isinstance(f, UnionField):
-        # Unused for a role="nested_union" column -- filters.py's
-        # nested_union branch never consults dfn_type.
+        # Unused for a nested-union column, which never consults dfn_type.
         return "object"
     return getattr(f, "dtype", "double")  # Array
 
@@ -533,7 +532,7 @@ def _build_list_item_specs(
 
     ``arrays`` names the component's array fields, which can size a column,
     and ``children`` an untagged row's child columns, by name, with the
-    components they name (see _schema_dict_from_columns).
+    components they name (see _item_columns).
     """
     union = filters.find_keystring_union(list_field)
     if union is not None:
@@ -561,7 +560,7 @@ def _build_list_item_specs(
             dims=dims,
         )
         return specs, specs[-1].class_name, None
-    schema = _schema_dict_from_columns(
+    schema = _item_columns(
         filters.list_columns(list_field), arrays=arrays, dims=dims, children=children
     )
     used_names.add(class_name)
@@ -685,7 +684,7 @@ def _build_arm_spec(
         nested_arm_classes[field_name] = [s.class_name for s in cached]
 
     cols = filters._fields_to_columns(list(shared_cols) + rest)
-    schema = _schema_dict_from_columns(cols, nested_arm_classes, arrays, dims)
+    schema = _item_columns(cols, nested_arm_classes, arrays, dims)
     if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -979,28 +978,14 @@ def _generated_imports(
     # Union[float, str] is used by item_class() for time_series and np.object_ columns.
     # Check every generated Item class's columns.
     _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
-    has_union = (
-        has_union_child
-        or any(
-            col.get("time_series") or col.get("dtype") == "np.object_"
-            for col in _all_schema_cols
-            if col.get("role") not in ("keystring_value", "boundname", "file", "child")
-        )
-        or any(len(col.get("classes", ())) > 1 for col in _all_schema_cols)
-    )
+    has_union = has_union_child or any(col.uses_union for col in _all_schema_cols)
     # File row columns become Path fields, not Union[float, str].
-    _row_path_cols = [col for col in _all_schema_cols if col.get("role") == "file"]
-    has_row_path_cols = bool(_row_path_cols)
+    has_row_path_cols = any(col.path for col in _all_schema_cols)
     # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
     # field(), same as any other generated field -- checked separately from
     # has_field_call since these live inside item_class()'s rendered text, not
     # in the package's own top-level field_specs.
-    _row_has_field_call = any(
-        col.get("role") in ("cellid", "feature_id", "inline_keyword", "sized")
-        or col.get("time_series")
-        for col in _all_schema_cols
-        if col.get("role") != "file"
-    )
+    _row_has_field_call = any(col.uses_field for col in _all_schema_cols)
 
     stdlib: list[str] = []
     if has_file_records or has_file_lists or has_row_path_cols:
@@ -1043,7 +1028,7 @@ def _generated_imports(
         _spec_parts.append("field")
     if has_path_call or has_row_path_cols:
         _spec_parts.append("path")
-    if has_child_call or any(col.get("role") == "child" for col in _all_schema_cols):
+    if has_child_call or any(col.uses_child for col in _all_schema_cols):
         _spec_parts.append("child")
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
@@ -1521,7 +1506,7 @@ def build_component_spec(
                 ItemClassSpec(
                     class_name="StressPeriodData",
                     keyword="",
-                    schema=[{"name": f.name, "dfn_type": "keyword", "role": "keystring"}],
+                    schema=[filters.required_str_column(f.name)],
                 )
             )
             _period_item = "StressPeriodData"
@@ -1826,12 +1811,7 @@ def build_component_spec(
     field_specs = _deduped
 
     _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
-    _counting = {
-        count_dim(e["count"])[0]
-        for ic in item_classes
-        for e in ic.schema
-        if e.get("role") == "counted"
-    }
+    _counting = {e.counted_by for ic in item_classes for e in ic.schema if e.counted_by}
     _count_dims = {
         d: v for d in sorted(_counting) if (v := component.dims[d].value) not in _seen_py_names
     }
