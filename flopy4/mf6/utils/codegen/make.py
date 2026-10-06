@@ -979,11 +979,15 @@ def _generated_imports(
     # Union[float, str] is used by item_class() for time_series and np.object_ columns.
     # Check every generated Item class's columns.
     _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
-    has_union = has_union_child or any(
-        col.get("time_series") or col.get("dtype") == "np.object_"
-        for col in _all_schema_cols
-        if col.get("role") not in ("keystring_value", "boundname", "file", "child")
-    ) or any(len(col.get("classes", ())) > 1 for col in _all_schema_cols)
+    has_union = (
+        has_union_child
+        or any(
+            col.get("time_series") or col.get("dtype") == "np.object_"
+            for col in _all_schema_cols
+            if col.get("role") not in ("keystring_value", "boundname", "file", "child")
+        )
+        or any(len(col.get("classes", ())) > 1 for col in _all_schema_cols)
+    )
     # File row columns become Path fields, not Union[float, str].
     _row_path_cols = [col for col in _all_schema_cols if col.get("role") == "file"]
     has_row_path_cols = bool(_row_path_cols)
