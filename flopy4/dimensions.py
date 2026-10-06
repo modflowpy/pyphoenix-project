@@ -128,8 +128,11 @@ class DimensionResolver(Protocol):
         Resolve one or more dimensions by walking the object graph.
 
         Walk the current component's children looking for dimension
-        providers. Dimensions not found are sought in the parent.
-        Results are cached after first access.
+        providers. Dimensions not found are sought in the parent, then
+        in the component's own explicit `dims`. Nothing is cached: a
+        provider's dimensions can change (a list appended to in place).
+        An own dimension that disagrees with the one children or the
+        parent provide raises ValueError.
 
         Parameters
         ----------
@@ -146,10 +149,9 @@ class DimensionResolver(Protocol):
         Notes
         -----
         Resolution order:
-        1. Check cache
-        2. Walk child fields/collections
-        3. If not found, check parent
-        4. Cache result
+        1. Walk child fields/collections
+        2. If not found, check parent
+        3. If not found, check the component's own `dims`
 
         Examples
         --------
@@ -169,21 +171,7 @@ class DimensionResolver(Protocol):
 class DimensionResolverMixin:
     """
     Mixin for components which consume dimensions from providers.
-
-    Attributes
-    ----------
-    _dimension_cache : dict[str, int]
-        Cache of resolved dimensions (stored as instance variable, not attrs field)
     """
-
-    @property
-    def _dimension_cache(self) -> dict:
-        # Lazily initialize in __dict__ directly rather than as a real attrs
-        # field: avoids needing a mutable-default Factory, and doesn't
-        # depend on __attrs_post_init__ chaining order across mixins.
-        if "_dimension_cache" not in self.__dict__:
-            self.__dict__["_dimension_cache"] = {}
-        return self.__dict__["_dimension_cache"]
 
     def __attrs_post_init__(self) -> None:
         if hasattr(super(), "__attrs_post_init__"):
@@ -193,9 +181,12 @@ class DimensionResolverMixin:
         """
         Resolve one or more dimensions by walking the object graph.
 
-        This method implements lazy dimension resolution with caching. It first
-        checks the cache, then walks children looking for dimension providers,
-        and finally delegates to parent if not found locally.
+        Walks children looking for dimension providers, then delegates to
+        the parent if not found locally, then falls back to the component's
+        own explicit `dims` (e.g. `Npf(dims={"nlay": 3})`, or those given to
+        `Package.load`). A dimension in both that disagrees raises
+        ValueError. Nothing is cached, since a provider's dimensions can
+        change.
 
         Parameters
         ----------
@@ -212,11 +203,11 @@ class DimensionResolverMixin:
         Notes
         -----
         Resolution order:
-        1. Check cache
-        2. Walk fields looking for DimensionProviders
-        3. Check each provider's dims()
-        4. If not found, delegate to parent
-        5. Cache result
+        1. Walk fields looking for DimensionProviders
+        2. Check each provider's get_dims()
+        3. If not found, delegate to parent
+        4. If still not found, use the component's own `dims`; if both
+           exist and differ, raise
 
         Examples
         --------
@@ -235,26 +226,19 @@ class DimensionResolverMixin:
         # One or more args: return dict of found dimensions
         result_dict = {}
         for dim_name in dims:
-            # Check cache
-            if dim_name in self._dimension_cache:
-                result_dict[dim_name] = self._dimension_cache[dim_name]
-                continue
-
-            # Find in children
             value = self._find_dimension_in_children(dim_name)
-            if value is not None:
-                self._dimension_cache[dim_name] = value
-                result_dict[dim_name] = value
-                continue
-
-            # Check parent
-            if hasattr(self, "_parent") and self._parent is not None:
+            if value is None and hasattr(self, "_parent") and self._parent is not None:
                 if hasattr(self._parent, "resolve_dims"):
-                    parent_result = self._parent.resolve_dims(dim_name)
-                    if dim_name in parent_result:
-                        value = parent_result[dim_name]
-                        self._dimension_cache[dim_name] = value
-                        result_dict[dim_name] = value
+                    value = self._parent.resolve_dims(dim_name).get(dim_name)
+            own = (getattr(self, "dims", None) or {}).get(dim_name)
+            if value is not None and own is not None and value != own:
+                raise ValueError(
+                    f"{type(self).__name__} has {dim_name}={own} in its own dims "
+                    f"but its children or parent provide {dim_name}={value}"
+                )
+            value = value if value is not None else own
+            if value is not None:
+                result_dict[dim_name] = value
 
         return result_dict
 
@@ -312,6 +296,13 @@ class DimensionResolverMixin:
             resolved_dims.update(provider_dims)
             for dim_name in provider_dims:
                 dim_sources[dim_name] = source
+
+        for dim_name, own in (getattr(self, "dims", None) or {}).items():
+            if own is not None and resolved_dims.get(dim_name, own) != own:
+                raise ValueError(
+                    f"{type(self).__name__} has {dim_name}={own} in its own dims "
+                    f"but its children or parent provide {dim_name}={resolved_dims[dim_name]}"
+                )
 
         return resolved_dims
 

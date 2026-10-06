@@ -159,6 +159,33 @@ class Package(Component, ABC):
             if not isinstance(item_cls, tuple):
                 self._set_dims_from_counts(item_cls, rows)
 
+    def _sync_dims(self) -> None:
+        """Bring the dimensions counting list rows in step with the lists.
+
+        Appending to or removing from a list in place doesn't fire
+        `on_setattr`, so a dimension set at construction (NVERT, NCPL,
+        NPER) goes stale. Called wherever dimensions are read or written.
+        An exact dimension takes the current row count; a bounded one
+        ("<=maxats") is the user's, so it's only checked.
+        """
+        fields = attrs.fields(type(self))  # type: ignore[arg-type]
+        names = {f.name for f in fields if f.metadata.get("block") == "dimensions"}
+        for f in fields:
+            if not f.metadata.get("block") or "dim" not in f.metadata:
+                continue
+            bound, dim = split_bound(f.metadata["dim"])
+            rows = self.__dict__.get(f.name)
+            if dim not in names or rows is None or item_list_type(f.type) is None:
+                continue
+            if f.metadata.get("fill_forward"):
+                nrows = max((len(r) for r in rows.values()), default=0)
+            else:
+                nrows = len(rows)
+            if bound is None:
+                object.__setattr__(self, dim, nrows)
+            else:
+                self._set_dim_from_rows(dim, nrows, bound)
+
     def _check_lookup_counts(self, fields) -> None:
         """Check array columns counted by a column of the row another column
         refers to: SFR's ic has packagedata.ncon(ifno) values."""
@@ -357,6 +384,7 @@ class Package(Component, ABC):
                 self.__dict__[f.name] = np.full(shape, default, dtype=_gd_dtype)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
+        self._sync_dims()
         self._name_file_children()
         super().write(format=format, context=context)
 
@@ -400,10 +428,10 @@ class Package(Component, ABC):
             _raw = _codec_load(_f)
         _pkg = structure_component(_raw, cls, dims=dims, workspace=path.parent, name=name)
 
-        # Pre-populate dimension cache so to_xarray()/to_dataarray() work
-        # on standalone packages (not attached to a parent model).
+        # Standalone packages (not attached to a parent model) resolve
+        # dimensions from the ones given, so to_xarray()/to_dataarray() work.
         if dims:
-            _pkg._dimension_cache.update(dims)
+            _pkg.dims.update(dims)
 
         return _pkg
 

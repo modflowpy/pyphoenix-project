@@ -9,6 +9,7 @@ class GridDimsMethods:
 
     def get_dims(self) -> dict[str, int]:
         """Get all dimensions: the DIMENSIONS block's, then the derived ones."""
+        self._sync_dims()  # type: ignore[attr-defined]
         names = [
             f.name
             for f in attrs.fields(type(self))  # type: ignore[arg-type]

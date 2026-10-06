@@ -149,22 +149,17 @@ class TestComponentIntegration:
         # Use 'is' for identity, not '==' for equality.
         assert dis._parent is gwf
 
-    def test_dimension_caching_in_real_components(self):
-        """Test that dimension caching works with real components."""
+    def test_dimension_changes_in_real_components(self):
+        """Test that resolution sees a provider's changed dimensions."""
         from flopy4.mf6.gwf import Gwf
         from flopy4.mf6.gwf.dis import Dis
 
         dis = Dis(nlay=3, nrow=10, ncol=20)
         gwf = Gwf(name="test", dis=dis)
 
-        # First resolution
-        result1 = gwf.resolve_dims("nlay")
-        assert "nlay" in gwf._dimension_cache
-        assert gwf._dimension_cache["nlay"] == 3
-
-        # Second resolution should use cache
-        result2 = gwf.resolve_dims("nlay")
-        assert result1 == result2 == {"nlay": 3}
+        assert gwf.resolve_dims("nlay") == {"nlay": 3}
+        dis.nlay = 4
+        assert gwf.resolve_dims("nlay") == {"nlay": 4}
 
     def test_simulation_resolves_nper_from_tdis(self):
         """Test that Simulation can resolve nper from Tdis."""

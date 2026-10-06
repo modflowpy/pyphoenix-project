@@ -152,37 +152,14 @@ def test_resolve_duplicate_dimensions():
     assert result == {"nlay": 3}
 
 
-def test_resolve_dimension_caching():
-    """Test that resolved dimensions are cached."""
+def test_resolve_dimension_sees_provider_changes():
+    """Test that resolution isn't cached: a provider's dimensions can change."""
     provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
     container = MockContainer(provider=provider)
 
-    # First resolution
-    result1 = container.resolve_dims("nlay")
-    # Check cache was populated
-    assert "nlay" in container._dimension_cache
-    assert container._dimension_cache["nlay"] == 3
-
-    # Second resolution should use cache
-    result2 = container.resolve_dims("nlay")
-    assert result1 == result2 == {"nlay": 3}
-
-
-def test_resolve_multiple_dimensions_uses_cache():
-    """Test that cache is used when resolving multiple dimensions."""
-    provider = MockDimensionProvider(nlay=3, nrow=10, ncol=20)
-    container = MockContainer(provider=provider)
-
-    # First, resolve one dimension to populate cache
-    container.resolve_dims("nlay")
-    assert "nlay" in container._dimension_cache
-
-    # Now resolve multiple including the cached one
-    result = container.resolve_dims("nlay", "nrow")
-    assert result == {"nlay": 3, "nrow": 10}
-    # Both should now be cached
-    assert "nlay" in container._dimension_cache
-    assert "nrow" in container._dimension_cache
+    assert container.resolve_dims("nlay") == {"nlay": 3}
+    provider.nlay = 4
+    assert container.resolve_dims("nlay") == {"nlay": 4}
 
 
 def test_get_all_dimensions_direct_child():

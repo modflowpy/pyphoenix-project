@@ -14,6 +14,7 @@ class TdisMethods:
 
     def get_dims(self: "Tdis") -> dict[str, int]:  # type: ignore[misc]
         """Get all dimensions."""
+        self._sync_dims()
         return {"nper": self.nper or len(self.perioddata or [])}
 
     def to_time(self: "Tdis") -> Time:  # type: ignore[misc]
