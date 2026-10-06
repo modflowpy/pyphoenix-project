@@ -3410,3 +3410,28 @@ def test_ats_hpc_children_load_and_write(tmp_path):
     reloaded = Simulation.load(out / "mfsim.nam")
     assert [r.dt0 for r in reloaded.tdis.ats.perioddata] == [0.5]
     assert [r.mname for r in reloaded.hpc.partitions] == ["gwf"]
+
+
+def test_spc_round_trip(tmp_path):
+    """SPC's `bndno CONCENTRATION value` rows load and dump."""
+    from flopy4.mf6.utl.spc import Spc
+
+    path = tmp_path / "gwt.spc"
+    path.write_text(
+        "BEGIN OPTIONS\n  PRINT_INPUT\nEND OPTIONS\n"
+        "BEGIN DIMENSIONS\n  MAXBOUND 2\nEND DIMENSIONS\n"
+        "BEGIN PERIOD 1\n  1 CONCENTRATION 100.0\n  2 CONCENTRATION myts\nEND PERIOD\n"
+        "BEGIN PERIOD 3\n  1 CONCENTRATION 0.0\nEND PERIOD\n"
+    )
+    spc = Spc.load(path)
+    rows = spc.stress_period_data
+    assert [(r.bndno, r.concentration) for r in rows[0]] == [(0, 100.0), (1, "myts")]
+    assert [(r.bndno, r.concentration) for r in rows[2]] == [(0, 0.0)]
+    assert spc.maxbound == 2
+
+    dumped = dumps(COMPONENT_CONVERTER.unstructure(spc))
+    assert "MAXBOUND 2" in dumped
+    assert "1 CONCENTRATION 100.0" in dumped
+    assert "2 CONCENTRATION myts" in dumped
+    path.write_text(dumped)
+    assert Spc.load(path).stress_period_data == rows
