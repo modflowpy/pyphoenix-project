@@ -138,3 +138,9 @@ def test_rcha_to_dataarray_carries_forward():
     da = rcha.to_dataarray("recharge")
     assert da.dims == ("per", "node")
     np.testing.assert_array_equal(da.values[1], [0.1, 0.2])
+
+
+def test_dense_drops_periods_past_nper():
+    with pytest.warns(UserWarning, match="past NPER"):
+        out = dense({0: np.array([1.0]), 2: np.array([2.0])}, nper=2)
+    np.testing.assert_array_equal(out.ravel(), [1.0, 1.0])

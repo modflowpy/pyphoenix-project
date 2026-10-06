@@ -15,6 +15,7 @@ How a period carries forward depends on the package:
   own until it's given again.
 """
 
+import warnings
 from collections.abc import Mapping
 from typing import Any, Optional
 
@@ -115,9 +116,12 @@ def dense(
     ``FILL_INT64`` for integers. With ``given`` (a grid package's periods,
     over all its fields), a period that's given but missing from ``periods``
     is filled, not carried: a grid period block replaces the whole period.
+    Periods past ``nper`` are dropped, with a warning.
     """
     if not periods:
         raise ValueError("no periods to stack")
+    if past := [kper for kper in periods if kper >= nper]:
+        warnings.warn(f"periods {past} are past NPER ({nper}), dropped", stacklevel=2)
     first = _as_array(next(iter(periods.values())))
     fill = _fill_value(first)
     out = np.full((nper, *first.shape), fill, dtype=first.dtype)

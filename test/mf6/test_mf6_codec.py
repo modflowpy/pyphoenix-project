@@ -910,6 +910,54 @@ def test_welg_aux_period_without_stress():
         Welg(auxiliary=["conc"], q={0: np.ones(2)}, aux={1: {"conc": np.ones(2)}})
 
 
+def test_rcha_aux_name_collision():
+    """An AUXILIARY name matching a field's (RECHARGE) loads into aux, as in MF6."""
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Rcha
+
+    text = """BEGIN OPTIONS
+  AUXILIARY recharge
+  READASARRAYS
+END OPTIONS
+BEGIN PERIOD 1
+  RECHARGE
+    CONSTANT 5.0
+END PERIOD
+"""
+    rcha = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    assert rcha.recharge is None
+    np.testing.assert_array_equal(rcha.aux[0]["recharge"], [5.0, 5.0])
+
+
+def test_wel_empty_period_round_trip():
+    """An empty list period block turns off every boundary: it loads as an
+    empty period and is written back."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.gwf import Wel
+
+    text = """BEGIN DIMENSIONS
+  MAXBOUND 1
+END DIMENSIONS
+BEGIN PERIOD 1
+  1 1 1 -1.0
+END PERIOD
+BEGIN PERIOD 3
+END PERIOD
+"""
+    dims = {"nlay": 1, "nrow": 1, "ncol": 2, "ncpl": 2, "nodes": 2}
+    wel = structure_component(loads(text), Wel, dims=dims)
+    assert list(wel.stress_period_data) == [0, 2]
+    assert wel.stress_period_data[2] == []
+
+    out = dumps(unstructure_component(wel))
+    cleared = out.upper().split("BEGIN PERIOD 3")[1].split("END PERIOD")[0]
+    assert cleared.strip() == ""
+    assert structure_component(loads(out), Wel, dims=dims).stress_period_data == (
+        wel.stress_period_data
+    )
+
+
 def test_dumps_wel():
     from flopy4.mf6.gwf import Wel
 

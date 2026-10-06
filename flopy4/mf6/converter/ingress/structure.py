@@ -908,6 +908,8 @@ def structure_component(
             spd: dict[int, list] = {}
             for kper, rows in sorted(kper_rows.items()):
                 if not rows:
+                    # an empty period block turns off every boundary
+                    spd[kper] = []
                     continue
                 rows = _resolve_open_close_rows(rows, workspace)
                 row_list = _parse_rows(
@@ -958,6 +960,8 @@ def structure_component(
 
                 periods: dict[str, dict[int, np.ndarray]] = {}
                 named_periods: dict[str, dict[int, dict[str, np.ndarray]]] = {}
+                # An auxiliary name that matches a field's (Q) is the aux
+                # array, as in MF6.
                 lookup = ra_fields | {k: f for k, (f, _) in named.items()}
                 for kper, rows in sorted(kper_rows.items()):
                     if not rows:
@@ -967,11 +971,11 @@ def structure_component(
                         continue
                     parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
                     for key, arr in parsed.items():
-                        if key in ra_fields:
-                            periods.setdefault(key, {})[kper] = arr
-                        else:
+                        if key in named:
                             f, name = named[key]
                             named_periods.setdefault(f.name, {}).setdefault(kper, {})[name] = arr
+                        else:
+                            periods.setdefault(key, {})[kper] = arr
                 kwargs.update(periods)
                 kwargs.update(named_periods)
 
