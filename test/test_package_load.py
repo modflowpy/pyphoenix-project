@@ -215,27 +215,27 @@ def test_rcha_period_ingress_eager(rcha_file):
 
     rcha = Rcha.load(rcha_file, dims=DIMS_1L_5X5)
     assert isinstance(rcha, Rcha)
-    assert isinstance(rcha.recharge, np.ndarray)
-    assert rcha.recharge.shape == (2, 25)
+    assert list(rcha.recharge) == [0, 1]
+    assert rcha.recharge[0].shape == (25,)
     assert np.allclose(rcha.recharge[0], 0.001)  # period 0: INTERNAL
     assert np.allclose(rcha.recharge[1], 0.002)  # period 1: CONSTANT
 
 
 def test_chdg_period_ingress_layered(chdg_file):
-    """CHDG layered READARRAY period ingress produces (nper, nlay, ncpl) head array."""
+    """CHDG layered READARRAY period ingress gives a flat (nodes,) head array per period."""
     from flopy4.mf6.gwf.chdg import Chdg
 
     chd = Chdg.load(chdg_file, dims=DIMS_2L_9)
     assert isinstance(chd, Chdg)
-    assert isinstance(chd.head, np.ndarray)
-    assert chd.head.shape == (2, 2, 9)
+    assert list(chd.head) == [0, 1]
+    assert chd.head[0].shape == (18,)
     # period 0, layer 0: cell 0 = 1.0, cell 8 = 0.0, rest = FILL_DNODATA
     from flopy4.mf6.constants import FILL_DNODATA
 
-    assert chd.head[0, 0, 0] == pytest.approx(1.0)
-    assert chd.head[0, 0, 8] == pytest.approx(0.0)
-    assert np.all(chd.head[0, 1] == FILL_DNODATA)
-    # period 1: all FILL_DNODATA (CONSTANT fill)
+    assert chd.head[0][0] == pytest.approx(1.0)
+    assert chd.head[0][8] == pytest.approx(0.0)
+    assert np.all(chd.head[0][9:] == FILL_DNODATA)
+    # period 1: all FILL_DNODATA (CONSTANT fill), clearing every boundary
     assert np.all(chd.head[1] == FILL_DNODATA)
 
 

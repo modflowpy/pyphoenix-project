@@ -17,6 +17,7 @@ from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.model import Model
 from flopy4.mf6.package import _DTYPE_MAP as _PKG_DTYPE_MAP
 from flopy4.mf6.package import Package
+from flopy4.mf6.period_arrays import dense
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
@@ -88,7 +89,8 @@ class _PackageSpec:
 
         class _ArrayInfo:
             def __init__(self, f):
-                # A fill-forward (period) field's value has a leading nper axis.
+                # A fill-forward (period) field is exported dense, with a leading
+                # nper axis (see Package.period_array).
                 fill_forward = bool(f.metadata.get("fill_forward"))
                 is_layered = f.metadata.get("layered", False)
                 raw_shape = f.metadata.get("shape") or ("nodes",)
@@ -214,6 +216,21 @@ class NetCDFModel(BaseModel, NetCDFInput):
         if netcdf_format == NetCDFFormat.LAYERED_MESH:
             attrs["mesh"] = NetCDFFormat.LAYERED_MESH.value
 
+        # Resolve nper from time arg, simulation tdis, or model's data dims.
+        if time is not None:
+            _nper = time.nper
+        elif model._parent is not None and hasattr(model._parent, "tdis"):  # type: ignore[attr-defined]
+            _nper = model._parent.tdis.nper  # type: ignore[attr-defined]
+        else:
+            # Try walking up via _parent to find tdis
+            _nper = 1
+            _p = getattr(model, "_parent", None)
+            while _p is not None:
+                if hasattr(_p, "tdis") and hasattr(_p.tdis, "nper"):
+                    _nper = _p.tdis.nper  # type: ignore[attr-defined]
+                    break
+                _p = getattr(_p, "_parent", None)
+
         for package in model._children.values():
             packagetype = package.__class__.__name__.lower()
             distype = packagetype if packagetype.startswith("dis") else distype
@@ -251,45 +268,34 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     p["params"].append({"name": f.name, "data": arr})
                 elif f.metadata.get("fk"):
                     # dynamically named arrays (RCHA's aux): one param per auxiliary name
-                    if not (arrays := getattr(package, f.name)):
+                    if not (periods := getattr(package, f.name)):
                         continue
                     names = [str(n).lower() for n in package.auxiliary]  # type: ignore[attr-defined]
                     p["auxiliary"] = names
-                    for name, val in arrays.items():
+                    by_name: dict[str, dict] = {}
+                    for kper, arrays in periods.items():
+                        for name, val in arrays.items():
+                            by_name.setdefault(name, {})[kper] = val
+                    for name, named_periods in by_name.items():
                         p["params"].append(
                             {
                                 "name": f.name,
                                 "attrs": {"modflow_iaux": names.index(str(name).lower()) + 1},
-                                "data": np.asarray(val, dtype=np.float64),
+                                "data": dense(named_periods, _nper, carry_forward=False),
                             }
                         )
                 else:
-                    val = getattr(package, f.name)
-                    if val is None:
+                    # period arrays: {kper: array}, periods not given filled
+                    if not (periods := getattr(package, f.name)):
                         continue
-                    arr = np.asarray(val, dtype=np.float64)
                     if f.metadata.get("index"):
                         # 1-based in the file
-                        arr = np.where(arr == FILL_DNODATA, arr, arr + 1)
+                        periods = {k: np.asarray(a) + 1 for k, a in periods.items()}
+                    arr = dense(periods, _nper, carry_forward=False).astype(np.float64)
                     p["params"].append({"name": f.name, "data": arr})
 
             if len(p["params"]) > 0:
                 packages.append(p)
-
-        # Resolve nper from time arg, simulation tdis, or model's data dims.
-        if time is not None:
-            _nper = time.nper
-        elif model._parent is not None and hasattr(model._parent, "tdis"):  # type: ignore[attr-defined]
-            _nper = model._parent.tdis.nper  # type: ignore[attr-defined]
-        else:
-            # Try walking up via _parent to find tdis
-            _nper = 1
-            _p = getattr(model, "_parent", None)
-            while _p is not None:
-                if hasattr(_p, "tdis") and hasattr(_p.tdis, "nper"):
-                    _nper = _p.tdis.nper  # type: ignore[attr-defined]
-                    break
-                _p = getattr(_p, "_parent", None)
 
         dims = [
             _nper,

@@ -1521,16 +1521,14 @@ def build_component_spec(
             )
         )
 
-    # READARRAY period fields → individual Optional[Int|FloatArrayLike] attrs
-    # fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each period
-    # array separately. Each field is a full-grid array passed directly by
-    # the user; the egress side (unstructure.py's _unstructure_package)
-    # recognizes it by its value's own runtime type (an ndarray), not by a
-    # metadata flag.
+    # READARRAY period fields → individual Optional[dict[int, Int|FloatArrayLike]]
+    # attrs fields. G-variant packages (CHDG, DRNG, WELG, RCHA …) declare each
+    # period array separately, keyed by the 0-based periods it's given in
+    # (see flopy4.mf6.period_arrays).
     if _readarray_period_fields:
         for _ra_f in _readarray_period_fields:
             # shape/netcdf are the per-block DFN values, as for griddata;
-            # the stored value's leading nper axis is not part of shape.
+            # shape is each period's array's.
             _ra_meta: dict = {"block": _ff_block}
             if shape := getattr(_ra_f, "shape", None):
                 _ra_meta["shape"] = tuple(shape)
@@ -1547,14 +1545,15 @@ def build_component_spec(
                 FieldSpec(
                     dfn_name=_ra_f.name,
                     py_name=filters.safe_name(_ra_f.name),
-                    type_annotation=f"Optional[{_ra_base}]",
+                    type_annotation=f"Optional[dict[int, {_ra_base}]]",
                     spec_call=_ml_field(metadata=_ra_meta),
                     generatable=True,
                 )
             )
 
-    # A dict of dynamically named arrays per list of them: RCHA's aux, keyed by the
-    # auxiliary names (the fk), each array like a READARRAY period field's.
+    # A dict of dynamically named arrays per list of them: RCHA's aux, keyed by
+    # period, then by the auxiliary names (the fk), each array like a READARRAY
+    # period field's.
     for _lf, _arr, _fk in _dynamically_named_period_fields:
         _na_meta: dict = {"block": _ff_block}
         if shape := getattr(_arr, "shape", None):
@@ -1569,7 +1568,7 @@ def build_component_spec(
             FieldSpec(
                 dfn_name=_lf.name,
                 py_name=filters.safe_name(_lf.name),
-                type_annotation=f"Optional[dict[str, {_na_base}]]",
+                type_annotation=f"Optional[dict[int, dict[str, {_na_base}]]]",
                 spec_call=_ml_field(metadata=_na_meta),
                 generatable=True,
             )

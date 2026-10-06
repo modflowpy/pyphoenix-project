@@ -103,6 +103,54 @@ def _named_dim(field: attrs.Attribute) -> str | None:
     return f"{field.name}_name" if named else None
 
 
+def _period_dim(field: attrs.Attribute) -> str | None:
+    """For period arrays (WELG's q, RCHA's aux), ``{kper: array}``, the dim to
+    stack the given periods along, labeled by period ("q_period")."""
+    periods = field.metadata.get("fill_forward") and field.metadata.get("shape")
+    return f"{field.name}_period" if periods else None
+
+
+def _period_dataarray(field: attrs.Attribute, name: str, value: dict) -> xr.DataArray:
+    """Stack a period array field's given periods. Aux names missing from a
+    period are FILL_DNODATA there."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    period = f"{name}_period"
+    if key := _named_dim(field):
+        names = list(dict.fromkeys(n for arrays in value.values() for n in arrays))
+        first = np.asarray(next(a for arrays in value.values() for a in arrays.values()))
+        dims = _array_dims(field, name, first.ndim)
+        stacked = np.full((len(value), len(names), *first.shape), FILL_DNODATA)
+        for i, arrays in enumerate(value.values()):
+            for j, n in enumerate(names):
+                if n in arrays:
+                    stacked[i, j] = np.asarray(arrays[n])
+        return xr.DataArray(
+            stacked, dims=(period, key, *dims), coords={period: list(value), key: names}
+        )
+    arrays = [np.asarray(a) for a in value.values()]
+    dims = _array_dims(field, name, arrays[0].ndim)
+    return xr.DataArray(np.stack(arrays), dims=(period, *dims), coords={period: list(value)})
+
+
+def _period_value(field: attrs.Attribute, da: xr.DataArray) -> dict:
+    """Inverse of `_period_dataarray`."""
+    from flopy4.mf6.constants import FILL_DNODATA
+
+    period = f"{field.name}_period"
+    periods = [int(k) for k in da[period].values]
+    if key := _named_dim(field):
+        return {
+            k: {
+                str(n): a
+                for n in da[key].values
+                if not ((a := da.sel({period: k, key: n}).values) == FILL_DNODATA).all()
+            }
+            for k in periods
+        }
+    return {k: da.sel({period: k}).values for k in periods}
+
+
 def attrs_to_dataset(obj) -> xr.Dataset:
     """Flatten `obj`'s own scalar/array fields into a flat `xr.Dataset`.
 
@@ -118,14 +166,10 @@ def attrs_to_dataset(obj) -> xr.Dataset:
     for name, (field, value) in leaves.items():
         if isinstance(value, xr.DataArray):
             data_vars[name] = value
-        elif (key := _named_dim(field)) and isinstance(value, dict):
-            # dynamically named arrays (RCHA's aux), stacked along their names
+        elif _period_dim(field) and isinstance(value, dict):
+            # period arrays, stacked along the periods given
             if value:
-                arrays = [np.asarray(a) for a in value.values()]
-                dims = _array_dims(field, name, arrays[0].ndim)
-                data_vars[name] = xr.concat(
-                    [xr.DataArray(a, dims=dims) for a in arrays], dim=key
-                ).assign_coords({key: list(value)})
+                data_vars[name] = _period_dataarray(field, name, value)
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
         elif field.metadata.get("shape") and isinstance(value, (list, tuple)):
@@ -151,12 +195,11 @@ def _init_field_names(cls: type) -> set:
 
 def _leaf_kwargs_from_dataset(cls: type, dataset: xr.Dataset) -> dict:
     field_names = _init_field_names(cls)
-    named = {f.name: key for f in attrs.fields(cls) if (key := _named_dim(f))}
+    periods = {f.name: (f, dim) for f in attrs.fields(cls) if (dim := _period_dim(f))}
     kwargs: dict = {}
     for name, da in dataset.data_vars.items():
-        if name in named and named[name] in da.dims:
-            key = named[name]
-            kwargs[name] = {str(n): da.sel({key: n}).values for n in da[key].values}
+        if name in periods and periods[name][1] in da.dims:
+            kwargs[name] = _period_value(periods[name][0], da)
         elif name in field_names:
             kwargs[name] = da.values
     for name, value in dataset.attrs.items():

@@ -9,11 +9,11 @@ import xarray as xr
 
 from flopy4.attrs_xarray import child_field_candidates
 from flopy4.mf6.component import Component
-from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
-from flopy4.mf6.item import Item
+from flopy4.mf6.item import Item, item_list_type
 from flopy4.mf6.package import Package
+from flopy4.mf6.period_arrays import all_nodata, is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
@@ -88,22 +88,35 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
     return blocks
 
 
-def _period_dataarrays(value: Any, meta: Mapping) -> list[xr.DataArray]:
-    """One DataArray per period of a (nper, ...) array, layered ones with
-    an nlay dim."""
+def _grid_dims(value: Package) -> tuple[int, tuple[int, ...]]:
+    """(nlay, layer shape) for writing period arrays: a layer is (nrow, ncol)
+    on a structured grid, else (ncpl,). Empty if the grid isn't known."""
+    if not value._period_array_fields():
+        return 1, ()
+    d = (value.__dict__.get("dims") or {}) | value.resolve_dims(
+        "nlay", "nrow", "ncol", "ncpl", "nodes"
+    )
+    nlay = d.get("nlay", 1)
+    if "nrow" in d and "ncol" in d:
+        return nlay, (d["nrow"], d["ncol"])
+    ncpl = d.get("ncpl") or d.get("nodes", 0) // nlay
+    return nlay, (ncpl,) if ncpl else ()
+
+
+def _period_dataarray(value: Any, meta: Mapping, nlay: int, layer: tuple[int, ...]) -> xr.DataArray:
+    """One period's array, shaped like the grid so it's written a row per
+    line. A layered one is written by layer, with an nlay dim."""
     if not hasattr(value, "shape"):
         value = np.asarray(value)
     if meta.get("index"):
         value = _to_file_index(value)
-    das = []
-    for kper in range(value.shape[0]):
-        layer_slice = value[kper]
-        if meta.get("layered", False) and layer_slice.ndim >= 2:
-            extra_dims = tuple(f"x{i}" for i in range(layer_slice.ndim - 1))
-            das.append(xr.DataArray(layer_slice, dims=("nlay",) + extra_dims))
-        else:
-            das.append(xr.DataArray(layer_slice))
-    return das
+    ncpl = int(np.prod(layer)) if layer else 0
+    if meta.get("layered", False) and nlay > 1 and ncpl and value.size == nlay * ncpl:
+        dims = ("nlay", *(f"x{i}" for i in range(len(layer))))
+        return xr.DataArray(value.reshape(nlay, *layer), dims=dims)
+    if ncpl and value.size == ncpl and len(layer) > 1:
+        return xr.DataArray(value.reshape(layer))
+    return xr.DataArray(value)
 
 
 def _rows_to_tuples(row_list: list) -> list[tuple]:
@@ -145,8 +158,8 @@ def _wrap_array(value: Any) -> xr.DataArray:
 
 
 def _to_file_index(value: Any) -> Any:
-    """0-based index values to 1-based, leaving no-data values alone."""
-    return value + (value != FILL_DNODATA)
+    """0-based index values to 1-based. A dask array stays lazy."""
+    return (value if hasattr(value, "shape") else np.asarray(value)) + 1
 
 
 def _normalize_kper(kper: Any) -> int | None:
@@ -166,11 +179,12 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     write_if_empty_set: set[str] = set()
     spd_period: dict[int, list[tuple]] = {}
     readarray_period: dict[int, dict[str, Any]] = {}
+    # per period, the (non-aux) array fields given, and those all DNODATA
+    stress_period: dict[int, set[str]] = {}
+    nodata_period: dict[int, set[str]] = {}
+    grid_dims = _grid_dims(value)
+    grid = is_grid_package(cls)
     fill_forward_block: str | None = None
-    try:
-        from dask.array import Array as _DaskArray
-    except ImportError:
-        _DaskArray = type(None)  # type: ignore[misc,assignment]
 
     for f in attrs.fields(cls):  # type: ignore[arg-type]
         meta = f.metadata
@@ -192,17 +206,24 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         # fill-forward block
         if meta.get("fill_forward"):
             fill_forward_block = block_name
-            # dynamically named arrays (RCHA's aux): {name: (nper, ...)}, each written
-            # under its name
-            if meta.get("fk") and isinstance(field_value, dict):
-                for name, arr in field_value.items():
-                    for kper, da in enumerate(_period_dataarrays(arr, meta)):
-                        readarray_period.setdefault(kper, {})[name] = da
+            # dynamically named arrays (RCHA's aux): {kper: {name: array}}, each
+            # written under its name
+            if meta.get("fk"):
+                for kper, arrays in field_value.items():
+                    for name, arr in arrays.items():
+                        readarray_period.setdefault(kper, {})[name] = _period_dataarray(
+                            arr, meta, *grid_dims
+                        )
                 continue
-            # array: ndarray shaped (nper, ...)
-            if isinstance(field_value, (np.ndarray, _DaskArray)):
-                for kper, da in enumerate(_period_dataarrays(field_value, meta)):
-                    readarray_period.setdefault(kper, {})[f.name] = da
+            # arrays: {kper: array}
+            if item_list_type(f.type) is None:
+                for kper, arr in field_value.items():
+                    readarray_period.setdefault(kper, {})[f.name] = _period_dataarray(
+                        arr, meta, *grid_dims
+                    )
+                    if grid and all_nodata(arr):
+                        nodata_period.setdefault(kper, set()).add(f.name)
+                    stress_period.setdefault(kper, set()).add(f.name)
                 continue
             # list: dict[int, list[Item]]
             if not isinstance(field_value, dict):
@@ -299,14 +320,16 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             key = f"{fill_forward_block} {kper + 1}"
             blocks[key] = {fill_forward_block: spd_period[kper]}
 
+        # One block per period any array is given in. A grid package's
+        # period whose stress arrays are all DNODATA clears every boundary:
+        # an empty block.
         for kper in sorted(readarray_period.keys()):
             key = f"{fill_forward_block} {kper + 1}"
-            ra_block = blocks.get(key, {})
-            for field_name, da in readarray_period[kper].items():
-                if not np.all(da.values == FILL_DNODATA):
-                    ra_block[field_name] = da
-            if ra_block:
-                blocks[key] = ra_block
+            if grid and stress_period.get(kper) and nodata_period.get(kper) == stress_period[kper]:
+                blocks[key] = {}
+                write_if_empty_set.add(key)
+            else:
+                blocks[key] = readarray_period[kper]
 
     return {
         name: block
