@@ -49,6 +49,11 @@ __all__ = [
 class Gwt(ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwt-nam"
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "concentration": (("cellid",),),
+        "flow-ja-face": (("cellid", "cellid"),),
+    }
+
     list_: Optional[str] = field(
         default=None,
         block="options",

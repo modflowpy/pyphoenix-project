@@ -83,6 +83,12 @@ __all__ = [
 class Gwf(GwfMethods, ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwf-nam"
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "drawdown": (("cellid",),),
+        "flow-ja-face": (("cellid", "cellid"),),
+        "head": (("cellid",),),
+    }
+
     @attrs.define
     class Newtonoptions(Record):
         _keyword: ClassVar[str] = "newton"

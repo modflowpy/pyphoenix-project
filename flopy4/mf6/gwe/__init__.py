@@ -45,6 +45,11 @@ __all__ = [
 class Gwe(ModelMethods, Model):
     dfn_name: ClassVar[str] = "gwe-nam"
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "flow-ja-face": (("cellid", "cellid"),),
+        "temperature": (("cellid",),),
+    }
+
     list_: Optional[str] = field(
         default=None,
         block="options",
