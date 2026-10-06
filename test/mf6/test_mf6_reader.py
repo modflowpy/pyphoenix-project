@@ -883,16 +883,15 @@ def test_parse_block_header_remark(component):
         ("gwf-nam", "NEWTON UNDER_RELAXATION", {"newtonoptions": {"under_relaxation": True}}),
     ],
 )
-def test_transform_record_optional_keyword(component, line, expected):
+def test_transform_record_optional_keyword(component, line, expected, dfn_path):
     """A record's optional keyword is kept when given."""
     from flopy4.mf6.codec.reader import loads_typed
 
-    assert loads_typed(f"BEGIN OPTIONS\n  {line}\nEND OPTIONS\n", component) == {
-        "options": expected
-    }
+    text = f"BEGIN OPTIONS\n  {line}\nEND OPTIONS\n"
+    assert loads_typed(text, component, dfn_path=dfn_path) == {"options": expected}
 
 
-def test_transform_record_header():
+def test_transform_record_header(dfn_path):
     """Each block under a record header is keyed by its header, as the basic
     transformer keys it."""
     from flopy4.mf6.codec.reader import loads, loads_typed
@@ -902,5 +901,5 @@ def test_transform_record_header():
         "BEGIN CONTINUOUS FILEOUT flows.bsv BINARY\n  w1 WEL a\nEND CONTINUOUS\n"
     )
     keys = ["continuous FILEOUT Heads.csv", "continuous FILEOUT flows.bsv BINARY"]
-    assert list(loads_typed(text, "utl-obs")) == keys
+    assert list(loads_typed(text, "utl-obs", dfn_path=dfn_path)) == keys
     assert [k.lower() for k in loads(text)] == [k.lower() for k in keys]
