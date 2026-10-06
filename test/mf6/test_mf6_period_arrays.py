@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from flopy4.mf6 import TimeArraySeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
 from flopy4.mf6.gwf import Rcha, Welg
 from flopy4.mf6.period_arrays import (
@@ -149,8 +150,8 @@ def test_dense_drops_periods_past_nper():
 
 
 def test_rcha_tas_reference_round_trip():
-    """A period's array can be a time-array series' name, written as a
-    reference to it."""
+    """A period's array can be a time-array series, by name, written as a
+    reference to it. A plain name is taken as a reference."""
     from flopy4.attrs_xarray import attrs_to_dataset, dataset_to_attrs
     from flopy4.mf6.codec import dumps, loads
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
@@ -158,16 +159,17 @@ def test_rcha_tas_reference_round_trip():
 
     rcha = Rcha(
         auxiliary=["conc"],
-        recharge={0: "rchseries", 2: np.array([0.3, 0.4])},
+        recharge={0: TimeArraySeriesRef("rchseries"), 2: np.array([0.3, 0.4])},
         aux={0: {"conc": "concseries"}, 1: {"conc": np.array([1.0, 2.0])}},
     )
+    assert rcha.aux[0] == {"conc": TimeArraySeriesRef("concseries")}
     text = dumps(unstructure_component(rcha))
     assert "RECHARGE TIMEARRAYSERIES rchseries" in text
     assert "CONC TIMEARRAYSERIES concseries" in text
 
     loaded = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
-    assert loaded.recharge[0] == "rchseries"
-    assert loaded.aux[0] == {"conc": "concseries"}
+    assert loaded.recharge[0] == TimeArraySeriesRef("rchseries")
+    assert loaded.aux[0] == {"conc": TimeArraySeriesRef("concseries")}
     np.testing.assert_array_equal(loaded.recharge[2], [0.3, 0.4])
 
     assert dataset_to_attrs(Rcha, attrs_to_dataset(rcha)) == rcha

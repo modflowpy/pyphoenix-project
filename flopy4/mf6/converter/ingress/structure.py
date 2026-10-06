@@ -10,6 +10,7 @@ import attrs
 import numpy as np
 
 from flopy4.dimensions import DimensionProvider
+from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.constants import FILL_DNODATA
@@ -356,7 +357,7 @@ def _names(value: Any) -> list[str]:
 
 def _parse_readarray_period_block(
     rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
-) -> "dict[str, np.ndarray | str]":
+) -> "dict[str, np.ndarray | TimeArraySeriesRef]":
     """Arrays by the (lowercase) name they're written under: a field's
     name, or an auxiliary variable's, for its named array (see Pass 3b). A
     time-array series reference gives the series' name."""
@@ -364,7 +365,7 @@ def _parse_readarray_period_block(
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
 
-    result: dict[str, np.ndarray | str] = {}
+    result: dict[str, np.ndarray | TimeArraySeriesRef] = {}
     i = 0
     while i < len(rows):
         row = rows[i]
@@ -384,7 +385,7 @@ def _parse_readarray_period_block(
         )
         if tas is not None:
             if f is not None and f.metadata.get("time_series") and tas + 1 < len(tokens):
-                result[key] = tokens[tas + 1]
+                result[key] = TimeArraySeriesRef(tokens[tas + 1])
             continue
 
         if f is None:
@@ -1073,8 +1074,8 @@ def structure_component(
                     layered = f.metadata.get("layered", False)
                     return np.full((nlay, ncpl) if layered else (ncpl,), FILL_DNODATA)
 
-                periods: dict[str, dict[int, np.ndarray | str]] = {}
-                named_periods: dict[str, dict[int, dict[str, np.ndarray | str]]] = {}
+                periods: dict[str, dict[int, np.ndarray | TimeArraySeriesRef]] = {}
+                named_periods: dict[str, dict[int, dict[str, np.ndarray | TimeArraySeriesRef]]] = {}
                 # An auxiliary name that matches a field's (Q) is the aux
                 # array, as in MF6.
                 lookup = ra_fields | {k: f for k, (f, _) in named.items()}

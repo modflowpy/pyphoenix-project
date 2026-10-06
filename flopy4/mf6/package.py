@@ -11,6 +11,7 @@ from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
 from flopy4.dimensions import DimensionProvider
+from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.item import (
@@ -241,9 +242,9 @@ class Package(Component, ABC):
             integer = to_field_type(f.type) == "integer"
 
             def _normalize(a):
-                if isinstance(a, str):
+                if isinstance(a, TimeArraySeriesRef):
                     if not f.metadata.get("time_series"):
-                        raise ValueError(f"{f.name} can't come from a time-array series ({a!r})")
+                        raise ValueError(f"{f.name} can't come from a time-array series ({a})")
                     return a
                 if flat and a.ndim > 1:
                     a = a.ravel()

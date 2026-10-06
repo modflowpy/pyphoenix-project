@@ -175,7 +175,11 @@ def attrs_to_dataset(obj) -> xr.Dataset:
             if arrays:
                 data_vars[name] = _period_dataarray(field, name, arrays)
             if refs:
-                ds_attrs[f"{name}_tas"] = refs
+                # by name, so the attr serializes
+                ds_attrs[f"{name}_tas"] = {
+                    k: {n: str(r) for n, r in v.items()} if isinstance(v, dict) else str(v)
+                    for k, v in refs.items()
+                }
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
         elif field.metadata.get("shape") and isinstance(value, (list, tuple)):

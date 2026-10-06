@@ -14,9 +14,10 @@ How a period carries forward depends on the package:
 - Layer-array packages (RCHA, EVTA, SPCA) carry each array forward on its
   own until it's given again.
 
-In layer-array packages a period's value can instead be the name of a
-time-array series (a ``str``), whose arrays MF6 interpolates in time:
-``recharge={0: "rchseries"}``, written ``RECHARGE TIMEARRAYSERIES rchseries``.
+In layer-array packages a period's value can instead be a time-array
+series, by name (`TimeArraySeriesRef`), whose arrays MF6 interpolates in
+time: ``recharge={0: TimeArraySeriesRef("rchseries")}``, or just
+``{0: "rchseries"}``, written ``RECHARGE TIMEARRAYSERIES rchseries``.
 """
 
 import warnings
@@ -26,6 +27,7 @@ from typing import Any, Optional
 import attrs
 import numpy as np
 
+from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
 
 
@@ -46,25 +48,29 @@ def all_nodata(arr: Any) -> bool:
 
 def _as_array(value: Any) -> Any:
     # Keep anything array-like (dask included) as it is, and a time-array
-    # series' name.
-    return value if hasattr(value, "shape") or isinstance(value, str) else np.asarray(value)
+    # series reference, given by name or not.
+    if isinstance(value, str):
+        return TimeArraySeriesRef(value)
+    if hasattr(value, "shape") or isinstance(value, TimeArraySeriesRef):
+        return value
+    return np.asarray(value)
 
 
 def split_tas(periods: Mapping[int, Any]) -> tuple[dict[int, Any], dict[int, Any]]:
     """Split ``{kper: value}`` into its arrays and its time-array series
-    references (names), for either form (aux's ``{kper: {name: value}}`` too).
+    references, for either form (aux's ``{kper: {name: value}}`` too).
     """
     arrays: dict[int, Any] = {}
     refs: dict[int, Any] = {}
     for kper, value in periods.items():
         if isinstance(value, Mapping):
-            a = {n: v for n, v in value.items() if not isinstance(v, str)}
-            r = {n: v for n, v in value.items() if isinstance(v, str)}
+            a = {n: v for n, v in value.items() if not isinstance(v, TimeArraySeriesRef)}
+            r = {n: v for n, v in value.items() if isinstance(v, TimeArraySeriesRef)}
             if a or not r:
                 arrays[kper] = a
             if r:
                 refs[kper] = r
-        elif isinstance(value, str):
+        elif isinstance(value, TimeArraySeriesRef):
             refs[kper] = value
         else:
             arrays[kper] = value
@@ -79,7 +85,7 @@ def split_periods(value: Any) -> dict[int, Any]:
     a grid package's period, use the dict form. Integer arrays have no such
     value and keep every period.
     """
-    value = _as_array(value)
+    value = value if hasattr(value, "shape") else np.asarray(value)
     if value.ndim < 2:
         raise ValueError(f"dense period array needs a leading nper axis, got shape {value.shape}")
     keep_all = _is_int(value)

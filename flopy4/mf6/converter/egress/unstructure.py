@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 
 from flopy4.attrs_xarray import child_field_candidates
+from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
 from flopy4.mf6.component import Component
 from flopy4.mf6.context import Context
@@ -111,8 +112,8 @@ def _period_dataarray(
     """One period's array, shaped like the grid so it's written a row per
     line. A layered one is written by layer, with an nlay dim. A time-array
     series' name is written as a reference to it."""
-    if isinstance(value, str):
-        return (name.upper(), "TIMEARRAYSERIES", value)
+    if isinstance(value, TimeArraySeriesRef):
+        return (name.upper(), "TIMEARRAYSERIES", value.name)
     if not hasattr(value, "shape"):
         value = np.asarray(value)
     if meta.get("index"):
