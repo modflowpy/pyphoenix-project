@@ -757,7 +757,6 @@ class ItemColumn:
     annotation: str
     rhs: str
     optional: bool = False  # declared after the required columns
-    boundname: bool = False  # declared after every other optional column
     path: bool = False  # a Path field, so the module needs ``Path``
     uses_union: bool = False  # may need ``Union`` (time series / object dtype)
     uses_field: bool = False  # needs ``field`` imported, beyond the package's own
@@ -885,7 +884,7 @@ def feature_id_column(
 
 
 def boundname_column(name: str) -> ItemColumn:
-    return _attr_column(name, "str", {}, optional=True, boundname=True)
+    return _attr_column(name, "str", {}, optional=True)
 
 
 def keyword_column(name: str, *, time_series: bool = False) -> ItemColumn:
@@ -1122,10 +1121,8 @@ def item_class(
 
     required = [col for col in schema_list if not col.optional]
     optional = [col for col in schema_list if col.optional]
-    # Optional columns keep DFN order (e.g. EVT: ..., pxdp, petm, petm0, aux),
-    # with boundname last.
-    optional_non_boundname = [col for col in optional if not col.boundname]
-    boundname_cols = [col for col in optional if col.boundname]
+    # Optional columns keep DFN order (e.g. EVT: ..., pxdp, petm, petm0, aux,
+    # boundname).
 
     lines = ["    @attrs.define"]
     lines.append(f"    class {class_name}(Item):")
@@ -1137,7 +1134,7 @@ def item_class(
     if columns != [col.name for col in required + optional]:
         names = ", ".join(f'"{c}"' for c in columns)
         lines.append(f"        _columns: ClassVar[tuple[str, ...]] = ({names},)")
-    for col in required + optional_non_boundname + boundname_cols:
+    for col in required + optional:
         lines.append(col.line(package_class_name))
     return "\n".join(lines)
 
