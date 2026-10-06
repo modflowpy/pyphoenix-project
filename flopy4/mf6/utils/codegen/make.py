@@ -175,6 +175,8 @@ class ComponentSpec:
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
     # Dims counting item columns that aren't fields, name -> DFN expression
     count_dims: dict[str, str] = dc_field(default_factory=dict)
+    # Observation types the component's OBS file takes, name -> id forms
+    observations: dict[str, tuple[tuple[str, ...], ...]] = dc_field(default_factory=dict)
     has_griddata: bool = False
     has_readarray_period: bool = False
 
@@ -341,6 +343,20 @@ def _arm_kind(arm: FieldV3) -> str:
     if kind not in ("integer", "double", "string"):
         raise ValueError(f"unsupported union arm {arm.name!r}: {type(arm).__name__}")
     return kind
+
+
+def _obs_forms(f: FieldV3) -> list[tuple[str, ...]]:
+    """The forms an observation type's ids take, each the kinds of the
+    utl-obs columns it fills (see _arm_kind): UZF's water-content is
+    ``[("index", "double"), ("string", "double")]``."""
+    if isinstance(f, UnionField):
+        return [form for arm in f.arms.values() for form in _obs_forms(arm)]
+    if isinstance(f, Record):
+        forms: list[tuple[str, ...]] = [()]
+        for sub in (f.fields or {}).values():
+            forms = [a + b for a in forms for b in _obs_forms(sub)]
+        return forms
+    return [(_arm_kind(f),)]
 
 
 def _count_dim(shape: str) -> str | None:
@@ -1742,6 +1758,9 @@ def build_component_spec(
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
         count_dims=_count_dims,
+        observations={
+            name: tuple(_obs_forms(f)) for name, f in sorted((component.observations or {}).items())
+        },
         has_griddata=_has_griddata,
         has_readarray_period=bool(_readarray_period_fields),
     )

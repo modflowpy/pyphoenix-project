@@ -19,6 +19,10 @@ class Rch(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "rch": (("cellid",), ("string",)),
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)

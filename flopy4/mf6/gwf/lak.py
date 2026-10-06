@@ -20,6 +20,28 @@ class Lak(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "conductance": (("index", "index"), ("string",)),
+        "constant": (("index",), ("string",)),
+        "evaporation": (("index",), ("string",)),
+        "ext-inflow": (("index",), ("string",)),
+        "ext-outflow": (("index",), ("string",)),
+        "from-mvr": (("index",), ("string",)),
+        "inflow": (("index",), ("string",)),
+        "lak": (("index", "index"), ("string",)),
+        "outlet": (("index",), ("string",)),
+        "outlet-inflow": (("index",), ("string",)),
+        "rainfall": (("index",), ("string",)),
+        "runoff": (("index",), ("string",)),
+        "stage": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+        "surface-area": (("index",), ("string",)),
+        "to-mvr": (("index",), ("string",)),
+        "volume": (("index",), ("string",)),
+        "wetted-area": (("index", "index"), ("string",)),
+        "withdrawal": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)

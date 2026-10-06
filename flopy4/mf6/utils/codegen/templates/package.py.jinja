@@ -26,6 +26,14 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     slntype: ClassVar[str] = "{{ spec.slntype }}"
 
 {% endif %}
+{% if spec.observations %}
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+{% for name, forms in spec.observations.items() %}
+        "{{ name }}": {{ forms }},
+{% endfor %}
+    }
+
+{% endif %}
 {% if spec.count_dims %}
     count_dims: ClassVar[dict[str, str]] = {
 {% for name, expr in spec.count_dims.items() %}

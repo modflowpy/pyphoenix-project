@@ -20,6 +20,12 @@ class Wel(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "to-mvr": (("cellid",), ("string",)),
+        "wel": (("cellid",), ("string",)),
+        "wel-reduction": (("cellid",), ("string",)),
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)

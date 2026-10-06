@@ -3546,6 +3546,38 @@ def test_obs_ids_by_parent(tmp_path):
     assert (wel_row.id_, wel_row.id2) == ((0, 1), None)
 
 
+_DISV = {"nlay": 1, "ncpl": 10, "nodes": 10}
+_DISU = {"nodes": 10}
+
+
+@pytest.mark.parametrize(
+    "parent,dims,row,ids",
+    [
+        ("Csub", _DISV, "csub-cell 1 5", ((0, 4), None)),
+        ("Csub", _DISU, "csub-cell 7", ((6,), None)),
+        ("Csub", _DISV, "csub 3", (2, None)),
+        ("Csub", _DISV, "delay-head 1 2", (0, 1)),
+        ("Uzf", _DISV, "water-content 2 3", (1, 3.0)),  # a whole-number depth
+        ("Uzf", _DISV, "uzf-gwrch 4 (UZF CELLS 16-24)", (3, None)),  # a note
+        ("Lak", _DISV, "stage lake-a", ("lake-a", None)),
+    ],
+)
+def test_obs_ids_by_obstype(tmp_path, parent, dims, row, ids):
+    """OBS ids read as the parent's observation type takes them."""
+    from modflow_devtools.misc import set_dir
+
+    from flopy4.mf6 import gwf
+    from flopy4.mf6.codec.reader import loads
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    (tmp_path / "p.obs").write_text(f"BEGIN CONTINUOUS FILEOUT p.csv\n  o1 {row}\nEND CONTINUOUS\n")
+    raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
+    with set_dir(tmp_path):
+        pkg = structure_component(raw, getattr(gwf, parent), dims=dims)
+    (obs_row,) = pkg.obs.continuous[0].continuous
+    assert (obs_row.id_, obs_row.id2) == ids
+
+
 def test_block_end_keeps_only_an_index():
     assert writer.filters.block_begin("continuous FILEOUT Heads.csv") == (
         "CONTINUOUS FILEOUT Heads.csv"

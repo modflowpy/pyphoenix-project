@@ -2,6 +2,7 @@ import struct
 import warnings
 from abc import ABC
 from collections import Counter
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, cast, get_args, get_origin
 
@@ -48,6 +49,7 @@ def _parse_rows(
     boundnames: bool = False,
     dims: "dict | None" = None,
     union_arm: str = "cellid",
+    union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
 ) -> list | None:
     """Parse lists of tokens (rows) into a list of Items."""
     if not rows:
@@ -57,7 +59,12 @@ def _parse_rows(
     ncelldim = infer_ncelldim(rows, item_cls, sizes=sizes, dims=dims)
     result = [
         item_cls.from_tokens(
-            row, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames, union_arm=union_arm
+            row,
+            ncelldim=ncelldim,
+            sizes=sizes,
+            boundnames=boundnames,
+            union_arm=union_arm,
+            union_forms=union_forms,
         )
         for row in rows
         if row
@@ -597,10 +604,20 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     return kwargs
 
 
+def _union_forms(parent: "type | None") -> Callable[[Mapping[str, Any]], Any] | None:
+    """The forms a child's untagged union columns take (OBS's ids), by the
+    row's observation type, from the parent's table (see _read_unions)."""
+    table = getattr(parent, "observations", None)
+    if not table:
+        return None
+    return lambda row: table.get(str(row.get("obstype", "")).lower())
+
+
 def _union_arm(parent: "type | None") -> str:
     """The arm a child's untagged union columns prefer for numbers (OBS's
-    ids): an index under an exchange or a package keyed by one (LAK's lake
-    number, a pk column), else a cellid."""
+    ids) when their forms are unknown (see _union_forms): an index under an
+    exchange or a package keyed by one (LAK's lake number, a pk column),
+    else a cellid."""
     from flopy4.mf6.exchange import Exchange
 
     if parent is None:
@@ -915,6 +932,7 @@ def structure_component(
     # yet" fallback as Pass 4's griddata parsing.
     effective_dims = dims or _self_dims_from_kwargs(kwargs)
     union_arm = _union_arm(parent)
+    union_forms = _union_forms(parent)
 
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
@@ -929,6 +947,7 @@ def structure_component(
             boundnames=boundnames,
             dims=effective_dims,
             union_arm=union_arm,
+            union_forms=union_forms,
         )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
@@ -951,6 +970,7 @@ def structure_component(
                 boundnames=boundnames,
                 dims=effective_dims,
                 union_arm=union_arm,
+                union_forms=union_forms,
             )
             blocks.append(
                 block_cls(
@@ -984,6 +1004,7 @@ def structure_component(
                     boundnames=boundnames,
                     dims=effective_dims,
                     union_arm=union_arm,
+                    union_forms=union_forms,
                 )
                 if row_list is not None:
                     spd[kper] = row_list

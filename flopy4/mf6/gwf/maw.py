@@ -20,6 +20,20 @@ class Maw(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "conductance": (("index", "index"), ("string",)),
+        "constant": (("index",), ("string",)),
+        "from-mvr": (("index",), ("string",)),
+        "fw-conductance": (("index",), ("string",)),
+        "fw-rate": (("index",), ("string",)),
+        "fw-to-mvr": (("index",), ("string",)),
+        "head": (("index",), ("string",)),
+        "maw": (("index", "index"), ("string",)),
+        "rate": (("index",), ("string",)),
+        "rate-to-mvr": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)

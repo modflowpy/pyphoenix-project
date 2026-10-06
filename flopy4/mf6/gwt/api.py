@@ -14,6 +14,11 @@ class Api(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "api": (("cellid",), ("string",)),
+        "to-mvr": (("cellid",), ("string",)),
+    }
+
     boundnames: bool = field(
         default=False,
         block="options",

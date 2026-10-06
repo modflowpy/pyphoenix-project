@@ -906,6 +906,23 @@ def test_dfn_link_stays_path(tmp_path, all_dfns, name, target):
     assert f"flopy4.mf6.utl.{target}" not in spec.outpath.read_text()
 
 
+def test_observation_forms(tmp_path, all_dfns):
+    """A component's observation types become a table of the forms their
+    OBS ids take."""
+    skip = {n for n in all_dfns if n not in ("gwf-csub", "gwf-uzf")}
+    specs = {
+        s.dfn_name: s
+        for s in make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    }
+    csub = specs["gwf-csub"].observations
+    assert csub["csub"] == (("index",), ("string",))
+    assert csub["csub-cell"] == (("cellid",),)
+    assert csub["delay-head"] == (("index", "index"),)
+    uzf = specs["gwf-uzf"].observations
+    assert uzf["water-content"] == (("index", "double"), ("string", "double"))
+    assert '"csub-cell": (("cellid",),),' in specs["gwf-csub"].outpath.read_text()
+
+
 def test_list_block_dim_and_default(tmp_path, all_dfns):
     """A list block's row-count dimension (with any bound, in DFN shape
     syntax) and DFN default rows are emitted. Only a list whose shape names the dimension links to

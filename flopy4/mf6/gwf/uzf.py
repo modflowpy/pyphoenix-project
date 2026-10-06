@@ -20,6 +20,21 @@ class Uzf(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "from-mvr": (("index",), ("string",)),
+        "infiltration": (("index",), ("string",)),
+        "net-infiltration": (("index",), ("string",)),
+        "rej-inf": (("index",), ("string",)),
+        "rej-inf-to-mvr": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+        "uzet": (("index",), ("string",)),
+        "uzf-gwd": (("index",), ("string",)),
+        "uzf-gwd-to-mvr": (("index",), ("string",)),
+        "uzf-gwet": (("index",), ("string",)),
+        "uzf-gwrch": (("index",), ("string",)),
+        "water-content": (("index", "double"), ("string", "double")),
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)

@@ -17,6 +17,11 @@ class Rivg(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "riv": (("cellid",), ("string",)),
+        "to-mvr": (("cellid",), ("string",)),
+    }
+
     readarraygrid: bool = field(
         default=True,
         block="options",

@@ -17,6 +17,10 @@ class Chdg(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "chd": (("cellid",), ("string",)),
+    }
+
     readarraygrid: bool = field(
         default=True,
         block="options",

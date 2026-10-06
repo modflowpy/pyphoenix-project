@@ -19,6 +19,10 @@ class Gwtgwt(Exchange):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "flow-ja-face": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Exchangedata(Item):
         cellidm1: tuple = field(cellid=True)

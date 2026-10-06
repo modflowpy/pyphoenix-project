@@ -20,6 +20,22 @@ class Lke(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "constant": (("index",), ("string",)),
+        "evaporation": (("index",), ("string",)),
+        "ext-inflow": (("index",), ("string",)),
+        "ext-outflow": (("index",), ("string",)),
+        "flow-ja-face": (("index", "index"), ("string",)),
+        "from-mvr": (("index",), ("string",)),
+        "lke": (("index",), ("string",)),
+        "rainfall": (("index",), ("string",)),
+        "runoff": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+        "temperature": (("index",), ("string",)),
+        "to-mvr": (("index",), ("string",)),
+        "withdrawal": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Packagedata(Item):
         lakeno: int = field(index=True, pk=True)

@@ -16,6 +16,45 @@ from flopy4.mf6.utl.ts import Ts
 class Csub(Package):
     dfn_name: ClassVar[str] = "gwf-csub"
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "coarse-compaction": (("cellid",),),
+        "coarse-csub": (("cellid",),),
+        "coarse-theta": (("cellid",),),
+        "coarse-thickness": (("cellid",),),
+        "compaction-cell": (("cellid",),),
+        "csub": (("index",), ("string",)),
+        "csub-cell": (("cellid",),),
+        "delay-compaction": (("index", "index"),),
+        "delay-estress": (("index", "index"),),
+        "delay-flowbot": (("index",), ("string",)),
+        "delay-flowtop": (("index",), ("string",)),
+        "delay-gstress": (("index", "index"),),
+        "delay-head": (("index", "index"),),
+        "delay-preconstress": (("index", "index"),),
+        "delay-theta": (("index", "index"),),
+        "delay-thickness": (("index", "index"),),
+        "elastic-compaction": (("index",),),
+        "elastic-compaction-cell": (("cellid",),),
+        "elastic-csub": (("index",), ("string",)),
+        "estress-cell": (("cellid",),),
+        "gstress-cell": (("cellid",),),
+        "inelastic-compaction": (("index",),),
+        "inelastic-compaction-cell": (("cellid",),),
+        "inelastic-csub": (("index",), ("string",)),
+        "interbed-compaction": (("index",),),
+        "interbed-compaction-pct": (("index",),),
+        "preconstress-cell": (("cellid",),),
+        "sk": (("index",),),
+        "sk-cell": (("cellid",),),
+        "ske": (("index",),),
+        "ske-cell": (("cellid",),),
+        "theta": (("index",),),
+        "theta-cell": (("cellid",),),
+        "thickness": (("index",),),
+        "thickness-cell": (("cellid",),),
+        "wcomp-csub-cell": (("cellid",),),
+    }
+
     @attrs.define
     class Packagedata(Item):
         icsubno: int = field(index=True, pk=True)

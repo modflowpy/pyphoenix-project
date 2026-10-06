@@ -20,6 +20,22 @@ class Lkt(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "concentration": (("index",), ("string",)),
+        "constant": (("index",), ("string",)),
+        "evaporation": (("index",), ("string",)),
+        "ext-inflow": (("index",), ("string",)),
+        "ext-outflow": (("index",), ("string",)),
+        "flow-ja-face": (("index", "index"), ("string",)),
+        "from-mvr": (("index",), ("string",)),
+        "lkt": (("index", "index"), ("string",)),
+        "rainfall": (("index",), ("string",)),
+        "runoff": (("index",), ("string",)),
+        "storage": (("index",), ("string",)),
+        "to-mvr": (("index",), ("string",)),
+        "withdrawal": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)

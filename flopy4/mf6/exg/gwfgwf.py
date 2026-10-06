@@ -21,6 +21,10 @@ class Gwfgwf(Exchange):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "flow-ja-face": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"

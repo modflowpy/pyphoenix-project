@@ -18,6 +18,10 @@ class Evta(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "evt": (("cellid",), ("string",)),
+    }
+
     readasarrays: bool = field(
         default=True,
         block="options",

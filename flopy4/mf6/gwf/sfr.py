@@ -20,6 +20,26 @@ class Sfr(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "depth": (("index",), ("string",)),
+        "downstream-flow": (("index",), ("string",)),
+        "evaporation": (("index",), ("string",)),
+        "ext-inflow": (("index",), ("string",)),
+        "ext-outflow": (("index",), ("string",)),
+        "from-mvr": (("index",), ("string",)),
+        "inflow": (("index",), ("string",)),
+        "outflow": (("index",), ("string",)),
+        "rainfall": (("index",), ("string",)),
+        "runoff": (("index",), ("string",)),
+        "sfr": (("index",), ("string",)),
+        "stage": (("index",), ("string",)),
+        "to-mvr": (("index",), ("string",)),
+        "upstream-flow": (("index",), ("string",)),
+        "wet-area": (("index",), ("string",)),
+        "wet-perimeter": (("index",), ("string",)),
+        "wet-width": (("index",), ("string",)),
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)

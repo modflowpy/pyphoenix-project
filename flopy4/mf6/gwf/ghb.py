@@ -19,6 +19,11 @@ class Ghb(Package):
 
     multi_package: ClassVar[bool] = True
 
+    observations: ClassVar[dict[str, tuple[tuple[str, ...], ...]]] = {
+        "ghb": (("cellid",), ("string",)),
+        "to-mvr": (("cellid",), ("string",)),
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
