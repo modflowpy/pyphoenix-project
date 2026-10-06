@@ -23,7 +23,7 @@ class Esl(Package):
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         senerrate: Union[float, str] = field(time_series=True)
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     auxiliary: Optional[NDArray[np.str_]] = field(

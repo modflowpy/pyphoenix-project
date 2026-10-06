@@ -290,7 +290,10 @@ class TestFilters:
             {"name": "boundname", "role": "boundname", "dfn_type": "string"},
         ]
         result = item_class(schema, "StressPeriodData")
-        assert 'aux: tuple = field(default=(), shape=("auxiliary",))' in result
+        assert (
+            'aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))'
+            in result
+        )
         assert result.index("aux:") < result.index("boundname:")
 
     def test_item_class_field_order_matches_schema(self):
@@ -1345,7 +1348,7 @@ def test_counted_array_column():
     from flopy4.mf6.gwf import Disv
 
     meta = attrs.fields_dict(Disv.Cell2d)["icvert"].metadata
-    assert meta["array"] and meta["index"] and meta["count"] == "ncvert"
+    assert meta["array"] and meta["index"] and meta["shape"] == ("ncvert",)
 
     square = Disv.Cell2d.from_tokens([1, 0.5, 0.5, 4, 1, 2, 5, 4])
     assert square.icell2d == 0

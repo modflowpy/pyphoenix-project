@@ -48,7 +48,7 @@ class Ts(Package):
     @attrs.define
     class Timeseries(Item):
         ts_time: float = field()
-        ts_array: tuple[float, ...] = field(array=True, count="time_series_names")
+        ts_array: tuple[float, ...] = field(array=True, shape=("time_series_names",))
 
     time_series_name: Optional[TimeSeriesName] = field(
         default=None,

@@ -27,7 +27,7 @@ class Maw(Package):
         strt: Union[float, str] = field(time_series=True)
         condeqn: Union[float, str] = field()
         ngwfnodes: int = field()
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

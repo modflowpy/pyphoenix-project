@@ -16,8 +16,8 @@ class Gnc(Package):
     class Gncdata(Item):
         cellidn: tuple = field(cellid=True)
         cellidm: tuple = field(cellid=True)
-        cellidsj: tuple[tuple[int, ...], ...] = field(array=True, cellid=True, count="numalphaj")
-        alphasj: tuple[float, ...] = field(array=True, count="numalphaj")
+        cellidsj: tuple[tuple[int, ...], ...] = field(array=True, cellid=True, shape=("numalphaj",))
+        alphasj: tuple[float, ...] = field(array=True, shape=("numalphaj",))
 
     print_input: bool = field(
         default=False,

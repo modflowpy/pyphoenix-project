@@ -24,7 +24,7 @@ class Lak(Package):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

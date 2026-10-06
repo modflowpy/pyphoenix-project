@@ -27,7 +27,7 @@ class Gwegwe(Exchange):
         cl1: float = field()
         cl2: float = field()
         hwva: float = field()
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     gwfmodelname1: str = field(

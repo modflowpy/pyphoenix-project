@@ -24,7 +24,13 @@ def _recount(count: str):
     of the array being assigned."""
 
     def hook(instance, attribute, value):
-        if value is not None and count in attrs.fields_dict(type(instance)):
+        from flopy4.mf6.item import Item  # circular at import time
+
+        if (
+            value is not None
+            and isinstance(instance, Item)
+            and count in attrs.fields_dict(type(instance))
+        ):
             object.__setattr__(instance, count, len(value))
         return value
 
@@ -58,17 +64,17 @@ def field(
     cellid: bool = False,
     tagged: bool = False,
     array: bool = False,
-    count: str | None = None,
     signed: bool = False,
 ):
     """Define a field: always a plain ``attrs.field()``.
 
     A field with a ``shape`` holds an array, so unless ``eq`` is given it
     compares with `array_eq` (numpy's elementwise ``==`` isn't a valid
-    ``__eq__`` result).
+    ``__eq__`` result). An ``array`` column of a table row (`Item`) is a
+    tuple, compared as such; its ``shape`` is the dimension sizing it.
     """
     if eq is None:
-        eq = ARRAY_EQ if shape else True
+        eq = ARRAY_EQ if shape and not array else True
     metadata = metadata or {}
     if block:
         metadata["block"] = block
@@ -104,10 +110,9 @@ def field(
         metadata["tagged"] = True
     if array:
         metadata["array"] = True
-    if count:
-        metadata["count"] = count
-        # keep the count column in step when the array is reassigned
-        hooks = [attrs.setters.convert, _recount(count)]
+    if shape and array:
+        # keep a column counting the array in step when it is reassigned
+        hooks = [attrs.setters.convert, _recount(shape[0])]
         if on_setattr is not None:
             hooks.append(on_setattr)
         on_setattr = attrs.setters.pipe(*hooks)

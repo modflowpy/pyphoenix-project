@@ -24,7 +24,7 @@ class Ghb(Package):
         cellid: tuple = field(cellid=True)
         bhead: Union[float, str] = field(time_series=True)
         cond: Union[float, str] = field(time_series=True)
-        aux: tuple = field(default=(), shape=("auxiliary",))
+        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
         boundname: Optional[str] = field(default=None, optional=True)
 
     auxiliary: Optional[NDArray[np.str_]] = field(

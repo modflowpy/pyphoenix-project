@@ -1,5 +1,4 @@
 import operator
-import re
 from abc import ABC
 from pathlib import Path
 from typing import ClassVar, Optional
@@ -15,12 +14,13 @@ from flopy4.dimensions import DimensionProvider
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.item import (
+    _LOOKUP,
     Item,
     construct_item,
     construct_union_item,
     count_dim,
-    dim_counted_fields,
     item_list_type,
+    package_sized_fields,
     resolve_dim,
 )
 from flopy4.mf6.spec import to_field_type
@@ -169,7 +169,7 @@ class Package(Component, ABC):
             if not (rows := self.__dict__.get(f.name)):
                 continue
             for col in item_cls.fields():
-                m = re.fullmatch(r"(\w+)\.(\w+)\((\w+)\)", col.metadata.get("count") or "")
+                m = _LOOKUP.fullmatch(col.metadata.get("shape", ("",))[0])
                 if m is None:
                     continue
                 block, count_col, ref = m.groups()
@@ -219,8 +219,11 @@ class Package(Component, ABC):
         """Set the dimensions counting array columns (GNC's numalphaj counts
         cellidsj and alphasj, EVT's nseg-1 counts pxdp) from the columns'
         lengths, unless given."""
-        for f in dim_counted_fields(item_cls):
-            dim, offset = count_dim(f.metadata["count"])
+        fields = attrs.fields_dict(type(self))
+        for f in package_sized_fields(item_cls):
+            dim, offset = count_dim(f.metadata["shape"][0])
+            if dim in fields and fields[dim].metadata.get("block") != "dimensions":
+                continue  # sized by a field that isn't a dimension (aux's auxiliary)
             lengths = {len(v) for r in rows if (v := getattr(r, f.name)) is not None}
             if len(lengths) > 1:
                 raise ValueError(f"{f.name} lengths differ across rows: {sorted(lengths)}")

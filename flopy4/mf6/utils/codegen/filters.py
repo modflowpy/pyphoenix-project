@@ -806,7 +806,7 @@ def item_class(
             if col.get("index"):
                 meta["index"] = True
             if col.get("count"):
-                meta["count"] = col["count"]
+                meta["shape"] = (col["count"],)
             if col.get("signed"):
                 meta["signed"] = True
         if col.get("time_series"):
@@ -846,7 +846,10 @@ def item_class(
             return f"        {col['name']}: tuple = field(default=(), array=True)"
         if col["role"] == "sized":
             shape = _dq(col["size_of"])
-            return f"        {col['name']}: tuple = field(default=(), shape=({shape},))"
+            return (
+                f"        {col['name']}: tuple = "
+                f"field(default=(), array=True, optional=True, shape=({shape},))"
+            )
         # File columns (e.g. LAK tables' "TAB6 FILEIN <file>") are path() fields.
         if col["role"] == "file":
             direction = col["direction"]
