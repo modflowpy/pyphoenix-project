@@ -23,6 +23,13 @@ class Evt(Package):
         "evt": (("cellid",), ("string",)),
     }
 
+    dim_exprs: ClassVar[dict[str, str]] = {
+        "maxbound": "maxbound",
+        "nseg": "nseg",
+        "auxiliary": "len(auxiliary)",
+        "naux": "len(auxiliary)",
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
@@ -36,7 +43,9 @@ class Evt(Package):
             default=None, array=True, shape=("nseg-1",), time_series=True, optional=True
         )
         petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     fixed_cell: bool = field(

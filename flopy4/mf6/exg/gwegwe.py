@@ -23,6 +23,12 @@ class Gwegwe(Exchange):
         "flow-ja-face": (("index",), ("string",)),
     }
 
+    dim_exprs: ClassVar[dict[str, str]] = {
+        "nexg": "nexg",
+        "auxiliary": "len(auxiliary)",
+        "naux": "len(auxiliary)",
+    }
+
     @attrs.define
     class Exchangedata(Item):
         cellidm1: tuple = field(cellid=True)
@@ -31,7 +37,7 @@ class Gwegwe(Exchange):
         cl1: float = field()
         cl2: float = field()
         hwva: float = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[float, ...] = field(default=(), array=True, shape=("auxiliary",), optional=True)
         boundname: Optional[str] = field(default=None, optional=True)
 
     gwfmodelname1: str = field(

@@ -757,7 +757,7 @@ class ItemColumn:
     annotation: str
     rhs: str
     optional: bool = False  # declared after the required columns
-    counted_by: str | None = None  # package dimension sizing an inline array
+    shape: str | None = None  # shape expression counting an inline array
     arm_classes: tuple[str, ...] = ()
 
     @property
@@ -912,7 +912,11 @@ def union_column(
     index or a boundname), told apart when read."""
     types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in arms)
     return _attr_column(
-        name, f"Union[{', '.join(types)}]", {"union": arms}, optional=optional, time_series=time_series
+        name,
+        f"Union[{', '.join(types)}]",
+        {"union": arms},
+        optional=optional,
+        time_series=time_series,
     )
 
 
@@ -921,21 +925,30 @@ def required_str_column(name: str) -> ItemColumn:
     return _attr_column(name, "str", {}, optional=False)
 
 
-def counted_column(
+def array_column(
     name: str,
-    count: str,
-    dim: str,
+    shape: str,
     dfn_type: str = "double",
     *,
     cellid: bool = False,
     index: bool = False,
+    signed: bool = False,
     optional: bool = False,
     time_series: bool = False,
+    empty_default: bool = False,
 ) -> ItemColumn:
-    """An inline array sized by package dimension ``dim`` (``count`` is the
-    shape expression, e.g. ``nseg-1``): fixed width, so any column."""
+    """An inline array with as many values as the shape expression ``shape``
+    gives (``nseg-1``, ``auxiliary``, ``packagedata.ncon(ifno)``), emitted
+    as-is for the runtime to evaluate.
+
+    ``empty_default`` makes the column optional with an empty tuple default,
+    for an array whose count is filled in from it or checked against it
+    (cell2d's icvert, by ncvert; aux, by auxiliary).
+    """
     if cellid:
         py_type = "tuple[tuple[int, ...], ...]"
+    elif signed:
+        py_type = "tuple[tuple[int, int], ...]"
     elif time_series:
         py_type = "tuple[Union[float, str], ...]"
     else:
@@ -945,43 +958,27 @@ def counted_column(
         meta["cellid"] = True
     if index:
         meta["index"] = True
-    meta["shape"] = (count,)
+    meta["shape"] = (shape,)
+    if signed:
+        meta["signed"] = True
+    if empty_default:
+        if time_series:
+            meta["time_series"] = True
+        meta["optional"] = True
+        return ItemColumn(
+            name=name,
+            annotation=py_type,
+            rhs=f"field(default=(), {_margs(meta)})",
+            optional=True,
+            shape=shape,
+        )
     return _attr_column(
         name,
         py_type,
         meta,
         optional=optional,
         time_series=time_series,
-        counted_by=dim,
-    )
-
-
-def row_counted_column(
-    name: str,
-    count: str,
-    dfn_type: str = "double",
-    *,
-    index: bool = False,
-    signed: bool = False,
-    time_series: bool = False,
-) -> ItemColumn:
-    """The row's last column: as many values as an earlier column counts
-    (cell2d's icvert by ncvert) or a lookup gives (SFR's ic)."""
-    elem = "tuple[int, int]" if signed else _DFN_PY.get(dfn_type, "float")
-    meta: dict = {"array": True}
-    if index:
-        meta["index"] = True
-    meta["shape"] = (count,)
-    if signed:
-        meta["signed"] = True
-    if time_series:
-        meta["time_series"] = True
-    meta["optional"] = True
-    return ItemColumn(
-        name=name,
-        annotation=f"tuple[{elem}, ...]",
-        rhs=f"field(default=(), {_margs(meta)})",
-        optional=True,
+        shape=shape,
     )
 
 
@@ -994,16 +991,6 @@ def rest_column(name: str, dfn_type: str | None = None) -> ItemColumn:
         name=name,
         annotation=f"tuple[{elem}, ...]" if elem else "tuple",
         rhs="field(default=(), array=True)",
-        optional=True,
-    )
-
-
-def sized_column(name: str, size_of: str) -> ItemColumn:
-    """As many values as package field ``size_of`` (aux, by ``auxiliary``)."""
-    return ItemColumn(
-        name=name,
-        annotation="tuple",
-        rhs=f"field(default=(), array=True, optional=True, shape=({_dq(size_of)},))",
         optional=True,
     )
 

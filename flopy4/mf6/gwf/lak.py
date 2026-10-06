@@ -43,12 +43,22 @@ class Lak(Package):
         "withdrawal": (("index",), ("string",)),
     }
 
+    dim_exprs: ClassVar[dict[str, str]] = {
+        "nlakes": "nlakes",
+        "noutlets": "noutlets",
+        "ntables": "ntables",
+        "auxiliary": "len(auxiliary)",
+        "nlakeconn": "sum(packagedata.nlakeconn)",
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

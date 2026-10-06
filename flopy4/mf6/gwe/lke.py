@@ -36,13 +36,19 @@ class Lke(Package):
         "withdrawal": (("index",), ("string",)),
     }
 
+    dim_exprs: ClassVar[dict[str, str]] = {
+        "auxiliary": "len(auxiliary)",
+    }
+
     @attrs.define
     class Packagedata(Item):
         lakeno: int = field(index=True, pk=True)
         strt: float = field()
         ktf: float = field()
         rbthcnd: float = field()
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

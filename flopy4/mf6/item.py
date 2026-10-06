@@ -15,7 +15,6 @@ Item subclasses share one field (a Union of their types), each identified
 by its own leading keyword token (STATUS/STAGE/RATE/...).
 """
 
-import re
 from collections.abc import Callable, Mapping
 from functools import lru_cache
 from pathlib import Path
@@ -28,9 +27,6 @@ from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 
 def _cellid_field(cls: type) -> attrs.Attribute | None:
     return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
-
-
-_LOOKUP = re.compile(r"(\w+)\.(\w+)\((\w+)\)")
 
 
 def _shape_dim(f: attrs.Attribute) -> str | None:
@@ -47,8 +43,9 @@ def _sized_by_field(cls: type, f: attrs.Attribute) -> bool:
 
 def _sized_by_lookup(f: attrs.Attribute) -> bool:
     """Whether the array field ``f`` is sized by a field of the row another
-    field refers to (SFR's ic, by packagedata.ncon(ifno))."""
-    return bool((dim := _shape_dim(f)) and _LOOKUP.fullmatch(dim))
+    field refers to (SFR's ic, by packagedata.ncon(ifno)). A shape names a
+    dim, which may be offset, or looks up a row: only a lookup has a call."""
+    return bool((dim := _shape_dim(f)) and "(" in dim)
 
 
 def _sized_by_package(cls: type, f: attrs.Attribute) -> bool:
@@ -93,22 +90,10 @@ def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
     return _sized_by_package(cls, f)
 
 
-def count_dim(count: str) -> tuple[str, int]:
-    """Split a dimension into its name and an offset:
-    "nseg-1" -> ("nseg", -1)."""
-    m = re.fullmatch(r"\s*(\w+)\s*(?:([+-])\s*(\d+))?\s*", count)
-    if m is None:
-        raise ValueError(f"invalid shape dimension: {count!r}")
-    name, sign, k = m.groups()
-    return name, (int(k) if sign == "+" else -int(k)) if k else 0
-
-
 def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
-    """How many values a package-sized field takes, or None if the
-    dimension isn't known."""
-    name, offset = count_dim(f.metadata["shape"][0])
-    n = (sizes or {}).get(name)
-    return None if n is None else n + offset
+    """How many values a package-sized field takes, or None if its shape
+    isn't known. ``sizes`` maps shape expressions to their values."""
+    return (sizes or {}).get(f.metadata["shape"][0])
 
 
 def _lookup(values: Mapping[str, Any], name: str) -> Any:
@@ -122,31 +107,15 @@ def _lookup(values: Mapping[str, Any], name: str) -> Any:
     return None
 
 
-def resolve_dim(dim: str, exprs: Mapping[str, str], values: Mapping[str, Any]) -> int | None:
-    """A sizing dimension's value: the field of the same name (its length, if
-    it holds an array: aux's ``auxiliary``), or as given in ``exprs`` (a
-    component's ``count_dims``), e.g. utl-ts's "len(time_series_names)". None
-    if the field isn't set."""
-    expr = exprs.get(dim, dim)
-    if m := re.fullmatch(r"len\((\w+)\)", expr):
-        v = _lookup(values, m.group(1))
-        return None if v is None else len(v)
-    v = _lookup(values, expr)
-    if v is None:
-        return None
-    return len(v) if hasattr(v, "__len__") else int(v)
-
-
 def package_sized_fields(cls: type) -> list[attrs.Attribute]:
     """An item class's array fields sized by a package field or dimension."""
     return [f for f in cast(type[Record], cls).fields() if _sized_by_package(cls, f)]
 
 
 def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
-    """Names of the package fields and dimensions that size an item class's
-    columns."""
+    """The shape expressions of an item class's columns sized by the package."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
-    return {count_dim(f.metadata["shape"][0])[0] for c in classes for f in package_sized_fields(c)}
+    return {f.metadata["shape"][0] for c in classes for f in package_sized_fields(c)}
 
 
 def _has_boundname_field(cls: type) -> bool:

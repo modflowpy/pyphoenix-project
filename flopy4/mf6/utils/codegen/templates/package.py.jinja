@@ -42,9 +42,9 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     }
 
 {% endif %}
-{% if spec.count_dims %}
-    count_dims: ClassVar[dict[str, str]] = {
-{% for name, expr in spec.count_dims.items() %}
+{% if spec.dim_exprs %}
+    dim_exprs: ClassVar[dict[str, str]] = {
+{% for name, expr in spec.dim_exprs.items() %}
         "{{ name }}": "{{ expr }}",
 {% endfor %}
     }

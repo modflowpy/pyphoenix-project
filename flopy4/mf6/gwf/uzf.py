@@ -35,6 +35,13 @@ class Uzf(Package):
         "water-content": (("index", "double"), ("string", "double")),
     }
 
+    dim_exprs: ClassVar[dict[str, str]] = {
+        "nuzfcells": "nuzfcells",
+        "ntrailwaves": "ntrailwaves",
+        "nwavesets": "nwavesets",
+        "auxiliary": "len(auxiliary)",
+    }
+
     @attrs.define
     class Packagedata(Item):
         ifno: int = field(index=True, pk=True)
@@ -59,7 +66,9 @@ class Uzf(Package):
         ha: Union[float, str] = field(time_series=True)
         hroot: Union[float, str] = field(time_series=True)
         rootact: Union[float, str] = field(time_series=True)
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,

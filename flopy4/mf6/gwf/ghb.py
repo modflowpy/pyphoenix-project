@@ -24,12 +24,20 @@ class Ghb(Package):
         "to-mvr": (("cellid",), ("string",)),
     }
 
+    dim_exprs: ClassVar[dict[str, str]] = {
+        "maxbound": "maxbound",
+        "auxiliary": "len(auxiliary)",
+        "naux": "len(auxiliary)",
+    }
+
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
         bhead: Union[float, str] = field(time_series=True)
         cond: Union[float, str] = field(time_series=True)
-        aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))
+        aux: tuple[Union[float, str], ...] = field(
+            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     auxiliary: Optional[NDArray[np.str_]] = field(

@@ -26,6 +26,7 @@ from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record
 
 from flopy4.mf6.component import FNAMES
 from flopy4.mf6.utils.codegen.filters import (
+    array_column,
     boundname_column,
     can_expand_record,
     cellid_column,
@@ -39,7 +40,6 @@ from flopy4.mf6.utils.codegen.filters import (
     output_path,
     py_type,
     safe_name,
-    sized_column,
     value_column,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, check_mixins, make_modules
@@ -289,13 +289,13 @@ class TestFilters:
         schema = [
             cellid_column("cellid"),
             value_column("head"),
-            sized_column("aux", "auxiliary"),
+            array_column("aux", "auxiliary", empty_default=True),
             boundname_column("boundname"),
         ]
         result = item_class(schema, "StressPeriodData")
         assert (
-            'aux: tuple = field(default=(), array=True, optional=True, shape=("auxiliary",))'
-            in result
+            'aux: tuple[float, ...] = field(default=(), array=True, shape=("auxiliary",), '
+            "optional=True)" in result
         )
         assert result.index("aux:") < result.index("boundname:")
 
@@ -1446,19 +1446,3 @@ def test_counted_array_column():
     )
     assert (disv.ncpl, disv.nvert) == (1, 4)
     assert disv.cell2d[0].icvert == (0, 1, 2, 3)
-
-
-def test_counted_array_column_must_be_last():
-    from flopy4.mf6.utils.codegen.filters import ColumnSpec
-    from flopy4.mf6.utils.codegen.make import _item_columns
-
-    def col(f):
-        return ColumnSpec(f.name, f, False, False, False, False)
-
-    columns = [
-        col(Integer(name="ncvert")),
-        col(Array(name="icvert", dtype="integer", shape=["ncvert"])),
-        col(Double(name="xc")),
-    ]
-    with pytest.raises(ValueError, match="isn't the last column"):
-        _item_columns(columns)

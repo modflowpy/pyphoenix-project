@@ -11,7 +11,6 @@ schema this replaces.
 """
 
 import importlib.util
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -20,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import jinja2
+from modflow_devtools.dfns import dim_input, split_bound
 from modflow_devtools.dfns.schema import (
     Array,
     Component,
@@ -38,8 +38,6 @@ from modflow_devtools.dfns.schema import (
 from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
-
-from flopy4.mf6.item import count_dim
 
 from . import filters
 from .filters import ColumnSpec, FieldV3, ItemColumn, _dq, item_class, pascal_name, python_repr
@@ -174,7 +172,7 @@ class ComponentSpec:
     # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
     # Dims counting item columns that aren't fields, name -> DFN expression
-    count_dims: dict[str, str] = dc_field(default_factory=dict)
+    dim_exprs: dict[str, str] = dc_field(default_factory=dict)
     # Observation types the component's OBS file takes, name -> id forms
     observations: dict[str, tuple[tuple[str, ...], ...]] = dc_field(default_factory=dict)
     has_griddata: bool = False
@@ -196,18 +194,18 @@ class ComponentSpec:
 def _item_columns(
     columns: list[ColumnSpec],
     nested_arm_classes: "dict[str, list[str]] | None" = None,
-    arrays: "frozenset[str] | set[str]" = frozenset(),
-    dims: "frozenset[str] | set[str]" = frozenset(),
+    dims: "Mapping[str, str] | None" = None,
     children: "Mapping[str, list[str]] | None" = None,
 ) -> list[ItemColumn]:
     """Build the rendered columns of an Item class from ColumnSpecs.
 
     File columns become path() fields; a preceding is_prefix column (e.g.
     SPC6) becomes its keyword. A file column ``children`` maps to the
-    components it names (LAK's TAB6 file, a utl-laktab) holds them. is_row_keyword columns (optional keywords,
-    e.g. MIXED) are tagged strings. A column whose shape names one of the
-    component's ``arrays`` (aux, shaped by ``auxiliary``) is sized by it: as
-    many values as that array has.
+    components it names (LAK's TAB6 file, a utl-laktab) holds them.
+    is_row_keyword columns (optional keywords,
+    e.g. MIXED) are tagged strings. An array column's shape expression is
+    emitted as-is, for the runtime to evaluate against ``dims`` (the
+    component's dim value expressions).
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
     class names already built for it (see ``_build_arm_specs_from_union``)
@@ -216,15 +214,20 @@ def _item_columns(
     """
     nested_arm_classes = nested_arm_classes or {}
     children = children or {}
+    dims = dims or {}
     items: list[ItemColumn] = []
     pending_prefix: list[str] = []
-    # Columns counting a later array column's values (cell2d's ncvert, for
-    # icvert). Optional: filled in from the array's length when omitted.
-    counts = {
-        shape[0]
+    names = {col.name for col in columns}
+    # The input each array column's count is solved for (cell2d's ncvert, for
+    # icvert; EVT's nseg, for pxdp), if it has one.
+    inputs = {
+        col.name: _count_input(expr, dims)
         for col in columns
-        if isinstance(col.field, Array) and len(shape := col.field.shape or []) == 1
-    } & {col.name for col in columns}
+        if (expr := _array_shape(col)) is not None
+    }
+    # Columns counting a later array column's values. Optional: filled in
+    # from the array's length when omitted.
+    counts = {i[0] for i in inputs.values() if i and i[0] in names}
     seen: set[str] = set()
     for col in columns:
         if col.is_prefix:
@@ -254,52 +257,19 @@ def _item_columns(
                 item = filters.file_column(name, f.direction, keyword, optional=optional)
         elif pending_prefix:
             raise ValueError(f"fixed keyword(s) {pending_prefix} before non-file column {name!r}")
-        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in arrays:
-            item = filters.sized_column(name, shape[0])
-        elif isinstance(f, Array) and len(shape) == 1 and shape[0] in seen:
-            # Inline array counted by an earlier column of the same row
-            # (DISV/DISU cell2d's icvert, by ncvert). Rows vary in length,
-            # so it must be the last column.
-            if col is not columns[-1]:
-                raise ValueError(
-                    f"array column {name!r}, counted by {shape[0]!r}, isn't the last column"
-                )
-            item = filters.row_counted_column(
-                name, shape[0], dfn_type, index=col.is_index, time_series=ts
-            )
-        elif isinstance(f, Array) and len(shape) == 1 and _LOOKUP_RE.fullmatch(shape[0]):
-            # Inline array counted by a column of the row another column
-            # refers to (SFR's ic, by packagedata.ncon(ifno)): rows vary in
-            # length, so it must be the last column.
-            if col is not columns[-1]:
-                raise ValueError(
-                    f"array column {name!r}, counted by {shape[0]!r}, isn't the last column"
-                )
-            item = filters.row_counted_column(
+        elif (count := _array_shape(col)) is not None:
+            count_input = inputs[name]
+            in_row = count_input is not None and count_input[0] in names
+            item = filters.array_column(
                 name,
-                shape[0],
-                dfn_type,
-                index=col.is_index,
-                signed=f.index == "signed",
-                time_series=ts,
-            )
-        elif (
-            isinstance(f, Array)
-            and len(counts_by := shape[1:] if col.is_cellid else shape) == 1
-            and _count_dim(counts_by[0]) in dims
-        ):
-            # Inline array sized by a package dimension (GNC's cellidsj and
-            # alphasj, by numalphaj; EVT's pxdp, by nseg-1): fixed width, so
-            # it may be any column. A cellid array's first axis is ncelldim.
-            item = filters.counted_column(
-                name,
-                counts_by[0],
-                count_dim(counts_by[0])[0],
+                count,
                 dfn_type,
                 cellid=col.is_cellid,
                 index=col.is_index and not col.is_cellid,
+                signed=f.index == "signed",
                 optional=optional,
                 time_series=ts,
+                empty_default=in_row or (count_input is None and optional),
             )
         elif col.is_cellid:
             item = filters.cellid_column(name, optional=optional, time_series=ts)
@@ -315,7 +285,10 @@ def _item_columns(
             # One column, any of the arms (OBS's id: a cellid, an index or
             # a boundname), told apart when read (see Item.from_tokens).
             item = filters.union_column(
-                name, tuple(_arm_kind(arm) for arm in f.arms.values()), optional=optional, time_series=ts
+                name,
+                tuple(_arm_kind(arm) for arm in f.arms.values()),
+                optional=optional,
+                time_series=ts,
             )
         elif isinstance(f, UnionField) and name in nested_arm_classes:
             item = filters.nested_union_column(name, nested_arm_classes[name], optional=optional)
@@ -334,10 +307,6 @@ def _item_columns(
         items.append(item)
         seen.add(name)
     return items
-
-
-# A count looked up in another list's row: "packagedata.ncon(ifno)".
-_LOOKUP_RE = re.compile(r"(?:[\w-]+\.)?\w+\.\w+\(\w+\)")
 
 
 def _arm_kind(arm: FieldV3) -> str:
@@ -366,12 +335,22 @@ def _obs_forms(f: FieldV3) -> list[tuple[str, ...]]:
     return [(_arm_kind(f),)]
 
 
-def _count_dim(shape: str) -> str | None:
-    """The dimension in a count like "nseg-1", or None for anything else."""
-    try:
-        return count_dim(shape)[0]
-    except ValueError:
+def _array_shape(col: ColumnSpec) -> str | None:
+    """The shape expression counting an inline array column's values, or None
+    for a column that isn't one (a cellid's first axis is ncelldim)."""
+    f = col.field
+    if not isinstance(f, Array):
         return None
+    shape = f.shape or []
+    counts = shape[1:] if col.is_cellid else shape
+    return counts[0] if len(counts) == 1 and split_bound(counts[0])[0] is None else None
+
+
+def _count_input(shape: str, dims: "Mapping[str, str]") -> tuple[str, int] | None:
+    """The input a shape expression counts by, if one solves it: ``ncvert``
+    for icvert, ``nseg`` for pxdp's ``nseg-1``. None for one the data can only
+    be checked against (aux's ``auxiliary``, SFR's ``packagedata.ncon(ifno)``)."""
+    return dim_input(shape, dims, length=0)
 
 
 def _dfn_type_str(f: FieldV3) -> str:
@@ -513,8 +492,7 @@ def _build_list_item_specs(
     list_field: ListField,
     class_name: str,
     used_names: set[str],
-    arrays: "frozenset[str] | set[str]" = frozenset(),
-    dims: "frozenset[str] | set[str]" = frozenset(),
+    dims: "Mapping[str, str] | None" = None,
     children: "Mapping[str, list[str]] | None" = None,
 ) -> tuple[list[ItemClassSpec], str, ItemUnionSpec | None]:
     """Build the Item class(es) for a list's elements, wherever the list is
@@ -528,9 +506,9 @@ def _build_list_item_specs(
     - an untagged record item (packagedata, CHD's stress_period_data): one
       class of positional columns
 
-    ``arrays`` names the component's array fields, which can size a column,
-    and ``children`` an untagged row's child columns, by name, with the
-    components they name (see _item_columns).
+    ``dims`` maps the component's dims to their value expressions (see
+    _item_columns), and ``children`` an untagged row's child columns, by
+    name, with the components they name.
     """
     union = filters.find_keystring_union(list_field)
     if union is not None:
@@ -541,7 +519,7 @@ def _build_list_item_specs(
             else []
         )
         specs = _build_arm_specs_from_union(
-            union, used_names, {}, shared_cols, name_hint=list_field.name, arrays=arrays, dims=dims
+            union, used_names, {}, shared_cols, name_hint=list_field.name, dims=dims
         )
         alias = f"_{class_name}Item"
         members = [s.class_name for s in specs if s.top_level]
@@ -554,13 +532,10 @@ def _build_list_item_specs(
             {},
             [],
             class_name=class_name,
-            arrays=arrays,
             dims=dims,
         )
         return specs, specs[-1].class_name, None
-    schema = _item_columns(
-        filters.list_columns(list_field), arrays=arrays, dims=dims, children=children
-    )
+    schema = _item_columns(filters.list_columns(list_field), dims=dims, children=children)
     used_names.add(class_name)
     spec = ItemClassSpec(class_name=class_name, keyword="", schema=schema)
     return [spec], class_name, None
@@ -574,8 +549,7 @@ def _build_arm_specs_from_union(
     *,
     name_hint: str = "",
     top_level: bool = True,
-    arrays: "frozenset[str] | set[str]" = frozenset(),
-    dims: "frozenset[str] | set[str]" = frozenset(),
+    dims: "Mapping[str, str] | None" = None,
 ) -> list[ItemClassSpec]:
     """Build one ItemClassSpec per arm of `union` (see _build_arm_spec).
 
@@ -606,7 +580,6 @@ def _build_arm_specs_from_union(
                 shared_cols,
                 name_hint=name_hint,
                 top_level=top_level,
-                arrays=arrays,
                 dims=dims,
             )
         )
@@ -623,8 +596,7 @@ def _build_arm_spec(
     name_hint: str = "",
     top_level: bool = True,
     class_name: str = "",
-    arrays: "frozenset[str] | set[str]" = frozenset(),
-    dims: "frozenset[str] | set[str]" = frozenset(),
+    dims: "Mapping[str, str] | None" = None,
 ) -> list[ItemClassSpec]:
     """Build the keyword-led Item class for one union arm, or for a tagged
     list's record item -- each line starts with (or, LAK-style, contains)
@@ -674,7 +646,6 @@ def _build_arm_spec(
                 nested_union_cache,
                 name_hint=field_name,
                 top_level=False,
-                arrays=arrays,
                 dims=dims,
             )
             nested_union_cache[cache_key] = cached
@@ -682,7 +653,7 @@ def _build_arm_spec(
         nested_arm_classes[field_name] = [s.class_name for s in cached]
 
     cols = filters._fields_to_columns(list(shared_cols) + rest)
-    schema = _item_columns(cols, nested_arm_classes, arrays, dims)
+    schema = _item_columns(cols, nested_arm_classes, dims)
     if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -1434,10 +1405,8 @@ def build_component_spec(
     _dynamically_named_period_fields: list[tuple] = []  # (list, array, fk): RCHA's aux
     _repeating_array_fields: list[FieldV3] = []  # repeating block's own array field
 
-    # Array fields can size list columns (auxiliary sizes aux).
-    _arrays = frozenset(f.name for _, f in all_fields if isinstance(f, Array))
-    # The component's dims can size inline arrays (GNC's numalphaj).
-    _dims = frozenset(component.dims or {})
+    # The component's dims evaluate the shapes of inline arrays.
+    _dims = {name: d.value for name, d in (component.dims or {}).items()}
 
     # Lists' file columns naming components, by list (LAK's tables).
     _column_links = {
@@ -1451,7 +1420,7 @@ def build_component_spec(
 
     def _add_list_items(lf: ListField, class_name: str) -> str:
         specs, elem, union = _build_list_item_specs(
-            lf, class_name, _inner_class_names, _arrays, _dims, _column_links.get(lf.name)
+            lf, class_name, _inner_class_names, _dims, _column_links.get(lf.name)
         )
         item_classes.extend(specs)
         if union is not None:
@@ -1615,7 +1584,6 @@ def build_component_spec(
             _list_field,
             pascal_name(bp.block_name),
             _inner_class_names,
-            _arrays,
             _dims,
             _column_links.get(_list_field.name),
         )
@@ -1633,7 +1601,6 @@ def build_component_spec(
                 ListField(name=_header.field.name, item=_header.field),
                 pascal_name(_header.field.name),
                 _inner_class_names,
-                _arrays,
                 _dims,
             )
             block_item_classes.extend(_header_specs)
@@ -1809,10 +1776,12 @@ def build_component_spec(
     field_specs = _deduped
 
     _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
-    _counting = {e.counted_by for ic in item_classes for e in ic.schema if e.counted_by}
-    _count_dims = {
-        d: v for d in sorted(_counting) if (v := component.dims[d].value) not in _seen_py_names
-    }
+    # The dim expressions evaluating inline arrays' shapes, when any have one.
+    _dim_exprs = (
+        {name: d.value for name, d in (component.dims or {}).items()}
+        if any(e.shape for ic in item_classes for e in ic.schema)
+        else {}
+    )
 
     base = _base_class(component)
     mixins = MIXINS.get(component.name, [])
@@ -1910,7 +1879,7 @@ def build_component_spec(
         block_classes=block_classes,
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
-        count_dims=_count_dims,
+        dim_exprs=_dim_exprs,
         observations={
             name: tuple(_obs_forms(f)) for name, f in sorted((component.observations or {}).items())
         },

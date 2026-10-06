@@ -15,7 +15,7 @@ class Ts(Package):
 
     multi_package: ClassVar[bool] = True
 
-    count_dims: ClassVar[dict[str, str]] = {
+    dim_exprs: ClassVar[dict[str, str]] = {
         "time_series_names": "len(time_series_names)",
     }
 
