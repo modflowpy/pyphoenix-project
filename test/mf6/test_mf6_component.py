@@ -1547,11 +1547,9 @@ def test_ncf_from_grid_sets_both_wkt_versions(function_tmpdir):
 
 
 def test_to_dataarray_standalone_structured():
-    """Npf.to_dataarray() on a standalone loaded package uses _dimension_cache."""
+    """Npf.to_dataarray() on a standalone package uses its own dims."""
     dims = {"nlay": 2, "nrow": 3, "ncol": 4, "nodes": 24}
     npf = Npf(dims=dims, k=1.5, k33=0.15)
-    # Simulate Package.load() pre-populating the cache
-    npf._dimension_cache.update(dims)
     da = npf.to_dataarray("k")
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("layer", "y", "x")
@@ -1563,7 +1561,6 @@ def test_to_xarray_standalone_structured():
     """Npf.to_xarray() on a standalone package returns Dataset with all griddata fields."""
     dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}
     npf = Npf(dims=dims, k=2.0, k33=0.2)
-    npf._dimension_cache.update(dims)
     ds = npf.to_xarray()
     assert isinstance(ds, xr.Dataset)
     assert "k" in ds
@@ -1578,7 +1575,6 @@ def test_to_dataarray_lazy_dask():
     da_mod = pytest.importorskip("dask.array")
     dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}
     npf = Npf(dims=dims, k=3.0)
-    npf._dimension_cache.update(dims)
     # Replace eager array with a dask array
     k_dask = da_mod.from_array(npf.k.reshape(1, 4), chunks=(1, 4)).reshape(-1)
     npf.k = k_dask

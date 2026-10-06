@@ -60,3 +60,55 @@ def test_bounded_dim_raises_when_exceeded():
     a.perioddata.append(a.Perioddata(1, 1.0, 0.1, 2.0, 2.0, 2.0))
     with pytest.raises(ValueError, match="maxats"):
         a._sync_dims()
+
+
+def test_resolve_dims_follows_appended_rows():
+    from flopy4.mf6.gwf import Gwf, Npf
+
+    d = _disv()
+    gwf = Gwf(dis=d)
+    npf = Npf(parent=gwf)
+    assert gwf.resolve_dims("nvert")["nvert"] == 4
+    assert npf.resolve_dims("nvert")["nvert"] == 4
+    d.vertices.append(d.Vertices(iv=4, xv=2.0, yv=0.0))
+    assert gwf.resolve_dims("nvert")["nvert"] == 5
+    assert npf.resolve_dims("nvert")["nvert"] == 5
+
+
+def test_resolve_dims_uses_own_dims_without_provider():
+    from flopy4.mf6.gwf import Npf
+
+    npf = Npf(dims={"nlay": 3})
+    assert npf.resolve_dims("nlay") == {"nlay": 3}
+
+
+def test_resolve_dims_accepts_own_dims_equal_to_provider():
+    from flopy4.mf6.gwf import Gwf, Npf
+
+    gwf = Gwf(dis=_disv())
+    npf = Npf(parent=gwf, dims={"nvert": 4})
+    assert npf.resolve_dims("nvert") == {"nvert": 4}
+
+
+def test_resolve_dims_raises_when_own_dims_conflict_with_parent():
+    from flopy4.mf6.gwf import Gwf, Npf
+
+    gwf = Gwf(dis=_disv())
+    npf = Npf(parent=gwf, dims={"nvert": 99})
+    with pytest.raises(ValueError, match="nvert=99"):
+        npf.resolve_dims("nvert")
+    with pytest.raises(ValueError, match="nvert=99"):
+        npf.resolve_dims()
+
+
+def test_resolve_dims_raises_when_provider_changes_under_own_dims():
+    """A child loaded with dims is stale once the grid changes."""
+    from flopy4.mf6.gwf import Gwf, Npf
+
+    d = _disv()
+    gwf = Gwf(dis=d)
+    npf = Npf(parent=gwf, dims={"nvert": 4})
+    assert npf.resolve_dims("nvert") == {"nvert": 4}
+    d.vertices.append(d.Vertices(iv=4, xv=2.0, yv=0.0))
+    with pytest.raises(ValueError, match="nvert=4"):
+        npf.resolve_dims("nvert")

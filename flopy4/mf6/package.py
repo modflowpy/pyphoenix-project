@@ -425,10 +425,10 @@ class Package(Component, ABC):
             _raw = _codec_load(_f)
         _pkg = structure_component(_raw, cls, dims=dims, workspace=path.parent, name=name)
 
-        # Pre-populate dimension cache so to_xarray()/to_dataarray() work
-        # on standalone packages (not attached to a parent model).
+        # Standalone packages (not attached to a parent model) resolve
+        # dimensions from the ones given, so to_xarray()/to_dataarray() work.
         if dims:
-            _pkg._dimension_cache.update(dims)
+            _pkg.dims.update(dims)
 
         return _pkg
 
