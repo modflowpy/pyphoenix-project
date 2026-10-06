@@ -696,13 +696,7 @@ def structure_component(
         inner_cls = _inner_class_type(f.type)
         if inner_cls is None:
             continue
-        kw = vars(inner_cls).get("_keyword", "")
-        if not kw:
-            # no keyword of its own, led by a tagged field (IMS's Rclose:
-            # "INNER_RCLOSE <value> [option]")
-            first = next(iter(inner_cls.fields()), None)
-            kw = first.name if first is not None and first.metadata.get("tagged") else ""
-        if kw:
+        if kw := vars(inner_cls).get("_keyword", ""):
             for k in (kw, *vars(inner_cls).get("_aliases", ())):
                 inner_class_fields[k.lower()] = (f, inner_cls)
 
