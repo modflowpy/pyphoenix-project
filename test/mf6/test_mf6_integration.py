@@ -454,7 +454,9 @@ def test_gwf_disv_uzf(function_tmpdir):
         cell2d=cell2d,
     )
 
-    gwf = Gwf(parent=sim, save_flows=True, newton=True, dis=disv, name=gwf_name)
+    gwf = Gwf(
+        parent=sim, save_flows=True, newtonoptions=Gwf.Newtonoptions(), dis=disv, name=gwf_name
+    )
 
     ic = Ic(parent=gwf, strt=20.0)
 

@@ -87,8 +87,9 @@ def test_flopy3_model(tmp_path):
         dims=dims,
     )
 
-    pnames = ["dis", "ic", "oc", "npf", "chd0"]
-    ptypes = ["DIS", "IC", "OC", "NPF", "CHD"]
+    # in field order, the DFN's but for DIS first
+    pnames = ["dis", "chd0", "ic", "npf", "oc"]
+    ptypes = ["DIS", "CHD", "IC", "NPF", "OC"]
 
     gwf3 = Flopy3Model(model=gwf, modeltime=time, ims=ims)
     assert isinstance(gwf3, ModelInterface)

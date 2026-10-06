@@ -57,7 +57,8 @@ def _make_binding_blocks(value: Component) -> dict[str, dict[str, list[tuple[str
     blocks = {}  # type: ignore
 
     for f in attrs.fields(type(value)):  # type: ignore[arg-type]
-        if child_field_candidates(f) is None:
+        # a child() field; a record option is a field like any other
+        if not f.metadata.get("child") or child_field_candidates(f) is None:
             continue
         child_name = f.name
         if (child := getattr(value, child_name, None)) is None:
@@ -375,6 +376,7 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             if (
                 isinstance(value, Context)
                 and field is not None
+                and field.metadata.get("child")
                 and child_field_candidates(field) is not None
                 and field.metadata.get("block") == block_name
             ):

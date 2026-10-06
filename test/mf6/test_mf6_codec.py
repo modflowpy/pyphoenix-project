@@ -621,20 +621,14 @@ def test_loads_block_header_remark():
     assert raw == {"PERIOD 1": [[1, "RATE", -1.0]]}
 
 
-def test_gwf_list_option_name():
+@pytest.mark.parametrize("model", ["gwf", "gwt", "gwe", "prt"])
+def test_model_list_option_name(model):
+    import importlib
+
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
-    from flopy4.mf6.gwf import Gwf
 
-    text = dumps(unstructure_component(Gwf(name="m", list="m.lst")))
-    assert " LIST m.lst" in text
-    assert "_LIST" not in text
-
-
-def test_gwt_list_option_name():
-    from flopy4.mf6.converter.egress.unstructure import unstructure_component
-    from flopy4.mf6.gwt import Gwt
-
-    text = dumps(unstructure_component(Gwt(name="m", list_="m.lst")))
+    cls = getattr(importlib.import_module(f"flopy4.mf6.{model}"), model.capitalize())
+    text = dumps(unstructure_component(cls(name="m", list_="m.lst")))
     assert " LIST m.lst" in text
     assert "LIST_" not in text
 
