@@ -14,8 +14,6 @@ from flopy4.mf6.spec import field, path
 class Obs(Package):
     dfn_name: ClassVar[str] = "utl-obs"
 
-    multi_package: ClassVar[bool] = True
-
     @attrs.define
     class Continuous(Item):
         obsname: Union[float, str] = field()

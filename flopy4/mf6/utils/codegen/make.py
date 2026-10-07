@@ -28,6 +28,7 @@ from modflow_devtools.dfns.schema import (
     Integer,
     Record,
     String,
+    admits,
 )
 from modflow_devtools.dfns.schema import (
     Keyword as KeywordField,
@@ -1063,9 +1064,10 @@ def _find_link(f: FieldV3) -> tuple[str, File, bool] | None:
     return None
 
 
-def _is_child_of(child: Component, parent: str) -> bool:
-    parents = child.parent if isinstance(child.parent, list) else [child.parent]
-    return parent in parents
+def _is_child_of(child: Component, parent: Component) -> bool:
+    """Whether a component may sit under another: its ``parent`` selector
+    names the other, or its type (``model``, ``package``) or subtype."""
+    return admits(child.parent, parent)
 
 
 def resolve_link(
@@ -1090,7 +1092,7 @@ def resolve_link(
         found += [
             n
             for n, c in dfns.items()
-            if sel in (c.type, getattr(c, "subtype", None)) and _is_child_of(c, component.name)
+            if sel in (c.type, getattr(c, "subtype", None)) and _is_child_of(c, component)
         ]
     if not found:
         raise ValueError(f"{component.name}.{path}: {link.component!r} matches no component")
@@ -1243,6 +1245,10 @@ def _model_package_specs(
     for t in targets:
         if not _has_module(t):
             continue
+        # utl-obs may sit under any model, but only one with observation
+        # types reads an OBS6 file (PRT has none yet)
+        if t == "utl-obs" and not component.observations:
+            continue
         ftype = dfns[t].ftype
         if ftype is None:
             raise ValueError(f"{component.name}: package {t} has no ftype")
@@ -1268,20 +1274,6 @@ def _model_package_specs(
                 py_name=filters.safe_name(name),
                 type_annotation=annotation,
                 spec_call=call,
-                generatable=True,
-            )
-        )
-    # A model with observation types reads one OBS6 file of its own. The
-    # DFNs don't list it among the model's packages: utl-obs's parent is any
-    # package, since boundary packages link to it too.
-    if component.observations and _has_module("utl-obs"):
-        imports.append(f"from {_component_module('utl-obs')} import Obs")
-        specs.append(
-            FieldSpec(
-                dfn_name="obs",
-                py_name="obs",
-                type_annotation="Optional[Obs]",
-                spec_call=f'child(block="{block_name}")',
                 generatable=True,
             )
         )
