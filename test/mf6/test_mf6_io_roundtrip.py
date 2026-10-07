@@ -276,3 +276,30 @@ def test_auxiliary_option_keeps_all_names(tmp_path):
     path = tmp_path / "model.welg"
     path.write_text("BEGIN OPTIONS\n  READARRAYGRID\n  AUXILIARY a1 a2\nEND OPTIONS\n")
     assert list(Welg.load(path, name="wel").auxiliary) == ["a1", "a2"]
+
+
+def test_open_close_reads_only_needed_values(tmp_path):
+    """An OPEN/CLOSE array reads only the values it needs, as in MF6."""
+    from flopy4.mf6.converter.ingress.structure import _read_control_record
+    from flopy4.mf6.load_context import LoadContext
+
+    (tmp_path / "values.txt").write_text("1.0 2.0 3.0 4.0 5.0\n")
+    rows = [["OPEN/CLOSE", "values.txt"]]
+    values, i = _read_control_record(rows, 0, LoadContext(workspace=tmp_path), np.float64, 3)
+    assert np.array_equal(values, [1.0, 2.0, 3.0]) and i == 1
+
+
+def test_layered_open_close_griddata(tmp_path):
+    """A LAYERED array reads one OPEN/CLOSE file per layer, each only its
+    layer's values."""
+    from flopy4.mf6.converter.ingress.structure import _parse_array_block
+    from flopy4.mf6.gwf import Npf
+    from flopy4.mf6.load_context import LoadContext
+
+    (tmp_path / "k1.txt").write_text("1.0 2.0 3.0\n")
+    (tmp_path / "k2.txt").write_text("4.0 5.0 6.0 7.0 8.0\n")
+    rows = [["k", "LAYERED"], ["OPEN/CLOSE", "k1.txt"], ["OPEN/CLOSE", "k2.txt"]]
+    fields = {"k": attrs.fields_dict(Npf)["k"]}
+    context = LoadContext(workspace=tmp_path)
+    result = _parse_array_block(rows, fields, {"nlay": 2, "nodes": 6}, context)
+    assert np.array_equal(result["k"], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])

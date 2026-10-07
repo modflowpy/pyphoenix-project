@@ -222,7 +222,8 @@ def _read_control_record(
         v = int(vrow[1]) if dtype == np.int64 else float(vrow[1])
         return np.full(length, v, dtype=dtype), i + 1
     if kind == "OPEN/CLOSE":
-        return _read_open_close_values(vrow, context, dtype), i + 1
+        # read only the values the array needs; a file may hold more
+        return _read_open_close_values(vrow, context, dtype)[:length], i + 1
     j = i + 1 if kind == "INTERNAL" else i
     values: list = []
     while len(values) < length and j < len(rows):
