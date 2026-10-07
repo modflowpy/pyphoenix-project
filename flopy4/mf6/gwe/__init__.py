@@ -21,6 +21,7 @@ from flopy4.mf6.gwe.ssm import Ssm
 from flopy4.mf6.model import Model
 from flopy4.mf6.model_methods import ModelMethods
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 
 __all__ = [
     "Gwe",
@@ -116,3 +117,4 @@ class Gwe(ModelMethods, Model):
     mve: Optional[Mve] = child(block="packages")
     oc: Optional[Oc] = child(block="packages")
     ssm: Optional[Ssm] = child(block="packages")
+    obs: Optional[Obs] = child(block="packages")

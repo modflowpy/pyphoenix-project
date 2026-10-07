@@ -41,6 +41,7 @@ from flopy4.mf6.model import Model
 from flopy4.mf6.model_methods import ModelMethods
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 
 __all__ = [
     "Gwf",
@@ -170,3 +171,4 @@ class Gwf(GwfMethods, ModelMethods, Model):
     uzf: list[Uzf] = child(block="packages", default=attrs.Factory(list))
     vsc: Optional[Vsc] = child(block="packages")
     wel: list[Union[Wel, Welg]] = child(block="packages", default=attrs.Factory(list))
+    obs: Optional[Obs] = child(block="packages")

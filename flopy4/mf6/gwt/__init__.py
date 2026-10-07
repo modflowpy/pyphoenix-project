@@ -23,6 +23,7 @@ from flopy4.mf6.gwt.ssm import Ssm
 from flopy4.mf6.model import Model
 from flopy4.mf6.model_methods import ModelMethods
 from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.utl.obs import Obs
 
 __all__ = [
     "Gwt",
@@ -122,3 +123,4 @@ class Gwt(ModelMethods, Model):
     oc: Optional[Oc] = child(block="packages")
     src: list[Src] = child(block="packages", default=attrs.Factory(list))
     ssm: Optional[Ssm] = child(block="packages")
+    obs: Optional[Obs] = child(block="packages")
