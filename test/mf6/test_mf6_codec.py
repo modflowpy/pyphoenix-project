@@ -5,6 +5,7 @@ from pprint import pprint
 
 import numpy as np
 import pytest
+import xarray as xr
 
 from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.constants import FILL_DNODATA
@@ -3840,3 +3841,27 @@ def test_options_open_close(tmp_path):
     raw = loads("BEGIN OPTIONS\n  OPEN/CLOSE npf_options.ref\nEND OPTIONS\n")
     npf = structure_component(raw, Npf, context=LoadContext(workspace=tmp_path))
     assert npf.save_flows and npf.perched
+
+
+def test_netcdf_dump_only_netcdf_fields():
+    """With use_netcdf, only arrays of netcdf-capable (dfn) fields are written
+    `NETCDF`; others keep their data, as MF6 has no variable to read."""
+    from flopy4.mf6.gwf import Npf
+    from flopy4.mf6.prt.mip import Mip
+    from flopy4.mf6.write_context import WriteContext
+
+    ctx = WriteContext(use_netcdf=True)
+    mip = dumps(COMPONENT_CONVERTER.unstructure(Mip(porosity=np.array([0.1, 0.2]))), context=ctx)
+    npf = dumps(
+        COMPONENT_CONVERTER.unstructure(Npf(k=np.array([1.0, 2.0]), icelltype=np.array([0, 0]))),
+        context=ctx,
+    )
+
+    assert "NETCDF" not in mip.upper()
+    assert "0.1 0.2" in mip
+    assert "K NETCDF" in npf.upper()
+
+    # opt-in: an array egress did not mark keeps its data
+    from flopy4.mf6.codec.writer.filters import array_how
+
+    assert array_how(xr.DataArray([1.0, 2.0]), netcdf=True) == "internal"

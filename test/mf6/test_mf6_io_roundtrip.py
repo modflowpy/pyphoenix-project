@@ -220,3 +220,59 @@ def test_tvs_child_kept(tmp_path):
     diffs: list[str] = []
     _diff(rows, reloaded.models["GWF_1"].sto.tvs.stress_period_data[1], "tvs", diffs)
     assert not diffs, "\n".join(diffs)
+
+
+def test_readarray_non_layered_grid_arrays():
+    """A grid package array given without LAYERED covers all nodes."""
+    from flopy4.mf6.converter.ingress.structure import _parse_readarray_period_block
+    from flopy4.mf6.gwf import Welg
+    from flopy4.mf6.load_context import LoadContext
+
+    fields = attrs.fields_dict(Welg)
+    lookup = {"q": fields["q"], "a1": fields["aux"], "a2": fields["aux"]}
+    rows = [
+        ["q", "LAYERED"],
+        ["INTERNAL"],
+        ["1.0", "2.0", "3.0"],
+        ["INTERNAL"],
+        ["4.0", "5.0", "6.0"],
+        ["a1"],
+        ["INTERNAL"],
+        ["1.0", "1.0", "1.0"],
+        ["1.0", "1.0", "1.0"],
+        ["a2"],
+        ["INTERNAL"],
+        ["0.5", "0.5", "0.5"],
+        ["0.5", "0.5", "0.5"],
+    ]
+    result = _parse_readarray_period_block(rows, lookup, {"nlay": 2, "nodes": 6}, LoadContext())
+    assert np.array_equal(result["q"], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    assert np.array_equal(result["a1"], np.ones((2, 3)))
+    assert np.array_equal(result["a2"], np.full((2, 3), 0.5))
+
+
+def test_grid_package_aux_keeps_package_name(tmp_path):
+    """A grid package's aux arrays don't replace its name."""
+    from flopy4.mf6.gwf import Chdg, Dis
+    from flopy4.mf6.load_context import LoadContext
+
+    path = tmp_path / "model.chdg"
+    path.write_text(
+        "BEGIN OPTIONS\n  READARRAYGRID\n  AUXILIARY temperature\nEND OPTIONS\n\n"
+        "BEGIN PERIOD 1\n  head\n    CONSTANT 1.0\n  temperature\n    CONSTANT 5.0\n"
+        "END PERIOD 1\n"
+    )
+    dis = Dis(nlay=1, nrow=1, ncol=2)
+    context = LoadContext(workspace=tmp_path, dims=dis.get_dims())
+    chd = Chdg.load(path, name="chd-1", context=context)
+    assert chd.name == "chd-1"
+    assert np.allclose(np.asarray(chd.aux[0]["temperature"]), 5.0)
+
+
+def test_auxiliary_option_keeps_all_names(tmp_path):
+    """Every AUXILIARY name loads (numpy >= 2.5 changed NDArray's origin)."""
+    from flopy4.mf6.gwf import Welg
+
+    path = tmp_path / "model.welg"
+    path.write_text("BEGIN OPTIONS\n  READARRAYGRID\n  AUXILIARY a1 a2\nEND OPTIONS\n")
+    assert list(Welg.load(path, name="wel").auxiliary) == ["a1", "a2"]

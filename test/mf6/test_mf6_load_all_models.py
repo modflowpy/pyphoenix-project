@@ -194,6 +194,8 @@ KNOWN_PASSING = frozenset(
         "mf6/test/test017_Crinkle",
         "mf6/test/test019_VilhelmsenGC",
         "mf6/test/test019_VilhelmsenGF",
+        "mf6/test/test019_VilhelmsenLGR",
+        "mf6/test/test019_VilhelmsenLGR_nr",
         "mf6/test/test020_NT_EI",
         "mf6/test/test020_NevilleTonkinTransient",
         "mf6/test/test020_NevilleTonkinTransientTS",

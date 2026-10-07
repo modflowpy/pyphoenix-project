@@ -107,6 +107,16 @@ def _grid_dims(value: Package) -> tuple[int, tuple[int, ...]]:
     return nlay, (ncpl,) if ncpl else ()
 
 
+def _mark_netcdf(da: xr.DataArray, meta: Mapping) -> xr.DataArray:
+    """Mark an array of a field MF6 reads from NetCDF (dfn `netcdf` flag), so
+    a NetCDF write writes `NETCDF` for it; unmarked arrays keep their data."""
+    if not meta.get("netcdf"):
+        return da
+    da = da.copy(deep=False)
+    da.attrs = {**da.attrs, "netcdf": True}
+    return da
+
+
 def _period_dataarray(
     name: str, value: Any, meta: Mapping, nlay: int, layer: tuple[int, ...]
 ) -> xr.DataArray | tuple:
@@ -122,10 +132,12 @@ def _period_dataarray(
     ncpl = int(np.prod(layer)) if layer else 0
     if meta.get("layered", False) and nlay > 1 and ncpl and value.size == nlay * ncpl:
         dims = ("nlay", *(f"x{i}" for i in range(len(layer))))
-        return xr.DataArray(value.reshape(nlay, *layer), dims=dims)
-    if ncpl and value.size == ncpl and len(layer) > 1:
-        return xr.DataArray(value.reshape(layer))
-    return xr.DataArray(value)
+        da = xr.DataArray(value.reshape(nlay, *layer), dims=dims)
+    elif ncpl and value.size == ncpl and len(layer) > 1:
+        da = xr.DataArray(value.reshape(layer))
+    else:
+        da = xr.DataArray(value)
+    return _mark_netcdf(da, meta)
 
 
 def _rows_to_tuples(row_list: list) -> list[tuple]:
@@ -306,12 +318,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                     _nlay = _dims_d.get("nlay", 0)
                     _ncpl = _dims_d.get("ncpl", 0)
                     if _nlay > 1 and _ncpl > 0 and field_value.size == _nlay * _ncpl:
-                        blocks[block_name][f.name] = xr.DataArray(
-                            field_value.reshape(_nlay, _ncpl),
-                            dims=("nlay", "ncpl"),
+                        blocks[block_name][f.name] = _mark_netcdf(
+                            xr.DataArray(
+                                field_value.reshape(_nlay, _ncpl),
+                                dims=("nlay", "ncpl"),
+                            ),
+                            meta,
                         )
                         continue
-                blocks[block_name][f.name] = _wrap_array(field_value)
+                blocks[block_name][f.name] = _mark_netcdf(_wrap_array(field_value), meta)
 
         elif isinstance(field_value, np.ndarray) and field_value.dtype.kind == "U":
             # An inline string array (AUXILIARY's names): one line.
