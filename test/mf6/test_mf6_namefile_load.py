@@ -311,8 +311,8 @@ def test_load_model_in_subdirectory(subdir_sim, tmp_path, monkeypatch):
     assert isinstance(gwf.dis, Dis)
     assert gwf.dis.get_dims()["nodes"] == 4
     np.testing.assert_array_equal(np.ravel(gwf.npf.k), [1.0, 2.0, 3.0, 4.0])
-    assert str(gwf.filename) == "gwf/m.nam"
-    assert str(gwf.dis.filename) == "gwf/m.dis"
+    assert gwf.filename.as_posix() == "gwf/m.nam"
+    assert gwf.dis.filename.as_posix() == "gwf/m.dis"
     assert gwf.workspace == subdir_sim
 
 
@@ -326,8 +326,8 @@ def test_write_model_in_subdirectory(subdir_sim, tmp_path):
     assert (tmp_path / "copy" / "gwf" / "m.nam").is_file()
     assert (tmp_path / "copy" / "gwf" / "m.dis").is_file()
     gwf = Simulation.load(tmp_path / "copy" / "mfsim.nam").models["m"]
-    assert str(gwf.filename) == "gwf/m.nam"
-    assert str(gwf.dis.filename) == "gwf/m.dis"
+    assert gwf.filename.as_posix() == "gwf/m.nam"
+    assert gwf.dis.filename.as_posix() == "gwf/m.dis"
     assert gwf.dis.get_dims()["nodes"] == 4
 
 
@@ -340,4 +340,4 @@ def test_load_model_alone_in_simulation(subdir_sim):
 
     assert gwf.dis.get_dims()["nodes"] == 4
     np.testing.assert_array_equal(np.ravel(gwf.npf.k), [1.0, 2.0, 3.0, 4.0])
-    assert str(gwf.filename) == "gwf/m.nam"
+    assert gwf.filename.as_posix() == "gwf/m.nam"
