@@ -1271,6 +1271,20 @@ def _model_package_specs(
                 generatable=True,
             )
         )
+    # A model with observation types reads one OBS6 file of its own. The
+    # DFNs don't list it among the model's packages: utl-obs's parent is any
+    # package, since boundary packages link to it too.
+    if component.observations and _has_module("utl-obs"):
+        imports.append(f"from {_component_module('utl-obs')} import Obs")
+        specs.append(
+            FieldSpec(
+                dfn_name="obs",
+                py_name="obs",
+                type_annotation="Optional[Obs]",
+                spec_call=f'child(block="{block_name}")',
+                generatable=True,
+            )
+        )
     return specs, imports
 
 
