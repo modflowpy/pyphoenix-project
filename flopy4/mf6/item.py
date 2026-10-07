@@ -526,7 +526,7 @@ class Item(Record):
         cls,
         tokens: list,
         *,
-        ncelldim: int = 0,
+        ncelldim: int | Mapping[str, int] = 0,
         sizes: Mapping[str, int] | None = None,
         boundnames: bool = False,
         union_arm: str = "cellid",
@@ -537,7 +537,9 @@ class Item(Record):
         columns prefer for numbers, and ``union_forms`` gives the forms
         they take given the row's other columns (see _read_unions).
         ``load_child`` loads a child column's component from the file the
-        row names.
+        row names. ``ncelldim`` is the cellid width, or each cellid
+        column's, by name, when they differ (an exchange between models
+        on different grids).
 
         Optional untagged columns (e.g. EVT's pxdp/petm/petm0) have no
         marker token -- MF6 writes a whole trailing group or none, gated by
@@ -555,15 +557,19 @@ class Item(Record):
         tok_idx = 0
         n = len(tokens)
 
-        def cellid() -> tuple[int, ...] | None:
+        def cellid_width(f: attrs.Attribute) -> int:
+            return ncelldim if isinstance(ncelldim, int) else ncelldim[f.name]
+
+        def cellid(f: attrs.Attribute) -> tuple[int, ...] | None:
             nonlocal tok_idx
             # one NONE token, whatever ncelldim (e.g. an SFR reach with
             # no aquifer connection)
             if str(tokens[tok_idx]).upper() == "NONE":
                 tok_idx += 1
                 return None
-            tok_idx += ncelldim
-            return tuple(int(tokens[tok_idx - ncelldim + j]) - 1 for j in range(ncelldim))
+            w = cellid_width(f)
+            tok_idx += w
+            return tuple(int(tokens[tok_idx - w + j]) - 1 for j in range(w))
 
         def consume(f: attrs.Attribute) -> None:
             nonlocal tok_idx, keyword_skipped
@@ -577,7 +583,7 @@ class Item(Record):
                 if not count:
                     return
                 if f.metadata.get("cellid"):
-                    kwargs[f.name] = tuple(cellid() for _ in range(count))
+                    kwargs[f.name] = tuple(cellid(f) for _ in range(count))
                     return
                 vals = tokens[tok_idx : tok_idx + count]
                 tok_idx += count
@@ -587,7 +593,7 @@ class Item(Record):
                     kwargs[f.name] = tuple(_float_or_str(v) for v in vals)
                 return
             if f.metadata.get("cellid"):
-                kwargs[f.name] = cellid()
+                kwargs[f.name] = cellid(f)
                 return
             if f.metadata.get("index"):
                 kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
@@ -641,7 +647,7 @@ class Item(Record):
         if columns:
             optional_fields = _in_columns(cls, optional_fields)
             fixed = (0 if keyword_skipped else 1) + sum(
-                ncelldim if f.metadata.get("cellid") else width(f) for f in required_fields
+                cellid_width(f) if f.metadata.get("cellid") else width(f) for f in required_fields
             )
         else:
             for f in required_fields:
@@ -696,7 +702,13 @@ class Item(Record):
             end = n - (1 if has_bn_token else 0) - nsized
             forms = union_forms(kwargs) if union_forms else None
             kwargs.update(
-                _read_unions(union_fields, tokens[tok_idx:end], ncelldim, union_arm, forms)
+                _read_unions(
+                    union_fields,
+                    tokens[tok_idx:end],
+                    ncelldim if isinstance(ncelldim, int) else 0,
+                    union_arm,
+                    forms,
+                )
             )
             tok_idx = end
         elif array_fields:

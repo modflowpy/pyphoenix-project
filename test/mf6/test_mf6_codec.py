@@ -9,6 +9,7 @@ import pytest
 from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
+from flopy4.mf6.load_context import LoadContext
 
 
 def test_loads_dis_generic_simple():
@@ -433,7 +434,7 @@ def test_gnc_round_trip(dims):
         [1, 1, 2, 1, 1, 3, 1, 2, 2, 1, 2, 3, 0.25, 0.25],
         [1, 2, 2, 1, 2, 3, 1, 1, 2, 0, 0, 0, 0.5, 0.0],
     ]
-    assert structure_component(raw, Gnc, dims=dims).gncdata == gnc.gncdata
+    assert structure_component(raw, Gnc, context=LoadContext(dims=dims)).gncdata == gnc.gncdata
 
 
 def test_gnc_numalphaj_mismatch():
@@ -460,7 +461,9 @@ def test_evt_segments_round_trip():
     assert evt.nseg == 3
     raw = loads(dumps(unstructure_component(evt)))
     assert raw["PERIOD 1"][0] == [1, 1, 1, 59.0, 0.01, 6.0, 0.5, 0.9, 1.0, 0.7]
-    evt2 = structure_component(raw, Evt, dims={"nlay": 1, "nrow": 1, "ncol": 2})
+    evt2 = structure_component(
+        raw, Evt, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 2})
+    )
     assert evt2.stress_period_data == evt.stress_period_data
 
 
@@ -509,7 +512,9 @@ def test_maw_round_trip():
     )
     raw = loads(dumps(unstructure_component(maw)))
     assert raw["CONNECTIONDATA"][1] == [1, 2, 2, 1, 1, 0.0, -10.0, 1.0, 0.2]
-    maw2 = structure_component(raw, Maw, dims={"nlay": 2, "nrow": 1, "ncol": 2})
+    maw2 = structure_component(
+        raw, Maw, context=LoadContext(dims={"nlay": 2, "nrow": 1, "ncol": 2})
+    )
     assert maw2.packagedata == maw.packagedata
     assert maw2.connectiondata == maw.connectiondata
     assert maw2.stress_period_data == maw.stress_period_data
@@ -526,7 +531,9 @@ def test_hfb_round_trip():
     assert hfb.maxhfb == 2
     raw = loads(dumps(unstructure_component(hfb)))
     assert raw["PERIOD 1"][0] == [1, 1, 1, 1, 1, 2, 0.001]
-    hfb2 = structure_component(raw, Hfb, dims={"nlay": 1, "nrow": 2, "ncol": 2})
+    hfb2 = structure_component(
+        raw, Hfb, context=LoadContext(dims={"nlay": 1, "nrow": 2, "ncol": 2})
+    )
     assert hfb2.stress_period_data == hfb.stress_period_data
 
 
@@ -545,7 +552,7 @@ def test_uzf_round_trip():
     raw = loads(dumps(unstructure_component(uzf)))
     # ivertcon 1 -> 2; -1 (no underlying cell) -> 0
     assert [r[3] for r in raw["PACKAGEDATA"]] == [2, 0]
-    uzf2 = structure_component(raw, Uzf, dims={"nodes": 2})
+    uzf2 = structure_component(raw, Uzf, context=LoadContext(dims={"nodes": 2}))
     assert uzf2.packagedata == uzf.packagedata
     assert uzf2.stress_period_data == uzf.stress_period_data
 
@@ -568,7 +575,9 @@ def test_sfr_connections_round_trip():
     assert Sfr(packagedata=sfr.packagedata, connectiondata=[(0, -2), (1, 1, -3), (2, 2)]) == sfr
     raw = loads(dumps(unstructure_component(sfr)))
     assert raw["CONNECTIONDATA"] == [[1, -2], [2, 1, -3], [3, 2]]
-    sfr2 = structure_component(raw, Sfr, dims={"nlay": 1, "nrow": 1, "ncol": 3})
+    sfr2 = structure_component(
+        raw, Sfr, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 3})
+    )
     assert sfr2.connectiondata == sfr.connectiondata
 
 
@@ -611,7 +620,9 @@ def test_sfr_unconnected_reach_round_trip():
     )
     raw = loads(dumps(unstructure_component(sfr)))
     assert raw["PACKAGEDATA"][1][1] == "NONE"
-    sfr2 = structure_component(raw, Sfr, dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    sfr2 = structure_component(
+        raw, Sfr, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    )
     assert sfr2.packagedata == sfr.packagedata
 
 
@@ -883,7 +894,7 @@ def test_rcha_irch_round_trip():
     assert period[period.index(["IRCH"]) + 2] == [1, 2, 1]
     assert ["IRCH"] not in raw["PERIOD 2"]
 
-    rch2 = structure_component(raw, Rcha, dims=dims)
+    rch2 = structure_component(raw, Rcha, context=LoadContext(dims=dims))
     assert list(rch2.irch) == [0]
     assert rch2.irch[0].dtype == np.int64
     np.testing.assert_array_equal(rch2.irch[0], [0, 1, 0])
@@ -911,7 +922,7 @@ def test_welg_cleared_period_round_trip():
     cleared = text.upper().split("BEGIN PERIOD 3")[1].split("END PERIOD")[0]
     assert cleared.strip() == ""
 
-    welg2 = structure_component(loads(text), Welg, dims=dims)
+    welg2 = structure_component(loads(text), Welg, context=LoadContext(dims=dims))
     assert welg2.q[2] is None
     assert array_eq(welg2.q, welg.q)
     assert array_eq(welg2.aux, welg.aux)
@@ -958,7 +969,9 @@ BEGIN PERIOD 1
     CONSTANT 5.0
 END PERIOD
 """
-    rcha = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    rcha = structure_component(
+        loads(text), Rcha, context=LoadContext(dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    )
     assert rcha.recharge is None
     np.testing.assert_array_equal(rcha.aux[0]["recharge"], [5.0, 5.0])
 
@@ -980,16 +993,16 @@ BEGIN PERIOD 3
 END PERIOD
 """
     dims = {"nlay": 1, "nrow": 1, "ncol": 2, "ncpl": 2, "nodes": 2}
-    wel = structure_component(loads(text), Wel, dims=dims)
+    wel = structure_component(loads(text), Wel, context=LoadContext(dims=dims))
     assert list(wel.stress_period_data) == [0, 2]
     assert wel.stress_period_data[2] == []
 
     out = dumps(unstructure_component(wel))
     cleared = out.upper().split("BEGIN PERIOD 3")[1].split("END PERIOD")[0]
     assert cleared.strip() == ""
-    assert structure_component(loads(out), Wel, dims=dims).stress_period_data == (
-        wel.stress_period_data
-    )
+    assert structure_component(
+        loads(out), Wel, context=LoadContext(dims=dims)
+    ).stress_period_data == (wel.stress_period_data)
 
 
 def test_dumps_wel():
@@ -1339,7 +1352,9 @@ def test_tas_array_roundtrip():
     assert "END TIME 0.0" in dumped
     assert "BEGIN TIME 4.0" in dumped
 
-    structured = structure_component(loads(dumped), Tas, dims={"nodes": 3, "nlay": 1})
+    structured = structure_component(
+        loads(dumped), Tas, context=LoadContext(dims={"nodes": 3, "nlay": 1})
+    )
     assert structured.tas_array[0.0].tolist() == [0.02, 0.03, 0.04]
     assert structured.tas_array[4.0].tolist() == [0.05, 0.06, 0.07]
 
@@ -1355,7 +1370,9 @@ def test_tas_array_constant_roundtrip():
     dumped = dumps(COMPONENT_CONVERTER.unstructure(tas))
     assert "CONSTANT" in dumped
 
-    structured = structure_component(loads(dumped), Tas, dims={"nodes": 3, "nlay": 1})
+    structured = structure_component(
+        loads(dumped), Tas, context=LoadContext(dims={"nodes": 3, "nlay": 1})
+    )
     assert structured.tas_array[0.0].tolist() == [0.02, 0.02, 0.02]
 
 
@@ -1370,7 +1387,7 @@ def test_tas_array_ncpl_not_nodes():
     from flopy4.mf6.utl.tas import Tas
 
     loaded = {"TIME 0.0": [["INTERNAL"], [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]]}
-    structured = structure_component(loaded, Tas, dims={"nodes": 6, "nlay": 2})
+    structured = structure_component(loaded, Tas, context=LoadContext(dims={"nodes": 6, "nlay": 2}))
     assert structured.tas_array[0.0].tolist() == [0.1, 0.2, 0.3]
 
 
@@ -1961,8 +1978,6 @@ def test_file_records_roundtrip(tmp_path):
     load and on write. A record naming a child (TS6, OBS6) loads the child."""
     from pathlib import Path
 
-    from modflow_devtools.misc import set_dir
-
     from flopy4.mf6.codec.reader import loads
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
@@ -1975,8 +1990,9 @@ def test_file_records_roundtrip(tmp_path):
         "BEGIN CONTINUOUS FILEOUT w.obs.csv\n  q1 wel 1\nEND CONTINUOUS\n"
     )
     raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN 'w.obs'\nEND OPTIONS\n")
-    with set_dir(tmp_path):
-        wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    wel = structure_component(
+        raw, Wel, context=LoadContext(workspace=tmp_path, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    )
     assert isinstance(wel.obs, Obs)
     assert wel.obs.filename == Path("w.obs")
     assert wel.obs.name == "obs"  # not its block's name
@@ -1990,8 +2006,9 @@ def test_file_records_roundtrip(tmp_path):
     raw = loads(
         "BEGIN OPTIONS\n  TS6 FILEIN a.ts\n  OBS6 FILEIN w.obs\n  TS6 FILEIN b.ts\nEND OPTIONS\n"
     )
-    with set_dir(tmp_path):
-        wel = structure_component(raw, Wel, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    wel = structure_component(
+        raw, Wel, context=LoadContext(workspace=tmp_path, dims={"nlay": 1, "nodes": 10, "ncpl": 10})
+    )
     assert all(isinstance(ts, Ts) for ts in wel.ts)
     assert [ts.filename for ts in wel.ts] == [Path("a.ts"), Path("b.ts")]
     assert [ts.time_series_name.time_series_names for ts in wel.ts] == [["a"], ["b"]]
@@ -3410,7 +3427,7 @@ def test_rcha_period_aux_roundtrip():
     )
     text = dumps(unstructure_component(rch))
     assert "TEMP" not in text.split("BEGIN PERIOD 2")[1]
-    rch2 = structure_component(loads(text), Rcha, dims={"nlay": 1, "nodes": 4})
+    rch2 = structure_component(loads(text), Rcha, context=LoadContext(dims={"nlay": 1, "nodes": 4}))
     # temp's all-DNODATA period 2 isn't given: aux[kper][name]
     assert {k: sorted(v) for k, v in rch2.aux.items()} == {0: ["conc", "temp"], 1: ["conc"]}
     for kper, arrays in rch.aux.items():
@@ -3686,8 +3703,6 @@ def test_obs_ids_ignore_trailing_tokens():
 def test_obs_ids_by_parent(tmp_path):
     """A package keyed by an index (LAK) reads its OBS ids as indexes; one
     keyed by cellids (WEL) as cellids."""
-    from modflow_devtools.misc import set_dir
-
     from flopy4.mf6.codec.reader import loads
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwf import Lak, Wel
@@ -3695,9 +3710,10 @@ def test_obs_ids_by_parent(tmp_path):
     (tmp_path / "p.obs").write_text("BEGIN CONTINUOUS FILEOUT p.csv\n  o1 x 1 2\nEND CONTINUOUS\n")
     raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
     dims = {"nlay": 1, "ncpl": 10, "nodes": 10}
-    with set_dir(tmp_path):
-        lak = structure_component(raw, Lak, dims={**dims, "nrow": 2, "ncol": 5})
-        wel = structure_component(raw, Wel, dims=dims)
+    lak = structure_component(
+        raw, Lak, context=LoadContext(workspace=tmp_path, dims={**dims, "nrow": 2, "ncol": 5})
+    )
+    wel = structure_component(raw, Wel, context=LoadContext(workspace=tmp_path, dims=dims))
     (lak_row,) = lak.obs.continuous[0].continuous
     (wel_row,) = wel.obs.continuous[0].continuous
     assert (lak_row.id_, lak_row.id2) == (0, 1)
@@ -3722,16 +3738,15 @@ _DISU = {"nodes": 10}
 )
 def test_obs_ids_by_obstype(tmp_path, parent, dims, row, ids):
     """OBS ids read as the parent's observation type takes them."""
-    from modflow_devtools.misc import set_dir
-
     from flopy4.mf6 import gwf
     from flopy4.mf6.codec.reader import loads
     from flopy4.mf6.converter.ingress.structure import structure_component
 
     (tmp_path / "p.obs").write_text(f"BEGIN CONTINUOUS FILEOUT p.csv\n  o1 {row}\nEND CONTINUOUS\n")
     raw = loads("BEGIN OPTIONS\n  OBS6 FILEIN p.obs\nEND OPTIONS\n")
-    with set_dir(tmp_path):
-        pkg = structure_component(raw, getattr(gwf, parent), dims=dims)
+    pkg = structure_component(
+        raw, getattr(gwf, parent), context=LoadContext(workspace=tmp_path, dims=dims)
+    )
     (obs_row,) = pkg.obs.continuous[0].continuous
     assert (obs_row.id_, obs_row.id2) == ids
 
@@ -3778,5 +3793,5 @@ def test_options_open_close(tmp_path):
 
     (tmp_path / "npf_options.ref").write_text("SAVE_FLOWS\nPERCHED\n")
     raw = loads("BEGIN OPTIONS\n  OPEN/CLOSE npf_options.ref\nEND OPTIONS\n")
-    npf = structure_component(raw, Npf, workspace=tmp_path)
+    npf = structure_component(raw, Npf, context=LoadContext(workspace=tmp_path))
     assert npf.save_flows and npf.perched

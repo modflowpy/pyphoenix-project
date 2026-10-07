@@ -23,6 +23,7 @@ from flopy4.mf6.converter import structure, unstructure
 from flopy4.mf6.ems import Ems
 from flopy4.mf6.enums import NetCDFFormat
 from flopy4.mf6.ims import Ims
+from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.netcdf import NetCDFModel
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.tdis import Tdis
@@ -40,6 +41,7 @@ __all__ = [
     "Ems",
     "NetCDFFormat",
     "Ims",
+    "LoadContext",
     "NetCDFModel",
     "Tdis",
     "Simulation",
@@ -55,24 +57,34 @@ class WriteError(Exception):
     pass
 
 
-def _load_mf6(cls, path: Path, name: "str | None" = None) -> Component:
+def _load_mf6(
+    cls, path: Path, name: "str | None" = None, context: LoadContext | None = None
+) -> Component:
     from flopy4.mf6.converter.ingress.structure import structure_component
 
+    path = Path(path)
+    context = context or LoadContext(workspace=path.parent)
+    assert context.workspace is not None
     with open(path, "r") as fp:
         raw = load_mf6(fp)
-    instance = structure_component(raw, cls, workspace=path.parent, name=name)
+    instance = structure_component(raw, cls, context=context, name=name)
     if isinstance(instance, Context):
-        instance.workspace = path.parent
-    instance.filename = Path(path.name)
+        instance.workspace = context.workspace
+    # The file's path as an input file would name it, relative to the
+    # simulation directory (gwf/m.nam).
+    try:
+        instance.filename = path.absolute().relative_to(context.workspace.absolute())
+    except ValueError:
+        instance.filename = path
     return instance
 
 
-def _load_json(cls, path: Path, name: "str | None" = None) -> Component:
+def _load_json(cls, path: Path, name: "str | None" = None, context=None) -> Component:
     with open(path, "r") as fp:
         return structure(load_json(fp), path)
 
 
-def _load_toml(cls, path: Path, name: "str | None" = None) -> Component:
+def _load_toml(cls, path: Path, name: "str | None" = None, context=None) -> Component:
     with open(path, "rb") as fp:
         return structure(load_toml(fp), path)
 

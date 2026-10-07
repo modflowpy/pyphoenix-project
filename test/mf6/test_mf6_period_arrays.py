@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from flopy4.mf6 import TimeArraySeriesRef
+from flopy4.mf6 import LoadContext, TimeArraySeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64
 from flopy4.mf6.gwf import Rcha, Welg
 from flopy4.mf6.period_arrays import (
@@ -198,7 +198,9 @@ def test_rcha_tas_reference_round_trip():
     assert "RECHARGE TIMEARRAYSERIES rchseries" in text
     assert "CONC TIMEARRAYSERIES concseries" in text
 
-    loaded = structure_component(loads(text), Rcha, dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    loaded = structure_component(
+        loads(text), Rcha, context=LoadContext(dims={"nlay": 1, "ncpl": 2, "nodes": 2})
+    )
     assert loaded.recharge[0] == TimeArraySeriesRef("rchseries")
     assert loaded.aux[0] == {"conc": TimeArraySeriesRef("concseries")}
     np.testing.assert_array_equal(loaded.recharge[2], [0.3, 0.4])
