@@ -534,6 +534,43 @@ def test_gwf_disv_uzf(function_tmpdir):
     assert Path(function_tmpdir, "sln1.ims").is_file()
 
 
+def test_model_in_subdirectory(function_tmpdir):
+    """A model in a subdirectory runs, its output lands there, and reads
+    back. Its filenames are relative to the simulation directory."""
+    sim = Simulation(name="sub", workspace=function_tmpdir, tdis=Time(perlen=[1.0], nstp=[1]))
+    Ims(parent=sim, models=["m"])
+    gwf = Gwf(
+        parent=sim,
+        name="m",
+        filename="gwf/m.nam",
+        dis=Dis(nlay=1, nrow=10, ncol=10, top=1.0, botm=0.0, filename="gwf/m.dis"),
+    )
+    Ic(parent=gwf, filename="gwf/m.ic")
+    Npf(parent=gwf, icelltype=0, k=1.0, filename="gwf/m.npf")
+    Chd(
+        parent=gwf,
+        filename="gwf/m.chd",
+        stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9, 9), 0.0]]},
+    )
+    Oc(
+        parent=gwf,
+        filename="gwf/m.oc",
+        budget_file="gwf/m.bud",
+        head_file="gwf/m.hds",
+        stress_period_data={0: [("SAVE", "HEAD", "ALL"), ("SAVE", "BUDGET", "ALL")]},
+    )
+
+    sim.write()
+    sim.run()
+
+    assert (function_tmpdir / "gwf" / "m.hds").is_file()
+    assert (function_tmpdir / "gwf" / "m.dis.grb").is_file()
+    head = gwf.output.head
+    assert float(head.max()) == 1.0
+    assert float(head.min()) == 0.0
+    assert gwf.output.budget is not None
+
+
 def test_quickstart(function_tmpdir):
     sim_name = "quickstart"
     gwf_name = "mymodel"

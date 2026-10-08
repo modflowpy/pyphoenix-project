@@ -19,15 +19,23 @@ class GwfMethods:
         def __init__(self, parent: "Gwf"):
             self.parent = parent
 
+        def _grb_path(self) -> Path:
+            """The binary grid file: the discretization's `grb_file`, or
+            its input file's name with `.grb` appended, as MF6 names it."""
+            dis = self.parent.dis
+            grb_file = getattr(dis, "grb_file", None)
+            if grb_file is not None:
+                return self.parent.workspace / grb_file
+            return Path(f"{dis.path}.grb")  # type: ignore[union-attr]
+
         @property
         def head(self) -> xr.DataArray | xu.UgridDataArray:
             path = self.parent.workspace
-            dis_ext = type(self.parent.dis).__name__.lower()
 
             hds_fpth = None
             head_file = self.parent.oc.head_file if self.parent.oc is not None else None
             if head_file is not None:
-                fpth = path / Path(head_file).name
+                fpth = path / head_file
                 if fpth.exists():
                     hds_fpth = fpth
 
@@ -35,7 +43,7 @@ class GwfMethods:
                 # Check for output NC file configured on the model
                 nc_fname = self.parent.netcdf_mesh2d_file or self.parent.netcdf_structured_file
                 if nc_fname is not None:
-                    fpth = path / Path(nc_fname).name
+                    fpth = path / nc_fname
                     if fpth.exists():
                         hds_fpth = fpth
 
@@ -44,18 +52,17 @@ class GwfMethods:
 
             return open_hds(
                 hds_fpth,
-                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
+                self._grb_path(),
             )
 
         @property
         def budget(self) -> xr.Dataset | xu.UgridDataset:
             path = self.parent.workspace
-            dis_ext = type(self.parent.dis).__name__.lower()
 
             cbc_fpth = None
             cbc_file = self.parent.oc.budget_file if self.parent.oc is not None else None
             if cbc_file is not None:
-                fpth = path / Path(cbc_file).name
+                fpth = path / cbc_file
                 if fpth.exists():
                     cbc_fpth = fpth
 
@@ -64,7 +71,7 @@ class GwfMethods:
 
             return open_cbc(
                 cbc_fpth,
-                self.parent.workspace / f"{self.parent.name}.{dis_ext}.grb",  # type: ignore
+                self._grb_path(),
             )
 
     @property

@@ -331,9 +331,13 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @property
     def path(self) -> Path:
-        """The path to the component's input file."""
+        """The path to the component's input file: in the workspace of the
+        model or simulation it belongs to, or the cwd if none."""
         self.filename = self.filename or Path(self.default_filename())
-        return Path.cwd() / self.filename
+        node = self._parent
+        while node is not None and not hasattr(node, "workspace"):
+            node = node._parent
+        return (node.workspace if node is not None else Path.cwd()) / self.filename
 
     def default_filename(self) -> str:
         """
