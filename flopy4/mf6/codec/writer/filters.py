@@ -47,7 +47,8 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     all values are the same, so return "constant" or "internal"
     as appropriate.
     """
-    if netcdf:
+    # arrays of fields MF6 reads from NetCDF are marked by egress
+    if netcdf and value.attrs.get("netcdf", False):
         return "netcdf"
     if hasattr(value.data, "blocks"):
         # Dask-backed: stream as internal, never materialize to check constant.

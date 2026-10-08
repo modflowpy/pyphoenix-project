@@ -8,6 +8,7 @@ from typing import Any, cast, get_args, get_origin
 
 import attrs
 import numpy as np
+import numpy.typing as npt
 from modflow_devtools.dfns import dim_value
 
 from flopy4.dimensions import DimensionProvider
@@ -221,7 +222,8 @@ def _read_control_record(
         v = int(vrow[1]) if dtype == np.int64 else float(vrow[1])
         return np.full(length, v, dtype=dtype), i + 1
     if kind == "OPEN/CLOSE":
-        return _read_open_close_values(vrow, context, dtype), i + 1
+        # read only the values the array needs; a file may hold more
+        return _read_open_close_values(vrow, context, dtype)[:length], i + 1
     j = i + 1 if kind == "INTERNAL" else i
     values: list = []
     while len(values) < length and j < len(rows):
@@ -408,9 +410,11 @@ def _parse_readarray_period_block(
             continue
 
         is_int = to_field_type(f.type) == "integer"
-        is_layered = f.metadata.get("layered", False) or any(
-            str(t).upper() == "LAYERED" for t in row[1:]
-        )
+        # an array is layered only when given with LAYERED (the dfn's
+        # `layered` flag just allows it); otherwise it covers the field's
+        # whole shape, all nodes for a grid package
+        is_layered = any(str(t).upper() == "LAYERED" for t in row[1:])
+        per_node = (f.metadata.get("shape") or ("",))[-1] == "nodes"
         dtype = np.int64 if is_int else np.float64
 
         if is_layered:
@@ -428,8 +432,9 @@ def _parse_readarray_period_block(
         else:
             if i >= len(rows):
                 break
-            value, i = _read_control_record(rows, i, context, dtype, ncpl)
-            result[key] = value
+            size = nlay * ncpl if per_node else ncpl
+            value, i = _read_control_record(rows, i, context, dtype, size)
+            result[key] = np.asarray(value).reshape(nlay, ncpl) if per_node and nlay > 1 else value
         if f.metadata.get("index") and isinstance(arr := result.get(key), np.ndarray):
             result[key] = _from_file_index(arr)
 
@@ -947,8 +952,9 @@ def structure_component(
             t = unwrap_optional(f.type)
             if t is bool:
                 kwargs[init_key] = True
-            elif get_origin(t) in (list, np.ndarray):
-                # inline arrays (AUXILIARY's names), even with one element
+            elif get_origin(t) in (list, np.ndarray, npt.NDArray):
+                # inline arrays (AUXILIARY's names), even with one element; numpy
+                # >= 2.5's NDArray[X] has origin NDArray, not ndarray
                 kwargs[init_key] = list(row[1:])
             elif t is str:
                 # a numeric-looking string (e.g. a bare year for
@@ -1108,8 +1114,10 @@ def structure_component(
                     parsed = _parse_readarray_period_block(rows, lookup, dims, context)
                     for key, arr in parsed.items():
                         if key in named:
-                            f, name = named[key]
-                            named_periods.setdefault(f.name, {}).setdefault(kper, {})[name] = arr
+                            f, aux_name = named[key]
+                            named_periods.setdefault(f.name, {}).setdefault(kper, {})[aux_name] = (
+                                arr
+                            )
                         else:
                             periods.setdefault(key, {})[kper] = arr
                 kwargs.update(periods)
