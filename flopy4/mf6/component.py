@@ -113,6 +113,15 @@ def _row_children(row: Any) -> "list[Component]":
     return [c for c in children if isinstance(c, Component)]
 
 
+def _period_row_children(value: Any) -> "list[Component]":
+    """The children in a period block's rows, by period (SFR's
+    ``CROSS_SECTION TAB6 FILEIN <file>``)."""
+    if not isinstance(value, dict):
+        return []
+    rows = (row for period in value.values() if isinstance(period, list) for row in period)
+    return [c for row in rows for c in _row_children(row)]
+
+
 def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | None":
     """Find the single field on `parent_cls` that accepts `child_cls` as a
     child, by type annotation (`child_field_candidates()`).
@@ -264,6 +273,8 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         for f in fields(type(self)):
             spec = child_field_candidates(f)
             if spec is None:
+                for c in _period_row_children(getattr(self, f.name, None)):
+                    result[c.name] = c  # type: ignore[attr-defined]
                 continue
             value = getattr(self, f.name, None)
             if value is None:
@@ -297,9 +308,18 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         from flopy4.attrs_xarray import child_field_candidates
 
         used: "set[str]" = set()
+        # rows may share a child (one table file named in several places)
+        stamped: "set[int]" = set()
         for f in fields(type(self)):
             spec = child_field_candidates(f)
             if spec is None:
+                for c in _period_row_children(getattr(self, f.name, None)):
+                    if id(c) in stamped:
+                        continue
+                    stamped.add(id(c))
+                    c.__dict__["_parent"] = self
+                    c.name = _resolve_child_name(used, "list", f.alias or f.name, c)  # type: ignore[attr-defined]
+                    used.add(c.name)  # type: ignore[attr-defined]
                 continue
             value = getattr(self, f.name, None)
             if value is None:
@@ -314,6 +334,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             elif kind == "list":
                 for child in value:
                     for c in [child] if isinstance(child, Component) else _row_children(child):
+                        if id(c) in stamped:
+                            continue
+                        stamped.add(id(c))
                         c.__dict__["_parent"] = self
                         c.name = _resolve_child_name(used, kind, f.name, c)  # type: ignore[attr-defined]
                         used.add(c.name)  # type: ignore[attr-defined]

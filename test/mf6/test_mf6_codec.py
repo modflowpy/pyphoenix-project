@@ -2220,6 +2220,47 @@ def test_ssm_fileinput_children(tmp_path):
     assert "rch-1 SPC6 FILEIN rch.spc" in text
 
 
+def test_sfr_period_cross_section_children(tmp_path, monkeypatch):
+    """A period's CROSS_SECTION TAB6 file loads as an Sfrtab child, once per
+    file even when named again, and is written back with its parent."""
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.utl.sfrtab import Sfrtab
+
+    reach = "1 1 1 1 1.0 1.0 1e-3 0.0 0.1 0.0 0.03 0 1.0 0"
+    (tmp_path / "gwf.sfr").write_text(
+        f"BEGIN DIMENSIONS\n  NREACHES 1\nEND DIMENSIONS\n"
+        f"BEGIN PACKAGEDATA\n  {reach}\nEND PACKAGEDATA\n"
+        "BEGIN CROSSSECTIONS\n  1 TAB6 FILEIN a.tab\nEND CROSSSECTIONS\n"
+        "BEGIN CONNECTIONDATA\n  1\nEND CONNECTIONDATA\n"
+        "BEGIN PERIOD 2\n  1 CROSS_SECTION TAB6 FILEIN b.tab\nEND PERIOD\n"
+        "BEGIN PERIOD 3\n  1 CROSS_SECTION TAB6 FILEIN a.tab\nEND PERIOD\n"
+    )
+    for name, height in (("a.tab", 1.0), ("b.tab", 2.0)):
+        (tmp_path / name).write_text(
+            "BEGIN DIMENSIONS\n  NROW 2\n  NCOL 2\nEND DIMENSIONS\n"
+            f"BEGIN TABLE\n  0.0 {height}\n  1.0 {height}\nEND TABLE\n"
+        )
+    sfr = Sfr.load(tmp_path / "gwf.sfr", dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    a = sfr.crosssections[0].sfrtab
+    (b_row,) = sfr.stress_period_data[1]
+    (a_row,) = sfr.stress_period_data[2]
+    assert isinstance(b_row.sfrtab, Sfrtab)
+    assert b_row.sfrtab.filename == Path("b.tab")
+    assert b_row.sfrtab.table[0].height == 2.0
+    assert a_row.sfrtab is a
+    assert sorted(sfr._children) == ["crosssections0", "stress_period_data0"]
+    assert b_row.sfrtab.parent is sfr
+
+    text = dumps(COMPONENT_CONVERTER.unstructure(sfr))
+    assert "1 CROSS_SECTION TAB6 FILEIN b.tab" in text
+    assert "1 CROSS_SECTION TAB6 FILEIN a.tab" in text
+    out = tmp_path / "out"
+    out.mkdir()
+    monkeypatch.chdir(out)
+    sfr.write()
+    assert Sfrtab.load(out / "b.tab").table == b_row.sfrtab.table
+
+
 # ---------------------------------------------------------------------------
 # Record.from_tokens tests
 # ---------------------------------------------------------------------------

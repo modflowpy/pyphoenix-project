@@ -978,11 +978,13 @@ def test_dfn_link_in_row_is_child(tmp_path, all_dfns, name, column):
     assert column in "".join(spec.outpath.read_text().split())
 
 
-def test_dfn_link_in_period_setting_stays_path(tmp_path, all_dfns):
-    """SFR's period CROSS_SECTION setting still names its table file."""
+def test_dfn_link_in_period_setting_is_child(tmp_path, all_dfns):
+    """SFR's period CROSS_SECTION setting holds its table as a child."""
     skip = {n for n in all_dfns if n != "gwf-sfr"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert "tab6_filename:Path=path(" in "".join(spec.outpath.read_text().split())
+    code = "".join(spec.outpath.read_text().split())
+    assert 'classCrossSection(Item):_keyword:ClassVar[str]="cross_section"' in code
+    assert code.count('sfrtab:Sfrtab=child(keyword="tab6"') == 2
 
 
 def test_observation_forms(tmp_path, all_dfns):

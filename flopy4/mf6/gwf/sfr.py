@@ -154,7 +154,7 @@ class Sfr(Package):
     class CrossSection(Item):
         _keyword: ClassVar[str] = "cross_section"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        tab6_filename: Path = path(converter=Path, direction="in", keyword="tab6")
+        sfrtab: Sfrtab = child(keyword="tab6", direction="in", default=attrs.NOTHING)
 
     @attrs.define
     class Auxiliary(Item):

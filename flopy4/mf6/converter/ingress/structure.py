@@ -59,7 +59,12 @@ def _parse_rows(
         return None
     if isinstance(item_cls, tuple):
         return parse_union_items(
-            rows, item_cls, sizes=sizes, boundnames=boundnames, dims=dict(context.dims)
+            rows,
+            item_cls,
+            sizes=sizes,
+            boundnames=boundnames,
+            dims=dict(context.dims),
+            load_child=load_child,
         )
     ncelldim = context.ncelldim(item_cls, rows, sizes=sizes)
     result = [
@@ -978,10 +983,16 @@ def structure_component(
     union_arm = _union_arm(context.parent)
     union_forms = _union_forms(context.parent)
 
+    loaded_children: dict[Path, Any] = {}
+
     def load_child(f: Any, token: str) -> Any:
-        """A row's child column (LAK's TAB6 file), loaded from its file."""
+        """A row's child column (LAK's TAB6 file), loaded from its file,
+        once per file (SFR's periods may name one table again)."""
         path = Path(_strip_quotes(token))
-        return _load_file_child(f, path, attrs.evolve(rows_context, parent=cls))
+        if path not in loaded_children:
+            context = attrs.evolve(rows_context, parent=cls)
+            loaded_children[path] = _load_file_child(f, path, context)
+        return loaded_children[path]
 
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
@@ -1057,6 +1068,7 @@ def structure_component(
                     context=rows_context,
                     union_arm=union_arm,
                     union_forms=union_forms,
+                    load_child=load_child,
                 )
                 if row_list is not None:
                     spd[kper] = row_list
