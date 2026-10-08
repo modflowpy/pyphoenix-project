@@ -2,12 +2,15 @@ name: Docs
 
 on:
   push:
+    branches:
+      - main
+      - develop
     paths-ignore:
       - '**.md'
       - '.gitignore'
   pull_request:
     branches:
-      - master
+      - main
       - develop
     paths-ignore:
       - '**.md'
