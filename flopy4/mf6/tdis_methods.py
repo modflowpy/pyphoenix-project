@@ -66,7 +66,7 @@ class TdisMethods:
 
     @classmethod
     def from_timestamps(  # type: ignore[misc]
-        cls: type["Tdis"],
+        cls: type["Tdis"],  # pyright: ignore[reportGeneralTypeIssues]
         timestamps: ArrayLike,
         nstp: Optional[ArrayLike] = None,
         tsmult: Optional[ArrayLike] = None,

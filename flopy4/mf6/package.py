@@ -455,6 +455,7 @@ class Package(Component, ABC):
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         self._sync_dims()
         self._check_tas_refs()
+        self._check_ts_refs()
         self._name_file_children()
         super().write(format=format, context=context)
 
@@ -462,12 +463,9 @@ class Package(Component, ABC):
         """Raise if a time-array series reference names a series none of
         the package's TAS6 files define, which MF6 would fail on."""
         defined: set[str] = set()
-        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            value = getattr(self, f.name) if f.metadata.get("child") else None
-            children: list[Any] = value if isinstance(value, list) else [value]
-            for child in children:
-                if getattr(child, "dfn_name", None) == "utl-tas" and child.time_series_name:
-                    defined |= {n.lower() for n in child.time_series_name.time_series_name}
+        for child in self._children_of("utl-tas"):
+            if child.time_series_name:
+                defined |= {n.lower() for n in child.time_series_name.time_series_name}
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
             if not f.metadata.get("time_series") or not f.metadata.get("fill_forward"):
                 continue
@@ -479,6 +477,39 @@ class Package(Component, ABC):
                             f"time-array series {r.name!r}, which no TAS6 file defines "
                             f"(defined: {sorted(defined) or 'none'})"
                         )
+
+    def _check_ts_refs(self) -> None:
+        """Raise if a row's time-series column names a series none of the
+        package's TS6 files define, which MF6 would fail on."""
+        defined: set[str] = set()
+        for child in self._children_of("utl-ts"):
+            if child.time_series_name:
+                defined |= {n.lower() for n in child.time_series_name.time_series_names}
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if item_list_type(f.type) is None:
+                continue
+            value = getattr(self, f.name)
+            periods = value if isinstance(value, dict) else {None: value}
+            for kper, rows in periods.items():
+                for row in rows or []:
+                    for name in _ts_names(row):
+                        if name.lower() not in defined:
+                            where = f" period {kper}" if kper is not None else ""
+                            raise ValueError(
+                                f"{type(self).__name__}.{f.name.lstrip('_')}:{where} "
+                                f"names time series {name!r}, which no TS6 file "
+                                f"defines (defined: {sorted(defined) or 'none'})"
+                            )
+
+    def _children_of(self, dfn_name: str) -> list[Any]:
+        """The package's children with the given DFN name."""
+        found = []
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            value = getattr(self, f.name) if f.metadata.get("child") else None
+            for child in value if isinstance(value, list) else [value]:
+                if getattr(child, "dfn_name", None) == dfn_name:
+                    found.append(child)
+        return found
 
     def _name_file_children(self) -> None:
         """Give each child named by a file record (DIS's ``NCF6 FILEIN
@@ -751,3 +782,18 @@ class Package(Component, ABC):
             if data_vars:
                 return xr.Dataset(data_vars)
         return super().to_xarray()  # type: ignore[return-value]
+
+
+def _ts_names(row: Any) -> list[str]:
+    """The time-series names a table row uses: the strings in its
+    time-series columns, including in its nested union arms (not its
+    child files, which check their own)."""
+    names: list[str] = []
+    for f in attrs.fields(type(row)):
+        value = getattr(row, f.name)
+        if f.metadata.get("time_series"):
+            values = value if isinstance(value, tuple) else (value,)
+            names += [v for v in values if isinstance(v, str)]
+        elif isinstance(value, Item):
+            names += _ts_names(value)
+    return names

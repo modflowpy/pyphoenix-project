@@ -49,26 +49,28 @@ class LoadContext:
         sizes: Mapping[str, int] | None = None,
     ) -> int | Mapping[str, int]:
         """The width of `item_cls`'s cellids in `rows`. Under an exchange,
-        each cellid column's, by name, from its own model's grid (see
-        `Exchange.cellid_models`). Otherwise from the dims if they say,
-        else from the rows."""
-        cellids = [f.name for f in item_cls.fields() if f.metadata.get("cellid")]
+        each cellid column's, by name, from the grid of the model the
+        column refers to (its ``cellid`` metadata: ``"1"`` for
+        ``exgmnamea``, ``"2"`` for ``exgmnameb``, from the DFN). Otherwise
+        from the dims if they say, else from the rows."""
+        cellids = {
+            f.name: f.metadata["cellid"] for f in item_cls.fields() if f.metadata.get("cellid")
+        }
         widths = self._exchange_widths()
-        if cellids and widths and all(name in widths for name in cellids):
-            return {name: widths[name] for name in cellids}
+        if cellids and widths and all(model in widths for model in cellids.values()):
+            return {name: widths[model] for name, model in cellids.items()}
         return infer_ncelldim(rows, item_cls, sizes=sizes, dims=dict(self.dims))
 
     def _exchange_widths(self) -> dict[str, int] | None:
-        """Each exchange cellid column's width, or None if not under an
-        exchange or either model has no discretization package."""
-        from flopy4.mf6.exchange import Exchange
-
+        """The cellid width of each model the exchange connects, keyed
+        as a cellid column names it (``"1"``, ``"2"``), or None if not
+        under an exchange or either model has no discretization package."""
         if self.exchange is None:
             return None
-        widths = []
-        for model in self.exchange:
+        widths = {}
+        for key, model in zip(("1", "2"), self.exchange):
             dis: Any = getattr(model, "dis", None)
             if dis is None or (width := dis.get_dims().get("ncelldim")) is None:
                 return None
-            widths.append(width)
-        return {col: widths[side] for col, side in Exchange.cellid_models.items()}
+            widths[key] = width
+        return widths

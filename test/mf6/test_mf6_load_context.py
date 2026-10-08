@@ -5,7 +5,7 @@ import pytest
 
 from flopy4.mf6 import LoadContext
 from flopy4.mf6.exg.gwfgwf import Gwfgwf
-from flopy4.mf6.gwf import Chd
+from flopy4.mf6.gwf import Chd, Gnc
 
 
 def _model(ncelldim: int | None):
@@ -43,6 +43,13 @@ def test_ncelldim_per_column_under_exchange():
     context = LoadContext(dims={"nodes": 4}, exchange=(_model(3), _model(2)))
     rows = [[1, 1, 2, 1, 1, 1, 0.5, 0.5, 1.0]]
     assert context.ncelldim(Gwfgwf.Exchangedata, rows) == {"cellidm1": 3, "cellidm2": 2}
+
+
+def test_ncelldim_gnc_columns_under_exchange():
+    """GNC's columns refer to models 1, 2 and 1, so position can't say."""
+    context = LoadContext(exchange=(_model(3), _model(1)))
+    rows = [[1, 1, 1, 5, 1, 1, 2, 0.5]]
+    assert context.ncelldim(Gnc.Gncdata, rows) == {"cellidn": 3, "cellidm": 1, "cellidsj": 3}
 
 
 def test_ncelldim_under_exchange_without_dis_from_rows():

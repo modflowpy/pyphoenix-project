@@ -504,6 +504,28 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns):
     assert any("index=True" in col.rhs for col in pd_schema)
 
 
+@pytest.mark.parametrize(
+    "name,item,expected",
+    [
+        ("exg-gwfgwf", "Exchangedata", {"cellidm1": "1", "cellidm2": "2"}),
+        ("exg-gwtgwt", "Exchangedata", {"cellidm1": "1", "cellidm2": "2"}),
+        ("gwf-gnc", "Gncdata", {"cellidn": "1", "cellidm": "2", "cellidsj": "1"}),
+        ("gwf-chd", "StressPeriodData", {"cellid": True}),
+    ],
+)
+def test_cellid_model_from_dfn(all_dfns, name, item, expected):
+    """Each cellid column says which model's grid it refers to, as the
+    DFN does: "1"/"2" for an exchange's first/second model, True for the
+    component's own."""
+    if name not in all_dfns:
+        pytest.skip(f"{name} not in DFN set")
+    spec = build_component_spec(all_dfns[name], root=Path("/fake"))
+    schema = {ic.class_name: ic for ic in spec.item_classes}[item].schema
+    rhs = {col.name: col.rhs for col in schema}
+    for column, model in expected.items():
+        assert f"cellid={model!r}".replace("'", '"') in rhs[column]
+
+
 def test_mvr_list_fields_expanded_and_optional(all_dfns):
     """gwf-mvr period data is emitted as a single stress_period_data recarray field."""
     if "gwf-mvr" not in all_dfns:
