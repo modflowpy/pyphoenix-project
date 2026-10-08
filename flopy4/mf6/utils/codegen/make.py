@@ -258,7 +258,7 @@ def _item_columns(
                 name,
                 count,
                 dfn_type,
-                cellid=col.is_cellid,
+                cellid=col.cellid,
                 index=col.is_index and not col.is_cellid,
                 signed=f.index == "signed",
                 optional=optional or name in counted_by,
@@ -266,7 +266,7 @@ def _item_columns(
             )
         elif col.is_cellid:
             item = filters.attr_column(
-                name, "tuple", {"cellid": True}, optional=optional, time_series=ts
+                name, "tuple", {"cellid": col.cellid}, optional=optional, time_series=ts
             )
         elif col.is_index:
             fk = getattr(f, "fk", None)

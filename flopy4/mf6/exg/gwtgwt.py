@@ -25,8 +25,8 @@ class Gwtgwt(Exchange):
 
     @attrs.define
     class Exchangedata(Item):
-        cellidm1: tuple = field(cellid=True)
-        cellidm2: tuple = field(cellid=True)
+        cellidm1: tuple = field(cellid="1")
+        cellidm2: tuple = field(cellid="2")
         ihc: int = field()
         cl1: float = field()
         cl2: float = field()

@@ -61,7 +61,7 @@ def field(
     index: bool = False,
     pk: bool = False,
     fk: str | None = None,
-    cellid: bool = False,
+    cellid: bool | Literal["1", "2"] = False,
     tagged: bool = False,
     array: bool = False,
     signed: bool = False,
@@ -106,7 +106,7 @@ def field(
     if fk:
         metadata["fk"] = fk
     if cellid:
-        metadata["cellid"] = True
+        metadata["cellid"] = cellid
     if tagged:
         metadata["tagged"] = True
     if array:

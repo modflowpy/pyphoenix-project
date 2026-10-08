@@ -494,6 +494,51 @@ def test_ts_names_mismatch():
         )
 
 
+def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
+    """Writing checks that each name in a time-series column, aux and
+    keystring rows included, is a series the package's TS6 files define,
+    in any case, as MF6 needs."""
+    from flopy4.mf6.gwf import Chd, Maw
+    from flopy4.mf6.utl import Ts
+
+    monkeypatch.chdir(function_tmpdir)
+
+    def ts(name):
+        return Ts(
+            time_series_name=Ts.TimeSeriesName(time_series_names=[name]),
+            interpolation_method=Ts.InterpolationMethod(interpolation_method=["linear"]),
+            timeseries=[(0.0, (1.0,)), (10.0, (2.0,))],
+        )
+
+    chd = Chd(
+        auxiliary=["conc"],
+        stress_period_data={0: [Chd.StressPeriodData(cellid=(0, 0, 0), head="HeadSeries")]},
+        ts=[ts("headseries")],
+        filename=function_tmpdir / "gwf.chd",
+    )
+    chd.write()
+
+    chd.stress_period_data = {
+        0: [Chd.StressPeriodData(cellid=(0, 0, 0), head=1.0, aux=("concseries",))]
+    }
+    with pytest.raises(
+        ValueError, match=r"stress_period_data: period 0 names .*'concseries'.*\['headseries'\]"
+    ):
+        chd.write()
+
+    maw = Maw(
+        packagedata=[(0, 0.1, -10.0, 5.0, "THIEM", 1)],
+        connectiondata=[(0, 0, (0, 0, 0), 0.0, -10.0, 1.0, 0.2)],
+        stress_period_data={0: [Maw.Rate(ifno=0, rate="pumping")]},
+        filename=function_tmpdir / "gwf.maw",
+    )
+    with pytest.raises(ValueError, match=r"'pumping'.*none"):
+        maw.write()
+    maw.ts.append(ts("pumping"))
+    maw.write()
+    assert "pumping" in (function_tmpdir / "gwf.maw").read_text()
+
+
 def test_maw_round_trip():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
