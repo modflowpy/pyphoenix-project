@@ -2,7 +2,7 @@ from abc import ABC
 from collections.abc import MutableMapping
 from os import PathLike
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 import attrs
 from attrs import fields
@@ -12,6 +12,9 @@ from flopy4.mf6.constants import MF6
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
+
+if TYPE_CHECKING:
+    from flopy4.mf6.load_context import LoadContext
 
 FNAMES: "dict[str, type[Component]]" = {}
 """MF6 component name (e.g. 'gwf-dis') -> component class."""
@@ -501,15 +504,24 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     @classmethod
     def load(
-        cls, path: str | PathLike, format: str = MF6, name: "str | None" = None
+        cls,
+        path: str | PathLike,
+        format: str = MF6,
+        name: "str | None" = None,
+        *,
+        context: "LoadContext | None" = None,
     ) -> "Component":
         """Load a component from a file.
 
         `name`, if given, overrides the default auto-assigned name (e.g.
         a namefile binding row's pname, threaded down by a parent's
         `_resolve_bindings` call when loading this component as a child).
+        `context` says where the file sits in the simulation (see
+        `LoadContext`). By default, relative paths in it resolve against
+        its own directory; to load a model on its own, give the
+        simulation directory as the context's workspace.
         """
-        return cls._load(path, format=format, name=name)
+        return cls._load(path, format=format, name=name, context=context)
 
     def write(self, format: str = MF6, context: Optional[WriteContext] = None) -> None:
         """

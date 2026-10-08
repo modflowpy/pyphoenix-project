@@ -230,3 +230,114 @@ def test_load_disambiguates_ga_variant(tmp_path):
 
     assert len(gwf.chd) == 1
     assert isinstance(gwf.chd[0], Chdg)
+
+
+def test_load_exchange_between_grids(tmp_path):
+    """An exchange's cellids each take their own model's grid width: a
+    DIS (3) model and a DISV (2) one, including the exchange's GNC."""
+    from flopy4.mf6.exg.gwfgwf import Gwfgwf
+    from flopy4.mf6.gwf import Disv, Gnc
+
+    sim = Simulation(name="mx", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    Gwf(
+        parent=sim,
+        name="a",
+        dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0),
+    )
+    Gwf(
+        parent=sim,
+        name="b",
+        dis=Disv(
+            nlay=1,
+            ncpl=1,
+            nvert=4,
+            top=1.0,
+            botm=0.0,
+            vertices=[(0, 0.0, 0.0), (1, 1.0, 0.0), (2, 1.0, 1.0), (3, 0.0, 1.0)],
+            cell2d=[(0, 0.5, 0.5, 4, (0, 1, 2, 3))],
+        ),
+    )
+    Gwfgwf(
+        parent=sim,
+        name="ab",
+        exgmnamea="a",
+        exgmnameb="b",
+        exchangedata=[((0, 0, 1), (0, 0), 1, 0.5, 0.5, 1.0)],
+        gnc=Gnc(gncdata=[((0, 0, 1), (0, 0), ((0, 1, 1),), (0.5,))]),
+    )
+    sim.write()
+
+    exg = next(iter(Simulation.load(tmp_path / "mfsim.nam").exchanges.values()))
+
+    (row,) = exg.exchangedata
+    assert (row.cellidm1, row.cellidm2) == ((0, 0, 1), (0, 0))
+    assert (row.ihc, row.cl1, row.cl2, row.hwva) == (1, 0.5, 0.5, 1.0)
+    assert exg.gnc is not None
+    (gnc_row,) = exg.gnc.gncdata
+    assert (gnc_row.cellidn, gnc_row.cellidm, gnc_row.cellidsj) == ((0, 0, 1), (0, 0), ((0, 1, 1),))
+    assert gnc_row.alphasj == (0.5,)
+
+
+@pytest.fixture()
+def subdir_sim(tmp_path):
+    """A simulation whose model lives in a subdirectory, as MF6 allows:
+    every path in every file is relative to the simulation directory
+    (``GWF6 gwf/m.nam``, ``DIS6 gwf/m.dis``, ``OPEN/CLOSE gwf/k.txt``)."""
+    workspace = tmp_path / "sim"
+    workspace.mkdir()
+    sim = Simulation(name="sub", workspace=workspace, tdis=Time(perlen=[1.0], nstp=[1]))
+    gwf = Gwf(
+        parent=sim,
+        name="m",
+        filename="gwf/m.nam",
+        dis=Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0),
+    )
+    gwf.dis.filename = "gwf/m.dis"
+    gwf.npf = Npf(k=1.0, filename="gwf/m.npf")
+    sim.write()
+    npf = workspace / "gwf" / "m.npf"
+    npf.write_text(npf.read_text().replace("CONSTANT 1.0", "OPEN/CLOSE gwf/k.txt"))
+    (workspace / "gwf" / "k.txt").write_text("1.0 2.0 3.0 4.0\n")
+    return workspace
+
+
+def test_load_model_in_subdirectory(subdir_sim, tmp_path, monkeypatch):
+    """Paths resolve against the simulation directory, not the file naming
+    them nor the cwd."""
+    monkeypatch.chdir(tmp_path)
+
+    gwf = Simulation.load(subdir_sim / "mfsim.nam").models["m"]
+
+    assert isinstance(gwf.dis, Dis)
+    assert gwf.dis.get_dims()["nodes"] == 4
+    np.testing.assert_array_equal(np.ravel(gwf.npf.k), [1.0, 2.0, 3.0, 4.0])
+    assert gwf.filename.as_posix() == "gwf/m.nam"
+    assert gwf.dis.filename.as_posix() == "gwf/m.dis"
+    assert gwf.workspace == subdir_sim
+
+
+def test_write_model_in_subdirectory(subdir_sim, tmp_path):
+    """Writing a loaded simulation keeps its layout."""
+    sim = Simulation.load(subdir_sim / "mfsim.nam")
+    (tmp_path / "copy").mkdir()
+    sim.workspace = tmp_path / "copy"
+    sim.write()
+
+    assert (tmp_path / "copy" / "gwf" / "m.nam").is_file()
+    assert (tmp_path / "copy" / "gwf" / "m.dis").is_file()
+    gwf = Simulation.load(tmp_path / "copy" / "mfsim.nam").models["m"]
+    assert gwf.filename.as_posix() == "gwf/m.nam"
+    assert gwf.dis.filename.as_posix() == "gwf/m.dis"
+    assert gwf.dis.get_dims()["nodes"] == 4
+
+
+def test_load_model_alone_in_simulation(subdir_sim):
+    """A model loads on its own given the simulation directory to resolve
+    its paths against."""
+    from flopy4.mf6 import LoadContext
+
+    gwf = Gwf.load(subdir_sim / "gwf" / "m.nam", context=LoadContext(workspace=subdir_sim))
+
+    assert gwf.dis.get_dims()["nodes"] == 4
+    np.testing.assert_array_equal(np.ravel(gwf.npf.k), [1.0, 2.0, 3.0, 4.0])
+    assert gwf.filename.as_posix() == "gwf/m.nam"

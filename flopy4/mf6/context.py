@@ -52,16 +52,6 @@ class Context(Component, ABC):
         self.filename = self.filename or Path(self.default_filename())
         return self.workspace / self.filename
 
-    @classmethod
-    def load(cls, path, format=MF6, name=None):
-        """
-        Load a context from a file.
-
-        `name`, if given, overrides the default auto-assigned name.
-        """
-        with cd(Path(path).parent):
-            return cls._load(path, format=format, name=name)
-
     def write(self, format=MF6, context=None):
         with cd(self.workspace):
             super().write(format=format, context=context)

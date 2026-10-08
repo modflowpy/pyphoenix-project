@@ -17,11 +17,11 @@ from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
     dim_lookup,
-    infer_ncelldim,
     item_list_type,
     parse_union_items,
     sized_by,
 )
+from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
@@ -46,19 +46,22 @@ def _parse_rows(
     rows: list,
     item_cls: "type[Item] | tuple[type[Item], ...]",
     *,
+    context: LoadContext,
     sizes: "dict[str, int] | None" = None,
     boundnames: bool = False,
-    dims: "dict | None" = None,
     union_arm: str = "cellid",
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
     load_child: Callable[[Any, str], Any] | None = None,
 ) -> list | None:
-    """Parse lists of tokens (rows) into a list of Items."""
+    """Parse lists of tokens (rows) into a list of Items, their cellids'
+    widths per the context (see `LoadContext.ncelldim`)."""
     if not rows:
         return None
     if isinstance(item_cls, tuple):
-        return parse_union_items(rows, item_cls, sizes=sizes, boundnames=boundnames, dims=dims)
-    ncelldim = infer_ncelldim(rows, item_cls, sizes=sizes, dims=dims)
+        return parse_union_items(
+            rows, item_cls, sizes=sizes, boundnames=boundnames, dims=dict(context.dims)
+        )
+    ncelldim = context.ncelldim(item_cls, rows, sizes=sizes)
     result = [
         item_cls.from_tokens(
             row,
@@ -118,7 +121,7 @@ def _strip_quotes(fname: str) -> str:
     return fname
 
 
-def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.ndarray:
+def _read_open_close_values(vrow: list, context: LoadContext, dtype) -> np.ndarray:
     """Read an ``OPEN/CLOSE <fname> [(BINARY)] [FACTOR <f>] [IPRN <i>]``
     griddata control record's referenced file.
 
@@ -133,10 +136,7 @@ def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.n
     tokens = [str(t) for t in vrow[1:]]
     if not tokens:
         raise ValueError("OPEN/CLOSE control record missing a filename")
-    fname = _strip_quotes(tokens[0])
-    if workspace is None:
-        raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
-    path = workspace / fname
+    path = context.resolve(_strip_quotes(tokens[0]))
 
     if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
         values = _read_binary_array_values(path, dtype)
@@ -152,7 +152,7 @@ def _read_open_close_values(vrow: list, workspace: "Path | None", dtype) -> np.n
     return values
 
 
-def _resolve_open_close_rows(rows: list, workspace: "Path | None") -> list:
+def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
     """A block's row data can itself be OPEN/CLOSE-redirected
     to an external file instead of written inline -- MF6 syntax:
     ``BEGIN PERIOD 1 / OPEN/CLOSE <fname> / END PERIOD 1``. Same keyword as
@@ -171,13 +171,11 @@ def _resolve_open_close_rows(rows: list, workspace: "Path | None") -> list:
     row = rows[0]
     if len(row) < 2:
         raise ValueError("OPEN/CLOSE control record missing a filename")
-    fname = _strip_quotes(str(row[1]))
-    if workspace is None:
-        raise ValueError(f"OPEN/CLOSE {fname}: no workspace to resolve the referenced file")
+    path = context.resolve(_strip_quotes(str(row[1])))
 
     from flopy4.mf6.codec.reader import loads as _codec_loads
 
-    text = (workspace / fname).read_text()
+    text = path.read_text()
     wrapped = _codec_loads(f"BEGIN DATA\n{text}\nEND DATA\n")
     return wrapped.get("DATA", [])
 
@@ -204,7 +202,7 @@ def _numeric_prefix(row: list) -> list:
 
 
 def _read_control_record(
-    rows: list, i: int, workspace: "Path | None", dtype, length: int
+    rows: list, i: int, context: LoadContext, dtype, length: int
 ) -> "tuple[np.ndarray, int]":
     """Read one CONSTANT/INTERNAL/OPEN-CLOSE array control record starting
     at ``rows[i]``, shared by array blocks (`_parse_array_block`) and
@@ -223,7 +221,7 @@ def _read_control_record(
         v = int(vrow[1]) if dtype == np.int64 else float(vrow[1])
         return np.full(length, v, dtype=dtype), i + 1
     if kind == "OPEN/CLOSE":
-        return _read_open_close_values(vrow, workspace, dtype), i + 1
+        return _read_open_close_values(vrow, context, dtype), i + 1
     j = i + 1 if kind == "INTERNAL" else i
     values: list = []
     while len(values) < length and j < len(rows):
@@ -252,9 +250,7 @@ def _griddata_flat_length(f, dims: dict, default: int) -> int:
     return default
 
 
-def _parse_array_block(
-    rows: list, fields_by_name: dict, dims: dict, workspace: "Path | None" = None
-) -> dict:
+def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: LoadContext) -> dict:
     """Parse an array block's (GRIDDATA, DISU's CONNECTIONDATA) token rows
     into {field_name: np.ndarray}.
 
@@ -310,7 +306,7 @@ def _parse_array_block(
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                value, i = _read_control_record(rows, i, workspace, dtype, record_len)
+                value, i = _read_control_record(rows, i, context, dtype, record_len)
                 layers.append(value)
             if layers:
                 # A single-record LAYERED field (see above) is really a
@@ -325,7 +321,7 @@ def _parse_array_block(
             if i >= len(rows):
                 break
             length = _griddata_flat_length(f, dims, nodes)
-            value, i = _read_control_record(rows, i, workspace, dtype, length)
+            value, i = _read_control_record(rows, i, context, dtype, length)
             result[f.name] = value
         if f.metadata.get("index") and f.name in result:
             result[f.name] = _from_file_index(result[f.name])
@@ -356,7 +352,7 @@ def _names(value: Any) -> list[str]:
 
 
 def _parse_readarray_period_block(
-    rows: list, ra_fields: dict, dims: dict, workspace: "Path | None" = None
+    rows: list, ra_fields: dict, dims: dict, context: LoadContext
 ) -> "dict[str, np.ndarray | TimeArraySeriesRef]":
     """Arrays by the (lowercase) name they're written under: a field's
     name, or an auxiliary variable's, for its named array (see Pass 3b). A
@@ -406,9 +402,9 @@ def _parse_readarray_period_block(
                         "OPEN/CLOSE",
                     ):
                         break
-                    _, i = _read_control_record(rows, i, workspace, np.float64, ncpl)
+                    _, i = _read_control_record(rows, i, context, np.float64, ncpl)
             elif i < len(rows):
-                _, i = _read_control_record(rows, i, workspace, np.float64, ncpl)
+                _, i = _read_control_record(rows, i, context, np.float64, ncpl)
             continue
 
         is_int = to_field_type(f.type) == "integer"
@@ -423,7 +419,7 @@ def _parse_readarray_period_block(
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
+                value, i = _read_control_record(rows, i, context, dtype, ncpl)
                 layers.append(value)
             if layers:
                 if len(layers) < nlay:
@@ -432,7 +428,7 @@ def _parse_readarray_period_block(
         else:
             if i >= len(rows):
                 break
-            value, i = _read_control_record(rows, i, workspace, dtype, ncpl)
+            value, i = _read_control_record(rows, i, context, dtype, ncpl)
             result[key] = value
         if f.metadata.get("index") and isinstance(arr := result.get(key), np.ndarray):
             result[key] = _from_file_index(arr)
@@ -469,7 +465,17 @@ def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) ->
     return candidates[0]
 
 
-def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, Any]:
+def _exchange_models(model_names: list, models: Mapping[str, Any]) -> tuple[Any, Any] | None:
+    """The models an exchange row names, looked up case-insensitively
+    (as MF6 does) among those loaded so far, or None if either isn't."""
+    by_name = {str(name).lower(): model for name, model in models.items()}
+    found = [by_name.get(str(name).lower()) for name in model_names[:2]]
+    if len(found) < 2 or None in found:
+        return None
+    return found[0], found[1]
+
+
+def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[str, Any]:
     """Resolve packages/models/exchanges/solutiongroup-style binding rows
     into loaded child component instances, keyed by field name -- merged
     into `structure_component`'s kwargs so children are attached the same
@@ -480,9 +486,11 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
     this same job), grouped by block name since several fields can share one
     block (every `Gwf` package field shares `"packages"`). Within a block,
     `DimensionProvider` targets (`dis`/`disv`/`disu`) are resolved first so
-    their dims can be threaded into that block's other `Package.load(...,
-    dims=dims)` calls -- `dimensions.py`'s object-graph walk only helps once
-    a child is already attached, not while its siblings are still loading.
+    their dims can be threaded into the context of that block's other
+    children -- `dimensions.py`'s object-graph walk only helps once a child
+    is already attached, not while its siblings are still loading. An
+    exchange's context gets the models it connects, from the models block,
+    loaded before the exchanges block (field order).
     """
     from flopy4.attrs_xarray import child_field_candidates
     from flopy4.mf6.converter.binding import component_ftype
@@ -552,7 +560,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 concrete = [c for c in accepted if ABC not in c.__bases__]
                 matches = [c for c in concrete if component_ftype(c).lower() == token]
                 if len(matches) > 1:
-                    target_cls = _disambiguate_ga_variant(matches, workspace / str(row[1]))
+                    target_cls = _disambiguate_ga_variant(matches, context.resolve(str(row[1])))
                 elif matches:
                     target_cls = matches[0]
                 else:
@@ -596,11 +604,17 @@ def _resolve_bindings(cls: type, raw_lower: dict, workspace: Path) -> dict[str, 
                 if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
                 else None
             )
-            child = (
-                target_cls.load(workspace / fname, dims=dims, name=pname)
-                if issubclass(target_cls, Package)
-                else target_cls.load(workspace / fname, name=pname)
+            child_context = attrs.evolve(
+                context,
+                dims=dims,
+                parent=None,
+                exchange=(
+                    _exchange_models(row[2:], kwargs.get("models", {}))
+                    if issubclass(target_cls, Exchange)
+                    else None
+                ),
             )
+            child = target_cls.load(context.resolve(fname), name=pname, context=child_context)
             child.filename = Path(fname)
             _apply_binding_terms(child, row[2:])
             if isinstance(child, DimensionProvider):
@@ -654,25 +668,22 @@ def _union_arm(parent: "type | None") -> str:
     return "cellid"
 
 
-def _load_file_child(
-    field: Any, path: Path, workspace: Path | None, dims: dict | None, parent: type
-) -> Any:
+def _load_file_child(field: Any, path: Path, context: LoadContext) -> Any:
     """Load the child a file record or row names (DIS's ``NCF6 FILEIN
     <path>``, LAK's ``ifno TAB6 FILEIN <path>``), picking SPC or SPCA by
-    the file's content. Like mf6, resolve the path against the working directory, which loading
-    a simulation sets to its workspace; failing that, against the parent
-    file's directory (`workspace`), for a package loaded on its own."""
+    the file's content. Like MF6, the path resolves against the
+    simulation directory (the context's workspace), not the directory of
+    the file naming it. `context` is the child's: its parent is the class
+    whose file names it."""
     from flopy4.attrs_xarray import child_field_candidates
 
     spec = child_field_candidates(field)
     assert spec is not None
-    file = Path.cwd() / path
-    if not file.exists() and workspace is not None:
-        file = workspace / path
+    file = context.resolve(path)
     candidates = list(spec[1])
     child_cls = _disambiguate_ga_variant(candidates, file) if len(candidates) > 1 else candidates[0]
     assert issubclass(child_cls, Package)
-    child = child_cls.load(file, dims=dims, parent=parent)
+    child = child_cls.load(file, context=context)
     child.filename = path
     return child
 
@@ -697,10 +708,8 @@ def structure_component(
     raw: dict,
     cls: type,
     *,
-    dims: dict | None = None,
-    workspace: Path | None = None,
+    context: LoadContext | None = None,
     name: str | None = None,
-    parent: type | None = None,
 ) -> Any:
     """Reconstruct a component instance from a raw parsed MF6 input dict.
 
@@ -711,32 +720,30 @@ def structure_component(
     cls : type
         The component class to instantiate. Fields are read via ``block``/
         ``schema``/``oc_action`` metadata (see ``flopy4.mf6.spec.field``).
-    dims : dict, optional
-        Grid dimensions (e.g. {"nlay": 3, "nodes": 675}) used to resolve
-        GRIDDATA array shapes.  Required for packages with griddata fields.
-    workspace : Path, optional
-        Directory binding-shaped fields' (packages/models/exchanges/
-        solutiongroup) relative filenames are resolved against, and each
-        loaded child recursively loaded from. Required only for classes
-        that actually have such fields (see `_resolve_bindings`); unused
-        for leaf `Package` classes, which have none.
+    context : LoadContext, optional
+        Where the file sits in the simulation: the workspace relative
+        paths resolve against, the grid dims (e.g. {"nlay": 3, "nodes":
+        675}) array shapes and cellid widths come from, the class of the
+        component whose file named this one (see `_union_arm`), and the
+        models an exchange connects. Its children's contexts derive from
+        it. Without one, there are no dims and no workspace, so a file
+        that names others (a namefile, OPEN/CLOSE) can't be read.
     name : str, optional
         Explicit component name (e.g. a namefile binding row's pname),
         overriding the component's default auto-assigned name. Not
         derivable from the file's own content -- passed down by a
         parent's `_resolve_bindings` call when loading this component
         as a child.
-    parent : type, optional
-        The class of the component whose file named this one, if any (see
-        `_union_arm`).
 
     Returns
     -------
     Component instance.
     """
 
+    context = context or LoadContext()
+    dims = dict(context.dims)
     raw_lower = {k.lower(): v for k, v in raw.items()}
-    binding_kwargs = _resolve_bindings(cls, raw_lower, workspace) if workspace else {}
+    binding_kwargs = _resolve_bindings(cls, raw_lower, context) if context.workspace else {}
 
     # Only DFN-block-derived fields -- excludes identity/bookkeeping
     # attributes (Component.name, filename, ...) with no `block` metadata,
@@ -862,7 +869,7 @@ def structure_component(
             or block_name.split()[0] in header_block_fields
         ):
             continue
-        rows = _resolve_open_close_rows(rows, workspace)
+        rows = _resolve_open_close_rows(rows, context)
         for row in rows:
             if not row:
                 continue
@@ -880,7 +887,7 @@ def structure_component(
                     path = Path(_strip_quotes(str(tokens[0])))
                     init_key = ff.alias or ff.name
                     if ff.metadata.get("child"):
-                        child = _load_file_child(ff, path, workspace, dims, cls)
+                        child = _load_file_child(ff, path, attrs.evolve(context, parent=cls))
                         if get_origin(unwrap_optional(ff.type)) is list:
                             kwargs.setdefault(init_key, []).append(child)
                         else:
@@ -967,26 +974,27 @@ def structure_component(
     # Same "self dims, since a DimensionProvider has none threaded to it
     # yet" fallback as Pass 4's griddata parsing.
     effective_dims = dims or _self_dims_from_kwargs(kwargs)
-    union_arm = _union_arm(parent)
-    union_forms = _union_forms(parent)
+    rows_context = attrs.evolve(context, dims=effective_dims)
+    union_arm = _union_arm(context.parent)
+    union_forms = _union_forms(context.parent)
 
     def load_child(f: Any, token: str) -> Any:
         """A row's child column (LAK's TAB6 file), loaded from its file."""
         path = Path(_strip_quotes(token))
-        return _load_file_child(f, path, workspace, effective_dims, cls)
+        return _load_file_child(f, path, attrs.evolve(rows_context, parent=cls))
 
     # ── Pass 2: block Item-list fields (packagedata, partitions …) ──────────
     for block_name, (f, item_cls) in block_item_fields.items():
         rows = raw_lower.get(block_name, [])
         if not rows:
             continue
-        rows = _resolve_open_close_rows(rows, workspace)
+        rows = _resolve_open_close_rows(rows, context)
         row_list = _parse_rows(
             rows,
             item_cls,
             sizes=sizes,
             boundnames=boundnames,
-            dims=effective_dims,
+            context=rows_context,
             union_arm=union_arm,
             union_forms=union_forms,
             load_child=load_child,
@@ -1004,13 +1012,13 @@ def structure_component(
             prefix, *header = raw_name.split()
             if prefix.lower() != block_name or not header:
                 continue
-            rows = _resolve_open_close_rows(rows, workspace)
+            rows = _resolve_open_close_rows(rows, context)
             items = _parse_rows(
                 rows,
                 item_cls,
                 sizes=sizes,
                 boundnames=boundnames,
-                dims=effective_dims,
+                context=rows_context,
                 union_arm=union_arm,
                 union_forms=union_forms,
             )
@@ -1040,13 +1048,13 @@ def structure_component(
                     # an empty period block turns off every boundary
                     spd[kper] = []
                     continue
-                rows = _resolve_open_close_rows(rows, workspace)
+                rows = _resolve_open_close_rows(rows, context)
                 row_list = _parse_rows(
                     rows,
                     period_item_cls,
                     sizes=sizes,
                     boundnames=boundnames,
-                    dims=effective_dims,
+                    context=rows_context,
                     union_arm=union_arm,
                     union_forms=union_forms,
                 )
@@ -1097,7 +1105,7 @@ def structure_component(
                             for fname in ra_fields:
                                 periods.setdefault(fname, {})[kper] = None
                         continue
-                    parsed = _parse_readarray_period_block(rows, lookup, dims, workspace)
+                    parsed = _parse_readarray_period_block(rows, lookup, dims, context)
                     for key, arr in parsed.items():
                         if key in named:
                             f, name = named[key]
@@ -1136,7 +1144,7 @@ def structure_component(
                 for header, rows in sorted(series_rows.items()):
                     if not rows:
                         continue
-                    value, _ = _read_control_record(rows, 0, workspace, dtype, length)
+                    value, _ = _read_control_record(rows, 0, context, dtype, length)
                     series[header] = value
                 if series:
                     init_key = f.alias if f.alias else fname
@@ -1152,7 +1160,7 @@ def structure_component(
     if effective_dims:
         for block_name, block_fields in array_fields.items():
             if rows := raw_lower.get(block_name):
-                kwargs.update(_parse_array_block(rows, block_fields, effective_dims, workspace))
+                kwargs.update(_parse_array_block(rows, block_fields, effective_dims, context))
 
     kwargs.update(binding_kwargs)
     if name is not None:

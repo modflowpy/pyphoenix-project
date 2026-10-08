@@ -23,6 +23,7 @@ from flopy4.mf6.item import (
     item_list_type,
     package_sized_fields,
 )
+from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.period_arrays import (
     dense,
     is_cleared,
@@ -496,7 +497,8 @@ class Package(Component, ABC):
         path: Path,
         dims: "dict[str, int] | None" = None,
         name: "str | None" = None,
-        parent: "type | None" = None,
+        *,
+        context: LoadContext | None = None,
     ) -> "Package":
         """Load from an MF6 text input file.
 
@@ -508,27 +510,31 @@ class Package(Component, ABC):
             Grid dimension values required to resolve array shapes,
             e.g. ``{"nlay": 3, "nodes": 900}``.  Required for griddata
             packages (NPF, IC, STO, etc.); may be omitted for list-input
-            packages (WEL, DRN, etc.).
+            packages (WEL, DRN, etc.). Overrides the context's.
         name :
             Explicit component name (e.g. a namefile binding row's
             pname), overriding the default auto-assigned name.
-        parent :
-            The class of the component whose file named this one, which
-            tells how to read some of its values (see OBS's ids).
+        context :
+            Where the file sits in the simulation (see ``LoadContext``).
+            By default, relative paths in the file resolve against its
+            own directory. To load a file from a simulation on its own,
+            give the simulation directory as the context's workspace.
         """
         from flopy4.mf6.codec.reader import load as _codec_load
         from flopy4.mf6.converter.ingress.structure import structure_component
 
+        path = Path(path)
+        context = context or LoadContext(workspace=path.parent)
+        if dims:
+            context = attrs.evolve(context, dims=dims)
         with open(path) as _f:
             _raw = _codec_load(_f)
-        _pkg = structure_component(
-            _raw, cls, dims=dims, workspace=path.parent, name=name, parent=parent
-        )
+        _pkg = structure_component(_raw, cls, context=context, name=name)
 
         # Standalone packages (not attached to a parent model) resolve
         # dimensions from the ones given, so to_xarray()/to_dataarray() work.
-        if dims:
-            _pkg.dims.update(dims)
+        if context.dims:
+            _pkg.dims.update(context.dims)
 
         return _pkg
 
