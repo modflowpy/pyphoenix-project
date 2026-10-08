@@ -36,11 +36,13 @@ def _binary_version(exe: str) -> str | None:
 def _split_version(version: str) -> tuple[str, str | None]:
     """Split ``6.8.0.dev0+abc1234`` into the base version and the commit
     (``"6.8.0.dev0"``, ``"abc1234"``). A ``git describe``-style ``g``
-    prefix on the commit is dropped. The commit is None for a release."""
+    prefix and a ``.dirty`` suffix on the commit are dropped. The commit
+    is None for a release."""
     base, _, local = version.partition("+")
-    if local.startswith("g"):
-        local = local[1:]
-    return base, local or None
+    commit = local.split(".")[0]
+    if commit.startswith("g"):
+        commit = commit[1:]
+    return base, commit or None
 
 
 def _mismatch(mf6_version: str, dfn_commit: str | None, binary_version: str) -> bool | None:

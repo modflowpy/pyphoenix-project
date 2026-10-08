@@ -26,6 +26,7 @@ class _FakeCompletedRun:
         ("mf6: 6.7.0.dev0", "6.7.0.dev0"),
         ("mf6: 6.7.0+g1a2b3c4", "6.7.0+g1a2b3c4"),
         ("mf6: 6.8.0.dev0+abc1234 10/01/2026", "6.8.0.dev0+abc1234"),
+        ("mf6: 6.9.0.dev0+14b4a67.dirty 10/07/2026", "6.9.0.dev0+14b4a67.dirty"),
         ("no version here", None),
     ],
 )
@@ -67,6 +68,7 @@ def exe(tmp_path):
         ("develop", None, "6.8.0.dev0+abc1234", None),
         ("develop", "abc1234def", "6.8.0.dev0+abc1234", False),
         ("develop", "abc1234def", "6.8.0.dev0+g0000000", True),
+        ("develop", "abc1234def", "6.9.0.dev0+abc1234.dirty", False),
         ("develop", "abc1234def", "6.8.0.dev0", None),
         ("6.7.0", "abc1234def", "6.6.1", True),
     ],
