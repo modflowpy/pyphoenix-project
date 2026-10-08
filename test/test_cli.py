@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flopy4.cli import _local_mf6_version
+from flopy4.mf6._sync import _local_mf6_version
 
 
 def _dfn_dir(root: Path) -> Path:
