@@ -843,9 +843,11 @@ def parse_union_items(
     sizes: Mapping[str, int] | None = None,
     boundnames: bool = False,
     dims: "dict | None" = None,
+    load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> list | None:
     """Parse raw token items into Item instances, dispatching each by
-    keyword (see dispatch_union_item); unmatched items are skipped."""
+    keyword (see dispatch_union_item); unmatched items are skipped.
+    ``load_child`` loads a child column's component (see from_tokens)."""
     if not items:
         return None
     result = []
@@ -857,6 +859,12 @@ def parse_union_items(
             continue
         ncelldim = infer_ncelldim([item], arm_cls, sizes=sizes, dims=dims)
         result.append(
-            arm_cls.from_tokens(item, ncelldim=ncelldim, sizes=sizes, boundnames=boundnames)
+            arm_cls.from_tokens(
+                item,
+                ncelldim=ncelldim,
+                sizes=sizes,
+                boundnames=boundnames,
+                load_child=load_child,
+            )
         )
     return result or None

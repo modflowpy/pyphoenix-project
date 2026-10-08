@@ -492,8 +492,8 @@ def _build_list_item_specs(
     - an untagged record item (packagedata, CHD's stress_period_data): one
       class of positional columns
 
-    ``children`` maps an untagged row's child columns, by name, to the
-    components they name (see _item_columns).
+    ``children`` maps the rows' child columns, by name, to the components
+    they name (see _item_columns).
     """
     union = filters.find_keystring_union(list_field)
     if union is not None:
@@ -504,7 +504,7 @@ def _build_list_item_specs(
             else []
         )
         specs = _build_arm_specs_from_union(
-            union, used_names, {}, shared_cols, name_hint=list_field.name
+            union, used_names, {}, shared_cols, name_hint=list_field.name, children=children
         )
         alias = f"_{class_name}Item"
         members = [s.class_name for s in specs if s.top_level]
@@ -533,6 +533,7 @@ def _build_arm_specs_from_union(
     *,
     name_hint: str = "",
     top_level: bool = True,
+    children: "Mapping[str, list[str]] | None" = None,
 ) -> list[ItemClassSpec]:
     """Build one ItemClassSpec per arm of `union` (see _build_arm_spec).
 
@@ -563,6 +564,7 @@ def _build_arm_specs_from_union(
                 shared_cols,
                 name_hint=name_hint,
                 top_level=top_level,
+                children=children,
             )
         )
     return specs
@@ -578,6 +580,7 @@ def _build_arm_spec(
     name_hint: str = "",
     top_level: bool = True,
     class_name: str = "",
+    children: "Mapping[str, list[str]] | None" = None,
 ) -> list[ItemClassSpec]:
     """Build the keyword-led Item class for one union arm, or for a tagged
     list's record item -- each line starts with (or, LAK-style, contains)
@@ -633,7 +636,7 @@ def _build_arm_spec(
         nested_arm_classes[field_name] = [s.class_name for s in cached]
 
     cols = filters._fields_to_columns(list(shared_cols) + rest)
-    schema = _item_columns(cols, nested_arm_classes)
+    schema = _item_columns(cols, nested_arm_classes, children)
     if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -1146,8 +1149,13 @@ def _column_children(
 ) -> dict[str, list[str]]:
     """A list's file column naming a component flopy4 has a class for, with
     the components it can name (LAK's ``ifno TAB6 FILEIN <file>``, a
-    utl-laktab; SSM's SPC6 file, a utl-spc or utl-spca), or nothing."""
-    if not isinstance(f, ListField) or (found := _find_link(f)) is None:
+    utl-laktab; SSM's SPC6 file, a utl-spc or utl-spca; SFR's period
+    ``CROSS_SECTION TAB6 FILEIN <file>``, a utl-sfrtab), or nothing."""
+    if not isinstance(f, ListField):
+        return {}
+    if (union := filters.find_keystring_union(f)) is not None:
+        return _arm_column_children(component, f, union, dfns)
+    if (found := _find_link(f)) is None:
         return {}
     path, link, file_only = found
     if file_only or link.component_ftype is not None or "." not in path:
@@ -1156,6 +1164,21 @@ def _column_children(
     if not all(_has_class(t, link, dfns) for t in targets):
         return {}
     return {path.split(".", 1)[1]: targets}
+
+
+def _arm_column_children(
+    component: Component, f: ListField, union: UnionField, dfns: Mapping[str, Component] | None
+) -> dict[str, list[str]]:
+    """A keystring list's file columns naming components, from its arms."""
+    children = {}
+    for arm in union.arms.values():
+        for name, m in (arm.fields or {}).items() if isinstance(arm, Record) else ():
+            if not (isinstance(m, File) and m.component):
+                continue
+            targets = resolve_link(component, f"{f.name}.{name}", m, dfns, by_content=True)
+            if all(_has_class(t, m, dfns) for t in targets):
+                children[name] = targets
+    return children
 
 
 def _component_module(name: str) -> str:
