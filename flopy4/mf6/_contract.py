@@ -82,7 +82,6 @@ GENERATED_FILES = (
     "prt/mip.py",
     "prt/oc.py",
     "prt/prp.py",
-    "pts.py",
     "simulation.py",
     "tdis.py",
     "utl/ats.py",
