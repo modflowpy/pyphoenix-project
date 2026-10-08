@@ -13,7 +13,6 @@ except ImportError:
 
 # Import submodules to make them accessible via flopy4.mf6.*
 from flopy4.mf6 import exg, gwe, gwf, gwt, prt, simulation, solution, utils
-from flopy4.mf6._compat import check_mf6_compatibility
 from flopy4.mf6._sync import SyncError, SyncResult, sync
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.codec import dump as dump_mf6
@@ -133,5 +132,3 @@ DEFAULT_REGISTRY.register_loader(Component, "toml", _load_toml)
 DEFAULT_REGISTRY.register_writer(Component, "mf6", _write_mf6)
 DEFAULT_REGISTRY.register_writer(Component, "json", _write_json)
 DEFAULT_REGISTRY.register_writer(Component, "toml", _write_toml)
-
-check_mf6_compatibility()
