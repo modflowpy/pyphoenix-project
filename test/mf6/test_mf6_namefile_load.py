@@ -8,6 +8,8 @@ into npf's griddata shapes, chd's list-input round-tripped, and ims
 attached under the simulation's solutiongroup.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from flopy.discretization.structuredgrid import StructuredGrid
@@ -341,3 +343,66 @@ def test_load_model_alone_in_simulation(subdir_sim):
     assert gwf.dis.get_dims()["nodes"] == 4
     np.testing.assert_array_equal(np.ravel(gwf.npf.k), [1.0, 2.0, 3.0, 4.0])
     assert gwf.filename.as_posix() == "gwf/m.nam"
+
+
+def test_model_workspace_follows_simulation(tmp_path):
+    """A model's workspace is its simulation's, so moving the simulation
+    moves its models' files."""
+    sim = Simulation(name="sim", workspace=tmp_path / "a", tdis=Time(perlen=[1.0], nstp=[1]))
+    gwf = Gwf(parent=sim, name="m", filename="gwf/m.nam", dis=Dis(nlay=1, nrow=1, ncol=1))
+    gwf.dis.filename = "gwf/m.dis"
+
+    sim.workspace = tmp_path / "b"
+
+    assert gwf.workspace == tmp_path / "b"
+    assert gwf.path == tmp_path / "b" / "gwf" / "m.nam"
+    assert gwf.dis.path == tmp_path / "b" / "gwf" / "m.dis"
+
+
+def test_model_workspace_under_simulation_is_not_settable(tmp_path):
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    gwf = Gwf(parent=sim, name="m", dis=Dis(nlay=1, nrow=1, ncol=1))
+
+    gwf.workspace = tmp_path  # the simulation's: no change
+    with pytest.raises(ValueError, match="simulation's workspace"):
+        gwf.workspace = tmp_path / "gwf"
+
+
+def test_standalone_model_keeps_own_workspace(tmp_path):
+    gwf = Gwf(name="m", workspace=tmp_path, dis=Dis(nlay=1, nrow=1, ncol=1))
+    gwf.workspace = tmp_path / "elsewhere"
+
+    assert gwf.workspace == tmp_path / "elsewhere"
+    assert gwf.dis.path == tmp_path / "elsewhere" / "m.dis"
+
+
+def test_write_does_not_depend_on_cwd(tmp_path, monkeypatch):
+    """Files are written to the workspace without changing into it."""
+    (tmp_path / "elsewhere").mkdir()
+    monkeypatch.chdir(tmp_path / "elsewhere")
+    sim = Simulation(name="sim", workspace=tmp_path / "sim", tdis=Time(perlen=[1.0], nstp=[1]))
+    gwf = Gwf(parent=sim, name="m", filename="gwf/m.nam", dis=Dis(nlay=1, nrow=1, ncol=1))
+    gwf.dis.filename = "gwf/m.dis"
+
+    sim.write()
+
+    assert (tmp_path / "sim" / "gwf" / "m.dis").is_file()
+    assert Path.cwd() == tmp_path / "elsewhere"
+    assert not any((tmp_path / "elsewhere").iterdir())
+
+
+def test_write_names_packages_attached_by_assignment(tmp_path):
+    """A package swapped in by plain assignment (``gwf.chd = [...]``)
+    after a write is named, and given its filename, from its model before
+    the model's name file is written again."""
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    gwf = Gwf(parent=sim, name="m", dis=Dis(nlay=1, nrow=1, ncol=2))
+    gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})]
+    sim.write()
+
+    del gwf.chd[0]
+    gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 2.0]]})]
+    sim.write()
+
+    assert " CHD6 m.chd chd0" in (tmp_path / "m.nam").read_text().splitlines()
+    assert (tmp_path / "m.chd").is_file()

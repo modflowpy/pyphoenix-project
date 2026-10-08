@@ -3,10 +3,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
-from attrs import fields_dict
 from modflow_devtools.misc import cd, run_cmd
 
-from flopy4.mf6.context import update_child_attr
 from flopy4.mf6.utils.time import Time
 
 if TYPE_CHECKING:
@@ -30,8 +28,6 @@ class SimulationMethods:
                     UserWarning,
                 )
             sim.filename = Path("mfsim.nam")
-        field = fields_dict(type(sim))["workspace"]
-        update_child_attr(sim, field, sim.workspace)
 
     @property
     def time(self: "Simulation") -> Time:  # type: ignore[misc]
