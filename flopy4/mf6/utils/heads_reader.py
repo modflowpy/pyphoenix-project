@@ -194,9 +194,13 @@ def _open_hds_netcdf(
     # Time is already CF-encoded datetime64; load eagerly (small coordinate).
     time_values = ds["time"].values
 
-    # --- Conventional CF structured: no "mesh" global attribute ---
+    # --- Conventional CF structured: no "modflow_mesh" global attribute ---
     # Single head(time, z, y, x) variable; x/y are dimension coordinates.
-    if "mesh" not in ds.attrs:
+    # "modflow_mesh" is the current attribute name (renamed from the bare
+    # "mesh" global attr, which collided with UGRID's reserved per-variable
+    # "mesh" attribute in some CF readers); "mesh" is still checked as a
+    # fallback for files written before the rename.
+    if "modflow_mesh" not in ds.attrs and "mesh" not in ds.attrs:
         if grid_type != "STRUCTURED":
             raise ValueError(
                 f"Conventional CF format (no 'mesh' attribute) is only supported "

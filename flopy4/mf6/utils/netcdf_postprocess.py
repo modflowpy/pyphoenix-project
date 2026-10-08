@@ -1,14 +1,26 @@
 """Post-processing utilities to bring MF6 output NC files into CF/CRS parity
 with flopy4 input NC files.
 
-MF6 writes a ``projection`` variable but omits some attributes required for
-full CF-1.11 compliance and GDAL-based tool support.
+MF6 6.8.0+ already writes ``crs_wkt``/``grid_mapping_name`` (mesh) and
+``wkt``/``crs_wkt``/``grid_mapping``/``grid_mapping_name`` (structured) --
+this module is then a no-op bridge for those.  Two things it still does:
 
-- **Mesh output**: missing ``crs_wkt`` and ``grid_mapping_name``.
-- **Structured output**: missing ``wkt``, ``grid_mapping_name``, and the GDAL
-  georeferencing attributes (``GeoTransform`` / ``spatial_ref``) needed for
-  correct placement in QGIS and other GDAL-based tools.  ArcGIS Pro does not
-  require these attributes — it reads ``crs_wkt`` directly from raw MF6 output.
+- **Legacy pre-6.8.0 files**: backfill missing ``wkt``/``crs_wkt``/
+  ``grid_mapping_name``, and fix ``crs_wkt`` holding WKT1 instead of WKT2
+  (a real bug present through 6.7.0, fixed in 6.8.0).
+- **Structured output, any release before CF grid_mapping numeric
+  parameter support**: add the CF-standard numeric grid_mapping
+  parameters (e.g. ``false_easting``, ``scale_factor_at_central_meridian``)
+  that ArcGIS's classic netCDF connector reads directly, for
+  ``transverse_mercator``, ``lambert_conformal_conic`` (2SP only), and
+  ``albers_conical_equal_area``.
+
+This module cannot backfill rotation-positioning for a rotated
+(ANGROT != 0) structured grid on a legacy file: MF6 never writes
+xorigin/yorigin/angrot as retrievable output attributes, and for a
+rotated grid the file's own x/y coordinate values are grid-local with no
+recoverable real-world position. Rotation-positioning is only available
+from a release where MF6 wraps crs_wkt in a derived CRS at write time.
 
 Usage::
 
@@ -33,8 +45,8 @@ import xarray as xr
 def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     """Add ``crs_wkt`` and ``grid_mapping_name`` to the ``projection`` variable.
 
-    MF6 mesh output already writes ``wkt``; this brings the variable into full
-    CF-1.11 parity with flopy4 input files.
+    No-op on MF6 6.8.0+, which already writes both. Bridges legacy
+    pre-6.8.0 files that only have ``wkt``.
     """
     if "projection" not in ds:
         return ds
@@ -53,7 +65,7 @@ def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     crs = ProjCRS.from_wkt(wkt)
     cf = crs.to_cf()
 
-    # wkt on mesh output is WKT1; crs_wkt must be WKT2 per CF-1.11
+    # wkt on mesh output is WKT1; crs_wkt must be WKT2 per CF-1.13
     ds["projection"].attrs.setdefault("crs_wkt", crs.to_wkt(WktVersion.WKT2_2019))
     gmn = cf.get("grid_mapping_name")
     if gmn:
@@ -63,11 +75,9 @@ def _apply_mesh_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
 
 
 def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
-    """Add ``wkt``, ``grid_mapping_name``, ``GeoTransform``, and ``spatial_ref``
-    to the ``projection`` variable of an MF6 structured output NC file.
-
-    MF6 structured output already writes ``crs_wkt`` and ``grid_mapping`` on
-    x/y/head; this adds the remaining attrs needed for GDAL-based tools.
+    """Add ``wkt``/``grid_mapping_name`` (legacy bridge), fix ``crs_wkt``
+    (legacy bug), and add the CF-standard numeric grid_mapping parameters
+    (for a release before MF6 wrote them) to the ``projection`` variable.
     """
     if "projection" not in ds:
         return ds
@@ -83,12 +93,26 @@ def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
 
     from pyproj.enums import WktVersion
 
-    crs = ProjCRS.from_wkt(wkt)
-    cf = crs.to_cf()
+    from flopy4.mf6.utils.crs import cf_grid_mapping_params
 
-    # MF6 structured output writes WKT1 to crs_wkt; overwrite with WKT2 per CF-1.11.
-    # wkt and spatial_ref remain WKT1 for GDAL/legacy-tool compatibility.
-    _wkt1 = crs.to_wkt(WktVersion.WKT1_GDAL)
+    crs = ProjCRS.from_wkt(wkt)
+    # If crs_wkt is already a wrapped DerivedProjectedCRS (a rotated grid
+    # from a release that wraps it at write time), grid_mapping_name/CF
+    # numeric parameters must come from its base CRS -- to_cf() does not
+    # "see through" the wrapper. An ordinary ProjectedCRS also has a
+    # source_crs (its underlying geographic CRS), so only unwrap when
+    # crs itself is actually a DerivedProjectedCRS.
+    base_crs = crs
+    if crs.type_name == "Derived Projected CRS" and crs.source_crs is not None:
+        base_crs = crs.source_crs
+    cf = base_crs.to_cf()
+
+    # Pre-6.8.0 MF6 wrote WKT1 to crs_wkt (bug, fixed in 6.8.0); overwrite
+    # unconditionally -- idempotent on already-correct 6.8.0+ files.
+    # wkt remains WKT1 for legacy-tool compatibility. Derived from
+    # base_crs, not crs: WKT1 has no derived-CRS syntax, so converting an
+    # already-wrapped DerivedProjectedCRS to WKT1 raises a CRSError.
+    _wkt1 = base_crs.to_wkt(WktVersion.WKT1_GDAL)
     _wkt2 = crs.to_wkt(WktVersion.WKT2_2019)
     ds["projection"].attrs["crs_wkt"] = _wkt2
     ds["projection"].attrs.setdefault("wkt", _wkt1)
@@ -96,35 +120,13 @@ def _apply_structured_crs_attrs(ds: xr.Dataset) -> xr.Dataset:
     if gmn:
         ds["projection"].attrs.setdefault("grid_mapping_name", gmn)
 
-    # Derive GeoTransform from x_bnds/y_bnds if available, otherwise from
-    # cell-centre spacing. GDAL reads GeoTransform from the grid_mapping
-    # variable (not global attrs) to set the raster extent.
-    if "x_bnds" in ds and "y_bnds" in ds:
-        xb = ds["x_bnds"].values
-        yb = ds["y_bnds"].values
-        x_left = float(xb[0, 0])
-        x_right = float(xb[-1, 1])
-        y_top = float(yb[0, 1])  # y_bnds[row, 1] = top of row
-        y_bot = float(yb[-1, 0])  # y_bnds[row, 0] = bottom of row
-        ncol = ds.sizes.get("x", xb.shape[0])
-        nrow = ds.sizes.get("y", yb.shape[0])
-        dx_eff = (x_right - x_left) / ncol
-        dy_eff = (y_bot - y_top) / nrow  # negative for north-up
-    elif "x" in ds and "y" in ds:
-        x = ds["x"].values
-        y = ds["y"].values
-        dx = float(x[1] - x[0]) if len(x) > 1 else 1.0
-        dy = float(y[1] - y[0]) if len(y) > 1 else 1.0
-        x_left = float(x[0]) - 0.5 * dx
-        y_top = float(y[0]) - 0.5 * dy
-        dx_eff = dx
-        dy_eff = dy
-    else:
-        return ds
+    params, warning = cf_grid_mapping_params(base_crs)
+    if warning:
+        import warnings
 
-    gt = [x_left, dx_eff, 0.0, y_top, 0.0, dy_eff]
-    ds["projection"].attrs.setdefault("GeoTransform", " ".join(str(v) for v in gt))
-    ds["projection"].attrs.setdefault("spatial_ref", _wkt1)
+        warnings.warn(warning)
+    for k, v in params.items():
+        ds["projection"].attrs.setdefault(k, v)
 
     return ds
 
@@ -133,11 +135,10 @@ def postprocess_mesh_nc(
     path: Union[str, Path],
     out: Union[str, Path, None] = None,
 ) -> Path:
-    """Post-process an MF6 UGRID/mesh output NC file for CF-1.11 compliance.
+    """Post-process an MF6 UGRID/mesh output NC file for CF-1.13 compliance.
 
-    Adds the missing ``crs_wkt`` and ``grid_mapping_name`` attributes to the
-    ``projection`` variable so the file matches the conventions written by
-    flopy4 for input files.
+    Backfills ``crs_wkt`` and ``grid_mapping_name`` on the ``projection``
+    variable for legacy pre-6.8.0 files; a no-op on 6.8.0+.
 
     Parameters
     ----------
@@ -168,14 +169,13 @@ def postprocess_structured_nc(
     path: Union[str, Path],
     out: Union[str, Path, None] = None,
 ) -> Path:
-    """Post-process an MF6 CF-structured output NC file for full CF-1.11 and
-    GDAL compliance.
+    """Post-process an MF6 CF-structured output NC file for CF-1.13/GDAL compliance.
 
-    Adds the missing ``wkt``, ``grid_mapping_name``, ``GeoTransform``, and
-    ``spatial_ref`` attributes to the ``projection`` variable so the file
-    matches the conventions written by flopy4 for input files and is correctly
-    placed by QGIS and other GDAL-based tools.  ArcGIS Pro reads ``crs_wkt``
-    directly from raw MF6 output and does not require this post-processing.
+    Backfills ``wkt``/``grid_mapping_name`` (legacy pre-6.8.0 bridge, no-op
+    on 6.8.0+) and the CF-standard numeric grid_mapping parameters that
+    ArcGIS's classic netCDF connector reads directly (for a release
+    before MF6 wrote them). Does not backfill rotation-positioning for a
+    rotated grid -- see the module docstring.
 
     Parameters
     ----------
@@ -213,7 +213,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog="ncfix",
         description=(
-            "Post-process an MF6 output NetCDF file to add missing CF-1.11 / GDAL "
+            "Post-process an MF6 output NetCDF file to add missing CF-1.13 / GDAL "
             "attributes to the projection variable."
         ),
     )
