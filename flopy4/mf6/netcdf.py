@@ -37,8 +37,13 @@ def _cf_var_attrs(dims: list[str], mesh: str | None, grid, layer: int | None = N
     attrs: dict[str, str] = {}
     encoding: dict[str, object] = {}
     has_crs = grid is not None and getattr(grid, "crs", None) is not None
+    # grid_mapping is CF-required only on variables spanning the full 2D
+    # horizontal spatial extent (CF-1.13 5.6); 1D dimension-definition arrays
+    # such as dis_delr/dis_delc are not georeferenced fields and must not
+    # carry it, matching MF6's own ncvar_gridmap (DisNCStructured.f90).
+    has_full_extent = ("x" in dims and "y" in dims) or "nmesh_face" in dims
 
-    if has_crs:
+    if has_crs and has_full_extent:
         attrs["grid_mapping"] = "projection"
     if "nmesh_face" in dims:
         if layer:
