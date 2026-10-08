@@ -13,6 +13,7 @@ than a declared flag, and make.py's _build_record_class_specs.
 
 import sys
 import types
+from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path, PurePath
 from typing import Any, Union, cast, get_args, get_origin
@@ -156,6 +157,20 @@ class Record:
         if isinstance(value, (bool, np.bool_)):
             return cls() if value else None
         return value
+
+    @classmethod
+    def from_value(cls, value: Any) -> "Record | None":
+        """Convert a record that's a keyword and one value (TS6's ``NAMES
+        <names>``): anything but the record, or None, is its value. A list
+        value can be given as one element."""
+        if value is None or isinstance(value, cls):
+            return value
+        (f,) = cls.fields()
+        if get_origin(f.type) is list and (
+            isinstance(value, str) or not isinstance(value, Iterable)
+        ):
+            value = [value]
+        return cls(**{f.name: value})
 
     def to_tokens(self) -> tuple:
         cls = type(self)
