@@ -90,7 +90,7 @@ class Oc(Package):
     )
     headprint: Optional[Headprint] = field(
         default=None,
-        converter=Headprint.convert,
+        converter=lambda v: Oc.Headprint.convert(v),
         block="options",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(

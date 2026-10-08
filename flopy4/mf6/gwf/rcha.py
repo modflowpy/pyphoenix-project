@@ -5,7 +5,13 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike, TimeArraySeriesRef, to_array
+from flopy4.mf6._types import (
+    ARRAY_EQ,
+    FloatArrayLike,
+    IntArrayLike,
+    TimeArraySeriesRef,
+    to_str_array,
+)
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
 from flopy4.mf6.utl.obs import Obs
@@ -35,7 +41,7 @@ class Rcha(Package):
     )
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
-        converter=attrs.converters.optional(to_array(np.str_)),
+        converter=to_str_array,
         eq=ARRAY_EQ,
         block="options",
         optional=True,

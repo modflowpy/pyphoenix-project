@@ -22,6 +22,19 @@ The library exposes MODFLOW 6 input and output through:
 - {doc}`examples/frenchman-flat` — real-world 87×87 DIS model from ScienceBase
 - {doc}`examples/circle` — DISV vertex grid with xugrid
 
+## Type checking
+
+Package fields accept more than their annotated type: a string for a
+path, a bool or a tuple for a record (`Gwf(newtonoptions=True)`,
+`Npf(rewet=(1.0, 1, 0))`). mypy sees this only with flopy4's plugin:
+
+```toml
+[tool.mypy]
+plugins = ["flopy4.mypy_plugin"]
+```
+
+Pyright and Pylance have no plugins, and flag these forms.
+
 ## Source
 
 Source code is hosted at

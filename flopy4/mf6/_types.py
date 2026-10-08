@@ -3,11 +3,12 @@
 from collections.abc import Callable, Iterable
 from datetime import datetime
 from os import PathLike
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Any, Protocol, TypeAlias, TypeVar
 
 import attrs
 import numpy as np
+from numpy.typing import NDArray
 
 _DT = TypeVar("_DT", bound=np.generic, covariant=True)
 
@@ -68,9 +69,17 @@ def to_list(convert: Callable) -> Callable[[Any], list]:
     return lambda v: [convert(x) for x in _wrap(v)]
 
 
-def to_array(dtype) -> Callable[[Any], np.ndarray]:
-    """attrs converter to a 1D array of `dtype`."""
-    return lambda v: np.asarray(_wrap(v), dtype=dtype)
+def to_path_list(value: "str | PathLike | Iterable[str | PathLike] | None") -> list[Path] | None:
+    """attrs converter to a list of paths, or None. A named function, not
+    ``optional(to_list(Path))``, so mypy can read its argument type."""
+    return None if value is None else [Path(x) for x in _wrap(value)]
+
+
+def to_str_array(value: "str | Iterable[str] | None") -> NDArray[np.str_] | None:
+    """attrs converter to a 1D string array (AUXILIARY's names), or None.
+    A named function, not a converter factory, so mypy can read its
+    argument type."""
+    return None if value is None else np.asarray(_wrap(value), dtype=np.str_)
 
 
 def _is_dask(x: Any) -> bool:

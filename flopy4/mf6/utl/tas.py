@@ -32,17 +32,17 @@ class Tas(Package):
 
     time_series_name: Optional[TimeSeriesName] = field(
         default=None,
-        converter=TimeSeriesName.convert,
+        converter=lambda v: Tas.TimeSeriesName.convert(v),
         block="attributes",
     )
     interpolation_method: Optional[InterpolationMethod] = field(
         default=None,
-        converter=InterpolationMethod.convert,
+        converter=lambda v: Tas.InterpolationMethod.convert(v),
         block="attributes",
     )
     sfac: Optional[Sfac] = field(
         default=None,
-        converter=Sfac.convert,
+        converter=lambda v: Tas.Sfac.convert(v),
         block="attributes",
     )
     tas_array: Optional[dict[float, FloatArrayLike]] = field(

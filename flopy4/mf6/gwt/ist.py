@@ -80,7 +80,7 @@ class Ist(Package):
     )
     cimprint: Optional[Cimprint] = field(
         default=None,
-        converter=Cimprint.convert,
+        converter=lambda v: Ist.Cimprint.convert(v),
         block="options",
     )
     sorbate_file: Optional[Path] = path(

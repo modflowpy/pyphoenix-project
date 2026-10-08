@@ -189,6 +189,7 @@ install = { cmd = "pre-commit install --install-hooks" }
 mypy_path = "flopy4"
 ignore_missing_imports = true
 warn_unreachable = true
+plugins = ["flopy4.mypy_plugin"]
 
 [tool.codespell]
 skip = "pixi.*,./docs/examples/quickstart/*,**/temp/*,./docs/examples/*.ipynb,./docs/_build/*"

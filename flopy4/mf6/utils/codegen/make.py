@@ -11,6 +11,7 @@ schema this replaces.
 """
 
 import importlib.util
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -990,8 +991,12 @@ def _generated_imports(
     if needs_float_arraylike:
         _types_parts.append("FloatArrayLike")
     _converters = " ".join(c for b, f in generatable_fields if (c := filters.field_converter(f, b)))
-    _types_parts += [fn for fn in ("to_array", "to_list") if f"{fn}(" in _converters]
-    if "to_array(" in _converters:
+    _types_parts += [
+        fn
+        for fn in ("to_list", "to_path_list", "to_str_array")
+        if re.search(rf"\b{fn}\b", _converters)
+    ]
+    if "to_str_array" in _converters:
         _types_parts.append("ARRAY_EQ")
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
@@ -1551,10 +1556,13 @@ def build_component_spec(
             inner_class_specs.extend(record_specs)
             outer_spec = record_specs[-1]
             clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
-            # plain values (a bool, the file's text, a tuple...) make the record
+            # plain values (a bool, the file's text, a tuple...) make the record;
+            # a lambda, since mypy reads no other callable as a converter (see
+            # flopy4.mypy_plugin), qualified since it can't see the class body
+            qualified = f"{filters.class_name(component.name)}.{outer_spec.class_name}"
             inner_spec_call = _ml_field(
                 metadata={"block": block_name},
-                converter=f"{outer_spec.class_name}.convert",
+                converter=f"lambda v: {qualified}.convert(v)",
             )
             target.append(
                 FieldSpec(
