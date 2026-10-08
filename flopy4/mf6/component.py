@@ -200,12 +200,17 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     since a live `.parent` would otherwise be a reference cycle.
     """
 
-    dims: dict = field(default=attrs.Factory(dict), repr=False, eq=False)
-    """Accepts `dims=` at construction (e.g. `Ic(dims={"nodes": 900})`)
-    for API-compatibility with existing call sites. Read directly via
-    `self.__dict__.get("dims")` by `Package.__attrs_post_init__` for
-    griddata broadcasting -- not resolved/consumed by anything at the
-    `Component` level itself."""
+    dims: dict = field(
+        default=attrs.Factory(dict),
+        converter=attrs.converters.default_if_none(factory=dict),
+        repr=False,
+        eq=False,
+    )
+    """Dimensions given explicitly (e.g. `Ic(dims={"nodes": 900})`, or
+    those given to `Package.load`), for a component not attached to a
+    tree that provides them. `resolve_dims()` falls back to these, and
+    `Package.__attrs_post_init__` sizes griddata from them. `None` is
+    accepted and converted to an empty dict."""
 
     @property
     def parent(self) -> "Component | None":

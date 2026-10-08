@@ -1870,6 +1870,12 @@ def test_eq_ignores_parent_and_dims():
     assert Ims(inner_maximum=10) != Ims(inner_maximum=20)
 
 
+def test_dims_none_is_empty():
+    ic = Ic(dims=None)
+    assert ic.dims == {}
+    assert Ic(dims={"nodes": 4}).strt.shape == (4,)
+
+
 def test_eq_on_subclass_with_own_decorator():
     import attrs
 
