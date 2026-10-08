@@ -540,6 +540,35 @@ def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
     assert "pumping" in (function_tmpdir / "gwf.maw").read_text()
 
 
+def test_series_attributes_from_values():
+    """A TS6 or TAS6 file's attributes can be given as their values, and
+    are written and checked as the records would be."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Chd, Rcha
+    from flopy4.mf6.utl import Tas, Ts
+
+    ts = Ts(
+        time_series_name=["a", "b"],
+        interpolation_method=["linear", "stepwise"],
+        sfacrecord_single=2.0,
+        timeseries=[(0.0, (1.0, 2.0))],
+    )
+    assert ts.time_series_name == Ts.TimeSeriesName(time_series_names=["a", "b"])
+    assert ts.sfacrecord_single == Ts.SfacrecordSingle(sfacval=2.0)
+    raw = loads(dumps(unstructure_component(ts)))
+    assert raw["ATTRIBUTES"] == [
+        ["NAMES", "a", "b"],
+        ["METHODS", "linear", "stepwise"],
+        ["SFAC", 2.0],
+    ]
+    Chd(stress_period_data={0: [((0, 0, 0), "a")]}, ts=[ts])._check_ts_refs()
+
+    tas = Tas(time_series_name="rch", interpolation_method="linear", tas_array={0.0: [1.0]})
+    assert tas.time_series_name == Tas.TimeSeriesName(time_series_name=["rch"])
+    assert tas.interpolation_method == Tas.InterpolationMethod(interpolation_method="linear")
+    Rcha(recharge={0: "rch"}, tas=[tas])._check_tas_refs()
+
+
 def test_maw_round_trip():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component

@@ -462,10 +462,7 @@ class Package(Component, ABC):
     def _check_tas_refs(self) -> None:
         """Raise if a time-array series reference names a series none of
         the package's TAS6 files define, which MF6 would fail on."""
-        defined: set[str] = set()
-        for child in self._children_of("utl-tas"):
-            if child.time_series_name:
-                defined |= {n.lower() for n in child.time_series_name.time_series_name}
+        defined = self._series_names("utl-tas")
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
             if not f.metadata.get("time_series") or not f.metadata.get("fill_forward"):
                 continue
@@ -481,10 +478,7 @@ class Package(Component, ABC):
     def _check_ts_refs(self) -> None:
         """Raise if a row's time-series column names a series none of the
         package's TS6 files define, which MF6 would fail on."""
-        defined: set[str] = set()
-        for child in self._children_of("utl-ts"):
-            if child.time_series_name:
-                defined |= {n.lower() for n in child.time_series_name.time_series_names}
+        defined = self._series_names("utl-ts")
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
             if item_list_type(f.type) is None:
                 continue
@@ -500,6 +494,16 @@ class Package(Component, ABC):
                                 f"names time series {name!r}, which no TS6 file "
                                 f"defines (defined: {sorted(defined) or 'none'})"
                             )
+
+    def _series_names(self, dfn_name: str) -> set[str]:
+        """The series names, lowercase, the package's TS6 or TAS6 files
+        (``utl-ts``, ``utl-tas``) define."""
+        names: set[str] = set()
+        for child in self._children_of(dfn_name):
+            if (record := child.time_series_name) is not None:
+                (f,) = record.fields()
+                names |= {n.lower() for n in getattr(record, f.name)}
+        return names
 
     def _children_of(self, dfn_name: str) -> list[Any]:
         """The package's children with the given DFN name."""
