@@ -1,0 +1,196 @@
+type = "simulation"
+schema_version = "2.0.0.dev3"
+name = "sim-nam"
+
+[blocks.options.fields.continue]
+type = "keyword"
+longname = "continue if not converged"
+description = "keyword flag to indicate that the simulation should continue even if one or more solutions do not converge."
+optional = true
+
+[blocks.options.fields.nocheck]
+type = "keyword"
+longname = "turn off checking"
+description = "keyword flag to indicate that the model input check routines should not be called prior to each time step. Checks are performed by default."
+optional = true
+
+[blocks.options.fields.memory_print_option]
+type = "string"
+longname = "memory print option"
+description = "is a flag that controls printing of detailed memory manager usage to the end of the simulation list file.  NONE means do not print detailed information. SUMMARY means print only the total memory for each simulation component. ALL means print information for each variable stored in the memory manager. NONE is default if MEMORY_PRINT_OPTION is not specified."
+optional = true
+
+[blocks.options.fields.profile_option]
+type = "string"
+longname = "profiling option"
+description = "is a flag that controls performance profiling and reporting.  NONE disables profiling. SUMMARY means to measure and print a coarse performance profile. DETAIL means collect and print information with the highest resolution available. NONE is default if PROFILE_OPTION is not specified."
+optional = true
+
+[blocks.options.fields.maxerrors]
+type = "integer"
+longname = "maximum number of errors"
+description = "maximum number of errors that will be stored and printed."
+optional = true
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "print input to listing file"
+description = "keyword to activate printing of simulation input summaries to the simulation list file (mfsim.lst). With this keyword, input summaries will be written for those packages that support newer input data model routines.  Not all packages are supported yet by the newer input data model routines."
+optional = true
+
+[blocks.options.fields.hpc_filerecord]
+type = "record"
+description = "hpc record"
+optional = true
+
+[blocks.options.fields.hpc_filerecord.fields.hpc6]
+type = "keyword"
+longname = "head keyword"
+description = "keyword to specify that record corresponds to a hpc file."
+
+[blocks.options.fields.hpc_filerecord.fields.hpc6_filename]
+type = "file"
+longname = "file name of time series information"
+description = "name of input file to define HPC file settings for the HPC package. See the 'HPC File' section for instructions for preparing HPC input files."
+tagged = false
+direction = "in"
+component = "utl-hpc"
+
+[blocks.timing.fields.tdis6]
+type = "file"
+longname = "name of tdis input file"
+description = "is the name of the Temporal Discretization (TDIS) Input File."
+direction = "in"
+mode_keyword = false
+component = "sim-tdis"
+
+[blocks.models.fields.models]
+type = "list"
+longname = "list of models"
+description = "is the list of model types, model name files, and model names."
+optional = true
+
+[blocks.models.fields.models.item]
+name = "models"
+type = "record"
+description = "is the record of model types, model name files, and model names."
+
+[blocks.models.fields.models.item.fields.mtype]
+type = "string"
+longname = "model type"
+description = "is the type of model to add to simulation."
+tagged = false
+
+[blocks.models.fields.models.item.fields.mfname]
+type = "file"
+longname = "file name for model name file"
+description = "is the file name of the model name file."
+tagged = false
+direction = "in"
+mode_keyword = false
+component = "model"
+component_ftype = "mtype"
+
+[blocks.models.fields.models.item.fields.mname]
+type = "string"
+longname = "name of model"
+description = "is the user-assigned name of the model.  The model name cannot exceed 16 characters and must not have blanks within the name.  The model name is case insensitive; any lowercase letters are converted and stored as upper case letters.  Model names must be unique."
+tagged = false
+
+[blocks.exchanges.fields.exchanges]
+type = "list"
+longname = "list of exchanges"
+description = "is the list of exchange types, exchange files, and model names."
+optional = true
+
+[blocks.exchanges.fields.exchanges.item]
+name = "exchanges"
+type = "record"
+description = "is the record of exchange types, exchange files, and model names."
+
+[blocks.exchanges.fields.exchanges.item.fields.exgtype]
+type = "string"
+longname = "exchange type"
+description = "is the exchange type."
+tagged = false
+
+[blocks.exchanges.fields.exchanges.item.fields.exgfile]
+type = "file"
+longname = "input file for exchange"
+description = "is the input file for the exchange."
+tagged = false
+direction = "in"
+mode_keyword = false
+component = "exchange"
+component_ftype = "exgtype"
+
+[blocks.exchanges.fields.exchanges.item.fields.exgmnamea]
+type = "string"
+longname = "name of model A"
+description = "is the name of the first model that is part of this exchange."
+tagged = false
+
+[blocks.exchanges.fields.exchanges.item.fields.exgmnameb]
+type = "string"
+longname = "name of model B"
+description = "is the name of the second model that is part of this exchange."
+tagged = false
+
+[blocks.solutiongroup.fields.mxiter]
+type = "integer"
+longname = "maximum solution group iterations"
+description = "is the maximum number of outer iterations for this solution group.  The default value is 1.  If there is only one solution in the solution group, then MXITER must be 1."
+optional = true
+
+[blocks.solutiongroup.fields.solutiongroup]
+type = "list"
+longname = "solution type and models in the solution"
+description = "is the list of solution types and models in the solution."
+
+[blocks.solutiongroup.fields.solutiongroup.item]
+name = "solutiongroup"
+type = "record"
+description = "is the record of solution types and models in the solution."
+
+[blocks.solutiongroup.fields.solutiongroup.item.fields.slntype]
+type = "string"
+longname = "type of solution"
+description = "is the type of solution.  The Integrated Model Solution (IMS6) and Explicit Model Solution (EMS6) are the only supported options in this version."
+tagged = false
+valid = [
+    "ims6",
+    "ems6",
+]
+
+[blocks.solutiongroup.fields.solutiongroup.item.fields.slnfname]
+type = "file"
+longname = "file name for solution input"
+description = "name of file containing solution input."
+tagged = false
+direction = "in"
+mode_keyword = false
+component = "solution"
+component_ftype = "slntype"
+
+[blocks.solutiongroup.fields.solutiongroup.item.fields.slnmnames]
+type = "array"
+longname = "array of model names in this solution"
+description = "is the array of model names to add to this solution.  The number of model names is determined by the number of model names the user provides on this line."
+tagged = false
+dtype = "string"
+
+[blocks.solutiongroup.header.field]
+name = "group_num"
+type = "integer"
+description = "is the group number of the solution group.  Solution groups must be numbered sequentially, starting with group number one."
+tagged = false
+
+[memory.prmem]
+set_in = "ar"
+source = "memory_print_option"
+type = "string"
+
+[memory.prprof]
+set_in = "ar"
+source = "profile_option"
+type = "string"

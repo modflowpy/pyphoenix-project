@@ -1,0 +1,366 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "gwe-disu"
+parent = "gwe-nam"
+ftype = "DISU6"
+
+[dims.nodes]
+value = "nodes"
+scope = "model"
+
+[dims.nja]
+value = "nja"
+scope = "model"
+
+[dims.nvert]
+value = "nvert"
+scope = "model"
+
+[dims.ncelldim]
+value = "1"
+scope = "model"
+
+[dims.njas]
+value = "(nja - nodes) / 2"
+
+[runtime_dims.nodes]
+set_in = "ar"
+
+[runtime_dims.nodesuser]
+set_in = "ar"
+
+[blocks.options.fields.length_units]
+type = "string"
+longname = "model length units"
+description = "is the length units used for this model.  Values can be 'FEET', 'METERS', or 'CENTIMETERS'.  If not specified, the default is 'UNKNOWN'."
+optional = true
+
+[blocks.options.fields.nogrb]
+type = "keyword"
+longname = "do not write binary grid file"
+description = "keyword to deactivate writing of the binary grid file."
+optional = true
+
+[blocks.options.fields.grb_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.grb_filerecord.fields.grb6]
+type = "keyword"
+longname = "grb keyword"
+description = "keyword to specify that record corresponds to a binary grid file."
+
+[blocks.options.fields.grb_filerecord.fields.grb6_filename]
+type = "file"
+longname = "file name of GRB information"
+description = "defines a binary grid output file. If this option is not provided, the output file will have the same name as the discretization input file, plus extension '.grb'."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.xorigin]
+type = "double"
+longname = "x-position origin of the model grid coordinate system"
+description = "x-position of the origin used for model grid vertices.  This value should be provided in a real-world coordinate system.  A default value of zero is assigned if not specified.  The value for XORIGIN does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
+optional = true
+
+[blocks.options.fields.yorigin]
+type = "double"
+longname = "y-position origin of the model grid coordinate system"
+description = "y-position of the origin used for model grid vertices.  This value should be provided in a real-world coordinate system.  If not specified, then a default value equal to zero is used.  The value for YORIGIN does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
+optional = true
+
+[blocks.options.fields.angrot]
+type = "double"
+longname = "rotation angle"
+description = "counter-clockwise rotation angle (in degrees) of the model grid coordinate system relative to a real-world coordinate system.  If not specified, then a default value of 0.0 is assigned.  The value for ANGROT does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
+optional = true
+
+[blocks.options.fields.vertical_offset_tolerance]
+type = "double"
+longname = "vertical length dimension for top and bottom checking"
+description = "checks are performed to ensure that the top of a cell is not higher than the bottom of an overlying cell.  This option can be used to specify the tolerance that is used for checking.  If top of a cell is above the bottom of an overlying cell by a value less than this tolerance, then the program will not terminate with an error.  The default value is zero.  This option should generally not be used."
+optional = true
+default = 0.0
+
+[blocks.options.fields.export_array_ascii]
+type = "keyword"
+longname = "export array variables to layered ascii files."
+description = "keyword that specifies input griddata arrays should be written to layered ascii output files."
+optional = true
+
+[blocks.options.fields.crs]
+type = "string"
+longname = "CRS user input string"
+description = "is a real-world coordinate reference system (CRS) for the model, for example, an EPSG integer code (e.g. 26915), authority string (i.e. epsg:26915), or Open Geospatial Consortium Well-Known Text (WKT) specification. Limited to 5000 characters. The entry for CRS does not affect the model simulation, but it is written to the binary grid file so that postprocessors can locate the grid in space."
+optional = true
+case_sensitive = true
+
+[blocks.dimensions.fields.nodes]
+type = "integer"
+longname = "number of layers"
+description = "is the number of cells in the model grid."
+
+[blocks.dimensions.fields.nja]
+type = "integer"
+longname = "number of columns"
+description = "is the sum of the number of connections and NODES.  When calculating the total number of connections, the connection between cell n and cell m is considered to be different from the connection between cell m and cell n.  Thus, NJA is equal to the total number of connections, including n to m and m to n, and the total number of cells."
+
+[blocks.dimensions.fields.nvert]
+type = "integer"
+longname = "number of vertices"
+description = "is the total number of (x, y) vertex pairs used to define the plan-view shape of each cell in the model grid.  If NVERT is not specified or is specified as zero, then the VERTICES and CELL2D blocks below are not read.  NVERT and the accompanying VERTICES and CELL2D blocks should be specified for most simulations.  If the XT3D or SAVE_SPECIFIC_DISCHARGE options are specified in the NPF Package, then this information is required."
+optional = true
+
+[blocks.griddata.fields.top]
+type = "array"
+longname = "cell top elevation"
+description = "is the top elevation for each cell in the model grid."
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[blocks.griddata.fields.bot]
+type = "array"
+longname = "cell bottom elevation"
+description = "is the bottom elevation for each cell."
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[blocks.griddata.fields.area]
+type = "array"
+longname = "cell surface area"
+description = "is the cell surface area (in plan view)."
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[blocks.griddata.fields.idomain]
+type = "array"
+longname = "idomain existence array"
+description = "is an optional array that characterizes the existence status of a cell.  If the IDOMAIN array is not specified, then all model cells exist within the solution.  If the IDOMAIN value for a cell is 0, the cell does not exist in the simulation.  Input and output values will be read and written for the cell, but internal to the program, the cell is excluded from the solution.  If the IDOMAIN value for a cell is 1 or greater, the cell exists in the simulation.  IDOMAIN values of -1 cannot be specified for the DISU Package."
+optional = true
+dtype = "integer"
+shape = [
+    "nodes",
+]
+
+[blocks.connectiondata.fields.iac]
+type = "array"
+longname = "number of cell connections"
+description = "is the number of connections (plus 1) for each cell.  The sum of all the entries in IAC must be equal to NJA."
+dtype = "integer"
+shape = [
+    "nodes",
+]
+
+[blocks.connectiondata.fields.ja]
+type = "array"
+longname = "grid connectivity"
+description = "is a list of cell number (n) followed by its connecting cell numbers (m) for each of the m cells connected to cell n. The number of values to provide for cell n is IAC(n).  This list is sequentially provided for the first to the last cell. The first value in the list must be cell n itself, and the remaining cells must be listed in an increasing order (sorted from lowest number to highest).  Note that the cell and its connections are only supplied for the GWE cells and their connections to the other GWE cells.  Also note that the JA list input may be divided such that every node and its connectivity list can be on a separate line for ease in readability of the file. To further ease readability of the file, the node number of the cell whose connectivity is subsequently listed, may be expressed as a negative number, the sign of which is subsequently converted to positive by the code."
+dtype = "integer"
+index = true
+shape = [
+    "nja",
+]
+
+[blocks.connectiondata.fields.ihc]
+type = "array"
+longname = "connection type"
+description = "is an index array indicating the direction between node n and all of its m connections.  If IHC = 0 then cell n and cell m are connected in the vertical direction.  Cell n overlies cell m if the cell number for n is less than m; cell m overlies cell n if the cell number for m is less than n.  If IHC = 1 then cell n and cell m are connected in the horizontal direction.  If IHC = 2 then cell n and cell m are connected in the horizontal direction, and the connection is vertically staggered.  A vertically staggered connection is one in which a cell is horizontally connected to more than one cell in a horizontal connection."
+dtype = "integer"
+shape = [
+    "nja",
+]
+
+[blocks.connectiondata.fields.cl12]
+type = "array"
+longname = "connection lengths"
+description = "is the array containing connection lengths between the center of cell n and the shared face with each adjacent m cell."
+dtype = "double"
+shape = [
+    "nja",
+]
+
+[blocks.connectiondata.fields.hwva]
+type = "array"
+longname = "connection lengths"
+description = "is a symmetric array of size NJA.  For horizontal connections, entries in HWVA are the horizontal width perpendicular to flow.  For vertical connections, entries in HWVA are the vertical area for flow.  Thus, values in the HWVA array contain dimensions of both length and area.  Entries in the HWVA array have a one-to-one correspondence with the connections specified in the JA array.  Likewise, there is a one-to-one correspondence between entries in the HWVA array and entries in the IHC array, which specifies the connection type (horizontal or vertical).  Entries in the HWVA array must be symmetric; the program will terminate with an error if the value for HWVA for an n to m connection does not equal the value for HWVA for the corresponding n to m connection."
+dtype = "double"
+shape = [
+    "nja",
+]
+
+[blocks.connectiondata.fields.angldegx]
+type = "array"
+longname = "angle of face normal to connection"
+description = "is the angle (in degrees) between the horizontal x-axis and the outward normal to the face between a cell and its connecting cells. The angle varies between zero and 360.0 degrees, where zero degrees points in the positive x-axis direction, and 90 degrees points in the positive y-axis direction.  ANGLDEGX is only needed if horizontal anisotropy is specified in the NPF Package, if the XT3D option is used in the NPF Package, or if the SAVE_SPECIFIC_DISCHARGE option is specified in the NPF Package.  ANGLDEGX does not need to be specified if these conditions are not met.  ANGLDEGX is of size NJA; values specified for vertical connections and for the diagonal position are not used.  Note that ANGLDEGX is read in degrees, which is different from MODFLOW-USG, which reads a similar variable (ANGLEX) in radians."
+optional = true
+dtype = "double"
+shape = [
+    "nja",
+]
+
+[blocks.vertices.fields.vertices]
+type = "list"
+longname = "vertices data"
+shape = [
+    "nvert",
+]
+
+[blocks.vertices.fields.vertices.item]
+name = "vertices"
+type = "record"
+
+[blocks.vertices.fields.vertices.item.fields.iv]
+type = "integer"
+longname = "vertex number"
+description = "is the vertex number.  Records in the VERTICES block must be listed in consecutive order from 1 to NVERT."
+tagged = false
+index = true
+pk = true
+
+[blocks.vertices.fields.vertices.item.fields.xv]
+type = "double"
+longname = "x-coordinate for vertex"
+description = "is the x-coordinate for the vertex."
+tagged = false
+
+[blocks.vertices.fields.vertices.item.fields.yv]
+type = "double"
+longname = "y-coordinate for vertex"
+description = "is the y-coordinate for the vertex."
+tagged = false
+
+[blocks.cell2d.fields.cell2d]
+type = "list"
+longname = "cell2d data"
+shape = [
+    "nodes",
+]
+
+[blocks.cell2d.fields.cell2d.item]
+name = "cell2d"
+type = "record"
+
+[blocks.cell2d.fields.cell2d.item.fields.icell2d]
+type = "integer"
+longname = "cell2d number"
+description = "is the cell2d number.  Records in the CELL2D block must be listed in consecutive order from 1 to NODES."
+tagged = false
+index = true
+pk = true
+
+[blocks.cell2d.fields.cell2d.item.fields.xc]
+type = "double"
+longname = "x-coordinate for cell center"
+description = "is the x-coordinate for the cell center."
+tagged = false
+
+[blocks.cell2d.fields.cell2d.item.fields.yc]
+type = "double"
+longname = "y-coordinate for cell center"
+description = "is the y-coordinate for the cell center."
+tagged = false
+
+[blocks.cell2d.fields.cell2d.item.fields.ncvert]
+type = "integer"
+longname = "number of cell vertices"
+description = "is the number of vertices required to define the cell.  There may be a different number of vertices for each cell."
+tagged = false
+
+[blocks.cell2d.fields.cell2d.item.fields.icvert]
+type = "array"
+longname = "array of vertex numbers"
+description = "is an array of integer values containing vertex numbers (in the VERTICES block) used to define the cell.  Vertices must be listed in clockwise order."
+tagged = false
+dtype = "integer"
+index = true
+shape = [
+    "ncvert",
+]
+
+[memory.voffsettol]
+set_in = "ar"
+source = "vertical_offset_tolerance"
+type = "double"
+
+[memory.export_ascii]
+set_in = "ar"
+source = "export_array_ascii"
+type = "logical"
+
+[memory.nodes]
+set_in = "ar"
+source = "nodes"
+type = "integer"
+
+[memory.nja]
+set_in = "ar"
+source = "nja"
+type = "integer"
+
+[memory.nvert]
+set_in = "ar"
+source = "nvert"
+type = "integer"
+
+[memory.top]
+type = "array"
+set_in = "ar"
+source = "top"
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[memory.bot]
+type = "array"
+set_in = "ar"
+source = "bot"
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[memory.area]
+type = "array"
+readonly = true
+set_in = "ar"
+description = "Horizontal cell area, computed from grid geometry."
+dtype = "double"
+shape = [
+    "nodesuser",
+]
+
+[memory.idomain]
+type = "array"
+set_in = "ar"
+source = "idomain"
+dtype = "integer"
+shape = [
+    "nodes",
+]
+
+[memory.nodeuser]
+type = "array"
+readonly = true
+set_in = "ar"
+description = "Maps each packed (active-cell) node position to its full-grid user node number. Index map for the runtime 'nodes' dimension."
+dtype = "integer"
+shape = [
+    "nodes",
+]
+
+[memory.nodereduced]
+type = "array"
+readonly = true
+set_in = "ar"
+description = "Maps each full-grid user node number to its packed (active-cell) node position, or a nonpositive sentinel if the cell is inactive."
+dtype = "integer"
+shape = [
+    "nodesuser",
+]

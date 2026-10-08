@@ -276,6 +276,24 @@ def _check_writable(path: Path) -> None:
         )
 
 
+def _store_dfns(dfn_dir: Path, dest: Path) -> None:
+    """Write the DFNs in ``dfn_dir`` to ``dest`` as TOML at the schema
+    version the classes are generated against: migrated from legacy
+    ``.dfn`` files, or copied if they're TOML already."""
+    dest.mkdir()
+    if any(dfn_dir.glob("*.dfn")):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
+            from modflow_devtools.dfns.migrate import migrate
+
+        migrate(dfn_dir, dest, _DFN_SCHEMA_VERSION, fmt="toml")
+    elif any(dfn_dir.glob("*.toml")):
+        for f in sorted(dfn_dir.glob("*.toml")):
+            shutil.copy2(f, dest / f.name)
+    else:
+        raise SyncError(f"No .dfn or .toml files in {dfn_dir}")
+
+
 def _swap(stage: Path, outdir: Path, replace: Iterable[str], remove: Iterable[str]) -> None:
     """Move the staged files over their counterparts in ``outdir`` and
     remove ``remove``, all or nothing: on failure, restore what was
@@ -465,12 +483,8 @@ def sync(
         )
         generated = {spec.outpath.relative_to(outdir).as_posix() for spec in specs}
         # Store the DFNs the classes came from, for the typed reader.
-        (stage / _DFNS).mkdir()
-        dfn_files = set()
-        for f in sorted(dfn_dir.iterdir()):
-            if f.is_file() and not f.name.startswith("."):
-                shutil.copy2(f, stage / _DFNS / f.name)
-                dfn_files.add(f"{_DFNS}/{f.name}")
+        _store_dfns(dfn_dir, stage / _DFNS)
+        dfn_files = {f"{_DFNS}/{f.name}" for f in (stage / _DFNS).iterdir()}
         old_dfn_files = (
             {f"{_DFNS}/{f.name}" for f in (outdir / _DFNS).iterdir() if f.is_file()}
             if (outdir / _DFNS).is_dir()

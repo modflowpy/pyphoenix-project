@@ -1,0 +1,106 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "gwf-buy"
+parent = "gwf-nam"
+ftype = "BUY6"
+
+[dims.nrhospecies]
+value = "nrhospecies"
+
+[blocks.options.fields.hhformulation_rhs]
+type = "keyword"
+longname = "hh formulation on right-hand side"
+description = "use the variable-density hydraulic head formulation and add off-diagonal terms to the right-hand.  This option will prevent the BUY Package from adding asymmetric terms to the flow matrix."
+optional = true
+
+[blocks.options.fields.denseref]
+type = "double"
+longname = "reference density"
+description = "fluid reference density used in the equation of state.  This value is set to 1000. if not specified as an option."
+optional = true
+default = 1000.0
+
+[blocks.options.fields.density_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.density_filerecord.fields.density]
+type = "keyword"
+longname = "density keyword"
+description = "keyword to specify that record corresponds to density."
+
+[blocks.options.fields.density_filerecord.fields.densityfile]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write density information.  The density file has the same format as the head file.  Density values will be written to the density file whenever heads are written to the binary head file.  The settings for controlling head output are contained in the Output Control option."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.dev_efh_formulation]
+type = "keyword"
+longname = "use equivalent freshwater head formulation"
+description = "use the variable-density equivalent freshwater head formulation instead of the hydraulic head head formulation.  This dev option has only been implemented for confined aquifer conditions and should generally not be used."
+optional = true
+developmode = true
+
+[blocks.dimensions.fields.nrhospecies]
+type = "integer"
+longname = "number of species used in density equation of state"
+description = "number of species used in density equation of state.  This value must be one or greater if the BUY package is activated."
+
+[blocks.packagedata.fields.packagedata]
+type = "list"
+shape = [
+    "nrhospecies",
+]
+
+[blocks.packagedata.fields.packagedata.item]
+name = "packagedata"
+type = "record"
+
+[blocks.packagedata.fields.packagedata.item.fields.irhospec]
+type = "integer"
+longname = "species number for this entry"
+description = "integer value that defines the species number associated with the specified PACKAGEDATA data on the line. IRHOSPECIES must be greater than zero and less than or equal to NRHOSPECIES. Information must be specified for each of the NRHOSPECIES species or the program will terminate with an error.  The program will also terminate with an error if information for a species is specified more than once."
+tagged = false
+index = true
+pk = true
+
+[blocks.packagedata.fields.packagedata.item.fields.drhodc]
+type = "double"
+longname = "slope of the density-concentration line"
+description = "real value that defines the slope of the density-concentration line for this species used in the density equation of state."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.crhoref]
+type = "double"
+longname = "reference concentration value"
+description = "real value that defines the reference concentration value used for this species in the density equation of state."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.modelname]
+type = "string"
+longname = "modelname"
+description = "name of a GWT or GWE model used to simulate a species that will be used in the density equation of state.  This name will have no effect if the simulation does not include a GWT or GWE model that corresponds to this GWF model."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.auxspeciesname]
+type = "string"
+longname = "auxspeciesname"
+description = "name of an auxiliary variable in a GWF stress package that will be used for this species to calculate a density value.  If a density value is needed by the Buoyancy Package then it will use the concentration values in this AUXSPECIESNAME column in the density equation of state.  For advanced stress packages (LAK, SFR, MAW, and UZF) that have an associated advanced transport package (LKT, SFT, MWT, and UZT), the FLOW_PACKAGE_AUXILIARY_NAME option in the advanced transport package can be used to transfer simulated concentrations into the flow package auxiliary variable.  In this manner, the Buoyancy Package can calculate density values for lakes, streams, multi-aquifer wells, and unsaturated zone flow cells using simulated concentrations."
+tagged = false
+
+[memory.hhform_rhs]
+set_in = "ar"
+source = "hhformulation_rhs"
+type = "logical"
+
+[memory.dev_efh_form]
+set_in = "ar"
+source = "dev_efh_formulation"
+type = "logical"
+
+[memory.nrhospecies]
+set_in = "ar"
+source = "nrhospecies"
+type = "integer"

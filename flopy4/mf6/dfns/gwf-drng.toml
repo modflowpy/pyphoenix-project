@@ -1,0 +1,344 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "gwf-drng"
+parent = "gwf-nam"
+ftype = "DRN6"
+multi = true
+subtype = "stress"
+
+[dims.maxbound]
+value = "maxbound"
+
+[dims.auxiliary]
+value = "len(auxiliary)"
+
+[dims.naux]
+value = "len(auxiliary)"
+
+[runtime_dims.nbound]
+set_in = "rp"
+
+[runtime_dims.ncolbnd]
+set_in = "ar"
+
+[blocks.options.fields.readarraygrid]
+type = "keyword"
+longname = "use array-based grid input"
+description = "indicates that array-based grid input will be used for the drain package.  This keyword must be specified to use array-based grid input.  When READARRAYGRID is specified, values must be provided for every cell within a model grid, even those cells that have an IDOMAIN value less than one.  Values assigned to cells with IDOMAIN values less than one are not used and have no effect on simulation results. No data cells should contain the value DNODATA (3.0E+30)."
+default = true
+
+[blocks.options.fields.auxiliary]
+type = "array"
+longname = "keyword to specify aux variables"
+description = "defines an array of one or more auxiliary variable names.  There is no limit on the number of auxiliary variables that can be provided on this line; however, lists of information provided in subsequent blocks must have a column of data for each auxiliary variable name defined here.   The number of auxiliary variables detected on this line determines the value for naux.  Comments cannot be provided anywhere on this line as they will be interpreted as auxiliary variable names.  Auxiliary variables may not be used by the package, but they will be available for use by other parts of the program.  The program will terminate with an error if auxiliary variables are specified on more than one line in the options block."
+optional = true
+dtype = "string"
+
+[blocks.options.fields.auxmultname]
+type = "string"
+longname = "name of auxiliary variable for multiplier"
+description = "name of auxiliary variable to be used as multiplier of drain conductance."
+optional = true
+
+[blocks.options.fields.auxdepthname]
+type = "string"
+longname = "name of auxiliary variable for drainage depth"
+description = "name of a variable listed in AUXILIARY that defines the depth at which drainage discharge will be scaled. If a positive value is specified for the AUXDEPTHNAME AUXILIARY variable, then ELEV is the elevation at which the drain starts to discharge and ELEV + DDRN (assuming DDRN is the AUXDEPTHNAME variable) is the elevation when the drain conductance (COND) scaling factor is 1. If a negative drainage depth value is specified for DDRN, then ELEV + DDRN is the elevation at which the drain starts to discharge and ELEV is the elevation when the conductance (COND) scaling factor is 1. A linear- or cubic-scaling is used to scale the drain conductance (COND) when the Standard or Newton-Raphson Formulation is used, respectively.  This discharge scaling option is described in more detail in Chapter 3 of the Supplemental Technical Information."
+optional = true
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "print input to listing file"
+description = "keyword to indicate that the list of drain information will be written to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.print_flows]
+type = "keyword"
+longname = "print calculated flows to listing file"
+description = "keyword to indicate that the list of drain flow rates will be printed to the listing file for every stress period time step in which 'BUDGET PRINT' is specified in Output Control.  If there is no Output Control option and 'PRINT_FLOWS' is specified, then flow rates are printed for the last time step of each stress period."
+optional = true
+
+[blocks.options.fields.save_flows]
+type = "keyword"
+longname = "save DRNG flows to budget file"
+description = "keyword to indicate that drain flow terms will be written to the file specified with 'BUDGET FILEOUT' in Output Control."
+optional = true
+
+[blocks.options.fields.obs_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.obs_filerecord.fields.obs6]
+type = "keyword"
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to an observations file."
+
+[blocks.options.fields.obs_filerecord.fields.obs6_filename]
+type = "file"
+longname = "obs6 input filename"
+description = "name of input file to define observations for the DRN package. See the 'Observation utility' section for instructions for preparing observation input files. Table {#2} lists observation type(s) supported by the DRN package."
+tagged = false
+direction = "in"
+component = "utl-obs"
+
+[blocks.options.fields.mover]
+type = "keyword"
+description = "keyword to indicate that this instance of the Drain Package can be used with the Water Mover (MVR) Package.  When the MOVER option is specified, additional memory is allocated within the package to store the available, provided, and received water."
+optional = true
+
+[blocks.options.fields.export_array_netcdf]
+type = "keyword"
+longname = "export array variables to netcdf output files."
+description = "keyword that specifies input gridded arrays should be written to the model output NetCDF file with attributes that support using the generated file as a MODFLOW 6 simulation input.  This option only has an effect when an output model NetCDF file is configured and the simulation is run in VALIDATE mode, otherwise it is ignored."
+optional = true
+
+[blocks.options.fields.dev_cubic_scaling]
+type = "keyword"
+longname = "cubic-scaling"
+description = "cubic-scaling is used to scale the drain conductance"
+optional = true
+developmode = true
+
+[blocks.dimensions.fields.maxbound]
+type = "integer"
+longname = "maximum number of drain cells in any stress period"
+description = "integer value specifying the maximum number of drains cells that will be specified for use during any stress period."
+optional = true
+
+[blocks.period.fields.elev]
+type = "array"
+longname = "drain elevation"
+description = "is the elevation of the drain."
+default = 3e+30
+netcdf = true
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.period.fields.cond]
+type = "array"
+longname = "drain conductance"
+description = "is the hydraulic conductance of the interface between the aquifer and the drain."
+default = 3e+30
+netcdf = true
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.period.fields.aux]
+type = "list"
+longname = "drain auxiliary variable iaux"
+description = "is an array of values for auxiliary variable aux(iaux), where iaux is a value from 1 to naux, and aux(iaux) must be listed as part of the auxiliary variables.  A separate array can be specified for each auxiliary variable.  If an array is not specified for an auxiliary variable, then it will retain its value from the most recently specified period block.  If an auxiliary variable array has never been specified, its value is zero.  If the value specified here for the auxiliary variable is the same as auxmultname, then the conductance array will be multiplied by this array."
+optional = true
+shape = [
+    "<=auxiliary",
+]
+
+[blocks.period.fields.aux.item]
+name = "aux"
+type = "record"
+
+[blocks.period.fields.aux.item.fields.auxname]
+type = "string"
+longname = "auxiliary variable name"
+description = "name of the auxiliary variable the following array sets; must be one of the auxiliary variables."
+tagged = false
+fk = "options.auxiliary"
+
+[blocks.period.fields.aux.item.fields.aux]
+type = "array"
+longname = "drain auxiliary variable iaux"
+netcdf = true
+tagged = false
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.period.header]
+fill_forward = true
+
+[blocks.period.header.field]
+name = "iper"
+type = "integer"
+longname = "stress period number"
+description = "integer value specifying the starting stress period number for which the data specified in the PERIOD block apply.  IPER must be less than or equal to NPER in the TDIS Package and greater than zero.  The IPER value assigned to a stress period block must be greater than the IPER value assigned for the previous PERIOD block.  The information specified in the PERIOD block will continue to apply for all subsequent stress periods, unless the program encounters another PERIOD block."
+tagged = false
+
+[memory.iprpak]
+set_in = "ar"
+source = "print_input"
+type = "integer"
+
+[memory.iprflow]
+set_in = "ar"
+source = "print_flows"
+type = "integer"
+
+[memory.ipakcb]
+set_in = "ar"
+source = "save_flows"
+description = "Flag controlling whether boundary flows are written to the budget file."
+type = "integer"
+
+[memory.export_nc]
+set_in = "ar"
+source = "export_array_netcdf"
+type = "logical"
+
+[memory.icubicsfac]
+set_in = "ar"
+source = "dev_cubic_scaling"
+type = "logical"
+
+[memory.auxvar]
+type = "array"
+source = "aux"
+description = "Auxiliary variable values for each boundary."
+dtype = "double"
+set_in = [
+    "rp",
+    "ad",
+]
+shape = [
+    "naux",
+    "nbound",
+]
+
+[memory.maxbound]
+readonly = true
+set_in = "ar"
+description = "Maximum number of boundary entries per stress period."
+type = "integer"
+
+[memory.nbound]
+set_in = "rp"
+description = "Number of active boundaries for the current stress period."
+type = "integer"
+
+[memory.ncolbnd]
+readonly = true
+set_in = "ar"
+description = "Number of columns in BOUND."
+type = "integer"
+
+[memory.nodelist]
+type = "array"
+set_in = "rp"
+description = "Reduced node number for each active boundary, derived from CELLID."
+dtype = "integer"
+shape = [
+    "nbound",
+]
+
+[memory.bound]
+type = "array"
+set_in = "rp"
+description = "Boundary data for the current stress period."
+dtype = "double"
+shape = [
+    "ncolbnd",
+    "nbound",
+]
+
+[memory.hcof]
+type = "array"
+readonly = true
+set_in = "fc"
+description = "Diagonal coefficient contribution to the system matrix."
+dtype = "double"
+shape = [
+    "nbound",
+]
+
+[memory.rhs]
+type = "array"
+readonly = true
+set_in = "fc"
+description = "Right-hand-side contribution to the system matrix."
+dtype = "double"
+shape = [
+    "nbound",
+]
+
+[memory.simvals]
+type = "array"
+readonly = true
+set_in = "cq"
+description = "Simulated boundary flow values for the current time step."
+budget = "DRN"
+output = true
+obs_type = "DRN"
+dtype = "double"
+shape = [
+    "nbound",
+]
+
+[memory.simtomvr]
+type = "array"
+readonly = true
+set_in = "cq"
+description = "Flow diverted to the Water Mover for each boundary."
+budget = "DRN-TO-MVR"
+output = true
+dtype = "double"
+shape = [
+    "nbound",
+]
+
+[memory.naux]
+readonly = true
+set_in = "ar"
+description = "Number of auxiliary variables."
+type = "integer"
+
+[memory.auxname_cst]
+type = "array"
+readonly = true
+set_in = "ar"
+description = "Names of auxiliary variables."
+dtype = "string"
+shape = [
+    "naux",
+]
+
+[observations.drn]
+type = "union"
+tagged = false
+
+[observations.drn.arms.cellid]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.drn.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.to-mvr]
+type = "union"
+tagged = false
+
+[observations.to-mvr.arms.cellid]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.to-mvr.arms.boundname]
+type = "string"
+tagged = false

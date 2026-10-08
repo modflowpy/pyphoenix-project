@@ -1,0 +1,1213 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "gwf-lak"
+parent = "gwf-nam"
+ftype = "LAK6"
+multi = true
+subtype = "advanced"
+
+[dims.nlakes]
+value = "nlakes"
+
+[dims.noutlets]
+value = "noutlets"
+
+[dims.ntables]
+value = "ntables"
+
+[dims.auxiliary]
+value = "len(auxiliary)"
+
+[dims.nlakeconn]
+value = "sum(packagedata.nlakeconn)"
+
+[blocks.options.fields.auxiliary]
+type = "array"
+longname = "keyword to specify aux variables"
+description = "defines an array of one or more auxiliary variable names.  There is no limit on the number of auxiliary variables that can be provided on this line; however, lists of information provided in subsequent blocks must have a column of data for each auxiliary variable name defined here.   The number of auxiliary variables detected on this line determines the value for naux.  Comments cannot be provided anywhere on this line as they will be interpreted as auxiliary variable names.  Auxiliary variables may not be used by the package, but they will be available for use by other parts of the program.  The program will terminate with an error if auxiliary variables are specified on more than one line in the options block."
+optional = true
+dtype = "string"
+
+[blocks.options.fields.boundnames]
+type = "keyword"
+description = "keyword to indicate that boundary names may be provided with the list of lake cells."
+optional = true
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "print input to listing file"
+description = "keyword to indicate that the list of lake information will be written to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.print_stage]
+type = "keyword"
+longname = "print calculated stages to listing file"
+description = "keyword to indicate that the list of lake {#2} will be printed to the listing file for every stress period in which 'HEAD PRINT' is specified in Output Control.  If there is no Output Control option and PRINT_{#3} is specified, then {#2} are printed for the last time step of each stress period."
+optional = true
+
+[blocks.options.fields.print_flows]
+type = "keyword"
+longname = "print calculated flows to listing file"
+description = "keyword to indicate that the list of lake flow rates will be printed to the listing file for every stress period time step in which 'BUDGET PRINT' is specified in Output Control.  If there is no Output Control option and 'PRINT_FLOWS' is specified, then flow rates are printed for the last time step of each stress period."
+optional = true
+
+[blocks.options.fields.save_flows]
+type = "keyword"
+longname = "save lake flows to budget file"
+description = "keyword to indicate that lake flow terms will be written to the file specified with 'BUDGET FILEOUT' in Output Control."
+optional = true
+
+[blocks.options.fields.stage_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.stage_filerecord.fields.stage]
+type = "keyword"
+longname = "stage keyword"
+description = "keyword to specify that record corresponds to stage."
+
+[blocks.options.fields.stage_filerecord.fields.stagefile]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write stage information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.budget_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.budget_filerecord.fields.budget]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[blocks.options.fields.budget_filerecord.fields.budgetfile]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write budget information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.budgetcsv_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.budgetcsv_filerecord.fields.budgetcsv]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[blocks.options.fields.budgetcsv_filerecord.fields.budgetcsvfile]
+type = "file"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.package_convergence_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.package_convergence_filerecord.fields.package_convergence]
+type = "keyword"
+longname = "package_convergence keyword"
+description = "keyword to specify that record corresponds to the package convergence comma spaced values file. A warning message will be issued if package convergence data is requested but the IMPLICIT option is specified. In that case the lake stage is included in the Iterative Model Solution (IMS) convergence check and the package convergence file is not written."
+
+[blocks.options.fields.package_convergence_filerecord.fields.package_convergence_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the comma spaced values output file to write package convergence information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.ts_filerecord]
+type = "list"
+optional = true
+
+[blocks.options.fields.ts_filerecord.item]
+name = "ts_filerecord"
+type = "record"
+
+[blocks.options.fields.ts_filerecord.item.fields.ts6]
+type = "keyword"
+longname = "head keyword"
+description = "keyword to specify that record corresponds to a time-series file."
+
+[blocks.options.fields.ts_filerecord.item.fields.ts6_filename]
+type = "file"
+longname = "file name of time series information"
+description = "defines a time-series file defining time series that can be used to assign time-varying values. See the 'Time-Variable Input' section for instructions on using the time-series capability."
+tagged = false
+direction = "in"
+component = "utl-ts"
+
+[blocks.options.fields.obs_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.obs_filerecord.fields.obs6]
+type = "keyword"
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to an observations file."
+
+[blocks.options.fields.obs_filerecord.fields.obs6_filename]
+type = "file"
+longname = "obs6 input filename"
+description = "name of input file to define observations for the LAK package. See the 'Observation utility' section for instructions for preparing observation input files. Table {#2} lists observation type(s) supported by the LAK package."
+tagged = false
+direction = "in"
+component = "utl-obs"
+
+[blocks.options.fields.mover]
+type = "keyword"
+description = "keyword to indicate that this instance of the LAK Package can be used with the Water Mover (MVR) Package.  When the MOVER option is specified, additional memory is allocated within the package to store the available, provided, and received water."
+optional = true
+
+[blocks.options.fields.dev_force_legacy]
+type = "keyword"
+longname = "force the legacy solution for every lake"
+description = "keyword that solves every active lake with the default (legacy) substitution solver under the implicit formulation, instead of only those lakes that are too poorly conditioned to solve as a matrix unknown.  Cannot be specified with DEV_FORCE_LEGACY_LAKE.  This development option exists to test that path and is not supported."
+optional = true
+developmode = true
+
+[blocks.options.fields.dev_force_legacy_lake]
+type = "integer"
+longname = "force the legacy solution for one lake"
+description = "integer lake number that is solved with the default (legacy) substitution solver under the implicit formulation, while the other lakes are solved as matrix unknowns.  Cannot be specified with DEV_FORCE_LEGACY.  This development option exists to test that path and is not supported."
+optional = true
+developmode = true
+
+[blocks.options.fields.dev_groundwater_head_conductance]
+type = "keyword"
+longname = "use the groundwater head to calculate horizontal conductance"
+description = "keyword that calculates the conductance for horizontal connections using the groundwater head instead of the lake stage.  This development option is not supported."
+optional = true
+developmode = true
+
+[blocks.options.fields.dev_maximum_outlet_depth]
+type = "double"
+longname = "maximum outlet depth"
+description = "real number value that defines the maximum depth used to calculate outlet flow.  This development option is not supported."
+optional = true
+developmode = true
+
+[blocks.options.fields.surfdep]
+type = "double"
+longname = "surface depression depth"
+description = "real value that defines the surface depression depth for VERTICAL lake-GWF connections. If specified, SURFDEP must be greater than or equal to zero. If SURFDEP is not specified, a default value of zero is used for all vertical lake-GWF connections."
+optional = true
+
+[blocks.options.fields.implicit]
+type = "keyword"
+longname = "solve lake stage in the groundwater flow matrix"
+description = "keyword that activates the implicit formulation. With this option each lake stage is solved as an additional unknown in the groundwater flow matrix, instead of by the default substitution-iteration solver. The implicit formulation typically converges in far fewer outer iterations for steady-state and strongly coupled lakes and can solve problems for which the default formulation fails to converge. Converged results are equivalent to the default formulation. The implicit formulation makes the coefficient matrix asymmetric and therefore requires the BICGSTAB linear acceleration in the Iterative Model Solution (IMS). Each lake must have at least one groundwater connection when the IMPLICIT option is active because the implicit formulation solves the lake stage through its lakebed seepage; the program will terminate with an error if a lake with no groundwater connections is specified with the IMPLICIT option. The implicit formulation does not yet include the density terms of the Buoyancy (BUY) Package, and the program will terminate with an error if the IMPLICIT option is specified and the BUY Package is active. If a lake stage becomes too poorly conditioned to solve as a matrix unknown, which can happen for a weakly connected or disconnected lake, that lake is solved automatically by the default substitution solver instead, so the implicit formulation remains as robust as the default formulation. The Newton formulation is recommended for lakes that may become perched (disconnected from the aquifer), because results obtained with the standard rewetting (REWET) capability can otherwise differ between the two approaches."
+optional = true
+
+[blocks.options.fields.maximum_iterations]
+type = "integer"
+longname = "LAK Newton-Raphson iterations"
+description = "integer value that defines the maximum number of Newton-Raphson iterations allowed for a lake. By default, MAXIMUM_ITERATIONS is equal to 100. MAXIMUM_ITERATIONS would only need to be increased from the default value if one or more lakes in a simulation has a large water budget error. This option applies only to the default substitution-iteration solver; when the IMPLICIT option is active the lake stage is solved within the groundwater flow matrix and its convergence is controlled by the Iterative Model Solution (IMS) settings instead."
+optional = true
+
+[blocks.options.fields.maximum_stage_change]
+type = "double"
+longname = "stage closure tolerance"
+description = "real value that defines the lake stage closure tolerance. By default, MAXIMUM_STAGE_CHANGE is equal to $1 times 10^{-5}$. The MAXIMUM_STAGE_CHANGE would only need to be increased or decreased from the default value if the water budget error for one or more lakes is too small or too large, respectively. This option applies only to the default substitution-iteration solver; when the IMPLICIT option is active the lake stage is solved within the groundwater flow matrix and its convergence is controlled by the Iterative Model Solution (IMS) settings instead."
+optional = true
+
+[blocks.options.fields.time_conversion]
+type = "double"
+longname = "time conversion factor"
+description = "real value that is used to convert user-specified Manning's roughness coefficients or gravitational acceleration used to calculate outlet flows from seconds to model time units. TIME_CONVERSION should be set to 1.0, 60.0, 3,600.0, 86,400.0, and 31,557,600.0 when using time units (TIME_UNITS) of seconds, minutes, hours, days, or years in the simulation, respectively. TIME_CONVERSION does not need to be specified if no lake outlets are specified or TIME_UNITS are seconds."
+optional = true
+
+[blocks.options.fields.length_conversion]
+type = "double"
+longname = "length conversion factor"
+description = "real value that is used to convert outlet user-specified Manning's roughness coefficients or gravitational acceleration used to calculate outlet flows from meters to model length units. LENGTH_CONVERSION should be set to 3.28081, 1.0, and 100.0 when using length units (LENGTH_UNITS) of feet, meters, or centimeters in the simulation, respectively. LENGTH_CONVERSION does not need to be specified if no lake outlets are specified or LENGTH_UNITS are meters."
+optional = true
+
+[blocks.options.fields.dev_no_final_check]
+type = "keyword"
+longname = "disable final convergence check for lake stages"
+description = "flag disabling the final convergence check of the change in lake stages. By default this check is enabled."
+optional = true
+developmode = true
+
+[blocks.dimensions.fields.nlakes]
+type = "integer"
+longname = "number of lakes"
+description = "value specifying the number of lakes that will be simulated for all stress periods."
+
+[blocks.dimensions.fields.noutlets]
+type = "integer"
+longname = "number of outlets"
+description = "value specifying the number of outlets that will be simulated for all stress periods. If NOUTLETS is not specified, a default value of zero is used."
+
+[blocks.dimensions.fields.ntables]
+type = "integer"
+longname = "number of tables"
+description = "value specifying the number of lakes tables that will be used to define the lake stage, volume relation, and surface area. If NTABLES is not specified, a default value of zero is used."
+
+[blocks.packagedata.fields.packagedata]
+type = "list"
+shape = [
+    "nlakes",
+]
+
+[blocks.packagedata.fields.packagedata.item]
+name = "packagedata"
+type = "record"
+
+[blocks.packagedata.fields.packagedata.item.fields.ifno]
+type = "integer"
+longname = "lake number for this entry"
+description = "integer value that defines the feature (lake) number associated with the specified PACKAGEDATA data on the line. IFNO must be greater than zero and less than or equal to NLAKES. Lake information must be specified for every lake or the program will terminate with an error.  The program will also terminate with an error if information for a lake is specified more than once."
+tagged = false
+index = true
+pk = true
+
+[blocks.packagedata.fields.packagedata.item.fields.strt]
+type = "double"
+longname = "starting lake stage"
+description = "real value that defines the starting stage for the lake."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.nlakeconn]
+type = "integer"
+longname = "number of lake connections"
+description = "integer value that defines the number of GWF cells connected to this (IFNO) lake. There can only be one vertical lake connection to each GWF cell. NLAKECONN must be greater than zero."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.aux]
+type = "array"
+longname = "auxiliary variables"
+description = "represents the values of the auxiliary variables for each lake. The values of auxiliary variables must be present for each lake. The values must be specified in the order of the auxiliary variables specified in the OPTIONS block.  If the package supports time series and the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+optional = true
+tagged = false
+dtype = "double"
+time_series = true
+shape = [
+    "auxiliary",
+]
+
+[blocks.packagedata.fields.packagedata.item.fields.boundname]
+type = "string"
+longname = "well name"
+description = "name of the lake cell.  BOUNDNAME is an ASCII character variable that can contain as many as 40 characters.  If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."
+optional = true
+tagged = false
+
+[blocks.connectiondata.fields.connectiondata]
+type = "list"
+shape = [
+    "nlakeconn",
+]
+
+[blocks.connectiondata.fields.connectiondata.item]
+name = "connectiondata"
+type = "record"
+
+[blocks.connectiondata.fields.connectiondata.item.fields.ifno]
+type = "integer"
+longname = "lake number for this entry"
+description = "integer value that defines the feature (lake) number associated with the specified CONNECTIONDATA data on the line. IFNO must be greater than zero and less than or equal to NLAKES. Lake connection information must be specified for every lake connection to the GWF model (NLAKECONN) or the program will terminate with an error.  The program will also terminate with an error if connection information for a lake connection to the GWF model is specified more than once."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.connectiondata.fields.connectiondata.item.fields.iconn]
+type = "integer"
+longname = "connection number for this entry"
+description = "integer value that defines the GWF connection number for this lake connection entry. ICONN must be greater than zero and less than or equal to NLAKECONN for lake IFNO."
+tagged = false
+index = true
+
+[blocks.connectiondata.fields.connectiondata.item.fields.cellid]
+type = "array"
+longname = "cell identifier"
+description = "is the cell identifier, and depends on the type of grid that is used for the simulation.  For a structured grid that uses the DIS input file, CELLID is the layer, row, and column.   For a grid that uses the DISV input file, CELLID is the layer and CELL2D number.  If the model uses the unstructured discretization (DISU) input file, CELLID is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[blocks.connectiondata.fields.connectiondata.item.fields.claktype]
+type = "string"
+longname = "lake connection type"
+description = "character string that defines the lake-GWF connection type for the lake connection. Possible lake-GWF connection type strings include:  VERTICAL--character keyword to indicate the lake-GWF connection is vertical  and connection conductance calculations use the hydraulic conductivity corresponding to the $K_{33}$ tensor component defined for CELLID in the NPF package. HORIZONTAL--character keyword to indicate the lake-GWF connection is horizontal and connection conductance calculations use the hydraulic conductivity corresponding to the $K_{11}$ tensor component defined for CELLID in the NPF package. EMBEDDEDH--character keyword to indicate the lake-GWF connection is embedded in a single cell and connection conductance calculations use the hydraulic conductivity corresponding to the $K_{11}$ tensor component defined for CELLID in the NPF package. EMBEDDEDV--character keyword to indicate the lake-GWF connection is embedded in a single cell and connection conductance calculations use the hydraulic conductivity corresponding to the $K_{33}$ tensor component defined for CELLID in the NPF package. Embedded lakes can only be connected to a single cell (NLAKECONN = 1) and there must be a lake table associated with each embedded lake."
+tagged = false
+
+[blocks.connectiondata.fields.connectiondata.item.fields.bedleak]
+type = "string"
+longname = "bed leakance"
+description = "real value or character string that defines the bed leakance for the lake-GWF connection. BEDLEAK must be greater than or equal to zero, equal to the DNODATA value (3.0E+30), or specified to be NONE. If DNODATA or NONE is specified for BEDLEAK, the lake-GWF connection conductance is solely a function of aquifer properties in the connected GWF cell and lakebed sediments are assumed to be absent. Warning messages will be issued if NONE is specified. Eventually the ability to specify NONE will be deprecated and cause MODFLOW 6 to terminate with an error."
+tagged = false
+
+[blocks.connectiondata.fields.connectiondata.item.fields.belev]
+type = "double"
+longname = "bottom elevation"
+description = "real value that defines the bottom elevation for a HORIZONTAL lake-GWF connection. Any value can be specified if CLAKTYPE is VERTICAL, EMBEDDEDH, or EMBEDDEDV. If CLAKTYPE is HORIZONTAL and BELEV is not equal to TELEV, BELEV must be greater than or equal to the bottom of the GWF cell CELLID. If BELEV is equal to TELEV, BELEV is reset to the bottom of the GWF cell CELLID."
+tagged = false
+
+[blocks.connectiondata.fields.connectiondata.item.fields.telev]
+type = "double"
+longname = "top elevation"
+description = "real value that defines the top elevation for a HORIZONTAL lake-GWF connection. Any value can be specified if CLAKTYPE is VERTICAL, EMBEDDEDH, or EMBEDDEDV. If CLAKTYPE is HORIZONTAL and TELEV is not equal to BELEV, TELEV must be less than or equal to the top of the GWF cell CELLID. If TELEV is equal to BELEV, TELEV is reset to the top of the GWF cell CELLID."
+tagged = false
+
+[blocks.connectiondata.fields.connectiondata.item.fields.connlen]
+type = "double"
+longname = "connection length"
+description = "real value that defines the distance between the connected GWF CELLID node and the lake for a HORIZONTAL, EMBEDDEDH, or EMBEDDEDV lake-GWF connection. CONLENN must be greater than zero for a HORIZONTAL, EMBEDDEDH, or EMBEDDEDV lake-GWF connection. Any value can be specified if CLAKTYPE is VERTICAL."
+tagged = false
+
+[blocks.connectiondata.fields.connectiondata.item.fields.connwidth]
+type = "double"
+longname = "connection width"
+description = "real value that defines the connection face width for a HORIZONTAL lake-GWF connection. CONNWIDTH must be greater than zero for a HORIZONTAL lake-GWF connection. Any value can be specified if CLAKTYPE is VERTICAL, EMBEDDEDH, or EMBEDDEDV."
+tagged = false
+
+[blocks.tables.fields.tables]
+type = "list"
+optional = true
+shape = [
+    "ntables",
+]
+
+[blocks.tables.fields.tables.item]
+name = "tables"
+type = "record"
+
+[blocks.tables.fields.tables.item.fields.ifno]
+type = "integer"
+longname = "lake number for this entry"
+description = "integer value that defines the feature (lake) number associated with the specified TABLES data on the line. IFNO must be greater than zero and less than or equal to NLAKES. The program will terminate with an error if table information for a lake is specified more than once or the number of specified tables is less than NTABLES."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.tables.fields.tables.item.fields.tab6]
+type = "keyword"
+longname = "head keyword"
+description = "keyword to specify that record corresponds to a table file."
+
+[blocks.tables.fields.tables.item.fields.tab6_filename]
+type = "file"
+longname = "table file name"
+description = "character string that defines the path and filename for the file containing lake table data for the lake connection. The TAB6_FILENAME file includes the number of entries in the file and the relation between stage, volume, and surface area for each entry in the file. Lake table files for EMBEDDEDH and EMBEDDEDV lake-GWF connections also include lake-GWF exchange area data for each entry in the file. Instructions for creating the TAB6_FILENAME input file are provided in Lake Table Input File section."
+tagged = false
+direction = "in"
+component = "utl-laktab"
+
+[blocks.outlets.fields.outlets]
+type = "list"
+optional = true
+shape = [
+    "noutlets",
+]
+
+[blocks.outlets.fields.outlets.item]
+name = "outlets"
+type = "record"
+
+[blocks.outlets.fields.outlets.item.fields.outletno]
+type = "integer"
+longname = "outlet number for this entry"
+description = "integer value that defines the outlet number associated with the specified OUTLETS data on the line. OUTLETNO must be greater than zero and less than or equal to NOUTLETS. Outlet information must be specified for every outlet or the program will terminate with an error. The program will also terminate with an error if information for a outlet is specified more than once."
+tagged = false
+index = true
+pk = true
+
+[blocks.outlets.fields.outlets.item.fields.lakein]
+type = "integer"
+longname = "lake number for upstream lake"
+description = "integer value that defines the lake number that outlet is connected to. LAKEIN must be greater than zero and less than or equal to NLAKES."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.outlets.fields.outlets.item.fields.lakeout]
+type = "integer"
+longname = "lake number for downstream lake"
+description = "integer value that defines the lake number that outlet discharge from lake outlet OUTLETNO is routed to. LAKEOUT must be greater than or equal to zero and less than or equal to NLAKES. If LAKEOUT is zero, outlet discharge from lake outlet OUTLETNO is discharged to an external boundary."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.outlets.fields.outlets.item.fields.couttype]
+type = "string"
+longname = "outlet type"
+description = "character string that defines the outlet type for the outlet OUTLETNO. Possible COUTTYPE strings include: SPECIFIED--character keyword to indicate the outlet is defined as a specified flow.  MANNING--character keyword to indicate the outlet is defined using Manning's equation. WEIR--character keyword to indicate the outlet is defined using a sharp weir equation."
+tagged = false
+
+[blocks.outlets.fields.outlets.item.fields.invert]
+type = "double"
+longname = "invert elevation"
+description = "real value that defines the invert elevation for the lake outlet. Any value can be specified if COUTTYPE is SPECIFIED. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+tagged = false
+time_series = true
+
+[blocks.outlets.fields.outlets.item.fields.width]
+type = "double"
+longname = "outlet width"
+description = "real value that defines the width of the lake outlet. Any value can be specified if COUTTYPE is SPECIFIED. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+tagged = false
+time_series = true
+
+[blocks.outlets.fields.outlets.item.fields.rough]
+type = "double"
+longname = "roughness coefficient"
+description = "real value that defines the roughness coefficient for the lake outlet. Any value can be specified if COUTTYPE is not MANNING. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+tagged = false
+time_series = true
+
+[blocks.outlets.fields.outlets.item.fields.slope]
+type = "double"
+longname = "bed slope"
+description = "real value that defines the bed slope for the lake outlet. Any value can be specified if COUTTYPE is not MANNING. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+tagged = false
+time_series = true
+
+[blocks.period.fields.perioddata]
+type = "list"
+
+[blocks.period.fields.perioddata.item]
+name = "perioddata"
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting]
+type = "union"
+description = "line of information that is parsed into a keyword and values.  Keyword values that can be used to start the LAKSETTING string include both keywords for lake settings and keywords for outlet settings.  Keywords for lake settings include: STATUS, STAGE, RAINFALL, EVAPORATION, RUNOFF, INFLOW, WITHDRAWAL, and AUXILIARY.  Keywords for outlet settings include RATE, INVERT, WIDTH, SLOPE, and ROUGH."
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.status]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.status.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.status.fields.status]
+type = "string"
+longname = "lake status"
+description = "keyword option to define lake status.  STATUS can be ACTIVE, INACTIVE, or CONSTANT. By default, STATUS is ACTIVE."
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.stage]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.stage.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.stage.fields.stage]
+type = "double"
+longname = "lake stage"
+description = "real or character value that defines the stage for the lake. The specified STAGE is only applied if the lake is a constant stage lake. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rainfall]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rainfall.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rainfall.fields.rainfall]
+type = "double"
+longname = "rainfall rate"
+description = "real or character value that defines the rainfall rate $(LT^{-1})$ for the lake. Value must be greater than or equal to zero. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.evaporation]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.evaporation.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.evaporation.fields.evaporation]
+type = "double"
+longname = "evaporation rate"
+description = "real or character value that defines the maximum evaporation rate $(LT^{-1})$ for the lake. Value must be greater than or equal to zero. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.runoff]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.runoff.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.runoff.fields.runoff]
+type = "double"
+longname = "runoff rate"
+description = "real or character value that defines the runoff rate $(L^3 T^{-1})$ for the lake. Value must be greater than or equal to zero. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.inflow]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.inflow.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.inflow.fields.inflow]
+type = "double"
+longname = "inflow rate"
+description = "real or character value that defines the volumetric inflow rate $(L^3 T^{-1})$ for the lake. Value must be greater than or equal to zero. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value. By default, inflow rates are zero for each lake."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.withdrawal]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.withdrawal.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.withdrawal.fields.withdrawal]
+type = "double"
+longname = "maximum withdrawal rate"
+description = "real or character value that defines the maximum withdrawal rate $(L^3 T^{-1})$ for the lake. Value must be greater than or equal to zero. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rate]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rate.fields.outletno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rate.fields.rate]
+type = "double"
+longname = "extraction rate"
+description = "real or character value that defines the extraction rate for the lake outflow. A positive value indicates inflow and a negative value indicates outflow from the lake. RATE only applies to outlets associated with active lakes (STATUS is ACTIVE). A specified RATE is only applied if COUTTYPE for the OUTLETNO is SPECIFIED. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value. By default, the RATE for each SPECIFIED lake outlet is zero."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.invert]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.invert.fields.outletno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.invert.fields.invert]
+type = "double"
+longname = "invert elevation"
+description = "real or character value that defines the invert elevation for the lake outlet. A specified INVERT value is only used for active lakes if COUTTYPE for lake outlet OUTLETNO is not SPECIFIED. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.width]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.width.fields.outletno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.width.fields.width]
+type = "double"
+longname = "outlet width"
+description = "real or character value that defines the width of the lake outlet. A specified WIDTH value is only used for active lakes if COUTTYPE for lake outlet OUTLETNO is not SPECIFIED. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.slope]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.slope.fields.outletno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.slope.fields.slope]
+type = "double"
+longname = "bed slope"
+description = "real or character value that defines the bed slope for the lake outlet. A specified SLOPE value is only used for active lakes if COUTTYPE for lake outlet OUTLETNO is MANNING. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rough]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rough.fields.outletno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.rough.fields.rough]
+type = "double"
+longname = "roughness coefficient"
+description = "real value that defines the roughness coefficient for the lake outlet. Any value can be specified if COUTTYPE is not MANNING. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.auxiliaryrecord]
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.auxiliaryrecord.fields.lakeno]
+type = "integer"
+longname = "lake or outlet number for this entry"
+description = "integer value that defines the lake or outlet number associated with the specified PERIOD data on the line.  NUMBER must be greater than zero and less than or equal to NLAKES for a lake number and less than or equal to NOUTLETS for an outlet number."
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.auxiliaryrecord.fields.auxiliary]
+type = "keyword"
+description = "keyword for specifying auxiliary variable."
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.auxiliaryrecord.fields.auxname]
+type = "string"
+description = "name for the auxiliary variable to be assigned AUXVAL.  AUXNAME must match one of the auxiliary variable names defined in the OPTIONS block. If AUXNAME does not match one of the auxiliary variable names defined in the OPTIONS block the data are ignored."
+tagged = false
+
+[blocks.period.fields.perioddata.item.fields.laksetting.arms.auxiliaryrecord.fields.auxval]
+type = "double"
+longname = "auxiliary variable value"
+description = "value for the auxiliary variable. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+tagged = false
+time_series = true
+
+[blocks.period.header]
+fill_forward = true
+
+[blocks.period.header.field]
+name = "iper"
+type = "integer"
+longname = "stress period number"
+description = "integer value specifying the starting stress period number for which the data specified in the PERIOD block apply.  IPER must be less than or equal to NPER in the TDIS Package and greater than zero.  The IPER value assigned to a stress period block must be greater than the IPER value assigned for the previous PERIOD block.  The information specified in the PERIOD block will continue to apply for all subsequent stress periods, unless the program encounters another PERIOD block."
+tagged = false
+
+[memory.iprpak]
+set_in = "ar"
+source = "print_input"
+type = "integer"
+
+[memory.iprflow]
+set_in = "ar"
+source = "print_flows"
+type = "integer"
+
+[memory.ipakcb]
+set_in = "ar"
+source = "save_flows"
+type = "integer"
+
+[memory.options_stage]
+set_in = "ar"
+source = "stage"
+type = "logical"
+
+[memory.pkgconv]
+set_in = "ar"
+source = "package_convergence"
+type = "logical"
+
+[memory.pkgconvfname]
+set_in = "ar"
+source = "package_convergence_filename"
+type = "string"
+
+[memory.options_filein]
+set_in = "ar"
+type = "logical"
+
+[memory.iforceleg]
+set_in = "ar"
+source = "dev_force_legacy"
+type = "integer"
+
+[memory.iforceleglak]
+set_in = "ar"
+source = "dev_force_legacy_lake"
+type = "integer"
+
+[memory.igwhcopt]
+set_in = "ar"
+source = "dev_groundwater_head_conductance"
+type = "integer"
+
+[memory.outdmax]
+set_in = "ar"
+source = "dev_maximum_outlet_depth"
+type = "double"
+
+[memory.surfdep]
+set_in = "ar"
+source = "surfdep"
+type = "double"
+
+[memory.iimplicit]
+set_in = "ar"
+source = "implicit"
+type = "integer"
+
+[memory.maxlakit]
+set_in = "ar"
+source = "maximum_iterations"
+type = "integer"
+
+[memory.dmaxchg]
+set_in = "ar"
+source = "maximum_stage_change"
+type = "double"
+
+[memory.convtime]
+set_in = "ar"
+source = "time_conversion"
+type = "double"
+
+[memory.convlength]
+set_in = "ar"
+source = "length_conversion"
+type = "double"
+
+[memory.iconvchk]
+set_in = "ar"
+source = "dev_no_final_check"
+type = "integer"
+
+[memory.packagedata_ifno]
+set_in = "ar"
+source = "ifno"
+type = "integer"
+
+[memory.conndata_ifno]
+source = "ifno"
+type = "integer"
+
+[memory.tables_ifno]
+source = "ifno"
+type = "integer"
+
+[memory.tables_filein]
+type = "logical"
+
+[memory.laktab6_filename]
+source = "tab6_filename"
+type = "string"
+
+[memory.outlets_outletno]
+source = "outletno"
+type = "integer"
+
+[memory.outlets_invert]
+source = "invert"
+type = "double"
+
+[memory.outlets_width]
+source = "width"
+type = "double"
+
+[memory.outlets_rough]
+source = "rough"
+type = "double"
+
+[memory.outlets_slope]
+source = "slope"
+type = "double"
+
+[memory.ifno]
+set_in = "rp"
+type = "integer"
+
+[memory.period_auxiliary]
+set_in = "rp"
+source = "auxiliary"
+type = "logical"
+
+[memory.nlakes]
+set_in = "ar"
+source = "nlakes"
+type = "integer"
+
+[memory.noutlets]
+set_in = "ar"
+source = "noutlets"
+type = "integer"
+
+[memory.ntables]
+set_in = "ar"
+source = "ntables"
+type = "integer"
+
+[observations.stage]
+type = "union"
+tagged = false
+
+[observations.stage.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.stage.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.ext-inflow]
+type = "union"
+tagged = false
+
+[observations.ext-inflow.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.ext-inflow.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.outlet-inflow]
+type = "union"
+tagged = false
+
+[observations.outlet-inflow.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.outlet-inflow.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.inflow]
+type = "union"
+tagged = false
+
+[observations.inflow.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.inflow.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.from-mvr]
+type = "union"
+tagged = false
+
+[observations.from-mvr.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.from-mvr.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.rainfall]
+type = "union"
+tagged = false
+
+[observations.rainfall.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.rainfall.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.runoff]
+type = "union"
+tagged = false
+
+[observations.runoff.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.runoff.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.withdrawal]
+type = "union"
+tagged = false
+
+[observations.withdrawal.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.withdrawal.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.evaporation]
+type = "union"
+tagged = false
+
+[observations.evaporation.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.evaporation.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.storage]
+type = "union"
+tagged = false
+
+[observations.storage.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.storage.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.constant]
+type = "union"
+tagged = false
+
+[observations.constant.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.constant.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.volume]
+type = "union"
+tagged = false
+
+[observations.volume.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.volume.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.surface-area]
+type = "union"
+tagged = false
+
+[observations.surface-area.arms.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.surface-area.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.lak]
+type = "union"
+tagged = false
+
+[observations.lak.arms.ifno_iconn]
+type = "record"
+tagged = false
+
+[observations.lak.arms.ifno_iconn.fields.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.lak.arms.ifno_iconn.fields.iconn]
+type = "integer"
+tagged = false
+index = true
+
+[observations.lak.arms.ifno_boundname]
+type = "record"
+tagged = false
+
+[observations.lak.arms.ifno_boundname.fields.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.lak.arms.ifno_boundname.fields.boundname]
+type = "string"
+tagged = false
+
+[observations.lak.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.wetted-area]
+type = "union"
+tagged = false
+
+[observations.wetted-area.arms.ifno_iconn]
+type = "record"
+tagged = false
+
+[observations.wetted-area.arms.ifno_iconn.fields.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.wetted-area.arms.ifno_iconn.fields.iconn]
+type = "integer"
+tagged = false
+index = true
+
+[observations.wetted-area.arms.ifno_boundname]
+type = "record"
+tagged = false
+
+[observations.wetted-area.arms.ifno_boundname.fields.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.wetted-area.arms.ifno_boundname.fields.boundname]
+type = "string"
+tagged = false
+
+[observations.wetted-area.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.conductance]
+type = "union"
+tagged = false
+
+[observations.conductance.arms.ifno_iconn]
+type = "record"
+tagged = false
+
+[observations.conductance.arms.ifno_iconn.fields.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.conductance.arms.ifno_iconn.fields.iconn]
+type = "integer"
+tagged = false
+index = true
+
+[observations.conductance.arms.ifno_boundname]
+type = "record"
+tagged = false
+
+[observations.conductance.arms.ifno_boundname.fields.ifno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.ifno"
+
+[observations.conductance.arms.ifno_boundname.fields.boundname]
+type = "string"
+tagged = false
+
+[observations.conductance.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.ext-outflow]
+type = "union"
+tagged = false
+
+[observations.ext-outflow.arms.outletno]
+type = "integer"
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[observations.ext-outflow.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.to-mvr]
+type = "union"
+tagged = false
+
+[observations.to-mvr.arms.outletno]
+type = "integer"
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[observations.to-mvr.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.outlet]
+type = "union"
+tagged = false
+
+[observations.outlet.arms.outletno]
+type = "integer"
+tagged = false
+index = true
+fk = "outlets.outletno"
+
+[observations.outlet.arms.boundname]
+type = "string"
+tagged = false
