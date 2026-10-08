@@ -18,8 +18,10 @@ How a period carries forward depends on the package:
 
 In layer-array packages a period's value can instead be a time-array
 series, by name (`TimeArraySeriesRef`), whose arrays MF6 interpolates in
-time: ``recharge={0: TimeArraySeriesRef("rchseries")}``, or just
-``{0: "rchseries"}``, written ``RECHARGE TIMEARRAYSERIES rchseries``.
+time: ``recharge={0: TimeArraySeriesRef("rchseries")}``, written
+``RECHARGE TIMEARRAYSERIES rchseries``. A plain name, ``{0: "rchseries"}``,
+works at runtime too, but isn't the typed form: mypy rejects it, since the
+conversion happens in ``Package._init_period_arrays``, after init.
 """
 
 import warnings
