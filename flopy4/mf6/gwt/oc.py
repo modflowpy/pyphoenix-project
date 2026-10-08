@@ -90,6 +90,7 @@ class Oc(Package):
     )
     concentrationprint: Optional[Concentrationprint] = field(
         default=None,
+        converter=Concentrationprint.convert,
         block="options",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(

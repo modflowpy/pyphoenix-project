@@ -428,11 +428,11 @@ def test_model_spec_shares_variant_field(all_dfns):
     assert types["csub"] == "Optional[Csub]"
     assert types["newtonoptions"] == "Optional[Newtonoptions]"
     calls = {f.py_name: f.spec_call for f in spec.fields}
-    assert "converter=Newtonoptions.from_flag" in calls["newtonoptions"]
-    # NPF's other records have required members
+    assert "converter=Newtonoptions.convert" in calls["newtonoptions"]
+    # every record field converts plain values
     npf = build_component_spec(all_dfns["gwf-npf"], root=Path("/fake"), dfns=all_dfns)
-    flags = {f.py_name for f in npf.fields if ".from_flag" in f.spec_call}
-    assert flags == {"xt3doptions", "cvoptions"}
+    converted = {f.py_name for f in npf.fields if ".convert" in f.spec_call}
+    assert converted == {"rewet", "xt3doptions", "cvoptions"}
     assert spec.mixins == ["GwfMethods", "ModelMethods"]
 
 

@@ -17,7 +17,7 @@ from flopy4.mf6.converter.binding import Binding
 from flopy4.mf6.item import Item, item_list_type
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
-from flopy4.mf6.record import Record
+from flopy4.mf6.record import Record, record_type
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 
 
@@ -336,6 +336,9 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif isinstance(field_value, Record):
             blocks[block_name][f.name] = field_value.to_tokens()
 
+        elif (rec := record_type(f.type)) is not None:
+            raise _not_a_record(value, f.name, rec, field_value)
+
         elif dfn_type in ("integer", "double", "double precision"):
             blocks[block_name][f.name] = field_value
 
@@ -375,6 +378,15 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         for name, block in sorted(blocks.items(), key=block_sort_key)
         if block or name in write_if_empty_set
     }
+
+
+def _not_a_record(component: Component, name: str, rec: type[Record], value: Any) -> TypeError:
+    """A record field holding something else, which the writer can't write
+    (the field's converter makes one, see `Record.convert`)."""
+    return TypeError(
+        f"{type(component).__name__}.{name} must be a {rec.__qualname__}, "
+        f"not {type(value).__name__}: {value!r}"
+    )
 
 
 def unstructure_component(value: Component) -> dict[str, Any]:
@@ -420,6 +432,8 @@ def _unstructure_component(value: Component) -> dict[str, Any]:
             if isinstance(raw_value, Record):
                 blocks[block_name][key] = raw_value.to_tokens()
                 continue
+            if field is not None and (rec := record_type(field.type)) is not None:
+                raise _not_a_record(value, field_name, rec, raw_value)
 
             # Dispatch on field value type
             match field_value := raw_value:

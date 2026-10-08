@@ -90,6 +90,7 @@ class Oc(Package):
     )
     temperatureprint: Optional[Temperatureprint] = field(
         default=None,
+        converter=Temperatureprint.convert,
         block="options",
     )
     _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(

@@ -57,7 +57,7 @@ class Npf(Package):
     )
     cvoptions: Optional[Cvoptions] = field(
         default=None,
-        converter=Cvoptions.from_flag,
+        converter=Cvoptions.convert,
         block="options",
     )
     perched: bool = field(
@@ -68,11 +68,12 @@ class Npf(Package):
     )
     rewet: Optional[Rewet] = field(
         default=None,
+        converter=Rewet.convert,
         block="options",
     )
     xt3doptions: Optional[Xt3doptions] = field(
         default=None,
-        converter=Xt3doptions.from_flag,
+        converter=Xt3doptions.convert,
         block="options",
     )
     highest_cell_saturation: bool = field(

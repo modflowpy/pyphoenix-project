@@ -121,7 +121,7 @@ class Gwf(GwfMethods, ModelMethods, Model):
     )
     newtonoptions: Optional[Newtonoptions] = field(
         default=None,
-        converter=Newtonoptions.from_flag,
+        converter=Newtonoptions.convert,
         block="options",
     )
     netcdf_mesh2d_file: Optional[Path] = path(
