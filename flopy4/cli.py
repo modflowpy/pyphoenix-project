@@ -13,10 +13,14 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         args.release_id,
         mf6_version=args.mf6_version,
         all_packages=args.all_packages,
+        install=args.install,
+        bindir=args.bindir,
         force=args.force,
         verbose=args.verbose,
     )
     print(f"Generated {len(result.files)} component modules")
+    if result.installed:
+        print(f"Installed {result.installed}")
     if result.removed:
         print(f"Removed {len(result.removed)} orphaned module(s)")
     if result.version != "unknown":
@@ -88,9 +92,13 @@ def main() -> None:
         help="Override MF6 version in _contract.py (useful with local DFN paths).",
     )
     sync_p.add_argument(
-        "--no-install",
+        "--install",
         action="store_true",
-        help="Skip binary installation; regenerate classes only.",
+        help="Also install the matching MF6 binary (a tag's release, or the latest "
+        "nightly build for develop) before regenerating classes.",
+    )
+    sync_p.add_argument(
+        "--bindir", default=None, help="Where to install the binary (with --install)."
     )
     sync_p.add_argument(
         "--all-packages",
@@ -100,7 +108,9 @@ def main() -> None:
         "By default sync only updates already-generated files.",
     )
     sync_p.add_argument(
-        "--force", action="store_true", help="Re-fetch remote DFNs even if they are cached."
+        "--force",
+        action="store_true",
+        help="Re-fetch remote DFNs, and re-download the binary, even if cached.",
     )
     sync_p.add_argument("--verbose", action="store_true")
     sync_p.set_defaults(func=_cmd_sync)

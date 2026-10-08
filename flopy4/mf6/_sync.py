@@ -47,6 +47,8 @@ class SyncResult:
         Generated modules from an earlier sync that this source has no
         DFN for. They're left in place, since other modules may import
         them, and stay in the contract's file list.
+    installed :
+        The MF6 executable sync installed, if asked to.
     removed :
         Generated modules that neither this sync nor the previous
         contract lists, e.g. ones an earlier sync created before
@@ -60,6 +62,7 @@ class SyncResult:
     files: tuple[Path, ...]
     kept: tuple[Path, ...] = ()
     removed: tuple[Path, ...] = ()
+    installed: Path | None = None
 
 
 def _resolve_release_id(release_id: str | None, verbose: bool = False) -> str:
@@ -170,6 +173,43 @@ def _local_commit(path: Path) -> str | None:
     return f"{sha}-dirty" if changes.strip() else sha
 
 
+def _install_mf6(
+    release_id: str,
+    bindir: str | PathLike | None,
+    force: bool,
+    verbose: bool,
+) -> Path:
+    """Install the MF6 binary matching a DFN release ID and return its
+    path. A tag (or ``latest``) installs that release; ``develop`` installs
+    the latest nightly build, which may be ahead of the DFNs."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*modflow_devtools.programs.*experimental.*")
+        from modflow_devtools.programs import ProgramInstallationError, install_program
+
+    owner_repo, ref = release_id.split("@", 1)
+    owner, repo = owner_repo.split("/")
+    if ref == "develop":
+        repo, ref = "modflow6-nightly-build", "latest"
+    elif ref != "latest" and not ref[:1].isdigit():
+        raise SyncError(
+            f"No MF6 binaries are published for {release_id}. Install one separately "
+            "and sync without --install."
+        )
+    if verbose:
+        print(f"Installing mf6 from {owner}/{repo}@{ref}")
+    try:
+        installs = install_program(
+            "mf6", owner=owner, repo=repo, version=ref, bindir=bindir, force=force, verbose=verbose
+        )
+    except ProgramInstallationError as e:
+        raise SyncError(f"Couldn't install mf6 for {release_id}: {e}") from e
+    for install in installs:
+        for name in install.executables:
+            if Path(name).stem == "mf6":
+                return Path(install.bindir) / name
+    raise SyncError(f"Installing mf6 for {release_id} didn't produce an mf6 executable.")
+
+
 def _contract_text(mf6_version: str, commit: str | None, files: Iterable[str]) -> str:
     lines = "".join(f'    "{f}",\n' for f in sorted(files))
     commit_repr = "None" if commit is None else f'"{commit}"'
@@ -277,6 +317,8 @@ def sync(
     exe: str | PathLike | None = None,
     mf6_version: str | None = None,
     all_packages: bool = False,
+    install: bool = False,
+    bindir: str | PathLike | None = None,
     force: bool = False,
     outdir: str | PathLike | None = None,
     verbose: bool = False,
@@ -284,8 +326,8 @@ def sync(
     """Regenerate the ``flopy4.mf6`` classes for an MF6 version.
 
     Fetches or reads the DFNs, regenerates the component classes, and
-    records the MF6 version in ``_contract.py``. Does not install an MF6
-    binary.
+    records the MF6 version in ``_contract.py``. Installs the matching
+    MF6 binary only if ``install`` is set.
 
     Parameters
     ----------
@@ -304,9 +346,16 @@ def sync(
     all_packages :
         Generate every component, including ones with no module yet. By
         default only existing modules are regenerated.
+    install :
+        Also install the MF6 binary for a remote source, before changing
+        any classes: the release for a tag, the latest nightly build for
+        ``develop``. Not supported for local DFNs or other branches.
+    bindir :
+        Where to install the binary. Chosen by ``modflow_devtools`` if
+        omitted.
     force :
-        Re-fetch remote DFNs even if they are cached. Branch refs are
-        always re-fetched.
+        Re-fetch remote DFNs, and re-download the binary, even if cached.
+        Branch refs are always re-fetched.
     outdir :
         Where to write the classes and contract. Defaults to the installed
         ``flopy4.mf6`` package.
@@ -341,6 +390,8 @@ def sync(
         if isinstance(source, PathLike) or ("/" in str(source) and "@" not in str(source)):
             raise FileNotFoundError(f"DFN directory not found: {path}")
     if path is not None and path.is_dir():
+        if install:
+            raise ValueError("Can't install a binary for local DFNs; install one separately.")
         if verbose:
             print(f"Generating flopy4.mf6 from local DFNs: {path}")
         registry = LocalDfnRegistry(path=path)
@@ -375,6 +426,19 @@ def sync(
             "Pass mf6_version to record it explicitly in _contract.py.",
             stacklevel=2,
         )
+
+    installed = None
+    if install:
+        installed = _install_mf6(source, bindir=bindir, force=force, verbose=verbose)
+        from flopy4.mf6._compat import _mismatch, _query_mf6_version
+
+        binary_version = _query_mf6_version(str(installed))
+        if binary_version and _mismatch(version, commit, binary_version):
+            warnings.warn(
+                f"The installed binary ({installed}) reports MF6 {binary_version}, "
+                f"but the DFNs are for {version}.",
+                stacklevel=2,
+            )
 
     from flopy4.mf6.utils.codegen.dfn2py import _SKIP, check_mixins
 
@@ -448,4 +512,5 @@ def sync(
         files=tuple(spec.outpath for spec in specs),
         kept=tuple(outdir / f for f in sorted(kept)),
         removed=tuple(outdir / f for f in sorted(removed)),
+        installed=installed,
     )
