@@ -14,6 +14,10 @@ on:
       - '.gitignore'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test_extended_win:
     name: Test Extended (windows-latest, ${{ matrix.env }})
