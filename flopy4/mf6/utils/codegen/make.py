@@ -1026,6 +1026,7 @@ MIXINS: dict[str, list[str]] = {
     "prt-nam": _MODEL,
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
+    "utl-ts": ["flopy4.mf6.utl.ts_methods:TsMethods"],
     # Grid packages provide the model's dimensions. Which components do
     # can't be told from the DFN (maxbound and friends are model-scoped too).
     "gwf-dis": _DIS,

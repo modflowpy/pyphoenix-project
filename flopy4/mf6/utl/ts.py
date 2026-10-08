@@ -7,10 +7,11 @@ from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import field
+from flopy4.mf6.utl.ts_methods import TsMethods
 
 
 @attrs.define(kw_only=True, slots=False)
-class Ts(Package):
+class Ts(TsMethods, Package):
     dfn_name: ClassVar[str] = "utl-ts"
 
     multi_package: ClassVar[bool] = True
