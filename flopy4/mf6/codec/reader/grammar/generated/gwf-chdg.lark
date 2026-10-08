@@ -1,0 +1,44 @@
+// Auto-generated grammar for MF6 GWF-CHDG -- see typed.lark's own
+// header note for why newlines are significant here.
+%import typed.integer -> integer
+%import typed.double -> double
+%import typed.number -> number
+%import typed.string -> string
+%import typed.word -> word
+%import typed.array -> array
+%import typed.record -> record
+%import typed.open_close_redirect -> open_close_redirect
+%import typed._NL -> _NL
+%import typed._remark -> _remark
+%import typed.COMMA -> COMMA
+%import common.WS_INLINE
+%import common.SH_COMMENT
+%import typed.BANG_COMMENT -> BANG_COMMENT
+
+%ignore WS_INLINE
+%ignore SH_COMMENT
+%ignore BANG_COMMENT
+%ignore COMMA
+
+start: _NL* (block _NL*)*
+block: options_block | dimensions_block | period_block
+
+options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
+dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
+period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+%import typed.block_index -> block_index
+options_fields: ((readarraygrid | auxiliary | auxmultname | print_input | print_flows | save_flows | obs_filerecord | export_array_netcdf | dev_no_newton | open_close_redirect) _NL*)*
+dimensions_fields: ((maxbound | open_close_redirect) _NL*)*
+period_fields: ((head | aux | open_close_redirect) _NL*)*
+readarraygrid: "readarraygrid"i  [_remark] _NL
+auxiliary: "auxiliary"i word+ [_remark] _NL
+auxmultname: "auxmultname"i string
+print_input: "print_input"i  [_remark] _NL
+print_flows: "print_flows"i  [_remark] _NL
+save_flows: "save_flows"i  [_remark] _NL
+obs_filerecord: "obs6"i "filein"i word [_remark] _NL
+export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
+dev_no_newton: "dev_no_newton"i  [_remark] _NL
+maxbound: "maxbound"i integer [_remark] _NL
+head: "head"i [_remark] [_NL] array
+aux: word [_remark] [_NL] array
