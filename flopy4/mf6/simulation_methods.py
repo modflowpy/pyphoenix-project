@@ -46,8 +46,15 @@ class SimulationMethods:
             return tree
 
     def run(self: "Simulation", exe: str | PathLike = "mf6", verbose: bool = False) -> None:  # type: ignore[misc]
-        """Run the simulation using the given executable."""
+        """Run the simulation using the given executable.
+
+        Warns first if the executable's version doesn't match the MF6
+        version flopy4.mf6 is synced to.
+        """
+        from flopy4.mf6._compat import check_mf6_compatibility
+
         with cd(self.workspace):
+            check_mf6_compatibility(exe)
             out, err, ret = run_cmd(exe, verbose=verbose)
             if ret != 0:
                 raise RuntimeError(

@@ -1,7 +1,9 @@
+import os
 import re
 import shutil
 import subprocess
 import warnings
+from os import PathLike
 
 _VERSION_RE = re.compile(r"(?:version\s+|mf6:\s+)(\d+\.\d+\.\d+(?:\.[^\s+]+)?(?:\+\S+)?)", re.I)
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+")
@@ -18,14 +20,29 @@ def _query_mf6_version(exe: str) -> str | None:
         return None
 
 
+# Versions reported by binaries, by resolved path and modification time,
+# so a check per run doesn't start a process each time.
+_versions: dict[tuple[str, int], str | None] = {}
+
+
+def _binary_version(exe: str) -> str | None:
+    """``_query_mf6_version`` for a resolved executable path, cached."""
+    key = (exe, os.stat(exe).st_mtime_ns)
+    if key not in _versions:
+        _versions[key] = _query_mf6_version(exe)
+    return _versions[key]
+
+
 def _split_version(version: str) -> tuple[str, str | None]:
     """Split ``6.8.0.dev0+abc1234`` into the base version and the commit
     (``"6.8.0.dev0"``, ``"abc1234"``). A ``git describe``-style ``g``
-    prefix on the commit is dropped. The commit is None for a release."""
+    prefix and a ``.dirty`` suffix on the commit are dropped. The commit
+    is None for a release."""
     base, _, local = version.partition("+")
-    if local.startswith("g"):
-        local = local[1:]
-    return base, local or None
+    commit = local.split(".")[0]
+    if commit.startswith("g"):
+        commit = commit[1:]
+    return base, commit or None
 
 
 def _mismatch(mf6_version: str, dfn_commit: str | None, binary_version: str) -> bool | None:
@@ -44,17 +61,20 @@ def _mismatch(mf6_version: str, dfn_commit: str | None, binary_version: str) -> 
     return _split_version(mf6_version)[0] != base
 
 
-def check_mf6_compatibility(exe: str | None = None) -> None:
-    """Warn if a discovered MF6 binary doesn't match the synced version.
+def check_mf6_compatibility(exe: str | PathLike | None = None) -> None:
+    """Warn if an MF6 binary doesn't match the version flopy4.mf6 is
+    synced to, or if that version is unknown.
 
-    Does nothing when the synced version is ``"unknown"``, or when it's a
-    branch name and the binary doesn't report a commit to compare.
+    ``Simulation.run`` calls this for the executable it runs. Does
+    nothing when the synced version is a branch name and the binary
+    doesn't report a commit to compare.
 
     Parameters
     ----------
     exe :
-        Path to an MF6 executable. If None, searches PATH for ``mf6``
-        or ``mf6.exe``. Does nothing if no binary is found.
+        An MF6 executable: a name to look up on PATH, or a path, relative
+        to the working directory. If None, looks up ``mf6`` or ``mf6.exe``.
+        Does nothing if it isn't found.
     """
     from flopy4.mf6 import _contract
 
@@ -75,10 +95,12 @@ def check_mf6_compatibility(exe: str | None = None) -> None:
 
     if exe is None:
         exe = shutil.which("mf6") or shutil.which("mf6.exe")
+    else:
+        exe = shutil.which(os.fspath(exe))
     if exe is None:
         return
 
-    binary_version = _query_mf6_version(exe)
+    binary_version = _binary_version(exe)
     if binary_version is None or not _mismatch(mf6_version, dfn_commit, binary_version):
         return
 
