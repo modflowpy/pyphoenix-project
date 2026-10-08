@@ -42,7 +42,12 @@ FloatArrayLike: TypeAlias = _ArrayLike[np.float64]
 @attrs.frozen
 class TimeArraySeriesRef:
     """A period's array given by a time-array series, by its name, which
-    MF6 interpolates in time: ``RECHARGE TIMEARRAYSERIES <name>``."""
+    MF6 interpolates in time: ``RECHARGE TIMEARRAYSERIES <name>``.
+
+    This is the typed form. A plain name, ``recharge={0: "rchseries"}``, is
+    also accepted at init and converted to this, but mypy rejects it: the
+    conversion happens after init, not in a field converter.
+    """
 
     name: str
 
