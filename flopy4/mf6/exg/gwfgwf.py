@@ -5,7 +5,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, to_str_array
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.gwf.gnc import Gnc
 from flopy4.mf6.gwf.mvr import Mvr
@@ -43,7 +43,7 @@ class Gwfgwf(Exchange):
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
-        converter=attrs.converters.optional(to_array(np.str_)),
+        converter=to_str_array,
         eq=ARRAY_EQ,
         block="options",
         optional=True,
@@ -80,7 +80,7 @@ class Gwfgwf(Exchange):
     )
     cvoptions: Optional[Cvoptions] = field(
         default=None,
-        converter=Cvoptions.convert,
+        converter=lambda v: Gwfgwf.Cvoptions.convert(v),
         block="options",
     )
     newton: bool = field(

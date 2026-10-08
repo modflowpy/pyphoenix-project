@@ -49,27 +49,27 @@ class Ts(TsMethods, Package):
 
     time_series_name: Optional[TimeSeriesName] = field(
         default=None,
-        converter=TimeSeriesName.convert,
+        converter=lambda v: Ts.TimeSeriesName.convert(v),
         block="attributes",
     )
     interpolation_method: Optional[InterpolationMethod] = field(
         default=None,
-        converter=InterpolationMethod.convert,
+        converter=lambda v: Ts.InterpolationMethod.convert(v),
         block="attributes",
     )
     interpolation_methodrecord_single: Optional[InterpolationMethodrecordSingle] = field(
         default=None,
-        converter=InterpolationMethodrecordSingle.convert,
+        converter=lambda v: Ts.InterpolationMethodrecordSingle.convert(v),
         block="attributes",
     )
     sfac: Optional[Sfac] = field(
         default=None,
-        converter=Sfac.convert,
+        converter=lambda v: Ts.Sfac.convert(v),
         block="attributes",
     )
     sfacrecord_single: Optional[SfacrecordSingle] = field(
         default=None,
-        converter=SfacrecordSingle.convert,
+        converter=lambda v: Ts.SfacrecordSingle.convert(v),
         block="attributes",
     )
     timeseries: Optional[list[Timeseries]] = field(

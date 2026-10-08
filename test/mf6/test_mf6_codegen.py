@@ -427,7 +427,7 @@ def test_model_spec_shares_variant_field(all_dfns):
     assert types["csub"] == "Optional[Csub]"
     assert types["newtonoptions"] == "Optional[Newtonoptions]"
     calls = {f.py_name: f.spec_call for f in spec.fields}
-    assert "converter=Newtonoptions.convert" in calls["newtonoptions"]
+    assert "converter=lambda v: Gwf.Newtonoptions.convert(v)" in calls["newtonoptions"]
     # every record field converts plain values
     npf = build_component_spec(all_dfns["gwf-npf"], root=Path("/fake"), dfns=all_dfns)
     converted = {f.py_name for f in npf.fields if ".convert" in f.spec_call}
@@ -1100,7 +1100,7 @@ def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, monkeypatch):
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     text = spec.outpath.read_text()
     assert "ts_file: Optional[list[Path]] = path(" in text
-    assert "converter=attrs.converters.optional(to_list(Path))," in text
+    assert "converter=to_path_list," in text
 
 
 def test_tagged_record_list_roundtrip(tmp_path):
@@ -1222,25 +1222,27 @@ def test_auxiliary_is_string_array():
     assert wel.auxiliary.tolist() == ["conc", "temp"]
 
 
-def test_to_list_and_to_array():
-    """A single value (str/path included) is wrapped; others convert per element."""
-    import numpy as np
+def test_list_and_array_converters():
+    """A single value (str/path included) is wrapped; others convert per
+    element; None is kept."""
+    from flopy4.mf6._types import to_path_list, to_str_array
 
-    from flopy4.mf6._types import to_array, to_list
-
-    assert to_list(Path)("a.ts") == [Path("a.ts")]
-    assert to_list(Path)(Path("a.ts")) == [Path("a.ts")]
-    assert to_list(Path)(["a.ts", Path("b.ts")]) == [Path("a.ts"), Path("b.ts")]
-    assert to_array(np.str_)("conc").tolist() == ["conc"]
-    assert to_array(np.str_)(("conc", "temp")).tolist() == ["conc", "temp"]
+    assert to_path_list("a.ts") == [Path("a.ts")]
+    assert to_path_list(Path("a.ts")) == [Path("a.ts")]
+    assert to_path_list(["a.ts", Path("b.ts")]) == [Path("a.ts"), Path("b.ts")]
+    assert to_path_list(None) is None
+    assert to_str_array("conc").tolist() == ["conc"]
+    assert to_str_array(("conc", "temp")).tolist() == ["conc", "temp"]
+    assert to_str_array(None) is None
 
 
 @pytest.mark.parametrize(
     "type_str,expected",
     [
         ("Optional[Path]", "attrs.converters.optional(Path)"),
-        ("Optional[list[Path]]", "attrs.converters.optional(to_list(Path))"),
-        ("Optional[NDArray[np.str_]]", "attrs.converters.optional(to_array(np.str_))"),
+        ("Optional[list[Path]]", "to_path_list"),
+        ("Optional[NDArray[np.str_]]", "to_str_array"),
+        ("NDArray[np.str_]", "to_str_array"),
         ("Optional[NDArray[np.float64]]", None),
         ("Optional[int]", None),
     ],
@@ -1280,7 +1282,7 @@ def _load_class_from_spec(spec, mod_name: str, expected_class: str):
     components_snapshot = dict(FNAMES)
     sys_modules_keys = set(sys.modules)
     try:
-        mod_spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        mod_spec.loader.exec_module(mod)
         assert hasattr(mod, expected_class), f"Class {expected_class} not found in {spec.outpath}"
         return getattr(mod, expected_class)
     finally:

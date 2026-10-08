@@ -473,18 +473,22 @@ def py_type(f: FieldV3, block_name: str) -> str:
 def converter(type_str: str) -> str | None:
     """The attrs converter for a generated type annotation, built from the
     type: ``Optional[X]`` -> ``attrs.converters.optional(<X>)``, ``list[X]``
-    -> ``to_list(<X>)``, ``Path`` -> ``Path``, and an inline (string) array
-    ``NDArray[np.str_]`` -> ``to_array(np.str_)``. Other types need none
-    (numeric arrays take constants, layers or xarray; see is_readarray).
+    -> ``to_list(<X>)``, ``Path`` -> ``Path``. A list of paths and an inline
+    (string) array ``NDArray[np.str_]`` get named converters, which take
+    None too, ``to_path_list`` and ``to_str_array``: mypy reads only named
+    functions, types and lambdas (see `flopy4.mypy_plugin`). Other types
+    need none (numeric arrays take constants, layers or xarray; see
+    is_readarray).
     """
+    named = {"list[Path]": "to_path_list", "NDArray[np.str_]": "to_str_array"}
+    if conv := named.get(re.sub(r"^Optional\[(.+)\]$", r"\1", type_str)):
+        return conv
     if m := re.fullmatch(r"Optional\[(.+)\]", type_str):
         inner = converter(m[1])
         return f"attrs.converters.optional({inner})" if inner else None
     if m := re.fullmatch(r"list\[(.+)\]", type_str):
         inner = converter(m[1])
         return f"to_list({inner})" if inner else None
-    if type_str == "NDArray[np.str_]":
-        return "to_array(np.str_)"
     if type_str == "Path":
         return "Path"
     return None
@@ -673,7 +677,7 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
     lines = [f"{fn}(", f"        default={default},"]
     if conv := field_converter(f, block_name):
         lines.append(f"        converter={conv},")
-        if "to_array(" in conv:
+        if conv == "to_str_array":
             # inline arrays have no shape for field() to key on
             lines.append("        eq=ARRAY_EQ,")
     for k, v in kw.items():
