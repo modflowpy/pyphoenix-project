@@ -4,6 +4,7 @@ from pathlib import Path
 from pprint import pprint
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 
@@ -3935,3 +3936,50 @@ def test_netcdf_dump_only_netcdf_fields():
     from flopy4.mf6.codec.writer.filters import array_how
 
     assert array_how(xr.DataArray([1.0, 2.0]), netcdf=True) == "internal"
+
+
+def test_ts_from_series():
+    """A TS6 file from a DataFrame, a named Series or a mapping, with one
+    method for all its series or one each, and back to a DataFrame."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+    from flopy4.mf6.utl import Ts
+
+    df = pd.DataFrame({"stage": [10.0, 12.5], "inflow": [1.0, 2.0]}, index=[10.0, 0.0])
+    ts = Ts.from_series(df, method={"stage": "linear", "inflow": "stepwise"}, sfac=2.0)
+    assert ts.time_series_name.time_series_names == ["stage", "inflow"]
+    assert [r.ts_time for r in ts.timeseries] == [0.0, 10.0]
+    raw = loads(dumps(unstructure_component(ts)))
+    assert raw["ATTRIBUTES"] == [
+        ["NAMES", "stage", "inflow"],
+        ["METHODS", "linear", "stepwise"],
+        ["SFAC", 2.0],
+    ]
+    assert raw["TIMESERIES"] == [[0.0, 12.5, 2.0], [10.0, 10.0, 1.0]]
+    pd.testing.assert_frame_equal(
+        structure_component(raw, Ts).to_dataframe(), df.sort_index(), check_names=False
+    )
+
+    stage = pd.Series([10.0, 12.5], index=[0.0, 10.0], name="stage")
+    assert Ts.from_series(stage) == Ts.from_series({"stage": stage})
+    assert Ts.from_series(stage).interpolation_methodrecord_single.interpolation_method_single == (
+        "linear"
+    )
+
+
+@pytest.mark.parametrize(
+    "data, kwargs, match",
+    [
+        (pd.Series([1.0]), {}, "needs a name"),
+        ({}, {}, "no time series"),
+        ({"a": pd.Series([1.0], index=pd.to_datetime(["2020-01-01"]))}, {}, "must be numbers"),
+        ({"a": pd.Series([1.0], [0.0]), "b": pd.Series([1.0], [1.0])}, {}, r"\['a', 'b'\]"),
+        ({"a": pd.Series([1.0], [0.0])}, {"method": {"b": "linear"}}, "unknown series"),
+        ({"a": pd.Series([1.0], [0.0])}, {"method": {}}, r"no interpolation_method .*\['a'\]"),
+    ],
+)
+def test_ts_from_series_invalid(data, kwargs, match):
+    from flopy4.mf6.utl import Ts
+
+    with pytest.raises(ValueError, match=match):
+        Ts.from_series(data, **kwargs)
