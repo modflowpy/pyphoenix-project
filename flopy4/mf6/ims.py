@@ -56,7 +56,7 @@ class Ims(Solution):
     )
     no_ptc: Optional[NoPtc] = field(
         default=None,
-        converter=NoPtc.from_flag,
+        converter=NoPtc.convert,
         block="options",
     )
     ats_outer_maximum_fraction: Optional[float] = field(
@@ -148,6 +148,7 @@ class Ims(Solution):
     )
     rclose: Optional[Rclose] = field(
         default=None,
+        converter=Rclose.convert,
         block="linear",
     )
     linear_acceleration: Optional[str] = field(

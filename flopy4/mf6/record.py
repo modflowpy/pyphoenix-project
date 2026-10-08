@@ -13,7 +13,7 @@ than a declared flag, and make.py's _build_record_class_specs.
 
 import sys
 import types
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from functools import lru_cache
 from pathlib import Path, PurePath
 from typing import Any, Union, cast, get_args, get_origin
@@ -117,6 +117,28 @@ def _list_elem_coerce(token: Any, f: attrs.Attribute) -> Any:
     return token
 
 
+def _is_instance(value: Any, f: attrs.Attribute) -> bool:
+    """Whether a value fits a scalar field's declared type (bool, int,
+    float, str or Path); any other field takes anything."""
+    t: Any = f.type
+    origin = get_origin(t)
+    if origin is types.UnionType or origin is Union:
+        t = next((a for a in get_args(t) if a is not type(None)), t)
+    if t in (bool, "bool"):
+        return isinstance(value, (bool, np.bool_))
+    if isinstance(value, (bool, np.bool_)):
+        return False
+    if t in (int, "int"):
+        return isinstance(value, (int, np.integer))
+    if t in (float, "float"):
+        return isinstance(value, (int, float, np.integer, np.floating))
+    if t in (str, "str"):
+        return isinstance(value, str)
+    if t in (Path, "Path"):
+        return isinstance(value, (str, PurePath))
+    return True
+
+
 def _tokens(name: str, value: Any) -> list:
     """Bare ``NAME`` for a boolean, ``NAME value`` otherwise"""
     if isinstance(value, bool):
@@ -136,6 +158,13 @@ def _consume_tagged(tokens: list, i: int, f: attrs.Attribute) -> "tuple[Any, int
     return _coerce(tokens[i + 1], f), 2
 
 
+def record_type(field_type: Any) -> "type[Record] | None":
+    """For a record field's type, ``Optional[R]``, return R; else None."""
+    args = get_args(field_type) if get_origin(field_type) in (Union, types.UnionType) else ()
+    inner = next((a for a in args if a is not type(None)), field_type)
+    return inner if isinstance(inner, type) and issubclass(inner, Record) else None
+
+
 class Record:
     """Mixin for record types."""
 
@@ -150,27 +179,62 @@ class Record:
         return vars(cls).get("_keyword", "")
 
     @classmethod
-    def from_flag(cls, value: "Record | bool | None") -> "Record | None":
-        """Convert a record that's a keyword and its options, all optional
-        (NPF's ``XT3D [RHS]``): True is the bare record, False leaves it
-        out, and anything else is kept as given."""
-        if isinstance(value, (bool, np.bool_)):
-            return cls() if value else None
-        return value
+    def convert(cls, value: Any) -> "Record | None":
+        """Convert a record field's value. The record, or None, is kept;
+        these plain forms make one:
 
-    @classmethod
-    def from_value(cls, value: Any) -> "Record | None":
-        """Convert a record that's a keyword and one value (TS6's ``NAMES
-        <names>``): anything but the record, or None, is its value. A list
-        value can be given as one element."""
+        - a bool, for a keyword and its options, all optional (NPF's
+          ``XT3D [RHS]``): True is the bare record, False leaves it out;
+        - a str, the record as in the file (OC's ``"COLUMNS 10 WIDTH 12
+          DIGITS 6 GENERAL"``), parsed by `from_tokens`;
+        - a tuple, the record's values in order (NPF's ``REWET``:
+          ``(1.0, 1, 0)``);
+        - a mapping, the record's values by name;
+        - any other value, the first value, the rest being optional (IMS's
+          ``INNER_RCLOSE``: ``1e-4``; TS6's ``NAMES``: ``["a", "b"]``). A
+          list value can be given as one element.
+
+        A record made of one nested record (OC's ``HEAD PRINT_FORMAT``)
+        also takes that record or its plain forms. Anything else raises
+        TypeError.
+        """
         if value is None or isinstance(value, cls):
             return value
-        (f,) = cls.fields()
-        if get_origin(f.type) is list and (
-            isinstance(value, str) or not isinstance(value, Iterable)
-        ):
-            value = [value]
-        return cls(**{f.name: value})
+        fields = cls.fields()
+        name = cls.__qualname__
+        if isinstance(value, (bool, np.bool_)):
+            if required := [f.name for f in fields if f.default is attrs.NOTHING]:
+                raise TypeError(f"{name} needs values ({', '.join(required)}), not a bool")
+            if not cls.keyword():
+                raise TypeError(f"{name} has no keyword to turn on or off with a bool")
+            return cls() if value else None
+        if isinstance(value, str):
+            return cls.from_tokens(value)
+        only: Any = fields[0].type if len(fields) == 1 else None
+        if isinstance(only, str) and (nested := _nested_class(cast(type, cls), only)):
+            return cls(**{fields[0].name: nested.convert(value)})
+        args: tuple = ()
+        kwargs: dict = {}
+        if isinstance(value, Mapping):
+            kwargs = dict(value)
+        elif len(fields) == 1 and _is_list_field(fields[0]):
+            args = (list(value) if isinstance(value, Iterable) else [value],)
+        elif isinstance(value, tuple):
+            args = value
+        elif isinstance(value, (list, np.ndarray)):
+            raise TypeError(f"{name} takes a tuple of its values, not a list: {value!r}")
+        else:
+            args = (value,)
+        try:
+            record = cls(*args, **kwargs)
+        except TypeError as e:
+            names = ", ".join(f.name for f in fields)
+            raise TypeError(f"{name} ({names}) can't be made from {value!r}: {e}") from e
+        for f in fields:
+            v = getattr(record, f.name)
+            if v is not None and not _is_instance(v, f):
+                raise TypeError(f"{name}.{f.name} can't be {type(v).__name__}: {v!r}")
+        return record
 
     def to_tokens(self) -> tuple:
         cls = type(self)

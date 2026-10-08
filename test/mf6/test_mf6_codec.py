@@ -555,6 +555,7 @@ def test_series_attributes_from_values():
     )
     assert ts.time_series_name == Ts.TimeSeriesName(time_series_names=["a", "b"])
     assert ts.sfacrecord_single == Ts.SfacrecordSingle(sfacval=2.0)
+    assert Ts(sfac=(1.0, 2.0)).sfac == Ts.Sfac(sfacval=[1.0, 2.0])
     raw = loads(dumps(unstructure_component(ts)))
     assert raw["ATTRIBUTES"] == [
         ["NAMES", "a", "b"],
@@ -567,6 +568,86 @@ def test_series_attributes_from_values():
     assert tas.time_series_name == Tas.TimeSeriesName(time_series_name=["rch"])
     assert tas.interpolation_method == Tas.InterpolationMethod(interpolation_method="linear")
     Rcha(recharge={0: "rch"}, tas=[tas])._check_tas_refs()
+
+
+@pytest.mark.parametrize(
+    "cls_path, name, value, record",
+    [
+        ("gwf.Npf", "rewet", (1.0, 1, 0), ("Rewet", (1.0, 1, 0))),
+        ("gwf.Npf", "rewet", {"wetfct": 1.0, "iwetit": 1, "ihdwet": 0}, ("Rewet", (1.0, 1, 0))),
+        ("gwf.Npf", "rewet", "WETFCT 1.0 IWETIT 1 IHDWET 0", ("Rewet", (1.0, 1, 0))),
+        ("gwf.Npf", "xt3doptions", True, ("Xt3doptions", ())),
+        ("gwf.Npf", "xt3doptions", {"rhs": True}, ("Xt3doptions", (True,))),
+        ("gwf.Oc", "headprint", "COLUMNS 10 WIDTH 12 DIGITS 6 GENERAL", ("Headprint", None)),
+        ("gwt.Oc", "concentrationprint", ("GENERAL", 10, 12, 6), ("Concentrationprint", None)),
+        (
+            "gwe.Oc",
+            "temperatureprint",
+            {"format_": "GENERAL", "columns": 10, "width": 12, "digits": 6},
+            ("Temperatureprint", None),
+        ),
+        ("gwt.Ist", "cimprint", "COLUMNS 10 WIDTH 12 DIGITS 6 GENERAL", ("Cimprint", None)),
+        ("ims.Ims", "rclose", 1e-4, ("Rclose", (1e-4,))),
+        ("ims.Ims", "rclose", (1e-4, "strict"), ("Rclose", (1e-4, "strict"))),
+        ("ims.Ims", "no_ptc", True, ("NoPtc", ())),
+    ],
+)
+def test_record_fields_from_values(cls_path, name, value, record):
+    """A record field takes its plain values, and writes and loads back as
+    the record would."""
+    import importlib
+
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.converter.ingress.structure import structure_component
+
+    module, cls_name = cls_path.rsplit(".", 1)
+    cls = getattr(importlib.import_module(f"flopy4.mf6.{module}"), cls_name)
+    rec_name, args = record
+    if args is None:  # a print format, one nested Format
+        args = (cls.Format("GENERAL", columns=10, width=12, digits=6),)
+    expected = getattr(cls, rec_name)(*args)
+    component = cls(**{name: value})
+    assert getattr(component, name) == expected
+    raw = loads(dumps(unstructure_component(component)))
+    assert raw == loads(dumps(unstructure_component(cls(**{name: expected}))))
+    assert getattr(structure_component(raw, cls), name) == expected
+
+
+@pytest.mark.parametrize(
+    "cls_path, name, value, match",
+    [
+        ("gwf.Npf", "rewet", [1.0, 1, 0], "tuple of its values, not a list"),
+        ("gwf.Npf", "rewet", 1.0, "missing 2 required"),
+        ("gwf.Npf", "rewet", ("a", 1, 0), "Rewet.wetfct can't be str"),
+        ("gwf.Npf", "xt3doptions", 1.0, "Xt3doptions.rhs can't be float"),
+        ("ims.Ims", "rclose", True, r"needs values \(inner_rclose\), not a bool"),
+        ("gwf.Oc", "headprint", True, r"needs values \(formatrecord\), not a bool"),
+    ],
+)
+def test_record_fields_invalid(cls_path, name, value, match):
+    import importlib
+
+    module, cls_name = cls_path.rsplit(".", 1)
+    cls = getattr(importlib.import_module(f"flopy4.mf6.{module}"), cls_name)
+    with pytest.raises(TypeError, match=match):
+        cls(**{name: value})
+    component = cls()
+    with pytest.raises(TypeError, match=match):
+        setattr(component, name, value)
+
+
+def test_record_field_set_after_construction():
+    """Setting a record field converts as construction does, and the writer
+    refuses a record field holding something else."""
+    from flopy4.mf6.converter.egress.unstructure import unstructure_component
+    from flopy4.mf6.gwf import Npf
+
+    npf = Npf()
+    npf.rewet = (1.0, 1, 0)
+    assert npf.rewet == Npf.Rewet(1.0, 1, 0)
+    object.__setattr__(npf, "rewet", [1.0, 1, 0])  # bypasses the converter
+    with pytest.raises(TypeError, match="Npf.rewet must be a Npf.Rewet, not list"):
+        unstructure_component(npf)
 
 
 def test_maw_round_trip():

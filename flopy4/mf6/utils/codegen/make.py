@@ -1550,21 +1550,10 @@ def build_component_spec(
             inner_class_specs.extend(record_specs)
             outer_spec = record_specs[-1]
             clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
-            # a keyword and its options, all optional, can be given as a bool;
-            # a keyword and one value, as the value
-            flag = bool(outer_spec.keyword) and all(c.optional for c in outer_spec.fields)
-            value = (
-                bool(outer_spec.keyword)
-                and not outer_spec.extra_tokens
-                and len(outer_spec.fields) == 1
-                and not outer_spec.fields[0].optional
-                and not outer_spec.fields[0].nested
-                and not outer_spec.fields[0].tagged
-            )
-            converter = "from_flag" if flag else "from_value" if value else None
+            # plain values (a bool, the file's text, a tuple...) make the record
             inner_spec_call = _ml_field(
                 metadata={"block": block_name},
-                converter=f"{outer_spec.class_name}.{converter}" if converter else None,
+                converter=f"{outer_spec.class_name}.convert",
             )
             target.append(
                 FieldSpec(
