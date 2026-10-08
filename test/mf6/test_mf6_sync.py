@@ -410,3 +410,16 @@ def test_install_version_mismatch_warns(dfn_path, outdir, monkeypatch, fake_inst
     monkeypatch.setattr("flopy4.mf6._compat._query_mf6_version", lambda exe: "6.5.0")
     with pytest.warns(UserWarning, match="reports MF6 6.5.0"):
         sync("6.6.0", mf6_version="6.6.0", install=True, outdir=outdir)
+
+
+def test_latest_pins_tag(dfn_path, outdir, monkeypatch, fake_install):
+    """ "latest" isn't a git ref: sync pins the release it points to."""
+    from modflow_devtools.dfns import RemoteDfnRegistry
+
+    monkeypatch.setattr(RemoteDfnRegistry, "cache_path", property(lambda self: dfn_path))
+    monkeypatch.setattr(RemoteDfnRegistry, "latest_tag", lambda self: "6.8.1")
+    monkeypatch.setattr("flopy4.mf6._compat._query_mf6_version", lambda exe: None)
+    result = sync("latest", install=True, outdir=outdir)
+    assert result.source == "MODFLOW-ORG/modflow6@6.8.1"
+    assert result.version == "6.8.1"
+    assert fake_install[0]["version"] == "6.8.1"

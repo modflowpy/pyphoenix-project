@@ -13,6 +13,11 @@ parts:
       - file: examples/circle
         title: Circle
 
+  - caption: Guide
+    chapters:
+      - file: mf6-versions
+        title: MF6 versions
+
   - caption: Developer Notes
     chapters:
       - file: dev/srs

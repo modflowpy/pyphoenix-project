@@ -410,6 +410,14 @@ def sync(
                 f"source must be 'owner/repo@ref', a ref, or a local directory; got: {release_id!r}"
             )
         registry = RemoteDfnRegistry(release_id=release_id)
+        owner_repo, ref = release_id.split("@", 1)
+        if ref == "latest":
+            # "latest" isn't a git ref: pin the release it points to.
+            tag = registry.latest_tag()
+            if not tag or tag == "latest":
+                raise SyncError(f"Couldn't resolve the latest release of {owner_repo}.")
+            release_id = f"{owner_repo}@{tag}"
+            registry = RemoteDfnRegistry(release_id=release_id)
         source = release_id
         version = mf6_version or registry.latest_tag() or "unknown"
         # Branch refs are mutable: always re-fetch unless the version is a
@@ -417,8 +425,7 @@ def sync(
         is_branch = not version[0].isdigit()
         _populate_remote_cache(registry, release_id, force=force or is_branch)
         dfn_dir = registry.cache_path
-        owner_repo, ref = release_id.split("@", 1)
-        commit = _remote_commit(f"{owner_repo}@{version if ref == 'latest' else ref}")
+        commit = _remote_commit(release_id)
 
     if version == "unknown":
         warnings.warn(
