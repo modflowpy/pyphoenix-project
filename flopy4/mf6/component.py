@@ -549,8 +549,12 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # Determine active context: provided > current > default
         active_context = context or WriteContext.current()
 
+        # before writing this component's own file: getting the children
+        # stamps their parents and names, which a name file's rows (and
+        # the children's default filenames) are made from
+        children = self._children
         self._write(format=format, context=active_context)
-        for child in self._children.values():
+        for child in children.values():
             child.write(format=format, context=context)
 
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict[str, Any]:

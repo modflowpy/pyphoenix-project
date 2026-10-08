@@ -389,3 +389,20 @@ def test_write_does_not_depend_on_cwd(tmp_path, monkeypatch):
     assert (tmp_path / "sim" / "gwf" / "m.dis").is_file()
     assert Path.cwd() == tmp_path / "elsewhere"
     assert not any((tmp_path / "elsewhere").iterdir())
+
+
+def test_write_names_packages_attached_by_assignment(tmp_path):
+    """A package swapped in by plain assignment (``gwf.chd = [...]``)
+    after a write is named, and given its filename, from its model before
+    the model's name file is written again."""
+    sim = Simulation(name="sim", workspace=tmp_path, tdis=Time(perlen=[1.0], nstp=[1]))
+    gwf = Gwf(parent=sim, name="m", dis=Dis(nlay=1, nrow=1, ncol=2))
+    gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 1.0]]})]
+    sim.write()
+
+    del gwf.chd[0]
+    gwf.chd = [Chd(stress_period_data={0: [[(0, 0, 0), 2.0]]})]
+    sim.write()
+
+    assert " CHD6 m.chd chd0" in (tmp_path / "m.nam").read_text().splitlines()
+    assert (tmp_path / "m.chd").is_file()
