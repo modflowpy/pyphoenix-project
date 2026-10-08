@@ -129,7 +129,6 @@ EXG_TIER = {
 SOLUTION_TIER = {
     "sln-ims": ("Ims", "Solution", "ims"),
     "sln-ems": ("Ems", "Solution", "ems"),
-    "sln-pts": ("Pts", "Solution", "pts"),
 }
 
 
