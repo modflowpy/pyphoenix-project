@@ -314,14 +314,8 @@ def dataset2list(value: xr.Dataset):
 
         else:
             row: list[Any] = []
-            for name, da in value.data_vars.items():
-                val = da.item() if da.shape == () else da
-                if kw := da.attrs.get("row_keyword", False):
-                    if val:
-                        row.append(kw if isinstance(kw, str) else str(name).upper())
-                else:
-                    row.extend(da.attrs.get("prefix", ()))
-                    row.append(val)
+            for da in value.data_vars.values():
+                row.append(da.item() if da.shape == () else da)
             yield tuple(row)
         return
 
@@ -363,24 +357,13 @@ def dataset2list(value: xr.Dataset):
                 yield (*str(name).split("_"), val)  # type: ignore
         else:
             row2: list[Any] = []
-            for name, da in value.data_vars.items():
+            for name in value.data_vars.keys():
                 raw = extracted[str(name)][i]
                 val = raw.item() if hasattr(raw, "ndim") and raw.ndim == 0 else raw
-                if kw := da.attrs.get("row_keyword", False):
-                    if val:
-                        row2.append(kw if isinstance(kw, str) else str(name).upper())
+                if hasattr(val, "ndim") and val.ndim > 0:
+                    row2.extend(float(v) for v in np.asarray(val).flat)
                 else:
-                    row2.extend(da.attrs.get("prefix", ()))
-                    if da.attrs.get("cellid"):
-                        if isinstance(val, tuple):
-                            row2.extend(c + 1 for c in val)
-                        else:
-                            row2.append(val + 1)
-                    else:
-                        if hasattr(val, "ndim") and val.ndim > 0:
-                            row2.extend(float(v) for v in np.asarray(val).flat)
-                        else:
-                            row2.append(val)
+                    row2.append(val)
             if has_spatial_dims:
                 cellid = tuple(cid[i].item() for cid in cellids)
                 yield cellid + tuple(row2)
