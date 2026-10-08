@@ -92,6 +92,7 @@ include = ["flopy4", "flopy4.*"]
     "mf6/codec/**/*.jinja",
     "mf6/utils/codegen/templates/*.jinja",
     "mf6/utils/codegen/dfn_overrides.toml",
+    "mf6/dfns/*",
 ]
 
 [tool.ruff]

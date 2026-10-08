@@ -1,0 +1,119 @@
+# flopy subpackage ncf_filerecord ncf packagedata packagedata
+# flopy parent_name_type parent_package MFPackage
+
+# --------------------- utl ncf options ---------------------
+
+block options
+name wkt
+type string
+shape lenbigline
+preserve_case true
+reader urword
+optional true
+longname CRS well-known text (WKT1) string
+description is the coordinate reference system (CRS) well-known text string in WKT1 format (OGC 01-009). Written as the ``wkt`` attribute on the projection variable. Ignored when latitude and longitude griddata arrays have been provided. To also embed the CRS in the binary grid file, provide the same string as the ``CRS`` option in the discretization input; the discretization ``CRS`` option additionally accepts other pyproj-compatible identifiers such as an EPSG code (e.g. ``EPSG:26918``).
+
+block options
+name crs_wkt
+type string
+shape lenbigline
+preserve_case true
+reader urword
+optional true
+longname CRS well-known text (WKT2) string
+description is the coordinate reference system (CRS) well-known text string in WKT2 format (ISO 19162:2019), as required by CF-1.11. Written as the ``crs\_wkt`` attribute on the projection variable. When omitted, the ``wkt`` value is written to ``crs\_wkt`` as a compatibility alias. Ignored when latitude and longitude griddata arrays have been provided. To also embed the CRS in the binary grid file, provide the same string as the ``CRS`` option in the discretization input; the discretization ``CRS`` option additionally accepts other pyproj-compatible identifiers such as an EPSG code (e.g. ``EPSG:26918``).
+
+block options
+name deflate
+type integer
+reader urword
+optional true
+longname variable compression deflate level
+description is the variable deflate level (0=min, 9=max) in the NetCDF file. Defining this parameter activates per-variable compression at the level specified. Use with the SHUFFLE option to also enable the shuffle filter.
+
+block options
+name shuffle
+type keyword
+reader urword
+optional true
+longname
+description is the keyword used to turn on the NetCDF variable shuffle filter when the deflate option is also set. The shuffle filter has the effect of storing the first byte of all of a variable's values in a chunk contiguously, followed by all the second bytes, etc. This can be an optimization for compression with certain types of data.
+
+block options
+name chunk_time
+type integer
+reader urword
+optional true
+longname chunking parameter for the time dimension
+description is the chunk size for the time dimension in a NETCDF\_MESH2D or NETCDF\_STRUCTURED output file. Must be used in combination with the chunk\_face parameter (NETCDF\_MESH2D) or the chunk\_z, chunk\_y, and chunk\_x parameter set (NETCDF\_STRUCTURED) to have an effect.
+
+block options
+name chunk_face
+type integer
+reader urword
+optional true
+longname chunking parameter for the mesh face dimension
+description is the chunk size for the face dimension in a NETCDF\_MESH2D output file. Must be used in combination with the chunk\_time parameter to have an effect.
+
+block options
+name chunk_z
+type integer
+reader urword
+optional true
+longname chunking parameter for the layer dimension
+description is the chunk size for the layer (vertical) dimension in a NETCDF\_STRUCTURED output file. Must be used in combination with the chunk\_time, chunk\_x, and chunk\_y parameters to have an effect.
+
+block options
+name chunk_y
+type integer
+reader urword
+optional true
+longname chunking parameter for structured y
+description is the chunk size for the y dimension in a NETCDF\_STRUCTURED output file. Must be used in combination with the chunk\_time, chunk\_x, and chunk\_z parameters to have an effect.
+
+block options
+name chunk_x
+type integer
+reader urword
+optional true
+longname chunking parameter for structured x
+description is the chunk size for the x dimension in a NETCDF\_STRUCTURED output file. Must be used in combination with the chunk\_time, chunk\_y, and chunk\_z parameters to have an effect.
+
+block options
+name modflow6_attr_off
+type keyword
+reader urword
+optional true
+longname
+description is the keyword used to turn off internal input tagging in the model NetCDF file. Tagging adds internal modflow 6 attribute(s) to variables which facilitate identification. Currently this applies to gridded arrays.
+mf6internal attr_off
+
+# --------------------- utl ncf dimensions ---------------------
+
+block dimensions
+name ncpl
+type integer
+optional true
+reader urword
+longname number of cells in layer
+description is the number of cells in a projected plane layer.
+
+# --------------------- utl ncf griddata ---------------------
+
+block griddata
+name latitude
+type double precision
+shape (ncpl)
+optional true
+reader readarray
+longname cell center latitude
+description cell center latitude array. Only supported for NETCDF\_STRUCTURED export type. Providing latitude and longitude arrays enables geographic-coordinate output as a special case for external tooling that requires it; the preferred approach is to use the ``wkt`` and ``crs\_wkt`` options instead. When latitude and longitude arrays are provided, any ``wkt`` or ``crs\_wkt`` option values are ignored.
+
+block griddata
+name longitude
+type double precision
+shape (ncpl)
+optional true
+reader readarray
+longname cell center longitude
+description cell center longitude array. Only supported for NETCDF\_STRUCTURED export type. See the latitude description for usage notes.

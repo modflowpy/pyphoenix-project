@@ -21,7 +21,8 @@ class _FakeCompletedRun:
         (" \nmf6: 6.7.0 02/05/2026\n \n", "6.7.0"),
         ("MODFLOW 6 VERSION 6.6.1 12/20/2024", "6.6.1"),
         ("mf6: 6.7.0.dev0", "6.7.0.dev0"),
-        ("mf6: 6.7.0+g1a2b3c4", "6.7.0"),
+        ("mf6: 6.7.0+g1a2b3c4", "6.7.0+g1a2b3c4"),
+        ("mf6: 6.8.0.dev0+abc1234 10/01/2026", "6.8.0.dev0+abc1234"),
         ("no version here", None),
     ],
 )
@@ -36,6 +37,37 @@ def test_query_mf6_version_swallows_errors(monkeypatch):
 
     monkeypatch.setattr(_compat.subprocess, "check_output", _boom)
     assert _query_mf6_version("mf6") is None
+
+
+@pytest.fixture(autouse=True)
+def no_commit(monkeypatch):
+    """Tests assume a contract without a DFN commit unless they set one."""
+    monkeypatch.setattr("flopy4.mf6._contract.DFN_COMMIT", None, raising=False)
+
+
+@pytest.mark.parametrize(
+    "mf6_version, dfn_commit, binary, expected",
+    [
+        ("6.7.0", None, "6.7.0", False),
+        ("6.7.0", None, "6.6.1", True),
+        ("6.7.0", None, "6.7.0+abc1234", False),
+        ("develop", None, "6.8.0.dev0+abc1234", None),
+        ("develop", "abc1234def", "6.8.0.dev0+abc1234", False),
+        ("develop", "abc1234def", "6.8.0.dev0+g0000000", True),
+        ("develop", "abc1234def", "6.8.0.dev0", None),
+        ("6.7.0", "abc1234def", "6.6.1", True),
+    ],
+)
+def test_mismatch(mf6_version, dfn_commit, binary, expected):
+    assert _compat._mismatch(mf6_version, dfn_commit, binary) is expected
+
+
+def test_check_branch_commit_mismatch_warns(monkeypatch):
+    monkeypatch.setattr("flopy4.mf6._contract.MF6_VERSION", "develop", raising=False)
+    monkeypatch.setattr("flopy4.mf6._contract.DFN_COMMIT", "abc1234def", raising=False)
+    monkeypatch.setattr(_compat, "_query_mf6_version", lambda exe: "6.8.0.dev0+fff0000")
+    with pytest.warns(UserWarning, match=r"develop \(abc1234\).*reports 6.8.0.dev0\+fff0000"):
+        check_mf6_compatibility(exe="mf6")
 
 
 def test_check_skips_branch_name(monkeypatch):

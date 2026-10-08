@@ -42,8 +42,8 @@ def load(fp: IO[str], *, component: str | None = None, dfn_path: str | None = No
         instead of the generic basic grammar.
     dfn_path :
         Local DFN directory to resolve ``component`` against. Only used
-        when ``component`` is given; defaults to the release recorded in
-        ``_contract.py`` (a network fetch) if omitted.
+        when ``component`` is given; defaults to the DFNs stored with
+        the generated classes if omitted.
 
     Returns
     -------
@@ -67,8 +67,8 @@ def loads(data: str, *, component: str | None = None, dfn_path: str | None = Non
         instead of the generic basic grammar.
     dfn_path :
         Local DFN directory to resolve ``component`` against. Only used
-        when ``component`` is given; defaults to the release recorded in
-        ``_contract.py`` (a network fetch) if omitted.
+        when ``component`` is given; defaults to the DFNs stored with
+        the generated classes if omitted.
 
     Returns
     -------
