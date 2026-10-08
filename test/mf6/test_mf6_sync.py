@@ -35,6 +35,57 @@ def test_exported():
     assert flopy4.mf6.SyncError is SyncError
 
 
+# Run with every generated component module unimportable.
+_BROKEN = """
+import sys
+
+class Broken:
+    def find_spec(self, name, path, target=None):
+        parts = name.split(".")
+        if parts[:2] == ["flopy4", "mf6"] and len(parts) > 2 and parts[2] in {mods!r}:
+            raise ImportError(f"broken: {{name}}")
+
+sys.meta_path.insert(0, Broken())
+"""
+
+
+def test_import_skips_generated():
+    """Importing flopy4, the CLI and sync loads no generated module."""
+    from flopy4.mf6 import _COMPONENT_MODULES
+
+    code = (
+        "import sys, flopy4, flopy4.cli, flopy4.mf6._sync\n"
+        f"mods = {set(_COMPONENT_MODULES)!r}\n"
+        "print([m for m in sys.modules if m.split('.')[:2] == ['flopy4', 'mf6']"
+        " and len(m.split('.')) > 2 and m.split('.')[2] in mods])"
+    )
+    out = subprocess.check_output([sys.executable, "-W", "ignore", "-c", code], text=True)
+    assert out.strip() == "[]"
+
+
+def test_sync_with_broken_classes(dfn_path, tmp_path):
+    """Sync, and status, run when the generated classes don't import."""
+    from flopy4.mf6 import _COMPONENT_MODULES
+
+    outdir = tmp_path / "mf6"
+    code = _BROKEN.format(mods=set(_COMPONENT_MODULES)) + (
+        "from flopy4 import cli\n"
+        "from flopy4.mf6 import sync\n"
+        f"sync({str(dfn_path)!r}, mf6_version='6.9.0', all_packages=True, outdir={str(outdir)!r})\n"
+        "sys.argv = ['flopy4', 'mf6', 'status']\n"
+        "cli.main()\n"
+        "try:\n"
+        "    import flopy4.mf6\n"
+        "    flopy4.mf6.Simulation\n"
+        "except ImportError:\n"
+        "    pass\n"
+        "else:\n"
+        "    raise AssertionError('generated classes imported')\n"
+    )
+    subprocess.run([sys.executable, "-W", "ignore", "-c", code], check=True)
+    assert (outdir / "gwf" / "__init__.py").is_file()
+
+
 def test_sync_local_all_packages(dfn_path, tmp_path):
     """A local sync generates every component and writes the contract."""
     result = sync(dfn_path, mf6_version="6.9.0", all_packages=True, outdir=tmp_path)
@@ -116,7 +167,7 @@ def test_contract_lists_files(outdir):
 def test_resync_is_stable(dfn_path, outdir):
     before = _snapshot(outdir)
     result = sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
-    assert result.kept == result.removed == ()
+    assert result.removed == ()
     assert _snapshot(outdir) == before
 
 
@@ -131,30 +182,37 @@ def test_orphan_removed(dfn_path, outdir):
     assert find_orphans(outdir) == []
 
 
-def test_listed_without_dfn_kept(dfn_path, outdir):
-    """A listed module with no DFN stays: other modules may import it."""
+def test_listed_without_dfn_removed(dfn_path, outdir):
+    """A module from an earlier sync whose DFN the source lacks goes."""
     stale = outdir / "gwf" / "zzz.py"
     stale.write_text(_HEADER)
     contract = outdir / "_contract.py"
     contract.write_text(contract.read_text().replace("(\n", '(\n    "gwf/zzz.py",\n', 1))
-    with pytest.warns(UserWarning, match="gwf/zzz.py"):
-        result = sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
-    assert result.kept == (stale,)
-    assert stale.exists()
-    assert "gwf/zzz.py" in _read_contract(outdir)["GENERATED_FILES"]
+    assert find_orphans(outdir) == []
+    result = sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
+    assert result.removed == (stale,)
+    assert not stale.exists()
+    assert "gwf/zzz.py" not in _read_contract(outdir)["GENERATED_FILES"]
 
 
-def test_no_file_list_keeps_everything(dfn_path, outdir):
-    """A contract from before sync tracked files: nothing is removed."""
+def test_no_file_list_removes_stale(dfn_path, outdir):
+    """A contract from before sync tracked files: the header still marks
+    a module as generated, so it goes."""
     stale = outdir / "gwf" / "zzz.py"
     stale.write_text(_HEADER)
     (outdir / "_contract.py").write_text(_HEADER + 'MF6_VERSION = "develop"\n')
     assert find_orphans(outdir) == []
-    with pytest.warns(UserWarning, match="gwf/zzz.py"):
-        result = sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
-    assert result.kept == (stale,)
-    assert result.removed == ()
-    assert stale.exists()
+    result = sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
+    assert result.removed == (stale,)
+    assert not stale.exists()
+
+
+def test_handwritten_module_survives(dfn_path, outdir):
+    """Modules without the generated header are never removed."""
+    mine = outdir / "gwf" / "mine.py"
+    mine.write_text("x = 1\n")
+    sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
+    assert mine.read_text() == "x = 1\n"
 
 
 def test_failed_swap_rolls_back(dfn_path, outdir, monkeypatch):

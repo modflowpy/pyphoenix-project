@@ -34,12 +34,18 @@ def _qualify(name: str, prefix: "str | None") -> str:
 
 def get_fnames() -> "dict[str, type[Component]]":
     """Get a map of MF6 component name (e.g. 'gwf-dis') to component class."""
+    from flopy4.mf6 import _import_components
+
+    _import_components()
     return FNAMES
 
 
 def get_ftypes() -> "dict[str, type[Component]]":
     """Get a map of MF6 component ftype (e.g. 'gwf-dis6') to component class."""
     if not FTYPES:
+        from flopy4.mf6 import _import_components
+
+        _import_components()
         from collections import defaultdict
 
         from flopy4.mf6.converter.binding import component_ftype
