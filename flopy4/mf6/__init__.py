@@ -14,7 +14,7 @@ except ImportError:
 # Import submodules to make them accessible via flopy4.mf6.*
 from flopy4.mf6 import exg, gwe, gwf, gwt, prt, simulation, solution, utils
 from flopy4.mf6._compat import check_mf6_compatibility
-from flopy4.mf6._sync import SyncResult, sync
+from flopy4.mf6._sync import SyncError, SyncResult, sync
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
@@ -51,6 +51,7 @@ __all__ = [
     "DFN_SCHEMA_VERSION",
     "sync",
     "SyncResult",
+    "SyncError",
 ]
 
 

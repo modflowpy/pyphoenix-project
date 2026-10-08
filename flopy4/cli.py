@@ -17,6 +17,8 @@ def _cmd_sync(args: argparse.Namespace) -> None:
         verbose=args.verbose,
     )
     print(f"Generated {len(result.files)} component modules")
+    if result.removed:
+        print(f"Removed {len(result.removed)} orphaned module(s)")
     if result.version != "unknown":
         print(f"Synced flopy4.mf6 to MF6 version: {result.version}")
 
@@ -28,6 +30,7 @@ def _cmd_status(args: argparse.Namespace) -> None:
         MF6_VERSION = "unknown"
 
     from flopy4.mf6._compat import _query_mf6_version
+    from flopy4.mf6._sync import find_orphans
 
     exe = shutil.which("mf6") or shutil.which("mf6.exe")
     binary_version = _query_mf6_version(exe) if exe else None
@@ -41,6 +44,15 @@ def _cmd_status(args: argparse.Namespace) -> None:
         synced = binary_version == MF6_VERSION and MF6_VERSION != "unknown"
         status = "(✓ in sync)" if synced else "(! mismatch)"
         print(f"Discovered binary    : {binary_version}  [{exe}]  {status}")
+
+    orphans = find_orphans()
+    if orphans:
+        print(
+            f"Orphaned modules     : {len(orphans)} "
+            "(run `flopy4 mf6 sync` to regenerate or remove them)"
+        )
+        for path in orphans:
+            print(f"  {path}")
 
 
 def main() -> None:
