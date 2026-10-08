@@ -97,9 +97,7 @@ def _grid_dims(value: Package) -> tuple[int, tuple[int, ...]]:
     on a structured grid, else (ncpl,). Empty if the grid isn't known."""
     if not value._period_array_fields():
         return 1, ()
-    d = (value.__dict__.get("dims") or {}) | value.resolve_dims(
-        "nlay", "nrow", "ncol", "ncpl", "nodes"
-    )
+    d = value.dims | value.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
     nlay = d.get("nlay", 1)
     if "nrow" in d and "ncol" in d:
         return nlay, (d["nrow"], d["ncol"])

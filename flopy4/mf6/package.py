@@ -104,11 +104,7 @@ class Package(Component, ABC):
 
         # 2. Griddata normalization and broadcasting. A dimension provider
         # (a grid package) sizes its own griddata.
-        dims: dict = (
-            self.get_dims()
-            if isinstance(self, DimensionProvider)
-            else (self.__dict__.get("dims") or {})
-        )
+        dims: dict = self.get_dims() if isinstance(self, DimensionProvider) else self.dims
         self._normalize_griddata(fields, dims)
         if dims:
             self._broadcast_griddata(fields, dims)
