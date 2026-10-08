@@ -25,24 +25,31 @@ def _cmd_sync(args: argparse.Namespace) -> None:
 
 def _cmd_status(args: argparse.Namespace) -> None:
     try:
-        from flopy4.mf6._contract import MF6_VERSION
-    except ImportError:
-        MF6_VERSION = "unknown"
+        from flopy4.mf6 import _contract
 
-    from flopy4.mf6._compat import _query_mf6_version
+        MF6_VERSION = _contract.MF6_VERSION
+        dfn_commit = getattr(_contract, "DFN_COMMIT", None)
+    except ImportError:
+        MF6_VERSION, dfn_commit = "unknown", None
+
+    from flopy4.mf6._compat import _mismatch, _query_mf6_version
     from flopy4.mf6._sync import find_orphans
 
     exe = shutil.which("mf6") or shutil.which("mf6.exe")
     binary_version = _query_mf6_version(exe) if exe else None
 
     print(f"flopy4.mf6 synced to : {MF6_VERSION}")
+    if dfn_commit:
+        print(f"DFN commit           : {dfn_commit}")
     if not exe:
         print("Discovered binary    : (not found on PATH)")
     elif binary_version is None:
         print(f"Discovered binary    : {exe}  (version unknown)")
     else:
-        synced = binary_version == MF6_VERSION and MF6_VERSION != "unknown"
-        status = "(✓ in sync)" if synced else "(! mismatch)"
+        mismatch = (
+            None if MF6_VERSION == "unknown" else _mismatch(MF6_VERSION, dfn_commit, binary_version)
+        )
+        status = {False: "(✓ in sync)", True: "(! mismatch)", None: "(can't compare)"}[mismatch]
         print(f"Discovered binary    : {binary_version}  [{exe}]  {status}")
 
     orphans = find_orphans()
