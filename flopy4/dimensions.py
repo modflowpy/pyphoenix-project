@@ -1,60 +1,9 @@
 """Dimension resolution in MF6 components"""
 
-import ast
-import operator
-from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
 import attrs
-
-# Operators allowed in a derived dimension expression. Division is integer
-# division: DFN dimensions are counts (e.g. disu's njas = (nja - nodes) / 2).
-_DIM_OPS: dict[type, Callable[[int, int], int]] = {
-    ast.Add: operator.add,
-    ast.Sub: operator.sub,
-    ast.Mult: operator.mul,
-    ast.Div: operator.floordiv,
-}
-
-
-def parse_dim_expr(expr: str) -> ast.expr:
-    """Parse a derived dimension expression from a DFN, e.g. "nrow * ncol".
-
-    Only names, integer literals, `+ - * /` and parentheses are allowed.
-    Raises ValueError for anything else (e.g. `sum(packagedata.nlakeconn)`).
-    """
-    try:
-        tree = ast.parse(expr, mode="eval").body
-    except SyntaxError as e:
-        raise ValueError(f"invalid dimension expression {expr!r}") from e
-    for node in ast.walk(tree):
-        if isinstance(node, ast.BinOp):
-            if type(node.op) not in _DIM_OPS:
-                raise ValueError(f"unsupported operator in dimension expression {expr!r}")
-        elif isinstance(node, ast.Constant):
-            if type(node.value) is not int:
-                raise ValueError(f"non-integer literal in dimension expression {expr!r}")
-        elif not isinstance(node, (ast.Name, ast.Load, ast.operator)):
-            raise ValueError(f"unsupported dimension expression {expr!r}")
-    return tree
-
-
-def eval_dim_expr(expr: str, lookup: Callable[[str], int | None]) -> int | None:
-    """Evaluate a derived dimension expression, or None if any name is None."""
-
-    def _eval(node: ast.expr) -> int | None:
-        if isinstance(node, ast.Constant):
-            assert isinstance(node.value, int)  # parse_dim_expr allows only int literals
-            return node.value
-        if isinstance(node, ast.Name):
-            return lookup(node.id)
-        assert isinstance(node, ast.BinOp)
-        left, right = _eval(node.left), _eval(node.right)
-        if left is None or right is None:
-            return None
-        return _DIM_OPS[type(node.op)](left, right)
-
-    return _eval(parse_dim_expr(expr))
+from modflow_devtools.dfns import dim_value
 
 
 class DerivedDim:
@@ -66,7 +15,7 @@ class DerivedDim:
     """
 
     def __init__(self, expr: str) -> None:
-        parse_dim_expr(expr)
+        dim_value(expr)  # raises if malformed
         self.expr = expr
 
     def __set_name__(self, owner: type, name: str) -> None:
@@ -75,7 +24,7 @@ class DerivedDim:
     def __get__(self, instance: Any, owner: type | None = None) -> Any:
         if instance is None:
             return self
-        return eval_dim_expr(self.expr, lambda name: getattr(instance, name))
+        return dim_value(self.expr, lookup=lambda name: getattr(instance, name))
 
     def __set__(self, instance: Any, value: Any) -> None:
         raise AttributeError(f"{self.name} is derived ({self.expr}) and can't be set")

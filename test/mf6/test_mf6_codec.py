@@ -396,7 +396,7 @@ def test_disu_round_trip():
             Disu.Cell2d(1, 1.5, 0.5, 5, (3, 2, 4, 5, 3)),
         ],
     )
-    assert disu.get_dims() == {"nodes": 2, "nja": 4, "nvert": 6, "ncelldim": 1, "njas": 1}
+    assert disu.get_dims() == {"nodes": 2, "nja": 4, "nvert": 6, "ncelldim": 1}
 
     text = dumps(unstructure_component(disu))
     raw = loads(text)

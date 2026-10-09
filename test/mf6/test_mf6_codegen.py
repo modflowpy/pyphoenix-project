@@ -38,6 +38,7 @@ from flopy4.mf6.utils.codegen.filters import (
     output_path,
     py_type,
     safe_name,
+    shared_dims,
     value_column,
 )
 from flopy4.mf6.utils.codegen.make import build_component_spec, check_mixins, make_modules
@@ -793,19 +794,39 @@ def test_solution_tier_generates_importable_files(tmp_path, all_dfns):
 @pytest.mark.parametrize(
     "name,decl",
     [
-        ("sim-tdis", "class Tdis(TdisMethods, Package):"),
+        ("sim-tdis", "class Tdis(TdisMethods, DimsProviderMethods, Package):"),
         ("utl-ncf", "class Ncf(NcfMethods, Package):"),
-        ("gwf-disv", "class Disv(DisvMethods, GridDimsMethods, Package):"),
-        ("gwf-disu", "class Disu(DisuMethods, GridDimsMethods, Package):"),
-        ("gwf-dis", "class Dis(DisMethods, GridDimsMethods, Package):"),
+        ("gwf-disv", "class Disv(DisvMethods, DimsProviderMethods, Package):"),
+        ("gwf-disu", "class Disu(DisuMethods, DimsProviderMethods, Package):"),
+        ("gwf-dis", "class Dis(DisMethods, DimsProviderMethods, Package):"),
     ],
 )
 def test_mixins(tmp_path, all_dfns, name, decl):
-    """Components listed in MIXINS get their method-only mixins as extra bases."""
+    """Components listed in MIXINS get their method-only mixins as extra bases,
+    and dimension providers the provider mixin."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     assert spec.base_class == "Package"
     assert decl in spec.outpath.read_text()
+
+
+def test_dimension_providers_from_scopes(all_dfns):
+    """Components sharing dimensions beyond themselves, by the DFN's dim
+    scopes, are the grid packages and TDIS; their own dims (DISU's njas, a
+    package's maxbound) aren't shared."""
+    providers = {n: shared_dims(c) for n, c in all_dfns.items() if shared_dims(c)}
+    assert providers["sim-tdis"] == ("nper",)
+    assert providers["gwf-dis"] == ("nlay", "nrow", "ncol", "ncpl", "nodes", "ncelldim")
+    assert providers["gwf-disu"] == ("nodes", "nja", "nvert", "ncelldim")
+    assert {n.split("-")[1] for n in providers} == {
+        "tdis",
+        "dis",
+        "disv",
+        "disu",
+        "dis2d",
+        "disv1d",
+        "disv2d",
+    }
 
 
 @pytest.mark.parametrize(
@@ -892,7 +913,10 @@ def test_grid_package_dims(tmp_path, all_dfns):
     assert disv.get_dims()["nodes"] == 15
     assert disv.botm.shape == (15,)
 
-    assert Disu(nodes=4, nja=10).get_dims()["njas"] == 3
+    # njas is DISU's own (component scope), so it isn't shared
+    disu = Disu(nodes=4, nja=10)
+    assert disu._own_dims()["njas"] == 3
+    assert "njas" not in disu.get_dims()
 
 
 def test_subpackage_field(tmp_path, all_dfns):

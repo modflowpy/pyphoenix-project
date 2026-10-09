@@ -6,16 +6,18 @@ import attrs
 
 from flopy4.dimensions import DerivedDim
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
+from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.dis_methods import DisMethods
-from flopy4.mf6.grid_dims_methods import GridDimsMethods
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
 from flopy4.mf6.utl.ncf import Ncf
 
 
 @attrs.define(kw_only=True, slots=False)
-class Dis(DisMethods, GridDimsMethods, Package):
+class Dis(DisMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "prt-dis"
+
+    shared_dims: ClassVar[tuple[str, ...]] = ("nlay", "nrow", "ncol", "ncpl", "nodes", "ncelldim")
 
     length_units: Optional[str] = field(
         default=None,

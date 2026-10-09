@@ -3,6 +3,7 @@ from typing import ClassVar, Optional
 
 import attrs
 
+from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
@@ -11,8 +12,10 @@ from flopy4.mf6.utl.ats import Ats
 
 
 @attrs.define(kw_only=True, slots=False)
-class Tdis(TdisMethods, Package):
+class Tdis(TdisMethods, DimsProviderMethods, Package):
     dfn_name: ClassVar[str] = "sim-tdis"
+
+    shared_dims: ClassVar[tuple[str, ...]] = ("nper",)
 
     @attrs.define
     class Perioddata(Item):

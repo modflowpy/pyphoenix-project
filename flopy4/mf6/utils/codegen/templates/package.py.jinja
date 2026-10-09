@@ -30,6 +30,10 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
     multi_package: ClassVar[bool] = True
 
 {% endif %}
+{% if spec.shared_dims %}
+    shared_dims: ClassVar[tuple[str, ...]] = {{ spec.shared_dims | tuple_repr }}
+
+{% endif %}
 {% if spec.slntype %}
     slntype: ClassVar[str] = "{{ spec.slntype }}"
 

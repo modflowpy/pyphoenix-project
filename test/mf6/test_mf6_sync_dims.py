@@ -112,3 +112,31 @@ def test_resolve_dims_raises_when_provider_changes_under_own_dims():
     d.vertices.append(d.Vertices(iv=4, xv=2.0, yv=0.0))
     with pytest.raises(ValueError, match="nvert=4"):
         npf.resolve_dims("nvert")
+
+
+def test_assigning_dim_that_disagrees_with_rows_raises():
+    t = Tdis(nper=2, perioddata=[(1.0, 1, 1.0), (2.0, 2, 1.0)])
+    with pytest.raises(ValueError, match="nper=5 but 2 rows"):
+        t.nper = 5
+    assert t.nper == 2
+
+
+def test_assigning_dim_that_agrees_with_rows():
+    t = Tdis(nper=1, perioddata=[(1.0, 1, 1.0)])
+    t.perioddata.append(t.Perioddata(perlen=2.0, nstp=2, tsmult=1.0))
+    t.nper = 2
+    assert t.nper == 2
+
+
+def test_assigning_bounded_dim():
+    a = Ats(maxats=3, perioddata=[(0, 1.0, 0.1, 2.0, 2.0, 2.0), (1, 1.0, 0.1, 2.0, 2.0, 2.0)])
+    a.maxats = 5
+    assert a.maxats == 5
+    with pytest.raises(ValueError, match="maxats"):
+        a.maxats = 1
+
+
+def test_assigning_dim_without_rows():
+    t = Tdis(perioddata=None)
+    t.nper = 4
+    assert t.nper == 4
