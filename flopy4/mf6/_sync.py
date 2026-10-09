@@ -327,11 +327,11 @@ class _StagedFinder(MetaPathFinder):
         return spec_from_file_location(fullname, file, submodule_search_locations=search)
 
 
-def _import_staged(stage: str, generated: list[str], removed: list[str]) -> list[str]:
-    """Import each generated module from ``stage``, with the installed
+def _import_staged(root: str, generated: list[str], removed: list[str]) -> list[str]:
+    """Import each generated module from ``root``, with the installed
     handwritten modules. Return the failures."""
     modules: dict[str, Path | None] = {_module_name(rel): None for rel in removed}
-    modules |= {_module_name(rel): Path(stage) / rel for rel in generated}
+    modules |= {_module_name(rel): Path(root) / rel for rel in generated}
     sys.meta_path.insert(0, _StagedFinder(modules))
     failures = []
     for name in sorted(n for n, f in modules.items() if f is not None):
@@ -342,11 +342,14 @@ def _import_staged(stage: str, generated: list[str], removed: list[str]) -> list
     return failures
 
 
-def _check_imports(stage: Path, generated: Iterable[str], removed: Iterable[str]) -> None:
-    """Raise if any staged module fails to import. Runs in a fresh
-    interpreter, so this process's imported modules and registered
-    classes don't affect it, and aren't affected."""
-    args = {"stage": str(stage), "generated": sorted(generated), "removed": sorted(removed)}
+def _import_failures(
+    root: Path, generated: Iterable[str], removed: Iterable[str] = ()
+) -> list[str]:
+    """The generated modules in ``root`` that fail to import, as
+    ``module: error`` lines. Runs in a fresh interpreter, so this
+    process's imported modules and registered classes don't affect it,
+    and aren't affected."""
+    args = {"root": str(root), "generated": sorted(generated), "removed": sorted(removed)}
     code = (
         "import json, sys\n"
         "from flopy4.mf6._sync import _import_staged\n"
@@ -367,9 +370,16 @@ def _check_imports(stage: Path, generated: Iterable[str], removed: Iterable[str]
         text=True,
         env=env,
     )
-    if proc.returncode:
-        detail = proc.stdout.strip() or proc.stderr.strip()
-        raise SyncError(f"Generated modules failed to import:\n{detail}")
+    if not proc.returncode:
+        return []
+    return proc.stdout.strip().splitlines() or [proc.stderr.strip()]
+
+
+def find_import_failures(outdir: str | PathLike | None = None) -> list[str]:
+    """The generated modules in ``outdir`` (default: the installed
+    ``flopy4.mf6``) that fail to import, as ``module: error`` lines."""
+    outdir = Path(outdir) if outdir is not None else _MF6_ROOT
+    return _import_failures(outdir, _generated_files(outdir))
 
 
 def _swap(stage: Path, outdir: Path, replace: Iterable[str], remove: Iterable[str]) -> None:
@@ -577,7 +587,8 @@ def sync(
                 raise SyncError(f"Generated invalid Python for {rel}: {e}") from e
 
         removed = _generated_files(outdir) - generated
-        _check_imports(stage, generated, removed)
+        if failures := _import_failures(stage, generated, removed):
+            raise SyncError("Generated modules failed to import:\n" + "\n".join(failures))
         (stage / _CONTRACT).write_text(_contract_text(version, commit, generated))
         _swap(
             stage,
