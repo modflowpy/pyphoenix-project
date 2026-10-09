@@ -42,8 +42,6 @@ from modflow_devtools.dfns.schema import (
     Union as UnionField,
 )
 
-from flopy4.dimensions import parse_dim_expr
-
 FieldV3: TypeAlias = (
     KeywordField | Integer | Double | String | Array | Record | UnionField | ListField | File
 )
@@ -378,6 +376,10 @@ def dynamically_named_array(f) -> tuple[Array, str] | None:
     return None
 
 
+# A function call in a dimension expression, as in LAK's sum(...)
+_DIM_CALL = re.compile(r"\w\s*\(")
+
+
 def derived_dims(component: Component) -> dict[str, str]:
     """A component's arithmetic derived dimensions, name -> expression, e.g.
     gwf-dis's ``{"ncpl": "nrow * ncol", "nodes": "nlay * nrow * ncol",
@@ -385,11 +387,7 @@ def derived_dims(component: Component) -> dict[str, str]:
     are left out."""
     dims = {}
     for name, dim in (component.dims or {}).items():
-        if dim.value == name:
-            continue
-        try:
-            parse_dim_expr(dim.value)
-        except ValueError:
+        if dim.value == name or _DIM_CALL.search(dim.value):
             continue
         dims[name] = dim.value
     return dims
@@ -414,7 +412,7 @@ def _product_names(expr: str) -> list[str] | None:
             return None if left is None or right is None else left + right
         return None
 
-    return _names(parse_dim_expr(expr))
+    return _names(ast.parse(expr, mode="eval").body)
 
 
 def canonical_shape(f: FieldV3, derived: dict[str, str]) -> FieldV3:
