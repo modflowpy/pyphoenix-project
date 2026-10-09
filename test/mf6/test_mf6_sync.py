@@ -281,6 +281,23 @@ def test_invalid_python_leaves_outdir(dfn_path, outdir, monkeypatch):
     assert _snapshot(outdir) == before
 
 
+def test_unimportable_leaves_outdir(dfn_path, outdir, monkeypatch):
+    """Valid Python that fails to import is caught before the swap."""
+    before = _snapshot(outdir)
+    make = sys.modules["flopy4.mf6.utils.codegen.make"]
+    make_module = make.make_module
+
+    def broken_make_module(spec, env, verbose=False, outpath=None):
+        make_module(spec, env, verbose=verbose, outpath=outpath)
+        if outpath.name == "chd.py" and outpath.parent.name == "gwf":
+            outpath.write_text(outpath.read_text() + "import flopy4.mf6.nonexistent\n")
+
+    monkeypatch.setattr(make, "make_module", broken_make_module)
+    with pytest.raises(SyncError, match=r"flopy4\.mf6\.gwf\.chd: ModuleNotFoundError"):
+        sync(dfn_path, mf6_version="7.0.0", outdir=outdir)
+    assert _snapshot(outdir) == before
+
+
 @pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="needs POSIX permissions")
 def test_read_only(dfn_path, tmp_path):
     outdir = tmp_path / "ro"

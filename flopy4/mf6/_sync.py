@@ -1,14 +1,19 @@
 """Sync the generated ``flopy4.mf6`` classes to an MF6 version."""
 
 import ast
+import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
+from importlib import import_module
+from importlib.abc import MetaPathFinder
+from importlib.util import spec_from_file_location
 from os import PathLike
 from pathlib import Path
 
@@ -294,6 +299,79 @@ def _store_dfns(dfn_dir: Path, dest: Path) -> None:
         raise SyncError(f"No .dfn or .toml files in {dfn_dir}")
 
 
+def _module_name(rel: str) -> str:
+    """The module a generated file is imported as, e.g. ``gwf/dis.py`` ->
+    ``flopy4.mf6.gwf.dis``, ``gwf/__init__.py`` -> ``flopy4.mf6.gwf``."""
+    parts = Path(rel).with_suffix("").parts
+    return ".".join(("flopy4", "mf6", *(parts[:-1] if parts[-1] == "__init__" else parts)))
+
+
+class _StagedFinder(MetaPathFinder):
+    """Finds generated modules in a staging directory, so they can be
+    imported before they're swapped in. Modules sync would remove are
+    not found."""
+
+    def __init__(self, modules: dict[str, Path | None]):
+        self.modules = modules
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname not in self.modules:
+            return None
+        file = self.modules[fullname]
+        if file is None:
+            raise ModuleNotFoundError(f"No module named {fullname!r}", name=fullname)
+        search = None
+        if file.name == "__init__.py":
+            # Handwritten modules in the package come from the installed copy.
+            search = [str(_MF6_ROOT.joinpath(*fullname.split(".")[2:]))]
+        return spec_from_file_location(fullname, file, submodule_search_locations=search)
+
+
+def _import_staged(stage: str, generated: list[str], removed: list[str]) -> list[str]:
+    """Import each generated module from ``stage``, with the installed
+    handwritten modules. Return the failures."""
+    modules: dict[str, Path | None] = {_module_name(rel): None for rel in removed}
+    modules |= {_module_name(rel): Path(stage) / rel for rel in generated}
+    sys.meta_path.insert(0, _StagedFinder(modules))
+    failures = []
+    for name in sorted(n for n, f in modules.items() if f is not None):
+        try:
+            import_module(name)
+        except Exception as e:
+            failures.append(f"{name}: {type(e).__name__}: {e}")
+    return failures
+
+
+def _check_imports(stage: Path, generated: Iterable[str], removed: Iterable[str]) -> None:
+    """Raise if any staged module fails to import. Runs in a fresh
+    interpreter, so this process's imported modules and registered
+    classes don't affect it, and aren't affected."""
+    args = {"stage": str(stage), "generated": sorted(generated), "removed": sorted(removed)}
+    code = (
+        "import json, sys\n"
+        "from flopy4.mf6._sync import _import_staged\n"
+        "failures = _import_staged(**json.load(sys.stdin))\n"
+        "print('\\n'.join(failures))\n"
+        "sys.exit(1 if failures else 0)\n"
+    )
+    env = {
+        **os.environ,
+        "PYTHONPATH": os.pathsep.join(
+            filter(None, [str(_MF6_ROOT.parents[1]), os.environ.get("PYTHONPATH")])
+        ),
+    }
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        input=json.dumps(args),
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    if proc.returncode:
+        detail = proc.stdout.strip() or proc.stderr.strip()
+        raise SyncError(f"Generated modules failed to import:\n{detail}")
+
+
 def _swap(stage: Path, outdir: Path, replace: Iterable[str], remove: Iterable[str]) -> None:
     """Move the staged files over their counterparts in ``outdir`` and
     remove ``remove``, all or nothing: on failure, restore what was
@@ -340,7 +418,8 @@ def sync(
 
     Fetches or reads the DFNs, regenerates the component classes, and
     records the MF6 version in ``_contract.py``. Generated modules the
-    DFNs don't cover are removed. Installs the matching MF6 binary only
+    DFNs don't cover are removed. Nothing changes unless every generated
+    module imports. Installs the matching MF6 binary only
     if ``install`` is set.
 
     Parameters
@@ -498,6 +577,7 @@ def sync(
                 raise SyncError(f"Generated invalid Python for {rel}: {e}") from e
 
         removed = _generated_files(outdir) - generated
+        _check_imports(stage, generated, removed)
         (stage / _CONTRACT).write_text(_contract_text(version, commit, generated))
         _swap(
             stage,
