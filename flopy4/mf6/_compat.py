@@ -96,7 +96,11 @@ def check_mf6_compatibility(exe: str | PathLike | None = None) -> None:
     if exe is None:
         exe = shutil.which("mf6") or shutil.which("mf6.exe")
     else:
-        exe = shutil.which(os.fspath(exe))
+        exe = os.fspath(exe)
+        # Take an existing path as given: on Windows, Python 3.12+'s
+        # `which` rejects files without a PATHEXT extension.
+        if not (os.path.dirname(exe) and os.path.isfile(exe)):
+            exe = shutil.which(exe)
     if exe is None:
         return
 
