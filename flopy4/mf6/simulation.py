@@ -55,12 +55,12 @@ class Simulation(SimulationMethods, Context):
     )
     hpc: Optional[Hpc] = child(block="options", keyword="hpc6", direction="in")
     tdis: Tdis = child(block="timing", keyword="tdis6", default=attrs.Factory(Tdis))
-    models: dict[str, Model] = child(block="models", default=attrs.Factory(dict))
-    exchanges: dict[str, Exchange] = child(block="exchanges", default=attrs.Factory(dict))
+    models: list[Model] = child(block="models", default=attrs.Factory(list))
+    exchanges: list[Exchange] = child(block="exchanges", default=attrs.Factory(list))
     mxiter: Optional[int] = field(
         default=None,
         block="solutiongroup",
         optional=True,
         longname="maximum solution group iterations",
     )
-    solutiongroup: dict[str, Solution] = child(block="solutiongroup", default=attrs.Factory(dict))
+    solutiongroup: list[Solution] = child(block="solutiongroup", default=attrs.Factory(list))

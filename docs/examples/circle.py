@@ -264,8 +264,8 @@ tdis = flopy4.mf6.simulation.Tdis.from_time(time)
 sim = flopy4.mf6.simulation.Simulation(
     name="circle",
     tdis=tdis,
-    models={"gwf": gwf},
-    solutiongroup={"ims": ims},
+    models=[gwf],
+    solutiongroup=[ims],
     workspace=workspace,
 )
 

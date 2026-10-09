@@ -21,12 +21,10 @@ there). No real DFN field uses any of these names today; if one ever
 did, it would need a different name or a second, explicit exclusion
 mechanism here.
 
-Known limitation: a "dict"-kind child field (e.g. `Simulation.models`)
-can't be reconstructed from a plain `DataTree` alone -- the dict's real
-keys are caller-given names with no recoverable relationship to the
-field name, unlike "list"-kind's positional `f"{field_name}{index}"`
-convention. Namefile binding rows carry this information separately;
-reconstruction should use that rather than guessing here. Likewise, a
+Known limitation: a "dict"-kind child field can't be reconstructed
+from a plain `DataTree` alone -- the dict's real keys are caller-given
+names with no recoverable relationship to the field name, unlike
+"list"-kind's positional `f"{field_name}{index}"` convention. Likewise, a
 "list"-kind field whose element type is itself a `Union` of attrs
 classes (e.g. `list[Union[Chd, Chdg]]`) isn't resolved to a concrete
 arm.
@@ -325,8 +323,9 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
     annotation, or a type/collection-element that resolves to no
     attrs-decorated candidate at all.
 
-    Kind is `"only"`, `"list"`, or `"dict"`, matching the child-collection
-    vocabulary used throughout `flopy4/mf6/converter/`.
+    Kind is `"only"` or `"list"`, matching the child-collection
+    vocabulary used throughout `flopy4/mf6/converter/`. Components keep
+    collections of children in lists, so a dict isn't a child field.
     """
     tp = field.type
     if tp is None or isinstance(tp, str):
@@ -347,8 +346,6 @@ def child_field_candidates(field: attrs.Attribute) -> "tuple[str, tuple[type, ..
             candidates = tuple(a for a in get_args(elem) if attrs.has(a))
             return ("list", candidates) if candidates else None
         return ("list", (elem,)) if attrs.has(elem) else None
-    if origin is dict and len(args) == 2 and attrs.has(args[1]):
-        return ("dict", (args[1],))
     return None
 
 

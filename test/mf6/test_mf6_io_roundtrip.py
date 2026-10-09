@@ -182,7 +182,7 @@ def test_tvk_child_kept(tmp_path):
         "BEGIN PERIOD 1\n  1 1 3 K 5.0\n  1 1 4 K33 2.5\nEND PERIOD\n"
     )
     sim = Simulation.load(workspace / "mfsim.nam")
-    tvk = sim.models["flow15"].npf.tvk
+    tvk = sim["flow15"].npf.tvk
     rows = tvk.stress_period_data[0]
     assert [(type(r).__name__, r.cellid) for r in rows] == [("K", (0, 0, 2)), ("K33", (0, 0, 3))]
     assert (rows[0].k, rows[1].k33) == (5.0, 2.5)
@@ -194,7 +194,7 @@ def test_tvk_child_kept(tmp_path):
     assert "TVK6 FILEIN flow15.tvk" in (out / "flow15.npf").read_text()
     reloaded = Simulation.load(out / "mfsim.nam")
     diffs: list[str] = []
-    _diff(rows, reloaded.models["flow15"].npf.tvk.stress_period_data[0], "tvk", diffs)
+    _diff(rows, reloaded["flow15"].npf.tvk.stress_period_data[0], "tvk", diffs)
     assert not diffs, "\n".join(diffs)
 
 
@@ -207,7 +207,7 @@ def test_tvs_child_kept(tmp_path):
         "BEGIN PERIOD 2\n  1 1 1 SS 2.0e-5\n  1 1 2 SY 0.1\nEND PERIOD\n"
     )
     sim = Simulation.load(workspace / "mfsim.nam")
-    rows = sim.models["GWF_1"].sto.tvs.stress_period_data[1]
+    rows = sim["GWF_1"].sto.tvs.stress_period_data[1]
     assert [(type(r).__name__, r.cellid) for r in rows] == [("Ss", (0, 0, 0)), ("Sy", (0, 0, 1))]
     assert (rows[0].ss, rows[1].sy) == (2.0e-5, 0.1)
 
@@ -218,7 +218,7 @@ def test_tvs_child_kept(tmp_path):
     assert "TVS6 FILEIN model.tvs" in (out / "model.sto").read_text()
     reloaded = Simulation.load(out / "mfsim.nam")
     diffs: list[str] = []
-    _diff(rows, reloaded.models["GWF_1"].sto.tvs.stress_period_data[1], "tvs", diffs)
+    _diff(rows, reloaded["GWF_1"].sto.tvs.stress_period_data[1], "tvs", diffs)
     assert not diffs, "\n".join(diffs)
 
 

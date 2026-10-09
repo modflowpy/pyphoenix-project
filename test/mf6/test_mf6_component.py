@@ -285,10 +285,10 @@ def test_init_sim_explicit_dims():
         dims=dims,
     )
     tdis = Tdis(dims=dims)
-    sim = Simulation(tdis=tdis, models={"gwf": gwf})
+    sim = Simulation(tdis=tdis, models=[gwf])
 
     assert sim.tdis is tdis
-    assert sim.models["gwf"] is gwf
+    assert sim["gwf"] is gwf
     assert sim._children["tdis"] is tdis
     assert sim._children["gwf"] is gwf
     assert gwf.dis is dis
@@ -297,8 +297,66 @@ def test_init_sim_explicit_dims():
     assert gwf.npf is npf
     assert gwf.chd[0] is chd
     # k is stored as a plain attrs field; use to_xarray() for Dataset access
-    assert np.array_equal(sim.models["gwf"].npf.k, np.ones(100))
-    assert np.array_equal(sim.models["gwf"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
+    assert np.array_equal(sim["gwf"].npf.k, np.ones(100))
+    assert np.array_equal(sim["gwf"].npf.to_xarray()["k"].values, np.ones((1, 10, 10)))
+
+
+def test_sim_children_list():
+    gwf = Gwf(name="flow")
+    ims = Ims(name="solver")
+    sim = Simulation(models=[gwf], solutiongroup=[ims])
+
+    assert sim.models == [gwf]
+    assert sim.solutiongroup == [ims]
+    assert sim["flow"] is gwf
+    assert sim["solver"] is ims
+    assert gwf.parent is sim
+
+
+def test_sim_children_single():
+    gwf = Gwf(name="flow")
+    ims = Ims()
+    sim = Simulation(models=gwf, solutiongroup=ims)
+
+    assert sim.models == [gwf]
+    assert sim.solutiongroup == [ims]
+    assert sim["flow"] is gwf
+
+
+def test_sim_children_unnamed():
+    from flopy4.mf6.gwt import Gwt
+
+    sim = Simulation(models=[Gwf(), Gwt(), Gwf()], solutiongroup=[Ims()])
+
+    assert [m.name for m in sim.models] == ["gwf", "gwt", "gwf1"]
+    assert sim.solutiongroup[0].name == "ims"
+
+
+def test_sim_children_name_collision():
+    with pytest.raises(ValueError, match="collides"):
+        Simulation(models=[Gwf(name="flow"), Gwf(name="flow")])
+
+
+def test_sim_children_bottom_up():
+    sim = Simulation()
+    gwf = Gwf(parent=sim, name="flow")
+    unnamed = Gwf(parent=sim)
+
+    assert sim.models == [gwf, unnamed]
+    assert unnamed.name == "gwf"
+    with pytest.raises(ValueError, match="collides"):
+        Gwf(parent=sim, name="flow")
+
+
+def test_sim_children_setitem_delitem():
+    sim = Simulation(models=[Gwf(name="flow")])
+    replacement = Gwf()
+    sim["flow"] = replacement
+
+    assert sim.models == [replacement]
+    assert replacement.name == "flow"
+    del sim["flow"]
+    assert sim.models == []
 
 
 def test_init_big_sim():
@@ -315,7 +373,7 @@ def test_init_big_sim():
         stress_period_data={0: [[(0, 0, 0), 1.0], [(0, 9999, 9999), 0.0]]},
     )
 
-    assert sim.models["gwf"] is gwf
+    assert sim["gwf"] is gwf
     assert sim._children["gwf"] is gwf
     assert gwf.ic is ic
     assert gwf.oc is oc
@@ -323,7 +381,7 @@ def test_init_big_sim():
     assert gwf.chd[0] is chd
 
     # Without explicit dims, griddata scalars stay compact (no 100M allocation)
-    assert sim.models["gwf"].npf.k == 1.0
+    assert sim["gwf"].npf.k == 1.0
 
     # SPD is a recarray with only 2 rows — no full-grid allocation
     spd = chd.stress_period_data[0]
@@ -364,7 +422,7 @@ def test_write_ascii(function_tmpdir):
         tdis=time,
         workspace=function_tmpdir,
         name=sim_name,
-        solutiongroup={"ims": ims},
+        solutiongroup=[ims],
     )
     gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
     ic = Ic(parent=gwf)
@@ -477,7 +535,7 @@ def test_to_dict_on_context():
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, solutiongroup={"ims": ims})
+    sim = Simulation(tdis=time, solutiongroup=[ims])
 
     result = sim.to_dict()
 
@@ -535,7 +593,7 @@ def test_to_xarray_on_context(function_tmpdir):
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(tdis=time, solutiongroup={"ims": ims}, workspace=function_tmpdir)
+    sim = Simulation(tdis=time, solutiongroup=[ims], workspace=function_tmpdir)
     dt = sim.to_xarray()
     assert isinstance(dt, xr.DataTree)
     assert isinstance(dt.kper, xr.DataArray)
@@ -1363,13 +1421,13 @@ def test_ncf_subpackage_simulation_load(function_tmpdir):
         name="sim",
         workspace=function_tmpdir,
         tdis=Tdis(nper=1),
-        models={"gwf": gwf},
-        solutiongroup={"ims": Ims()},
+        models=[gwf],
+        solutiongroup=[Ims(name="ims")],
     )
     sim.write()
 
     loaded = Simulation.load(function_tmpdir / "mfsim.nam")
-    dis = loaded.models["gwf"].dis
+    dis = loaded["gwf"].dis
     assert isinstance(dis.ncf, Ncf)
     assert dis.ncf.filename == ncf.filename
     np.testing.assert_array_equal(dis.ncf.latitude, ncf.latitude)
@@ -1944,7 +2002,7 @@ def test_eq_simulation():
             ic=Ic(strt=1.0),
             chd=[Chd(stress_period_data={0: [[(0, 0, 0), head]]})],
         )
-        return Simulation(tdis=Tdis(nper=1), models={"gwf": gwf}, solutiongroup={"ims": Ims()})
+        return Simulation(tdis=Tdis(nper=1), models=[gwf], solutiongroup=[Ims(name="ims")])
 
     assert make(1.0) == make(1.0)
     assert make(1.0) != make(2.0)
@@ -2112,8 +2170,8 @@ def _gwt_sim(workspace, **packages):
         name="sim",
         workspace=workspace,
         tdis=Tdis(nper=1),
-        models={"gwt": gwt},
-        solutiongroup={"ims": Ims()},
+        models=[gwt],
+        solutiongroup=[Ims(name="ims")],
     )
 
 
@@ -2134,7 +2192,7 @@ def test_gwt_fmi_ist_api_round_trip(function_tmpdir):
     assert text.count("IST6") == 2
     assert text.count("API6") == 2
 
-    gwt = Simulation.load(function_tmpdir / "mfsim.nam").models["gwt"]
+    gwt = Simulation.load(function_tmpdir / "mfsim.nam")["gwt"]
     assert gwt.fmi.flow_imbalance_correction
     assert [r.flowtype for r in gwt.fmi.packagedata] == ["GWFHEAD"]
     assert [r.fname for r in gwt.fmi.packagedata] == [Path("gwf.hds")]

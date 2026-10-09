@@ -130,12 +130,13 @@ def main():
         return dis, ic, npf, sto, oc
 
     def make_sim4(ws, gwf):
+        gwf.name = "test1000"
         ws.mkdir(parents=True, exist_ok=True)
         return flopy4.mf6.simulation.Simulation(
             name="test1000",
             tdis=flopy4.mf6.simulation.Tdis.from_time(time4),
-            models={"test1000": gwf},
-            solutiongroup={"ims": make_ims4()},
+            models=[gwf],
+            solutiongroup=[make_ims4(name="ims")],
             workspace=ws,
         )
 

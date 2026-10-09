@@ -183,7 +183,7 @@ class TestComponentIntegration:
         dis = Dis(nlay=3, nrow=10, ncol=20)
         gwf = Gwf(name="test", dis=dis)
         # Construct Simulation with models dict - parent is set automatically
-        sim = Simulation(name="test", tdis=tdis, models={"test": gwf})
+        sim = Simulation(name="test", tdis=tdis, models=[gwf])
 
         # Model should access its own grid dimensions
         assert gwf.resolve_dims("nlay") == {"nlay": 3}
@@ -205,7 +205,7 @@ class TestComponentIntegration:
         tdis = Tdis(nper=10)
         dis = Dis(nlay=3, nrow=10, ncol=20)
         gwf = Gwf(name="test", dis=dis)
-        sim = Simulation(name="test", tdis=tdis, models={"test": gwf})
+        sim = Simulation(name="test", tdis=tdis, models=[gwf])
 
         # Model should resolve grid dimensions from its Dis
         assert gwf.resolve_dims("nlay") == {"nlay": 3}
@@ -274,7 +274,7 @@ class TestComponentIntegration:
         tdis = Tdis(nper=10)
         dis = Dis(nlay=3, nrow=10, ncol=20)
         gwf = Gwf(name="test", dis=dis)
-        sim = Simulation(name="test", tdis=tdis, models={"test": gwf})
+        sim = Simulation(name="test", tdis=tdis, models=[gwf])
 
         # Request both grid and time dimensions together
         result = gwf.resolve_dims("nlay", "nrow", "ncol", "nper", "nodes")

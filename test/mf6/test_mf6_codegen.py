@@ -389,9 +389,9 @@ def test_simulation_spec(all_dfns):
     types = {f.py_name: f.type_annotation for f in spec.fields}
     # binding lists become typed child fields
     assert types["tdis"] == "Tdis"
-    assert types["models"] == "dict[str, Model]"
-    assert types["exchanges"] == "dict[str, Exchange]"
-    assert types["solutiongroup"] == "dict[str, Solution]"
+    assert types["models"] == "list[Model]"
+    assert types["exchanges"] == "list[Exchange]"
+    assert types["solutiongroup"] == "list[Solution]"
     assert not spec.item_classes
     assert {"continue_", "nocheck", "maxerrors", "mxiter"} <= set(types)
 
