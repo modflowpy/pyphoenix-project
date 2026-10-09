@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 from flopy.discretization import VertexGrid as LegacyVertexGrid
@@ -44,6 +44,24 @@ class _LegacyInputs(ABCMeta):
 class DisvMethods(metaclass=_LegacyInputs):
     """Methods for the generated vertex discretizations (`Disv` in GWF, GWT,
     GWE and PRT); fields come from the DFN."""
+
+    # DFN fields these methods use, checked against the DFNs at sync time.
+    _requires: ClassVar[frozenset[str]] = frozenset(
+        {
+            "angrot",
+            "botm",
+            "cell2d",
+            "crs",
+            "idomain",
+            "length_units",
+            "ncpl",
+            "nlay",
+            "top",
+            "vertices",
+            "xorigin",
+            "yorigin",
+        }
+    )
 
     Cell2dRecord = _Cell2dRecord()
 

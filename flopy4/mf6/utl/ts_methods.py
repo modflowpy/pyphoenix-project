@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,13 @@ if TYPE_CHECKING:
 
 class TsMethods:
     """Methods for the generated `Ts`; fields come from the DFN."""
+
+    # DFN fields these methods use, checked against the DFNs at sync time.
+    _requires: ClassVar[frozenset[str]] = frozenset(
+        {
+            "timeseries",
+        }
+    )
 
     @classmethod
     def from_series(  # type: ignore[misc]
