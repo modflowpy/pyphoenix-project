@@ -163,11 +163,11 @@ update-ghpages = { cmd = "python scripts/update_ghpages.py", description = "Sync
 build = { cmd = "python -m build" }
 
 [tool.pixi.tasks.generate-classes]
-cmd = "flopy4 mf6 sync MODFLOW-ORG/modflow6@develop --no-install --verbose"
+cmd = "flopy4 mf6 sync MODFLOW-ORG/modflow6@develop --verbose"
 description = "Regenerate existing MF6 classes in flopy4/mf6/ from the modflow6 develop branch DFNs"
 
 [tool.pixi.tasks.generate-classes-preview]
-cmd = "flopy4 mf6 sync MODFLOW-ORG/modflow6@develop --all-packages --no-install --verbose"
+cmd = "flopy4 mf6 sync MODFLOW-ORG/modflow6@develop --all-packages --verbose"
 description = "Generate all MF6 classes (including new ones) from the modflow6 develop branch DFNs"
 
 [tool.pixi.tasks.sync]

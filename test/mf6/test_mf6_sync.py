@@ -295,6 +295,81 @@ def test_release_contract_names_tag():
     assert _contract.DFN_COMMIT and not _contract.DFN_COMMIT.endswith("-dirty")
 
 
+@pytest.fixture
+def fake_install(monkeypatch, tmp_path):
+    """Replace devtools' install_program; records calls."""
+    from modflow_devtools import programs
+
+    calls = []
+
+    def install_program(program, **kwargs):
+        calls.append({"program": program, **kwargs})
+        bindir = Path(kwargs["bindir"] or tmp_path / "bin")
+        return [
+            programs.ProgramInstallation(
+                version=kwargs["version"],
+                platform="mac",
+                bindir=bindir,
+                installed_at=None,
+                source={},
+                executables=["libmf6.dylib", "mf6"],
+            )
+        ]
+
+    monkeypatch.setattr(programs, "install_program", install_program)
+    monkeypatch.setattr(_sync, "_populate_remote_cache", lambda *a, **k: None)
+    monkeypatch.setattr(_sync, "_remote_commit", lambda release_id: None)
+    return calls
+
+
+@pytest.mark.parametrize(
+    "ref, repo, version",
+    [("6.6.0", "modflow6", "6.6.0"), ("develop", "modflow6-nightly-build", "latest")],
+)
+def test_install(dfn_path, outdir, monkeypatch, fake_install, ref, repo, version):
+    """--install installs the binary matching the source, before generating."""
+    from modflow_devtools.dfns import RemoteDfnRegistry
+
+    monkeypatch.setattr(RemoteDfnRegistry, "cache_path", property(lambda self: dfn_path))
+    monkeypatch.setattr(RemoteDfnRegistry, "latest_tag", lambda self: ref)
+    monkeypatch.setattr("flopy4.mf6._compat._query_mf6_version", lambda exe: None)
+    result = sync(ref, install=True, bindir=outdir / "bin", outdir=outdir)
+    assert fake_install == [
+        {
+            "program": "mf6",
+            "owner": "MODFLOW-ORG",
+            "repo": repo,
+            "version": version,
+            "bindir": outdir / "bin",
+            "force": False,
+            "verbose": False,
+        }
+    ]
+    assert result.installed == outdir / "bin" / "mf6"
+
+
+def test_install_unsupported(dfn_path, outdir, fake_install):
+    with pytest.raises(ValueError, match="local DFNs"):
+        sync(dfn_path, install=True, outdir=outdir)
+    with pytest.raises(SyncError, match="No MF6 binaries"):
+        sync("me/modflow6@my-branch", mf6_version="6.9.0", install=True, outdir=outdir)
+    assert fake_install == []
+
+
+def test_install_failure_leaves_outdir(outdir, monkeypatch, fake_install):
+    """A failed install aborts the sync before any classes change."""
+    from modflow_devtools import programs
+
+    def fail(program, **kwargs):
+        raise programs.ProgramInstallationError("no asset")
+
+    monkeypatch.setattr(programs, "install_program", fail)
+    before = _snapshot(outdir)
+    with pytest.raises(SyncError, match="no asset"):
+        sync("6.6.0", mf6_version="6.6.0", install=True, outdir=outdir)
+    assert _snapshot(outdir) == before
+
+
 def test_cli_wraps_sync(monkeypatch, tmp_path, capsys):
     """The CLI passes its arguments through to sync()."""
     calls = []
@@ -307,15 +382,31 @@ def test_cli_wraps_sync(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setattr("flopy4.mf6._sync.sync", fake_sync)
     monkeypatch.setattr(
-        sys, "argv", ["flopy4", "mf6", "sync", "6.6.0", "--all-packages", "--force"]
+        sys, "argv", ["flopy4", "mf6", "sync", "6.6.0", "--all-packages", "--force", "--install"]
     )
     cli.main()
     assert calls == [
         (
             "6.6.0",
-            {"mf6_version": None, "all_packages": True, "force": True, "verbose": False},
+            {
+                "mf6_version": None,
+                "all_packages": True,
+                "install": True,
+                "bindir": None,
+                "force": True,
+                "verbose": False,
+            },
         )
     ]
     out = capsys.readouterr().out
     assert "Generated 1 component modules" in out
     assert "MF6 version: 6.6.0" in out
+
+
+def test_install_version_mismatch_warns(dfn_path, outdir, monkeypatch, fake_install):
+    from modflow_devtools.dfns import RemoteDfnRegistry
+
+    monkeypatch.setattr(RemoteDfnRegistry, "cache_path", property(lambda self: dfn_path))
+    monkeypatch.setattr("flopy4.mf6._compat._query_mf6_version", lambda exe: "6.5.0")
+    with pytest.warns(UserWarning, match="reports MF6 6.5.0"):
+        sync("6.6.0", mf6_version="6.6.0", install=True, outdir=outdir)
