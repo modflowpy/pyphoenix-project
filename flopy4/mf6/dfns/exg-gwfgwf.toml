@@ -1,0 +1,351 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "exg-gwfgwf"
+parent = "sim-nam"
+ftype = "GWF6-GWF6"
+multi = true
+subtype = "exchange"
+
+[dims.nexg]
+value = "nexg"
+
+[dims.auxiliary]
+value = "len(auxiliary)"
+
+[dims.naux]
+value = "len(auxiliary)"
+
+[blocks.options.fields.auxiliary]
+type = "array"
+longname = "keyword to specify aux variables"
+description = "an array of auxiliary variable names.  There is no limit on the number of auxiliary variables that can be provided. Most auxiliary variables will not be used by the GWF-GWF Exchange, but they will be available for use by other parts of the program.  If an auxiliary variable with the name 'ANGLDEGX' is found, then this information will be used as the angle (provided in degrees) between the connection face normal and the x axis, where a value of zero indicates that a normal vector points directly along the positive x axis.  The connection face normal is a normal vector on the cell face shared between the cell in model 1 and the cell in model 2 pointing away from the model 1 cell.  Additional information on 'ANGLDEGX' and when it is required is provided in the description of the DISU Package.  If an auxiliary variable with the name 'CDIST' is found, then this information will be used in the calculation of specific discharge within model cells connected by the exchange.  For a horizontal connection, CDIST should be specified as the horizontal distance between the cell centers, and should not include the vertical component.  For vertical connections, CDIST should be specified as the difference in elevation between the two cell centers.  Both ANGLDEGX and CDIST are required if specific discharge is calculated for either of the groundwater models."
+optional = true
+dtype = "string"
+
+[blocks.options.fields.boundnames]
+type = "keyword"
+description = "keyword to indicate that boundary names may be provided with the list of GWF Exchange cells."
+optional = true
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "keyword to print input to list file"
+description = "keyword to indicate that the list of exchange entries will be echoed to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.print_flows]
+type = "keyword"
+longname = "keyword to print gwfgwf flows to list file"
+description = "keyword to indicate that the list of exchange flow rates will be printed to the listing file for every stress period in which 'SAVE BUDGET' is specified in Output Control."
+optional = true
+
+[blocks.options.fields.save_flows]
+type = "keyword"
+longname = "keyword to save GWFGWF flows"
+description = "keyword to indicate that cell-by-cell flow terms will be written to the budget file for each model provided that the Output Control for the models are set up with the 'BUDGET SAVE FILE' option."
+optional = true
+
+[blocks.options.fields.cell_averaging]
+type = "string"
+longname = "conductance weighting option"
+description = "is a keyword and text keyword to indicate the method that will be used for calculating the conductance for horizontal cell connections.  The text value for CELL_AVERAGING can be 'HARMONIC', 'LOGARITHMIC', or 'AMT-LMK', which means 'arithmetic-mean thickness and logarithmic-mean hydraulic conductivity'. If the user does not specify a value for CELL_AVERAGING, then the harmonic-mean method will be used."
+optional = true
+valid = [
+    "harmonic",
+    "logarithmic",
+    "amt-lmk",
+]
+
+[blocks.options.fields.cvoptions]
+type = "record"
+longname = "vertical conductance options"
+description = "none"
+optional = true
+
+[blocks.options.fields.cvoptions.fields.variablecv]
+type = "keyword"
+longname = "keyword to activate VARIABLECV option"
+description = "keyword to indicate that the vertical conductance will be calculated using the saturated thickness and properties of the overlying cell and the thickness and properties of the underlying cell.  If the DEWATERED keyword is also specified, then the vertical conductance is calculated using only the saturated thickness and properties of the overlying cell if the head in the underlying cell is below its top.  If these keywords are not specified, then the default condition is to calculate the vertical conductance at the start of the simulation using the initial head and the cell properties.  The vertical conductance remains constant for the entire simulation."
+
+[blocks.options.fields.cvoptions.fields.dewatered]
+type = "keyword"
+longname = "keyword to activate DEWATERED option"
+description = "If the DEWATERED keyword is specified, then the vertical conductance is calculated using only the saturated thickness and properties of the overlying cell if the head in the underlying cell is below its top."
+optional = true
+
+[blocks.options.fields.newton]
+type = "keyword"
+longname = "keyword to activate Newton-Raphson"
+description = "keyword that activates the Newton-Raphson formulation for groundwater flow between connected, convertible groundwater cells. Cells will not dry when this option is used."
+optional = true
+
+[blocks.options.fields.xt3d]
+type = "keyword"
+longname = "keyword to activate XT3D"
+description = "keyword that activates the XT3D formulation between the cells connected with this GWF-GWF Exchange."
+optional = true
+
+[blocks.options.fields.gnc_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.gnc_filerecord.fields.gnc6]
+type = "keyword"
+longname = "gnc6 keyword"
+description = "keyword to specify that record corresponds to a ghost-node correction file."
+
+[blocks.options.fields.gnc_filerecord.fields.gnc6_filename]
+type = "file"
+longname = "gnc6 input filename"
+description = "is the file name for ghost node correction input file.  Information for the ghost nodes are provided in the file provided with these keywords.  The format for specifying the ghost nodes is the same as described for the GNC Package of the GWF Model.  This includes specifying OPTIONS, DIMENSIONS, and GNCDATA blocks.  The order of the ghost nodes must follow the same order as the order of the cells in the EXCHANGEDATA block.  For the GNCDATA, noden and all of the nodej values are assumed to be located in model 1, and nodem is assumed to be in model 2."
+tagged = false
+direction = "in"
+component = "gwf-gnc"
+
+[blocks.options.fields.mvr_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.mvr_filerecord.fields.mvr6]
+type = "keyword"
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to a mover file."
+
+[blocks.options.fields.mvr_filerecord.fields.mvr6_filename]
+type = "file"
+longname = "mvr6 input filename"
+description = "is the file name of the water mover input file to apply to this exchange.  Information for the water mover are provided in the file provided with these keywords.  The format for specifying the water mover information is the same as described for the Water Mover (MVR) Package of the GWF Model, with two exceptions.  First, in the PACKAGES block, the model name must be included as a separate string before each package.  Second, the appropriate model name must be included before package name 1 and package name 2 in the BEGIN PERIOD block.  This allows providers and receivers to be located in both models listed as part of this exchange."
+tagged = false
+direction = "in"
+component = "gwf-mvr"
+
+[blocks.options.fields.obs_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.obs_filerecord.fields.obs6]
+type = "keyword"
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to an observations file."
+
+[blocks.options.fields.obs_filerecord.fields.obs6_filename]
+type = "file"
+longname = "obs6 input filename"
+description = "is the file name of the observations input file for this exchange. See the 'Observation utility' section for instructions for preparing observation input files. Table ref{table:gwf-obstypetable} lists observation type(s) supported by the GWF-GWF package."
+tagged = false
+direction = "in"
+component = "utl-obs"
+
+[blocks.options.fields.dev_interfacemodel_on]
+type = "keyword"
+longname = "activate interface model on exchange"
+description = "activates the interface model mechanism for calculating the coefficients at (and possibly near) the exchange. This keyword should only be used for development purposes."
+optional = true
+developmode = true
+
+[blocks.dimensions.fields.nexg]
+type = "integer"
+longname = "number of exchanges"
+description = "keyword and integer value specifying the number of GWF-GWF exchanges."
+
+[blocks.exchangedata.fields.exchangedata]
+type = "list"
+longname = "exchange data"
+shape = [
+    "nexg",
+]
+
+[blocks.exchangedata.fields.exchangedata.item]
+name = "exchangedata"
+type = "record"
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cellidm1]
+type = "array"
+longname = "cellid of first cell"
+description = "is the cellid of the cell in model 1 as specified in the simulation name file. For a structured grid that uses the DIS input file, CELLIDM1 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM1 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM1 is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = "1"
+shape = [
+    "ncelldim",
+]
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cellidm2]
+type = "array"
+longname = "cellid of second cell"
+description = "is the cellid of the cell in model 2 as specified in the simulation name file. For a structured grid that uses the DIS input file, CELLIDM2 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM2 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM2 is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = "2"
+shape = [
+    "ncelldim",
+]
+
+[blocks.exchangedata.fields.exchangedata.item.fields.ihc]
+type = "integer"
+longname = "integer flag for connection type"
+description = "is an integer flag indicating the direction between node n and all of its m connections. If IHC = 0 then the connection is vertical.  If IHC = 1 then the connection is horizontal. If IHC = 2 then the connection is horizontal for a vertically staggered grid."
+tagged = false
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cl1]
+type = "double"
+longname = "connection distance"
+description = "is the distance between the center of cell 1 and the its shared face with cell 2."
+tagged = false
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cl2]
+type = "double"
+longname = "connection distance"
+description = "is the distance between the center of cell 2 and the its shared face with cell 1."
+tagged = false
+
+[blocks.exchangedata.fields.exchangedata.item.fields.hwva]
+type = "double"
+longname = "horizontal cell width or area for vertical flow"
+description = "is the horizontal width of the flow connection between cell 1 and cell 2 if IHC $>$ 0, or it is the area perpendicular to flow of the vertical connection between cell 1 and cell 2 if IHC = 0."
+tagged = false
+
+[blocks.exchangedata.fields.exchangedata.item.fields.aux]
+type = "array"
+longname = "auxiliary variables"
+description = "represents the values of the auxiliary variables for each GWFGWF Exchange. The values of auxiliary variables must be present for each exchange. The values must be specified in the order of the auxiliary variables specified in the OPTIONS block."
+optional = true
+tagged = false
+dtype = "double"
+shape = [
+    "auxiliary",
+]
+
+[blocks.exchangedata.fields.exchangedata.item.fields.boundname]
+type = "string"
+longname = "exchange boundname"
+description = "name of the GWF Exchange cell.  BOUNDNAME is an ASCII character variable that can contain as many as 40 characters.  If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."
+optional = true
+tagged = false
+
+[memory.iprpak]
+set_in = "ar"
+source = "print_input"
+type = "integer"
+
+[memory.iprflow]
+set_in = "ar"
+source = "print_flows"
+type = "integer"
+
+[memory.ipakcb]
+set_in = "ar"
+source = "save_flows"
+type = "integer"
+
+[memory.dev_ifmod_on]
+set_in = "ar"
+source = "dev_interfacemodel_on"
+type = "logical"
+
+[memory.auxvar]
+type = "array"
+set_in = "ar"
+source = "aux"
+description = "Auxiliary variable values for each exchange."
+dtype = "double"
+shape = [
+    "naux",
+    "nexg",
+]
+
+[memory.nexg]
+set_in = "ar"
+source = "nexg"
+type = "integer"
+
+[memory.nodem1]
+type = "array"
+set_in = "ar"
+source = "cellidm1"
+description = "Reduced node number in model 1 for each exchange, derived from CELLIDM1."
+dtype = "integer"
+shape = [
+    "nexg",
+]
+
+[memory.nodem2]
+type = "array"
+set_in = "ar"
+source = "cellidm2"
+description = "Reduced node number in model 2 for each exchange, derived from CELLIDM2."
+dtype = "integer"
+shape = [
+    "nexg",
+]
+
+[memory.ihc]
+type = "array"
+set_in = "ar"
+source = "ihc"
+description = "Connection type flag for each exchange: 0 vertical, 1 horizontal, 2 horizontal for a vertically staggered grid."
+dtype = "integer"
+shape = [
+    "nexg",
+]
+
+[memory.cl1]
+type = "array"
+set_in = "ar"
+source = "cl1"
+description = "Distance between the center of the model 1 cell and its shared face."
+dtype = "double"
+shape = [
+    "nexg",
+]
+
+[memory.cl2]
+type = "array"
+set_in = "ar"
+source = "cl2"
+description = "Distance between the center of the model 2 cell and its shared face."
+dtype = "double"
+shape = [
+    "nexg",
+]
+
+[memory.hwva]
+type = "array"
+set_in = "ar"
+source = "hwva"
+description = "Horizontal width of the connection if IHC > 0, or the area perpendicular to flow of the vertical connection if IHC = 0."
+dtype = "double"
+shape = [
+    "nexg",
+]
+
+[memory.naux]
+readonly = true
+set_in = "ar"
+description = "Number of auxiliary variables."
+type = "integer"
+
+[memory.auxname_cst]
+type = "array"
+readonly = true
+set_in = "ar"
+description = "Names of auxiliary variables."
+dtype = "string"
+shape = [
+    "naux",
+]
+
+[observations.flow-ja-face]
+type = "union"
+tagged = false
+
+[observations.flow-ja-face.arms.iexg]
+type = "integer"
+tagged = false
+index = true
+
+[observations.flow-ja-face.arms.boundname]
+type = "string"
+tagged = false

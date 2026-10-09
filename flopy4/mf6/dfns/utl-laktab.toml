@@ -1,0 +1,68 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "utl-laktab"
+parent = "gwf-lak"
+ftype = "LAKTAB6"
+multi = true
+subtype = "utility"
+
+[dims.nrow]
+value = "nrow"
+
+[dims.ncol]
+value = "ncol"
+
+[blocks.dimensions.fields.nrow]
+type = "integer"
+longname = "number of table rows"
+description = "integer value specifying the number of rows in the lake table. There must be NROW rows of data in the TABLE block."
+
+[blocks.dimensions.fields.ncol]
+type = "integer"
+longname = "number of table columns"
+description = "integer value specifying the number of columns in the lake table. There must be NCOL columns of data in the TABLE block. For lakes with HORIZONTAL and/or VERTICAL CTYPE connections, NCOL must be equal to 3. For lakes with EMBEDDEDH or EMBEDDEDV CTYPE connections, NCOL must be equal to 4."
+
+[blocks.table.fields.table]
+type = "list"
+shape = [
+    "nrow",
+]
+
+[blocks.table.fields.table.item]
+name = "table"
+type = "record"
+
+[blocks.table.fields.table.item.fields.stage]
+type = "double"
+longname = "lake stage"
+description = "real value that defines the stage corresponding to the remaining data on the line."
+tagged = false
+
+[blocks.table.fields.table.item.fields.volume]
+type = "double"
+longname = "lake volume"
+description = "real value that defines the lake volume corresponding to the stage specified on the line."
+tagged = false
+
+[blocks.table.fields.table.item.fields.sarea]
+type = "double"
+longname = "lake surface area"
+description = "real value that defines the lake surface area corresponding to the stage specified on the line."
+tagged = false
+
+[blocks.table.fields.table.item.fields.barea]
+type = "double"
+longname = "lake-GWF exchange area"
+description = "real value that defines the lake-GWF exchange area corresponding to the stage specified on the line. BAREA is only specified if the CLAKTYPE for the lake is EMBEDDEDH or EMBEDDEDV."
+optional = true
+tagged = false
+
+[memory.nrow]
+set_in = "ar"
+source = "nrow"
+type = "integer"
+
+[memory.ncol]
+set_in = "ar"
+source = "ncol"
+type = "integer"

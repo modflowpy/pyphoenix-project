@@ -1,0 +1,317 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "prt-oc"
+parent = "prt-nam"
+ftype = "OC6"
+
+[dims.ntracktimes]
+value = "ntracktimes"
+
+[blocks.options.fields.budget_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.budget_filerecord.fields.budget]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget."
+
+[blocks.options.fields.budget_filerecord.fields.budgetfile]
+type = "file"
+longname = "file keyword"
+description = "name of the output file to write budget information. Data are written to this file only for time steps in which SAVE BUDGET is specified in a PERIOD block. If SAVE BUDGET is specified in a PERIOD block and this file is not specified, MODFLOW 6 will terminate with an error."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.budgetcsv_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.budgetcsv_filerecord.fields.budgetcsv]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the budget CSV."
+
+[blocks.options.fields.budgetcsv_filerecord.fields.budgetcsvfile]
+type = "file"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) output file to write budget summary information. If specified, a budget summary record will be written to this file for every time step of the simulation."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.track_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.track_filerecord.fields.track]
+type = "keyword"
+longname = "track keyword"
+description = "keyword to specify that record corresponds to a binary track file.  Each PRT Model's OC Package may have only one binary track output file."
+
+[blocks.options.fields.track_filerecord.fields.trackfile]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write tracking information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.trackcsv_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.trackcsv_filerecord.fields.trackcsv]
+type = "keyword"
+longname = "track keyword"
+description = "keyword to specify that record corresponds to a CSV track file.  Each PRT Model's OC Package may have only one CSV track file."
+
+[blocks.options.fields.trackcsv_filerecord.fields.trackcsvfile]
+type = "file"
+longname = "file keyword"
+description = "name of the comma-separated value (CSV) file to write tracking information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.track_release]
+type = "keyword"
+longname = "track release"
+description = "keyword to indicate that particle tracking output is to be written when a particle is released"
+optional = true
+
+[blocks.options.fields.track_exit]
+type = "keyword"
+longname = "track domain exits"
+description = "keyword to indicate that particle tracking output is to be written when a particle exits a grid feature (e.g. model, cell)"
+optional = true
+
+[blocks.options.fields.track_subfeature_exit]
+type = "keyword"
+longname = "track cell exits"
+description = "keyword to indicate that particle tracking output is to be written when a particle exits a sub-grid-scale feature. Such features are considered implementation details of the tracking algorithm employed for particular grid types, and reporting for exit events from such features is disabled by default."
+optional = true
+
+[blocks.options.fields.track_timestep]
+type = "keyword"
+longname = "track timestep ends"
+description = "keyword to indicate that particle tracking output is to be written at the end of each time step"
+optional = true
+
+[blocks.options.fields.track_terminate]
+type = "keyword"
+longname = "track termination"
+description = "keyword to indicate that particle tracking output is to be written when a particle terminates for any reason"
+optional = true
+
+[blocks.options.fields.track_weaksink]
+type = "keyword"
+longname = "track weaksink exits"
+description = "keyword to indicate that particle tracking output is to be written when a particle exits a weak sink (a cell which removes some but not all inflow from adjacent cells)"
+optional = true
+
+[blocks.options.fields.track_usertime]
+type = "keyword"
+longname = "track user-specified times"
+description = "keyword to indicate that particle tracking output is to be written at user-specified times, provided as double precision values in the TRACKTIMES block."
+optional = true
+
+[blocks.options.fields.track_dropped]
+type = "keyword"
+longname = "track drops to water table"
+description = "keyword to indicate that particle tracking output is to be written when a particle is dropped to the water table via DRY_TRACKING_METHOD DROP."
+optional = true
+
+[blocks.options.fields.track_timesrecord]
+type = "record"
+optional = true
+removed = "6.6.0"
+
+[blocks.options.fields.track_timesrecord.fields.track_times]
+type = "keyword"
+description = "keyword indicating tracking times will follow"
+removed = "6.6.0"
+
+[blocks.options.fields.track_timesrecord.fields.times]
+type = "array"
+longname = "tracking times"
+description = "times to track, relative to the beginning of the simulation."
+tagged = false
+removed = "6.6.0"
+dtype = "double"
+
+[blocks.options.fields.track_timesfilerecord]
+type = "record"
+optional = true
+removed = "6.6.0"
+
+[blocks.options.fields.track_timesfilerecord.fields.track_timesfile]
+type = "keyword"
+description = "keyword indicating tracking times file name will follow"
+removed = "6.6.0"
+
+[blocks.options.fields.track_timesfilerecord.fields.timesfile]
+type = "string"
+longname = "file keyword"
+description = "name of the tracking times file"
+tagged = false
+removed = "6.6.0"
+case_sensitive = true
+
+[blocks.options.fields.dev_dump_event_trace]
+type = "keyword"
+longname = "print particle tracking events"
+description = "print a verbose particle tracking event trace to standard output"
+optional = true
+developmode = true
+
+[blocks.options.fields.scratch_buffer]
+type = "keyword"
+longname = "buffer track events in scratch file instead of memory"
+description = "keyword to stage track events in a temporary (scratch) file instead of an in-memory buffer. Particle tracking results calculated during a time step are buffered, and output is deferred, until successful completion of the time step. By default, results are buffered in memory. However, for simulations in which a very large number of track events is generated during a time step, memory limits can be exceeded. In such cases, the SCRATCH_BUFFER option can be invoked to buffer results in a scratch file until successful completion of the time step. Buffering in a scratch file is typically slower than buffering in memory."
+optional = true
+
+[blocks.dimensions.fields.ntracktimes]
+type = "integer"
+longname = "number of particle tracking times"
+description = "is the number of user-specified particle tracking times in the TRACKTIMES block."
+optional = true
+
+[blocks.tracktimes.fields.tracktimes]
+type = "list"
+optional = true
+shape = [
+    "ntracktimes",
+]
+
+[blocks.tracktimes.fields.tracktimes.item]
+name = "tracktimes"
+type = "record"
+
+[blocks.tracktimes.fields.tracktimes.item.fields.time]
+type = "double"
+longname = "release time"
+description = "real value that defines the tracking time with respect to the simulation start time."
+tagged = false
+
+[blocks.period.fields.output]
+type = "list"
+optional = true
+
+[blocks.period.fields.output.item]
+name = "output_record"
+type = "union"
+
+[blocks.period.fields.output.item.arms.saverecord]
+type = "record"
+optional = true
+
+[blocks.period.fields.output.item.arms.saverecord.fields.save]
+type = "keyword"
+longname = "keyword to save"
+description = "keyword to indicate that information will be saved this stress period."
+
+[blocks.period.fields.output.item.arms.saverecord.fields.rtype]
+type = "string"
+longname = "record type"
+description = "type of information to save or print.  Can only be BUDGET."
+tagged = false
+valid = [
+    "BUDGET",
+]
+
+[blocks.period.fields.output.item.arms.saverecord.fields.ocsetting]
+type = "union"
+description = "specifies the steps for which the data will be saved."
+
+[blocks.period.fields.output.item.arms.saverecord.fields.ocsetting.arms.all]
+type = "keyword"
+description = "keyword to indicate save for all time steps in period."
+
+[blocks.period.fields.output.item.arms.saverecord.fields.ocsetting.arms.first]
+type = "keyword"
+description = "keyword to indicate save for first step in period. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+
+[blocks.period.fields.output.item.arms.saverecord.fields.ocsetting.arms.last]
+type = "keyword"
+description = "keyword to indicate save for last step in period. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+
+[blocks.period.fields.output.item.arms.saverecord.fields.ocsetting.arms.frequency]
+type = "integer"
+description = "save at the specified time step frequency. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+
+[blocks.period.fields.output.item.arms.saverecord.fields.ocsetting.arms.steps]
+type = "array"
+description = "save for each step specified in STEPS. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+dtype = "integer"
+shape = [
+    "<=nstp",
+]
+
+[blocks.period.fields.output.item.arms.printrecord]
+type = "record"
+optional = true
+
+[blocks.period.fields.output.item.arms.printrecord.fields.print]
+type = "keyword"
+longname = "keyword to save"
+description = "keyword to indicate that information will be printed this stress period."
+
+[blocks.period.fields.output.item.arms.printrecord.fields.rtype]
+type = "string"
+longname = "record type"
+description = "type of information to save or print.  Can only be BUDGET."
+tagged = false
+valid = [
+    "BUDGET",
+]
+
+[blocks.period.fields.output.item.arms.printrecord.fields.ocsetting]
+type = "union"
+description = "specifies the steps for which the data will be saved."
+
+[blocks.period.fields.output.item.arms.printrecord.fields.ocsetting.arms.all]
+type = "keyword"
+description = "keyword to indicate save for all time steps in period."
+
+[blocks.period.fields.output.item.arms.printrecord.fields.ocsetting.arms.first]
+type = "keyword"
+description = "keyword to indicate save for first step in period. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+
+[blocks.period.fields.output.item.arms.printrecord.fields.ocsetting.arms.last]
+type = "keyword"
+description = "keyword to indicate save for last step in period. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+
+[blocks.period.fields.output.item.arms.printrecord.fields.ocsetting.arms.frequency]
+type = "integer"
+description = "save at the specified time step frequency. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+
+[blocks.period.fields.output.item.arms.printrecord.fields.ocsetting.arms.steps]
+type = "array"
+description = "save for each step specified in STEPS. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps."
+dtype = "integer"
+shape = [
+    "<=nstp",
+]
+
+[blocks.period.header]
+fill_forward = true
+
+[blocks.period.header.field]
+name = "iper"
+type = "integer"
+longname = "stress period number"
+description = "integer value specifying the starting stress period number for which the data specified in the PERIOD block apply.  IPER must be less than or equal to NPER in the TDIS Package and greater than zero.  The IPER value assigned to a stress period block must be greater than the IPER value assigned for the previous PERIOD block.  The information specified in the PERIOD block will continue to apply for all subsequent stress periods, unless the program encounters another PERIOD block."
+tagged = false
+
+[memory.track_subf_exit]
+set_in = "ar"
+source = "track_subfeature_exit"
+type = "logical"
+
+[memory.dev_dump_evtrace]
+set_in = "ar"
+source = "dev_dump_event_trace"
+type = "logical"
+
+[memory.ntracktimes]
+set_in = "ar"
+source = "ntracktimes"
+type = "integer"

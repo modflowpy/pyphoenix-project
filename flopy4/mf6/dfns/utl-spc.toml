@@ -1,0 +1,94 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "utl-spc"
+ftype = "SPC6"
+multi = true
+subtype = "utility"
+parent = [
+    "gwe-ssm",
+    "gwt-ssm",
+]
+
+[dims.maxbound]
+value = "maxbound"
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "print input to listing file"
+description = "keyword to indicate that the list of spc information will be written to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.ts_filerecord]
+type = "list"
+optional = true
+
+[blocks.options.fields.ts_filerecord.item]
+name = "ts_filerecord"
+type = "record"
+
+[blocks.options.fields.ts_filerecord.item.fields.ts6]
+type = "keyword"
+longname = "head keyword"
+description = "keyword to specify that record corresponds to a time-series file."
+
+[blocks.options.fields.ts_filerecord.item.fields.ts6_filename]
+type = "file"
+longname = "file name of time series information"
+description = "defines a time-series file defining time series that can be used to assign time-varying values. See the 'Time-Variable Input' section for instructions on using the time-series capability."
+tagged = false
+direction = "in"
+component = "utl-ts"
+
+[blocks.dimensions.fields.maxbound]
+type = "integer"
+longname = "maximum number of ssm entries"
+description = "integer value specifying the maximum number of spc cells that will be specified for use during any stress period."
+
+[blocks.period.fields.perioddata]
+type = "list"
+shape = [
+    "<=maxbound",
+]
+
+[blocks.period.fields.perioddata.item]
+name = "perioddata"
+type = "record"
+
+[blocks.period.fields.perioddata.item.fields.bndno]
+type = "integer"
+longname = "bound number for this entry"
+description = "integer value that defines the boundary package feature number associated with the specified PERIOD data on the line. BNDNO must be greater than zero and less than or equal to MAXBOUND."
+tagged = false
+index = true
+pk = true
+
+[blocks.period.fields.perioddata.item.fields.spcsetting]
+type = "union"
+description = "line of information that is parsed into a keyword and values.  Keyword values that can be used to start the SPCSETTING string include: CONCENTRATION and TEMPERATURE."
+
+[blocks.period.fields.perioddata.item.fields.spcsetting.arms.concentration]
+type = "double"
+longname = "boundary concentration"
+description = "is the boundary concentration. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value. By default, the CONCENTRATION for each boundary feature is zero."
+time_series = true
+
+[blocks.period.fields.perioddata.item.fields.spcsetting.arms.temperature]
+type = "double"
+longname = "boundary temperature"
+description = "is the user-supplied boundary temperature. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value. By default, the TEMPERATURE for each boundary feature is zero."
+time_series = true
+
+[blocks.period.header]
+fill_forward = true
+
+[blocks.period.header.field]
+name = "iper"
+type = "integer"
+longname = "stress period number"
+description = "integer value specifying the starting stress period number for which the data specified in the PERIOD block apply.  IPER must be less than or equal to NPER in the TDIS Package and greater than zero.  The IPER value assigned to a stress period block must be greater than the IPER value assigned for the previous PERIOD block.  The information specified in the PERIOD block will continue to apply for all subsequent stress periods, unless the program encounters another PERIOD block."
+tagged = false
+
+[memory.maxbound]
+set_in = "ar"
+source = "maxbound"
+type = "integer"

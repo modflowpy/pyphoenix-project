@@ -1,0 +1,1057 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "gwf-csub"
+parent = "gwf-nam"
+ftype = "CSUB6"
+
+[dims.ninterbeds]
+value = "ninterbeds"
+
+[dims.maxsig0]
+value = "maxsig0"
+
+[runtime_dims.ncelldim]
+set_in = "ar"
+
+[runtime_dims.nodes]
+set_in = "ar"
+
+[blocks.options.fields.boundnames]
+type = "keyword"
+description = "keyword to indicate that boundary names may be provided with the list of CSUB cells."
+optional = true
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "print input to listing file"
+description = "keyword to indicate that the list of CSUB information will be written to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.save_flows]
+type = "keyword"
+longname = "keyword to save CSUB flows"
+description = "keyword to indicate that cell-by-cell flow terms will be written to the file specified with 'BUDGET SAVE FILE' in Output Control."
+optional = true
+
+[blocks.options.fields.gammaw]
+type = "double"
+longname = "unit weight of water"
+description = "unit weight of water. For freshwater, GAMMAW is 9806.65 Newtons/cubic meters or 62.48 lb/cubic foot in SI and English units, respectively. By default, GAMMAW is 9806.65 Newtons/cubic meters."
+optional = true
+default = 9806.65
+
+[blocks.options.fields.beta]
+type = "double"
+longname = "compressibility of water"
+description = "compressibility of water. Typical values of BETA are 4.6512e-10 1/Pa or 2.2270e-8 lb/square foot in SI and English units, respectively. By default, BETA is 4.6512e-10 1/Pa."
+optional = true
+default = 4.6512e-10
+
+[blocks.options.fields.elastic_inelastic_smoothing]
+type = "keyword"
+longname = "elastic to inelastic smoothing"
+description = "keyword to activate smoothing of the delay interbed skeletal specific storage as the effective stress exceeds the preconsolidation stress. When active, the skeletal specific storage is smoothly transitioned from the elastic value to the inelastic value over a small window (0.001 of the preconsolidation stress) instead of switching discontinuously at the preconsolidation stress. Activating this option can improve convergence of models with delay interbeds. By default, the elastic to inelastic transition is discontinuous."
+optional = true
+
+[blocks.options.fields.strict_effective_stress]
+type = "keyword"
+longname = "terminate on negative effective stress"
+description = "keyword to terminate the simulation when the calculated effective stress is small or negative, instead of regularizing it. By default the effective stress used to calculate the skeletal specific storage is not allowed to fall below a small fraction (0.001) of the geostatic stress, which keeps the specific storage bounded and allows the simulation to continue; a warning reports the number of time steps in which a negative effective stress was regularized. Negative effective stress typically occurs in uppermost cells where simulated water levels rise above land surface. This keyword is deprecated and will be removed in a future release."
+optional = true
+deprecated = "6.8.0"
+
+[blocks.options.fields.head_based]
+type = "keyword"
+longname = "keyword to indicate the head-based formulation will be used"
+description = "keyword to indicate the head-based formulation will be used to simulate coarse-grained aquifer materials and no-delay and delay interbeds. Specifying HEAD_BASED also specifies the INITIAL_PRECONSOLIDATION_HEAD option."
+optional = true
+
+[blocks.options.fields.initial_preconsolidation_head]
+type = "keyword"
+longname = "keyword to indicate that preconsolidation heads will be specified"
+description = "keyword to indicate that preconsolidation heads will be specified for no-delay and delay interbeds in the PACKAGEDATA block. If the SPECIFIED_INITIAL_INTERBED_STATE option is specified in the OPTIONS block, user-specified preconsolidation heads in the PACKAGEDATA block are absolute values. Otherwise, user-specified preconsolidation heads in the PACKAGEDATA block are relative to steady-state or initial heads."
+optional = true
+
+[blocks.options.fields.ndelaycells]
+type = "integer"
+longname = "number of interbed cell nodes"
+description = "number of nodes used to discretize delay interbeds. If not specified, then a default value of 19 is assigned."
+optional = true
+
+[blocks.options.fields.compression_indices]
+type = "keyword"
+longname = "keyword to indicate CR and CC are read instead of SSE and SSV"
+description = "keyword to indicate that the recompression (CR) and compression (CC) indices are specified instead of the elastic specific storage (SSE) and inelastic specific storage (SSV) coefficients. If not specified, then elastic specific storage (SSE) and inelastic specific storage (SSV) coefficients must be specified."
+optional = true
+
+[blocks.options.fields.update_material_properties]
+type = "keyword"
+longname = "keyword to indicate material properties can change during the simulations"
+description = "keyword to indicate that the thickness and void ratio of coarse-grained and interbed sediments (delay and no-delay) will vary during the simulation. If not specified, the thickness and void ratio of coarse-grained and interbed sediments will not vary during the simulation."
+optional = true
+
+[blocks.options.fields.cell_fraction]
+type = "keyword"
+longname = "keyword to indicate cell fraction interbed thickness"
+description = "keyword to indicate that the thickness of interbeds will be specified in terms of the fraction of cell thickness. If not specified, interbed thicknness must be specified."
+optional = true
+
+[blocks.options.fields.specified_initial_interbed_state]
+type = "keyword"
+longname = "keyword to indicate that absolute initial states will be specified"
+description = "keyword to indicate that absolute preconsolidation stresses (heads) and delay bed heads will be specified for interbeds defined in the PACKAGEDATA block. The SPECIFIED_INITIAL_INTERBED_STATE option is equivalent to specifying the SPECIFIED_INITIAL_PRECONSOLITATION_STRESS and SPECIFIED_INITIAL_DELAY_HEAD. If SPECIFIED_INITIAL_INTERBED_STATE is not specified then preconsolidation stress (head) and delay bed head values specified in the PACKAGEDATA block are relative to simulated values of the first stress period if steady-state or initial stresses and GWF heads if the first stress period is transient."
+optional = true
+
+[blocks.options.fields.specified_initial_preconsolidation_stress]
+type = "keyword"
+longname = "keyword to indicate that absolute initial preconsolidation stresses (head) will be specified"
+description = "keyword to indicate that absolute preconsolidation stresses (heads) will be specified for interbeds defined in the PACKAGEDATA block. If SPECIFIED_INITIAL_PRECONSOLITATION_STRESS and SPECIFIED_INITIAL_INTERBED_STATE are not specified then preconsolidation stress (head) values specified in the PACKAGEDATA block are relative to simulated values if the first stress period is steady-state or initial stresses (heads) if the first stress period is transient."
+optional = true
+
+[blocks.options.fields.specified_initial_delay_head]
+type = "keyword"
+longname = "keyword to indicate that absolute initial delay bed heads will be specified"
+description = "keyword to indicate that absolute initial delay bed head will be specified for interbeds defined in the PACKAGEDATA block. If SPECIFIED_INITIAL_DELAY_HEAD and SPECIFIED_INITIAL_INTERBED_STATE are not specified then delay bed head values specified in the PACKAGEDATA block are relative to simulated values if the first stress period is steady-state or initial GWF heads if the first stress period is transient."
+optional = true
+
+[blocks.options.fields.effective_stress_lag]
+type = "keyword"
+longname = "keyword to indicate that specific storage will be calculate using the effective stress from the previous time step"
+description = "keyword to indicate the effective stress from the previous time step will be used to calculate specific storage values. This option can 1) help with convergence in models with thin cells and water table elevations close to land surface; 2) is identical to the approach used in the SUBWT package for MODFLOW-2005; and 3) is only used if the effective-stress formulation is being used. By default, current effective stress values are used to calculate specific storage values."
+optional = true
+
+[blocks.options.fields.strainib_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.strainib_filerecord.fields.strain_csv_interbed]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify the record that corresponds to final interbed strain output."
+
+[blocks.options.fields.strainib_filerecord.fields.interbedstrain_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the comma-separated-values output file to write final interbed strain information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.straincg_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.straincg_filerecord.fields.strain_csv_coarse]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify the record that corresponds to final coarse-grained material strain output."
+
+[blocks.options.fields.straincg_filerecord.fields.coarsestrain_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the comma-separated-values output file to write final coarse-grained material strain information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.compaction_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.compaction_filerecord.fields.compaction]
+type = "keyword"
+longname = "compaction keyword"
+description = "keyword to specify that record corresponds to the compaction."
+
+[blocks.options.fields.compaction_filerecord.fields.compaction_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write compaction information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.compaction_elastic_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.compaction_elastic_filerecord.fields.compaction_elastic]
+type = "keyword"
+longname = "elastic interbed compaction keyword"
+description = "keyword to specify that record corresponds to the elastic interbed compaction binary file."
+
+[blocks.options.fields.compaction_elastic_filerecord.fields.elastic_compaction_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write elastic interbed compaction information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.compaction_inelastic_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.compaction_inelastic_filerecord.fields.compaction_inelastic]
+type = "keyword"
+longname = "inelastic interbed compaction keyword"
+description = "keyword to specify that record corresponds to the inelastic interbed compaction binary file."
+
+[blocks.options.fields.compaction_inelastic_filerecord.fields.inelastic_compaction_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write inelastic interbed compaction information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.compaction_interbed_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.compaction_interbed_filerecord.fields.compaction_interbed]
+type = "keyword"
+longname = "interbed compaction keyword"
+description = "keyword to specify that record corresponds to the interbed compaction binary file."
+
+[blocks.options.fields.compaction_interbed_filerecord.fields.interbed_compaction_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write interbed compaction information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.compaction_coarse_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.compaction_coarse_filerecord.fields.compaction_coarse]
+type = "keyword"
+longname = "coarse compaction keyword"
+description = "keyword to specify that record corresponds to the elastic coarse-grained material compaction binary file."
+
+[blocks.options.fields.compaction_coarse_filerecord.fields.coarse_compaction_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write elastic coarse-grained material compaction information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.zdisplacement_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.zdisplacement_filerecord.fields.zdisplacement]
+type = "keyword"
+longname = "budget keyword"
+description = "keyword to specify that record corresponds to the z-displacement binary file."
+
+[blocks.options.fields.zdisplacement_filerecord.fields.zdisplacement_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the binary output file to write z-displacement information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.package_convergence_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.package_convergence_filerecord.fields.package_convergence]
+type = "keyword"
+longname = "package_convergence keyword"
+description = "keyword to specify that record corresponds to the package convergence comma spaced values file. Package convergence data is for delay interbeds. A warning message will be issued if package convergence data is requested but delay interbeds are not included in the package."
+
+[blocks.options.fields.package_convergence_filerecord.fields.package_convergence_filename]
+type = "file"
+longname = "file keyword"
+description = "name of the comma spaced values output file to write package convergence information."
+tagged = false
+direction = "out"
+
+[blocks.options.fields.ts_filerecord]
+type = "list"
+optional = true
+
+[blocks.options.fields.ts_filerecord.item]
+name = "ts_filerecord"
+type = "record"
+
+[blocks.options.fields.ts_filerecord.item.fields.ts6]
+type = "keyword"
+longname = "head keyword"
+description = "keyword to specify that record corresponds to a time-series file."
+
+[blocks.options.fields.ts_filerecord.item.fields.ts6_filename]
+type = "file"
+longname = "file name of time series information"
+description = "defines a time-series file defining time series that can be used to assign time-varying values. See the 'Time-Variable Input' section for instructions on using the time-series capability."
+tagged = false
+direction = "in"
+component = "utl-ts"
+
+[blocks.options.fields.obs_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.obs_filerecord.fields.obs6]
+type = "keyword"
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to an observations file."
+
+[blocks.options.fields.obs_filerecord.fields.obs6_filename]
+type = "file"
+longname = "obs6 input filename"
+description = "name of input file to define observations for the CSUB package. See the 'Observation utility' section for instructions for preparing observation input files. Table {#2} lists observation type(s) supported by the CSUB package."
+tagged = false
+direction = "in"
+component = "utl-obs"
+
+[blocks.dimensions.fields.ninterbeds]
+type = "integer"
+longname = "number of CSUB interbed systems"
+description = "is the number of CSUB interbed systems.  More than 1 CSUB interbed systems can be assigned to a GWF cell; however, only 1 GWF cell can be assigned to a single CSUB interbed system."
+
+[blocks.dimensions.fields.maxsig0]
+type = "integer"
+longname = "maximum number of stress offset cells"
+description = "is the maximum number of cells that can have a specified stress offset.  More than 1 stress offset can be assigned to a GWF cell. By default, MAXSIG0 is 0."
+optional = true
+
+[blocks.griddata.fields.cg_ske_cr]
+type = "array"
+longname = "elastic coarse specific storage"
+description = "is the initial elastic coarse-grained material specific storage or recompression index. The recompression index is specified if COMPRESSION_INDICES is specified in the OPTIONS block.  Specified or calculated elastic coarse-grained material specific storage values are not adjusted from initial values if HEAD_BASED is specified in the OPTIONS block."
+default = 1e-05
+netcdf = true
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.griddata.fields.cg_theta]
+type = "array"
+longname = "initial coarse-grained material porosity"
+description = "is the initial porosity of coarse-grained materials."
+default = 0.2
+netcdf = true
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.griddata.fields.sgm]
+type = "array"
+longname = "specific gravity of moist sediments"
+description = "is the specific gravity of moist or unsaturated sediments.  If not specified, then a default value of 1.7 is assigned."
+optional = true
+netcdf = true
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.griddata.fields.sgs]
+type = "array"
+longname = "specific gravity of saturated sediments"
+description = "is the specific gravity of saturated sediments. If not specified, then a default value of 2.0 is assigned."
+optional = true
+netcdf = true
+dtype = "double"
+layered = true
+shape = [
+    "nodes",
+]
+
+[blocks.packagedata.fields.packagedata]
+type = "list"
+optional = true
+shape = [
+    "ninterbeds",
+]
+
+[blocks.packagedata.fields.packagedata.item]
+name = "packagedata"
+type = "record"
+
+[blocks.packagedata.fields.packagedata.item.fields.icsubno]
+type = "integer"
+longname = "CSUB id number for this entry"
+description = "integer value that defines the CSUB interbed number associated with the specified PACKAGEDATA data on the line. CSUBNO must be greater than zero and less than or equal to NINTERBEDS.  CSUB information must be specified for every CSUB cell or the program will terminate with an error.  The program will also terminate with an error if information for a CSUB interbed number is specified more than once."
+tagged = false
+index = true
+pk = true
+
+[blocks.packagedata.fields.packagedata.item.fields.cellid]
+type = "array"
+longname = "cell identifier"
+description = "is the cell identifier, and depends on the type of grid that is used for the simulation.  For a structured grid that uses the DIS input file, CELLID is the layer, row, and column.   For a grid that uses the DISV input file, CELLID is the layer and CELL2D number.  If the model uses the unstructured discretization (DISU) input file, CELLID is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[blocks.packagedata.fields.packagedata.item.fields.cdelay]
+type = "string"
+longname = "delay type"
+description = "character string that defines the subsidence delay type for the interbed. Possible subsidence package CDELAY strings include: NODELAY--character keyword to indicate that delay will not be simulated in the interbed.  DELAY--character keyword to indicate that delay will be simulated in the interbed."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.pcs0]
+type = "double"
+longname = "initial stress"
+description = "is the initial offset from the calculated initial effective stress or initial preconsolidation stress in the interbed, in units of height of a column of water. PCS0 is the initial preconsolidation stress if SPECIFIED_INITIAL_INTERBED_STATE or SPECIFIED_INITIAL_PRECONSOLIDATION_STRESS are specified in the OPTIONS block. If HEAD_BASED is specified in the OPTIONS block, PCS0 is the initial offset from the calculated initial head or initial preconsolidation head in the CSUB interbed and the initial preconsolidation stress is calculated from the calculated initial effective stress or calculated initial geostatic stress, respectively. When PCS0 is a relative offset, the sign depends on the formulation. For the default effective-stress formulation, specify a positive PCS0 for an overconsolidated interbed since the preconsolidation stress is greater than the initial effective stress. If HEAD_BASED is specified, specify a negative PCS0 for an overconsolidated interbed since the preconsolidation head is less than the initial head. A PCS0 of zero is normally consolidated in both formulations."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.thick_frac]
+type = "double"
+longname = "interbed thickness or cell fraction"
+description = "is the interbed thickness or cell fraction of the interbed. Interbed thickness is specified as a fraction of the cell thickness if CELL_FRACTION is specified in the OPTIONS block."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.rnb]
+type = "double"
+longname = "delay interbed material factor"
+description = "is the interbed material factor equivalent number of interbeds in the interbed system represented by the interbed. RNB must be greater than or equal to 1 if CDELAY is DELAY. Otherwise, RNB can be any value."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.ssv_cc]
+type = "double"
+longname = "initial interbed inelastic specific storage"
+description = "is the initial inelastic specific storage or compression index of the interbed. The compression index is specified if COMPRESSION_INDICES is specified in the OPTIONS block. Specified or calculated interbed inelastic specific storage values are not adjusted from initial values if HEAD_BASED is specified in the OPTIONS block."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.sse_cr]
+type = "double"
+longname = "initial interbed elastic specific storage"
+description = "is the initial elastic coarse-grained material specific storage or recompression index of the interbed. The recompression index is specified if COMPRESSION_INDICES is specified in the OPTIONS block. Specified or calculated interbed elastic specific storage values are not adjusted from initial values if HEAD_BASED is specified in the OPTIONS block."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.theta]
+type = "double"
+longname = "initial interbed porosity"
+description = "is the initial porosity of the interbed."
+default = 0.2
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.kv]
+type = "double"
+longname = "delay interbed vertical hydraulic conductivity"
+description = "is the vertical hydraulic conductivity of the delay interbed. KV must be greater than 0 if CDELAY is DELAY. Otherwise, KV can be any value."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.h0]
+type = "double"
+longname = "initial delay interbed head"
+description = "is the initial offset from the head in cell cellid or the initial head in the delay interbed. H0 is the initial head in the delay bed if SPECIFIED_INITIAL_INTERBED_STATE or SPECIFIED_INITIAL_DELAY_HEAD are specified in the OPTIONS block. H0 can be any value if CDELAY is NODELAY."
+tagged = false
+
+[blocks.packagedata.fields.packagedata.item.fields.boundname]
+type = "string"
+longname = "interbed name"
+description = "name of the CSUB cell.  BOUNDNAME is an ASCII character variable that can contain as many as 40 characters.  If BOUNDNAME contains spaces in it, then the entire name must be enclosed within single quotes."
+optional = true
+tagged = false
+
+[blocks.period.fields.stress_period_data]
+type = "list"
+shape = [
+    "<=maxsig0",
+]
+
+[blocks.period.fields.stress_period_data.item]
+name = "stress_period_data"
+type = "record"
+
+[blocks.period.fields.stress_period_data.item.fields.cellid]
+type = "array"
+longname = "cell identifier"
+description = "is the cell identifier, and depends on the type of grid that is used for the simulation.  For a structured grid that uses the DIS input file, CELLID is the layer, row, and column.   For a grid that uses the DISV input file, CELLID is the layer and CELL2D number.  If the model uses the unstructured discretization (DISU) input file, CELLID is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[blocks.period.fields.stress_period_data.item.fields.sig0]
+type = "double"
+longname = "geostatic stress offset"
+description = "is the stress offset for the cell. SIG0 is added to the calculated geostatic stress for the cell. SIG0 is specified only if MAXSIG0 is specified to be greater than 0 in the DIMENSIONS block. If the Options block includes a TIMESERIESFILE entry (see the 'Time-Variable Input' section), values can be obtained from a time series by entering the time-series name in place of a numeric value."
+tagged = false
+time_series = true
+
+[blocks.period.header]
+fill_forward = true
+
+[blocks.period.header.field]
+name = "iper"
+type = "integer"
+longname = "stress period number"
+description = "integer value specifying the starting stress period number for which the data specified in the PERIOD block apply.  IPER must be less than or equal to NPER in the TDIS Package and greater than zero.  The IPER value assigned to a stress period block must be greater than the IPER value assigned for the previous PERIOD block.  The information specified in the PERIOD block will continue to apply for all subsequent stress periods, unless the program encounters another PERIOD block."
+tagged = false
+
+[memory.ei_smoothing]
+set_in = "ar"
+source = "elastic_inelastic_smoothing"
+type = "logical"
+
+[memory.strict_stress]
+set_in = "ar"
+source = "strict_effective_stress"
+type = "logical"
+
+[memory.precon_head]
+set_in = "ar"
+source = "initial_preconsolidation_head"
+type = "logical"
+
+[memory.icompress]
+set_in = "ar"
+source = "compression_indices"
+type = "logical"
+
+[memory.matprop]
+set_in = "ar"
+source = "update_material_properties"
+type = "logical"
+
+[memory.interbed_state]
+set_in = "ar"
+source = "specified_initial_interbed_state"
+type = "integer"
+
+[memory.precon_stress]
+set_in = "ar"
+source = "specified_initial_preconsolidation_stress"
+type = "logical"
+
+[memory.delay_head]
+set_in = "ar"
+source = "specified_initial_delay_head"
+type = "logical"
+
+[memory.stress_lag]
+set_in = "ar"
+source = "effective_stress_lag"
+type = "logical"
+
+[memory.csvinterbed]
+set_in = "ar"
+source = "strain_csv_interbed"
+type = "logical"
+
+[memory.interbedstrainfn]
+set_in = "ar"
+source = "interbedstrain_filename"
+type = "string"
+
+[memory.csvcoarse]
+set_in = "ar"
+source = "strain_csv_coarse"
+type = "logical"
+
+[memory.coarsestrainfn]
+set_in = "ar"
+source = "coarsestrain_filename"
+type = "string"
+
+[memory.cmpfn]
+set_in = "ar"
+source = "compaction_filename"
+type = "string"
+
+[memory.cmpelastic]
+set_in = "ar"
+source = "compaction_elastic"
+type = "logical"
+
+[memory.elasticcmpfn]
+set_in = "ar"
+source = "elastic_compaction_filename"
+type = "string"
+
+[memory.cmpinelastic]
+set_in = "ar"
+source = "compaction_inelastic"
+type = "logical"
+
+[memory.inelasticcmpfn]
+set_in = "ar"
+source = "inelastic_compaction_filename"
+type = "string"
+
+[memory.cmpinterbed]
+set_in = "ar"
+source = "compaction_interbed"
+type = "logical"
+
+[memory.interbedcmpfn]
+set_in = "ar"
+source = "interbed_compaction_filename"
+type = "string"
+
+[memory.cmpcoarse]
+set_in = "ar"
+source = "compaction_coarse"
+type = "logical"
+
+[memory.cmpcoarsefn]
+set_in = "ar"
+source = "coarse_compaction_filename"
+type = "string"
+
+[memory.zdispfn]
+set_in = "ar"
+source = "zdisplacement_filename"
+type = "string"
+
+[memory.pkgconverge]
+set_in = "ar"
+source = "package_convergence"
+type = "logical"
+
+[memory.pkgconvergefn]
+set_in = "ar"
+source = "package_convergence_filename"
+type = "string"
+
+[memory.maxbound]
+set_in = "ar"
+source = "maxsig0"
+type = "integer"
+
+[memory.cellid_pkgdata]
+type = "array"
+set_in = "ar"
+source = "cellid"
+dtype = "integer"
+shape = [
+    "ncelldim",
+]
+
+[memory.ninterbeds]
+set_in = "ar"
+source = "ninterbeds"
+type = "integer"
+
+[memory.cg_ske_cr]
+type = "array"
+set_in = "ar"
+source = "cg_ske_cr"
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[memory.cg_theta]
+type = "array"
+set_in = "ar"
+source = "cg_theta"
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[memory.sgm]
+type = "array"
+set_in = "ar"
+source = "sgm"
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[memory.sgs]
+type = "array"
+set_in = "ar"
+source = "sgs"
+dtype = "double"
+shape = [
+    "nodes",
+]
+
+[observations.csub]
+type = "union"
+tagged = false
+
+[observations.csub.arms.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.csub.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.inelastic-csub]
+type = "union"
+tagged = false
+
+[observations.inelastic-csub.arms.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.inelastic-csub.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.elastic-csub]
+type = "union"
+tagged = false
+
+[observations.elastic-csub.arms.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.elastic-csub.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.delay-flowtop]
+type = "union"
+tagged = false
+
+[observations.delay-flowtop.arms.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-flowtop.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.delay-flowbot]
+type = "union"
+tagged = false
+
+[observations.delay-flowbot.arms.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-flowbot.arms.boundname]
+type = "string"
+tagged = false
+
+[observations.sk]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.ske]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.theta]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.thickness]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.interbed-compaction]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.interbed-compaction-pct]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.inelastic-compaction]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.elastic-compaction]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-head]
+type = "record"
+tagged = false
+
+[observations.delay-head.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-head.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.delay-gstress]
+type = "record"
+tagged = false
+
+[observations.delay-gstress.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-gstress.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.delay-estress]
+type = "record"
+tagged = false
+
+[observations.delay-estress.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-estress.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.delay-preconstress]
+type = "record"
+tagged = false
+
+[observations.delay-preconstress.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-preconstress.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.delay-compaction]
+type = "record"
+tagged = false
+
+[observations.delay-compaction.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-compaction.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.delay-thickness]
+type = "record"
+tagged = false
+
+[observations.delay-thickness.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-thickness.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.delay-theta]
+type = "record"
+tagged = false
+
+[observations.delay-theta.fields.icsubno]
+type = "integer"
+tagged = false
+index = true
+fk = "packagedata.icsubno"
+
+[observations.delay-theta.fields.idcellno]
+type = "integer"
+tagged = false
+index = true
+
+[observations.coarse-csub]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.csub-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.wcomp-csub-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.sk-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.ske-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.estress-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.gstress-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.preconstress-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.coarse-compaction]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.compaction-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.inelastic-compaction-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.elastic-compaction-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.coarse-thickness]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.thickness-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.coarse-theta]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]
+
+[observations.theta-cell]
+type = "array"
+tagged = false
+dtype = "integer"
+index = true
+cellid = true
+shape = [
+    "ncelldim",
+]

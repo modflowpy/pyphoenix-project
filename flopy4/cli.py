@@ -82,8 +82,9 @@ def main() -> None:
         "release_id",
         nargs="?",
         default=None,
-        help="Remote release ID (owner/repo@ref), bare ref, or local path to .dfn files. "
-        "Defaults to the discovered binary's version, or latest if no binary found.",
+        help="Remote release ID (owner/repo@ref), bare ref, or local directory of DFNs "
+        "(.dfn or .toml). Defaults to the discovered binary's version, or latest if no "
+        "binary found.",
     )
     sync_p.add_argument(
         "--mf6-version",

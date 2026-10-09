@@ -1,0 +1,157 @@
+type = "package"
+schema_version = "2.0.0.dev3"
+name = "exg-chfgwf"
+parent = "sim-nam"
+ftype = "CHF6-GWF6"
+multi = true
+subtype = "exchange"
+
+[dims.nexg]
+value = "nexg"
+
+[blocks.options.fields.print_input]
+type = "keyword"
+longname = "keyword to print input to list file"
+description = "keyword to indicate that the list of exchange entries will be echoed to the listing file immediately after it is read."
+optional = true
+
+[blocks.options.fields.print_flows]
+type = "keyword"
+longname = "keyword to print chfgwf flows to list file"
+description = "keyword to indicate that the list of exchange flow rates will be printed to the listing file for every stress period in which 'SAVE BUDGET' is specified in Output Control."
+optional = true
+
+[blocks.options.fields.fixed_conductance]
+type = "keyword"
+longname = "keyword to indicate conductance is fixed"
+description = "keyword to indicate that the product of the bedleak and cfact input variables in the exchangedata block represents conductance.  This conductance is fixed and does not change as a function of head in the surface water and groundwater models."
+optional = true
+
+[blocks.options.fields.obs_filerecord]
+type = "record"
+optional = true
+
+[blocks.options.fields.obs_filerecord.fields.obs6]
+type = "keyword"
+longname = "obs keyword"
+description = "keyword to specify that record corresponds to an observations file."
+
+[blocks.options.fields.obs_filerecord.fields.obs6_filename]
+type = "file"
+longname = "obs6 input filename"
+description = "is the file name of the observations input file for this exchange. See the 'Observation utility' section for instructions for preparing observation input files. Table ref{table:gwf-obstypetable} lists observation type(s) supported by the SWF-GWF package."
+tagged = false
+direction = "in"
+component = "utl-obs"
+
+[blocks.dimensions.fields.nexg]
+type = "integer"
+longname = "number of exchanges"
+description = "keyword and integer value specifying the number of SWF-GWF exchanges."
+
+[blocks.exchangedata.fields.exchangedata]
+type = "list"
+longname = "exchange data"
+shape = [
+    "nexg",
+]
+
+[blocks.exchangedata.fields.exchangedata.item]
+name = "exchangedata"
+type = "record"
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cellidm1]
+type = "array"
+longname = "cellid of cell in surface water model"
+description = "is the cellid of the cell in model 1, which must be the surface water model. For a structured grid that uses the DIS input file, CELLIDM1 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM1 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM1 is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = "1"
+shape = [
+    "ncelldim",
+]
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cellidm2]
+type = "array"
+longname = "cellid of cell in groundwater model"
+description = "is the cellid of the cell in model 2, which must be the groundwater model. For a structured grid that uses the DIS input file, CELLIDM2 is the layer, row, and column numbers of the cell.   For a grid that uses the DISV input file, CELLIDM2 is the layer number and CELL2D number for the two cells.  If the model uses the unstructured discretization (DISU) input file, then CELLIDM2 is the node number for the cell."
+tagged = false
+dtype = "integer"
+index = true
+cellid = "2"
+shape = [
+    "ncelldim",
+]
+
+[blocks.exchangedata.fields.exchangedata.item.fields.bedleak]
+type = "double"
+longname = "bed leakance"
+description = "is the leakance between the surface water and groundwater.  bedleak has dimensions of 1/T and is equal to the hydraulic conductivity of the bed sediments divided by the thickness of the bed sediments."
+tagged = false
+
+[blocks.exchangedata.fields.exchangedata.item.fields.cfact]
+type = "double"
+longname = "factor used for conductance calculation"
+description = "is the factor used for the conductance calculation.  The definition for this parameter depends the type of surface water model and whether or not the fixed_conductance option is specified.  If the fixed_conductance option is specified, then the hydraulic conductance is calculated as the product of bedleak and cfact.  In this case, the conductance is fixed and does not change as a function of the calculated surface water and groundwater head.  If the fixed_conductance option is not specified, then the definition of cfact depends on whether the surface water model represents one-dimensional channel flow or two-dimensional overland flow.  If the surface water model represents one-dimensional channel flow, then cfact is the length of the channel cell in the groundwater model cell.  If the surface water model represents two-dimensional overland flow, then cfact is the intersection area of the overland flow cell and the underlying groundwater model cell."
+tagged = false
+
+[memory.ipr_input]
+set_in = "ar"
+source = "print_input"
+type = "integer"
+
+[memory.ipr_flow]
+set_in = "ar"
+source = "print_flows"
+type = "integer"
+
+[memory.ifixedcond]
+set_in = "ar"
+source = "fixed_conductance"
+type = "integer"
+
+[memory.nexg]
+set_in = "ar"
+source = "nexg"
+type = "integer"
+
+[memory.nodem1]
+type = "array"
+set_in = "ar"
+source = "cellidm1"
+description = "Reduced node number in the surface water model for each exchange, derived from CELLIDM1. Registered as NODEM1 in memory though the Fortran field is named NODESWF."
+dtype = "integer"
+shape = [
+    "nexg",
+]
+
+[memory.nodem2]
+type = "array"
+set_in = "ar"
+source = "cellidm2"
+description = "Reduced node number in the GWF model for each exchange, derived from CELLIDM2. Registered as NODEM2 in memory though the Fortran field is named NODEGWF."
+dtype = "integer"
+shape = [
+    "nexg",
+]
+
+[memory.bedleak]
+type = "array"
+set_in = "ar"
+source = "bedleak"
+description = "Bed leakance for each exchange."
+dtype = "double"
+shape = [
+    "nexg",
+]
+
+[memory.cfact]
+type = "array"
+set_in = "ar"
+source = "cfact"
+description = "Factor used in the conductance calculation for each exchange."
+dtype = "double"
+shape = [
+    "nexg",
+]
