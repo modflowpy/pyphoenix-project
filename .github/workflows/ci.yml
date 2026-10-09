@@ -106,6 +106,46 @@ jobs:
       - name: Sync devtools
         run: pixi run mf sync
 
+      - name: Show MF6 sync status
+        run: pixi run flopy4 mf6 status
+
+      - name: Run tests
+        run: |
+          pixi run python -m ipykernel install --name flopy4 --user
+          pixi run test
+
+  test-mf6-release:
+    name: Test (latest MF6 release)
+    needs:
+      - build
+      - lint
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.72.0
+          environments: test313
+          activate-environment: true
+
+      # temporary. devtools 2.x will autosync, but 1.x needs opt-in.
+      - name: Sync devtools
+        run: pixi run mf sync
+
+      - name: Sync classes and binary to the latest MF6 release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pixi run flopy4 mf6 sync latest --install --bindir "$HOME/.local/bin" --verbose
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Show MF6 sync status
+        run: pixi run flopy4 mf6 status
+
       - name: Run tests
         run: |
           pixi run python -m ipykernel install --name flopy4 --user
