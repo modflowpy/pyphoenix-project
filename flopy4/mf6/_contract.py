@@ -4,6 +4,7 @@ DFN_COMMIT = "524d1acebba2694e678908479b4943c5ea479a4a"
 DFN_SCHEMA_VERSION = "2.0.0.dev3"
 GENERATED_FILES = (
     "ems.py",
+    "exg/__init__.py",
     "exg/gwegwe.py",
     "exg/gwfgwe.py",
     "exg/gwfgwf.py",
@@ -85,6 +86,7 @@ GENERATED_FILES = (
     "prt/prp.py",
     "simulation.py",
     "tdis.py",
+    "utl/__init__.py",
     "utl/ats.py",
     "utl/hpc.py",
     "utl/laktab.py",
