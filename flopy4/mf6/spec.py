@@ -37,6 +37,15 @@ def _recount(count: str):
     return hook
 
 
+def _check_dim(instance, attribute, value):
+    """An `on_setattr` hook raising if a dimension assigned to a package
+    disagrees with the rows of a list it counts."""
+    check = getattr(instance, "_check_dim_rows", None)
+    if value is not None and check is not None:
+        check(attribute.name, value)
+    return value
+
+
 def field(
     default=NOTHING,
     validator=None,
@@ -114,6 +123,12 @@ def field(
     if shape and array:
         # keep a column counting the array in step when it is reassigned
         hooks = [attrs.setters.convert, _recount(shape[0])]
+        if on_setattr is not None:
+            hooks.append(on_setattr)
+        on_setattr = attrs.setters.pipe(*hooks)
+    if block == "dimensions":
+        # check the dimension against the rows it counts when it is reassigned
+        hooks = [attrs.setters.convert, attrs.setters.validate, _check_dim]
         if on_setattr is not None:
             hooks.append(on_setattr)
         on_setattr = attrs.setters.pipe(*hooks)

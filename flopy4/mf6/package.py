@@ -56,6 +56,13 @@ _BOUND_OPS: dict = {
 }
 
 
+def _check_rows(dim: str, declared: int, nrows: int, bound: str | None) -> None:
+    if not _BOUND_OPS[bound](nrows, declared):
+        raise ValueError(
+            f"{dim}={declared} but {nrows} rows were given (need rows {bound or '=='} {dim})"
+        )
+
+
 @attrs.define(kw_only=True, slots=False)
 class Package(Component, ABC):
     # Dimensions counting item columns that aren't fields themselves, name ->
@@ -163,15 +170,10 @@ class Package(Component, ABC):
             if not isinstance(item_cls, tuple):
                 self._set_dims_from_counts(item_cls, rows)
 
-    def _sync_dims(self) -> None:
-        """Bring the dimensions counting list rows in step with the lists.
-
-        Appending to or removing from a list in place doesn't fire
-        `on_setattr`, so a dimension set at construction (NVERT, NCPL,
-        NPER) goes stale. Called wherever dimensions are read or written.
-        An exact dimension takes the current row count; a bounded one
-        ("<=maxats") is the user's, so it's only checked.
-        """
+    def _counted_lists(self):
+        """Yield ``(bound, dim, nrows)`` for each list whose rows a
+        DIMENSIONS field counts: NPER for TDIS's perioddata, ``<=``MAXATS
+        for ATS's. A filled-forward list counts its longest period."""
         fields = attrs.fields(type(self))  # type: ignore[arg-type]
         names = {f.name for f in fields if f.metadata.get("block") == "dimensions"}
         for f in fields:
@@ -182,13 +184,31 @@ class Package(Component, ABC):
             if dim not in names or rows is None or item_list_type(f.type) is None:
                 continue
             if f.metadata.get("fill_forward"):
-                nrows = max((len(r) for r in rows.values()), default=0)
+                yield bound, dim, max((len(r) for r in rows.values()), default=0)
             else:
-                nrows = len(rows)
+                yield bound, dim, len(rows)
+
+    def _sync_dims(self) -> None:
+        """Bring the dimensions counting list rows in step with the lists.
+
+        Appending to or removing from a list in place doesn't fire
+        `on_setattr`, so a dimension set at construction (NVERT, NCPL,
+        NPER) goes stale. Called wherever dimensions are read or written.
+        An exact dimension takes the current row count; a bounded one
+        ("<=maxats") is the user's, so it's only checked.
+        """
+        for bound, dim, nrows in self._counted_lists():
             if bound is None:
                 object.__setattr__(self, dim, nrows)
             else:
                 self._set_dim_from_rows(dim, nrows, bound)
+
+    def _check_dim_rows(self, dim: str, value: int) -> None:
+        """Raise if a dimension being assigned disagrees with the rows of a
+        list it counts, which the next sync would otherwise overwrite."""
+        for bound, name, nrows in self._counted_lists():
+            if name == dim:
+                _check_rows(dim, value, nrows, bound)
 
     def _check_lookup_counts(self, fields) -> None:
         """Check array columns counted by a column of the row another column
@@ -306,10 +326,8 @@ class Package(Component, ABC):
         declared = getattr(self, dim)
         if declared is None:
             object.__setattr__(self, dim, nrows)
-        elif not _BOUND_OPS[bound](nrows, declared):
-            raise ValueError(
-                f"{dim}={declared} but {nrows} rows were given (need rows {bound or '=='} {dim})"
-            )
+        else:
+            _check_rows(dim, declared, nrows, bound)
 
     def _set_dims_from_counts(self, item_cls: "type[Item]", rows: list) -> None:
         """Set the dimensions counting array columns (GNC's numalphaj counts
