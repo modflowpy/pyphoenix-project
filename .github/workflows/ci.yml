@@ -120,9 +120,6 @@ jobs:
       - build
       - lint
     runs-on: ubuntu-latest
-    # The test models come from the develop models registry and can use
-    # input newer than the release, so this leg reports without blocking.
-    continue-on-error: true
     steps:
 
       - name: Checkout repo
