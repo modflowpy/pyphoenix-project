@@ -395,6 +395,13 @@ def derived_dims(component: Component) -> dict[str, str]:
     return dims
 
 
+def shared_dims(component: Component) -> tuple[str, ...]:
+    """The dimensions a component shares beyond itself, by the DFN's dim
+    scopes: gwf-dis's model dimensions, sim-tdis's ``nper``. A component
+    with any is a dimension provider."""
+    return tuple(name for name, dim in (component.dims or {}).items() if dim.scope != "component")
+
+
 def _product_names(expr: str) -> list[str] | None:
     """The names multiplied in a pure product expression ("nlay * ncpl"),
     else None."""

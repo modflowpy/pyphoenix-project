@@ -11,10 +11,10 @@ from modflow_devtools.dfns import dim_input, dim_value
 from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
-from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
+from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
     construct_item,
@@ -104,7 +104,7 @@ class Package(Component, ABC):
 
         # 2. Griddata normalization and broadcasting. A dimension provider
         # (a grid package) sizes its own griddata.
-        dims: dict = self.get_dims() if isinstance(self, DimensionProvider) else self.dims
+        dims: dict = self._own_dims() if isinstance(self, DimsProviderMethods) else self.dims
         self._normalize_griddata(fields, dims)
         if dims:
             self._broadcast_griddata(fields, dims)

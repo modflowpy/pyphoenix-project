@@ -12,11 +12,6 @@ if TYPE_CHECKING:
 class TdisMethods:
     """Methods for the generated `Tdis`; fields come from the DFN."""
 
-    def get_dims(self: "Tdis") -> dict[str, int]:  # type: ignore[misc]
-        """Get all dimensions."""
-        self._sync_dims()
-        return {"nper": self.nper or len(self.perioddata or [])}
-
     def to_time(self: "Tdis") -> Time:  # type: ignore[misc]
         """Convert to a `Time` object."""
         perlen, nstp, tsmult = zip(*((r.perlen, r.nstp, r.tsmult) for r in self.perioddata or []))

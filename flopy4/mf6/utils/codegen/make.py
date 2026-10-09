@@ -172,6 +172,8 @@ class ComponentSpec:
     block_classes: list[BlockClassSpec] = dc_field(default_factory=list)
     # Derived dimensions that aren't fields, name -> DFN expression (DerivedDim)
     derived_dims: dict[str, str] = dc_field(default_factory=dict)
+    # Dims shared beyond the component (DFN scope model or simulation)
+    shared_dims: tuple[str, ...] = ()
     # Dims counting item columns that aren't fields, name -> DFN expression
     # Observation types the component's OBS file takes, name -> id forms
     observations: dict[str, tuple[tuple[str, ...], ...]] = dc_field(default_factory=dict)
@@ -1013,10 +1015,9 @@ _SLN_PREFIX = "sln"
 # flopy API methods (factories, conversions to and from flopy types) for
 # generated classes, as "module:Class" method-only mixins. Mixins declare no
 # fields; those come from the DFN only.
-_GRID_DIMS = ["flopy4.mf6.grid_dims_methods:GridDimsMethods"]
-_DIS = ["flopy4.mf6.dis_methods:DisMethods", *_GRID_DIMS]
-_DISV = ["flopy4.mf6.disv_methods:DisvMethods", *_GRID_DIMS]
-_DISU = ["flopy4.mf6.disu_methods:DisuMethods", *_GRID_DIMS]
+_DIS = ["flopy4.mf6.dis_methods:DisMethods"]
+_DISV = ["flopy4.mf6.disv_methods:DisvMethods"]
+_DISU = ["flopy4.mf6.disu_methods:DisuMethods"]
 _MODEL = ["flopy4.mf6.model_methods:ModelMethods"]
 MIXINS: dict[str, list[str]] = {
     "sim-nam": ["flopy4.mf6.simulation_methods:SimulationMethods"],
@@ -1027,8 +1028,6 @@ MIXINS: dict[str, list[str]] = {
     "sim-tdis": ["flopy4.mf6.tdis_methods:TdisMethods"],
     "utl-ncf": ["flopy4.mf6.utl.ncf_methods:NcfMethods"],
     "utl-ts": ["flopy4.mf6.utl.ts_methods:TsMethods"],
-    # Grid packages provide the model's dimensions. Which components do
-    # can't be told from the DFN (maxbound and friends are model-scoped too).
     "gwf-dis": _DIS,
     "gwf-disv": _DISV,
     "gwf-disu": _DISU,
@@ -1040,11 +1039,12 @@ MIXINS: dict[str, list[str]] = {
     "gwe-disu": _DISU,
     "prt-dis": _DIS,
     "prt-disv": _DISV,
-    "chf-disv1d": _GRID_DIMS,
-    "olf-dis2d": _GRID_DIMS,
-    "olf-disv1d": _GRID_DIMS,
-    "olf-disv2d": _GRID_DIMS,
 }
+
+
+# Added to every component sharing dimensions beyond itself, which the
+# DFN's dim scopes tell (see filters.shared_dims).
+_DIMS_PROVIDER = "flopy4.mf6.dims_provider_methods:DimsProviderMethods"
 
 
 def check_mixins(dfns: Mapping[str, Component]) -> None:
@@ -1785,7 +1785,8 @@ def build_component_spec(
     _derived_dims = {n: e for n, e in derived_dims.items() if n not in _seen_py_names}
 
     base = _base_class(component)
-    mixins = MIXINS.get(component.name, [])
+    shared_dims = filters.shared_dims(component)
+    mixins = [*MIXINS.get(component.name, []), *([_DIMS_PROVIDER] if shared_dims else [])]
     multi = bool(component.multi) if hasattr(component, "multi") else False
     slntype = _slntype(component)
     has_inner_classes = bool(inner_class_specs)
@@ -1880,6 +1881,7 @@ def build_component_spec(
         block_classes=block_classes,
         computed_fields=computed_field_specs,
         derived_dims=_derived_dims,
+        shared_dims=shared_dims,
         observations={
             name: tuple(_obs_forms(f)) for name, f in sorted((component.observations or {}).items())
         },
