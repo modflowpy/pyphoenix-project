@@ -73,7 +73,21 @@ def _is_default_child_name(child: "Component") -> bool:
     return child.name == type(child).__name__.lower()  # type: ignore[attr-defined]
 
 
-def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Component") -> str:
+def _names_by_class(candidates: "tuple[type, ...]") -> bool:
+    """Whether a list field's unnamed children are named after their own
+    class rather than the field: true for a field of an abstract base
+    (`Simulation.models`, a list of `Model`), whose name says nothing
+    about which kind of child it holds."""
+    return not any("dfn_name" in c.__dict__ for c in candidates)
+
+
+def _resolve_child_name(
+    used: "set[str]",
+    kind: str,
+    field_name: str,
+    child: "Component",
+    by_class: bool = False,
+) -> str:
     """Resolve the name `child` should be attached under (stored as its
     own `.name`), given the set of names already claimed by any of the
     parent's other children (`used`).
@@ -85,8 +99,10 @@ def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Co
     field pair like
     `chd: list[Union[Chd, Chdg]]` sharing one sequence, since both arms
     share one real MF6 namefile ftype (see `converter/binding.py`'s
-    `component_ftype()`). "dict"-kind isn't handled here -- its name is
-    the mapping key itself, resolved by the caller.
+    `component_ftype()`). With `by_class` (see `_names_by_class()`), an
+    unnamed child keeps its class-name default if it's free, else gets
+    `f"{name}{i}"` from 1, e.g. "gwf", "gwf1". The default can't be told
+    apart from the same name given explicitly, so it never collides.
     """
     if kind not in ("only", "list"):
         raise TypeError(f"Bad child collection kind '{kind}'")
@@ -99,6 +115,14 @@ def _resolve_child_name(used: "set[str]", kind: str, field_name: str, child: "Co
         return child.name  # type: ignore[attr-defined]
     if kind == "only":
         return field_name
+    if by_class:
+        name = child.name  # type: ignore[attr-defined]
+        if name not in used:
+            return name
+        i = 1
+        while f"{name}{i}" in used:
+            i += 1
+        return f"{name}{i}"
     i = 0
     while f"{field_name}{i}" in used:
         i += 1
@@ -258,7 +282,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         invalidation.
 
         Re-runs `_set_child_parents()` first (idempotent) so every reader
-        sees correctly-named children even if a list/dict field was
+        sees correctly-named children even if a list field was
         reassigned via plain attribute set (`gwf.wel = [...]`) rather than
         construction or `__setitem__` -- the one case that otherwise skips
         naming, leaving siblings collided on the shared class-name default
@@ -294,15 +318,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                         result[child.name] = child
                     for c in _row_children(child):
                         result[c.name] = c
-            elif kind == "dict":
-                for child in value.values():
-                    if isinstance(child, Component):
-                        result[child.name] = child
         return result
 
     def _set_child_parents(self) -> None:
         """Stamp `_parent` on every already-populated Component-typed
-        field (single, list, or dict); see `_parent`'s own docstring
+        field (single or list); see `_parent`'s own docstring
         above. Also resolves and stamps each child's `.name` --
         `_resolve_child_name()`'s top-down counterpart to
         `_attach_to_parent_field()`'s bottom-up one.
@@ -329,7 +349,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             value = getattr(self, f.name, None)
             if value is None:
                 continue
-            kind, _ = spec
+            kind, candidates = spec
 
             if kind == "only":
                 if isinstance(value, Component):
@@ -337,25 +357,17 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     value.name = _resolve_child_name(used, kind, f.name, value)  # type: ignore[attr-defined]
                     used.add(value.name)  # type: ignore[attr-defined]
             elif kind == "list":
+                by_class = _names_by_class(candidates)
                 for child in value:
                     for c in [child] if isinstance(child, Component) else _row_children(child):
                         if id(c) in stamped:
                             continue
                         stamped.add(id(c))
                         c.__dict__["_parent"] = self
-                        c.name = _resolve_child_name(used, kind, f.name, c)  # type: ignore[attr-defined]
+                        c.name = _resolve_child_name(  # type: ignore[attr-defined]
+                            used, kind, f.name, c, by_class=by_class and c is child
+                        )
                         used.add(c.name)  # type: ignore[attr-defined]
-            elif kind == "dict":
-                for key, child in value.items():
-                    if isinstance(child, Component):
-                        child.__dict__["_parent"] = self
-                        if key in used:
-                            raise ValueError(
-                                f"Child name '{key}' collides with an "
-                                "existing child on the same parent."
-                            )
-                        child.name = key  # type: ignore[attr-defined]
-                        used.add(child.name)  # type: ignore[attr-defined]
 
     @property
     def path(self) -> Path:
@@ -421,19 +433,14 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             self.name = _resolve_child_name(used, kind, target_field.name, self)  # type: ignore[attr-defined]
             setattr(parent, target_field.name, self)
         elif kind == "list":
-            self.name = _resolve_child_name(used, kind, target_field.name, self)  # type: ignore[attr-defined]
+            from flopy4.attrs_xarray import child_field_candidates
+
+            spec = child_field_candidates(target_field)
+            assert spec is not None
+            self.name = _resolve_child_name(  # type: ignore[attr-defined]
+                used, kind, target_field.name, self, by_class=_names_by_class(spec[1])
+            )
             getattr(parent, target_field.name).append(self)
-        elif kind == "dict":
-            # No positional auto-key to fall back on for an unnamed child,
-            # unlike "only"/"list" -- see `_set_child_parents`'s "dict"
-            # branch: the child's own `.name` (explicit, or its
-            # class-name default) is the key.
-            key = self.name  # type: ignore[attr-defined]
-            if key in used:
-                raise ValueError(
-                    f"Child name '{key}' collides with an existing child on the same parent."
-                )
-            getattr(parent, target_field.name)[key] = self
 
     @classmethod
     def __attrs_init_subclass__(cls):
@@ -482,12 +489,6 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                         value.__dict__["_parent"] = self
                         current[i] = value
                         return
-            elif kind == "dict":
-                if current and key in current:
-                    value.name = key  # type: ignore[attr-defined]
-                    value.__dict__["_parent"] = self
-                    current[key] = value
-                    return
 
         match = _find_child_field(type(self), type(value))
         if match is None:
@@ -499,8 +500,6 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
             setattr(self, target_field.name, value)
         elif kind == "list":
             getattr(self, target_field.name).append(value)
-        elif kind == "dict":
-            getattr(self, target_field.name)[key] = value
 
     def __delitem__(self, key):
         """Detach the child named `key`, from whatever field/slot
@@ -522,10 +521,6 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
                     if isinstance(child, Component) and child.name == key:  # type: ignore[attr-defined]
                         del value[i]
                         return
-            elif kind == "dict":
-                if value and key in value:
-                    del value[key]
-                    return
         raise KeyError(key)
 
     def __iter__(self):

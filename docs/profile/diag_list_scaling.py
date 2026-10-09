@@ -61,6 +61,7 @@ def build_sim(n: int, ws: Path):
     dims = {"nper": nper, "ncpl": nrow * n, **dict(grid.dataset.sizes)}
     rch = flopy4.mf6.gwf.Rch(recharge={0: {(0, 0, c): 0.001 for c in range(n)}}, dims=dims)
     gwf = flopy4.mf6.gwf.Gwf(
+        name="diag",
         dis=grid,
         ic=flopy4.mf6.gwf.Ic(strt=0.0, dims=dims),
         npf=flopy4.mf6.gwf.Npf(
@@ -86,8 +87,8 @@ def build_sim(n: int, ws: Path):
         tdis=flopy4.mf6.simulation.Tdis.from_time(
             flopy4.mf6.utils.time.Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
         ),
-        models={"diag": gwf},
-        solutiongroup={"ims": ims},
+        models=[gwf],
+        solutiongroup=[ims],
         workspace=ws,
     )
 

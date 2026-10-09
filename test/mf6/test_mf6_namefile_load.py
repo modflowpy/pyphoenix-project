@@ -66,17 +66,17 @@ def test_load_simulation_resolves_model_and_solution(written_sim):
     loaded = Simulation.load(written_sim / "mfsim.nam")
 
     assert len(loaded.models) == 1
-    gwf = next(iter(loaded.models.values()))
+    gwf = next(iter(loaded.models))
     assert isinstance(gwf, Gwf)
 
     assert len(loaded.solutiongroup) == 1
-    ims = next(iter(loaded.solutiongroup.values()))
+    ims = next(iter(loaded.solutiongroup))
     assert isinstance(ims, Ims)
     assert ims.models == ["mymodel"]
 
 
 def test_load_simulation_resolves_dis_and_dims(written_sim):
-    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models.values()))
+    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models))
 
     assert isinstance(gwf.dis, Dis)
     assert gwf.dis.get_dims() == {
@@ -93,7 +93,7 @@ def test_load_simulation_propagates_dims_to_griddata_siblings(written_sim):
     """Npf's griddata arrays need dims resolved from the dis sibling loaded
     moments earlier in the same "packages" block -- the dims-provider-first
     ordering _resolve_bindings implements."""
-    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models.values()))
+    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models))
 
     assert isinstance(gwf.npf, Npf)
     assert gwf.npf.k.shape == (100,)
@@ -105,7 +105,7 @@ def test_load_simulation_propagates_dims_to_griddata_siblings(written_sim):
 
 
 def test_load_simulation_resolves_list_package_rows(written_sim):
-    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models.values()))
+    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models))
 
     assert len(gwf.chd) == 1
     chd = gwf.chd[0]
@@ -126,13 +126,10 @@ def test_load_gwf_directly(written_sim):
 
 
 def test_load_preserves_model_pname(tmp_path):
-    """A dict-kind binding field (Simulation.models/exchanges/solutiongroup)
-    round-trips a custom pname via the child's own `.name` -- child
-    attachment reconciles a dict child's name to the key it's attached
-    under, so the namefile row's pname (not the referenced file's name,
-    which the row's pname needn't match) has to become that key. See
-    `test_load_preserves_list_package_pname` below for the equivalent
-    round trip on a list-kind package field."""
+    """A model's custom pname round-trips via the child's own `.name`:
+    the namefile row's pname, not the referenced file's name, which the
+    row's pname needn't match. See `test_load_preserves_list_package_pname`
+    below for the same round trip on a model's package."""
     import numpy as np
     from flopy.discretization.structuredgrid import StructuredGrid
 
@@ -153,8 +150,8 @@ def test_load_preserves_model_pname(tmp_path):
 
     loaded = Simulation.load(workspace / "mfsim.nam")
 
-    assert list(loaded.models.keys()) == ["a_custom_model_name"]
-    gwf = loaded.models["a_custom_model_name"]
+    assert [m.name for m in loaded.models] == ["a_custom_model_name"]
+    gwf = loaded["a_custom_model_name"]
     assert gwf.name == "a_custom_model_name"
 
 
@@ -168,7 +165,7 @@ def test_load_preserves_list_package_pname(written_sim):
         nam_path.read_text().replace("CHD6 mymodel.chd chd0", "CHD6 mymodel.chd boundary_west")
     )
 
-    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models.values()))
+    gwf = next(iter(Simulation.load(written_sim / "mfsim.nam").models))
     chd = gwf.chd[0]
     assert isinstance(chd, Chd)
     assert chd.name == "boundary_west"
@@ -269,7 +266,7 @@ def test_load_exchange_between_grids(tmp_path):
     )
     sim.write()
 
-    exg = next(iter(Simulation.load(tmp_path / "mfsim.nam").exchanges.values()))
+    exg = next(iter(Simulation.load(tmp_path / "mfsim.nam").exchanges))
 
     (row,) = exg.exchangedata
     assert (row.cellidm1, row.cellidm2) == ((0, 0, 1), (0, 0))
@@ -308,7 +305,7 @@ def test_load_model_in_subdirectory(subdir_sim, tmp_path, monkeypatch):
     them nor the cwd."""
     monkeypatch.chdir(tmp_path)
 
-    gwf = Simulation.load(subdir_sim / "mfsim.nam").models["m"]
+    gwf = Simulation.load(subdir_sim / "mfsim.nam")["m"]
 
     assert isinstance(gwf.dis, Dis)
     assert gwf.dis.get_dims()["nodes"] == 4
@@ -327,7 +324,7 @@ def test_write_model_in_subdirectory(subdir_sim, tmp_path):
 
     assert (tmp_path / "copy" / "gwf" / "m.nam").is_file()
     assert (tmp_path / "copy" / "gwf" / "m.dis").is_file()
-    gwf = Simulation.load(tmp_path / "copy" / "mfsim.nam").models["m"]
+    gwf = Simulation.load(tmp_path / "copy" / "mfsim.nam")["m"]
     assert gwf.filename.as_posix() == "gwf/m.nam"
     assert gwf.dis.filename.as_posix() == "gwf/m.dis"
     assert gwf.dis.get_dims()["nodes"] == 4

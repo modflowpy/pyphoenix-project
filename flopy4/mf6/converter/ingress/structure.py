@@ -475,10 +475,10 @@ def _disambiguate_ga_variant(candidates: "list[type[Component]]", path: Path) ->
     return candidates[0]
 
 
-def _exchange_models(model_names: list, models: Mapping[str, Any]) -> tuple[Any, Any] | None:
+def _exchange_models(model_names: list, models: list) -> tuple[Any, Any] | None:
     """The models an exchange row names, looked up case-insensitively
     (as MF6 does) among those loaded so far, or None if either isn't."""
-    by_name = {str(name).lower(): model for name, model in models.items()}
+    by_name = {str(model.name).lower(): model for model in models}
     found = [by_name.get(str(name).lower()) for name in model_names[:2]]
     if len(found) < 2 or None in found:
         return None
@@ -619,7 +619,7 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
                 dims=dims,
                 parent=None,
                 exchange=(
-                    _exchange_models(row[2:], kwargs.get("models", {}))
+                    _exchange_models(row[2:], kwargs.get("models", []))
                     if issubclass(target_cls, Exchange)
                     else None
                 ),
@@ -634,16 +634,6 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
                 collectors[child_name] = child
             elif kind == "list":
                 collectors.setdefault(child_name, []).append(child)
-            elif kind == "dict":
-                # pname when there is one (matches the child's own real
-                # name, e.g. Simulation.models); row fname as a fallback
-                # for rows with no pname (e.g. solutiongroup, whose row[2:]
-                # are applicable model names, not a pname -- see pname
-                # above). This key is NOT cosmetic: child attachment
-                # reconciles a dict-kind child's .name to match the key
-                # it's placed under, overriding whatever name= was passed
-                # to load() above (see Component._attach_to_parent_field).
-                collectors.setdefault(child_name, {})[pname or fname] = child
 
         kwargs.update(collectors)
 

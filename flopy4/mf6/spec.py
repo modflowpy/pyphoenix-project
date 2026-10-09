@@ -211,18 +211,20 @@ def _coerce_one(value, candidates: tuple[type, ...]):
 def coerce_child(value, field: Attribute):
     """Convert a child field's value with its candidate classes' `coerce`
     classmethods, which return an instance or `None` if they don't accept
-    the value. Lists and dicts are converted element-wise."""
+    the value. Lists are converted element-wise, and a single value given
+    to a list field is wrapped in one."""
     from flopy4.attrs_xarray import child_field_candidates
 
     if (spec := child_field_candidates(field)) is None:
         return value
     kind, candidates = spec
-    if kind == "list" and isinstance(value, (list, tuple)):
+    if kind == "list":
+        if value is None:
+            return value
+        if not isinstance(value, (list, tuple)):
+            return [_coerce_one(value, candidates)]
         items = [_coerce_one(v, candidates) for v in value]
         return value if all(a is b for a, b in zip(items, value)) else items
-    if kind == "dict" and isinstance(value, dict):
-        coerced = {k: _coerce_one(v, candidates) for k, v in value.items()}
-        return value if all(coerced[k] is v for k, v in value.items()) else coerced
     return _coerce_one(value, candidates)
 
 

@@ -23,7 +23,7 @@ def quickstart_model():
         inner_dvclose=1e-6,
         linear_acceleration="cg",
     )
-    sim = Simulation(name=name, tdis=tdis, solutiongroup={"ims": ims})
+    sim = Simulation(name=name, tdis=tdis, solutiongroup=[ims])
     dis = Dis(nrow=10, ncol=10)
     gwf = Gwf(parent=sim, name=name, save_flows=True, dis=dis)
     ic = Ic(parent=gwf)

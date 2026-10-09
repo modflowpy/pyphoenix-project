@@ -1223,8 +1223,8 @@ def _child_field_spec(
         return FieldSpec(
             dfn_name=f.name,
             py_name=filters.safe_name(f.name),
-            type_annotation=f"dict[str, {base}]",
-            spec_call=f'child(block="{block_name}", default=attrs.Factory(dict))',
+            type_annotation=f"list[{base}]",
+            spec_call=f'child(block="{block_name}", default=attrs.Factory(list))',
             generatable=True,
         ), [f"from {module} import {base}"]
     (target,) = targets

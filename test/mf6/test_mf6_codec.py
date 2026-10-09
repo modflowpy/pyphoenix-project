@@ -1404,9 +1404,9 @@ def test_dumps_simulation():
     # Create simulation
     sim = Simulation(
         name="test_sim",
-        models={"model1": gwf},
-        exchanges={},
-        solutiongroup={},
+        models=[gwf],
+        exchanges=[],
+        solutiongroup=[],
         tdis=tdis,
     )
 

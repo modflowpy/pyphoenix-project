@@ -614,6 +614,7 @@ oc = flopy4.mf6.gwf.Oc(
 
 # assemble GWF model from all packages defined above.
 gwf = flopy4.mf6.gwf.Gwf(
+    name="ff",
     dis=dis,
     ic=ic,
     npf=npf,
@@ -662,8 +663,8 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim = flopy4.mf6.simulation.Simulation(
     name="ff",
     tdis=tdis,
-    models={"ff": gwf},
-    solutiongroup={"ims": ims},
+    models=[gwf],
+    solutiongroup=[ims],
     workspace=workspace,
 )
 

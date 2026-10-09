@@ -224,8 +224,8 @@ workspace.mkdir(parents=True, exist_ok=True)
 sim = flopy4.mf6.simulation.Simulation(
     name="twri",
     tdis=tdis,
-    models={"gwf": gwf},
-    solutiongroup={"ims": ims},
+    models=[gwf],
+    solutiongroup=[ims],
     workspace=workspace,
 )
 

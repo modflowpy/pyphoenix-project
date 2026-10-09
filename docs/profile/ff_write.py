@@ -272,6 +272,7 @@ def build_flopy4_base(k, k33, ss):
         for name, data in zip(_WEL_NAMES, _WEL_DICTS)
     ]
     gwf = flopy4.mf6.gwf.Gwf(
+        name="ff",
         dis=grid,
         ic=ic,
         npf=npf,
@@ -321,8 +322,8 @@ def main():
     sim = flopy4.mf6.simulation.Simulation(
         name="ff",
         tdis=tdis,
-        models={"ff": gwf},
-        solutiongroup={"ims": ims},
+        models=[gwf],
+        solutiongroup=[ims],
         workspace=ws,
     )
     if args.profile:
