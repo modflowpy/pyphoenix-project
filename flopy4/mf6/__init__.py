@@ -1,6 +1,8 @@
+from importlib import import_module
 from json import dump as dump_json
 from json import load as load_json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tomli import load as load_toml
 from tomli_w import dump as dump_toml
@@ -11,8 +13,10 @@ except ImportError:
     DFN_SCHEMA_VERSION = "unknown"
     MF6_VERSION = "unknown"
 
-# Import submodules to make them accessible via flopy4.mf6.*
-from flopy4.mf6 import exg, gwe, gwf, gwt, prt, simulation, solution, utils
+# Nothing imported eagerly here may import a generated module, so
+# `flopy4 mf6 sync` still runs when the generated classes are broken
+# or out of date. Generated components load on first use (__getattr__).
+from flopy4.mf6 import solution, utils
 from flopy4.mf6._sync import SyncError, SyncResult, sync
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.codec import dump as dump_mf6
@@ -20,14 +24,57 @@ from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter import structure, unstructure
-from flopy4.mf6.ems import Ems
 from flopy4.mf6.enums import NetCDFFormat
-from flopy4.mf6.ims import Ims
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.netcdf import NetCDFModel
-from flopy4.mf6.simulation import Simulation
-from flopy4.mf6.tdis import Tdis
 from flopy4.uio import DEFAULT_REGISTRY
+
+if TYPE_CHECKING:
+    from flopy4.mf6 import ems as ems
+    from flopy4.mf6 import exg, gwe, gwf, gwt, prt, simulation
+    from flopy4.mf6 import ims as ims
+    from flopy4.mf6 import tdis as tdis
+    from flopy4.mf6 import utl as utl
+    from flopy4.mf6.ems import Ems
+    from flopy4.mf6.ims import Ims
+    from flopy4.mf6.simulation import Simulation
+    from flopy4.mf6.tdis import Tdis
+
+# Modules holding the generated components. Importing them all
+# registers every component class (see FNAMES in component.py).
+_COMPONENT_MODULES = ("exg", "gwe", "gwf", "gwt", "prt", "utl", "simulation", "ems", "ims", "tdis")
+
+# Lazy attributes: name -> (module, attribute or None for the module).
+_LAZY = {
+    **{m: (m, None) for m in _COMPONENT_MODULES},
+    "Ems": ("ems", "Ems"),
+    "Ims": ("ims", "Ims"),
+    "Simulation": ("simulation", "Simulation"),
+    "Tdis": ("tdis", "Tdis"),
+}
+
+
+def _import_components() -> None:
+    """Import every generated component module."""
+    for name in _COMPONENT_MODULES:
+        import_module(f"{__name__}.{name}")
+
+
+def __getattr__(name: str):
+    if name not in _LAZY:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    _import_components()
+    module, attr = _LAZY[name]
+    value = import_module(f"{__name__}.{module}")
+    if attr is not None:
+        value = getattr(value, attr)
+    globals()[name] = value
+    return value
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_LAZY))
+
 
 __all__ = [
     "exg",

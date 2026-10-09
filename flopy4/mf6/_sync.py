@@ -43,15 +43,11 @@ class SyncResult:
         The directory the classes and contract were written to.
     files :
         The generated module files.
-    kept :
-        Generated modules from an earlier sync that this source has no
-        DFN for. They're left in place, since other modules may import
-        them, and stay in the contract's file list.
     installed :
         The MF6 executable sync installed, if asked to.
     removed :
-        Generated modules that neither this sync nor the previous
-        contract lists, e.g. ones an earlier sync created before
+        Generated modules this sync didn't regenerate: ones whose DFN
+        the source lacks, or ones an earlier sync created before
         ``pip install --upgrade`` restored the release's contract.
     """
 
@@ -60,7 +56,6 @@ class SyncResult:
     source: str
     outdir: Path
     files: tuple[Path, ...]
-    kept: tuple[Path, ...] = ()
     removed: tuple[Path, ...] = ()
     installed: Path | None = None
 
@@ -326,8 +321,9 @@ def sync(
     """Regenerate the ``flopy4.mf6`` classes for an MF6 version.
 
     Fetches or reads the DFNs, regenerates the component classes, and
-    records the MF6 version in ``_contract.py``. Installs the matching
-    MF6 binary only if ``install`` is set.
+    records the MF6 version in ``_contract.py``. Generated modules the
+    DFNs don't cover are removed. Installs the matching MF6 binary only
+    if ``install`` is set.
 
     Parameters
     ----------
@@ -486,22 +482,8 @@ def sync(
             except SyntaxError as e:
                 raise SyncError(f"Generated invalid Python for {rel}: {e}") from e
 
-        on_disk = _generated_files(outdir)
-        listed = _contract_files(outdir)
-        if listed is None:
-            kept = on_disk - generated
-            removed: set[str] = set()
-        else:
-            kept = (on_disk & listed) - generated
-            removed = on_disk - listed - generated
-        if kept:
-            warnings.warn(
-                f"{len(kept)} generated module(s) have no DFN in '{source}' and were "
-                f"left from the previous sync: {', '.join(sorted(kept))}",
-                stacklevel=2,
-            )
-
-        (stage / _CONTRACT).write_text(_contract_text(version, commit, generated | kept))
+        removed = _generated_files(outdir) - generated
+        (stage / _CONTRACT).write_text(_contract_text(version, commit, generated))
         _swap(
             stage,
             outdir,
@@ -517,7 +499,6 @@ def sync(
         source=str(source),
         outdir=outdir,
         files=tuple(spec.outpath for spec in specs),
-        kept=tuple(outdir / f for f in sorted(kept)),
         removed=tuple(outdir / f for f in sorted(removed)),
         installed=installed,
     )

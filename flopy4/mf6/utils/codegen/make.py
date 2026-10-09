@@ -10,7 +10,6 @@ migration history from the legacy modflow_devtools.dfn (flat TypedDict)
 schema this replaces.
 """
 
-import importlib.util
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -1117,12 +1116,15 @@ def _has_class(target: str, link: File, dfns: Mapping[str, Component] | None) ->
     return _has_module(target)
 
 
+# The installed flopy4.mf6 package.
+_MF6_ROOT = Path(__file__).parents[2]
+
+
 def _has_module(target: str) -> bool:
-    """Whether a component's generated module exists."""
-    try:
-        return importlib.util.find_spec(_component_module(target)) is not None
-    except ModuleNotFoundError:  # no subpackage either (chf-dis)
-        return False
+    """Whether a component's generated module exists in the installed
+    package. Checks the file rather than importing, so a sync works
+    when the generated classes don't import."""
+    return filters.output_path(target, _MF6_ROOT).is_file()
 
 
 def _child_link(

@@ -22,7 +22,7 @@ def _cmd_sync(args: argparse.Namespace) -> None:
     if result.installed:
         print(f"Installed {result.installed}")
     if result.removed:
-        print(f"Removed {len(result.removed)} orphaned module(s)")
+        print(f"Removed {len(result.removed)} stale module(s)")
     if result.version != "unknown":
         print(f"Synced flopy4.mf6 to MF6 version: {result.version}")
 
