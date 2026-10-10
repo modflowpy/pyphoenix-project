@@ -16,16 +16,14 @@ def test_write_context_default():
     assert ctx.use_netcdf is False
     assert ctx.binary_threshold is None
     assert ctx.float_precision is None
-    assert ctx.use_relative_paths is True
     assert ctx.array_format is None
 
 
 def test_write_context_custom():
     """Test WriteContext with custom settings."""
-    ctx = WriteContext(use_binary=True, float_precision=8, use_relative_paths=False)
+    ctx = WriteContext(use_binary=True, float_precision=8)
     assert ctx.use_binary is True
     assert ctx.float_precision == 8
-    assert ctx.use_relative_paths is False
 
 
 def test_write_context_to_numpy_printoptions():
@@ -44,17 +42,6 @@ def test_write_context_to_numpy_printoptions_lossless():
 
     assert "precision" not in opts
     assert opts["floatmode"] == "unique"
-
-
-def test_write_context_get_float_format():
-    """Test float format string generation."""
-    ctx = WriteContext(float_precision=6)
-    assert ctx.get_float_format() == "%.6e"
-
-    ctx2 = WriteContext(float_precision=10)
-    assert ctx2.get_float_format() == "%.10e"
-
-    assert WriteContext().get_float_format() == "%.17g"
 
 
 def test_write_context_manager():

@@ -17,7 +17,7 @@ class WriteContext:
     Configuration context for writing MODFLOW 6 input files.
 
     This class controls how simulation data is written to input files,
-    including numeric precision, binary vs ASCII format, and path handling.
+    including numeric precision and binary vs ASCII format.
 
     Can be used in two ways:
     1. Passed to write method: component.write(context=ctx)
@@ -37,8 +37,6 @@ class WriteContext:
         Number of decimal places for float output, in scientific notation.
         If None (the default), floats are written losslessly, as the
         shortest string that reads back as the same value.
-    use_relative_paths : bool, optional
-        Use relative paths in input files. Default is True.
     array_format : ArrayFormat, optional
         How to write array data: 'internal', 'constant', or 'open/close'.
         If None, automatically determined based on array properties.
@@ -57,7 +55,6 @@ class WriteContext:
     use_netcdf: bool = field(default=False)
     binary_threshold: Optional[int] = field(default=None)
     float_precision: Optional[int] = field(default=None)
-    use_relative_paths: bool = field(default=True)
     array_format: Optional[ArrayFormat] = field(default=None)
 
     # Class-level thread-local storage for context stack
@@ -132,17 +129,3 @@ class WriteContext:
         else:
             options["precision"] = self.float_precision
         return options
-
-    def get_float_format(self) -> str:
-        """
-        Get the float format string based on precision setting.
-
-        Returns
-        -------
-        str
-            Format string for floating point numbers (e.g., "%.6e"), or
-            "%.17g" (lossless) if `float_precision` is None.
-        """
-        if self.float_precision is None:
-            return "%.17g"
-        return f"%.{self.float_precision}e"
