@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 from flopy.discretization.unstructuredgrid import UnstructuredGrid
@@ -10,6 +10,26 @@ if TYPE_CHECKING:
 class DisuMethods:
     """Methods for the generated unstructured discretizations (`Disu` in GWF,
     GWT and GWE); fields come from the DFN."""
+
+    # DFN fields these methods use, checked against the DFNs at sync time.
+    _requires: ClassVar[frozenset[str]] = frozenset(
+        {
+            "angrot",
+            "bot",
+            "cell2d",
+            "crs",
+            "iac",
+            "idomain",
+            "ihc",
+            "ja",
+            "length_units",
+            "nodes",
+            "top",
+            "vertices",
+            "xorigin",
+            "yorigin",
+        }
+    )
 
     def to_grid(self: "Disu") -> UnstructuredGrid:  # type: ignore[misc]
         """Convert the discretization to an `UnstructuredGrid`."""
