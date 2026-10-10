@@ -24,22 +24,39 @@ from flopy4.mf6.utils.time import Time
 from flopy4.version import __version__
 
 
-def _cf_var_attrs(dims: list[str], mesh: str | None, grid) -> dict:
+def _cf_var_attrs(dims: list[str], mesh: str | None, grid, layer: int | None = None) -> dict:
     """Return {"attrs": {...}, "encoding": {...}} for a NetCDF data variable.
 
     In mesh context x/y are abstract row/col indices, not geographic — only nmesh_face
     vars get coordinates linking. In structured context x/y ARE geographic.
+
+    layer is the 1-based layer number for a per-layer variable, or None
+    otherwise. z_l{layer} is appended to coordinates only when set -- the
+    only case it shares nmesh_face with the variable (CF-1.13 5.2).
     """
     attrs: dict[str, str] = {}
     encoding: dict[str, object] = {}
     has_crs = grid is not None and getattr(grid, "crs", None) is not None
+    # grid_mapping is CF-required only on variables spanning the full 2D
+    # horizontal spatial extent (CF-1.13 5.6); 1D dimension-definition arrays
+    # such as dis_delr/dis_delc are not georeferenced fields and must not
+    # carry it, matching MF6's own ncvar_gridmap (DisNCStructured.f90).
+    has_full_extent = ("x" in dims and "y" in dims) or "nmesh_face" in dims
 
-    if has_crs:
+    if has_crs and has_full_extent:
         attrs["grid_mapping"] = "projection"
     if "nmesh_face" in dims:
-        attrs["coordinates"] = "mesh_face_x mesh_face_y"
+        if layer:
+            attrs["coordinates"] = f"mesh_face_x mesh_face_y z_l{layer}"
+        else:
+            attrs["coordinates"] = "mesh_face_x mesh_face_y"
         attrs["mesh"] = "mesh"
         attrs["location"] = "face"
+    elif "layer" in dims:
+        # Structured per-layer fields link to the z (cell center elevation)
+        # coordinate, matching MF6's own DisNCStructured.f90 -- non-layered
+        # fields (e.g. dis_top, a y/x-only 2D array) do not.
+        attrs["coordinates"] = "z"
 
     return {"attrs": attrs, "encoding": encoding}
 
@@ -209,12 +226,22 @@ class NetCDFModel(BaseModel, NetCDFInput):
             raise ValueError("model must have a 'name' attribute")
 
         modeltype = model.__class__.__name__.lower()
-        attrs = {"title": f"{model.name.upper()} model input"}
+        # Matches MF6's own NCModel.f90 title convention (model-type-specific
+        # fragment + " array input" for the pre-solve/validate-mode INPUT
+        # file this class always produces); models MF6 itself doesn't
+        # support for NetCDF export (anything but GWF/GWT/GWE) fall back to
+        # a generic title.
+        _title_fragment = {"gwf": "hydraulic head", "gwt": "concentration", "gwe": "temperature"}
+        if modeltype in _title_fragment:
+            title = f"{model.name.upper()} {_title_fragment[modeltype]} array input"
+        else:
+            title = f"{model.name.upper()} model input"
+        attrs = {"title": title}
         packages = []
         distype = None
 
         if netcdf_format == NetCDFFormat.LAYERED_MESH:
-            attrs["mesh"] = NetCDFFormat.LAYERED_MESH.value
+            attrs["modflow_mesh"] = NetCDFFormat.LAYERED_MESH.value
 
         # Resolve nper from time arg, simulation tdis, or model's data dims.
         if time is not None:
@@ -260,11 +287,12 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     val = getattr(package, f.name)
                     if val is None:
                         continue
-                    arr = np.asarray(val, dtype=np.float64)
+                    _dtype = _PKG_DTYPE_MAP.get(to_field_type(f.type), np.float64)
+                    arr = np.asarray(val, dtype=_dtype)
                     # Only broadcast scalars to full grid for nodes-shaped fields
                     shape_meta = f.metadata.get("shape", ())
                     if "nodes" in shape_meta and arr.size < _nodes:
-                        arr = np.full(_nodes, float(arr.ravel()[0]))
+                        arr = np.full(_nodes, arr.ravel()[0], dtype=_dtype)
                     p["params"].append({"name": f.name, "data": arr})
                 elif f.metadata.get("fk"):
                     # dynamically named arrays (RCHA's aux): one param per auxiliary name
@@ -285,6 +313,14 @@ class NetCDFModel(BaseModel, NetCDFInput):
                                 "data": dense(named_periods, _nper, carry_forward=False),
                             }
                         )
+                elif (
+                    f.metadata.get("block") == "period" and f.metadata.get("reader") == "readarray"
+                ):
+                    val = getattr(package, f.name)
+                    if val is None:
+                        continue
+                    _dtype = _PKG_DTYPE_MAP.get(to_field_type(f.type), np.float64)
+                    p["params"].append({"name": f.name, "data": np.asarray(val, dtype=_dtype)})
                 else:
                     # period arrays: {kper: array}, periods not given filled.
                     # Time-array series references stay in the package file.
@@ -345,12 +381,12 @@ class NetCDFModel(BaseModel, NetCDFInput):
         meta = self.model_dump(by_alias=True)
 
         if self._grid is not None and self._time is not None:  # type: ignore
-            conventions = "CF-1.11"  # type: ignore
-            if meta["attrs"]["mesh"] is not None:
+            conventions = "CF-1.13"  # type: ignore
+            if meta["attrs"]["modflow_mesh"] is not None:
                 conventions = f"{conventions} UGRID-1.0"
             _fmt = (
                 NetCDFFormat.LAYERED_MESH
-                if meta["attrs"]["mesh"] is not None
+                if meta["attrs"]["modflow_mesh"] is not None
                 else NetCDFFormat.STRUCTURED
             )
             dss.append(self._grid.to_xarray(netcdf_format=_fmt, modeltime=self._time))
@@ -413,7 +449,13 @@ class NetCDFModel(BaseModel, NetCDFInput):
         """
         validate model (dataset) scoped attributes dictionary
         """
+        # title is free-text (e.g. "GWFMODEL hydraulic head array input") and must
+        # keep its original casing, matching MF6 -- unlike the other keys/values
+        # here, which are lowercase identifiers by convention.
+        title = v.get("title")
         v = lower(v)
+        if title is not None:
+            v["title"] = title
         return v
 
     @staticmethod
@@ -431,7 +473,9 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
         _packages = []
         for pkg in _meta["packages"]:
-            pkgctx = {"mesh": _meta["attrs"]["mesh"]} if "mesh" in _meta["attrs"] else {}
+            pkgctx = (
+                {"mesh": _meta["attrs"]["modflow_mesh"]} if "modflow_mesh" in _meta["attrs"] else {}
+            )
             pkgctx["modelname"] = _meta["modelname"]
             pkgctx["gridtype"] = _meta["gridtype"]
             pkgctx |= context
@@ -443,17 +487,17 @@ class NetCDFModel(BaseModel, NetCDFInput):
 
 class NetCDFModelAttrs(BaseModel):
     # order of params dictates when data added to info dict
-    mesh: str | None = Field(default=None)
+    modflow_mesh: str | None = Field(default=None)
     modflow_grid: str = Field()
     modflow_model: str = Field()
 
     model_config = ConfigDict(extra="allow")
 
-    @field_validator("mesh", mode="before")
+    @field_validator("modflow_mesh", mode="before")
     @classmethod
-    def validate_mesh(cls, v: str | None, info: ValidationInfo) -> str | None:
+    def validate_modflow_mesh(cls, v: str | None, info: ValidationInfo) -> str | None:
         """
-        validate model mesh attribute
+        validate model modflow_mesh attribute
         """
         if v is not None:
             if v.lower() != "layered":
@@ -728,6 +772,7 @@ class NetCDFParam(BaseModel, NetCDFInput):
             [str(d) for d in ds[varname].dims],
             mesh,
             self._context.get("grid"),
+            layer=meta["attrs"].get("layer"),
         )
         ds[varname].attrs.update(cf["attrs"])
         ds[varname].encoding.update(cf["encoding"])

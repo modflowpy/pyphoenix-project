@@ -1,5 +1,8 @@
 """Tests for flopy4.mf6.utils.netcdf_postprocess."""
 
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -149,25 +152,15 @@ def test_postprocess_structured_nc_adds_attrs(tmp_path):
     assert p.attrs["wkt"].startswith("PROJCS["), "wkt must be WKT1"
     assert "grid_mapping_name" in p.attrs
     assert p.attrs["grid_mapping_name"] == "transverse_mercator"
-    assert "GeoTransform" in p.attrs
-    assert "spatial_ref" in p.attrs
-    assert p.attrs["spatial_ref"].startswith("PROJCS["), "spatial_ref must be WKT1 for GDAL"
-    ds.close()
-
-
-def test_postprocess_structured_nc_geotransform_values(tmp_path):
-    src = tmp_path / "out.nc"
-    _write_minimal_structured_nc(src)
-    postprocess_structured_nc(src)
-
-    ds = xr.open_dataset(src, mask_and_scale=False)
-    gt = [float(v) for v in ds["projection"].attrs["GeoTransform"].split()]
-    # x_left  = x_bnds[0,0] = 250,  x_right = x_bnds[-1,1] = 2250
-    # y_top   = y_bnds[0,1] = 3500, y_bot   = y_bnds[-1,0] = 500
-    assert gt[0] == pytest.approx(250.0)  # x origin (left edge)
-    assert gt[1] == pytest.approx(500.0)  # dx = (2250-250)/4
-    assert gt[3] == pytest.approx(3500.0)  # y origin (top edge)
-    assert gt[5] == pytest.approx(-1000.0)  # dy = (500-3500)/3
+    assert "GeoTransform" not in p.attrs
+    assert "spatial_ref" not in p.attrs
+    assert p.attrs["longitude_of_central_meridian"] == pytest.approx(-117.0)
+    assert p.attrs["latitude_of_projection_origin"] == pytest.approx(0.0)
+    assert p.attrs["scale_factor_at_central_meridian"] == pytest.approx(0.9996)
+    assert p.attrs["false_easting"] == pytest.approx(500_000.0)
+    assert p.attrs["false_northing"] == pytest.approx(0.0)
+    assert p.attrs["semi_major_axis"] == pytest.approx(6378137.0)
+    assert p.attrs["inverse_flattening"] == pytest.approx(298.257222101)
     ds.close()
 
 
@@ -179,7 +172,7 @@ def test_postprocess_structured_nc_idempotent(tmp_path):
 
     ds = xr.open_dataset(src, mask_and_scale=False)
     assert "wkt" in ds["projection"].attrs
-    assert "GeoTransform" in ds["projection"].attrs
+    assert ds["projection"].attrs["false_easting"] == pytest.approx(500_000.0)
     ds.close()
 
 
@@ -195,8 +188,9 @@ def test_postprocess_structured_nc_no_projection(tmp_path):
     ds2.close()
 
 
-def test_postprocess_structured_nc_fallback_no_bnds(tmp_path):
-    """GeoTransform is derived from cell-centre spacing when x_bnds/y_bnds are absent."""
+def test_postprocess_structured_nc_no_bnds(tmp_path):
+    """CF numeric grid_mapping parameters only need crs_wkt -- they are
+    added whether or not x_bnds/y_bnds are present."""
     x = np.array([100.0, 200.0, 300.0])
     y = np.array([600.0, 500.0, 400.0])
     src = tmp_path / "no_bnds.nc"
@@ -212,10 +206,89 @@ def test_postprocess_structured_nc_fallback_no_bnds(tmp_path):
 
     postprocess_structured_nc(src)
     ds2 = xr.open_dataset(src, mask_and_scale=False)
-    gt = [float(v) for v in ds2["projection"].attrs["GeoTransform"].split()]
-    # dx=100, dy=-100; x_left = x[0] - 0.5*dx = 50; y_top = y[0] - 0.5*dy = 650
-    assert gt[0] == pytest.approx(50.0)  # x origin (left edge)
-    assert gt[1] == pytest.approx(100.0)  # dx
-    assert gt[3] == pytest.approx(650.0)  # y origin (top edge)
-    assert gt[5] == pytest.approx(-100.0)  # dy
+    assert ds2["projection"].attrs["grid_mapping_name"] == "transverse_mercator"
+    assert ds2["projection"].attrs["false_easting"] == pytest.approx(500_000.0)
     ds2.close()
+
+
+def test_postprocess_structured_nc_already_wrapped_rotated(tmp_path):
+    """A rotated grid's crs_wkt may already be a wrapped DerivedProjectedCRS
+    (current-release MF6 output) -- postprocessing it must be a safe no-op,
+    not crash. WKT1 has no derived-CRS syntax, so wkt must come from the
+    unwrapped base CRS, not from converting the wrapped CRS directly."""
+    pyproj = pytest.importorskip("pyproj")
+    from flopy4.mf6.utils.crs import wrap_rotated_crs
+
+    base = pyproj.CRS.from_epsg(26918)
+    wrapped = wrap_rotated_crs(base, 500000.0, 4500000.0, 15.0)
+    wrapped_wkt = wrapped.to_wkt(pyproj.enums.WktVersion.WKT2_2019)
+    assert wrapped_wkt.startswith("DERIVEDPROJCRS[")
+
+    src = tmp_path / "rotated.nc"
+    ds = xr.Dataset(
+        {"projection": xr.Variable([], np.int32(1), attrs={"crs_wkt": wrapped_wkt})},
+        coords={
+            "x": xr.Variable(["x"], np.array([50.0, 150.0, 250.0])),
+            "y": xr.Variable(["y"], np.array([100.0, 0.0])),
+        },
+    )
+    ds.to_netcdf(src)
+    ds.close()
+
+    postprocess_structured_nc(src)
+    ds2 = xr.open_dataset(src, mask_and_scale=False)
+    p = ds2["projection"]
+    assert p.attrs["crs_wkt"].startswith("DERIVEDPROJCRS["), "wrap must be preserved"
+    assert p.attrs["wkt"].startswith("PROJCS["), "wkt must be the unwrapped base CRS"
+    assert p.attrs["grid_mapping_name"] == "transverse_mercator"
+    assert p.attrs["false_easting"] == pytest.approx(500_000.0)
+    ds2.close()
+
+
+def _run_ncfix(*args):
+    """Invoke ncfix via the module entry point so it works before pip install."""
+    return subprocess.run(
+        [sys.executable, "-m", "flopy4.mf6.utils.netcdf_postprocess", *args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_ncfix_cli_structured(tmp_path):
+    src = tmp_path / "structured.nc"
+    _write_minimal_structured_nc(src)
+    dst = tmp_path / "fixed.nc"
+    result = _run_ncfix(str(src), "-o", str(dst), "--mode", "structured")
+    assert result.returncode == 0, result.stderr
+
+    ds = xr.open_dataset(dst, mask_and_scale=False)
+    assert "GeoTransform" not in ds["projection"].attrs
+    assert "crs_wkt" in ds["projection"].attrs
+    assert ds["projection"].attrs["false_easting"] == 500_000.0
+    ds.close()
+
+
+def test_ncfix_cli_mesh_explicit_mode(tmp_path):
+    src = tmp_path / "out.nc"
+    _write_minimal_mesh_nc(src)
+    result = _run_ncfix(str(src), "--mode", "mesh", "--verbose")
+    assert result.returncode == 0, result.stderr
+    assert "wrote:" in result.stdout
+
+    ds = xr.open_dataset(src, mask_and_scale=False)
+    assert "crs_wkt" in ds["projection"].attrs
+    ds.close()
+
+
+def test_ncfix_cli_auto_detect_structured(tmp_path):
+    """Auto-detect falls back to structured when no UGRID markers are present."""
+    src = tmp_path / "out.nc"
+    _write_minimal_structured_nc(src)
+    result = _run_ncfix(str(src), "--verbose")
+    assert result.returncode == 0, result.stderr
+    assert "wrote:" in result.stdout
+
+    ds = xr.open_dataset(src, mask_and_scale=False)
+    assert "GeoTransform" not in ds["projection"].attrs
+    assert ds["projection"].attrs["false_easting"] == 500_000.0
+    ds.close()
