@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -10,13 +10,6 @@ if TYPE_CHECKING:
 
 class TsMethods:
     """Methods for the generated `Ts`; fields come from the DFN."""
-
-    # DFN fields these methods use, checked against the DFNs at sync time.
-    _requires: ClassVar[frozenset[str]] = frozenset(
-        {
-            "timeseries",
-        }
-    )
 
     @classmethod
     def from_series(  # type: ignore[misc]
@@ -52,17 +45,17 @@ class TsMethods:
         data = data.sort_index()
 
         def per_name(value, field: str):
-            if not isinstance(value, Mapping):
-                return {f"{field}record_single": value}
+            """The value for all the series, or a list of one per series."""
+            if value is None or not isinstance(value, Mapping):
+                return value, None
             if unknown := set(value) - set(names):
                 raise ValueError(f"{field} given for unknown series {sorted(unknown)}")
             if absent := [n for n in names if n not in value]:
                 raise ValueError(f"no {field} for series {absent}")
-            return {field: [value[n] for n in names]}
+            return None, [value[n] for n in names]
 
-        attributes = per_name(method, "interpolation_method")
-        if sfac is not None:
-            attributes |= per_name(sfac, "sfac")
+        method_all, methods = per_name(method, "interpolation_method")
+        sfac_all, sfacs = per_name(sfac, "sfac")
         times = data.index.to_numpy(dtype=np.float64)
         values = data.to_numpy(dtype=np.float64)
         return cls(
@@ -71,7 +64,10 @@ class TsMethods:
                 cls.Timeseries(ts_time=t, ts_array=tuple(row))
                 for t, row in zip(times.tolist(), values.tolist())
             ],
-            **attributes,
+            interpolation_method=methods,
+            interpolation_methodrecord_single=method_all,
+            sfac=sfacs,
+            sfacrecord_single=sfac_all,
             **kwargs,
         )
 

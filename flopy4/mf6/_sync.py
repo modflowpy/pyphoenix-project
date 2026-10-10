@@ -16,6 +16,7 @@ from importlib.abc import MetaPathFinder
 from importlib.util import spec_from_file_location
 from os import PathLike
 from pathlib import Path
+from typing import NamedTuple
 
 _MF6_ROOT = Path(__file__).parent
 _DFN_SCHEMA_VERSION = "2.0.0.dev3"
@@ -327,35 +328,51 @@ class _StagedFinder(MetaPathFinder):
         return spec_from_file_location(fullname, file, submodule_search_locations=search)
 
 
-def _import_staged(root: str, generated: list[str], removed: list[str]) -> list[str]:
+def _check_staged(root: str, generated: list[str], removed: list[str]) -> dict[str, list[str]]:
     """Import each generated module from ``root``, with the installed
-    handwritten modules. Return the failures."""
+    handwritten modules, and check the mixins against the classes that
+    use them. Return the import failures and the mixins' gaps."""
+    from flopy4.mf6._mixin_fields import find_mixin_gaps
+    from flopy4.mf6.utils.codegen.make import MIXINS
+
     modules: dict[str, Path | None] = {_module_name(rel): None for rel in removed}
     modules |= {_module_name(rel): Path(root) / rel for rel in generated}
     sys.meta_path.insert(0, _StagedFinder(modules))
-    failures = []
+    failures, imported = [], []
     for name in sorted(n for n, f in modules.items() if f is not None):
         try:
-            import_module(name)
+            imported.append(import_module(name))
         except Exception as e:
             failures.append(f"{name}: {type(e).__name__}: {e}")
-    return failures
+    mixins = []
+    for mixin in sorted({m for ms in MIXINS.values() for m in ms}):
+        module, _, cls = mixin.partition(":")
+        try:
+            mixins.append(getattr(import_module(module), cls))
+        except Exception as e:
+            failures.append(f"{module}: {type(e).__name__}: {e}")
+    return {"failures": failures, "gaps": find_mixin_gaps(imported, mixins)}
 
 
-def _import_failures(
-    root: Path, generated: Iterable[str], removed: Iterable[str] = ()
-) -> list[str]:
-    """The generated modules in ``root`` that fail to import, as
-    ``module: error`` lines. Runs in a fresh interpreter, so this
-    process's imported modules and registered classes don't affect it,
-    and aren't affected."""
+class Problems(NamedTuple):
+    """What's wrong with a set of generated modules."""
+
+    failures: list[str]
+    """Modules that fail to import, as ``module: error`` lines."""
+    gaps: list[str]
+    """Fields the mixins read that the classes lack, as
+    ``module.Class: Mixin.method: no Class.attr`` lines."""
+
+
+def _problems(root: Path, generated: Iterable[str], removed: Iterable[str] = ()) -> Problems:
+    """What's wrong with the generated modules in ``root``. Runs in a
+    fresh interpreter, so this process's imported modules and registered
+    classes don't affect it, and aren't affected."""
     args = {"root": str(root), "generated": sorted(generated), "removed": sorted(removed)}
     code = (
         "import json, sys\n"
-        "from flopy4.mf6._sync import _import_staged\n"
-        "failures = _import_staged(**json.load(sys.stdin))\n"
-        "print('\\n'.join(failures))\n"
-        "sys.exit(1 if failures else 0)\n"
+        "from flopy4.mf6._sync import _check_staged\n"
+        "print(json.dumps(_check_staged(**json.load(sys.stdin))))\n"
     )
     env = {
         **os.environ,
@@ -370,16 +387,19 @@ def _import_failures(
         text=True,
         env=env,
     )
-    if not proc.returncode:
-        return []
-    return proc.stdout.strip().splitlines() or [proc.stderr.strip()]
+    try:
+        found = json.loads(proc.stdout.strip().splitlines()[-1])
+    except (IndexError, json.JSONDecodeError):
+        return Problems([proc.stderr.strip()], [])
+    return Problems(found["failures"], found["gaps"])
 
 
-def find_import_failures(outdir: str | PathLike | None = None) -> list[str]:
-    """The generated modules in ``outdir`` (default: the installed
-    ``flopy4.mf6``) that fail to import, as ``module: error`` lines."""
+def find_problems(outdir: str | PathLike | None = None) -> Problems:
+    """What's wrong with the generated modules in ``outdir`` (default:
+    the installed ``flopy4.mf6``): modules that fail to import, and
+    fields the mixins read that the classes lack."""
     outdir = Path(outdir) if outdir is not None else _MF6_ROOT
-    return _import_failures(outdir, _generated_files(outdir))
+    return _problems(outdir, _generated_files(outdir))
 
 
 def _swap(stage: Path, outdir: Path, replace: Iterable[str], remove: Iterable[str]) -> None:
@@ -429,8 +449,8 @@ def sync(
     Fetches or reads the DFNs, regenerates the component classes, and
     records the MF6 version in ``_contract.py``. Generated modules the
     DFNs don't cover are removed. Nothing changes unless every generated
-    module imports. Installs the matching MF6 binary only
-    if ``install`` is set.
+    module imports, and the classes have every field the mixins' methods
+    read. Installs the matching MF6 binary only if ``install`` is set.
 
     Parameters
     ----------
@@ -587,8 +607,13 @@ def sync(
                 raise SyncError(f"Generated invalid Python for {rel}: {e}") from e
 
         removed = _generated_files(outdir) - generated
-        if failures := _import_failures(stage, generated, removed):
-            raise SyncError("Generated modules failed to import:\n" + "\n".join(failures))
+        problems = _problems(stage, generated, removed)
+        if problems.failures:
+            raise SyncError("Generated modules failed to import:\n" + "\n".join(problems.failures))
+        if problems.gaps:
+            raise SyncError(
+                "Mixin methods read fields these DFNs don't give:\n" + "\n".join(problems.gaps)
+            )
         (stage / _CONTRACT).write_text(_contract_text(version, commit, generated))
         _swap(
             stage,

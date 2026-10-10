@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 import numpy as np
 from flopy.discretization import StructuredGrid as LegacyStructuredGrid
@@ -14,25 +14,6 @@ _LENGTH_UNITS = {1: "FEET", 2: "METERS", 3: "CENTIMETERS"}
 class DisMethods:
     """Methods for the generated structured discretizations (`Dis` in GWF,
     GWT, GWE and PRT); fields come from the DFN."""
-
-    # DFN fields these methods use, checked against the DFNs at sync time.
-    _requires: ClassVar[frozenset[str]] = frozenset(
-        {
-            "angrot",
-            "botm",
-            "crs",
-            "delc",
-            "delr",
-            "idomain",
-            "length_units",
-            "ncol",
-            "nlay",
-            "nrow",
-            "top",
-            "xorigin",
-            "yorigin",
-        }
-    )
 
     def to_grid(self: "Dis") -> StructuredGrid:  # type: ignore[misc]
         """Convert the discretization to a `StructuredGrid`."""

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -11,16 +11,6 @@ if TYPE_CHECKING:
 
 class TdisMethods:
     """Methods for the generated `Tdis`; fields come from the DFN."""
-
-    # DFN fields these methods use, checked against the DFNs at sync time.
-    _requires: ClassVar[frozenset[str]] = frozenset(
-        {
-            "nper",
-            "perioddata",
-            "start_date_time",
-            "time_units",
-        }
-    )
 
     def to_time(self: "Tdis") -> Time:  # type: ignore[misc]
         """Convert to a `Time` object."""

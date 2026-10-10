@@ -10,7 +10,6 @@ migration history from the legacy modflow_devtools.dfn (flat TypedDict)
 schema this replaces.
 """
 
-import ast
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -1014,8 +1013,8 @@ _SLN_PREFIX = "sln"
 
 # flopy API methods (factories, conversions to and from flopy types) for
 # generated classes, as "module:Class" method-only mixins. Mixins declare no
-# fields; those come from the DFN only. A mixin lists the DFN fields it uses
-# in `_requires`, which check_mixins checks against the DFNs at sync time.
+# fields; those come from the DFN only. Sync checks the generated classes
+# have the fields the mixins' methods read (see flopy4.mf6._mixin_fields).
 _DIS = ["flopy4.mf6.dis_methods:DisMethods"]
 _DISV = ["flopy4.mf6.disv_methods:DisvMethods"]
 _DISU = ["flopy4.mf6.disu_methods:DisuMethods"]
@@ -1049,43 +1048,9 @@ _DIMS_PROVIDER = "flopy4.mf6.dims_provider_methods:DimsProviderMethods"
 
 
 def check_mixins(dfns: Mapping[str, Component]) -> None:
-    """Raise if a `MIXINS` key names no DFN component, or a mixin's
-    `_requires` names a field its component's DFN lacks."""
+    """Raise if a `MIXINS` key names no DFN component."""
     if unknown := sorted(set(MIXINS) - set(dfns)):
         raise ValueError(f"MIXINS keys match no DFN component: {unknown}")
-    lacking = []
-    for name, mixins in MIXINS.items():
-        fields = dfn_field_names(dfns[name])
-        for mixin in mixins:
-            if missing := sorted(mixin_requires(mixin) - fields):
-                lacking.append(f"{mixin.partition(':')[2]} on {name}: {', '.join(missing)}")
-    if lacking:
-        raise ValueError("Mixins need DFN fields that are missing:\n  " + "\n  ".join(lacking))
-
-
-def dfn_field_names(component: Component) -> set[str]:
-    """The names of a component's top-level fields, in every block."""
-    return {n for block in (component.blocks or {}).values() for n in (block.fields or {})}
-
-
-def mixin_requires(mixin: str) -> frozenset[str]:
-    """A ``module:Class`` mixin's ``_requires``. Read from its source, not
-    imported, since importing a mixin can import generated modules, and
-    sync has to work when those are broken."""
-    module, _, cls = mixin.partition(":")
-    path = _MF6_ROOT.joinpath(*module.split(".")[2:]).with_suffix(".py")
-    for node in ast.parse(path.read_text()).body:
-        if isinstance(node, ast.ClassDef) and node.name == cls:
-            for stmt in node.body:
-                if (
-                    isinstance(stmt, ast.AnnAssign)
-                    and isinstance(stmt.target, ast.Name)
-                    and stmt.target.id == "_requires"
-                    and isinstance(stmt.value, ast.Call)
-                ):
-                    return frozenset(ast.literal_eval(stmt.value.args[0]))
-            return frozenset()
-    raise ValueError(f"No class {cls} in {path}")
 
 
 def _find_link(f: FieldV3) -> tuple[str, File, bool] | None:

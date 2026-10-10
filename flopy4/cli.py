@@ -37,7 +37,7 @@ def _cmd_status(args: argparse.Namespace) -> None:
         MF6_VERSION, dfn_commit = "unknown", None
 
     from flopy4.mf6._compat import _mismatch, _query_mf6_version
-    from flopy4.mf6._sync import find_import_failures, find_orphans
+    from flopy4.mf6._sync import find_orphans, find_problems
 
     exe = shutil.which("mf6") or shutil.which("mf6.exe")
     binary_version = _query_mf6_version(exe) if exe else None
@@ -56,10 +56,17 @@ def _cmd_status(args: argparse.Namespace) -> None:
         status = {False: "(✓ in sync)", True: "(! mismatch)", None: "(can't compare)"}[mismatch]
         print(f"Discovered binary    : {binary_version}  [{exe}]  {status}")
 
-    failures = find_import_failures()
-    if failures:
-        print(f"Broken modules       : {len(failures)} (run `flopy4 mf6 sync` to regenerate them)")
-        for line in failures:
+    problems = find_problems()
+    if problems.failures:
+        print(
+            f"Broken modules       : {len(problems.failures)} "
+            "(run `flopy4 mf6 sync` to regenerate them)"
+        )
+        for line in problems.failures:
+            print(f"  {line}")
+    if problems.gaps:
+        print(f"Unusable methods     : {len(problems.gaps)} (the DFNs lack fields they read)")
+        for line in problems.gaps:
             print(f"  {line}")
 
     orphans = find_orphans()
