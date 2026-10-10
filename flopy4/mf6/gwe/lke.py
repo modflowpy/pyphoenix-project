@@ -51,7 +51,7 @@ class Lke(Package):
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        status: Union[float, str] = field()
+        status: str = field()
 
     @attrs.define
     class Temperature(Item):
@@ -87,7 +87,7 @@ class Lke(Package):
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        auxname: Union[float, str] = field()
+        auxname: str = field()
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (

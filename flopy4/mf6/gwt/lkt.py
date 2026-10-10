@@ -49,7 +49,7 @@ class Lkt(Package):
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        status: Union[float, str] = field()
+        status: str = field()
 
     @attrs.define
     class Concentration(Item):
@@ -85,7 +85,7 @@ class Lkt(Package):
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        auxname: Union[float, str] = field()
+        auxname: str = field()
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (

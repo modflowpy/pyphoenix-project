@@ -850,11 +850,9 @@ def value_column(
     *,
     optional: bool = False,
     time_series: bool = False,
-    object_dtype: bool = False,
 ) -> ItemColumn:
-    """A plain scalar. A time series or object-dtype value may be a string."""
-    object_dtype = object_dtype or time_series
-    py_type = "Union[float, str]" if object_dtype else _DFN_PY.get(dfn_type, "float")
+    """A plain scalar. A time series value may also be a series' name."""
+    py_type = "Union[float, str]" if time_series else _DFN_PY.get(dfn_type, "float")
     return attr_column(
         name,
         py_type,

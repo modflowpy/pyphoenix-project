@@ -40,7 +40,7 @@ class Maw(Package):
         radius: float = field()
         bottom: float = field()
         strt: Union[float, str] = field(time_series=True)
-        condeqn: Union[float, str] = field()
+        condeqn: str = field()
         ngwfnodes: int = field()
         aux: tuple[Union[float, str], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
@@ -68,14 +68,14 @@ class Maw(Package):
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        status: Union[float, str] = field()
+        status: str = field()
 
     @attrs.define
     class ConnectionStatus(Item):
         _keyword: ClassVar[str] = "connection_status"
         ifno: int = field(index=True, fk="packagedata.ifno")
         icon: int = field(index=True)
-        connstatus: Union[float, str] = field()
+        connstatus: str = field()
 
     @attrs.define
     class Bottom(Item):
@@ -107,7 +107,7 @@ class Maw(Package):
     class HeadLimit(Item):
         _keyword: ClassVar[str] = "head_limit"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        head_limit: Union[float, str] = field()
+        head_limit: str = field()
 
     @attrs.define
     class Shutoff(Item):
@@ -127,7 +127,7 @@ class Maw(Package):
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        auxname: Union[float, str] = field()
+        auxname: str = field()
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (

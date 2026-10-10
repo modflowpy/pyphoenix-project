@@ -82,7 +82,7 @@ class Sfr(Package):
         ifno: int = field(index=True, fk="packagedata.ifno")
         idv: int = field(index=True)
         iconr: int = field(index=True, fk="packagedata.ifno")
-        cprior: Union[float, str] = field()
+        cprior: str = field()
 
     @attrs.define
     class Initialstages(Item):
@@ -93,7 +93,7 @@ class Sfr(Package):
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        status: Union[float, str] = field()
+        status: str = field()
 
     @attrs.define
     class Bedk(Item):
@@ -160,7 +160,7 @@ class Sfr(Package):
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        auxname: Union[float, str] = field()
+        auxname: str = field()
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (

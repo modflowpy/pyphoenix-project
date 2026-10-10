@@ -319,14 +319,15 @@ class TestFilters:
         assert names == ["ifno", "strt", "nlakeconn", "boundname"]
 
     def test_item_class_inline_keyword_optional(self):
-        # keyword column -> Optional[str], tagged=True (same convention
-        # record.py's Record uses for optional keyword tokens).
+        # keyword column -> bool, tagged=True (a presence flag, like an
+        # option keyword).
         schema = [
-            value_column("pname", "string", object_dtype=True),
-            attr_column("mixed", "str", {"tagged": True}, optional=True),
+            value_column("pname", "string"),
+            attr_column("mixed", "bool", {"tagged": True}, optional=True, default="False"),
         ]
         result = item_class(schema, "Fileinput")
-        assert "mixed: Optional[str] = field(default=None, tagged=True, optional=True)" in result
+        assert "pname: str = field()" in result
+        assert "mixed: bool = field(default=False, tagged=True, optional=True)" in result
 
     def test_item_class_cellid_metadata(self):
         schema = [attr_column("cellid", "tuple", {"cellid": True}, optional=False)]
