@@ -152,12 +152,13 @@ def _open_for_write(component: Component, mode: str = "w"):
 
 
 def _write_mf6(component: Component, context=None, **kwargs) -> None:
+    from flopy4.mf6.converter.egress.unstructure import annotate_arrays
     from flopy4.mf6.write_context import WriteContext
 
-    ctx = context if context is not None else WriteContext.default()
+    ctx = WriteContext.resolve(context)
 
     with _open_for_write(component) as fp:
-        data = unstructure(component)
+        data = annotate_arrays(unstructure(component), ctx)
         try:
             dump_mf6(data, fp, context=ctx)
         except Exception as e:

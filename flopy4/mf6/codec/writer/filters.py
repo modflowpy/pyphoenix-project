@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.write_context import FloatPrecision
 
 _NUMBER_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 
@@ -72,7 +73,17 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
 
 
-def format_float(value: float, precision: int | None = None) -> str:
+def iprn_option(value: xr.DataArray, layer: int | None = None) -> str:
+    """An INTERNAL control record's `` IPRN <n>`` option for `value`, or
+    for one of its layers, from the `iprn`/`layer_iprn` attrs
+    `annotate_arrays` sets; empty if none is set."""
+    iprn = value.attrs.get("layer_iprn", {}).get(layer) if layer is not None else None
+    if iprn is None:
+        iprn = value.attrs.get("iprn")
+    return "" if iprn is None else f" IPRN {iprn}"
+
+
+def format_float(value: float, precision: "FloatPrecision | None" = None) -> str:
     """
     Format a float for MF6 input.
 
@@ -80,16 +91,17 @@ def format_float(value: float, precision: int | None = None) -> str:
     ----------
     value : float
         Value to format
-    precision : int, optional
-        Number of decimal places, in scientific notation. If None (the
-        default), use the shortest string that reads back as the same value.
+    precision : int or "lossless", optional
+        Number of decimal places, in scientific notation. If "lossless" or
+        None (the default), use the shortest string that reads back as the
+        same value.
     """
-    if precision is None:
+    if precision is None or precision == "lossless":
         return repr(float(value))
     return f"{value:.{precision}e}"
 
 
-def array2const(value: xr.DataArray, precision: int | None = None) -> Scalar:
+def array2const(value: xr.DataArray, precision: "FloatPrecision | None" = None) -> Scalar:
     """
     Convert array to constant scalar value.
 
@@ -97,9 +109,9 @@ def array2const(value: xr.DataArray, precision: int | None = None) -> Scalar:
     ----------
     value : xr.DataArray
         Array to convert
-    precision : int, optional
-        Number of decimal places for float output. If None (the default),
-        floats are written losslessly.
+    precision : int or "lossless", optional
+        Number of decimal places for float output. If "lossless" or None
+        (the default), floats are written losslessly.
     """
     if np.issubdtype(value.dtype, np.integer):
         return value.max().item()
@@ -154,7 +166,7 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
         yield np.squeeze(value.values)
 
 
-def array2string(value: NDArray, precision: int | None = None) -> str:
+def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> str:
     """
     Convert an array to a string. The array can be 1D or 2D.
     If the array is 1D, it is converted to a 1-line string,
@@ -167,9 +179,9 @@ def array2string(value: NDArray, precision: int | None = None) -> str:
     ----------
     value : NDArray
         Array to convert
-    precision : int, optional
-        Number of decimal places for float output. If None (the default),
-        floats are written losslessly.
+    precision : int or "lossless", optional
+        Number of decimal places for float output. If "lossless" or None
+        (the default), floats are written losslessly.
     """
     buffer = StringIO()
     value = np.asarray(value)
@@ -181,7 +193,7 @@ def array2string(value: NDArray, precision: int | None = None) -> str:
     value = np.atleast_1d(value)
 
     if np.issubdtype(value.dtype, np.floating):
-        if precision is None:
+        if precision is None or precision == "lossless":
             return "\n".join(" ".join(map(repr, row)) for row in value.tolist())
         format = f"%.{precision}e"
     elif np.issubdtype(value.dtype, np.integer):

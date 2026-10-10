@@ -27,6 +27,7 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
+from flopy4.mf6.write_context import ArrayIO, WriteContext
 from flopy4.utils import unwrap_optional
 
 
@@ -213,6 +214,32 @@ def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
     return values
 
 
+def _control_iprn(vrow: list) -> "int | None":
+    """An INTERNAL/OPEN-CLOSE control record's ``IPRN <n>`` option, if
+    `vrow` has one."""
+    if not vrow or str(vrow[0]).upper() not in ("INTERNAL", "OPEN/CLOSE"):
+        return None
+    tokens = [str(t) for t in vrow[1:]]
+    for j, tok in enumerate(tokens):
+        if tok.upper() == "IPRN" and j + 1 < len(tokens):
+            return int(float(tokens[j + 1]))
+    return None
+
+
+def _record_iprns(iprns: "dict | None", key: tuple, layer_iprns: list) -> None:
+    """Record an array's control records' IPRNs in `iprns`, by `ArrayKey`:
+    one for the whole array if every record has the same, else one per
+    layer that has one."""
+    if iprns is None or all(v is None for v in layer_iprns):
+        return
+    if len(set(layer_iprns)) == 1:
+        iprns[key[0] if len(key) == 1 else key] = layer_iprns[0]
+        return
+    for layer, iprn in enumerate(layer_iprns):
+        if iprn is not None:
+            iprns[(*key, layer)] = iprn
+
+
 def _read_control_record(
     rows: list, i: int, context: LoadContext, dtype, length: int
 ) -> "tuple[np.ndarray, int]":
@@ -266,13 +293,20 @@ def _griddata_flat_length(f, dims: dict, default: int) -> int:
     return default
 
 
-def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: LoadContext) -> dict:
+def _parse_array_block(
+    rows: list,
+    fields_by_name: dict,
+    dims: dict,
+    context: LoadContext,
+    iprns: "dict | None" = None,
+) -> dict:
     """Parse an array block's (GRIDDATA, DISU's CONNECTIONDATA) token rows
     into {field_name: np.ndarray}.
 
     Token rows alternate: [field_name, ?LAYERED] then one control record
     per layer (LAYERED) or a single one otherwise -- CONSTANT/INTERNAL/
-    OPEN-CLOSE, per `_read_control_record`.
+    OPEN-CLOSE, per `_read_control_record`. Each array's IPRN, if any,
+    goes in `iprns`, per `_record_iprns`.
     """
     result: dict = {}
     nlay = dims.get("nlay", 1)
@@ -318,12 +352,15 @@ def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: Lo
             target = _griddata_flat_length(f, dims, nodes)
             record_len = min(ncpl, target) if target else ncpl
             layers = []
+            layer_iprns = []
             while i < len(rows):
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
+                layer_iprns.append(_control_iprn(vrow))
                 value, i = _read_control_record(rows, i, context, dtype, record_len)
                 layers.append(value)
+            _record_iprns(iprns, (f.name,), layer_iprns)
             if layers:
                 # A single-record LAYERED field (see above) is really a
                 # plain target-shaped array duplicated across nlay --
@@ -337,6 +374,7 @@ def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: Lo
             if i >= len(rows):
                 break
             length = _griddata_flat_length(f, dims, nodes)
+            _record_iprns(iprns, (f.name,), [_control_iprn(rows[i])])
             value, i = _read_control_record(rows, i, context, dtype, length)
             result[f.name] = value
         if f.metadata.get("index") and f.name in result:
@@ -368,11 +406,16 @@ def _names(value: Any) -> list[str]:
 
 
 def _parse_readarray_period_block(
-    rows: list, ra_fields: dict, dims: dict, context: LoadContext
+    rows: list,
+    ra_fields: dict,
+    dims: dict,
+    context: LoadContext,
+    iprns: "dict | None" = None,
 ) -> "dict[str, np.ndarray | TimeArraySeriesRef]":
     """Arrays by the (lowercase) name they're written under: a field's
     name, or an auxiliary variable's, for its named array (see Pass 3b). A
-    time-array series reference gives the series' name."""
+    time-array series reference gives the series' name. Each array's IPRN,
+    if any, goes in `iprns` by that name, per `_record_iprns`."""
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
@@ -433,12 +476,15 @@ def _parse_readarray_period_block(
 
         if is_layered:
             layers = []
+            layer_iprns = []
             while i < len(rows):
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
+                layer_iprns.append(_control_iprn(vrow))
                 value, i = _read_control_record(rows, i, context, dtype, ncpl)
                 layers.append(value)
+            _record_iprns(iprns, (key,), layer_iprns)
             if layers:
                 if len(layers) < nlay:
                     layers = (layers * nlay)[:nlay]
@@ -447,6 +493,7 @@ def _parse_readarray_period_block(
             if i >= len(rows):
                 break
             size = nlay * ncpl if per_node else ncpl
+            _record_iprns(iprns, (key,), [_control_iprn(rows[i])])
             value, i = _read_control_record(rows, i, context, dtype, size)
             result[key] = np.asarray(value).reshape(nlay, ncpl) if per_node and nlay > 1 else value
         if f.metadata.get("index") and isinstance(arr := result.get(key), np.ndarray):
@@ -863,6 +910,8 @@ def structure_component(
     if isinstance(getattr(cls, "maxbound", None), property):
         known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
+    # IPRNs by `ArrayKey`, for the instance's write_context
+    iprns: dict = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
@@ -1122,7 +1171,14 @@ def structure_component(
                             for fname in ra_fields:
                                 periods.setdefault(fname, {})[kper] = None
                         continue
-                    parsed = _parse_readarray_period_block(rows, lookup, dims, context)
+                    period_iprns: dict = {}
+                    parsed = _parse_readarray_period_block(
+                        rows, lookup, dims, context, period_iprns
+                    )
+                    for k, iprn in period_iprns.items():
+                        name_, *layer = (k,) if isinstance(k, str) else k
+                        if name_ not in named:
+                            iprns[(name_, kper, *layer)] = iprn
                     for key, arr in parsed.items():
                         if key in named:
                             f, aux_name = named[key]
@@ -1179,10 +1235,17 @@ def structure_component(
     if effective_dims:
         for block_name, block_fields in array_fields.items():
             if rows := raw_lower.get(block_name):
-                kwargs.update(_parse_array_block(rows, block_fields, effective_dims, context))
+                kwargs.update(
+                    _parse_array_block(rows, block_fields, effective_dims, context, iprns)
+                )
 
     kwargs.update(binding_kwargs)
     if name is not None:
         kwargs["name"] = name
+    if iprns:
+        # write the arrays back the way the file wrote them
+        kwargs["write_context"] = WriteContext(
+            arrays={k: ArrayIO(iprn=v) for k, v in iprns.items()}
+        )
 
     return cls(**kwargs)

@@ -42,13 +42,13 @@
 {% elif how == "layered internal" %}
 {% for layer in value %}
 
-{{ inset }}INTERNAL
+{{ inset }}INTERNAL{{ value|iprn_option(loop.index0) }}
 {% for chunk in layer|array2chunks -%}
 {{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {%- endfor %}
 {% elif how == "internal" %}
-{{ inset }}INTERNAL
+{{ inset }}INTERNAL{{ value|iprn_option }}
 {% for chunk in value|array2chunks -%}
 {{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}

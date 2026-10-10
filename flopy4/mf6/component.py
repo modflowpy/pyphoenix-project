@@ -230,6 +230,15 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     since a live `.parent` would otherwise be a reference cycle.
     """
 
+    write_context: Optional[WriteContext] = field(default=None, repr=False, eq=False)
+    """How to write this component: whole-write settings, and settings
+    for its own arrays, by field (see `WriteContext`). Loading sets it to
+    reproduce how the file wrote its arrays; set it to None to drop that.
+    Ranks below a `write()` argument and an active `with WriteContext(...)`
+    block, above the ancestors' (whose `arrays` don't apply here: they key
+    the ancestor's own fields). Not written to file, and left out of
+    `to_dict()`."""
+
     dims: dict = field(
         default=attrs.Factory(dict),
         converter=attrs.converters.default_if_none(factory=dict),
@@ -565,9 +574,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         format : str, optional
             Output format. Default is MF6.
         context : WriteContext, optional
-            Configuration context for writing. If not provided,
-            uses the current context from the context manager stack,
-            or default settings.
+            Configuration context for writing. Its settings beat those of
+            an active context manager, then this component's and its
+            ancestors' `write_context`; see `WriteContext.resolve`. Each
+            child resolves its own, from the same argument.
         """
         # TODO: setting filename is a temp hack to get the parent's
         # name as this component's filename stem, if it has one. an
@@ -575,8 +585,17 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # are attached to parents.
         self.filename = self.filename or Path(self.default_filename())
 
-        # Determine active context: provided > current > default
-        active_context = context or WriteContext.current()
+        # ancestors' contexts give whole-write settings only: their arrays
+        # key the ancestor's own fields, not this component's
+        ancestors = []
+        node = self._parent
+        while node is not None:
+            if node.write_context is not None:
+                ancestors.append(attrs.evolve(node.write_context, arrays={}))
+            node = node._parent
+        active_context = WriteContext.resolve(
+            context, WriteContext.current(), self.write_context, *ancestors
+        )
 
         # before writing this component's own file: getting the children
         # stamps their parents and names, which a name file's rows (and
@@ -608,7 +627,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # recursion level, not just this component's own: a back-reference
         # to the owner would loop forever (child -> parent -> child -> ...).
         data = attrs.asdict(
-            self, recurse=True, filter=lambda attr, value: attr.name not in ("parent", "_parent")
+            self,
+            recurse=True,
+            filter=lambda attr, value: attr.name not in ("parent", "_parent", "write_context"),
         )
         spec = fields_dict(self.__class__)
 

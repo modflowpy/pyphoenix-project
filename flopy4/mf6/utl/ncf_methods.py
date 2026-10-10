@@ -20,7 +20,9 @@ class NcfMethods:
         """Write the NCF file. Latitude/longitude coordinates are always
         written at full float64 precision, even if the context asks for
         rounding."""
-        context = attrs.evolve(context or WriteContext.current(), float_precision=None)
+        # the argument ranks highest, so only precision is forced: the
+        # rest still resolves from the context manager and components
+        context = attrs.evolve(context or WriteContext(), float_precision="lossless")
         super().write(format=format, context=context)  # type: ignore[misc]
 
     @classmethod
