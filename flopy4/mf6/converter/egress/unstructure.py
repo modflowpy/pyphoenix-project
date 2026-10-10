@@ -387,8 +387,8 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
     """Copy each array's settings from `context.arrays` (see `ArrayKey`) onto
     the DataArray `data` holds for it, as attrs the writer reads: `iprn`,
     and `layer_iprn` for layers of a layered array whose IPRN differs from
-    the whole array's; `path` and `binary`, and `layer_path` and
-    `layer_binary` for layers given their own (see
+    the whole array's; `path`, `binary` and `hash`, and `layer_path`,
+    `layer_binary` and `layer_hash` for layers given their own (see
     `write_external_arrays`). A period block's arrays are keyed by
     period."""
     if not context.arrays:
@@ -409,17 +409,22 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
             layer_iprn: dict[int, int] = {}
             layer_path: dict[int, Path] = {}
             layer_binary: dict[int, bool] = {}
+            layer_hash: dict[int, str] = {}
             if "nlay" in value.dims:
                 for layer in range(value.sizes["nlay"]):
                     layer_value = context.array_io(*base, layer).iprn
                     if layer_value is not None and layer_value != io.iprn:
                         layer_iprn[layer] = layer_value
-                    # only a layer's own path and binary, not the whole array's
+                    # only a layer's own settings, not the whole array's
                     own = context.arrays.get((*base, layer))
-                    if own is not None and own.path is not None:
+                    if own is None:
+                        continue
+                    if own.path is not None:
                         layer_path[layer] = own.path
-                    if own is not None and own.binary is not None:
+                    if own.binary is not None:
                         layer_binary[layer] = own.binary
+                    if own.hash is not None:
+                        layer_hash[layer] = own.hash
             attrs_: dict[str, Any] = {"iprn": io.iprn} if io.iprn is not None else {}
             if layer_iprn:
                 attrs_["layer_iprn"] = layer_iprn
@@ -427,10 +432,14 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
                 attrs_["path"] = io.path
             if io.binary is not None:
                 attrs_["binary"] = io.binary
+            if io.hash is not None:
+                attrs_["hash"] = io.hash
             if layer_path:
                 attrs_["layer_path"] = layer_path
             if layer_binary:
                 attrs_["layer_binary"] = layer_binary
+            if layer_hash:
+                attrs_["layer_hash"] = layer_hash
             if attrs_:
                 value = value.copy(deep=False)
                 value.attrs = {**value.attrs, **attrs_}

@@ -27,7 +27,7 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
-from flopy4.mf6.write_context import ArrayIO, WriteContext
+from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
 from flopy4.utils import unwrap_optional
 
 
@@ -213,11 +213,11 @@ def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
     return values
 
 
-def _control_io(vrow: list) -> ArrayIO:
+def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
     """How an INTERNAL/OPEN-CLOSE control record writes its array, to write
     it back the same way: its ``IPRN <n>``, and an OPEN/CLOSE record's
-    file, as written (relative to the simulation directory), and whether
-    it's (BINARY)."""
+    file, as written (relative to the simulation directory), whether it's
+    (BINARY), and the hash of the `values` read from it."""
     kind = str(vrow[0]).upper() if vrow else ""
     if kind not in ("INTERNAL", "OPEN/CLOSE"):
         return ArrayIO()
@@ -230,7 +230,8 @@ def _control_io(vrow: list) -> ArrayIO:
     if kind != "OPEN/CLOSE" or not tokens:
         return ArrayIO(iprn=iprn)
     binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
-    return ArrayIO(iprn=iprn, path=Path(_strip_quotes(tokens[0])), binary=binary)
+    path = Path(_strip_quotes(tokens[0]))
+    return ArrayIO(iprn=iprn, path=path, binary=binary, hash=array_hash(values))
 
 
 def _record_array_io(arrays: "dict | None", key: tuple, ios: "list[ArrayIO]") -> None:
@@ -371,9 +372,10 @@ def _parse_array_block(
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                layer_ios.append(_control_io(vrow))
-                value, i = _read_control_record(rows, i, context, dtype, record_len)
+                value, j = _read_control_record(rows, i, context, dtype, record_len)
+                layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
+                i = j
             _record_array_io(arrays, (f.name,), layer_ios)
             if layers:
                 # A single-record LAYERED field (see above) is really a
@@ -388,8 +390,9 @@ def _parse_array_block(
             if i >= len(rows):
                 break
             length = _griddata_flat_length(f, dims, nodes)
-            _record_array_io(arrays, (f.name,), [_control_io(rows[i])])
-            value, i = _read_control_record(rows, i, context, dtype, length)
+            value, j = _read_control_record(rows, i, context, dtype, length)
+            _record_array_io(arrays, (f.name,), [_control_io(rows[i], value)])
+            i = j
             result[f.name] = value
         if f.metadata.get("index") and f.name in result:
             result[f.name] = _from_file_index(result[f.name])
@@ -495,9 +498,10 @@ def _parse_readarray_period_block(
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                layer_ios.append(_control_io(vrow))
-                value, i = _read_control_record(rows, i, context, dtype, ncpl)
+                value, j = _read_control_record(rows, i, context, dtype, ncpl)
+                layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
+                i = j
             _record_array_io(arrays, (key,), layer_ios)
             if layers:
                 if len(layers) < nlay:
@@ -507,8 +511,9 @@ def _parse_readarray_period_block(
             if i >= len(rows):
                 break
             size = nlay * ncpl if per_node else ncpl
-            _record_array_io(arrays, (key,), [_control_io(rows[i])])
-            value, i = _read_control_record(rows, i, context, dtype, size)
+            value, j = _read_control_record(rows, i, context, dtype, size)
+            _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
+            i = j
             result[key] = np.asarray(value).reshape(nlay, ncpl) if per_node and nlay > 1 else value
         if f.metadata.get("index") and isinstance(arr := result.get(key), np.ndarray):
             result[key] = _from_file_index(arr)

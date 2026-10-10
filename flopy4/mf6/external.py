@@ -15,9 +15,14 @@ import numpy as np
 import xarray as xr
 
 from flopy4.mf6.codec.writer.filters import array2chunks, array2string
-from flopy4.mf6.write_context import WriteContext
+from flopy4.mf6.write_context import WriteContext, array_hash
 
 _session = threading.local()
+
+
+class ArrayFileError(ValueError):
+    """An array's file can't be written as given, with
+    `WriteContext.strict` on. See `write_external_arrays`."""
 
 
 @contextmanager
@@ -37,7 +42,7 @@ def write_session() -> Iterator[None]:
         _session.moved = None
 
 
-@attrs.define
+@attrs.define(eq=False)
 class _Target:
     """One array, or one layer of a layered array, to write to a file."""
 
@@ -48,6 +53,11 @@ class _Target:
     path: Path  # absolute, normalized
     values: xr.DataArray
     binary: bool
+    hash: str | None = None  # the values' hash when loaded
+
+    def unchanged(self) -> bool:
+        """Whether the values are as loaded from the file."""
+        return self.hash is not None and self.hash == array_hash(self.values)
 
 
 @attrs.frozen
@@ -80,11 +90,16 @@ def write_external_arrays(
       instead, under the same name (with a suffix if another file of the
       write claims it), with a warning.
     - Arrays naming one file must hold the same values, and be written
-      binary or not alike. If they don't,
-      the writer can't tell which is the edited one: within a component,
-      every array of the file is written inline; an array disagreeing with
-      a file another component already wrote is written inline. Either
-      way, with a warning.
+      binary or not alike. If they don't, within a component, those still
+      holding the values loaded from the file (see `ArrayIO.hash`) keep
+      it, if they agree, and the others are written inline; failing that,
+      the writer can't tell which is the edited one, and writes every
+      array of the file inline. An array disagreeing with a file another
+      component already wrote is written inline. Either way, with a
+      warning.
+
+    With `context.strict`, either rule raises `ArrayFileError` instead,
+    before any file of the component is written.
     """
     files: dict[Path, _Written] | None = getattr(_session, "files", None)
     moved: dict[Path, Path] | None = getattr(_session, "moved", None)
@@ -101,6 +116,11 @@ def write_external_arrays(
     if not targets:
         return data
 
+    def warn(message: str) -> None:
+        if context.strict:
+            raise ArrayFileError(message)
+        warnings.warn(message, stacklevel=3)
+
     # the component's own directory is being written to anyway, even if
     # outside the simulation's (a standalone component's file can be)
     home = _absolute(filename.parent, root)
@@ -111,13 +131,13 @@ def write_external_arrays(
             continue
         # arrays sharing an outside file share its copy
         if (new := moved.get(t.path)) is None:
-            new = moved[t.path] = _unique(home / t.path.name, claimed)
-            claimed.add(new)
-            warnings.warn(
+            new = _unique(home / t.path.name, claimed)
+            warn(
                 f"{t.label}: {t.path} is outside the simulation directory {root}; "
-                f"writing it to {new} instead",
-                stacklevel=2,
+                f"writing it to {new} instead"
             )
+            moved[t.path] = new
+            claimed.add(new)
         t.path = new
 
     groups: dict[Path, list[_Target]] = {}
@@ -125,41 +145,49 @@ def write_external_arrays(
         groups.setdefault(t.path, []).append(t)
 
     inline: list[_Target] = []
+    writes: list[_Target] = []
     for path, group in groups.items():
-        first, binary = group[0].values, group[0].binary
-        if not all(_equal(first, t.values) for t in group[1:]):
-            differ = "hold different values"
-        elif not all(t.binary == binary for t in group[1:]):
-            differ = "aren't all binary or all text"
-        else:
-            differ = None
-        if differ:
-            warnings.warn(
-                f"{path}: {', '.join(t.label for t in group)} use this file but "
-                f"{differ}; writing them inline. To write one of them to the "
-                "file, give the others another ArrayIO path.",
-                stacklevel=2,
-            )
-            inline.extend(group)
-            continue
+        if (differ := _disagree(group)) is not None:
+            unchanged = [t for t in group if t.unchanged()]
+            changed = [t for t in group if not any(t is u for u in unchanged)]
+            if unchanged and changed and _disagree(unchanged) is None:
+                warn(
+                    f"{path}: {', '.join(t.label for t in changed)} changed since "
+                    "loaded from this file; writing them inline. "
+                    f"{', '.join(t.label for t in unchanged)} still use it."
+                )
+                inline.extend(changed)
+                group = unchanged
+            else:
+                warn(
+                    f"{path}: {', '.join(t.label for t in group)} use this file but "
+                    f"{differ}; writing them inline. To write one of them to the "
+                    "file, give the others another ArrayIO path."
+                )
+                inline.extend(group)
+                continue
+        first = group[0]
         if (written := files.get(path)) is not None:
-            if not _equal(written.values, first):
+            differ = None
+            if not _equal(written.values, first.values):
                 differ = "with different values"
-            elif written.binary != binary:
+            elif written.binary != first.binary:
                 differ = "binary" if written.binary else "as text"
             if differ:
-                warnings.warn(
+                warn(
                     f"{path}: {', '.join(t.label for t in group)} use this file, "
-                    f"which {written.label} wrote {differ}; writing them inline.",
-                    stacklevel=2,
+                    f"which {written.label} wrote {differ}; writing them inline."
                 )
                 inline.extend(group)
             continue
-        if binary:
-            _write_binary_file(path, first, group[0].key, group[0].layer)
+        writes.append(first)
+
+    for t in writes:
+        if t.binary:
+            _write_binary_file(t.path, t.values, t.key, t.layer)
         else:
-            _write_file(path, first, context)
-        files[path] = _Written(group[0].label, first, binary)
+            _write_file(t.path, t.values, context)
+        files[t.path] = _Written(t.label, t.values, t.binary)
 
     skip = {id(t) for t in inline}
     out = {name: dict(block) if isinstance(block, dict) else block for name, block in data.items()}
@@ -201,6 +229,7 @@ def _targets(
     where = f"{label}.{key}" + (f" period {kper + 1}" if kper is not None else "")
     layered = "nlay" in value.dims
     layer_binary = value.attrs.get("layer_binary", {})
+    layer_hash = value.attrs.get("layer_hash", {})
     stem = filename.name.replace(".", "_") + f"_{key}"
     if kper is not None:
         stem += f"_p{kper + 1}"
@@ -215,7 +244,8 @@ def _targets(
         if path is None:
             name = stem + ("" if layer is None else f"_l{layer + 1}")
             path = filename.parent / f"{name}.{'bin' if binary else 'txt'}"
-        return _Target(block_name, key, layer, what, _absolute(path, root), values, binary)
+        loaded = value.attrs.get("hash") if layer is None else layer_hash.get(layer)
+        return _Target(block_name, key, layer, what, _absolute(path, root), values, binary, loaded)
 
     if layered and (layer_path := value.attrs.get("layer_path")):
         return [target(p, layer) for layer, p in sorted(layer_path.items())]
@@ -268,6 +298,16 @@ def _unique(path: Path, claimed: set[Path]) -> Path:
         n += 1
         candidate = path.with_name(f"{path.stem}_{n}{path.suffix}")
     return candidate
+
+
+def _disagree(group: list[_Target]) -> str | None:
+    """How the arrays of `group`, sharing a file, disagree, or None."""
+    first = group[0]
+    if not all(_equal(first.values, t.values) for t in group[1:]):
+        return "hold different values"
+    if not all(t.binary == first.binary for t in group[1:]):
+        return "aren't all binary or all text"
+    return None
 
 
 def _equal(a: xr.DataArray, b: xr.DataArray) -> bool:

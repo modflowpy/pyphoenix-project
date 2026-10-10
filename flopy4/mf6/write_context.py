@@ -1,10 +1,12 @@
 """Write context for configuring MF6 input file writing."""
 
+import hashlib
 import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Union
 
 import attrs
+import numpy as np
 from attrs import define, field, frozen
 
 if TYPE_CHECKING:
@@ -44,11 +46,17 @@ class ArrayIO:
         Write the array's file as binary, OPEN/CLOSE (BINARY), or, if
         False, as text. True without a `path` writes it to a file named
         for its component and field. Overrides `WriteContext.use_binary`.
+    hash : str, optional
+        The array's values' `array_hash` when loaded from its file. When
+        arrays sharing a file disagree at write time, those whose values
+        still match their hash keep the file and the others are written
+        inline. Set by loading; not compared by `==`.
     """
 
     iprn: Optional[int] = None
     path: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
     binary: Optional[bool] = None
+    hash: Optional[str] = attrs.field(default=None, eq=False, repr=False)
 
     def over(self, lower: "ArrayIO") -> "ArrayIO":
         """This entry's settings, with `lower`'s filling those it leaves unset."""
@@ -109,6 +117,11 @@ class WriteContext:
         `ArrayIO.path` are written to it, others inline. 'internal' here
         overrides paths from lower-ranked contexts, such as loaded ones;
         `use_netcdf` overrides both.
+    strict : bool, optional
+        Raise instead of warning when the arrays' files can't be written
+        as given: a file outside the simulation directory, or arrays that
+        share a file and disagree. Raises before the component writes any
+        array file. Default is False.
     arrays : dict, optional
         Settings for single arrays, by `ArrayKey`, relative to the
         component written.
@@ -131,6 +144,7 @@ class WriteContext:
     binary_threshold: Optional[int] = field(default=None)
     float_precision: Optional[FloatPrecision] = field(default=None)
     array_format: Optional[ArrayFormat] = field(default=None)
+    strict: Optional[bool] = field(default=None)
     arrays: dict[ArrayKey, ArrayIO] = field(factory=dict)
 
     # Class-level thread-local storage for context stack
@@ -140,6 +154,7 @@ class WriteContext:
         "use_binary": False,
         "use_netcdf": False,
         "float_precision": "lossless",
+        "strict": False,
     }
 
     def __enter__(self) -> "WriteContext":
@@ -258,6 +273,15 @@ class WriteContext:
         else:
             options["precision"] = self.float_precision
         return options
+
+
+def array_hash(values: Any) -> str:
+    """A digest of an array's values, as written: integers as 8-byte, any
+    other number as an 8-byte float, in C order. See `ArrayIO.hash`."""
+    values = np.asarray(values)
+    dtype = "<i8" if np.issubdtype(values.dtype, np.integer) else "<f8"
+    data = np.ascontiguousarray(values, dtype=dtype).tobytes()
+    return hashlib.blake2b(data, digest_size=16).hexdigest()
 
 
 def _first(*values: Any) -> Any:

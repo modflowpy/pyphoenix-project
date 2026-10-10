@@ -9,13 +9,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from flopy4.mf6.external import ArrayFileError
 from flopy4.mf6.gwf import Chd, Dis, Gwf, Ic, Npf, Oc
 from flopy4.mf6.gwf.rcha import Rcha
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.time import Time
-from flopy4.mf6.write_context import ArrayIO, WriteContext
+from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
 
 
 def _lines(path: Path, *words: str) -> list[str]:
@@ -170,14 +171,49 @@ def test_shared_file_kept_while_arrays_agree(shared_rcha):
     assert _lines(shared_rcha.path, "OPEN/CLOSE") == ["OPEN/CLOSE rch.txt"] * 2
 
 
-def test_shared_file_inlined_when_arrays_disagree(shared_rcha):
-    """Edit one period of a shared file and every array using it is
-    written inline, with a warning naming them."""
+def test_load_records_hashes(shared_rcha):
+    io = shared_rcha.write_context.arrays[("recharge", 0)]
+    assert io.hash == array_hash([0.1] * 4)
+    assert io == ArrayIO(path=Path("rch.txt"), binary=False)  # not compared
+
+
+def test_shared_file_kept_by_unchanged_arrays(shared_rcha):
+    """Edit one period of a shared file and it's written inline, with a
+    warning naming it; the unchanged period keeps the file."""
     shared_rcha.recharge[0][:] = 0.5
+    with pytest.warns(UserWarning, match="period 1 changed since loaded"):
+        shared_rcha.write()
+    assert _lines(shared_rcha.path, "OPEN/CLOSE", "CONSTANT") == [
+        "CONSTANT 0.5",
+        "OPEN/CLOSE rch.txt",
+    ]
+    assert (shared_rcha.path.parent / "rch.txt").read_text().split() == ["0.1"] * 4
+
+
+def test_shared_file_inlined_when_every_array_changed(shared_rcha):
+    """With no array as loaded, the writer can't tell which holds the
+    file's values: every array using it is written inline."""
+    shared_rcha.recharge[0][:] = 0.5
+    shared_rcha.recharge[2][:] = 0.7
     with pytest.warns(UserWarning, match="period 1, rcha.recharge period 3 use this file"):
         shared_rcha.write()
     assert _lines(shared_rcha.path, "OPEN/CLOSE") == []
-    assert _lines(shared_rcha.path, "CONSTANT") == ["CONSTANT 0.5", "CONSTANT 0.1"]
+    assert _lines(shared_rcha.path, "CONSTANT") == ["CONSTANT 0.5", "CONSTANT 0.7"]
+
+
+def test_strict_raises_on_disagreeing_shared_file(shared_rcha):
+    shared_rcha.recharge[0][:] = 0.5
+    with pytest.raises(ArrayFileError, match="changed since loaded"):
+        shared_rcha.write(context=WriteContext(strict=True))
+    assert not (shared_rcha.path.parent / "rch.txt").exists()
+
+
+def test_strict_raises_on_outside_file(loaded_dis):
+    dis, out = loaded_dis
+    with pytest.raises(ArrayFileError, match="top.txt is outside"):
+        dis.write(context=WriteContext(strict=True))
+    assert not (out / "delr.txt").exists()
+    assert not dis.path.exists()
 
 
 def test_shared_outside_file_copied_once(tmp_path):

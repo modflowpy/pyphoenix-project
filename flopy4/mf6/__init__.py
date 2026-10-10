@@ -158,15 +158,17 @@ def _write_mf6(component: Component, context=None, **kwargs) -> None:
 
     ctx = WriteContext.resolve(context)
 
+    # settle the arrays' files before opening (and emptying) the
+    # component's, which a strict write may refuse
+    data = annotate_arrays(unstructure(component), ctx)
+    data = write_external_arrays(
+        data,
+        component.root,
+        component.filename or Path(component.default_filename()),
+        component.name,
+        ctx,
+    )
     with _open_for_write(component) as fp:
-        data = annotate_arrays(unstructure(component), ctx)
-        data = write_external_arrays(
-            data,
-            component.root,
-            component.filename or Path(component.default_filename()),
-            component.name,
-            ctx,
-        )
         try:
             dump_mf6(data, fp, context=ctx)
         except Exception as e:
