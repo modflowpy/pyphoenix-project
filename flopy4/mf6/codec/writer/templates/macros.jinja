@@ -44,13 +44,13 @@
 
 {{ inset }}INTERNAL
 {% for chunk in layer|array2chunks -%}
-{{ (2 * inset) ~ chunk|array2string(context.float_precision) }}
+{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {%- endfor %}
 {% elif how == "internal" %}
 {{ inset }}INTERNAL
 {% for chunk in value|array2chunks -%}
-{{ (2 * inset) ~ chunk|array2string(context.float_precision) }}
+{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {% elif how == "external" %}
 OPEN/CLOSE {{ value|quote_if_needed }}
