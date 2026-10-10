@@ -16,7 +16,13 @@ from flopy4.mf6.write_context import FloatPrecision
 _NUMBER_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 
 ArrayHow = Literal[
-    "constant", "internal", "external", "layered constant", "layered internal", "netcdf"
+    "constant",
+    "internal",
+    "external",
+    "layered constant",
+    "layered internal",
+    "layered external",
+    "netcdf",
 ]
 
 
@@ -51,6 +57,12 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     # arrays of fields MF6 reads from NetCDF are marked by egress
     if netcdf and value.attrs.get("netcdf", False):
         return "netcdf"
+    # arrays written to files of their own are marked by
+    # `write_external_arrays`
+    if "open_close" in value.attrs:
+        return "external"
+    if "layer_open_close" in value.attrs and "nlay" in value.dims:
+        return "layered external"
     if hasattr(value.data, "blocks"):
         # Dask-backed: stream as internal, never materialize to check constant.
         if "nlay" in value.dims:
@@ -81,6 +93,14 @@ def iprn_option(value: xr.DataArray, layer: int | None = None) -> str:
     if iprn is None:
         iprn = value.attrs.get("iprn")
     return "" if iprn is None else f" IPRN {iprn}"
+
+
+def is_constant(value: xr.DataArray) -> bool:
+    """Whether every value of `value` is the same. False for a dask array,
+    which would have to be computed to tell."""
+    if hasattr(value.data, "blocks"):
+        return False
+    return bool(value.max() == value.min())
 
 
 def format_float(value: float, precision: "FloatPrecision | None" = None) -> str:
@@ -187,10 +207,11 @@ def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> s
     value = np.asarray(value)
     if value.ndim > 2:
         raise ValueError(f"Only 1D and 2D arrays are supported, got ndim={value.ndim}")
+    # a single value (squeezed by array2chunks) is a 1d array of one
+    value = np.atleast_1d(value)
     if value.ndim == 1:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
         value = value[None]
-    value = np.atleast_1d(value)
 
     if np.issubdtype(value.dtype, np.floating):
         if precision is None or precision == "lossless":

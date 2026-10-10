@@ -387,7 +387,9 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
     """Copy each array's settings from `context.arrays` (see `ArrayKey`) onto
     the DataArray `data` holds for it, as attrs the writer reads: `iprn`,
     and `layer_iprn` for layers of a layered array whose IPRN differs from
-    the whole array's. A period block's arrays are keyed by period."""
+    the whole array's; `path`, and `layer_path` for layers given a path of
+    their own (see `write_external_arrays`). A period block's arrays are
+    keyed by period."""
     if not context.arrays:
         return data
     out: dict[str, Any] = {}
@@ -402,16 +404,25 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
             if not isinstance(value, xr.DataArray):
                 continue
             base = (key,) if kper is None else (key, kper)
-            iprn = context.array_io(*base).iprn
+            io = context.array_io(*base)
             layer_iprn: dict[int, int] = {}
+            layer_path: dict[int, Path] = {}
             if "nlay" in value.dims:
                 for layer in range(value.sizes["nlay"]):
                     layer_value = context.array_io(*base, layer).iprn
-                    if layer_value is not None and layer_value != iprn:
+                    if layer_value is not None and layer_value != io.iprn:
                         layer_iprn[layer] = layer_value
-            attrs_: dict[str, Any] = {"iprn": iprn} if iprn is not None else {}
+                    # only a layer's own path, not the whole array's
+                    own = context.arrays.get((*base, layer))
+                    if own is not None and own.path is not None:
+                        layer_path[layer] = own.path
+            attrs_: dict[str, Any] = {"iprn": io.iprn} if io.iprn is not None else {}
             if layer_iprn:
                 attrs_["layer_iprn"] = layer_iprn
+            if io.path is not None:
+                attrs_["path"] = io.path
+            if layer_path:
+                attrs_["layer_path"] = layer_path
             if attrs_:
                 value = value.copy(deep=False)
                 value.attrs = {**value.attrs, **attrs_}

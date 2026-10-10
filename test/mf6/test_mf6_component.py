@@ -1886,7 +1886,8 @@ def test_external_array_path_is_posix():
     from flopy4.mf6.codec.writer import _JINJA_ENV
 
     macros = _JINJA_ENV.get_template("macros.jinja").module
-    out = str(macros.array("top", PureWindowsPath("data\\top.dat"), how="external"))  # type: ignore[attr-defined]
+    value = xr.DataArray(np.ones(3), attrs={"open_close": PureWindowsPath("data\\top.dat")})
+    out = str(macros.array("top", value, how="external"))  # type: ignore[attr-defined]
     assert "OPEN/CLOSE data/top.dat" in out
 
 

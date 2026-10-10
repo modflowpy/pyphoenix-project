@@ -1,6 +1,7 @@
 """Write context for configuring MF6 input file writing."""
 
 import threading
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional, Union
 
 import attrs
@@ -9,7 +10,7 @@ from attrs import define, field, frozen
 if TYPE_CHECKING:
     from threading import local
 
-ArrayFormat = Literal["internal", "constant", "open/close"]
+ArrayFormat = Literal["internal", "open/close"]
 FloatPrecision = Union[int, Literal["lossless"]]
 
 ArrayKey = Union[str, tuple[str, int], tuple[str, int, int]]
@@ -30,10 +31,19 @@ class ArrayIO:
     ----------
     iprn : int, optional
         MF6's IPRN, the format the array is printed to the listing file in.
-        Written after INTERNAL; a CONSTANT array has none.
+        Written after INTERNAL or OPEN/CLOSE; a CONSTANT array has none.
+    path : Path, optional
+        Write the array to this file, as OPEN/CLOSE, relative to the
+        simulation directory. A layered array's whole-array path holds all
+        its layers in one file; give ``(field, layer)`` entries a path each
+        to write it LAYERED, a file per layer. A path outside the
+        simulation directory isn't written to: the array is written beside
+        its component's file instead, under the same name. Arrays sharing
+        a file must hold the same values, or they're written inline.
     """
 
     iprn: Optional[int] = None
+    path: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
 
     def over(self, lower: "ArrayIO") -> "ArrayIO":
         """This entry's settings, with `lower`'s filling those it leaves unset."""
@@ -82,8 +92,12 @@ class WriteContext:
         or "lossless" (the default) to write the shortest string that
         reads back as the same value.
     array_format : ArrayFormat, optional
-        How to write array data: 'internal', 'constant', or 'open/close'.
-        If None, automatically determined based on array properties.
+        How to write arrays: 'internal' inline, as INTERNAL or, for an
+        array whose values are all equal, CONSTANT; 'open/close' to a
+        file each, beside the component's file. If None, arrays with an
+        `ArrayIO.path` are written to it, others inline. 'internal' here
+        overrides paths from lower-ranked contexts, such as loaded ones;
+        `use_netcdf` overrides both.
     arrays : dict, optional
         Settings for single arrays, by `ArrayKey`, relative to the
         component written.
@@ -196,6 +210,9 @@ class WriteContext:
             if a.name != "arrays"
         }
         arrays = dict(lower.arrays)
+        if self.array_format == "internal":
+            # inline beats the lower contexts' files
+            arrays = {k: attrs.evolve(io, path=None) for k, io in arrays.items()}
         for key, io in self.arrays.items():
             arrays[key] = io.over(arrays[key]) if key in arrays else io
         return WriteContext(**values, arrays=arrays)

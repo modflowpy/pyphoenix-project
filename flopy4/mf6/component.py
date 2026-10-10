@@ -9,6 +9,7 @@ from attrs import fields
 
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
+from flopy4.mf6.external import write_session
 from flopy4.mf6.spec import field, fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
@@ -389,10 +390,23 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         """The path to the component's input file: in the workspace of the
         model or simulation it belongs to, or the cwd if none."""
         self.filename = self.filename or Path(self.default_filename())
+        return self.root / self.filename
+
+    @property
+    def root(self) -> Path:
+        """The directory the component's paths are relative to: the
+        workspace of the model or simulation it belongs to (for a
+        simulation's components, the simulation directory). If none, the
+        directory of its file, if that's given as an absolute path, else
+        the cwd."""
         node = self._parent
         while node is not None and not hasattr(node, "workspace"):
             node = node._parent
-        return (node.workspace if node is not None else Path.cwd()) / self.filename
+        if node is not None:
+            return node.workspace
+        if self.filename is not None and self.filename.is_absolute():
+            return self.filename.parent
+        return Path.cwd()
 
     def default_filename(self) -> str:
         """
@@ -601,9 +615,10 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
         # stamps their parents and names, which a name file's rows (and
         # the children's default filenames) are made from
         children = self._children
-        self._write(format=format, context=active_context)
-        for child in children.values():
-            child.write(format=format, context=context)
+        with write_session():
+            self._write(format=format, context=active_context)
+            for child in children.values():
+                child.write(format=format, context=context)
 
     def to_dict(self, blocks: bool = False, strict: bool = False) -> dict[str, Any]:
         """

@@ -19,6 +19,7 @@ _JINJA_ENV.filters["array2const"] = writer_filters.array2const
 _JINJA_ENV.filters["array2chunks"] = writer_filters.array2chunks
 _JINJA_ENV.filters["array2string"] = writer_filters.array2string
 _JINJA_ENV.filters["iprn_option"] = writer_filters.iprn_option
+_JINJA_ENV.filters["is_constant"] = writer_filters.is_constant
 _JINJA_ENV.filters["data2list"] = writer_filters.data2list
 _JINJA_ENV.filters["data2lines"] = writer_filters.data2lines
 _JINJA_ENV.filters["quote_if_needed"] = writer_filters.quote_if_needed

@@ -53,7 +53,22 @@
 {{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {% elif how == "external" %}
-OPEN/CLOSE {{ value|quote_if_needed }}
+{{ inset }}OPEN/CLOSE {{ value.attrs.open_close|quote_if_needed }}{{ value|iprn_option }}
+{% elif how == "layered external" %}
+{% for layer in value %}
+{% set path = value.attrs.layer_open_close.get(loop.index0) %}
+
+{% if path is not none %}
+{{ inset }}OPEN/CLOSE {{ path|quote_if_needed }}{{ value|iprn_option(loop.index0) }}
+{%- elif layer|is_constant %}
+{{ inset }}CONSTANT {{ layer|array2const(context.float_precision) }}
+{%- else %}
+{{ inset }}INTERNAL{{ value|iprn_option(loop.index0) }}
+{% for chunk in layer|array2chunks -%}
+{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
 {% endif %}
 {% endif %}
 {% endmacro %}
