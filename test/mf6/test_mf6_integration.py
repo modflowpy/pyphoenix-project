@@ -2929,8 +2929,8 @@ def test_structured_grid_arrays_written_by_row(function_tmpdir):
         name="rows",
         workspace=function_tmpdir,
         tdis=Time(perlen=[1.0], nstp=[1]),
-        solutiongroup={
-            "ims": Ims(
+        solutiongroup=[
+            Ims(
                 models=["gwf"],
                 outer_dvclose=1e-9,
                 outer_maximum=100,
@@ -2938,7 +2938,7 @@ def test_structured_grid_arrays_written_by_row(function_tmpdir):
                 inner_dvclose=1e-9,
                 linear_acceleration="cg",
             )
-        },
+        ],
     )
     dis = Dis(
         nlay=2,
