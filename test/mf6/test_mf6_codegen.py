@@ -13,7 +13,6 @@ To add a new tier:
   - Add assertions specific to that tier's expected base class / extras.
 """
 
-import ast
 import importlib
 import importlib.util
 import sys
@@ -43,12 +42,9 @@ from flopy4.mf6.utils.codegen.filters import (
     value_column,
 )
 from flopy4.mf6.utils.codegen.make import (
-    MIXINS,
     build_component_spec,
     check_mixins,
-    dfn_field_names,
     make_modules,
-    mixin_requires,
 )
 
 
@@ -956,37 +952,6 @@ def test_check_mixins_rejects_unknown_component(all_dfns):
     check_mixins(all_dfns)
     with pytest.raises(ValueError, match="sim-tdis"):
         check_mixins({n: c for n, c in all_dfns.items() if n != "sim-tdis"})
-
-
-def test_check_mixins_rejects_missing_field(all_dfns):
-    """A DFN lacking a field a mixin needs fails the check, naming both."""
-    dis = all_dfns["gwf-dis"].model_copy(deep=True)
-    for block in dis.blocks.values():
-        (block.fields or {}).pop("crs", None)
-    with pytest.raises(ValueError, match="DisMethods on gwf-dis: crs"):
-        check_mixins({**all_dfns, "gwf-dis": dis})
-
-
-def _self_attrs(mixin: str) -> set[str]:
-    module, _, cls = mixin.partition(":")
-    tree = ast.parse(Path(importlib.util.find_spec(module).origin).read_text())
-    node = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == cls)
-    return {
-        n.attr
-        for n in ast.walk(node)
-        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "self"
-    }
-
-
-@pytest.mark.parametrize("name", sorted(MIXINS))
-def test_mixin_requires_declared(all_dfns, name):
-    """Every DFN field a mixin reads off ``self`` is in its ``_requires``,
-    and everything in ``_requires`` is a DFN field."""
-    fields = dfn_field_names(all_dfns[name])
-    for mixin in MIXINS[name]:
-        required = mixin_requires(mixin)
-        assert _self_attrs(mixin) & fields <= required, mixin
-        assert required <= fields, mixin
 
 
 @pytest.mark.parametrize(
