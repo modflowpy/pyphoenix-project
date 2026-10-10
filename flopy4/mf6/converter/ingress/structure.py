@@ -136,8 +136,8 @@ def _read_open_close_values(vrow: list, context: LoadContext, dtype) -> np.ndarr
     based on the binary-array record format flopy4's own head-output
     reader already relies on, per `_BINARY_ARRAY_HEADER`. Otherwise the
     referenced file is a plain numeric array, whitespace- or (seen in one
-    fixture family) comma-separated with no spaces at all, optionally
-    scaled by FACTOR.
+    fixture family) comma-separated with no spaces at all. FACTOR is
+    applied by the caller, `_read_control_record`.
     """
     tokens = [str(t) for t in vrow[1:]]
     if not tokens:
@@ -145,17 +145,9 @@ def _read_open_close_values(vrow: list, context: LoadContext, dtype) -> np.ndarr
     path = context.resolve(_strip_quotes(tokens[0]))
 
     if any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:]):
-        values = _read_binary_array_values(path, dtype)
-    else:
-        text = path.read_text().replace(",", " ")
-        values = np.array(text.split(), dtype=dtype)
-
-    for j, tok in enumerate(tokens[1:], start=1):
-        if tok.upper() == "FACTOR" and j + 1 < len(tokens):
-            factor = tokens[j + 1]
-            values = values * (int(factor) if dtype == np.int64 else float(factor))
-            break
-    return values
+        return _read_binary_array_values(path, dtype)
+    text = path.read_text().replace(",", " ")
+    return np.array(text.split(), dtype=dtype)
 
 
 def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
@@ -207,6 +199,20 @@ def _numeric_prefix(row: list) -> list:
     return out
 
 
+def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
+    """Scale `values` by the INTERNAL/OPEN-CLOSE control record's
+    ``FACTOR <f>`` option, if `vrow` has one. MF6 reads an integer
+    array's FACTOR as an integer, so it's truncated to one here too."""
+    tokens = [str(t) for t in vrow[1:]]
+    for j, tok in enumerate(tokens):
+        if tok.upper() == "FACTOR" and j + 1 < len(tokens):
+            factor = float(tokens[j + 1])
+            if values.dtype == np.int64:
+                return values * int(factor)
+            return values * factor
+    return values
+
+
 def _read_control_record(
     rows: list, i: int, context: LoadContext, dtype, length: int
 ) -> "tuple[np.ndarray, int]":
@@ -228,13 +234,17 @@ def _read_control_record(
         return np.full(length, v, dtype=dtype), i + 1
     if kind == "OPEN/CLOSE":
         # read only the values the array needs; a file may hold more
-        return _read_open_close_values(vrow, context, dtype)[:length], i + 1
+        values = _read_open_close_values(vrow, context, dtype)[:length]
+        return _apply_factor(values, vrow), i + 1
     j = i + 1 if kind == "INTERNAL" else i
     values: list = []
     while len(values) < length and j < len(rows):
         values.extend(_numeric_prefix(rows[j]))
         j += 1
-    return np.array(values[:length], dtype=dtype), j
+    array = np.array(values[:length], dtype=dtype)
+    if kind == "INTERNAL":
+        array = _apply_factor(array, vrow)
+    return array, j
 
 
 def _from_file_index(value: np.ndarray) -> np.ndarray:
