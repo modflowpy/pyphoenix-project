@@ -1,6 +1,8 @@
-"""Writing arrays to files of their own, for OPEN/CLOSE control records."""
+"""Writing arrays to files of their own, for OPEN/CLOSE control records,
+text or binary."""
 
 import os
+import struct
 import threading
 import warnings
 from collections.abc import Iterator
@@ -45,12 +47,14 @@ class _Target:
     label: str
     path: Path  # absolute, normalized
     values: xr.DataArray
+    binary: bool
 
 
 @attrs.frozen
 class _Written:
     label: str
     values: xr.DataArray
+    binary: bool
 
 
 def write_external_arrays(
@@ -62,8 +66,10 @@ def write_external_arrays(
 
     An array goes to a file if it has an `ArrayIO.path` (in its `path`
     attr, or per layer in `layer_path`), or, without one, if
-    `context.array_format` is "open/close": then a layered array gets a
-    file per layer. Arrays the writer reads from NetCDF are left alone.
+    `context.array_format` is "open/close", or if it's written binary
+    (see `_is_binary`) and `array_format` isn't "internal": then a
+    layered array gets a file per layer. Arrays the writer reads from
+    NetCDF are left alone.
 
     `root` is the simulation directory, which every path is relative to,
     `filename` the component's file, relative to it, and `label` names the
@@ -73,7 +79,8 @@ def write_external_arrays(
       written to. The array is written beside the component's file
       instead, under the same name (with a suffix if another file of the
       write claims it), with a warning.
-    - Arrays naming one file must hold the same values. If they don't,
+    - Arrays naming one file must hold the same values, and be written
+      binary or not alike. If they don't,
       the writer can't tell which is the edited one: within a component,
       every array of the file is written inline; an array disagreeing with
       a file another component already wrote is written inline. Either
@@ -119,28 +126,40 @@ def write_external_arrays(
 
     inline: list[_Target] = []
     for path, group in groups.items():
-        first = group[0].values
+        first, binary = group[0].values, group[0].binary
         if not all(_equal(first, t.values) for t in group[1:]):
+            differ = "hold different values"
+        elif not all(t.binary == binary for t in group[1:]):
+            differ = "aren't all binary or all text"
+        else:
+            differ = None
+        if differ:
             warnings.warn(
                 f"{path}: {', '.join(t.label for t in group)} use this file but "
-                "hold different values; writing them inline. To write one of them "
-                "to the file, give the others another ArrayIO path.",
+                f"{differ}; writing them inline. To write one of them to the "
+                "file, give the others another ArrayIO path.",
                 stacklevel=2,
             )
             inline.extend(group)
             continue
         if (written := files.get(path)) is not None:
             if not _equal(written.values, first):
+                differ = "with different values"
+            elif written.binary != binary:
+                differ = "binary" if written.binary else "as text"
+            if differ:
                 warnings.warn(
                     f"{path}: {', '.join(t.label for t in group)} use this file, "
-                    f"which {written.label} wrote with different values; writing "
-                    "them inline.",
+                    f"which {written.label} wrote {differ}; writing them inline.",
                     stacklevel=2,
                 )
                 inline.extend(group)
             continue
-        _write_file(path, first, context)
-        files[path] = _Written(group[0].label, first)
+        if binary:
+            _write_binary_file(path, first, group[0].key, group[0].layer)
+        else:
+            _write_file(path, first, context)
+        files[path] = _Written(group[0].label, first, binary)
 
     skip = {id(t) for t in inline}
     out = {name: dict(block) if isinstance(block, dict) else block for name, block in data.items()}
@@ -151,10 +170,15 @@ def write_external_arrays(
         da = da.copy(deep=False)
         rel = _relative(t.path, root)
         if t.layer is None:
-            da.attrs = {**da.attrs, "open_close": rel}
+            da.attrs = {**da.attrs, "open_close": rel, "open_close_binary": t.binary}
         else:
             layers = {**da.attrs.get("layer_open_close", {}), t.layer: rel}
-            da.attrs = {**da.attrs, "layer_open_close": layers}
+            binaries = {**da.attrs.get("layer_open_close_binary", {}), t.layer: t.binary}
+            da.attrs = {
+                **da.attrs,
+                "layer_open_close": layers,
+                "layer_open_close_binary": binaries,
+            }
         out[t.block][t.key] = da
     return out
 
@@ -176,28 +200,50 @@ def _targets(
     kper = int(header) - 1 if name == "period" and header.isdigit() else None
     where = f"{label}.{key}" + (f" period {kper + 1}" if kper is not None else "")
     layered = "nlay" in value.dims
+    layer_binary = value.attrs.get("layer_binary", {})
+    stem = filename.name.replace(".", "_") + f"_{key}"
+    if kper is not None:
+        stem += f"_p{kper + 1}"
 
-    def target(path: Path, layer: int | None) -> _Target:
+    def target(path: Path | None, layer: int | None) -> _Target:
         values = value if layer is None else value.isel(nlay=layer)
         what = where if layer is None else f"{where} layer {layer + 1}"
-        return _Target(block_name, key, layer, what, _absolute(path, root), values)
+        own = value.attrs.get("binary")
+        if layer is not None:
+            own = layer_binary.get(layer, own)
+        binary = _is_binary(values, own, context)
+        if path is None:
+            name = stem + ("" if layer is None else f"_l{layer + 1}")
+            path = filename.parent / f"{name}.{'bin' if binary else 'txt'}"
+        return _Target(block_name, key, layer, what, _absolute(path, root), values, binary)
 
     if layered and (layer_path := value.attrs.get("layer_path")):
         return [target(p, layer) for layer, p in sorted(layer_path.items())]
     if (path := value.attrs.get("path")) is not None:
         return [target(path, None)]
-    if context.array_format != "open/close":
+    if context.array_format == "internal":
         return []
-    stem = filename.name.replace(".", "_") + f"_{key}"
-    if kper is not None:
-        stem += f"_p{kper + 1}"
-    parent = filename.parent
     if layered:
-        return [
-            target(parent / f"{stem}_l{layer + 1}.txt", layer)
-            for layer in range(value.sizes["nlay"])
-        ]
-    return [target(parent / f"{stem}.txt", None)]
+        targets = [target(None, layer) for layer in range(value.sizes["nlay"])]
+    else:
+        targets = [target(None, None)]
+    if context.array_format == "open/close":
+        return targets
+    # otherwise only binary arrays go to files
+    return [t for t in targets if t.binary]
+
+
+def _is_binary(values: xr.DataArray, own: bool | None, context: WriteContext) -> bool:
+    """Whether to write `values` to a binary file: its own `ArrayIO.binary`
+    if set, else `context.use_binary`, if the values are bigger than
+    `context.binary_threshold`, in bytes as written."""
+    if own is not None:
+        return own
+    if not context.use_binary:
+        return False
+    if context.binary_threshold is None:
+        return True
+    return values.size * _binary_dtype(values).itemsize > context.binary_threshold
 
 
 def _absolute(path: Path, root: Path) -> Path:
@@ -241,3 +287,28 @@ def _write_file(path: Path, values: xr.DataArray, context: WriteContext) -> None
         for layer in layers:
             for chunk in array2chunks(layer):
                 f.write(array2string(chunk, context.float_precision) + "\n")
+
+
+# MF6's binary array header: KSTP, KPER, PERTIM, TOTIM, TEXT, and three
+# sizes MF6 only logs (`ArrayReaders.f90::read_binary_header`); it reads
+# as many values as the array holds after it and checks the file is
+# exactly that big.
+_BINARY_HEADER = struct.Struct("<iidd16siii")
+
+
+def _binary_dtype(values: xr.DataArray) -> np.dtype:
+    """MF6 reads binary integer arrays as 4-byte, real ones as 8-byte."""
+    return np.dtype("<i4" if np.issubdtype(values.dtype, np.integer) else "<f8")
+
+
+def _write_binary_file(path: Path, values: xr.DataArray, key: str, layer: int | None) -> None:
+    """Write `values` as MF6 reads an OPEN/CLOSE (BINARY) file: one header,
+    then every value, C order (a layer's rows, then the next layer's)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shape = (1, 1, *values.shape)[-3:]
+    ilay = shape[0] if layer is None else layer + 1
+    text = key.upper().encode("ascii", "replace")[:16].rjust(16)
+    header = _BINARY_HEADER.pack(1, 1, 1.0, 1.0, text, shape[2], shape[1], ilay)
+    with path.open("wb") as f:
+        f.write(header)
+        f.write(np.ascontiguousarray(values, dtype=_binary_dtype(values)).tobytes())

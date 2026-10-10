@@ -40,10 +40,15 @@ class ArrayIO:
         simulation directory isn't written to: the array is written beside
         its component's file instead, under the same name. Arrays sharing
         a file must hold the same values, or they're written inline.
+    binary : bool, optional
+        Write the array's file as binary, OPEN/CLOSE (BINARY), or, if
+        False, as text. True without a `path` writes it to a file named
+        for its component and field. Overrides `WriteContext.use_binary`.
     """
 
     iprn: Optional[int] = None
     path: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
+    binary: Optional[bool] = None
 
     def over(self, lower: "ArrayIO") -> "ArrayIO":
         """This entry's settings, with `lower`'s filling those it leaves unset."""
@@ -80,13 +85,19 @@ class WriteContext:
     Parameters
     ----------
     use_binary : bool, optional
-        Prefer binary files for arrays. Default is False.
+        Write arrays to binary files, OPEN/CLOSE (BINARY), named for their
+        component and field (a layered array's a file per layer), unless
+        `array_format` is 'internal'. Arrays written to files anyway, by
+        an `ArrayIO.path` or 'open/close', are written binary too. Set
+        here, it overrides lower-ranked contexts' `ArrayIO.binary`, such
+        as loaded ones. Default is False.
     use_netcdf : bool, optional
         Prefer netcdf files for arrays. Default is False.
     binary_threshold : int, optional
-        Size threshold (in bytes) for using binary format.
-        Arrays larger than this will be written as binary.
-        If None, use_binary setting is used unconditionally.
+        With `use_binary`, write only arrays (or layers, for a file per
+        layer) bigger than this many bytes as binary: 8 per value of a
+        real array, 4 of an integer one. Others are written as if
+        `use_binary` were False. If None, every array is.
     float_precision : int or "lossless", optional
         Number of decimal places for float output, in scientific notation,
         or "lossless" (the default) to write the shortest string that
@@ -212,7 +223,9 @@ class WriteContext:
         arrays = dict(lower.arrays)
         if self.array_format == "internal":
             # inline beats the lower contexts' files
-            arrays = {k: attrs.evolve(io, path=None) for k, io in arrays.items()}
+            arrays = {k: attrs.evolve(io, path=None, binary=None) for k, io in arrays.items()}
+        elif self.use_binary is not None:
+            arrays = {k: attrs.evolve(io, binary=None) for k, io in arrays.items()}
         for key, io in self.arrays.items():
             arrays[key] = io.over(arrays[key]) if key in arrays else io
         return WriteContext(**values, arrays=arrays)

@@ -1,5 +1,7 @@
-"""Tests for writing arrays to files of their own, as OPEN/CLOSE."""
+"""Tests for writing arrays to files of their own, as OPEN/CLOSE, text or
+binary."""
 
+import struct
 import textwrap
 import warnings
 from pathlib import Path
@@ -61,9 +63,9 @@ def loaded_dis(tmp_path):
 def test_load_records_files(loaded_dis):
     dis, _ = loaded_dis
     assert dis.write_context.arrays == {
-        "delr": ArrayIO(iprn=2, path=Path("delr.txt")),
-        "top": ArrayIO(path=Path("../data/top.txt")),
-        ("botm", 1): ArrayIO(path=Path("botm2.txt")),
+        "delr": ArrayIO(iprn=2, path=Path("delr.txt"), binary=False),
+        "top": ArrayIO(path=Path("../data/top.txt"), binary=False),
+        ("botm", 1): ArrayIO(path=Path("botm2.txt"), binary=False),
     }
 
 
@@ -219,6 +221,174 @@ def test_shared_outside_file_copied_once(tmp_path):
     assert (out / "rch_1.txt").read_text().split() == ["0.2"] * 4
 
 
+_HEADER = struct.Struct("<iidd16siii")
+
+
+def _write_bin(path: Path, values, dtype="<f8", shape=(1, 1, 1)) -> None:
+    ncol, nrow, ilay = shape
+    header = _HEADER.pack(1, 1, 1.0, 1.0, b"ARRAY".rjust(16), ncol, nrow, ilay)
+    path.write_bytes(header + np.asarray(values, dtype=dtype).tobytes())
+
+
+def _read_bin(path: Path, dtype="<f8") -> tuple[tuple, np.ndarray]:
+    data = path.read_bytes()
+    return _HEADER.unpack(data[: _HEADER.size]), np.frombuffer(data[_HEADER.size :], dtype=dtype)
+
+
+@pytest.fixture
+def binary_dis(tmp_path):
+    """A DIS with binary files: a whole 3-D array after one header (whose
+    sizes are a layer's, as MF6 only logs them), and an integer array."""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    _write_bin(ws / "botm.bin", [0.0, -1.0, 0.5, -2.0, -3.0, -4.0], shape=(3, 1, 1))
+    _write_bin(ws / "idomain.bin", [1, 1, 0, 1, 1, 1], dtype="<i4", shape=(3, 1, 1))
+    (ws / "m.dis").write_text(
+        textwrap.dedent("""            BEGIN DIMENSIONS
+              NLAY 2
+              NROW 1
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                CONSTANT 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                CONSTANT 1.0
+              BOTM
+                OPEN/CLOSE botm.bin (BINARY) IPRN 3
+              IDOMAIN
+                OPEN/CLOSE idomain.bin (BINARY)
+            END GRIDDATA
+        """)
+    )
+    dis = Dis.load(ws / "m.dis", context=LoadContext(workspace=ws))
+    out = tmp_path / "out"
+    out.mkdir()
+    dis.filename = str(out / "out.dis")
+    return dis, out
+
+
+def test_load_binary_files(binary_dis):
+    """A binary file's every value is read, not the header's sizes' worth."""
+    dis, _ = binary_dis
+    assert np.ravel(dis.botm).tolist() == [0.0, -1.0, 0.5, -2.0, -3.0, -4.0]
+    assert np.ravel(dis.idomain).tolist() == [1, 1, 0, 1, 1, 1]
+    assert dis.write_context.arrays == {
+        "botm": ArrayIO(iprn=3, path=Path("botm.bin"), binary=True),
+        "idomain": ArrayIO(path=Path("idomain.bin"), binary=True),
+    }
+
+
+def test_write_keeps_binary_files(binary_dis):
+    dis, out = binary_dis
+    dis.write()
+    assert _lines(dis.path, "OPEN/CLOSE") == [
+        "OPEN/CLOSE botm.bin (BINARY) IPRN 3",
+        "OPEN/CLOSE idomain.bin (BINARY)",
+    ]
+    header, values = _read_bin(out / "botm.bin")
+    assert header == (1, 1, 1.0, 1.0, b"BOTM".rjust(16), 3, 1, 2)
+    assert values.tolist() == [0.0, -1.0, 0.5, -2.0, -3.0, -4.0]
+    _, values = _read_bin(out / "idomain.bin", dtype="<i4")
+    assert values.tolist() == [1, 1, 0, 1, 1, 1]
+    again = Dis.load(dis.path, context=LoadContext(workspace=out))
+    assert np.array_equal(again.botm, dis.botm)
+    assert np.array_equal(again.idomain, dis.idomain)
+
+
+def test_use_binary_false_writes_loaded_binary_files_as_text(binary_dis):
+    dis, out = binary_dis
+    dis.write(context=WriteContext(use_binary=False))
+    assert _lines(dis.path, "OPEN/CLOSE") == [
+        "OPEN/CLOSE botm.bin IPRN 3",
+        "OPEN/CLOSE idomain.bin",
+    ]
+    assert (out / "idomain.bin").read_text().split() == ["1", "1", "0", "1", "1", "1"]
+
+
+def test_use_binary_writes_every_array_to_a_binary_file(tmp_path):
+    """use_binary writes each array to a binary file named for its
+    component and field, a layered array's a file per layer."""
+    dis = Dis(nlay=2, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=[0.0, 0.5, -1.0, -2.0])
+    dis.filename = str(tmp_path / "m.dis")
+    dis.write(context=WriteContext(use_binary=True))
+    assert _lines(dis.path, "OPEN/CLOSE") == [
+        "OPEN/CLOSE m_dis_delr.bin (BINARY)",
+        "OPEN/CLOSE m_dis_delc.bin (BINARY)",
+        "OPEN/CLOSE m_dis_top.bin (BINARY)",
+        "OPEN/CLOSE m_dis_botm_l1.bin (BINARY)",
+        "OPEN/CLOSE m_dis_botm_l2.bin (BINARY)",
+    ]
+    header, values = _read_bin(tmp_path / "m_dis_botm_l2.bin")
+    assert header == (1, 1, 1.0, 1.0, b"BOTM".rjust(16), 2, 1, 2)
+    assert values.tolist() == [-1.0, -2.0]
+    again = Dis.load(dis.path, context=LoadContext(workspace=tmp_path))
+    assert np.array_equal(again.botm, dis.botm)
+
+
+def test_binary_threshold(tmp_path):
+    """With a threshold, only arrays bigger than it are written binary."""
+    dis = Dis(
+        nlay=2, nrow=1, ncol=2, delr=[1.0, 2.0], delc=1.0, top=1.0, botm=[0.0, 0.5, -1.0, -2.0]
+    )
+    dis.filename = str(tmp_path / "m.dis")
+    # delr, top and a layer of botm are 16 bytes each, delc 8
+    dis.write(context=WriteContext(use_binary=True, binary_threshold=15))
+    assert _lines(dis.path, "OPEN/CLOSE") == [
+        "OPEN/CLOSE m_dis_delr.bin (BINARY)",
+        "OPEN/CLOSE m_dis_top.bin (BINARY)",
+        "OPEN/CLOSE m_dis_botm_l1.bin (BINARY)",
+        "OPEN/CLOSE m_dis_botm_l2.bin (BINARY)",
+    ]
+    dis.write(context=WriteContext(use_binary=True, binary_threshold=16))
+    assert _lines(dis.path, "OPEN/CLOSE") == []
+
+
+def test_internal_beats_use_binary(tmp_path):
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(tmp_path / "m.dis")
+    dis.write(context=WriteContext(use_binary=True, array_format="internal"))
+    assert _lines(dis.path, "OPEN/CLOSE") == []
+
+
+def test_open_close_with_use_binary_names_files_bin(tmp_path):
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(tmp_path / "m.dis")
+    dis.write(
+        context=WriteContext(
+            array_format="open/close", use_binary=True, arrays={"top": ArrayIO(binary=False)}
+        )
+    )
+    assert "OPEN/CLOSE m_dis_top.txt" in _lines(dis.path, "OPEN/CLOSE")
+    assert "OPEN/CLOSE m_dis_botm.bin (BINARY)" in _lines(dis.path, "OPEN/CLOSE")
+
+
+def test_array_binary_without_path(tmp_path):
+    """ArrayIO(binary=True) alone writes the array to a binary file."""
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(tmp_path / "m.dis")
+    dis.write_context = WriteContext(arrays={"top": ArrayIO(binary=True)})
+    dis.write()
+    assert _lines(dis.path, "OPEN/CLOSE") == ["OPEN/CLOSE m_dis_top.bin (BINARY)"]
+
+
+def test_shared_file_binary_and_text_inlined(tmp_path):
+    """Arrays sharing a file must agree on binary, or go inline."""
+    dis = Dis(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    dis.filename = str(tmp_path / "m.dis")
+    dis.write_context = WriteContext(
+        arrays={
+            "delr": ArrayIO(path="a.dat", binary=True),
+            "delc": ArrayIO(path="a.dat"),
+        }
+    )
+    with pytest.warns(UserWarning, match="aren.t all binary or all text"):
+        dis.write()
+    assert _lines(dis.path, "OPEN/CLOSE") == []
+
+
 def _sim(workspace: Path) -> Simulation:
     sim = Simulation(
         name="sim",
@@ -265,3 +435,18 @@ def test_mf6_reads_open_close_arrays(function_tmpdir):
     assert "OPEN/CLOSE gwf_dis_botm_l2.txt" in (external / "gwf.dis").read_text()
     sim.run()
     assert (inline / "gwf.hds").read_bytes() == (external / "gwf.hds").read_bytes()
+
+
+def test_mf6_reads_binary_arrays(function_tmpdir):
+    """MF6 runs a simulation written with every array in a binary file of
+    its own and gets the same heads as from the inline write."""
+    inline, binary = function_tmpdir / "inline", function_tmpdir / "binary"
+    sim = _sim(inline)
+    sim.write()
+    sim.run()
+    sim = _sim(binary)
+    sim.write(context=WriteContext(use_binary=True))
+    assert "OPEN/CLOSE gwf_npf_k.bin (BINARY)" in (binary / "gwf.npf").read_text()
+    assert "OPEN/CLOSE gwf_dis_botm_l2.bin (BINARY)" in (binary / "gwf.dis").read_text()
+    sim.run()
+    assert (inline / "gwf.hds").read_bytes() == (binary / "gwf.hds").read_bytes()

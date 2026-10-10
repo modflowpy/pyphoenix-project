@@ -95,6 +95,17 @@ def iprn_option(value: xr.DataArray, layer: int | None = None) -> str:
     return "" if iprn is None else f" IPRN {iprn}"
 
 
+def binary_option(value: xr.DataArray, layer: int | None = None) -> str:
+    """An OPEN/CLOSE control record's `` (BINARY)`` option for `value`, or
+    for one of its layers, if `write_external_arrays` wrote its file
+    binary; else empty."""
+    if layer is None:
+        binary = value.attrs.get("open_close_binary", False)
+    else:
+        binary = value.attrs.get("layer_open_close_binary", {}).get(layer, False)
+    return " (BINARY)" if binary else ""
+
+
 def is_constant(value: xr.DataArray) -> bool:
     """Whether every value of `value` is the same. False for a dask array,
     which would have to be computed to tell."""

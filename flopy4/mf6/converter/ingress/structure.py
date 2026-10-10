@@ -92,27 +92,26 @@ def _parse_rows(
 # kstp, kper, pertime") already decodes; MF6 has used one binary
 # 2D-array record format for both real and integer arrays since
 # MODFLOW-2005 (u2drel/u2dint), for output and OPEN/CLOSE (BINARY) input
-# alike -- the data portion follows immediately, NROW*NCOL values, real
-# arrays double-precision (matching MF6's own double-precision solver and
-# head-output convention) and integer arrays 4-byte.
+# alike -- the data portion follows immediately, real arrays
+# double-precision (matching MF6's own double-precision solver and
+# head-output convention) and integer arrays 4-byte. MF6 only logs the
+# header's NCOL/NROW/ILAY (`ArrayReaders.f90::read_binary_header`): it
+# reads as many values as the array holds, so a non-LAYERED 3-D array's
+# file holds every layer after one header.
 _BINARY_ARRAY_HEADER = struct.Struct("<iidd16siii")
 
 
 def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
-    """Read one MF6 binary-array record (header + NROW*NCOL values) from
-    an OPEN/CLOSE (BINARY)-referenced file. See `_BINARY_ARRAY_HEADER`.
+    """Read an MF6 binary-array record (a header, then every value after
+    it, as MF6 does) from an OPEN/CLOSE (BINARY)-referenced file. See
+    `_BINARY_ARRAY_HEADER`.
     """
     with path.open("rb") as fh:
         header = fh.read(_BINARY_ARRAY_HEADER.size)
         if len(header) < _BINARY_ARRAY_HEADER.size:
             raise ValueError(f"{path}: too short for an MF6 binary-array header")
-        *_, ncol, nrow, _ilay = _BINARY_ARRAY_HEADER.unpack(header)
-        file_dtype = np.int32 if dtype == np.int64 else np.float64
-        values = np.fromfile(fh, dtype=file_dtype, count=nrow * ncol)
-    if values.size != nrow * ncol:
-        raise ValueError(
-            f"{path}: expected {nrow * ncol} values (NROW={nrow}, NCOL={ncol}), got {values.size}"
-        )
+        file_dtype = np.dtype("<i4" if dtype == np.int64 else "<f8")
+        values = np.fromfile(fh, dtype=file_dtype)
     return values.astype(dtype)
 
 
@@ -217,8 +216,8 @@ def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
 def _control_io(vrow: list) -> ArrayIO:
     """How an INTERNAL/OPEN-CLOSE control record writes its array, to write
     it back the same way: its ``IPRN <n>``, and an OPEN/CLOSE record's
-    file, as written (relative to the simulation directory). Not a
-    (BINARY) file's yet: the writer only writes text."""
+    file, as written (relative to the simulation directory), and whether
+    it's (BINARY)."""
     kind = str(vrow[0]).upper() if vrow else ""
     if kind not in ("INTERNAL", "OPEN/CLOSE"):
         return ArrayIO()
@@ -228,11 +227,10 @@ def _control_io(vrow: list) -> ArrayIO:
         if tok.upper() == "IPRN" and j + 1 < len(tokens):
             iprn = int(float(tokens[j + 1]))
             break
-    path = None
-    binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens)
-    if kind == "OPEN/CLOSE" and tokens and not binary:
-        path = Path(_strip_quotes(tokens[0]))
-    return ArrayIO(iprn=iprn, path=path)
+    if kind != "OPEN/CLOSE" or not tokens:
+        return ArrayIO(iprn=iprn)
+    binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
+    return ArrayIO(iprn=iprn, path=Path(_strip_quotes(tokens[0])), binary=binary)
 
 
 def _record_array_io(arrays: "dict | None", key: tuple, ios: "list[ArrayIO]") -> None:
