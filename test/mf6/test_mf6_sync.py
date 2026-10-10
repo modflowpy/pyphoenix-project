@@ -16,6 +16,7 @@ from flopy4.mf6._sync import (
     _local_commit,
     _remote_commit,
     _resolve_release_id,
+    find_import_failures,
     find_orphans,
     sync,
 )
@@ -77,8 +78,8 @@ def test_sync_with_broken_classes(dfn_path, tmp_path):
         "try:\n"
         "    import flopy4.mf6\n"
         "    flopy4.mf6.Simulation\n"
-        "except ImportError:\n"
-        "    pass\n"
+        "except ImportError as e:\n"
+        "    assert 'flopy4 mf6 sync' in str(e), e\n"
         "else:\n"
         "    raise AssertionError('generated classes imported')\n"
     )
@@ -279,6 +280,32 @@ def test_invalid_python_leaves_outdir(dfn_path, outdir, monkeypatch):
     with pytest.raises(SyncError, match="invalid Python"):
         sync(dfn_path, mf6_version="7.0.0", outdir=outdir)
     assert _snapshot(outdir) == before
+
+
+def test_unimportable_leaves_outdir(dfn_path, outdir, monkeypatch):
+    """Valid Python that fails to import is caught before the swap."""
+    before = _snapshot(outdir)
+    make = sys.modules["flopy4.mf6.utils.codegen.make"]
+    make_module = make.make_module
+
+    def broken_make_module(spec, env, verbose=False, outpath=None):
+        make_module(spec, env, verbose=verbose, outpath=outpath)
+        if outpath.name == "chd.py" and outpath.parent.name == "gwf":
+            outpath.write_text(outpath.read_text() + "import flopy4.mf6.nonexistent\n")
+
+    monkeypatch.setattr(make, "make_module", broken_make_module)
+    with pytest.raises(SyncError, match=r"flopy4\.mf6\.gwf\.chd: ModuleNotFoundError"):
+        sync(dfn_path, mf6_version="7.0.0", outdir=outdir)
+    assert _snapshot(outdir) == before
+
+
+def test_find_import_failures(outdir):
+    assert find_import_failures(outdir) == []
+    chd = outdir / "gwf" / "chd.py"
+    chd.write_text(chd.read_text() + "import flopy4.mf6.nonexistent\n")
+    # Modules importing gwf (exg, ...) fail too.
+    failures = find_import_failures(outdir)
+    assert any(line.startswith("flopy4.mf6.gwf.chd: ModuleNotFoundError") for line in failures)
 
 
 @pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="needs POSIX permissions")

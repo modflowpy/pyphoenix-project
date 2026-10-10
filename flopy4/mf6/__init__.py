@@ -57,7 +57,13 @@ _LAZY = {
 def _import_components() -> None:
     """Import every generated component module."""
     for name in _COMPONENT_MODULES:
-        import_module(f"{__name__}.{name}")
+        try:
+            import_module(f"{__name__}.{name}")
+        except Exception as e:
+            raise ImportError(
+                f"Couldn't import the generated classes in {__name__}.{name}: {e}\n"
+                "If they're broken or out of date, run `flopy4 mf6 sync` to regenerate them."
+            ) from e
 
 
 def __getattr__(name: str):
