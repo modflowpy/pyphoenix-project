@@ -449,8 +449,9 @@ def sync(
     Fetches or reads the DFNs, regenerates the component classes, and
     records the MF6 version in ``_contract.py``. Generated modules the
     DFNs don't cover are removed. Nothing changes unless every generated
-    module imports, and the classes have every field the mixins' methods
-    read. Installs the matching MF6 binary only if ``install`` is set.
+    module imports. Warns of handwritten methods that read fields the
+    DFNs don't give. Installs the matching MF6 binary only if ``install``
+    is set.
 
     Parameters
     ----------
@@ -611,8 +612,10 @@ def sync(
         if problems.failures:
             raise SyncError("Generated modules failed to import:\n" + "\n".join(problems.failures))
         if problems.gaps:
-            raise SyncError(
-                "Mixin methods read fields these DFNs don't give:\n" + "\n".join(problems.gaps)
+            warnings.warn(
+                "These methods read fields the DFNs don't give, and won't work:\n"
+                + "\n".join(problems.gaps),
+                stacklevel=2,
             )
         (stage / _CONTRACT).write_text(_contract_text(version, commit, generated))
         _swap(

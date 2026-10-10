@@ -299,10 +299,9 @@ def test_unimportable_leaves_outdir(dfn_path, outdir, monkeypatch):
     assert _snapshot(outdir) == before
 
 
-def test_missing_mixin_field_leaves_outdir(dfn_path, outdir, monkeypatch):
-    """Classes lacking a field a mixin method reads are caught before the
-    swap, naming the method and the field."""
-    before = _snapshot(outdir)
+def test_missing_mixin_field_warns(dfn_path, outdir, monkeypatch):
+    """Classes lacking a field a mixin method reads are generated anyway,
+    with a warning naming the method and the field."""
     make = sys.modules["flopy4.mf6.utils.codegen.make"]
     make_module = make.make_module
 
@@ -312,9 +311,10 @@ def test_missing_mixin_field_leaves_outdir(dfn_path, outdir, monkeypatch):
         make_module(spec, env, verbose=verbose, outpath=outpath)
 
     monkeypatch.setattr(make, "make_module", make_module_without_crs)
-    with pytest.raises(SyncError, match=r"gwf\.dis\.Dis: DisMethods\.to_grid: no Dis\.crs"):
+    with pytest.warns(UserWarning, match=r"gwf\.dis\.Dis: DisMethods\.to_grid: no Dis\.crs"):
         sync(dfn_path, mf6_version="7.0.0", outdir=outdir)
-    assert _snapshot(outdir) == before
+    assert "    crs:" not in (outdir / "gwf" / "dis.py").read_text()
+    assert any("Dis.crs" in gap for gap in find_problems(outdir).gaps)
 
 
 def test_find_problems(outdir):
