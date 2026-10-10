@@ -2919,3 +2919,45 @@ def test_rcha_tas_reference_netcdf(function_tmpdir):
     # NetCDF input needs the extended build
     if os.getenv("MF6_EXTENDED"):
         sim.run()
+
+
+def test_structured_grid_arrays_written_by_row(function_tmpdir):
+    """MF6 reads a structured grid's layer a row per line, so a varying
+    griddata array is written that way: TOP, a LAYERED BOTM, and a
+    non-layered K spanning both layers."""
+    sim = Simulation(
+        name="rows",
+        workspace=function_tmpdir,
+        tdis=Time(perlen=[1.0], nstp=[1]),
+        solutiongroup=[
+            Ims(
+                models=["gwf"],
+                outer_dvclose=1e-9,
+                outer_maximum=100,
+                inner_maximum=300,
+                inner_dvclose=1e-9,
+                linear_acceleration="cg",
+            )
+        ],
+    )
+    dis = Dis(
+        nlay=2,
+        nrow=3,
+        ncol=4,
+        delr=1.0,
+        delc=1.0,
+        top=np.linspace(10.0, 11.0, 12),
+        botm=np.repeat([5.0, 0.0], 12) + np.tile(np.linspace(0, 0.3, 12), 2),
+    )
+    gwf = Gwf(parent=sim, name="gwf", dis=dis)
+    Ic(parent=gwf, strt=10.0)
+    Npf(parent=gwf, k=np.linspace(1.0, 2.0, 24), icelltype=0)
+    Chd(parent=gwf, stress_period_data={0: [[(0, 0, 0), 10.0], [(1, 2, 3), 2.0]]})
+    Oc(parent=gwf, head_file="gwf.hds", stress_period_data={0: [("SAVE", "HEAD", "LAST")]})
+    sim.write()
+
+    lines = (function_tmpdir / "gwf.dis").read_text().splitlines()
+    top = lines.index(" TOP")
+    assert lines[top + 1] == " INTERNAL"
+    assert all(len(ln.split()) == 4 for ln in lines[top + 2 : top + 5])
+    sim.run()
