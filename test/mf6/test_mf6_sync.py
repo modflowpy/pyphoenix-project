@@ -207,6 +207,36 @@ def test_no_file_list_removes_stale(dfn_path, outdir):
     assert not stale.exists()
 
 
+@pytest.mark.parametrize("pkg", ["utl", "exg"])
+def test_package_init_generated(outdir, pkg):
+    """A subpackage with no name file gets a generated __init__ exporting
+    every generated module in it, which the contract lists."""
+    init = outdir / pkg / "__init__.py"
+    text = init.read_text()
+    assert text.startswith(_HEADER)
+    assert f"{pkg}/__init__.py" in _read_contract(outdir)["GENERATED_FILES"]
+    modules = {p.stem for p in (outdir / pkg).glob("*.py") if p.name != "__init__.py"}
+    imported = set(re.findall(rf"^from flopy4\.mf6\.{pkg}\.(\w+) import", text, re.M))
+    assert imported == modules
+
+
+def test_package_init_tracks_modules(dfn_path, outdir):
+    """The generated __init__ follows the modules sync generates."""
+    (outdir / "utl" / "tvs.py").unlink()
+    sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
+    text = (outdir / "utl" / "__init__.py").read_text()
+    assert "Tvs" not in text
+    assert "Tvk" in text
+
+
+def test_handwritten_init_survives(dfn_path, outdir):
+    init = outdir / "utl" / "__init__.py"
+    init.write_text("x = 1\n")
+    sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
+    assert init.read_text() == "x = 1\n"
+    assert "utl/__init__.py" not in _read_contract(outdir)["GENERATED_FILES"]
+
+
 def test_handwritten_module_survives(dfn_path, outdir):
     """Modules without the generated header are never removed."""
     mine = outdir / "gwf" / "mine.py"

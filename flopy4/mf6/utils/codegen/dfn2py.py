@@ -5,7 +5,7 @@ import sys
 from os import PathLike
 from pathlib import Path
 
-from flopy4.mf6.utils.codegen.make import check_mixins, make_modules
+from flopy4.mf6.utils.codegen.make import check_mixins, make_modules, make_package_inits
 
 _PROJ_ROOT = Path(__file__).parents[4].expanduser().resolve()
 _MF6_ROOT = _PROJ_ROOT / "flopy4" / "mf6"
@@ -48,6 +48,7 @@ def make(
         existing_only=existing_only,
         verbose=verbose,
     )
+    make_package_inits(components, outdir, verbose=verbose)
     print(f"Generated {len(components)} component modules")
 
 

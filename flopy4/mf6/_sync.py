@@ -391,7 +391,7 @@ def sync(
         warnings.filterwarnings("ignore", message=".*modflow_devtools.dfns.*experimental.*")
         from modflow_devtools.dfns import LocalDfnRegistry, RemoteDfnRegistry
 
-    from flopy4.mf6.utils.codegen.make import make_modules
+    from flopy4.mf6.utils.codegen.make import make_modules, make_package_inits
 
     outdir = Path(outdir).expanduser().resolve() if outdir is not None else _MF6_ROOT
     _check_writable(outdir)
@@ -481,7 +481,8 @@ def sync(
             existing_only=not all_packages,
             verbose=verbose,
         )
-        generated = {spec.outpath.relative_to(outdir).as_posix() for spec in specs}
+        inits = make_package_inits(specs, outdir, stage=stage, verbose=verbose)
+        generated = {p.relative_to(outdir).as_posix() for p in [s.outpath for s in specs] + inits}
         # Store the DFNs the classes came from, for the typed reader.
         _store_dfns(dfn_dir, stage / _DFNS)
         dfn_files = {f"{_DFNS}/{f.name}" for f in (stage / _DFNS).iterdir()}
