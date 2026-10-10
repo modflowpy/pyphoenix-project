@@ -217,7 +217,8 @@ def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
     """How an INTERNAL/OPEN-CLOSE control record writes its array, to write
     it back the same way: its ``IPRN <n>``, and an OPEN/CLOSE record's
     file, as written (relative to the simulation directory), whether it's
-    (BINARY), and the hash of the `values` read from it."""
+    (BINARY), and the hash of the `values` read from it; an INTERNAL
+    record's form, to keep it INTERNAL."""
     kind = str(vrow[0]).upper() if vrow else ""
     if kind not in ("INTERNAL", "OPEN/CLOSE"):
         return ArrayIO()
@@ -227,28 +228,33 @@ def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
         if tok.upper() == "IPRN" and j + 1 < len(tokens):
             iprn = int(float(tokens[j + 1]))
             break
-    if kind != "OPEN/CLOSE" or not tokens:
+    if kind == "INTERNAL":
+        return ArrayIO(iprn=iprn, how="internal")
+    if not tokens:
         return ArrayIO(iprn=iprn)
     binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
     path = Path(_strip_quotes(tokens[0]))
     return ArrayIO(iprn=iprn, path=path, binary=binary, hash=array_hash(values))
 
 
-def _record_array_io(arrays: "dict | None", key: tuple, ios: "list[ArrayIO]") -> None:
+def _record_array_io(
+    arrays: "dict | None", key: tuple, ios: "list[ArrayIO]", layered: bool = False
+) -> None:
     """Record how an array's control records wrote it in `arrays`, by
     `ArrayKey`: a single record's for the whole array; for a LAYERED one's,
-    IPRN for the whole array if every layer has the same, else per layer,
-    and each layer's file."""
+    that it's LAYERED, IPRN for the whole array if every layer has the
+    same, else per layer, and each layer's file and form."""
     if arrays is None or not ios:
         return
     whole = key[0] if len(key) == 1 else key
-    if len(ios) == 1:
+    if not layered:
         if ios[0] != ArrayIO():
             arrays[whole] = ios[0]
         return
     iprns = {io.iprn for io in ios}
-    if len(iprns) == 1 and None not in iprns:
-        arrays[whole] = ArrayIO(iprn=ios[0].iprn)
+    iprn = ios[0].iprn if len(iprns) == 1 else None
+    arrays[whole] = ArrayIO(iprn=iprn, how="layered")
+    if iprn is not None:
         ios = [attrs.evolve(io, iprn=None) for io in ios]
     for layer, io in enumerate(ios):
         if io != ArrayIO():
@@ -376,7 +382,7 @@ def _parse_array_block(
                 layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
                 i = j
-            _record_array_io(arrays, (f.name,), layer_ios)
+            _record_array_io(arrays, (f.name,), layer_ios, layered=True)
             if layers:
                 # A single-record LAYERED field (see above) is really a
                 # plain target-shaped array duplicated across nlay --
@@ -502,7 +508,7 @@ def _parse_readarray_period_block(
                 layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
                 i = j
-            _record_array_io(arrays, (key,), layer_ios)
+            _record_array_io(arrays, (key,), layer_ios, layered=True)
             if layers:
                 if len(layers) < nlay:
                     layers = (layers * nlay)[:nlay]

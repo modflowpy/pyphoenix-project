@@ -50,17 +50,17 @@
 {% elif how == "internal" %}
 {{ inset }}INTERNAL{{ value|iprn_option }}
 {% for chunk in value|array2chunks -%}
-{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
+{% if not loop.first %}{{ "\n" }}{% endif %}{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {% elif how == "external" %}
 {{ inset }}OPEN/CLOSE {{ value.attrs.open_close|quote_if_needed }}{{ value|binary_option }}{{ value|iprn_option }}
-{% elif how == "layered external" %}
+{% elif how == "layered mixed" %}
 {% for layer in value %}
-{% set path = value.attrs.layer_open_close.get(loop.index0) %}
+{% set path = value.attrs.get("layer_open_close", {}).get(loop.index0) %}
 
 {% if path is not none %}
 {{ inset }}OPEN/CLOSE {{ path|quote_if_needed }}{{ value|binary_option(loop.index0) }}{{ value|iprn_option(loop.index0) }}
-{%- elif layer|is_constant %}
+{%- elif value|layer_is_constant(loop.index0) %}
 {{ inset }}CONSTANT {{ layer|array2const(context.float_precision) }}
 {%- else %}
 {{ inset }}INTERNAL{{ value|iprn_option(loop.index0) }}

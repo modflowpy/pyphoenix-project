@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from threading import local
 
 ArrayFormat = Literal["internal", "open/close"]
+ArrayForm = Literal["internal", "layered"]
 FloatPrecision = Union[int, Literal["lossless"]]
 
 ArrayKey = Union[str, tuple[str, int], tuple[str, int, int]]
@@ -46,6 +47,15 @@ class ArrayIO:
         Write the array's file as binary, OPEN/CLOSE (BINARY), or, if
         False, as text. True without a `path` writes it to a file named
         for its component and field. Overrides `WriteContext.use_binary`.
+    how : "internal" or "layered", optional
+        The form to write the array inline in, when it isn't written to a
+        file. Unset, an array (or a layer of a layered one) whose values
+        are all equal is written CONSTANT, a layered array LAYERED.
+        'internal' writes it INTERNAL, a layered array's whole, not
+        LAYERED; 'layered' writes a layered array LAYERED even if all its
+        values are equal. A ``(field, layer)`` entry's 'internal' keeps
+        that layer INTERNAL. Loading sets it, to write arrays back in the
+        form they were read.
     hash : str, optional
         The array's values' `array_hash` when loaded from its file. When
         arrays sharing a file disagree at write time, those whose values
@@ -56,6 +66,7 @@ class ArrayIO:
     iprn: Optional[int] = None
     path: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
     binary: Optional[bool] = None
+    how: Optional[ArrayForm] = None
     hash: Optional[str] = attrs.field(default=None, eq=False, repr=False)
 
     def over(self, lower: "ArrayIO") -> "ArrayIO":

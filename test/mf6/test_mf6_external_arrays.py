@@ -66,6 +66,8 @@ def test_load_records_files(loaded_dis):
     assert dis.write_context.arrays == {
         "delr": ArrayIO(iprn=2, path=Path("delr.txt"), binary=False),
         "top": ArrayIO(path=Path("../data/top.txt"), binary=False),
+        "botm": ArrayIO(how="layered"),
+        ("botm", 0): ArrayIO(how="internal"),
         ("botm", 1): ArrayIO(path=Path("botm2.txt"), binary=False),
     }
 

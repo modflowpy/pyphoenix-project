@@ -363,9 +363,10 @@ def _iprn_lines(dis):
 def test_load_keeps_iprn(iprn_dis):
     """A loaded array's IPRN, per layer for a LAYERED one, is written back."""
     assert iprn_dis.write_context.arrays == {
-        "delr": ArrayIO(iprn=3),
-        ("botm", 0): ArrayIO(iprn=1),
-        ("botm", 1): ArrayIO(iprn=2),
+        "delr": ArrayIO(iprn=3, how="internal"),
+        "botm": ArrayIO(how="layered"),
+        ("botm", 0): ArrayIO(iprn=1, how="internal"),
+        ("botm", 1): ArrayIO(iprn=2, how="internal"),
     }
     assert _iprn_lines(iprn_dis) == ["INTERNAL IPRN 3", "INTERNAL IPRN 1", "INTERNAL IPRN 2"]
 
@@ -398,7 +399,98 @@ def test_load_keeps_period_iprn(function_tmpdir):
         """)
     )
     rcha = Rcha.load(path, dims={"nlay": 1, "nodes": 4})
-    assert rcha.write_context.arrays == {("recharge", 1): ArrayIO(iprn=4)}
+    assert rcha.write_context.arrays == {("recharge", 1): ArrayIO(iprn=4, how="internal")}
     rcha.filename = str(function_tmpdir / "out.rcha")
     rcha.write()
     assert "INTERNAL IPRN 4" in rcha.path.read_text()
+
+
+@pytest.fixture
+def form_dis(function_tmpdir):
+    """A DIS whose arrays' forms the writer wouldn't choose: a uniform
+    INTERNAL array, a non-LAYERED INTERNAL one of a layered field, and a
+    LAYERED one whose layers are CONSTANT and a uniform INTERNAL."""
+    path = function_tmpdir / "in.dis"
+    path.write_text(
+        textwrap.dedent("""\
+            BEGIN DIMENSIONS
+              NLAY 2
+              NROW 1
+              NCOL 2
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                INTERNAL
+                  1.0 1.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                CONSTANT 1.0
+              BOTM
+                INTERNAL
+                  0.0 0.5
+                  -1.0 -2.0
+              IDOMAIN LAYERED
+                CONSTANT 1
+                INTERNAL
+                  1 1
+            END GRIDDATA
+        """)
+    )
+    dis = Dis.load(path)
+    dis.filename = str(function_tmpdir / "out.dis")
+    return dis
+
+
+def _griddata(dis) -> list[str]:
+    dis.write()
+    text = dis.path.read_text()
+    block = text[text.index("BEGIN GRIDDATA") : text.index("END GRIDDATA")]
+    return [ln.strip() for ln in block.splitlines()[1:] if ln.strip()]
+
+
+def test_load_keeps_array_forms(form_dis):
+    assert _griddata(form_dis) == [
+        "DELR",
+        "INTERNAL",
+        "1.0 1.0",
+        "DELC",
+        "CONSTANT 1.0",
+        "TOP",
+        "CONSTANT 1.0",
+        "BOTM",
+        "INTERNAL",
+        "0.0 0.5",
+        "-1.0 -2.0",
+        "IDOMAIN LAYERED",
+        "CONSTANT 1",
+        "INTERNAL",
+        "1 1",
+    ]
+
+
+def test_without_forms_writer_chooses(form_dis):
+    form_dis.write_context = None
+    assert _griddata(form_dis) == [
+        "DELR",
+        "CONSTANT 1.0",
+        "DELC",
+        "CONSTANT 1.0",
+        "TOP",
+        "CONSTANT 1.0",
+        "BOTM LAYERED",
+        "INTERNAL",
+        "0.0 0.5",
+        "INTERNAL",
+        "-1.0 -2.0",
+        "IDOMAIN",
+        "CONSTANT 1",
+    ]
+
+
+def test_form_needs_its_values(form_dis):
+    """A form the values no longer allow is ignored: an edited uniform
+    INTERNAL layer stays INTERNAL, but a CONSTANT one that isn't uniform
+    anymore is written INTERNAL."""
+    form_dis.idomain.flat[0] = 0
+    assert _griddata(form_dis)[-5:] == ["IDOMAIN LAYERED", "INTERNAL", "0 1", "INTERNAL", "1 1"]

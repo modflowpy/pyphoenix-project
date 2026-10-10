@@ -21,7 +21,7 @@ ArrayHow = Literal[
     "external",
     "layered constant",
     "layered internal",
-    "layered external",
+    "layered mixed",
     "netcdf",
 ]
 
@@ -61,8 +61,15 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     # `write_external_arrays`
     if "open_close" in value.attrs:
         return "external"
-    if "layer_open_close" in value.attrs and "nlay" in value.dims:
-        return "layered external"
+    layered = "nlay" in value.dims
+    if "layer_open_close" in value.attrs and layered:
+        return "layered mixed"
+    # the form an `ArrayIO.how` asks for, as `annotate_arrays` marks it
+    how = value.attrs.get("how")
+    if how == "internal":
+        return "internal"
+    if how == "layered" and layered and not hasattr(value.data, "blocks"):
+        return "layered mixed"
     if hasattr(value.data, "blocks"):
         # Dask-backed: stream as internal, never materialize to check constant.
         if "nlay" in value.dims:
@@ -104,6 +111,14 @@ def binary_option(value: xr.DataArray, layer: int | None = None) -> str:
     else:
         binary = value.attrs.get("layer_open_close_binary", {}).get(layer, False)
     return " (BINARY)" if binary else ""
+
+
+def layer_is_constant(value: xr.DataArray, layer: int) -> bool:
+    """Whether to write a layer of layered `value` CONSTANT: if all its
+    values are equal, unless its `ArrayIO.how` is "internal"."""
+    if value.attrs.get("layer_how", {}).get(layer) == "internal":
+        return False
+    return is_constant(value.isel(nlay=layer))
 
 
 def is_constant(value: xr.DataArray) -> bool:
@@ -192,6 +207,10 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
             value = value.chunk(chunks)
         for chunk in value.data.blocks:
             yield np.squeeze(chunk.compute())
+    elif value.ndim == 3:
+        # regular 3D array, a chunk per layer
+        for layer in value.values:
+            yield np.squeeze(layer)
     else:
         # regular array, single chunk
         yield np.squeeze(value.values)
