@@ -563,6 +563,21 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["layer"].attrs["axis"] = "Z"
         ds["layer"].encoding["_FillValue"] = None
 
+        # z_l1, z_l2, ...: per-layer cell center elevation, always written.
+        # Split per layer because face-indexed variables have no layer
+        # dimension to reference a combined z(layer, nmesh_face) (CF-1.13 5.2).
+        _z = self._coords["z"].values
+        for k in range(self.nlay):
+            _varname = f"z_l{k + 1}"
+            ds = ds.assign({_varname: (["nmesh_face"], _z[k].flatten())})
+            if _units is not None:
+                ds[_varname].attrs["units"] = _units
+            ds[_varname].attrs["standard_name"] = "altitude"
+            ds[_varname].attrs["positive"] = "up"
+            ds[_varname].attrs["long_name"] = f"cell center elevation (layer {k + 1})"
+            ds[_varname].attrs["layer"] = k + 1
+            ds[_varname].encoding["_FillValue"] = None
+
         # mesh container variable
         ds = ds.assign({"mesh": ([], np.int64(1))})
         ds["mesh"].attrs["cf_role"] = "mesh_topology"
@@ -610,8 +625,11 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["mesh_face_y"].attrs["long_name"] = "Northing"
         ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
         ds["mesh_face_y"].encoding["_FillValue"] = None
-        ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
-        ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
+        # No explicit _FillValue attribute: matches MF6 (MeshNCModel.f90), which
+        # pads with NF90_FILL_DOUBLE in the data itself but never declares the
+        # attribute on mesh_face_xbnds/ybnds.
+        ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+        ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
         # mesh face nodes
         var_d = {
@@ -654,13 +672,21 @@ class StructuredGrid(LegacyStructuredGrid):
         # no UGRID mesh variable).
         _units = _coord_units(self.lenuni, self.crs)
 
-        xc = self.xoffset + self.xycenters[0]
-        yc = self.yoffset + self.xycenters[1]
-        # z = [float(x) for x in range(1, self.nlay + 1)]
+        # For a rotated grid, x/y (and their bounds) are grid-local -- zero
+        # offset, not xoffset/yoffset -- matching MF6's DisNCStructured.f90
+        # convention exactly. wrap_rotated_crs's derived-CRS parameters are
+        # anchored to this same zero-based local coordinate system, so x/y
+        # must stay zero-based here for that wrap to resolve the correct
+        # real-world position; offsetting them would silently break it.
+        _xoff = 0.0 if self.angrot else self.xoffset
+        _yoff = 0.0 if self.angrot else self.yoffset
+
+        xc = _xoff + self.xycenters[0]
+        yc = _yoff + self.xycenters[1]
 
         # set coordinate var bounds
         x_bnds = []
-        xv = self.xoffset + self.xyedges[0]
+        xv = _xoff + self.xyedges[0]
         for idx, val in enumerate(xv):
             if idx + 1 < len(xv):
                 bnd = []
@@ -669,7 +695,7 @@ class StructuredGrid(LegacyStructuredGrid):
                 x_bnds.append(bnd)
 
         y_bnds = []
-        yv = self.yoffset + self.xyedges[1]
+        yv = _yoff + self.xyedges[1]
         for idx, val in enumerate(yv):
             if idx + 1 < len(yv):
                 bnd = []
@@ -698,33 +724,13 @@ class StructuredGrid(LegacyStructuredGrid):
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["long_name"] = "time"
         ds["time"].encoding["_FillValue"] = None
-        if _units is not None:
-            ds["y"].attrs["units"] = _units
-        ds["y"].attrs["axis"] = "Y"
-        ds["y"].attrs["standard_name"] = "projection_y_coordinate"
-        ds["y"].attrs["long_name"] = "Northing"
-        ds["y"].attrs["bounds"] = "y_bnds"
-        if _units is not None:
-            ds["x"].attrs["units"] = _units
-        ds["x"].attrs["axis"] = "X"
-        ds["x"].attrs["standard_name"] = "projection_x_coordinate"
-        ds["x"].attrs["long_name"] = "Easting"
-        ds["x"].attrs["bounds"] = "x_bnds"
-        ds["x"].encoding["_FillValue"] = None
-        ds["y"].encoding["_FillValue"] = None
-        ds["layer"].attrs["long_name"] = "model layer"
-        ds["layer"].attrs["units"] = "1"
-        ds["layer"].attrs["positive"] = "down"
-        ds["layer"].attrs["axis"] = "Z"
-        ds["layer"].encoding["_FillValue"] = None
-        ds["x_bnds"].encoding["_FillValue"] = None
-        ds["y_bnds"].encoding["_FillValue"] = None
-
-        # Write projection variable whenever CRS is available.
-        # Lat/lon auxiliary coordinates are intentionally omitted: GDAL-based
-        # tools (QGIS, ArcGIS) misplace projected rasters when 2D lat/lon arrays
-        # coexist with projected x/y dimension coordinates. The NCF subpackage
-        # (separate text file) still carries lat/lon for MODFLOW 6 output.
+        # Resolve the CRS (if any) once, up front, and attempt the
+        # rotation wrap once -- both the x/y axis/standard_name decision
+        # below and the projection variable's crs_wkt (further down) need
+        # the result, and pyproj.CRS.to_cf()/is_projected do not "see
+        # through" a wrapped DerivedProjectedCRS, so grid_mapping_name and
+        # any CF numeric grid_mapping parameters must always come from the
+        # original, unwrapped CRS.
         _crs = None
         if (
             configuration is not None
@@ -737,12 +743,79 @@ class StructuredGrid(LegacyStructuredGrid):
         elif self.crs is not None:
             _crs = self.crs
 
+        _wrapped_crs = None
+        if self.angrot:
+            import warnings
+
+            from flopy4.mf6.utils.crs import wrap_rotated_crs
+
+            if _crs is not None:
+                _wrapped_crs = wrap_rotated_crs(_crs, self.xoffset, self.yoffset, self.angrot)
+            if _wrapped_crs is None:
+                warnings.warn(
+                    "rotated grid: no rotation-positioning information will "
+                    "be written to the output CRS; x/y coordinate values "
+                    "will not reflect the true rotated position "
+                    + (
+                        "(CRS is not a projected CRS)"
+                        if _crs is not None
+                        else "(no CRS configured)"
+                    )
+                )
+
+        # axis/standard_name assert that x/y hold the true projected
+        # position, which only holds once crs_wkt encodes the rotation
+        # (see wrap_rotated_crs above); otherwise x/y are grid-local.
+        _axis_ok = not self.angrot or _wrapped_crs is not None
+
+        if _units is not None:
+            ds["y"].attrs["units"] = _units
+        if _axis_ok:
+            ds["y"].attrs["axis"] = "Y"
+            ds["y"].attrs["standard_name"] = "projection_y_coordinate"
+        ds["y"].attrs["long_name"] = "Northing"
+        ds["y"].attrs["bounds"] = "y_bnds"
+        if _units is not None:
+            ds["x"].attrs["units"] = _units
+        if _axis_ok:
+            ds["x"].attrs["axis"] = "X"
+            ds["x"].attrs["standard_name"] = "projection_x_coordinate"
+        ds["x"].attrs["long_name"] = "Easting"
+        ds["x"].attrs["bounds"] = "x_bnds"
+        ds["x"].encoding["_FillValue"] = None
+        ds["y"].encoding["_FillValue"] = None
+        ds["layer"].attrs["long_name"] = "model layer"
+        ds["layer"].attrs["units"] = "1"
+        ds["layer"].attrs["positive"] = "down"
+        ds["layer"].attrs["axis"] = "Z"
+        ds["layer"].encoding["_FillValue"] = None
+        ds["x_bnds"].encoding["_FillValue"] = None
+        ds["y_bnds"].encoding["_FillValue"] = None
+
+        # z: cell center elevation, distinct from the discrete layer index.
+        # Always written, independent of CRS/NCF configuration.
+        ds = ds.assign({"z": (["layer", "y", "x"], self._coords["z"].values)})
+        if _units is not None:
+            ds["z"].attrs["units"] = _units
+        ds["z"].attrs["standard_name"] = "altitude"
+        ds["z"].attrs["positive"] = "up"
+        ds["z"].attrs["long_name"] = "cell center elevation"
+        ds["z"].encoding["_FillValue"] = None
+
+        # Write projection variable whenever CRS is available (_crs and
+        # _wrapped_crs were already resolved above, for the x/y
+        # axis/standard_name decision).
+        # Lat/lon auxiliary coordinates are intentionally omitted: GDAL-based
+        # tools (QGIS, ArcGIS) misplace projected rasters when 2D lat/lon arrays
+        # coexist with projected x/y dimension coordinates. The NCF subpackage
+        # (separate text file) still carries lat/lon for MODFLOW 6 output.
         if _crs is not None:
-            from pyproj import CRS as ProjCRS  # noqa: F811 (already imported above if configured)
             from pyproj.enums import WktVersion
 
+            # wkt (WKT1) is always the original, unwrapped CRS -- WKT1 has
+            # no derived-CRS syntax, so it cannot encode grid rotation.
             _wkt1 = _crs.to_wkt(WktVersion.WKT1_GDAL)
-            _wkt2 = _crs.to_wkt(WktVersion.WKT2_2019)
+            _wkt2 = (_wrapped_crs or _crs).to_wkt(WktVersion.WKT2_2019)
             ds["x"].attrs["grid_mapping"] = "projection"
             ds["y"].attrs["grid_mapping"] = "projection"
             ds = ds.assign({"projection": ([], np.int64(1))})
@@ -752,32 +825,15 @@ class StructuredGrid(LegacyStructuredGrid):
             if _gmn:
                 ds["projection"].attrs["grid_mapping_name"] = _gmn
 
-            # GDAL-compatible georeferencing: GDAL's CF driver does not build a
-            # geotransform from projected 1D coordinate variables. Writing these
-            # two attributes on the projection variable ensures correct placement
-            # in GDAL-based tools (QGIS, ArcGIS Pro via GDAL). MF6 ignores them.
-            # Note: GDAL reads GeoTransform from the grid_mapping variable, not
-            # from global attrs — NC_GLOBAL#GeoTransform is ignored for extent.
-            # Derive effective pixel sizes from the actual grid bounds so that
-            # variable-spacing grids get the correct bounding box in GDAL.
-            # Using x[1]-x[0] only works for uniform grids; outer cells in
-            # Frenchman-Flat-style grids are much coarser than interior cells.
-            _x_left = float(x_bnds[0][0])
-            _x_right = float(x_bnds[-1][1])
-            _y_top = float(y_bnds[0][1])
-            _y_bot = float(y_bnds[-1][0])
-            _dx_eff = (_x_right - _x_left) / len(xc)
-            _dy_eff = (_y_bot - _y_top) / len(yc)  # negative for north-up
-            _gt = [
-                _x_left,  # upper-left x
-                _dx_eff,  # effective x pixel size
-                0.0,
-                _y_top,  # upper-left y
-                0.0,
-                _dy_eff,  # effective y pixel size (negative for north-up)
-            ]
-            ds["projection"].attrs["GeoTransform"] = " ".join(str(v) for v in _gt)
-            ds["projection"].attrs["spatial_ref"] = _wkt1
+            from flopy4.mf6.utils.crs import cf_grid_mapping_params
+
+            _params, _warning = cf_grid_mapping_params(_crs)
+            if _warning:
+                import warnings
+
+                warnings.warn(_warning)
+            for k, v in _params.items():
+                ds["projection"].attrs[k] = v
 
         return ds
 
@@ -1210,6 +1266,21 @@ class VertexGrid(LegacyVertexGrid):
             ds["layer"].attrs["axis"] = "Z"
             ds["layer"].encoding["_FillValue"] = None
 
+            # z_l1, z_l2, ...: per-layer cell center elevation, always written.
+            # Split per layer because face-indexed variables have no layer
+            # dimension to reference a combined z(layer, nmesh_face) (CF-1.13 5.2).
+            _z = self._coords["z"].values
+            for k in range(self.nlay):
+                _varname = f"z_l{k + 1}"
+                ds = ds.assign({_varname: (["nmesh_face"], _z[k])})
+                if _units is not None:
+                    ds[_varname].attrs["units"] = _units
+                ds[_varname].attrs["standard_name"] = "altitude"
+                ds[_varname].attrs["positive"] = "up"
+                ds[_varname].attrs["long_name"] = f"cell center elevation (layer {k + 1})"
+                ds[_varname].attrs["layer"] = k + 1
+                ds[_varname].encoding["_FillValue"] = None
+
             # mesh container variable
             ds = ds.assign({"mesh": ([], np.int64(1))})
             ds["mesh"].attrs["cf_role"] = "mesh_topology"
@@ -1257,8 +1328,11 @@ class VertexGrid(LegacyVertexGrid):
             ds["mesh_face_y"].attrs["long_name"] = "Northing"
             ds["mesh_face_y"].attrs["bounds"] = "mesh_face_ybnds"
             ds["mesh_face_y"].encoding["_FillValue"] = None
-            ds["mesh_face_xbnds"].encoding["_FillValue"] = FILL_FLOAT64
-            ds["mesh_face_ybnds"].encoding["_FillValue"] = FILL_FLOAT64
+            # No explicit _FillValue attribute: matches MF6 (MeshNCModel.f90), which
+            # pads with NF90_FILL_DOUBLE in the data itself but never declares the
+            # attribute on mesh_face_xbnds/ybnds.
+            ds["mesh_face_xbnds"].encoding["_FillValue"] = None
+            ds["mesh_face_ybnds"].encoding["_FillValue"] = None
 
             # mesh face nodes
             var_d = {

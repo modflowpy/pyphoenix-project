@@ -1,10 +1,10 @@
 """
-Verify CF-1.11 and UGRID-1.0 attribute compliance on flopy4-generated
+Verify CF-1.13 and UGRID-1.0 attribute compliance on flopy4-generated
 NetCDF input datasets for each supported grid/format combination:
 
-  - Structured DIS  (CF-1.11, NetCDFFormat.STRUCTURED)
-  - Layered Mesh DIS  (CF-1.11 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via StructuredGrid)
-  - Layered Mesh DISV (CF-1.11 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via VertexGrid)
+  - Structured DIS  (CF-1.13, NetCDFFormat.STRUCTURED)
+  - Layered Mesh DIS  (CF-1.13 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via StructuredGrid)
+  - Layered Mesh DISV (CF-1.13 + UGRID-1.0, NetCDFFormat.LAYERED_MESH via VertexGrid)
 
 These are unit-level tests that exercise grid.to_xarray() and
 NetCDFParam.to_xarray() directly — no MODFLOW 6 simulation required.
@@ -62,8 +62,8 @@ def vertex_grid():
         [5, 200.0, 0.0],
     ]
     cell2d = [
-        [0, 50.0, 50.0, 0, 1, 4, 3],
-        [1, 150.0, 50.0, 1, 2, 5, 4],
+        [0, 50.0, 50.0, 4, 0, 1, 4, 3],
+        [1, 150.0, 50.0, 4, 1, 2, 5, 4],
     ]
     return VertexGrid(
         nlay=2,
@@ -99,7 +99,7 @@ def test_structured_dis_projection_variable(structured_grid, modeltime):
 
 
 def test_structured_dis_crs_wkt_attrs(structured_grid, modeltime):
-    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.13)."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
     proj = ds["projection"]
     assert "crs_wkt" in proj.attrs, "crs_wkt missing from projection variable"
@@ -135,7 +135,7 @@ def test_mesh_dis_topology_variable(structured_grid, modeltime):
 
 
 def test_mesh_dis_projection_crs_attrs(structured_grid, modeltime):
-    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.13)."""
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
     assert "projection" in ds
     proj = ds["projection"]
@@ -173,7 +173,7 @@ def test_mesh_dis_data_var_mesh_location_attrs_no_crs():
     var = "npf_k_l1"
     assert ds[var].attrs.get("mesh") == "mesh"
     assert ds[var].attrs.get("location") == "face"
-    assert ds[var].attrs.get("coordinates") == "mesh_face_x mesh_face_y"
+    assert ds[var].attrs.get("coordinates") == "mesh_face_x mesh_face_y z_l1"
 
 
 def test_mesh_disv_topology_variable(vertex_grid, modeltime):
@@ -184,7 +184,7 @@ def test_mesh_disv_topology_variable(vertex_grid, modeltime):
 
 
 def test_mesh_disv_projection_crs_attrs(vertex_grid, modeltime):
-    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.11)."""
+    """crs_wkt must be WKT2 and wkt must be WKT1 on the projection variable (CF-1.13)."""
     ds = vertex_grid.to_xarray(modeltime=modeltime)
     assert "projection" in ds
     proj = ds["projection"]
@@ -240,6 +240,52 @@ def test_mesh_disv_layer_coord(vertex_grid, modeltime):
     assert list(ds["layer"].values) == [1, 2]
     assert ds["layer"].attrs.get("axis") == "Z"
     assert ds["layer"].attrs.get("positive") == "down"
+
+
+def test_structured_dis_z_coord(structured_grid, modeltime):
+    """z must be a (layer, y, x) cell-center elevation auxiliary coordinate.
+
+    structured_grid: top=10.0, thickness=5.0 -> botm=[5.0, 0.0], so layer 1
+    z = (10+5)/2 = 7.5, layer 2 z = (5+0)/2 = 2.5.
+    """
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    assert "z" in ds, "z coordinate missing from structured dataset"
+    assert ds["z"].dims == ("layer", "y", "x")
+    assert ds["z"].attrs.get("standard_name") == "altitude"
+    assert ds["z"].attrs.get("positive") == "up"
+    assert ds["z"].attrs.get("long_name") == "cell center elevation"
+    assert np.allclose(ds["z"].isel(layer=0).values, 7.5)
+    assert np.allclose(ds["z"].isel(layer=1).values, 2.5)
+    assert ds["z"].encoding.get("_FillValue") is None
+
+
+def test_mesh_dis_z_coord(structured_grid, modeltime):
+    """z_l1, z_l2, ... must be per-layer cell-center elevation coordinates on nmesh_face."""
+    ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
+    for k, expected in ((1, 7.5), (2, 2.5)):
+        var = f"z_l{k}"
+        assert var in ds, f"{var} missing from layered-mesh dataset"
+        assert ds[var].dims == ("nmesh_face",)
+        assert ds[var].attrs.get("standard_name") == "altitude"
+        assert ds[var].attrs.get("positive") == "up"
+        assert ds[var].attrs.get("long_name") == f"cell center elevation (layer {k})"
+        assert ds[var].attrs.get("layer") == k
+        assert np.allclose(ds[var].values, expected)
+        assert ds[var].encoding.get("_FillValue") is None
+
+
+def test_mesh_disv_z_coord(vertex_grid, modeltime):
+    """z_l1, z_l2, ... must be per-layer cell-center elevation coordinates for DISV too."""
+    ds = vertex_grid.to_xarray(modeltime=modeltime)
+    for k in (1, 2):
+        var = f"z_l{k}"
+        assert var in ds, f"{var} missing from layered-mesh DISV dataset"
+        assert ds[var].dims == ("nmesh_face",)
+        assert ds[var].attrs.get("standard_name") == "altitude"
+        assert ds[var].attrs.get("positive") == "up"
+        assert ds[var].attrs.get("long_name") == f"cell center elevation (layer {k})"
+        assert ds[var].attrs.get("layer") == k
+        assert ds[var].encoding.get("_FillValue") is None
 
 
 def test_mesh_dis_face_nodes_fill_in_encoding(structured_grid, modeltime):
@@ -381,7 +427,10 @@ def test_mesh_data_var_cf_attrs_survive_roundtrip(structured_grid, modeltime, tm
 
 
 def test_structured_dis_gdal_geotransform(structured_grid, modeltime, tmp_path):
-    """GDAL reads the correct GeoTransform from the projection variable."""
+    """GDAL derives the correct extent/GetGeoTransform() from crs_wkt plus
+    the projected x/y dimension coordinate arrays alone -- no explicit
+    GeoTransform attribute is written.
+    """
     gdal = pytest.importorskip("osgeo.gdal")
 
     import xarray as xr
@@ -472,8 +521,8 @@ def vertex_grid_no_crs():
         [5, 200.0, 0.0],
     ]
     cell2d = [
-        [0, 50.0, 50.0, 0, 1, 4, 3],
-        [1, 150.0, 50.0, 1, 2, 5, 4],
+        [0, 50.0, 50.0, 4, 0, 1, 4, 3],
+        [1, 150.0, 50.0, 4, 1, 2, 5, 4],
     ]
     return VertexGrid(
         nlay=2,
@@ -504,8 +553,8 @@ def vertex_grid_mixed_poly():
         [4, 2.0, 0.0],
     ]
     cell2d = [
-        [0, 0.667, 1.0, 0, 1, 2],  # triangle: 3 vertices (len-3=3)
-        [1, 1.5, 1.0, 1, 3, 4, 2],  # quad: 4 vertices (len-3=4)
+        [0, 0.667, 1.0, 3, 0, 1, 2],  # triangle: 3 vertices
+        [1, 1.5, 1.0, 4, 1, 3, 4, 2],  # quad: 4 vertices
     ]
     return VertexGrid(nlay=2, ncpl=2, vertices=vertices, cell2d=cell2d)
 
@@ -518,7 +567,7 @@ def _model_ds(grid, flopy4_time, gridtype, mesh=None):
     the grid.to_xarray() level.
     """
     dims = [2, 2, 3, 3] if gridtype == "structured" else [2, 2, 2]
-    attrs = {"mesh": "layered"} if mesh == "layered" else {}
+    attrs = {"modflow_mesh": "layered"} if mesh == "layered" else {}
     nc_model = NetCDFModel.from_dict(
         meta={
             "modeltype": "gwf6",
@@ -558,8 +607,10 @@ def test_structured_global_attrs(structured_grid, flopy4_time):
     ds = _model_ds(structured_grid, flopy4_time, gridtype="structured")
     assert ds.attrs.get("modflow_grid") == "structured"
     assert ds.attrs.get("modflow_model") == "gwf6: testmodel"
-    assert ds.attrs.get("Conventions") == "CF-1.11"
-    assert "mesh" not in ds.attrs, "mesh global attr must be absent for structured format"
+    assert ds.attrs.get("Conventions") == "CF-1.13"
+    assert "modflow_mesh" not in ds.attrs, (
+        "modflow_mesh global attr must be absent for structured format"
+    )
 
 
 def test_mesh_dis_global_attrs(structured_grid, flopy4_time):
@@ -567,16 +618,20 @@ def test_mesh_dis_global_attrs(structured_grid, flopy4_time):
     ds = _model_ds(structured_grid, flopy4_time, gridtype="structured", mesh="layered")
     assert ds.attrs.get("modflow_grid") == "structured"
     assert ds.attrs.get("modflow_model") == "gwf6: testmodel"
-    assert ds.attrs.get("Conventions") == "CF-1.11 UGRID-1.0"
-    assert ds.attrs.get("mesh") == "layered", "mesh global attr must be 'layered' (lowercase)"
+    assert ds.attrs.get("Conventions") == "CF-1.13 UGRID-1.0"
+    assert ds.attrs.get("modflow_mesh") == "layered", (
+        "modflow_mesh global attr must be 'layered' (lowercase)"
+    )
 
 
 def test_mesh_disv_global_attrs(vertex_grid, flopy4_time):
     """modflow_grid must be 'vertex' and Conventions must include UGRID for DISV layered mesh."""
     ds = _model_ds(vertex_grid, flopy4_time, gridtype="vertex", mesh="layered")
     assert ds.attrs.get("modflow_grid") == "vertex"
-    assert ds.attrs.get("Conventions") == "CF-1.11 UGRID-1.0"
-    assert ds.attrs.get("mesh") == "layered", "mesh global attr must be 'layered' (lowercase)"
+    assert ds.attrs.get("Conventions") == "CF-1.13 UGRID-1.0"
+    assert ds.attrs.get("modflow_mesh") == "layered", (
+        "modflow_mesh global attr must be 'layered' (lowercase)"
+    )
 
 
 # time coordinate attrs
@@ -697,21 +752,191 @@ def test_structured_bnds_fill_value_suppressed(structured_grid, modeltime):
 
 
 # projection variable: GeoTransform and spatial_ref
-def test_structured_projection_gdal_attrs(structured_grid, modeltime):
-    """GeoTransform and spatial_ref must be present on the structured projection variable.
-
-    GeoTransform is required for GDAL-based tools (QGIS, ArcGIS) to place the
-    raster correctly. spatial_ref is GDAL's companion WKT1 attribute.
+def test_structured_projection_no_geotransform(structured_grid, modeltime):
+    """GeoTransform and spatial_ref are never written; CF-standard numeric
+    grid_mapping parameters are written instead on the structured
+    projection variable for GDAL-based tools (QGIS, ArcGIS) to position
+    the projected raster correctly.
     """
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
     proj = ds["projection"]
-    assert "GeoTransform" in proj.attrs, "GeoTransform missing from structured projection variable"
-    gt_parts = str(proj.attrs["GeoTransform"]).split()
-    assert len(gt_parts) == 6, (
-        f"GeoTransform must have 6 values, got: {proj.attrs['GeoTransform']!r}"
+    assert "GeoTransform" not in proj.attrs, "GeoTransform must never be written"
+    assert "spatial_ref" not in proj.attrs, "spatial_ref must never be written"
+
+    assert proj.attrs["grid_mapping_name"] == "transverse_mercator"
+    assert proj.attrs["longitude_of_central_meridian"] == pytest.approx(-117.0)
+    assert proj.attrs["latitude_of_projection_origin"] == pytest.approx(0.0)
+    assert proj.attrs["scale_factor_at_central_meridian"] == pytest.approx(0.9996)
+    assert proj.attrs["false_easting"] == pytest.approx(500_000.0)
+    assert proj.attrs["false_northing"] == pytest.approx(0.0)
+    assert proj.attrs["semi_major_axis"] == pytest.approx(6378137.0)
+    assert proj.attrs["inverse_flattening"] == pytest.approx(298.257223563)
+
+
+def test_structured_projection_crs_wkt_rotated(modeltime):
+    """A rotated grid's crs_wkt must be wrapped in a DerivedProjectedCRS
+    encoding the rotation via EPSG:9624 (affine parametric
+    transformation), with A0..B2 matching the world->local rotation
+    formula exactly; x/y must retain axis/standard_name since they are
+    correct native coordinates in the derived CRS.
+    """
+    import re
+
+    xorigin, yorigin, angrot = 573000.0, 4100000.0, 25.0
+    grid = StructuredGrid.uniform(
+        nlay=1,
+        nrow=3,
+        ncol=4,
+        delr=100.0,
+        delc=150.0,
+        top=10.0,
+        thickness=10.0,
+        xoff=xorigin,
+        yoff=yorigin,
+        angrot=angrot,
+        crs="EPSG:26911",
     )
-    assert "spatial_ref" in proj.attrs, "spatial_ref missing from structured projection variable"
-    assert proj.attrs["spatial_ref"].startswith("PROJCS["), "spatial_ref must be WKT1"
+    ds = grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    proj = ds["projection"]
+    crs_wkt = proj.attrs["crs_wkt"]
+
+    assert crs_wkt.startswith("DERIVEDPROJCRS["), (
+        f"crs_wkt must be wrapped in a DerivedProjectedCRS: {crs_wkt[:80]}"
+    )
+    assert "Affine parametric transformation" in crs_wkt
+    assert 'ID["EPSG",9624]' in crs_wkt
+
+    params = {}
+    for pname in ("A0", "A1", "A2", "B0", "B1", "B2"):
+        m = re.search(rf'PARAMETER\["{pname}",([^,\]]+)', crs_wkt)
+        assert m, f"{pname} parameter not found in crs_wkt"
+        params[pname] = float(m.group(1))
+
+    ang = np.radians(angrot)
+    expected = {
+        "A0": -(xorigin * np.cos(ang) + yorigin * np.sin(ang)),
+        "A1": np.cos(ang),
+        "A2": np.sin(ang),
+        "B0": xorigin * np.sin(ang) - yorigin * np.cos(ang),
+        "B1": -np.sin(ang),
+        "B2": np.cos(ang),
+    }
+    for pname, value in expected.items():
+        assert params[pname] == pytest.approx(value, rel=1e-10), (
+            f"{pname}: {params[pname]} != expected {value}"
+        )
+
+    assert "axis" in ds["x"].attrs, "x axis attr must be present when the wrap succeeds"
+    assert "axis" in ds["y"].attrs, "y axis attr must be present when the wrap succeeds"
+    assert "GeoTransform" not in proj.attrs
+    assert "spatial_ref" not in proj.attrs
+
+    # The A0..B2 parameters alone don't prove x/y are written on the
+    # coordinate convention the wrap actually assumes (zero-based local,
+    # not xorigin/yorigin-offset) -- transform the *stored* x/y values
+    # themselves through the wrapped CRS and compare against the true
+    # world position computed independently.
+    pyproj = pytest.importorskip("pyproj")
+    derived_crs = pyproj.CRS.from_wkt(crs_wkt)
+    base_crs = pyproj.CRS.from_epsg(26911)
+    transformer = pyproj.Transformer.from_crs(derived_crs, base_crs, always_xy=True)
+    for lx, ly in zip(ds["x"].values, ds["y"].values):
+        world_x, world_y = transformer.transform(float(lx), float(ly))
+        expected_x = xorigin + lx * np.cos(ang) - ly * np.sin(ang)
+        expected_y = yorigin + lx * np.sin(ang) + ly * np.cos(ang)
+        assert np.allclose((world_x, world_y), (expected_x, expected_y), rtol=1e-9), (
+            f"stored (x,y)=({lx},{ly}) resolves to ({world_x},{world_y}), "
+            f"expected ({expected_x},{expected_y})"
+        )
+
+
+def test_structured_projection_lcc_2sp(modeltime):
+    """lambert_conformal_conic (2SP) CRS: grid_mapping_name plus the
+    standard_parallel array and the 6 shared CF numeric parameters are
+    all written."""
+    grid = StructuredGrid.uniform(
+        nlay=1,
+        nrow=3,
+        ncol=4,
+        delr=100.0,
+        delc=150.0,
+        top=10.0,
+        thickness=10.0,
+        xoff=1_005_000.0,
+        yoff=1_005_000.0,
+        crs="EPSG:3081",  # NAD83 / Texas State Mapping System
+    )
+    ds = grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    proj = ds["projection"]
+    assert proj.attrs["grid_mapping_name"] == "lambert_conformal_conic"
+    assert np.allclose(proj.attrs["standard_parallel"], [27.4166666666667, 34.9166666666667])
+    assert proj.attrs["longitude_of_central_meridian"] == pytest.approx(-100.0)
+    assert proj.attrs["latitude_of_projection_origin"] == pytest.approx(31.1666666666667)
+    assert proj.attrs["false_easting"] == pytest.approx(1_000_000.0)
+    assert proj.attrs["false_northing"] == pytest.approx(1_000_000.0)
+    assert proj.attrs["semi_major_axis"] == pytest.approx(6378137.0)
+    assert proj.attrs["inverse_flattening"] == pytest.approx(298.257222101)
+
+
+def test_structured_projection_albers(modeltime):
+    """albers_conical_equal_area CRS: grid_mapping_name plus the
+    standard_parallel array and the 6 shared CF numeric parameters are
+    all written."""
+    grid = StructuredGrid.uniform(
+        nlay=1,
+        nrow=3,
+        ncol=4,
+        delr=100.0,
+        delc=150.0,
+        top=10.0,
+        thickness=10.0,
+        xoff=100_000.0,
+        yoff=100_000.0,
+        crs="EPSG:5070",  # NAD83 / Conus Albers
+    )
+    ds = grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    proj = ds["projection"]
+    assert proj.attrs["grid_mapping_name"] == "albers_conical_equal_area"
+    assert np.allclose(proj.attrs["standard_parallel"], [29.5, 45.5])
+    assert proj.attrs["longitude_of_central_meridian"] == pytest.approx(-96.0)
+    assert proj.attrs["latitude_of_projection_origin"] == pytest.approx(23.0)
+    assert proj.attrs["false_easting"] == pytest.approx(0.0)
+    assert proj.attrs["false_northing"] == pytest.approx(0.0)
+    assert proj.attrs["semi_major_axis"] == pytest.approx(6378137.0)
+    assert proj.attrs["inverse_flattening"] == pytest.approx(298.257222101)
+
+
+def test_structured_projection_lcc_1sp_warns(modeltime):
+    """lambert_conformal_conic (1SP, scale_factor-based) CRS: CF has no
+    scale_factor attribute for this method, so numeric grid_mapping
+    parameter extraction must warn and write nothing, while still
+    writing grid_mapping_name from the CRS's projection method alone."""
+    grid = StructuredGrid.uniform(
+        nlay=1,
+        nrow=3,
+        ncol=4,
+        delr=100.0,
+        delc=150.0,
+        top=10.0,
+        thickness=10.0,
+        xoff=600_100.0,
+        yoff=600_100.0,
+        crs="EPSG:2062",  # Madrid 1870 (Madrid) / Spain LCC
+    )
+    with pytest.warns(UserWarning, match="1SP"):
+        ds = grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.STRUCTURED)
+    proj = ds["projection"]
+    assert proj.attrs["grid_mapping_name"] == "lambert_conformal_conic"
+    for attr in (
+        "standard_parallel",
+        "longitude_of_central_meridian",
+        "latitude_of_projection_origin",
+        "false_easting",
+        "false_northing",
+        "semi_major_axis",
+        "inverse_flattening",
+    ):
+        assert attr not in proj.attrs, f"{attr} must not be written for an unsupported 1SP variant"
 
 
 def test_mesh_dis_no_gdal_attrs(structured_grid, modeltime):
@@ -830,18 +1055,17 @@ def test_mesh_dis_face_coord_attrs(structured_grid, modeltime):
     assert ds["mesh_face_y"].attrs.get("grid_mapping") == "projection"
 
 
-def test_mesh_dis_face_bounds_fill_in_encoding(structured_grid, modeltime):
-    """mesh_face_xbnds/ybnds _FillValue must be FILL_FLOAT64 in encoding (DIS path).
+def test_mesh_dis_face_bounds_no_fill_attr(structured_grid, modeltime):
+    """mesh_face_xbnds/ybnds must not declare a _FillValue attribute (DIS path).
 
-    These are padded float arrays where padding slots must use NF90_FILL_DOUBLE
-    so CF validators and masking tools correctly identify them. xarray's default
-    for float64 is NaN which is not a valid CF fill value.
+    Matches MF6 (MeshNCModel.f90): padding slots hold NF90_FILL_DOUBLE in the
+    data itself, but the attribute is never declared on these variables.
     """
     ds = structured_grid.to_xarray(modeltime=modeltime, netcdf_format=NetCDFFormat.LAYERED_MESH)
     assert "_FillValue" not in ds["mesh_face_xbnds"].attrs
     assert "_FillValue" not in ds["mesh_face_ybnds"].attrs
-    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") == FILL_FLOAT64
-    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") == FILL_FLOAT64
+    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") is None
+    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") is None
 
 
 def test_mesh_disv_node_coord_attrs(vertex_grid, modeltime):
@@ -867,13 +1091,41 @@ def test_mesh_disv_face_coord_attrs(vertex_grid, modeltime):
     assert ds["mesh_face_y"].attrs.get("grid_mapping") == "projection"
 
 
-def test_mesh_disv_face_bounds_fill_in_encoding(vertex_grid, modeltime):
-    """mesh_face_xbnds/ybnds _FillValue must be FILL_FLOAT64 in encoding (DISV path)."""
+def test_mesh_disv_face_bounds_no_fill_attr(vertex_grid, modeltime):
+    """mesh_face_xbnds/ybnds must not declare a _FillValue attribute (DISV path)."""
     ds = vertex_grid.to_xarray(modeltime=modeltime)
     assert "_FillValue" not in ds["mesh_face_xbnds"].attrs
     assert "_FillValue" not in ds["mesh_face_ybnds"].attrs
-    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") == FILL_FLOAT64
-    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") == FILL_FLOAT64
+    assert ds["mesh_face_xbnds"].encoding.get("_FillValue") is None
+    assert ds["mesh_face_ybnds"].encoding.get("_FillValue") is None
+
+
+def test_mesh_disv_face_bounds_padding_value(modeltime):
+    """Padding slots (cells with fewer vertices than max) must hold FILL_FLOAT64
+    in the actual data, matching MF6's NF90_FILL_DOUBLE -- even though neither
+    system declares a _FillValue attribute for it (see the no_fill_attr tests).
+    """
+    # 1 quad (4 verts) + 1 triangle (3 verts): exercises real padding.
+    vertices = [
+        [0, 0.0, 100.0],
+        [1, 100.0, 100.0],
+        [2, 200.0, 100.0],
+        [3, 0.0, 0.0],
+        [4, 100.0, 0.0],
+        [5, 200.0, 0.0],
+    ]
+    cell2d = [
+        [0, 50.0, 50.0, 4, 0, 1, 4, 3],
+        [1, 150.0, 66.7, 3, 1, 2, 5],
+    ]
+    grid = VertexGrid(nlay=1, ncpl=2, vertices=vertices, cell2d=cell2d, crs=CRS)
+    ds = grid.to_xarray(modeltime=modeltime)
+    assert ds.sizes["max_nmesh_face_nodes"] == 4
+    # triangle (face index 1) has one padding slot
+    assert ds["mesh_face_xbnds"].values[1, -1] == FILL_FLOAT64
+    assert ds["mesh_face_ybnds"].values[1, -1] == FILL_FLOAT64
+    # quad (face index 0) is fully populated, no padding
+    assert not np.any(ds["mesh_face_xbnds"].values[0] == FILL_FLOAT64)
 
 
 def test_mesh_disv_face_bounds_padding_data_values(vertex_grid_mixed_poly, modeltime):
@@ -974,6 +1226,71 @@ def test_mesh_dis_param_long_name(structured_grid):
     """long_name must carry through correctly for layered-mesh DIS face variables too."""
     ds = _structured_param_ds(structured_grid, name="k", mesh="layered", layer=1)
     assert ds["npf_k_l1"].attrs.get("long_name") == "hydraulic conductivity (L/T) layer 1"
+
+
+def test_from_model_int_param_dtype():
+    """NetCDFModel.from_model() (the real end-to-end path, not the lower-level
+    NetCDFParam helper above) must preserve integer dtype for integer GRIDDATA
+    params, not silently cast them to float64.
+    """
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf
+    from flopy4.mf6.utils.time import Time
+
+    dis = Dis(nlay=1, nrow=1, ncol=3, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(dis=dis, name="m")
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=1, k=1.0)
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.STRUCTURED, time=time)
+    ds = nc_model.to_xarray()
+    assert np.issubdtype(ds["npf_icelltype"].dtype, np.integer), (
+        f"icelltype must be integer-typed, got {ds['npf_icelltype'].dtype}"
+    )
+    assert np.issubdtype(ds["npf_k"].dtype, np.floating), (
+        f"k must remain float-typed, got {ds['npf_k'].dtype}"
+    )
+
+
+def test_from_model_structured_layer_coordinates_z():
+    """Structured per-layer (layer, y, x) fields must link to the z auxiliary
+    coordinate via a `coordinates="z"` attribute, matching MF6's own
+    DisNCStructured.f90 output; a non-layered (y, x) field like dis_top must
+    not, since it has no per-layer elevation to link to.
+    """
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf
+    from flopy4.mf6.utils.time import Time
+
+    dis = Dis(nlay=2, nrow=1, ncol=3, delr=1.0, delc=1.0, top=10.0, botm=[5.0, 0.0])
+    gwf = Gwf(dis=dis, name="rch")
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=1, k=1.0)
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.STRUCTURED, time=time)
+    ds = nc_model.to_xarray()
+    assert ds["npf_k"].attrs.get("coordinates") == "z"
+    assert ds["npf_icelltype"].attrs.get("coordinates") == "z"
+    assert ds["dis_botm"].attrs.get("coordinates") == "z"
+    assert "coordinates" not in ds["dis_top"].attrs
+
+
+def test_from_model_title():
+    """title must match MF6's own model-type-specific convention (NCModel.f90),
+    preserving the model name's original casing -- not blanket-lowercased.
+    """
+    from flopy4.mf6.gwf import Dis, Gwf, Ic, Npf
+    from flopy4.mf6.utils.time import Time
+
+    dis = Dis(nlay=1, nrow=1, ncol=3, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(dis=dis, name="rch")
+    Ic(parent=gwf, strt=1.0)
+    Npf(parent=gwf, icelltype=1, k=1.0)
+    time = Time(perlen=[1.0], nstp=[1], tsmult=[1.0])
+
+    nc_model = NetCDFModel.from_model(gwf, netcdf_format=NetCDFFormat.STRUCTURED, time=time)
+    ds = nc_model.to_xarray()
+    assert ds.attrs.get("title") == "RCH hydraulic head array input"
 
 
 # modflow_input attribute format

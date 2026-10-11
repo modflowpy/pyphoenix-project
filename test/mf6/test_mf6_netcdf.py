@@ -64,7 +64,7 @@ def test_model_nomesh():
 
     assert ds.attrs["modflow_grid"] == "structured"
     assert ds.attrs["modflow_model"] == "gwf6: gwfmodel"
-    assert "mesh" not in ds.attrs
+    assert "modflow_mesh" not in ds.attrs
     assert "welg_0_q" in ds
     assert "welg_0_concentration" in ds
     assert np.allclose(ds["welg_0_q"].values, welg_0_q)
@@ -121,7 +121,7 @@ def test_package_nomesh():
 
     # assert ds.attrs["modflow_grid"] == "structured"
     # assert ds.attrs["modflow_model"] == "gwf6: gwfmodel"
-    assert "mesh" not in ds.attrs
+    assert "modflow_mesh" not in ds.attrs
     assert "welg_0_q" in ds
     assert "welg_0_concentration" in ds
     assert "welg_0_temperature" in ds
@@ -208,7 +208,7 @@ def test_model_mesh():
         "modeltype": "gwf6",
         "modelname": "gwfmodel",
         "gridtype": "structured",
-        "attrs": {"mesh": "layered"},
+        "attrs": {"modflow_mesh": "layered"},
         "packages": packages,
     }
 
@@ -220,7 +220,7 @@ def test_model_mesh():
 
     assert ds.attrs["modflow_grid"] == "structured"
     assert ds.attrs["modflow_model"] == "gwf6: gwfmodel"
-    assert ds.attrs["mesh"] == "layered"
+    assert ds.attrs["modflow_mesh"] == "layered"
     assert "dis_delr" in ds
     assert "dis_delc" in ds
     assert "rcha_0_recharge" in ds

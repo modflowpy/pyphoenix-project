@@ -322,8 +322,50 @@ def test_open_hds_disv_netcdf_ugrid_layered(function_tmpdir, disv_model_output):
     _open_hds_netcdf — CF-UGRID layered format for DISV.
 
     Writes a synthetic NetCDF file with ``head_l1``, ``head_l2`` variables
-    on ``(time, nmesh_face)`` dimensions and a ``mesh`` global attribute,
-    matching what MODFLOW 6 writes for DISV grids in layered mesh mode.
+    on ``(time, nmesh_face)`` dimensions and a ``modflow_mesh`` global
+    attribute, matching what MODFLOW 6 currently writes for DISV grids in
+    layered mesh mode (renamed from the bare ``mesh`` attribute, which
+    collided with UGRID's reserved per-variable ``mesh`` attribute in some
+    CF readers).
+    """
+    from pathlib import Path
+
+    paths = disv_model_output
+    nlay, ncpl = paths["nlay"], paths["ncpl"]
+    ntime = 2
+
+    rng = np.random.default_rng(1)
+    layer_data = [rng.random((ntime, ncpl)) for _ in range(nlay)]
+    data_vars = {
+        f"head_l{k + 1}": xr.DataArray(layer_data[k], dims=("time", "nmesh_face"))
+        for k in range(nlay)
+    }
+    ds = xr.Dataset(
+        data_vars,
+        coords={"time": np.array([1.0, 2.0])},
+        attrs={"modflow_mesh": 1, "modflow_grid": "VERTEX"},
+    )
+    nc_path = Path(function_tmpdir) / "head_ugrid.nc"
+    ds.to_netcdf(nc_path)
+
+    head = open_hds(nc_path, paths["grb"])
+
+    assert isinstance(head, xu.UgridDataArray)
+    assert "time" in head.dims
+    assert "layer" in head.dims
+    assert head.shape[0] == ntime
+    assert head.shape[1] == nlay
+    assert head.shape[2] == ncpl
+    # Data values should round-trip exactly
+    for k in range(nlay):
+        np.testing.assert_allclose(head.values[:, k, :], layer_data[k])
+
+
+def test_open_hds_disv_netcdf_ugrid_layered_legacy_mesh_attr(function_tmpdir, disv_model_output):
+    """
+    _open_hds_netcdf still recognizes the legacy bare ``mesh`` global
+    attribute (pre-rename) as a fallback, for files written before MF6
+    renamed it to ``modflow_mesh``.
     """
     from pathlib import Path
 
@@ -342,20 +384,15 @@ def test_open_hds_disv_netcdf_ugrid_layered(function_tmpdir, disv_model_output):
         coords={"time": np.array([1.0, 2.0])},
         attrs={"mesh": 1, "modflow_grid": "VERTEX"},
     )
-    nc_path = Path(function_tmpdir) / "head_ugrid.nc"
+    nc_path = Path(function_tmpdir) / "head_ugrid_legacy.nc"
     ds.to_netcdf(nc_path)
 
     head = open_hds(nc_path, paths["grb"])
 
     assert isinstance(head, xu.UgridDataArray)
-    assert "time" in head.dims
-    assert "layer" in head.dims
     assert head.shape[0] == ntime
     assert head.shape[1] == nlay
     assert head.shape[2] == ncpl
-    # Data values should round-trip exactly
-    for k in range(nlay):
-        np.testing.assert_allclose(head.values[:, k, :], layer_data[k])
 
 
 def test_open_hds_netcdf_grid_type_mismatch(function_tmpdir, dis_model_output):
