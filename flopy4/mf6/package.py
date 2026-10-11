@@ -13,6 +13,7 @@ from modflow_devtools.dfns import dim_input, dim_value
 from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
+from flopy4.mf6 import period_lists
 from flopy4.mf6._types import TimeArraySeriesRef, TimeSeriesRef
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
@@ -899,8 +900,11 @@ class Package(Component, ABC):
     def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
         """All set griddata (or period-array) fields as xr.Dataset.
 
-        Stays lazy if dask-backed. For packages with no array fields this
-        falls through to ``Component.to_xarray()``, which returns whatever
+        Stays lazy if dask-backed. A list package's stress period data is
+        put on the grid, a variable per column (see
+        ``flopy4.mf6.period_lists``); ``to_dataframe()`` is its lossless
+        form. For packages with neither this falls through to
+        ``Component.to_xarray()``, which returns whatever
         ``attrs_to_dataset()`` finds -- empty for a package with no
         griddata fields of its own.
         """
@@ -914,10 +918,23 @@ class Package(Component, ABC):
                 if a.metadata.get("block") == _block
                 and getattr(self, a.name) is not None
                 and not a.metadata.get("fk")
+                and item_list_type(a.type) is None
             }
             if data_vars:
                 return xr.Dataset(data_vars)
+        spd = period_lists.period_list_field(type(self))
+        if spd is not None and self.__dict__.get(spd.name) is not None:
+            return period_lists.to_dataset(self)
         return super().to_xarray()  # type: ignore[return-value]
+
+    def from_xarray(self, ds: xr.Dataset) -> None:
+        """Set stress_period_data from ``to_xarray()``'s grid form (see
+        ``flopy4.mf6.period_lists``). A period block is made where a period
+        differs from the one before."""
+        spd = period_lists.period_list_field(type(self))
+        if spd is None:
+            raise ValueError(f"{type(self).__name__} has no stress period data")
+        self.__dict__[spd.name] = period_lists.from_dataset(self, ds)
 
 
 def _union_row(
