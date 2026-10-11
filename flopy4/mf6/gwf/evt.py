@@ -5,7 +5,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
@@ -26,17 +26,19 @@ class Evt(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
-        surface: Union[float, str] = field(time_series=True)
-        rate: Union[float, str] = field(time_series=True)
-        depth: Union[float, str] = field(time_series=True)
-        pxdp: tuple[Union[float, str], ...] = field(
+        surface: Union[float, TimeSeriesRef] = field(time_series=True)
+        rate: Union[float, TimeSeriesRef] = field(time_series=True)
+        depth: Union[float, TimeSeriesRef] = field(time_series=True)
+        pxdp: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
         )
-        petm: tuple[Union[float, str], ...] = field(
+        petm: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
         )
-        petm0: Optional[Union[float, str]] = field(default=None, time_series=True, optional=True)
-        aux: tuple[Union[float, str], ...] = field(
+        petm0: Optional[Union[float, TimeSeriesRef]] = field(
+            default=None, time_series=True, optional=True
+        )
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
         boundname: Optional[str] = field(default=None, optional=True)

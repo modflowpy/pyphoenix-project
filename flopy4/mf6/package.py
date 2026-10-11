@@ -11,7 +11,7 @@ from modflow_devtools.dfns import dim_input, dim_value
 from modflow_devtools.dfns.schema import split_bound
 from pandas.api.types import is_scalar
 
-from flopy4.mf6._types import TimeArraySeriesRef
+from flopy4.mf6._types import TimeArraySeriesRef, TimeSeriesRef
 from flopy4.mf6.component import Component
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
@@ -641,7 +641,7 @@ class Package(Component, ABC):
             return pd.DataFrame()
         frames = []
         for kper in sorted(_spd):
-            df = pd.DataFrame([attrs.asdict(row) for row in _spd[kper]])
+            df = pd.DataFrame([_row_dict(row) for row in _spd[kper]])
             df.insert(0, "kper", kper)
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -802,8 +802,20 @@ class Package(Component, ABC):
         return super().to_xarray()  # type: ignore[return-value]
 
 
+def _row_dict(row: Any) -> dict[str, Any]:
+    """A table row as a DataFrame record: `attrs.asdict`, except that
+    time-series references stay as they are (asdict would make each a
+    dict), so the frame round-trips through `from_dataframe`."""
+    record = attrs.asdict(row)
+    for f in attrs.fields(type(row)):
+        if f.metadata.get("time_series"):
+            v = getattr(row, f.name)
+            record[f.name] = list(v) if isinstance(v, tuple) else v
+    return record
+
+
 def _ts_names(row: Any) -> list[str]:
-    """The time-series names a table row uses: the strings in its
+    """The time-series names a table row uses: the references in its
     time-series columns, including in its nested union arms (not its
     child files, which check their own)."""
     names: list[str] = []
@@ -811,7 +823,7 @@ def _ts_names(row: Any) -> list[str]:
         value = getattr(row, f.name)
         if f.metadata.get("time_series"):
             values = value if isinstance(value, tuple) else (value,)
-            names += [v for v in values if isinstance(v, str)]
+            names += [v.name for v in values if isinstance(v, TimeSeriesRef)]
         elif isinstance(value, Item):
             names += _ts_names(value)
     return names

@@ -4,7 +4,7 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
-from flopy4.mf6._types import FloatArrayLike
+from flopy4.mf6._types import FloatArrayLike, TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
@@ -73,7 +73,7 @@ class Csub(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
-        sig0: Union[float, str] = field(time_series=True)
+        sig0: Union[float, TimeSeriesRef] = field(time_series=True)
 
     boundnames: bool = field(
         default=False,

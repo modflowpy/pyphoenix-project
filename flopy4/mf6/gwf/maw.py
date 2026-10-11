@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
@@ -39,10 +39,10 @@ class Maw(Package):
         ifno: int = field(index=True, pk=True)
         radius: float = field()
         bottom: float = field()
-        strt: Union[float, str] = field(time_series=True)
+        strt: Union[float, TimeSeriesRef] = field(time_series=True)
         condeqn: str = field()
         ngwfnodes: int = field()
-        aux: tuple[Union[float, str], ...] = field(
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
         boundname: Optional[str] = field(default=None, optional=True)
@@ -95,13 +95,13 @@ class Maw(Package):
     class Rate(Item):
         _keyword: ClassVar[str] = "rate"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        rate: Union[float, str] = field(time_series=True)
+        rate: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class WellHead(Item):
         _keyword: ClassVar[str] = "well_head"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        well_head: Union[float, str] = field(time_series=True)
+        well_head: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class HeadLimit(Item):
@@ -128,7 +128,7 @@ class Maw(Package):
         _keyword: ClassVar[str] = "auxiliary"
         ifno: int = field(index=True, fk="packagedata.ifno")
         auxname: str = field()
-        auxval: Union[float, str] = field(time_series=True)
+        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
     _StressPeriodDataItem = (
         Status

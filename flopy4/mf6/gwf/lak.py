@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
@@ -48,7 +48,7 @@ class Lak(Package):
         ifno: int = field(index=True, pk=True)
         strt: float = field()
         nlakeconn: int = field()
-        aux: tuple[Union[float, str], ...] = field(
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
         boundname: Optional[str] = field(default=None, optional=True)
@@ -76,10 +76,10 @@ class Lak(Package):
         lakein: int = field(index=True, fk="packagedata.ifno")
         lakeout: int = field(index=True, fk="packagedata.ifno")
         couttype: str = field()
-        invert: Union[float, str] = field(time_series=True)
-        width: Union[float, str] = field(time_series=True)
-        rough: Union[float, str] = field(time_series=True)
-        slope: Union[float, str] = field(time_series=True)
+        invert: Union[float, TimeSeriesRef] = field(time_series=True)
+        width: Union[float, TimeSeriesRef] = field(time_series=True)
+        rough: Union[float, TimeSeriesRef] = field(time_series=True)
+        slope: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Status(Item):
@@ -91,74 +91,74 @@ class Lak(Package):
     class Stage(Item):
         _keyword: ClassVar[str] = "stage"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        stage: Union[float, str] = field(time_series=True)
+        stage: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        rainfall: Union[float, str] = field(time_series=True)
+        rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        evaporation: Union[float, str] = field(time_series=True)
+        evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        runoff: Union[float, str] = field(time_series=True)
+        runoff: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        inflow: Union[float, str] = field(time_series=True)
+        inflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Withdrawal(Item):
         _keyword: ClassVar[str] = "withdrawal"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        withdrawal: Union[float, str] = field(time_series=True)
+        withdrawal: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rate(Item):
         _keyword: ClassVar[str] = "rate"
         outletno: int = field(index=True, fk="outlets.outletno")
-        rate: Union[float, str] = field(time_series=True)
+        rate: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Invert(Item):
         _keyword: ClassVar[str] = "invert"
         outletno: int = field(index=True, fk="outlets.outletno")
-        invert: Union[float, str] = field(time_series=True)
+        invert: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Width(Item):
         _keyword: ClassVar[str] = "width"
         outletno: int = field(index=True, fk="outlets.outletno")
-        width: Union[float, str] = field(time_series=True)
+        width: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Slope(Item):
         _keyword: ClassVar[str] = "slope"
         outletno: int = field(index=True, fk="outlets.outletno")
-        slope: Union[float, str] = field(time_series=True)
+        slope: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rough(Item):
         _keyword: ClassVar[str] = "rough"
         outletno: int = field(index=True, fk="outlets.outletno")
-        rough: Union[float, str] = field(time_series=True)
+        rough: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         lakeno: int = field(index=True, fk="packagedata.ifno")
         auxname: str = field()
-        auxval: Union[float, str] = field(time_series=True)
+        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
     _StressPeriodDataItem = (
         Status

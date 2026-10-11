@@ -3,6 +3,7 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
+from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
@@ -17,13 +18,13 @@ class Tvs(Package):
     class Ss(Item):
         _keyword: ClassVar[str] = "ss"
         cellid: tuple = field(cellid=True)
-        ss: Union[float, str] = field(time_series=True)
+        ss: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Sy(Item):
         _keyword: ClassVar[str] = "sy"
         cellid: tuple = field(cellid=True)
-        sy: Union[float, str] = field(time_series=True)
+        sy: Union[float, TimeSeriesRef] = field(time_series=True)
 
     _StressPeriodDataItem = Ss | Sy
 

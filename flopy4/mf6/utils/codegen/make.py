@@ -929,7 +929,7 @@ def _generated_imports(
     # dfn_name is always emitted as a ClassVar (see package.py.jinja), so
     # ClassVar is always needed regardless of multi/slntype/inner classes.
     has_classvar = True
-    # Union[float, str] is used by item_class() for time_series and np.object_ columns.
+    # Union[float, TimeSeriesRef] is used by item_class() for time_series columns.
     # Check every generated Item class's columns.
     _all_schema_cols = [col for ic in (item_classes or []) for col in ic.schema]
     has_union = has_union_child or any(col.uses_union for col in _all_schema_cols)
@@ -995,6 +995,8 @@ def _generated_imports(
     _types_parts += [fn for fn in ("to_array", "to_list") if f"{fn}(" in _converters]
     if "to_array(" in _converters:
         _types_parts.append("ARRAY_EQ")
+    if any(col.uses_ts_ref for col in _all_schema_cols):
+        _types_parts.append("TimeSeriesRef")
     if _types_parts:
         flopy4.append(f"from flopy4.mf6._types import {', '.join(sorted(_types_parts))}")
     # merge lines importing from the same module

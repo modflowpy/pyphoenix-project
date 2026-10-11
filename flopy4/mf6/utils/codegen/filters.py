@@ -776,6 +776,11 @@ class ItemColumn:
         return "Union[" in self.annotation
 
     @property
+    def uses_ts_ref(self) -> bool:
+        """Whether the module needs ``TimeSeriesRef`` imported."""
+        return "TimeSeriesRef" in self.annotation
+
+    @property
     def uses_child(self) -> bool:
         return "child(" in self.rhs
 
@@ -851,8 +856,8 @@ def value_column(
     optional: bool = False,
     time_series: bool = False,
 ) -> ItemColumn:
-    """A plain scalar. A time series value may also be a series' name."""
-    py_type = "Union[float, str]" if time_series else _DFN_PY.get(dfn_type, "float")
+    """A plain scalar. A time series value may also be a series reference."""
+    py_type = "Union[float, TimeSeriesRef]" if time_series else _DFN_PY.get(dfn_type, "float")
     return attr_column(
         name,
         py_type,
@@ -931,7 +936,7 @@ def array_column(
     elif signed:
         py_type = "tuple[tuple[int, int], ...]"
     elif time_series:
-        py_type = "tuple[Union[float, str], ...]"
+        py_type = "tuple[Union[float, TimeSeriesRef], ...]"
     else:
         py_type = f"tuple[{_DFN_PY.get(dfn_type, 'float')}, ...]"
     meta: dict = {"array": True}

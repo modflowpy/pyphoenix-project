@@ -13,7 +13,14 @@ import attrs
 import numpy as np
 from attrs import NOTHING, Attribute
 
-from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, IntArrayLike, TimeArraySeriesRef
+from flopy4.mf6._types import (
+    ARRAY_EQ,
+    FloatArrayLike,
+    IntArrayLike,
+    TimeArraySeriesRef,
+    to_ts_value,
+    to_ts_values,
+)
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
@@ -108,6 +115,10 @@ def field(
         metadata["fill_forward"] = True
     if time_series:
         metadata["time_series"] = True
+        if block is None:
+            # a table row's column: a name is a time series reference
+            # (a package's period array names a time-array series instead)
+            converter = converter or (to_ts_values if array else to_ts_value)
     if index:
         metadata["index"] = True
     if pk:

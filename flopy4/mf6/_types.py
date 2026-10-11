@@ -55,6 +55,42 @@ class TimeArraySeriesRef:
         return self.name
 
 
+@attrs.frozen
+class TimeSeriesRef:
+    """A table row's value given by a time series, by its name, which MF6
+    interpolates in time: ``CHD`` row ``1 1 1 headseries``.
+
+    This is the typed form. A plain name, ``(cellid, "headseries")``, is
+    also accepted and converted to this by the column's converter, but
+    mypy rejects it.
+    """
+
+    name: str
+
+    def __str__(self) -> str:
+        return self.name
+
+
+def to_ts_value(v: Any) -> Any:
+    """attrs converter for a time-series column: a name (a string that
+    isn't a number) to a `TimeSeriesRef`, a numeric string to a float,
+    anything else as is."""
+    if not isinstance(v, str):
+        return v
+    try:
+        return float(v)
+    except ValueError:
+        return TimeSeriesRef(v)
+
+
+def to_ts_values(v: Any) -> Any:
+    """attrs converter for a time-series array column (a row's aux values):
+    each value as `to_ts_value` converts it, as a tuple."""
+    if v is None:
+        return None
+    return tuple(to_ts_value(x) for x in v)
+
+
 def _wrap(v) -> list:
     """A single value (a str or path is one value, not an iterable) as a
     one-element list, else the values as a list."""

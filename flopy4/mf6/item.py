@@ -22,6 +22,7 @@ from typing import Any, ClassVar, Union, cast, get_args, get_origin
 
 import attrs
 
+from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 
 
@@ -303,6 +304,12 @@ def _float_or_str(token: Any) -> Any:
         return token
 
 
+def _ts_token(value: Any) -> Any:
+    """A time-series reference as its name, the token MF6 reads; anything
+    else as is."""
+    return value.name if isinstance(value, TimeSeriesRef) else value
+
+
 def _token_fits(token: Any, kind: type) -> bool:
     """True if token coerces to kind -- tells a trailing boundname string
     apart from a trailing numeric value."""
@@ -495,7 +502,7 @@ class Item(Record):
             elif f.metadata.get("index"):
                 row.append(int(val) + 1)
             elif f.metadata.get("array"):
-                row.extend(val)
+                row.extend(_ts_token(v) for v in val)
             elif f.metadata.get("tagged"):
                 if val:
                     row.append(f.name.upper())
@@ -513,7 +520,7 @@ class Item(Record):
                     from flopy4.mf6.converter.egress.unstructure import _child_path
 
                     val = _child_path(val)
-                row.append(val.as_posix() if isinstance(val, Path) else val)
+                row.append(val.as_posix() if isinstance(val, Path) else _ts_token(val))
         if not keyword_emitted:
             row.append(keyword.upper())
         boundname = getattr(self, "boundname", None)
