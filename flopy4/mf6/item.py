@@ -218,9 +218,10 @@ def construct_item(item_cls: type, values) -> "Item":
     for one aux variable, ``("HEAD", "FREQUENCY", 2)`` for OC's Save
     (rtype, ocsetting), or ``(0, "STATUS", "ACTIVE")`` for LKT's ifno and
     laksetting. Everything from the aux/array/union field's position onward
-    collects into that one field's value, except a trailing string when the
-    class also has boundname (always declared last) -- a string there
-    unambiguously isn't a numeric aux value.
+    collects into that one field's value, except a trailing string or None
+    when the class also has boundname (always declared last) -- a string
+    there unambiguously isn't a numeric aux value, and None is an absent
+    boundname.
     """
     fields = cast(type[Record], item_cls).fields()
     tuple_idx = next(
@@ -242,7 +243,7 @@ def construct_item(item_cls: type, values) -> "Item":
         fields
         and fields[-1].name == "boundname"
         and len(values) > tuple_idx
-        and isinstance(values[-1], str)
+        and (values[-1] is None or isinstance(values[-1], str))
         and arms is None
     ):
         boundname_val = values[-1]
