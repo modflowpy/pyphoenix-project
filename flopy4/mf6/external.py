@@ -15,12 +15,12 @@ import numpy as np
 import xarray as xr
 
 from flopy4.mf6.codec.writer.filters import array2chunks, array2string
-from flopy4.mf6.write_context import WriteContext, array_hash
+from flopy4.mf6.write_context import ArrayFormat, WriteContext, array_hash
 
 _session = threading.local()
 
 
-class ArrayFileError(ValueError):
+class ExternalFileError(ValueError):
     """An array's file can't be written as given, with
     `WriteContext.strict` on. See `write_external_arrays`."""
 
@@ -74,12 +74,11 @@ def write_external_arrays(
     `annotate_arrays`) that go to files of their own, and mark them so the
     writer writes OPEN/CLOSE records for them.
 
-    An array goes to a file if it has an `ArrayIO.path` (in its `path`
-    attr, or per layer in `layer_path`), or, without one, if
-    `context.array_format` is "open/close", or if it's written binary
-    (see `_is_binary`) and `array_format` isn't "internal": then a
-    layered array gets a file per layer. Arrays the writer reads from
-    NetCDF are left alone.
+    An array goes to a file if its format (see `_file_format`) is
+    "open/close" or "binary": its `ArrayIO.path` (in its `path` attr, or
+    per layer in `layer_path`), or one named for the component and field.
+    A layered array not marked `layered=False` gets a file per layer.
+    Arrays the writer reads from NetCDF are left alone.
 
     `root` is the simulation directory, which every path is relative to,
     `filename` the component's file, relative to it, and `label` names the
@@ -98,7 +97,7 @@ def write_external_arrays(
       component already wrote is written inline. Either way, with a
       warning.
 
-    With `context.strict`, either rule raises `ArrayFileError` instead,
+    With `context.strict`, either rule raises `ExternalFileError` instead,
     before any file of the component is written.
     """
     files: dict[Path, _Written] | None = getattr(_session, "files", None)
@@ -118,7 +117,7 @@ def write_external_arrays(
 
     def warn(message: str) -> None:
         if context.strict:
-            raise ArrayFileError(message)
+            raise ExternalFileError(message)
         warnings.warn(message, stacklevel=3)
 
     # the component's own directory is being written to anyway, even if
@@ -227,53 +226,64 @@ def _targets(
     name, _, header = block_name.partition(" ")
     kper = int(header) - 1 if name == "period" and header.isdigit() else None
     where = f"{label}.{key}" + (f" period {kper + 1}" if kper is not None else "")
-    layered = "nlay" in value.dims
-    layer_binary = value.attrs.get("layer_binary", {})
+    layer_format = value.attrs.get("layer_format", {})
+    layer_path = value.attrs.get("layer_path", {})
     layer_hash = value.attrs.get("layer_hash", {})
     stem = filename.name.replace(".", "_") + f"_{key}"
     if kper is not None:
         stem += f"_p{kper + 1}"
 
-    def target(path: Path | None, layer: int | None) -> _Target:
+    def target(layer: int | None) -> _Target | None:
         values = value if layer is None else value.isel(nlay=layer)
-        what = where if layer is None else f"{where} layer {layer + 1}"
-        own = value.attrs.get("binary")
-        if layer is not None:
-            own = layer_binary.get(layer, own)
-        binary = _is_binary(values, own, context)
+        if layer is None:
+            own, path, loaded = (value.attrs.get(a) for a in ("format", "path", "hash"))
+        else:
+            own = layer_format.get(layer, value.attrs.get("format"))
+            path, loaded = layer_path.get(layer), layer_hash.get(layer)
+        fmt = _file_format(values, own, path is not None, context)
+        if fmt is None:
+            return None
+        binary = fmt == "binary"
         if path is None:
             name = stem + ("" if layer is None else f"_l{layer + 1}")
             path = filename.parent / f"{name}.{'bin' if binary else 'txt'}"
-        loaded = value.attrs.get("hash") if layer is None else layer_hash.get(layer)
+        what = where if layer is None else f"{where} layer {layer + 1}"
         return _Target(block_name, key, layer, what, _absolute(path, root), values, binary, loaded)
 
-    if layered and (layer_path := value.attrs.get("layer_path")):
-        return [target(p, layer) for layer, p in sorted(layer_path.items())]
-    if (path := value.attrs.get("path")) is not None:
-        return [target(path, None)]
-    if context.array_format == "internal":
-        return []
-    if layered:
-        targets = [target(None, layer) for layer in range(value.sizes["nlay"])]
+    by_layer = "nlay" in value.dims and (
+        bool(layer_path)
+        or (value.attrs.get("path") is None and value.attrs.get("layered") is not False)
+    )
+    if by_layer:
+        targets = [target(layer) for layer in range(value.sizes["nlay"])]
     else:
-        targets = [target(None, None)]
-    if context.array_format == "open/close":
-        return targets
-    # otherwise only binary arrays go to files
-    return [t for t in targets if t.binary]
+        targets = [target(None)]
+    return [t for t in targets if t is not None]
 
 
-def _is_binary(values: xr.DataArray, own: bool | None, context: WriteContext) -> bool:
-    """Whether to write `values` to a binary file: its own `ArrayIO.binary`
-    if set, else `context.use_binary`, if the values are bigger than
-    `context.binary_threshold`, in bytes as written."""
-    if own is not None:
-        return own
-    if not context.use_binary:
-        return False
-    if context.binary_threshold is None:
-        return True
-    return values.size * _binary_dtype(values).itemsize > context.binary_threshold
+def _file_format(
+    values: xr.DataArray, own: ArrayFormat | None, has_path: bool, context: WriteContext
+) -> ArrayFormat | None:
+    """The file format to write `values` in, "open/close" or "binary", or
+    None to write them inline: their own `ArrayIO.format` if set, else the
+    context's `array_format` if a file format (for "binary", only if the
+    values are bigger than `binary_threshold`, in bytes as written), else
+    "open/close" if they have a path. A path beats an inline
+    `array_format`: one of a lower context would have been dropped
+    (`WriteContext.over`), so it's of the same context or a higher."""
+    fmt = own
+    if fmt is None and context.array_format in _FILE_FORMATS:
+        fmt = context.array_format
+        threshold = context.binary_threshold
+        if fmt == "binary" and threshold is not None:
+            if values.size * _binary_dtype(values).itemsize <= threshold:
+                fmt = None
+    if fmt is None and has_path:
+        fmt = "open/close"
+    return fmt if fmt in _FILE_FORMATS else None
+
+
+_FILE_FORMATS = ("open/close", "binary")
 
 
 def _absolute(path: Path, root: Path) -> Path:

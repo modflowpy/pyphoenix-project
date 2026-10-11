@@ -15,7 +15,6 @@ from flopy4.mf6.write_context import ArrayIO, WriteContext
 def test_write_context_default():
     """Every setting starts unset; resolving fills in the defaults."""
     ctx = WriteContext()
-    assert ctx.use_binary is None
     assert ctx.use_netcdf is None
     assert ctx.binary_threshold is None
     assert ctx.float_precision is None
@@ -23,7 +22,7 @@ def test_write_context_default():
     assert ctx.arrays == {}
 
     resolved = WriteContext.resolve()
-    assert resolved.use_binary is False
+    assert resolved.strict is False
     assert resolved.use_netcdf is False
     assert resolved.float_precision == "lossless"
     assert resolved.array_format is None
@@ -32,8 +31,8 @@ def test_write_context_default():
 
 def test_write_context_custom():
     """Test WriteContext with custom settings."""
-    ctx = WriteContext(use_binary=True, float_precision=8)
-    assert ctx.use_binary is True
+    ctx = WriteContext(array_format="binary", float_precision=8)
+    assert ctx.array_format == "binary"
     assert ctx.float_precision == 8
 
 
@@ -363,10 +362,12 @@ def _iprn_lines(dis):
 def test_load_keeps_iprn(iprn_dis):
     """A loaded array's IPRN, per layer for a LAYERED one, is written back."""
     assert iprn_dis.write_context.arrays == {
-        "delr": ArrayIO(iprn=3, how="internal"),
-        "botm": ArrayIO(how="layered"),
-        ("botm", 0): ArrayIO(iprn=1, how="internal"),
-        ("botm", 1): ArrayIO(iprn=2, how="internal"),
+        "delr": ArrayIO(iprn=3, format="internal", layered=False),
+        "delc": ArrayIO(format="constant", layered=False),
+        "top": ArrayIO(format="constant", layered=False),
+        "botm": ArrayIO(layered=True),
+        ("botm", 0): ArrayIO(iprn=1, format="internal"),
+        ("botm", 1): ArrayIO(iprn=2, format="internal"),
     }
     assert _iprn_lines(iprn_dis) == ["INTERNAL IPRN 3", "INTERNAL IPRN 1", "INTERNAL IPRN 2"]
 
@@ -399,7 +400,9 @@ def test_load_keeps_period_iprn(function_tmpdir):
         """)
     )
     rcha = Rcha.load(path, dims={"nlay": 1, "nodes": 4})
-    assert rcha.write_context.arrays == {("recharge", 1): ArrayIO(iprn=4, how="internal")}
+    assert rcha.write_context.arrays == {
+        ("recharge", 1): ArrayIO(iprn=4, format="internal", layered=False)
+    }
     rcha.filename = str(function_tmpdir / "out.rcha")
     rcha.write()
     assert "INTERNAL IPRN 4" in rcha.path.read_text()

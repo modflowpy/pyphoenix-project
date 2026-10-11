@@ -12,8 +12,13 @@ from attrs import define, field, frozen
 if TYPE_CHECKING:
     from threading import local
 
-ArrayFormat = Literal["internal", "open/close"]
-ArrayForm = Literal["internal", "layered"]
+ArrayFormat = Literal["constant", "internal", "open/close", "binary"]
+"""The control record to write an array with: CONSTANT, INTERNAL,
+OPEN/CLOSE, or OPEN/CLOSE (BINARY). "constant" falls back to INTERNAL for
+an array whose values aren't all equal. Unset, the writer chooses: a file
+for an array with an `ArrayIO.path`, else CONSTANT or INTERNAL."""
+
+INLINE_FORMATS = ("constant", "internal")
 FloatPrecision = Union[int, Literal["lossless"]]
 
 ArrayKey = Union[str, tuple[str, int], tuple[str, int, int]]
@@ -36,37 +41,35 @@ class ArrayIO:
         MF6's IPRN, the format the array is printed to the listing file in.
         Written after INTERNAL or OPEN/CLOSE; a CONSTANT array has none.
     path : Path, optional
-        Write the array to this file, as OPEN/CLOSE, relative to the
-        simulation directory. A layered array's whole-array path holds all
-        its layers in one file; give ``(field, layer)`` entries a path each
-        to write it LAYERED, a file per layer. A path outside the
-        simulation directory isn't written to: the array is written beside
-        its component's file instead, under the same name. Arrays sharing
-        a file must hold the same values, or they're written inline.
-    binary : bool, optional
-        Write the array's file as binary, OPEN/CLOSE (BINARY), or, if
-        False, as text. True without a `path` writes it to a file named
-        for its component and field. Overrides `WriteContext.use_binary`.
-    how : "internal" or "layered", optional
-        The form to write the array inline in, when it isn't written to a
-        file. Unset, an array (or a layer of a layered one) whose values
-        are all equal is written CONSTANT, a layered array LAYERED.
-        'internal' writes it INTERNAL, a layered array's whole, not
-        LAYERED; 'layered' writes a layered array LAYERED even if all its
-        values are equal. A ``(field, layer)`` entry's 'internal' keeps
-        that layer INTERNAL. Loading sets it, to write arrays back in the
-        form they were read.
+        The array's file, relative to the simulation directory, for a
+        `format` of "open/close" (implied by a path without a format) or
+        "binary". Without one, a file is named for the component and
+        field, beside the component's file. A path outside the simulation
+        directory isn't written to: the array is written beside its
+        component's file instead, under the same name. Arrays sharing a
+        file must hold the same values, or they're written inline.
+    format : ArrayFormat, optional
+        The control record to write the array with. Overrides the
+        context's `array_format`. A ``(field, layer)`` entry's is for
+        that layer's record, when the array is written LAYERED.
+    layered : bool, optional
+        Whether to write a layered array LAYERED, a record per layer, or
+        as one record. Unset, the writer chooses: one CONSTANT record if
+        every value is equal, else LAYERED.
     hash : str, optional
         The array's values' `array_hash` when loaded from its file. When
         arrays sharing a file disagree at write time, those whose values
         still match their hash keep the file and the others are written
         inline. Set by loading; not compared by `==`.
+
+    Loading sets each array's `format` and `layered` to the control
+    records it was read from, so writing it again writes them back.
     """
 
     iprn: Optional[int] = None
     path: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
-    binary: Optional[bool] = None
-    how: Optional[ArrayForm] = None
+    format: Optional[ArrayFormat] = None
+    layered: Optional[bool] = None
     hash: Optional[str] = attrs.field(default=None, eq=False, repr=False)
 
     def over(self, lower: "ArrayIO") -> "ArrayIO":
@@ -103,31 +106,26 @@ class WriteContext:
 
     Parameters
     ----------
-    use_binary : bool, optional
-        Write arrays to binary files, OPEN/CLOSE (BINARY), named for their
-        component and field (a layered array's a file per layer), unless
-        `array_format` is 'internal'. Arrays written to files anyway, by
-        an `ArrayIO.path` or 'open/close', are written binary too. Set
-        here, it overrides lower-ranked contexts' `ArrayIO.binary`, such
-        as loaded ones. Default is False.
     use_netcdf : bool, optional
         Prefer netcdf files for arrays. Default is False.
     binary_threshold : int, optional
-        With `use_binary`, write only arrays (or layers, for a file per
-        layer) bigger than this many bytes as binary: 8 per value of a
-        real array, 4 of an integer one. Others are written as if
-        `use_binary` were False. If None, every array is.
+        With an `array_format` of "binary", write only arrays (or layers,
+        for a file per layer) bigger than this many bytes as binary: 8 per
+        value of a real array, 4 of an integer one. Others are written as
+        if `array_format` were unset. If None, every array is.
     float_precision : int or "lossless", optional
         Number of decimal places for float output, in scientific notation,
         or "lossless" (the default) to write the shortest string that
         reads back as the same value.
     array_format : ArrayFormat, optional
-        How to write arrays: 'internal' inline, as INTERNAL or, for an
-        array whose values are all equal, CONSTANT; 'open/close' to a
-        file each, beside the component's file. If None, arrays with an
-        `ArrayIO.path` are written to it, others inline. 'internal' here
-        overrides paths from lower-ranked contexts, such as loaded ones;
-        `use_netcdf` overrides both.
+        The control record to write arrays with, unless an array's own
+        `ArrayIO.format` in this context says otherwise. "open/close" and
+        "binary" write each array to a file (a layered array's a file per
+        layer), its `ArrayIO.path` or one named for its component and
+        field. Set here, it overrides lower-ranked contexts' formats, such
+        as loaded ones, and, if "constant" or "internal", their paths; an
+        `ArrayIO.path` of this context still writes its array to the file.
+        `use_netcdf` overrides it.
     strict : bool, optional
         Raise instead of warning when the arrays' files can't be written
         as given: a file outside the simulation directory, or arrays that
@@ -143,14 +141,13 @@ class WriteContext:
     >>> sim.write(context=WriteContext(float_precision=4))
 
     >>> # Use as context manager
-    >>> with WriteContext(use_binary=True, float_precision=8):
+    >>> with WriteContext(array_format="binary", float_precision=8):
     ...     sim.write()
 
     >>> # Print one array to the listing file
     >>> npf.write_context = WriteContext(arrays={"k": ArrayIO(iprn=1)})
     """
 
-    use_binary: Optional[bool] = field(default=None)
     use_netcdf: Optional[bool] = field(default=None)
     binary_threshold: Optional[int] = field(default=None)
     float_precision: Optional[FloatPrecision] = field(default=None)
@@ -162,7 +159,6 @@ class WriteContext:
     _global_context_stack: ClassVar["local"]
 
     _DEFAULTS: ClassVar[dict[str, Any]] = {
-        "use_binary": False,
         "use_netcdf": False,
         "float_precision": "lossless",
         "strict": False,
@@ -247,11 +243,12 @@ class WriteContext:
             if a.name != "arrays"
         }
         arrays = dict(lower.arrays)
-        if self.array_format == "internal":
-            # inline beats the lower contexts' files
-            arrays = {k: attrs.evolve(io, path=None, binary=None) for k, io in arrays.items()}
-        elif self.use_binary is not None:
-            arrays = {k: attrs.evolve(io, binary=None) for k, io in arrays.items()}
+        if self.array_format is not None:
+            # this format beats the lower contexts', and inline their files
+            cleared: dict[str, Any] = {"format": None}
+            if self.array_format in INLINE_FORMATS:
+                cleared["path"] = None
+            arrays = {k: attrs.evolve(io, **cleared) for k, io in arrays.items()}
         for key, io in self.arrays.items():
             arrays[key] = io.over(arrays[key]) if key in arrays else io
         return WriteContext(**values, arrays=arrays)

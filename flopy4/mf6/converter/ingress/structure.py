@@ -214,12 +214,13 @@ def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
 
 
 def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
-    """How an INTERNAL/OPEN-CLOSE control record writes its array, to write
-    it back the same way: its ``IPRN <n>``, and an OPEN/CLOSE record's
-    file, as written (relative to the simulation directory), whether it's
-    (BINARY), and the hash of the `values` read from it; an INTERNAL
-    record's form, to keep it INTERNAL."""
+    """How a control record wrote its array, to write it back the same
+    way: its kind, as an `ArrayFormat`, and ``IPRN <n>``; an OPEN/CLOSE
+    record's file, as written (relative to the simulation directory), and
+    the hash of the `values` read from it."""
     kind = str(vrow[0]).upper() if vrow else ""
+    if kind == "CONSTANT":
+        return ArrayIO(format="constant")
     if kind not in ("INTERNAL", "OPEN/CLOSE"):
         return ArrayIO()
     tokens = [str(t) for t in vrow[1:]]
@@ -229,31 +230,34 @@ def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
             iprn = int(float(tokens[j + 1]))
             break
     if kind == "INTERNAL":
-        return ArrayIO(iprn=iprn, how="internal")
+        return ArrayIO(iprn=iprn, format="internal")
     if not tokens:
         return ArrayIO(iprn=iprn)
     binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
-    path = Path(_strip_quotes(tokens[0]))
-    return ArrayIO(iprn=iprn, path=path, binary=binary, hash=array_hash(values))
+    return ArrayIO(
+        iprn=iprn,
+        path=Path(_strip_quotes(tokens[0])),
+        format="binary" if binary else "open/close",
+        hash=array_hash(values),
+    )
 
 
 def _record_array_io(
     arrays: "dict | None", key: tuple, ios: "list[ArrayIO]", layered: bool = False
 ) -> None:
     """Record how an array's control records wrote it in `arrays`, by
-    `ArrayKey`: a single record's for the whole array; for a LAYERED one's,
-    that it's LAYERED, IPRN for the whole array if every layer has the
-    same, else per layer, and each layer's file and form."""
+    `ArrayKey`: whether it's LAYERED, and a single record's settings for
+    the whole array; for a LAYERED one's, IPRN for the whole array if
+    every layer has the same, and each layer's other settings."""
     if arrays is None or not ios:
         return
     whole = key[0] if len(key) == 1 else key
     if not layered:
-        if ios[0] != ArrayIO():
-            arrays[whole] = ios[0]
+        arrays[whole] = attrs.evolve(ios[0], layered=False)
         return
     iprns = {io.iprn for io in ios}
     iprn = ios[0].iprn if len(iprns) == 1 else None
-    arrays[whole] = ArrayIO(iprn=iprn, how="layered")
+    arrays[whole] = ArrayIO(iprn=iprn, layered=True)
     if iprn is not None:
         ios = [attrs.evolve(io, iprn=None) for io in ios]
     for layer, io in enumerate(ios):

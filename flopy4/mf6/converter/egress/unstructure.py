@@ -387,10 +387,10 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
     """Copy each array's settings from `context.arrays` (see `ArrayKey`) onto
     the DataArray `data` holds for it, as attrs the writer reads: `iprn`,
     and `layer_iprn` for layers of a layered array whose IPRN differs from
-    the whole array's; `path`, `binary`, `how` and `hash`, and
-    `layer_path`, `layer_binary`, `layer_how` and `layer_hash` for layers
-    given their own (see `write_external_arrays` and `array_how`). A
-    period block's arrays are keyed by period."""
+    the whole array's; `path`, `format`, `hash` and `layered`, and
+    `layer_path`, `layer_format` and `layer_hash` for layers given their
+    own (see `write_external_arrays` and `array_how`). A period block's
+    arrays are keyed by period."""
     if not context.arrays:
         return data
     out: dict[str, Any] = {}
@@ -406,47 +406,23 @@ def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, An
                 continue
             base = (key,) if kper is None else (key, kper)
             io = context.array_io(*base)
-            layer_iprn: dict[int, int] = {}
-            layer_path: dict[int, Path] = {}
-            layer_binary: dict[int, bool] = {}
-            layer_hash: dict[int, str] = {}
-            layer_how: dict[int, str] = {}
+            attrs_: dict[str, Any] = {
+                name: getattr(io, name)
+                for name in ("iprn", "path", "format", "hash", "layered")
+                if getattr(io, name) is not None
+            }
             if "nlay" in value.dims:
+                layers: dict[str, dict[int, Any]] = {}
                 for layer in range(value.sizes["nlay"]):
-                    layer_value = context.array_io(*base, layer).iprn
-                    if layer_value is not None and layer_value != io.iprn:
-                        layer_iprn[layer] = layer_value
+                    layer_iprn = context.array_io(*base, layer).iprn
+                    if layer_iprn is not None and layer_iprn != io.iprn:
+                        layers.setdefault("layer_iprn", {})[layer] = layer_iprn
                     # only a layer's own settings, not the whole array's
                     own = context.arrays.get((*base, layer))
-                    if own is None:
-                        continue
-                    if own.path is not None:
-                        layer_path[layer] = own.path
-                    if own.binary is not None:
-                        layer_binary[layer] = own.binary
-                    if own.hash is not None:
-                        layer_hash[layer] = own.hash
-                    if own.how is not None:
-                        layer_how[layer] = own.how
-            attrs_: dict[str, Any] = {"iprn": io.iprn} if io.iprn is not None else {}
-            if layer_iprn:
-                attrs_["layer_iprn"] = layer_iprn
-            if io.path is not None:
-                attrs_["path"] = io.path
-            if io.binary is not None:
-                attrs_["binary"] = io.binary
-            if io.hash is not None:
-                attrs_["hash"] = io.hash
-            if io.how is not None:
-                attrs_["how"] = io.how
-            if layer_path:
-                attrs_["layer_path"] = layer_path
-            if layer_binary:
-                attrs_["layer_binary"] = layer_binary
-            if layer_hash:
-                attrs_["layer_hash"] = layer_hash
-            if layer_how:
-                attrs_["layer_how"] = layer_how
+                    for name in ("path", "format", "hash") if own is not None else ():
+                        if getattr(own, name) is not None:
+                            layers.setdefault(f"layer_{name}", {})[layer] = getattr(own, name)
+                attrs_.update(layers)
             if attrs_:
                 value = value.copy(deep=False)
                 value.attrs = {**value.attrs, **attrs_}

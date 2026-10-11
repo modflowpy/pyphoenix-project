@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_DNODATA
-from flopy4.mf6.write_context import FloatPrecision
+from flopy4.mf6.write_context import ArrayFormat, FloatPrecision
 
 _NUMBER_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 
@@ -43,16 +43,21 @@ def block_end(block_name: str) -> str:
     return name.upper()
 
 
-def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
+def array_how(
+    value: xr.DataArray, netcdf: bool = False, array_format: "ArrayFormat | None" = None
+) -> ArrayHow:
     """
-    Determine how an array should be represented in MF6 input.
-    Options are "constant", "internal", or "external". If the
-    array is dask-backed, skip the constant check (would trigger
-    compute) and route to internal — the writer streams it
+    Determine how an array should be represented in MF6 input: the
+    record(s) to write it with, per the attrs `annotate_arrays` and
+    `write_external_arrays` mark it with, and `array_format`, the
+    context's.
+
+    Unless its `ArrayIO.format` (or else `array_format`) is "internal",
+    an array whose values are all equal is CONSTANT; unless it's marked
+    `layered`, a layered array whose layers each are is LAYERED CONSTANT.
+    A dask-backed array skips the constant checks (they'd compute it) and
+    is INTERNAL, LAYERED for a layered one: the writer streams it
     chunk-by-chunk via array2chunks without full materialization.
-    For numpy arrays there is no materialization cost to check if
-    all values are the same, so return "constant" or "internal"
-    as appropriate.
     """
     # arrays of fields MF6 reads from NetCDF are marked by egress
     if netcdf and value.attrs.get("netcdf", False):
@@ -64,32 +69,24 @@ def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
     layered = "nlay" in value.dims
     if "layer_open_close" in value.attrs and layered:
         return "layered mixed"
-    # the form an `ArrayIO.how` asks for, as `annotate_arrays` marks it
-    how = value.attrs.get("how")
-    if how == "internal":
-        return "internal"
-    if how == "layered" and layered and not hasattr(value.data, "blocks"):
-        return "layered mixed"
-    if hasattr(value.data, "blocks"):
-        # Dask-backed: stream as internal, never materialize to check constant.
-        if "nlay" in value.dims:
-            return "layered internal"
-        return "internal"
-    if value.max() == value.min():
+    dask = hasattr(value.data, "blocks")
+    internal = (value.attrs.get("format") or array_format) == "internal"
+    as_layers = value.attrs.get("layered") if layered else False
+    if as_layers:
+        return "layered internal" if dask else "layered mixed"
+    if dask:
+        return "layered internal" if as_layers is None else "internal"
+    if not internal and value.max() == value.min():
         return "constant"
-    if "nlay" in value.dims:
-        layer_const = True
-        for layer in range(value.shape[0]):
-            val_layer = value.isel(nlay=layer)
-            if val_layer.max() != val_layer.min():
-                layer_const = False
-                break
-        if layer_const:
-            return "layered constant"
-        return "layered internal"
-    if value.ndim <= 2:
+    if as_layers is False:
+        if value.ndim > 3:
+            raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
         return "internal"
-    raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
+    if not internal and all(
+        value.isel(nlay=k).max() == value.isel(nlay=k).min() for k in range(value.shape[0])
+    ):
+        return "layered constant"
+    return "layered internal"
 
 
 def iprn_option(value: xr.DataArray, layer: int | None = None) -> str:
@@ -113,10 +110,14 @@ def binary_option(value: xr.DataArray, layer: int | None = None) -> str:
     return " (BINARY)" if binary else ""
 
 
-def layer_is_constant(value: xr.DataArray, layer: int) -> bool:
+def layer_is_constant(
+    value: xr.DataArray, layer: int, array_format: "ArrayFormat | None" = None
+) -> bool:
     """Whether to write a layer of layered `value` CONSTANT: if all its
-    values are equal, unless its `ArrayIO.how` is "internal"."""
-    if value.attrs.get("layer_how", {}).get(layer) == "internal":
+    values are equal, unless its `ArrayIO.format` (else the whole
+    array's, else `array_format`, the context's) is "internal"."""
+    fmt = value.attrs.get("layer_format", {}).get(layer) or value.attrs.get("format")
+    if (fmt or array_format) == "internal":
         return False
     return is_constant(value.isel(nlay=layer))
 

@@ -7,7 +7,7 @@
 {% elif type == 'record' %}
 {{ record(value) }}
 {% elif type == 'array' %}
-{{ array(name, value, how=value|array_how(context.use_netcdf)) }}
+{{ array(name, value, how=value|array_how(context.use_netcdf, context.array_format)) }}
 {% elif type == 'list' %}
 {{ list(value) }}
 {% endif %}
@@ -60,7 +60,7 @@
 
 {% if path is not none %}
 {{ inset }}OPEN/CLOSE {{ path|quote_if_needed }}{{ value|binary_option(loop.index0) }}{{ value|iprn_option(loop.index0) }}
-{%- elif value|layer_is_constant(loop.index0) %}
+{%- elif value|layer_is_constant(loop.index0, context.array_format) %}
 {{ inset }}CONSTANT {{ layer|array2const(context.float_precision) }}
 {%- else %}
 {{ inset }}INTERNAL{{ value|iprn_option(loop.index0) }}
