@@ -21,17 +21,18 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | packagedata_block
+block: options__block | dimensions__block | packagedata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
-options_fields: ((hhformulation_rhs | denseref | density_filerecord | dev_efh_formulation | open_close_redirect) _NL*)*
-dimensions_fields: ((nrhospecies | open_close_redirect) _NL*)*
-packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
-hhformulation_rhs: "hhformulation_rhs"i  [_remark] _NL
-denseref: "denseref"i double [_remark] _NL
-density_filerecord: "density"i "fileout"i word [_remark] _NL
-dev_efh_formulation: "dev_efh_formulation"i  [_remark] _NL
-nrhospecies: "nrhospecies"i integer [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
+options__fields: ((hhformulation_rhs__kw | denseref__val | density_filerecord__rec | dev_efh_formulation__kw | open_close_redirect) _NL*)*
+dimensions__fields: ((nrhospecies__val | open_close_redirect) _NL*)*
+packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+hhformulation_rhs__kw: "hhformulation_rhs"i  [_remark] _NL
+denseref__val: "denseref"i double [_remark] _NL
+density_filerecord__rec: "density"i density_filerecord__densityfile__val [_remark] _NL
+density_filerecord__densityfile__val: "fileout"i word
+dev_efh_formulation__kw: "dev_efh_formulation"i  [_remark] _NL
+nrhospecies__val: "nrhospecies"i integer [_remark] _NL
 packagedatadata: record+

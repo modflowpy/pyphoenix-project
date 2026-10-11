@@ -21,52 +21,63 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | griddata_block | packagedata_block | period_block
+block: options__block | dimensions__block | griddata__block | packagedata__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((boundnames | print_input | save_flows | gammaw | beta | elastic_inelastic_smoothing | strict_effective_stress | head_based | initial_preconsolidation_head | ndelaycells | compression_indices | update_material_properties | cell_fraction | specified_initial_interbed_state | specified_initial_preconsolidation_stress | specified_initial_delay_head | effective_stress_lag | strainib_filerecord | straincg_filerecord | compaction_filerecord | compaction_elastic_filerecord | compaction_inelastic_filerecord | compaction_interbed_filerecord | compaction_coarse_filerecord | zdisplacement_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | open_close_redirect) _NL*)*
-dimensions_fields: ((ninterbeds | maxsig0 | open_close_redirect) _NL*)*
-griddata_fields: ((cg_ske_cr | cg_theta | sgm | sgs | open_close_redirect) _NL*)*
-packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
-period_fields: ((stress_period_data | open_close_redirect) _NL*)*
-boundnames: "boundnames"i  [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-gammaw: "gammaw"i double [_remark] _NL
-beta: "beta"i double [_remark] _NL
-elastic_inelastic_smoothing: "elastic_inelastic_smoothing"i  [_remark] _NL
-strict_effective_stress: "strict_effective_stress"i  [_remark] _NL
-head_based: "head_based"i  [_remark] _NL
-initial_preconsolidation_head: "initial_preconsolidation_head"i  [_remark] _NL
-ndelaycells: "ndelaycells"i integer [_remark] _NL
-compression_indices: "compression_indices"i  [_remark] _NL
-update_material_properties: "update_material_properties"i  [_remark] _NL
-cell_fraction: "cell_fraction"i  [_remark] _NL
-specified_initial_interbed_state: "specified_initial_interbed_state"i  [_remark] _NL
-specified_initial_preconsolidation_stress: "specified_initial_preconsolidation_stress"i  [_remark] _NL
-specified_initial_delay_head: "specified_initial_delay_head"i  [_remark] _NL
-effective_stress_lag: "effective_stress_lag"i  [_remark] _NL
-strainib_filerecord: "strain_csv_interbed"i "fileout"i word [_remark] _NL
-straincg_filerecord: "strain_csv_coarse"i "fileout"i word [_remark] _NL
-compaction_filerecord: "compaction"i "fileout"i word [_remark] _NL
-compaction_elastic_filerecord: "compaction_elastic"i "fileout"i word [_remark] _NL
-compaction_inelastic_filerecord: "compaction_inelastic"i "fileout"i word [_remark] _NL
-compaction_interbed_filerecord: "compaction_interbed"i "fileout"i word [_remark] _NL
-compaction_coarse_filerecord: "compaction_coarse"i "fileout"i word [_remark] _NL
-zdisplacement_filerecord: "zdisplacement"i "fileout"i word [_remark] _NL
-package_convergence_filerecord: "package_convergence"i "fileout"i word [_remark] _NL
-ts_filerecord: "ts6"i "filein"i word [_remark] _NL
-obs_filerecord: "obs6"i "filein"i word [_remark] _NL
-ninterbeds: "ninterbeds"i integer [_remark] _NL
-maxsig0: "maxsig0"i integer [_remark] _NL
-cg_ske_cr: "cg_ske_cr"i [_remark] [_NL] array
-cg_theta: "cg_theta"i [_remark] [_NL] array
-sgm: "sgm"i [_remark] [_NL] array
-sgs: "sgs"i [_remark] [_NL] array
+options__fields: ((boundnames__kw | print_input__kw | save_flows__kw | gammaw__val | beta__val | elastic_inelastic_smoothing__kw | strict_effective_stress__kw | head_based__kw | initial_preconsolidation_head__kw | ndelaycells__val | compression_indices__kw | update_material_properties__kw | cell_fraction__kw | specified_initial_interbed_state__kw | specified_initial_preconsolidation_stress__kw | specified_initial_delay_head__kw | effective_stress_lag__kw | strainib_filerecord__rec | straincg_filerecord__rec | compaction_filerecord__rec | compaction_elastic_filerecord__rec | compaction_inelastic_filerecord__rec | compaction_interbed_filerecord__rec | compaction_coarse_filerecord__rec | zdisplacement_filerecord__rec | package_convergence_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | open_close_redirect) _NL*)*
+dimensions__fields: ((ninterbeds__val | maxsig0__val | open_close_redirect) _NL*)*
+griddata__fields: ((cg_ske_cr__val | cg_theta__val | sgm__val | sgs__val | open_close_redirect) _NL*)*
+packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+period__fields: ((stress_period_data | open_close_redirect) _NL*)*
+boundnames__kw: "boundnames"i  [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+gammaw__val: "gammaw"i double [_remark] _NL
+beta__val: "beta"i double [_remark] _NL
+elastic_inelastic_smoothing__kw: "elastic_inelastic_smoothing"i  [_remark] _NL
+strict_effective_stress__kw: "strict_effective_stress"i  [_remark] _NL
+head_based__kw: "head_based"i  [_remark] _NL
+initial_preconsolidation_head__kw: "initial_preconsolidation_head"i  [_remark] _NL
+ndelaycells__val: "ndelaycells"i integer [_remark] _NL
+compression_indices__kw: "compression_indices"i  [_remark] _NL
+update_material_properties__kw: "update_material_properties"i  [_remark] _NL
+cell_fraction__kw: "cell_fraction"i  [_remark] _NL
+specified_initial_interbed_state__kw: "specified_initial_interbed_state"i  [_remark] _NL
+specified_initial_preconsolidation_stress__kw: "specified_initial_preconsolidation_stress"i  [_remark] _NL
+specified_initial_delay_head__kw: "specified_initial_delay_head"i  [_remark] _NL
+effective_stress_lag__kw: "effective_stress_lag"i  [_remark] _NL
+strainib_filerecord__rec: "strain_csv_interbed"i strainib_filerecord__interbedstrain_filename__val [_remark] _NL
+strainib_filerecord__interbedstrain_filename__val: "fileout"i word
+straincg_filerecord__rec: "strain_csv_coarse"i straincg_filerecord__coarsestrain_filename__val [_remark] _NL
+straincg_filerecord__coarsestrain_filename__val: "fileout"i word
+compaction_filerecord__rec: "compaction"i compaction_filerecord__compaction_filename__val [_remark] _NL
+compaction_filerecord__compaction_filename__val: "fileout"i word
+compaction_elastic_filerecord__rec: "compaction_elastic"i compaction_elastic_filerecord__elastic_compaction_filename__val [_remark] _NL
+compaction_elastic_filerecord__elastic_compaction_filename__val: "fileout"i word
+compaction_inelastic_filerecord__rec: "compaction_inelastic"i compaction_inelastic_filerecord__inelastic_compaction_filename__val [_remark] _NL
+compaction_inelastic_filerecord__inelastic_compaction_filename__val: "fileout"i word
+compaction_interbed_filerecord__rec: "compaction_interbed"i compaction_interbed_filerecord__interbed_compaction_filename__val [_remark] _NL
+compaction_interbed_filerecord__interbed_compaction_filename__val: "fileout"i word
+compaction_coarse_filerecord__rec: "compaction_coarse"i compaction_coarse_filerecord__coarse_compaction_filename__val [_remark] _NL
+compaction_coarse_filerecord__coarse_compaction_filename__val: "fileout"i word
+zdisplacement_filerecord__rec: "zdisplacement"i zdisplacement_filerecord__zdisplacement_filename__val [_remark] _NL
+zdisplacement_filerecord__zdisplacement_filename__val: "fileout"i word
+package_convergence_filerecord__rec: "package_convergence"i package_convergence_filerecord__package_convergence_filename__val [_remark] _NL
+package_convergence_filerecord__package_convergence_filename__val: "fileout"i word
+ts_filerecord__rec__elem: "ts6"i ts_filerecord__ts6_filename__val [_remark] _NL
+ts_filerecord__ts6_filename__val: "filein"i word
+obs_filerecord__rec: "obs6"i obs_filerecord__obs6_filename__val [_remark] _NL
+obs_filerecord__obs6_filename__val: "filein"i word
+ninterbeds__val: "ninterbeds"i integer [_remark] _NL
+maxsig0__val: "maxsig0"i integer [_remark] _NL
+cg_ske_cr__val: "cg_ske_cr"i [_remark] [_NL] array
+cg_theta__val: "cg_theta"i [_remark] [_NL] array
+sgm__val: "sgm"i [_remark] [_NL] array
+sgs__val: "sgs"i [_remark] [_NL] array
 packagedatadata: record+
 stress_period_data: record+

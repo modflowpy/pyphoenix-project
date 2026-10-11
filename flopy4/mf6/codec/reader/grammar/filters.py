@@ -73,15 +73,22 @@ def record_child_type(field: InputField) -> str:
     return field.type
 
 
+def part_tag(field: InputField) -> str:
+    """The kind tag of a record part's or union arm's rule (see grammar.names)."""
+    if isinstance(field, Keyword):
+        return "kw"
+    if isinstance(field, Union):
+        return "union"
+    if isinstance(field, Record):
+        return "rec"
+    if isinstance(field, Array):
+        return "arr"
+    return "val"
+
+
 def get_recarray_name(block_name: str) -> str:
     """Get the name for a recarray representing period data in a block."""
     # Use similar naming to V1: stress_period_data, perioddata, etc.
     if block_name == "period":
         return "stress_period_data"
     return f"{block_name}data"
-
-
-def to_rule_name(name: str) -> str:
-    """Convert a field name to a valid Lark rule name."""
-    # Lark rule names must not contain hyphens
-    return name.replace("-", "_")

@@ -21,43 +21,49 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | nonlinear_block | linear_block
+block: options__block | nonlinear__block | linear__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-nonlinear_block: "begin"i "nonlinear"i [_remark] _NL _NL* nonlinear_fields _NL* "end"i "nonlinear"i
-linear_block: "begin"i "linear"i [_remark] _NL _NL* linear_fields _NL* "end"i "linear"i
-options_fields: ((print_option | complexity | csv_outer_output_filerecord | csv_inner_output_filerecord | no_ptcrecord | ats_outer_maximum_fraction | dev_ptc | dev_ptc_output_filerecord | dev_ptc_option | dev_ptc_exponent | dev_ptc_del0 | open_close_redirect) _NL*)*
-nonlinear_fields: ((outer_dvclose | outer_maximum | under_relaxation | under_relaxation_gamma | under_relaxation_theta | under_relaxation_kappa | under_relaxation_momentum | backtracking_number | backtracking_tolerance | backtracking_reduction_factor | backtracking_residual_limit | open_close_redirect) _NL*)*
-linear_fields: ((inner_maximum | inner_dvclose | rcloserecord | linear_acceleration | relaxation_factor | preconditioner_levels | preconditioner_drop_tolerance | number_orthogonalizations | scaling_method | reordering_method | open_close_redirect) _NL*)*
-print_option: "print_option"i string
-complexity: "complexity"i string
-csv_outer_output_filerecord: "csv_outer_output"i "fileout"i word [_remark] _NL
-csv_inner_output_filerecord: "csv_inner_output"i "fileout"i word [_remark] _NL
-no_ptcrecord: "no_ptc"i [word] [_remark] _NL
-ats_outer_maximum_fraction: "ats_outer_maximum_fraction"i double [_remark] _NL
-dev_ptc: "dev_ptc"i  [_remark] _NL
-dev_ptc_output_filerecord: "dev_ptc_output"i "fileout"i word [_remark] _NL
-dev_ptc_option: "dev_ptc_option"i  [_remark] _NL
-dev_ptc_exponent: "dev_ptc_exponent"i double [_remark] _NL
-dev_ptc_del0: "dev_ptc_del0"i double [_remark] _NL
-outer_dvclose: "outer_dvclose"i double [_remark] _NL
-outer_maximum: "outer_maximum"i integer [_remark] _NL
-under_relaxation: "under_relaxation"i string
-under_relaxation_gamma: "under_relaxation_gamma"i double [_remark] _NL
-under_relaxation_theta: "under_relaxation_theta"i double [_remark] _NL
-under_relaxation_kappa: "under_relaxation_kappa"i double [_remark] _NL
-under_relaxation_momentum: "under_relaxation_momentum"i double [_remark] _NL
-backtracking_number: "backtracking_number"i integer [_remark] _NL
-backtracking_tolerance: "backtracking_tolerance"i double [_remark] _NL
-backtracking_reduction_factor: "backtracking_reduction_factor"i double [_remark] _NL
-backtracking_residual_limit: "backtracking_residual_limit"i double [_remark] _NL
-inner_maximum: "inner_maximum"i integer [_remark] _NL
-inner_dvclose: "inner_dvclose"i double [_remark] _NL
-rcloserecord: "inner_rclose"i double [word] [_remark] _NL
-linear_acceleration: "linear_acceleration"i string
-relaxation_factor: "relaxation_factor"i double [_remark] _NL
-preconditioner_levels: "preconditioner_levels"i integer [_remark] _NL
-preconditioner_drop_tolerance: "preconditioner_drop_tolerance"i double [_remark] _NL
-number_orthogonalizations: "number_orthogonalizations"i integer [_remark] _NL
-scaling_method: "scaling_method"i string
-reordering_method: "reordering_method"i string
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+nonlinear__block: "begin"i "nonlinear"i [_remark] _NL _NL* nonlinear__fields _NL* "end"i "nonlinear"i
+linear__block: "begin"i "linear"i [_remark] _NL _NL* linear__fields _NL* "end"i "linear"i
+options__fields: ((print_option__val | complexity__val | csv_outer_output_filerecord__rec | csv_inner_output_filerecord__rec | no_ptcrecord__rec | ats_outer_maximum_fraction__val | dev_ptc__kw | dev_ptc_output_filerecord__rec | dev_ptc_option__kw | dev_ptc_exponent__val | dev_ptc_del0__val | open_close_redirect) _NL*)*
+nonlinear__fields: ((outer_dvclose__val | outer_maximum__val | under_relaxation__val | under_relaxation_gamma__val | under_relaxation_theta__val | under_relaxation_kappa__val | under_relaxation_momentum__val | backtracking_number__val | backtracking_tolerance__val | backtracking_reduction_factor__val | backtracking_residual_limit__val | open_close_redirect) _NL*)*
+linear__fields: ((inner_maximum__val | inner_dvclose__val | rcloserecord__rec | linear_acceleration__val | relaxation_factor__val | preconditioner_levels__val | preconditioner_drop_tolerance__val | number_orthogonalizations__val | scaling_method__val | reordering_method__val | open_close_redirect) _NL*)*
+print_option__val: "print_option"i string
+complexity__val: "complexity"i string
+csv_outer_output_filerecord__rec: "csv_outer_output"i csv_outer_output_filerecord__outer_csvfile__val [_remark] _NL
+csv_outer_output_filerecord__outer_csvfile__val: "fileout"i word
+csv_inner_output_filerecord__rec: "csv_inner_output"i csv_inner_output_filerecord__inner_csvfile__val [_remark] _NL
+csv_inner_output_filerecord__inner_csvfile__val: "fileout"i word
+no_ptcrecord__rec: "no_ptc"i [no_ptcrecord__no_ptc_option__val] [_remark] _NL
+no_ptcrecord__no_ptc_option__val: word
+ats_outer_maximum_fraction__val: "ats_outer_maximum_fraction"i double [_remark] _NL
+dev_ptc__kw: "dev_ptc"i  [_remark] _NL
+dev_ptc_output_filerecord__rec: "dev_ptc_output"i dev_ptc_output_filerecord__dev_ptcfile__val [_remark] _NL
+dev_ptc_output_filerecord__dev_ptcfile__val: "fileout"i word
+dev_ptc_option__kw: "dev_ptc_option"i  [_remark] _NL
+dev_ptc_exponent__val: "dev_ptc_exponent"i double [_remark] _NL
+dev_ptc_del0__val: "dev_ptc_del0"i double [_remark] _NL
+outer_dvclose__val: "outer_dvclose"i double [_remark] _NL
+outer_maximum__val: "outer_maximum"i integer [_remark] _NL
+under_relaxation__val: "under_relaxation"i string
+under_relaxation_gamma__val: "under_relaxation_gamma"i double [_remark] _NL
+under_relaxation_theta__val: "under_relaxation_theta"i double [_remark] _NL
+under_relaxation_kappa__val: "under_relaxation_kappa"i double [_remark] _NL
+under_relaxation_momentum__val: "under_relaxation_momentum"i double [_remark] _NL
+backtracking_number__val: "backtracking_number"i integer [_remark] _NL
+backtracking_tolerance__val: "backtracking_tolerance"i double [_remark] _NL
+backtracking_reduction_factor__val: "backtracking_reduction_factor"i double [_remark] _NL
+backtracking_residual_limit__val: "backtracking_residual_limit"i double [_remark] _NL
+inner_maximum__val: "inner_maximum"i integer [_remark] _NL
+inner_dvclose__val: "inner_dvclose"i double [_remark] _NL
+rcloserecord__rec: rcloserecord__inner_rclose__val [rcloserecord__rclose_option__val] [_remark] _NL
+rcloserecord__inner_rclose__val: "inner_rclose"i double
+rcloserecord__rclose_option__val: word
+linear_acceleration__val: "linear_acceleration"i string
+relaxation_factor__val: "relaxation_factor"i double [_remark] _NL
+preconditioner_levels__val: "preconditioner_levels"i integer [_remark] _NL
+preconditioner_drop_tolerance__val: "preconditioner_drop_tolerance"i double [_remark] _NL
+number_orthogonalizations__val: "number_orthogonalizations"i integer [_remark] _NL
+scaling_method__val: "scaling_method"i string
+reordering_method__val: "reordering_method"i string

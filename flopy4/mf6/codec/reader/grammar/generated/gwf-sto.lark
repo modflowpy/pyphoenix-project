@@ -21,28 +21,29 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block | period_block
+block: options__block | griddata__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((save_flows | storagecoefficient | ss_confined_only | tvs_filerecord | export_array_ascii | export_array_netcdf | dev_original_specific_storage | dev_oldstorageformulation | open_close_redirect) _NL*)*
-griddata_fields: ((iconvert | ss | sy | open_close_redirect) _NL*)*
-period_fields: ((storage | open_close_redirect) _NL*)*
-save_flows: "save_flows"i  [_remark] _NL
-storagecoefficient: "storagecoefficient"i  [_remark] _NL
-ss_confined_only: "ss_confined_only"i  [_remark] _NL
-tvs_filerecord: "tvs6"i "filein"i word [_remark] _NL
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
-dev_original_specific_storage: "dev_original_specific_storage"i  [_remark] _NL
-dev_oldstorageformulation: "dev_oldstorageformulation"i  [_remark] _NL
-iconvert: "iconvert"i [_remark] [_NL] array
-ss: "ss"i [_remark] [_NL] array
-sy: "sy"i [_remark] [_NL] array
-storage: storage_steady_state | storage_transient [_remark] _NL
+options__fields: ((save_flows__kw | storagecoefficient__kw | ss_confined_only__kw | tvs_filerecord__rec | export_array_ascii__kw | export_array_netcdf__kw | dev_original_specific_storage__kw | dev_oldstorageformulation__kw | open_close_redirect) _NL*)*
+griddata__fields: ((iconvert__val | ss__val | sy__val | open_close_redirect) _NL*)*
+period__fields: ((storage__union | open_close_redirect) _NL*)*
+save_flows__kw: "save_flows"i  [_remark] _NL
+storagecoefficient__kw: "storagecoefficient"i  [_remark] _NL
+ss_confined_only__kw: "ss_confined_only"i  [_remark] _NL
+tvs_filerecord__rec: "tvs6"i tvs_filerecord__tvs6_filename__val [_remark] _NL
+tvs_filerecord__tvs6_filename__val: "filein"i word
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+export_array_netcdf__kw: "export_array_netcdf"i  [_remark] _NL
+dev_original_specific_storage__kw: "dev_original_specific_storage"i  [_remark] _NL
+dev_oldstorageformulation__kw: "dev_oldstorageformulation"i  [_remark] _NL
+iconvert__val: "iconvert"i [_remark] [_NL] array
+ss__val: "ss"i [_remark] [_NL] array
+sy__val: "sy"i [_remark] [_NL] array
+storage__union: (storage__steady_state__kw | storage__transient__kw) [_remark] _NL
 
-storage_steady_state: "steady-state"i
-storage_transient: "transient"i
+!storage__steady_state__kw: "steady-state"i
+!storage__transient__kw: "transient"i
 

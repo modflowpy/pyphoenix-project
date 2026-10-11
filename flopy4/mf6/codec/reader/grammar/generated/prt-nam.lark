@@ -21,14 +21,14 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | packages_block
+block: options__block | packages__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-packages_block: "begin"i "packages"i [_remark] _NL _NL* packages_fields _NL* "end"i "packages"i
-options_fields: ((list | print_input | print_flows | save_flows | open_close_redirect) _NL*)*
-packages_fields: ((packagesdata | open_close_redirect) _NL*)*
-list: "list"i string
-print_input: "print_input"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+packages__block: "begin"i "packages"i [_remark] _NL _NL* packages__fields _NL* "end"i "packages"i
+options__fields: ((list__val | print_input__kw | print_flows__kw | save_flows__kw | open_close_redirect) _NL*)*
+packages__fields: ((packagesdata | open_close_redirect) _NL*)*
+list__val: "list"i string
+print_input__kw: "print_input"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
 packagesdata: record+

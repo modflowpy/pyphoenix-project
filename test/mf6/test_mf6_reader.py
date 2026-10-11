@@ -261,7 +261,7 @@ INTERNAL FACTOR 2.0
     assert np.array_equal(result["data"][0], np.ones((8,)))
 
 
-def test_transform_full_component():
+def test_transform_full_component(tmp_path):
     dfn = Package(
         name="test_transform",
         blocks={
@@ -277,30 +277,21 @@ def test_transform_full_component():
             "arrays": Block(
                 name="arrays",
                 fields={
-                    "x": Array(name="x", dtype="double", shape=[]),
-                    "y": Array(name="y", dtype="double", shape=[]),
-                    "z": Array(name="z", dtype="double", shape=[]),
+                    "x": Array(name="x", dtype="double", shape=["nodes"]),
+                    "y": Array(name="y", dtype="double", shape=["nodes"]),
+                    "z": Array(name="z", dtype="double", shape=["nodes"]),
                 },
             ),
         },
     )
-    grammar = """
-start: _NL* (block _NL*)*
-block: options_block | arrays_block
-options_block: "begin"i "options"i _NL options_fields "end"i "options"i
-arrays_block: "begin"i "arrays"i _NL arrays_fields "end"i "arrays"i
-options_fields: (r2d2 | b | c | p)*
-arrays_fields: (x | y | z)*
-r2d2: "r2d2"i _NL // keyword
-b: "b"i string
-c: "c"i integer _NL
-p: "p"i double _NL
-x: "x"i array
-y: "y"i array
-z: "z"i array
-"""
-    parser = typed_parser(grammar)
-    transformer = TypedTransformer(dfn=dfn)
+    from flopy4.mf6.codec.reader.grammar import make_grammar
+
+    make_grammar(dfn, tmp_path)
+    grammar = (tmp_path / "test_transform.lark").read_text()
+    parser = _NormalizingLark(
+        Lark(grammar, parser="lalr", import_paths=[str(BASE_GRAMMAR_PATH.parent)])
+    )
+    transformer = TypedTransformer()
     result = transformer.transform(
         parser.parse("""
 BEGIN OPTIONS
@@ -420,19 +411,14 @@ def test_parse_gwf_wel_file(model_workspace):
     period_blocks = [
         block.children[0]
         for block in blocks
-        if block.children and block.children[0].data == "period_block"
+        if block.children and block.children[0].data == "period__block"
     ]
     assert len(period_blocks) > 0, "Should have at least one period block"
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_ic_file(model_workspace, dfn_path):
+def test_transform_gwf_ic_file(model_workspace):
     """Test transforming a parsed GWF IC file into structured data."""
-
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    dfns = LocalDfnRegistry(path=dfn_path).spec(schema_version="2.0.0.dev3").components
-    ic_dfn = dfns["gwf-ic"]
 
     # Find the IC file
     ic_files = list(model_workspace.rglob("*.ic"))
@@ -440,7 +426,7 @@ def test_transform_gwf_ic_file(model_workspace, dfn_path):
 
     ic_file = ic_files[0]
     parser = get_typed_parser("gwf-ic")
-    transformer = TypedTransformer(dfn=ic_dfn)
+    transformer = TypedTransformer()
 
     # Read, parse, and transform
     with open(ic_file, "r") as f:
@@ -466,13 +452,8 @@ def test_transform_gwf_ic_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
-def test_transform_gwf_wel_file(model_workspace, dfn_path):
+def test_transform_gwf_wel_file(model_workspace):
     """Test transforming a parsed GWF WEL file into structured data."""
-
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    dfns = LocalDfnRegistry(path=dfn_path).spec(schema_version="2.0.0.dev3").components
-    wel_dfn = dfns["gwf-wel"]
 
     # Find the WEL file
     wel_files = list(model_workspace.rglob("*.wel"))
@@ -483,7 +464,7 @@ def test_transform_gwf_wel_file(model_workspace, dfn_path):
 
     wel_file = wel_files[0]
     parser = get_typed_parser("gwf-wel")
-    transformer = TypedTransformer(dfn=wel_dfn)
+    transformer = TypedTransformer()
 
     # Read, parse, and transform
     with open(wel_file, "r") as f:
@@ -552,13 +533,8 @@ def test_parse_gwf_oc_file(model_workspace):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-bcf2ss-p01a"], indirect=True)
-def test_transform_gwf_oc_file(model_workspace, dfn_path):
+def test_transform_gwf_oc_file(model_workspace):
     """Test transforming a parsed GWF OC file into structured data."""
-
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    dfns = LocalDfnRegistry(path=dfn_path).spec(schema_version="2.0.0.dev3").components
-    oc_dfn = dfns["gwf-oc"]
 
     # Find the OC file
     oc_files = list(model_workspace.rglob("*.oc"))
@@ -566,7 +542,7 @@ def test_transform_gwf_oc_file(model_workspace, dfn_path):
 
     oc_file = oc_files[0]
     parser = get_typed_parser("gwf-oc")
-    transformer = TypedTransformer(dfn=oc_dfn)
+    transformer = TypedTransformer()
 
     # Read, parse, and transform
     with open(oc_file, "r") as f:
@@ -610,14 +586,10 @@ def test_transform_gwf_oc_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_dis_file(model_workspace, dfn_path):
+def test_transform_gwf_dis_file(model_workspace):
     """Test transforming a parsed GWF DIS file into structured data."""
 
     # Load the DFN for DIS and convert to V2
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    dfns = LocalDfnRegistry(path=dfn_path).spec(schema_version="2.0.0.dev3").components
-    dis_dfn = dfns["gwf-dis"]
 
     # Find the DIS file
     dis_files = list(model_workspace.rglob("*.dis"))
@@ -625,7 +597,7 @@ def test_transform_gwf_dis_file(model_workspace, dfn_path):
 
     dis_file = dis_files[0]
     parser = get_typed_parser("gwf-dis")
-    transformer = TypedTransformer(dfn=dis_dfn)
+    transformer = TypedTransformer()
 
     # Read, parse, and transform
     with open(dis_file, "r") as f:
@@ -660,14 +632,10 @@ def test_transform_gwf_dis_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_npf_file(model_workspace, dfn_path):
+def test_transform_gwf_npf_file(model_workspace):
     """Test transforming a parsed GWF NPF file into structured data."""
 
     # Load the DFN for NPF and convert to V2
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    dfns = LocalDfnRegistry(path=dfn_path).spec(schema_version="2.0.0.dev3").components
-    npf_dfn = dfns["gwf-npf"]
 
     # Find the NPF file
     npf_files = list(model_workspace.rglob("*.npf"))
@@ -675,7 +643,7 @@ def test_transform_gwf_npf_file(model_workspace, dfn_path):
 
     npf_file = npf_files[0]
     parser = get_typed_parser("gwf-npf")
-    transformer = TypedTransformer(dfn=npf_dfn)
+    transformer = TypedTransformer()
 
     # Read, parse, and transform
     with open(npf_file, "r") as f:
@@ -711,14 +679,10 @@ def test_transform_gwf_npf_file(model_workspace, dfn_path):
 
 
 @pytest.mark.parametrize("model_workspace", ["mf6/example/ex-gwf-csub-p01"], indirect=True)
-def test_transform_gwf_sto_file(model_workspace, dfn_path):
+def test_transform_gwf_sto_file(model_workspace):
     """Test transforming a parsed GWF STO file into structured data."""
 
     # Load the DFN for STO and convert to V2
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    dfns = LocalDfnRegistry(path=dfn_path).spec(schema_version="2.0.0.dev3").components
-    sto_dfn = dfns["gwf-sto"]
 
     # Find the STO file
     sto_files = list(model_workspace.rglob("*.sto"))
@@ -729,7 +693,7 @@ def test_transform_gwf_sto_file(model_workspace, dfn_path):
 
     sto_file = sto_files[0]
     parser = get_typed_parser("gwf-sto")
-    transformer = TypedTransformer(dfn=sto_dfn)
+    transformer = TypedTransformer()
 
     # Read, parse, and transform
     with open(sto_file, "r") as f:
@@ -778,22 +742,20 @@ def test_typed_grammar_repeating_block_double_header(tmp_path):
 
     grammar_module = BASE_GRAMMAR_PATH.parent
     parser = Lark(grammar_text, parser="lalr", debug=True, import_paths=[str(grammar_module)])
-    transformer = TypedTransformer(dfn=dfn)
+    transformer = TypedTransformer()
     result = transformer.transform(parser.parse("BEGIN TIME 1.5\n    X CONSTANT 1.0\nEND TIME\n"))
 
     assert 1.5 in result["time"]
 
 
-def test_typed_loads_filename_with_leading_digit(dfn_path):
+def test_typed_loads_filename_with_leading_digit():
     from flopy4.mf6.codec.reader import loads_typed
 
-    result = loads_typed(
-        "BEGIN options\n  ts6 filein 1model.ts\nEND options\n", "gwf-chd", dfn_path=dfn_path
-    )
+    result = loads_typed("BEGIN options\n  ts6 filein 1model.ts\nEND options\n", "gwf-chd")
     assert result["options"]["ts_filerecord"] == [{"ts6_filename": "1model.ts"}]
 
 
-def test_typed_loads_tagged_list(dfn_path):
+def test_typed_loads_tagged_list():
     """A tagged list (TS6 FILEIN, repeatable) is always a list of item
     records, in file order, alongside the block's other fields."""
     from flopy4.mf6.codec.reader import loads_typed
@@ -801,7 +763,6 @@ def test_typed_loads_tagged_list(dfn_path):
     result = loads_typed(
         "BEGIN options\n  ts6 filein a.ts\n  obs6 filein w.obs\n  ts6 filein b.ts\nEND options\n",
         "gwf-chd",
-        dfn_path=dfn_path,
     )
     assert result["options"]["ts_filerecord"] == [
         {"ts6_filename": "a.ts"},
@@ -810,7 +771,7 @@ def test_typed_loads_tagged_list(dfn_path):
     assert result["options"]["obs_filerecord"] == {"obs6_filename": "w.obs"}
 
 
-def test_typed_loads_inline_record_arrays(dfn_path):
+def test_typed_loads_inline_record_arrays():
     from flopy4.mf6.codec.reader import loads_typed
 
     result = loads_typed(
@@ -818,7 +779,6 @@ def test_typed_loads_inline_record_arrays(dfn_path):
         "  SFACS 1.5 2.0\nEND ATTRIBUTES\n\n"
         "BEGIN TIMESERIES\n  0.0 1.0 2.0\n  1.0 2.0 3.0\nEND TIMESERIES\n",
         "utl-ts",
-        dfn_path=dfn_path,
     )
     attributes = result["attributes"]
     assert attributes["time_series_namerecord"] == {"time_series_names": ["rate", "stage"]}
@@ -839,7 +799,7 @@ def test_typed_loads_inline_record_arrays(dfn_path):
         ),
     ],
 )
-def test_typed_loads_tas_time_array(dfn_path, body, control):
+def test_typed_loads_tas_time_array(body, control):
     from flopy4.mf6.codec.reader import loads_typed
 
     result = loads_typed(
@@ -848,7 +808,6 @@ def test_typed_loads_tas_time_array(dfn_path, body, control):
         "BEGIN TIME 1.5\n  CONSTANT 2.0\nEND TIME\n\n"
         "BEGIN TIME 3\n  CONSTANT 4.0\nEND TIME\n",
         "utl-tas",
-        dfn_path=dfn_path,
     )
     assert result["time"][0.0]["tas_array"]["control"] == control
     assert {t: b["tas_array"]["control"]["value"] for t, b in result["time"].items() if t} == {
@@ -857,13 +816,12 @@ def test_typed_loads_tas_time_array(dfn_path, body, control):
     }
 
 
-def test_typed_loads_iso_datetime(dfn_path):
+def test_typed_loads_iso_datetime():
     from flopy4.mf6.codec.reader import loads_typed
 
     result = loads_typed(
         "BEGIN options\n  start_date_time 1997-07-16T19:20:30.45+01:00\nEND options\n",
         "sim-tdis",
-        dfn_path=dfn_path,
     )
     assert result["options"]["start_date_time"] == "1997-07-16T19:20:30.45+01:00"
 
@@ -883,15 +841,15 @@ def test_parse_block_header_remark(component):
         ("gwf-nam", "NEWTON UNDER_RELAXATION", {"newtonoptions": {"under_relaxation": True}}),
     ],
 )
-def test_transform_record_optional_keyword(component, line, expected, dfn_path):
+def test_transform_record_optional_keyword(component, line, expected):
     """A record's optional keyword is kept when given."""
     from flopy4.mf6.codec.reader import loads_typed
 
     text = f"BEGIN OPTIONS\n  {line}\nEND OPTIONS\n"
-    assert loads_typed(text, component, dfn_path=dfn_path) == {"options": expected}
+    assert loads_typed(text, component) == {"options": expected}
 
 
-def test_transform_record_header(dfn_path):
+def test_transform_record_header():
     """Each block under a record header is keyed by its header, as the basic
     transformer keys it."""
     from flopy4.mf6.codec.reader import loads, loads_typed
@@ -901,5 +859,5 @@ def test_transform_record_header(dfn_path):
         "BEGIN CONTINUOUS FILEOUT flows.bsv BINARY\n  w1 WEL a\nEND CONTINUOUS\n"
     )
     keys = ["continuous FILEOUT Heads.csv", "continuous FILEOUT flows.bsv BINARY"]
-    assert list(loads_typed(text, "utl-obs", dfn_path=dfn_path)) == keys
+    assert list(loads_typed(text, "utl-obs")) == keys
     assert [k.lower() for k in loads(text)] == [k.lower() for k in keys]

@@ -62,7 +62,7 @@ def test_make_grammar_creates_file(tmp_path, minimal_dfn):
     assert "%import typed.integer -> integer" in content
     assert "%import typed.double -> double" in content
     assert "start: _NL* (block _NL*)*" in content
-    assert "options_block" in content
+    assert "options__block" in content
 
 
 def test_make_grammar_with_multiple_blocks(tmp_path, simple_dfn):
@@ -72,8 +72,8 @@ def test_make_grammar_with_multiple_blocks(tmp_path, simple_dfn):
     grammar_file = tmp_path / "gwf-test.lark"
     content = grammar_file.read_text()
 
-    assert "options_block" in content
-    assert "griddata_block" in content
+    assert "options__block" in content
+    assert "griddata__block" in content
     assert 'begin"i "options"' in content.lower()
     assert 'begin"i "griddata"' in content.lower()
     assert "strt" in content
@@ -182,8 +182,12 @@ def test_make_grammar_with_tagged_list(tmp_path):
 
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "gwf-test.lark").read_text()
-    assert "options_fields: ((print_input | ts_filerecord | open_close_redirect) _NL*)*" in content
-    assert 'ts_filerecord: "ts6"i "filein"i' in content
+    assert (
+        "options__fields: ((print_input__kw | ts_filerecord__rec__elem | open_close_redirect)"
+        " _NL*)*" in content
+    )
+    assert 'ts_filerecord__rec__elem: "ts6"i "filein"i ts_filerecord__ts6_filename__val' in content
+    assert "ts_filerecord__ts6_filename__val: word" in content
     assert "optionsdata" not in content
 
 
@@ -222,12 +226,12 @@ def test_make_grammar_with_period_block(tmp_path):
 
     # Period block should have a stress_period_data recarray instead of individual fields
     assert "stress_period_data" in content
-    assert "period_fields:" in content
+    assert "period__fields:" in content
 
     # Individual q and aux should not appear as separate rules in period_fields
     # (they should be combined into stress_period_data)
     lines = content.split("\n")
-    period_fields_line = [l for l in lines if "period_fields:" in l][0]
+    period_fields_line = [l for l in lines if "period__fields:" in l][0]
     assert "stress_period_data" in period_fields_line
 
     # stress_period_data should accept numbers and strings, one row per line
@@ -312,14 +316,16 @@ def test_make_grammar_with_oc_style_records(tmp_path):
     grammar_file = tmp_path / "gwf-oc.lark"
     content = grammar_file.read_text()
 
-    # Should generate a record rule with keyword, word (not string), and union
-    assert 'saverecord: "save"i word ocsetting' in content
+    # Should generate a record rule with keyword, word (not string), and
+    # union, each part a rule of its own
+    assert 'saverecord__rec__elem: "save"i saverecord__rtype__val ocsetting__union' in content
+    assert "saverecord__rtype__val: word" in content
 
     # Should generate the union rule for ocsetting
-    assert "ocsetting:" in content
-    assert "ocsetting_all" in content
-    assert "ocsetting_first" in content
-    assert "ocsetting_last" in content
+    assert "ocsetting__union:" in content
+    assert "!ocsetting__all__kw" in content
+    assert "!ocsetting__first__kw" in content
+    assert "!ocsetting__last__kw" in content
 
 
 @pytest.mark.parametrize("dtype,rule", [("string", "word+"), ("double", "double+")])
@@ -346,10 +352,10 @@ def test_make_grammar_with_untagged_array(tmp_path):
     )
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-bare-array.lark").read_text()
-    assert "vals: array\n" in content
-    assert "time_fields: ((vals) _NL*)*" in content
-    assert 'strt: "strt"i' in content
-    assert "griddata_fields: ((strt | open_close_redirect) _NL*)*" in content
+    assert "vals__val: array\n" in content
+    assert "time__fields: ((vals__val) _NL*)*" in content
+    assert 'strt__val: "strt"i' in content
+    assert "griddata__fields: ((strt__val | open_close_redirect) _NL*)*" in content
 
 
 def test_make_grammar_with_file_fields(tmp_path):
@@ -367,8 +373,8 @@ def test_make_grammar_with_file_fields(tmp_path):
     )
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-files.lark").read_text()
-    assert 'tdis6: "tdis6"i word [_remark] _NL' in content
-    assert 'ats6: "ats6"i "filein"i word [_remark] _NL' in content
+    assert 'tdis6__val: "tdis6"i word [_remark] _NL' in content
+    assert 'ats6__val: "ats6"i "filein"i word [_remark] _NL' in content
 
 
 def test_make_grammar_with_dynamically_named_arrays(tmp_path):
@@ -398,8 +404,10 @@ def test_make_grammar_with_dynamically_named_arrays(tmp_path):
     )
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-named-arrays.lark").read_text()
-    assert "aux: word [_remark] [_NL] array" in content
-    assert "period_fields: ((recharge | aux | open_close_redirect) _NL*)*" in content
+    assert "aux__val__elem: word [_remark] [_NL] array" in content
+    assert (
+        "period__fields: ((recharge__val | aux__val__elem | open_close_redirect) _NL*)*" in content
+    )
 
 
 def test_make_grammar_with_record_header(tmp_path):
@@ -430,9 +438,9 @@ def test_make_grammar_with_record_header(tmp_path):
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-header.lark").read_text()
     assert (
-        'continuous_block: "begin"i "continuous"i output [_remark] _NL _NL* '
-        'continuous_fields _NL* "end"i "continuous"i [output]'
+        'continuous__block: "begin"i "continuous"i output__hdr [_remark] _NL _NL* '
+        'continuous__fields _NL* "end"i "continuous"i [output__hdr]'
     ) in content
-    assert 'output: "fileout"i word [output_binary]' in content
-    assert 'output_binary: "binary"i' in content
+    assert '!output__hdr: "fileout"i word [output__binary__kw]' in content
+    assert 'output__binary__kw: "binary"i' in content
     assert "block_index" not in content

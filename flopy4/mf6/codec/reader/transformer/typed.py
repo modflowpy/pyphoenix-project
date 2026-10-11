@@ -1,38 +1,44 @@
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import xarray as xr
 from lark import Token, Transformer
-from modflow_devtools.dfns.schema import (
-    Array,
-    Component,
-    Double,
-    File,
-    Keyword,
-    List,
-    Record,
-    Union,
-)
 
-from flopy4.mf6.codec.reader.dfns import get_component_dfn
-from flopy4.mf6.codec.reader.grammar.filters import valid_as_union
+from flopy4.mf6.codec.reader.grammar.names import parse_rule_name
 from flopy4.utils import parse_number
 
 
-class TypedTransformer(Transformer):
-    """Type-aware transformer for MF6 input files."""
+class _Element(tuple):
+    """A (name, value) for one element of a list, which collects them."""
 
-    def __init__(self, visit_tokens=False, dfn: Component | None = None):
+
+def _header_key(block_name: str, parts: list) -> str:
+    """A block's key from its record header, as written (OBS's
+    "continuous FILEOUT obs.csv BINARY"): keywords in upper case."""
+    tokens = [block_name]
+    for part in parts:
+        if part is None:
+            continue
+        if isinstance(part, Token):
+            tokens.append(str(part).upper())
+        elif isinstance(part, tuple):  # an optional keyword, given
+            tokens.append(part[0].upper())
+        else:
+            tokens.append(str(part))
+    return " ".join(tokens)
+
+
+class TypedTransformer(Transformer):
+    """Type-aware transformer for MF6 input files.
+
+    Reads each generated rule by its name, which says what the rule is (see
+    ``grammar/names.py``), so one transformer reads every component's
+    grammar and needs no DFN.
+    """
+
+    def __init__(self, visit_tokens=False):
         super().__init__(visit_tokens)
-        self.dfn = dfn
-        self.blocks = dfn.blocks if dfn else None
-        self._flat_fields = (
-            {name: valid_as_union(f) for name, f in dict(dfn.get_fields(recurse=True)).items()}
-            if dfn
-            else None
-        )
 
     def __getattr__(self, name):
         """Handle typed__ prefixed methods by delegating to the unprefixed version."""
@@ -242,156 +248,84 @@ class TypedTransformer(Transformer):
                 pass
         return array_info
 
-    def _list_elements(self, block_name: str) -> set[str]:
-        """Rule names of a block's list element lines: a tagged list's own
-        name, or its union item's arm names."""
-        names: set[str] = set()
-        block = (self.blocks or {}).get(block_name)
-        for name, f in (block.fields if block else {}).items():
-            if isinstance(f, List):
-                names |= set(f.item.arms) if isinstance(f.item, Union) else {name}
-        return names
+    def double_index(self, items: list[Any]) -> float:
+        """A block index that's a time (utl-tas's TIME block)."""
+        return float(items[0])
+
+    def _block(self, block_name: str, children: list[Any]) -> dict | None:
+        """A block: [fields], or [index, fields, closing index], or [header,
+        fields, closing header]. The closing index or header is optional in
+        the grammar (most real files write a bare "END <name>") -- Lark
+        fills the omitted slot with None rather than dropping it."""
+        if len(children) == 3 and isinstance(children[0], tuple):
+            # A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"),
+            # keyed like the basic transformer's.
+            _, parts = children[0]
+            return {_header_key(block_name, parts): children[1]}
+        if (
+            len(children) == 3
+            and isinstance(children[0], (int, float))
+            and (children[2] is None or isinstance(children[2], (int, float)))
+        ):
+            return {block_name: {children[0]: children[1]}}
+        if len(children) == 1:
+            return {block_name: children[0]}
+        return None
+
+    @staticmethod
+    def _fields(children: list[Any]) -> dict:
+        """A block's contents, by field name. A list's elements are always a
+        list, anything else one value."""
+        if children and not isinstance(children[0], tuple):
+            # list data (e.g. stress_period_data records), not named fields
+            if len(children) == 1 and isinstance(children[0], list):
+                return {"stress_period_data": children[0]}
+            return {"stress_period_data": children}
+        fields: dict = {}
+        for item in children:
+            if isinstance(item, _Element):
+                fields.setdefault(item[0].lower(), []).append(item[1])
+            elif isinstance(item, tuple):
+                fields[item[0].lower()] = item[1]
+        return fields
 
     def __default__(self, data, children, meta):
-        if self.blocks is None or self._flat_fields is None:
+        name, tags = parse_rule_name(str(data))
+        if "block" in tags:
+            if (block := self._block(name, children)) is not None:
+                return block
             return super().__default__(data, children, meta)
-        if data.endswith("_block") and (block_name := data[:-6]) in self.blocks:
-            # Indexed block: [index, fields, closing index]. The closing
-            # index is optional in the grammar (most real files write a bare
-            # "END <name>", not repeating the number) -- Lark fills the
-            # omitted slot with None rather than dropping it. The index
-            # itself is usually an int (period/solutiongroup) but can be a
-            # float (utl-tas's "time" block) -- see block_index/the `number`
-            # grammar rule.
-            header = self.blocks[block_name].header
-            if header is not None and isinstance(header.field, Record) and len(children) == 3:
-                # A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"),
-                # keyed like the basic transformer's.
-                _, values = children[0]
-                tokens = [block_name]
-                for name, f in header.field.fields.items():
-                    if name not in values:
-                        continue
-                    if isinstance(f, Keyword):
-                        tokens.append(name.upper())
-                        continue
-                    if isinstance(f, File) and f.mode_keyword:
-                        tokens.append(f"FILE{f.direction.upper()}")
-                    tokens.append(str(values[name]))
-                return {" ".join(tokens): children[1]}
-            if (
-                len(children) == 3
-                and isinstance(children[0], (int, float))
-                and (children[2] is None or isinstance(children[2], (int, float)))
-            ):
-                block_index = children[0]
-                header = self.blocks[block_name].header
-                if header is not None and isinstance(header.field, Double):
-                    block_index = float(block_index)
-                fields_data = children[1]
-                return {block_name: {block_index: fields_data}}
-            elif len(children) == 1:
-                # Non-indexed block: [fields]
-                return {block_name: children[0]}
-            else:
-                # Unexpected structure, fall back to default
-                return super().__default__(data, children, meta)
-        elif data.endswith("_fields"):
-            # Check if this is a period_fields which contains list data (stress_period_data)
-            # rather than named field tuples
-            if children and not isinstance(children[0], tuple):
-                # This is list data (e.g., stress_period_data records)
-                # With the new stress_record approach, we get a list containing
-                # the stress_period_data result. If there's exactly one child and
-                # it's a list, unwrap it
-                if len(children) == 1 and isinstance(children[0], list):
-                    return {"stress_period_data": children[0]}
-                else:
-                    # Fallback to original behavior
-                    return {"stress_period_data": children}
-            # A list's elements are always a list, anything else one value.
-            elements = self._list_elements(data[: -len("_fields")])
-            fields_dict = {}
-            for item in children:
-                if isinstance(item, tuple):
-                    field_name = item[0].lower()
-                    if field_name in elements:
-                        fields_dict.setdefault(field_name, []).append(item[1])
-                    else:
-                        fields_dict[field_name] = item[1]
-            return fields_dict
-        elif "_" in data and (parts := data.rsplit("_", 1)) and len(parts) == 2:
-            # Check if this is a union alternative (e.g., ocsetting_all)
-            field_name, alternative_name = parts
-            if (parent_field := self._flat_fields.get(field_name, None)) is not None:
-                if (
-                    isinstance(parent_field, Union)
-                    and parent_field.children
-                    and alternative_name in parent_field.children
-                ):
-                    # This is a union alternative
-                    alt_field = parent_field.children[alternative_name]
-                    if isinstance(alt_field, Keyword):
-                        # Keyword alternatives return just the alternative name
-                        return alternative_name
-                    else:
-                        # Non-keyword alternatives return the transformed children
-                        return children[0] if len(children) == 1 else children
-        # Try to find the field, checking with underscore replacement for hyphens
-        field = self._flat_fields.get(data, None)
-        if field is None and "-" in data:
-            # Try with hyphens instead of underscores (reverse of to_rule_name)
-            field = self._flat_fields.get(data.replace("_", "-"), None)
-        if isinstance(field, List):
-            # the rule matches one element line
-            field = field.item
-        if field is not None:
-            if isinstance(field, Keyword):
-                return data, True
-            elif isinstance(field, Record) and field.children:
-                # Transform record fields into dicts with child field names as keys.
-                # A required keyword is an anonymous literal, absent from
-                # children; an optional one is a named rule (see
-                # record_keywords), True when given and None when not.
-                record_dict = {}
-                slots = [
-                    (name, child)
-                    for name, child in field.children.items()
-                    if not (isinstance(child, Keyword) and not child.optional)
-                ]
-                pos = 0
-                for i, (child_name, child_field) in enumerate(slots):
-                    if pos >= len(children):
-                        break
-                    if isinstance(child_field, Keyword):
-                        if children[pos] is not None:
-                            record_dict[child_name] = True
-                        pos += 1
-                        continue
-                    if isinstance(child_field, Array):
-                        end = len(children) - (len(slots) - i - 1)
-                        record_dict[child_name] = list(children[pos:end])
-                        pos = end
-                        continue
-                    # Handle tuples from transformed fields
-                    if isinstance(children[pos], tuple) and children[pos][0] == child_name:
-                        record_dict[child_name] = children[pos][1]
-                    else:
-                        record_dict[child_name] = children[pos]
-                    pos += 1
-                return data, record_dict
-            elif isinstance(field, Union) and field.children:
-                # For union fields, return the transformed child
-                # The parser will have selected one alternative
-                return data, children[0] if len(children) == 1 else children
-            else:
-                # For all fields, return the transformed children
-                # (arrays have already been transformed by the array method)
-                return data, children[0] if len(children) == 1 else children
-        return super().__default__(data, children, meta)
+        if "fields" in tags:
+            return self._fields(children)
+        if "hdr" in tags:
+            return name, children  # its parts as written, see _header_key
+        value: Any
+        if "kw" in tags:
+            # A keyword union arm keeps its token: the arm, as spelled in
+            # the DFN (AMT-LMK, not amt_lmk).
+            if children and isinstance(children[0], Token):
+                name = str(children[0]).lower()
+            value = True
+        elif "arr" in tags:
+            value = list(children)
+        elif "rec" in tags:
+            # Each part is its own rule, read as (name, value); an optional
+            # part that's absent is None.
+            value = {c[0]: c[1] for c in children if isinstance(c, tuple)}
+        elif "union" in tags:
+            arm, value = children[0]
+            if value is True:  # only a keyword reads as True
+                value = arm
+        elif "val" in tags:
+            value = children[0] if len(children) == 1 else children
+        else:
+            return super().__default__(data, children, meta)
+        return _Element((name, value)) if "elem" in tags else (name, value)
 
 
-@lru_cache(maxsize=None)
-def get_typed_transformer(name: str, dfn_path: str | None = None) -> TypedTransformer:
-    """Cached ``TypedTransformer`` factory, one instance per component type."""
-    return TypedTransformer(dfn=get_component_dfn(name, dfn_path=dfn_path))
+_TYPED_TRANSFORMER = TypedTransformer()
+
+
+def get_typed_transformer() -> TypedTransformer:
+    """The typed transformer, which reads any component's typed grammar."""
+    return _TYPED_TRANSFORMER

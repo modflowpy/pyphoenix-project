@@ -21,14 +21,14 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | continuous_block
+block: options__block | continuous__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-continuous_block: "begin"i "continuous"i output [_remark] _NL _NL* continuous_fields _NL* "end"i "continuous"i [output]
-output: "fileout"i word [output_binary]
-output_binary: "binary"i
-options_fields: ((digits | print_input | open_close_redirect) _NL*)*
-continuous_fields: ((continuousdata | open_close_redirect) _NL*)*
-digits: "digits"i integer [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+continuous__block: "begin"i "continuous"i output__hdr [_remark] _NL _NL* continuous__fields _NL* "end"i "continuous"i [output__hdr]
+!output__hdr: "fileout"i word [output__binary__kw]
+output__binary__kw: "binary"i
+options__fields: ((digits__val | print_input__kw | open_close_redirect) _NL*)*
+continuous__fields: ((continuousdata | open_close_redirect) _NL*)*
+digits__val: "digits"i integer [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
 continuousdata: record+

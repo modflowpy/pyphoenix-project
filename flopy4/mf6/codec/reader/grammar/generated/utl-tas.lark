@@ -21,14 +21,18 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: attributes_block | time_block
+block: attributes__block | time__block
 
-attributes_block: "begin"i "attributes"i [_remark] _NL _NL* attributes_fields _NL* "end"i "attributes"i
-time_block: "begin"i "time"i block_index [_remark] _NL _NL* time_fields _NL* "end"i "time"i [block_index]
+attributes__block: "begin"i "attributes"i [_remark] _NL _NL* attributes__fields _NL* "end"i "attributes"i
+time__block: "begin"i "time"i double_index [_remark] _NL _NL* time__fields _NL* "end"i "time"i [double_index]
 %import typed.block_index -> block_index
-attributes_fields: ((time_series_namerecord | interpolation_methodrecord | sfacrecord | open_close_redirect) _NL*)*
-time_fields: ((tas_array) _NL*)*
-time_series_namerecord: "name"i word+ [_remark] _NL
-interpolation_methodrecord: "method"i word [_remark] _NL
-sfacrecord: "sfac"i double+ [_remark] _NL
-tas_array: array
+double_index: block_index
+attributes__fields: ((time_series_namerecord__rec | interpolation_methodrecord__rec | sfacrecord__rec | open_close_redirect) _NL*)*
+time__fields: ((tas_array__val) _NL*)*
+time_series_namerecord__rec: "name"i time_series_namerecord__time_series_name__arr [_remark] _NL
+time_series_namerecord__time_series_name__arr: word+
+interpolation_methodrecord__rec: "method"i interpolation_methodrecord__interpolation_method__val [_remark] _NL
+interpolation_methodrecord__interpolation_method__val: word
+sfacrecord__rec: "sfac"i sfacrecord__sfacval__arr [_remark] _NL
+sfacrecord__sfacval__arr: double+
+tas_array__val: array

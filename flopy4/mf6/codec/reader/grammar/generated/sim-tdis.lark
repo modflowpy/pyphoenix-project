@@ -21,16 +21,17 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | perioddata_block
+block: options__block | dimensions__block | perioddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-perioddata_block: "begin"i "perioddata"i [_remark] _NL _NL* perioddata_fields _NL* "end"i "perioddata"i
-options_fields: ((time_units | start_date_time | ats_filerecord | open_close_redirect) _NL*)*
-dimensions_fields: ((nper | open_close_redirect) _NL*)*
-perioddata_fields: ((perioddatadata | open_close_redirect) _NL*)*
-time_units: "time_units"i string
-start_date_time: "start_date_time"i string
-ats_filerecord: "ats6"i "filein"i word [_remark] _NL
-nper: "nper"i integer [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+perioddata__block: "begin"i "perioddata"i [_remark] _NL _NL* perioddata__fields _NL* "end"i "perioddata"i
+options__fields: ((time_units__val | start_date_time__val | ats_filerecord__rec | open_close_redirect) _NL*)*
+dimensions__fields: ((nper__val | open_close_redirect) _NL*)*
+perioddata__fields: ((perioddatadata | open_close_redirect) _NL*)*
+time_units__val: "time_units"i string
+start_date_time__val: "start_date_time"i string
+ats_filerecord__rec: "ats6"i ats_filerecord__ats6_filename__val [_remark] _NL
+ats_filerecord__ats6_filename__val: "filein"i word
+nper__val: "nper"i integer [_remark] _NL
 perioddatadata: record+

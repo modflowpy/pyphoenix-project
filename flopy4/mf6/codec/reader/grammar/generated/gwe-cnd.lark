@@ -21,20 +21,20 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block
+block: options__block | griddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((xt3d_off | xt3d_rhs | export_array_ascii | export_array_netcdf | open_close_redirect) _NL*)*
-griddata_fields: ((alh | alv | ath1 | ath2 | atv | ktw | kts | open_close_redirect) _NL*)*
-xt3d_off: "xt3d_off"i  [_remark] _NL
-xt3d_rhs: "xt3d_rhs"i  [_remark] _NL
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
-alh: "alh"i [_remark] [_NL] array
-alv: "alv"i [_remark] [_NL] array
-ath1: "ath1"i [_remark] [_NL] array
-ath2: "ath2"i [_remark] [_NL] array
-atv: "atv"i [_remark] [_NL] array
-ktw: "ktw"i [_remark] [_NL] array
-kts: "kts"i [_remark] [_NL] array
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__fields: ((xt3d_off__kw | xt3d_rhs__kw | export_array_ascii__kw | export_array_netcdf__kw | open_close_redirect) _NL*)*
+griddata__fields: ((alh__val | alv__val | ath1__val | ath2__val | atv__val | ktw__val | kts__val | open_close_redirect) _NL*)*
+xt3d_off__kw: "xt3d_off"i  [_remark] _NL
+xt3d_rhs__kw: "xt3d_rhs"i  [_remark] _NL
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+export_array_netcdf__kw: "export_array_netcdf"i  [_remark] _NL
+alh__val: "alh"i [_remark] [_NL] array
+alv__val: "alv"i [_remark] [_NL] array
+ath1__val: "ath1"i [_remark] [_NL] array
+ath2__val: "ath2"i [_remark] [_NL] array
+atv__val: "atv"i [_remark] [_NL] array
+ktw__val: "ktw"i [_remark] [_NL] array
+kts__val: "kts"i [_remark] [_NL] array

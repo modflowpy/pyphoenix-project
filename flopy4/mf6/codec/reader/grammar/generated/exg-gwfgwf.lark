@@ -21,32 +21,35 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | exchangedata_block
+block: options__block | dimensions__block | exchangedata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-exchangedata_block: "begin"i "exchangedata"i [_remark] _NL _NL* exchangedata_fields _NL* "end"i "exchangedata"i
-options_fields: ((auxiliary | boundnames | print_input | print_flows | save_flows | cell_averaging | cvoptions | newton | xt3d | gnc_filerecord | mvr_filerecord | obs_filerecord | dev_interfacemodel_on | open_close_redirect) _NL*)*
-dimensions_fields: ((nexg | open_close_redirect) _NL*)*
-exchangedata_fields: ((exchangedatadata | open_close_redirect) _NL*)*
-auxiliary: "auxiliary"i word+ [_remark] _NL
-boundnames: "boundnames"i  [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-cell_averaging: "cell_averaging"i (cell_averaging_harmonic | cell_averaging_logarithmic | cell_averaging_amt_lmk) [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+exchangedata__block: "begin"i "exchangedata"i [_remark] _NL _NL* exchangedata__fields _NL* "end"i "exchangedata"i
+options__fields: ((auxiliary__val | boundnames__kw | print_input__kw | print_flows__kw | save_flows__kw | cell_averaging__union | cvoptions__rec | newton__kw | xt3d__kw | gnc_filerecord__rec | mvr_filerecord__rec | obs_filerecord__rec | dev_interfacemodel_on__kw | open_close_redirect) _NL*)*
+dimensions__fields: ((nexg__val | open_close_redirect) _NL*)*
+exchangedata__fields: ((exchangedatadata | open_close_redirect) _NL*)*
+auxiliary__val: "auxiliary"i word+ [_remark] _NL
+boundnames__kw: "boundnames"i  [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+cell_averaging__union: "cell_averaging"i (cell_averaging__harmonic__kw | cell_averaging__logarithmic__kw | cell_averaging__amt_lmk__kw) [_remark] _NL
 
-cell_averaging_harmonic: "harmonic"i
-cell_averaging_logarithmic: "logarithmic"i
-cell_averaging_amt_lmk: "amt-lmk"i
+!cell_averaging__harmonic__kw: "harmonic"i
+!cell_averaging__logarithmic__kw: "logarithmic"i
+!cell_averaging__amt_lmk__kw: "amt-lmk"i
 
-cvoptions: "variablecv"i [cvoptions_dewatered] [_remark] _NL
-cvoptions_dewatered: "dewatered"i
-newton: "newton"i  [_remark] _NL
-xt3d: "xt3d"i  [_remark] _NL
-gnc_filerecord: "gnc6"i "filein"i word [_remark] _NL
-mvr_filerecord: "mvr6"i "filein"i word [_remark] _NL
-obs_filerecord: "obs6"i "filein"i word [_remark] _NL
-dev_interfacemodel_on: "dev_interfacemodel_on"i  [_remark] _NL
-nexg: "nexg"i integer [_remark] _NL
+cvoptions__rec: "variablecv"i [cvoptions__dewatered__kw] [_remark] _NL
+cvoptions__dewatered__kw: "dewatered"i
+newton__kw: "newton"i  [_remark] _NL
+xt3d__kw: "xt3d"i  [_remark] _NL
+gnc_filerecord__rec: "gnc6"i gnc_filerecord__gnc6_filename__val [_remark] _NL
+gnc_filerecord__gnc6_filename__val: "filein"i word
+mvr_filerecord__rec: "mvr6"i mvr_filerecord__mvr6_filename__val [_remark] _NL
+mvr_filerecord__mvr6_filename__val: "filein"i word
+obs_filerecord__rec: "obs6"i obs_filerecord__obs6_filename__val [_remark] _NL
+obs_filerecord__obs6_filename__val: "filein"i word
+dev_interfacemodel_on__kw: "dev_interfacemodel_on"i  [_remark] _NL
+nexg__val: "nexg"i integer [_remark] _NL
 exchangedatadata: record+

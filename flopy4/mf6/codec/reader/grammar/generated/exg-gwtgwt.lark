@@ -21,31 +21,33 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | exchangedata_block
+block: options__block | dimensions__block | exchangedata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-exchangedata_block: "begin"i "exchangedata"i [_remark] _NL _NL* exchangedata_fields _NL* "end"i "exchangedata"i
-options_fields: ((gwfmodelname1 | gwfmodelname2 | auxiliary | boundnames | print_input | print_flows | save_flows | adv_scheme | dsp_xt3d_off | dsp_xt3d_rhs | mvt_filerecord | obs_filerecord | dev_interfacemodel_on | open_close_redirect) _NL*)*
-dimensions_fields: ((nexg | open_close_redirect) _NL*)*
-exchangedata_fields: ((exchangedatadata | open_close_redirect) _NL*)*
-gwfmodelname1: "gwfmodelname1"i string
-gwfmodelname2: "gwfmodelname2"i string
-auxiliary: "auxiliary"i word+ [_remark] _NL
-boundnames: "boundnames"i  [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-adv_scheme: "adv_scheme"i (adv_scheme_upstream | adv_scheme_central | adv_scheme_tvd) [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+exchangedata__block: "begin"i "exchangedata"i [_remark] _NL _NL* exchangedata__fields _NL* "end"i "exchangedata"i
+options__fields: ((gwfmodelname1__val | gwfmodelname2__val | auxiliary__val | boundnames__kw | print_input__kw | print_flows__kw | save_flows__kw | adv_scheme__union | dsp_xt3d_off__kw | dsp_xt3d_rhs__kw | mvt_filerecord__rec | obs_filerecord__rec | dev_interfacemodel_on__kw | open_close_redirect) _NL*)*
+dimensions__fields: ((nexg__val | open_close_redirect) _NL*)*
+exchangedata__fields: ((exchangedatadata | open_close_redirect) _NL*)*
+gwfmodelname1__val: "gwfmodelname1"i string
+gwfmodelname2__val: "gwfmodelname2"i string
+auxiliary__val: "auxiliary"i word+ [_remark] _NL
+boundnames__kw: "boundnames"i  [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+adv_scheme__union: "adv_scheme"i (adv_scheme__upstream__kw | adv_scheme__central__kw | adv_scheme__tvd__kw) [_remark] _NL
 
-adv_scheme_upstream: "upstream"i
-adv_scheme_central: "central"i
-adv_scheme_tvd: "tvd"i
+!adv_scheme__upstream__kw: "upstream"i
+!adv_scheme__central__kw: "central"i
+!adv_scheme__tvd__kw: "tvd"i
 
-dsp_xt3d_off: "dsp_xt3d_off"i  [_remark] _NL
-dsp_xt3d_rhs: "dsp_xt3d_rhs"i  [_remark] _NL
-mvt_filerecord: "mvt6"i "filein"i word [_remark] _NL
-obs_filerecord: "obs6"i "filein"i word [_remark] _NL
-dev_interfacemodel_on: "dev_interfacemodel_on"i  [_remark] _NL
-nexg: "nexg"i integer [_remark] _NL
+dsp_xt3d_off__kw: "dsp_xt3d_off"i  [_remark] _NL
+dsp_xt3d_rhs__kw: "dsp_xt3d_rhs"i  [_remark] _NL
+mvt_filerecord__rec: "mvt6"i mvt_filerecord__mvt6_filename__val [_remark] _NL
+mvt_filerecord__mvt6_filename__val: "filein"i word
+obs_filerecord__rec: "obs6"i obs_filerecord__obs6_filename__val [_remark] _NL
+obs_filerecord__obs6_filename__val: "filein"i word
+dev_interfacemodel_on__kw: "dev_interfacemodel_on"i  [_remark] _NL
+nexg__val: "nexg"i integer [_remark] _NL
 exchangedatadata: record+

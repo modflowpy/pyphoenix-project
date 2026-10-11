@@ -91,7 +91,7 @@ def _collect_package_files(sim_path: Path) -> list[tuple[Path, str]]:
         for m in sorted(KNOWN_PASSING)
     ],
 )
-def test_typed_grammar_parses_known_passing_files(tmp_path, model_name, dfn_path):
+def test_typed_grammar_parses_known_passing_files(tmp_path, model_name):
     """Every package file a known-passing model resolves should parse under
     its typed grammar too, unless its dfn_name is a documented gap."""
     workspace = copy_to(tmp_path, model_name, verbose=False)
@@ -106,7 +106,7 @@ def test_typed_grammar_parses_known_passing_files(tmp_path, model_name, dfn_path
             continue
         text = path.read_text()
         try:
-            loads_typed(text, dfn_name, dfn_path=str(dfn_path))
+            loads_typed(text, dfn_name)
         except Exception as exc:
             unexpected_failures.append((path.name, dfn_name, repr(exc)))
 

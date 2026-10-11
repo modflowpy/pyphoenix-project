@@ -21,15 +21,20 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: attributes_block | timeseries_block
+block: attributes__block | timeseries__block
 
-attributes_block: "begin"i "attributes"i [_remark] _NL _NL* attributes_fields _NL* "end"i "attributes"i
-timeseries_block: "begin"i "timeseries"i [_remark] _NL _NL* timeseries_fields _NL* "end"i "timeseries"i
-attributes_fields: ((time_series_namerecord | interpolation_methodrecord | interpolation_methodrecord_single | sfacrecord | sfacrecord_single | open_close_redirect) _NL*)*
-timeseries_fields: ((timeseriesdata | open_close_redirect) _NL*)*
-time_series_namerecord: ("names"i | "name"i) word+ [_remark] _NL
-interpolation_methodrecord: "methods"i word+ [_remark] _NL
-interpolation_methodrecord_single: "method"i word [_remark] _NL
-sfacrecord: "sfacs"i double+ [_remark] _NL
-sfacrecord_single: "sfac"i double [_remark] _NL
+attributes__block: "begin"i "attributes"i [_remark] _NL _NL* attributes__fields _NL* "end"i "attributes"i
+timeseries__block: "begin"i "timeseries"i [_remark] _NL _NL* timeseries__fields _NL* "end"i "timeseries"i
+attributes__fields: ((time_series_namerecord__rec | interpolation_methodrecord__rec | interpolation_methodrecord_single__rec | sfacrecord__rec | sfacrecord_single__rec | open_close_redirect) _NL*)*
+timeseries__fields: ((timeseriesdata | open_close_redirect) _NL*)*
+time_series_namerecord__rec: ("names"i | "name"i) time_series_namerecord__time_series_names__arr [_remark] _NL
+time_series_namerecord__time_series_names__arr: word+
+interpolation_methodrecord__rec: "methods"i interpolation_methodrecord__interpolation_method__arr [_remark] _NL
+interpolation_methodrecord__interpolation_method__arr: word+
+interpolation_methodrecord_single__rec: "method"i interpolation_methodrecord_single__interpolation_method_single__val [_remark] _NL
+interpolation_methodrecord_single__interpolation_method_single__val: word
+sfacrecord__rec: "sfacs"i sfacrecord__sfacval__arr [_remark] _NL
+sfacrecord__sfacval__arr: double+
+sfacrecord_single__rec: "sfac"i sfacrecord_single__sfacval__val [_remark] _NL
+sfacrecord_single__sfacval__val: double
 timeseriesdata: record+

@@ -384,14 +384,6 @@ def test_no_dfns(tmp_path):
         _sync._store_dfns(tmp_path / "src", tmp_path / "dest")
 
 
-def test_reader_uses_stored_dfns():
-    """The typed reader's default DFNs are the ones stored in the package."""
-    from flopy4.mf6.codec.reader.dfns import get_component_dfn
-
-    assert (Path(flopy4.mf6.__file__).parent / "dfns" / "gwf-chd.toml").is_file()
-    assert get_component_dfn("gwf-chd").name == "gwf-chd"
-
-
 def test_contract_records_commit(dfn_path, outdir, monkeypatch):
     monkeypatch.setattr(_sync, "_local_commit", lambda path: "abc1234")
     result = sync(dfn_path, mf6_version="6.9.0", outdir=outdir)

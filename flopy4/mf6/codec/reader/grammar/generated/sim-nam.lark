@@ -21,28 +21,29 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | timing_block | models_block | exchanges_block | solutiongroup_block
+block: options__block | timing__block | models__block | exchanges__block | solutiongroup__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-timing_block: "begin"i "timing"i [_remark] _NL _NL* timing_fields _NL* "end"i "timing"i
-models_block: "begin"i "models"i [_remark] _NL _NL* models_fields _NL* "end"i "models"i
-exchanges_block: "begin"i "exchanges"i [_remark] _NL _NL* exchanges_fields _NL* "end"i "exchanges"i
-solutiongroup_block: "begin"i "solutiongroup"i block_index [_remark] _NL _NL* solutiongroup_fields _NL* "end"i "solutiongroup"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+timing__block: "begin"i "timing"i [_remark] _NL _NL* timing__fields _NL* "end"i "timing"i
+models__block: "begin"i "models"i [_remark] _NL _NL* models__fields _NL* "end"i "models"i
+exchanges__block: "begin"i "exchanges"i [_remark] _NL _NL* exchanges__fields _NL* "end"i "exchanges"i
+solutiongroup__block: "begin"i "solutiongroup"i block_index [_remark] _NL _NL* solutiongroup__fields _NL* "end"i "solutiongroup"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((continue | nocheck | memory_print_option | profile_option | maxerrors | print_input | hpc_filerecord | open_close_redirect) _NL*)*
-timing_fields: ((tdis6 | open_close_redirect) _NL*)*
-models_fields: ((modelsdata | open_close_redirect) _NL*)*
-exchanges_fields: ((exchangesdata | open_close_redirect) _NL*)*
-solutiongroup_fields: ((mxiter | solutiongroupdata | open_close_redirect) _NL*)*
-continue: "continue"i  [_remark] _NL
-nocheck: "nocheck"i  [_remark] _NL
-memory_print_option: "memory_print_option"i string
-profile_option: "profile_option"i string
-maxerrors: "maxerrors"i integer [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-hpc_filerecord: "hpc6"i "filein"i word [_remark] _NL
-tdis6: "tdis6"i word [_remark] _NL
-mxiter: "mxiter"i integer [_remark] _NL
+options__fields: ((continue__kw | nocheck__kw | memory_print_option__val | profile_option__val | maxerrors__val | print_input__kw | hpc_filerecord__rec | open_close_redirect) _NL*)*
+timing__fields: ((tdis6__val | open_close_redirect) _NL*)*
+models__fields: ((modelsdata | open_close_redirect) _NL*)*
+exchanges__fields: ((exchangesdata | open_close_redirect) _NL*)*
+solutiongroup__fields: ((mxiter__val | solutiongroupdata | open_close_redirect) _NL*)*
+continue__kw: "continue"i  [_remark] _NL
+nocheck__kw: "nocheck"i  [_remark] _NL
+memory_print_option__val: "memory_print_option"i string
+profile_option__val: "profile_option"i string
+maxerrors__val: "maxerrors"i integer [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+hpc_filerecord__rec: "hpc6"i hpc_filerecord__hpc6_filename__val [_remark] _NL
+hpc_filerecord__hpc6_filename__val: "filein"i word
+tdis6__val: "tdis6"i word [_remark] _NL
+mxiter__val: "mxiter"i integer [_remark] _NL
 modelsdata: record+
 exchangesdata: record+
 solutiongroupdata: record+
