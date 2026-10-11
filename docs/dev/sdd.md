@@ -223,7 +223,7 @@ END MODELS
 
 The structurer maps the type token (`gwf6`) to a component class and recursively calls its `load()`. Because this is recursive, a single `Simulation.load()` traverses and loads the entire component tree &mdash; simulation, temporal discretization, each model and its packages, exchanges, and solutions &mdash; in one pass. `Gwf.load()` (or any model/package `load()`) works standalone the same way.
 
-A *typed* per-component grammar system also exists: `dfn2lark` generates a Lark grammar for each component (with rules for array control records, layered arrays, records, and structured list rows) from the DFN spec. Pushing structure into the grammar this way promises better parse trees and error messages, but it is not yet on the default load path &mdash; the basic-grammar-plus-`structure` pipeline above is what `load()` uses today.
+A *typed* per-component grammar system also exists: `flopy4 mf6 sync` (or `dfn2lark` on its own) generates a Lark grammar for each component (with rules for array control records, layered arrays, records, and structured list rows) from the DFN spec. Each rule is named for what it is (see `grammar/names.py`), so the typed transformer reads the parse tree without the DFNs. Pushing structure into the grammar this way promises better parse trees and error messages, but it is not yet on the default load path &mdash; the basic-grammar-plus-`structure` pipeline above is what `load()` uses today.
 
 ### Output
 

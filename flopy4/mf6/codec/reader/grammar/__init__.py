@@ -122,14 +122,9 @@ def make_grammar(component: Component, outdir: PathLike):
     template = env.get_template("component.lark.jinja")
     target_path = outdir / f"{component.name}.lark"
     blocks, fields = _to_context(component.blocks or {})
-    with open(target_path, "w") as f:
-        f.write(
-            template.render(
-                name=component.name,
-                blocks=blocks,
-                fields=fields,
-            )
-        )
+    text = template.render(name=component.name, blocks=blocks, fields=fields)
+    # one trailing newline, however the template's last rule ends
+    target_path.write_text(text.rstrip("\n") + "\n")
 
 
 def make_grammars(dfns: dict[str, Component], outdir: PathLike):

@@ -104,7 +104,7 @@ def test_sync_local_existing_only(dfn_path, tmp_path):
     """Without all_packages, an empty outdir gets only the contract."""
     result = sync(dfn_path, mf6_version="6.9.0", outdir=tmp_path)
     assert result.files == ()
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["_contract.py"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["_contract.py", "codec"]
 
 
 def test_sync_local_unknown_version_warns(dfn_path, tmp_path):
@@ -315,6 +315,50 @@ def test_missing_mixin_field_warns(dfn_path, outdir, monkeypatch):
         sync(dfn_path, mf6_version="7.0.0", outdir=outdir)
     assert "    crs:" not in (outdir / "gwf" / "dis.py").read_text()
     assert any("Dis.crs" in gap for gap in find_problems(outdir).gaps)
+
+
+def _grammars(outdir: Path) -> dict[str, str]:
+    return {p.name: p.read_text() for p in (outdir / _sync._GRAMMARS).glob("*.lark")}
+
+
+def test_grammars_generated(dfn_path, outdir):
+    """Sync writes a grammar for every component, which the reader parses with."""
+    from lark import Lark
+
+    from flopy4.mf6.codec.reader.parser import _GRAMMAR_MODULE
+
+    names = {f.stem for f in dfn_path.glob("*.dfn") if f.stem not in ("common", "flopy")}
+    grammars = _grammars(outdir)
+    assert set(grammars) == {f"{n}.lark" for n in names}
+    parser = Lark(grammars["gwf-chd.lark"], parser="lalr", import_paths=[str(_GRAMMAR_MODULE)])
+    parser.parse("BEGIN OPTIONS\n  PRINT_INPUT\nEND OPTIONS\n")
+
+
+def test_stale_grammars_removed(dfn_path, outdir):
+    """A grammar for a component the DFNs no longer have is removed."""
+    stale = outdir / _sync._GRAMMARS / "swf-zzz.lark"
+    stale.write_text("start: WORD\n")
+    sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
+    assert not stale.exists()
+    assert (outdir / _sync._GRAMMARS / "gwf-chd.lark").is_file()
+
+
+def test_invalid_grammar_leaves_outdir(dfn_path, outdir, monkeypatch):
+    """A grammar that doesn't build is caught before the swap."""
+    from flopy4.mf6.codec.reader import grammar
+
+    before, grammars_before = _snapshot(outdir), _grammars(outdir)
+    make_grammars = grammar.make_grammars
+
+    def bad_make_grammars(dfns, outdir):
+        make_grammars(dfns, outdir)
+        (Path(outdir) / "gwf-chd.lark").write_text("start: undefined_rule\n")
+
+    monkeypatch.setattr(grammar, "make_grammars", bad_make_grammars)
+    with pytest.raises(SyncError, match="invalid grammar for gwf-chd"):
+        sync(dfn_path, mf6_version="7.0.0", outdir=outdir)
+    assert _snapshot(outdir) == before
+    assert _grammars(outdir) == grammars_before
 
 
 def test_find_problems(outdir):
