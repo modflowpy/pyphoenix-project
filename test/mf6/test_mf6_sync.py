@@ -104,7 +104,7 @@ def test_sync_local_existing_only(dfn_path, tmp_path):
     """Without all_packages, an empty outdir gets only the contract."""
     result = sync(dfn_path, mf6_version="6.9.0", outdir=tmp_path)
     assert result.files == ()
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["_contract.py", "dfns"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["_contract.py"]
 
 
 def test_sync_local_unknown_version_warns(dfn_path, tmp_path):
@@ -338,50 +338,33 @@ def test_read_only(dfn_path, tmp_path):
         outdir.chmod(0o755)
 
 
-def _components(path: Path) -> dict:
-    from modflow_devtools.dfns import LocalDfnRegistry
-
-    return LocalDfnRegistry(path=path).spec(schema_version="2.0.0.dev3").components
-
-
-def test_dfns_stored(dfn_path, outdir):
-    """Sync stores the source's DFNs as TOML, replacing ones it no longer has."""
+def test_old_stored_dfns_removed(dfn_path, outdir):
+    """Sync removes the DFNs earlier syncs stored for the typed reader."""
     stored = outdir / "dfns"
-    assert {f.name for f in stored.iterdir()} == {
-        f"{f.stem}.toml" for f in dfn_path.glob("*.dfn") if f.stem not in ("common", "flopy")
-    }
-    (stored / "gwf-zzz.toml").write_text("")
-    (stored / "gwf-chd.dfn").write_text("")
+    stored.mkdir(exist_ok=True)
+    (stored / "gwf-chd.toml").write_text("")
     sync(dfn_path, mf6_version="6.9.0", outdir=outdir)
-    assert not (stored / "gwf-zzz.toml").exists()
-    assert not (stored / "gwf-chd.dfn").exists()
+    assert not stored.exists()
 
 
-def test_stored_dfns_lossless(dfn_path, outdir):
-    """The stored TOML loads to the same spec as the source DFNs."""
-    source = _components(dfn_path)
-    stored = _components(outdir / "dfns")
-    assert source.keys() == stored.keys()
-    assert [k for k in source if source[k] != stored[k]] == []
+def test_resync_from_toml(dfn_path, outdir, tmp_path):
+    """Syncing from the DFNs as TOML reproduces the classes."""
+    from modflow_devtools.dfns.migrate import migrate
 
-
-def test_resync_from_stored_dfns(outdir, tmp_path):
-    """Syncing from the stored TOML reproduces the classes, and copies it."""
     before = _snapshot(outdir)
-    toml = Path(shutil.copytree(outdir / "dfns", tmp_path / "toml"))
+    toml = tmp_path / "toml"
+    migrate(dfn_path, toml, "2.0.0.dev3", fmt="toml")
     sync(toml, mf6_version="6.9.0", outdir=outdir)
     after = _snapshot(outdir)
-    # the copy isn't in a git checkout, so the contract's commit may differ
+    # the TOML isn't in a git checkout, so the contract's commit may differ
     del after["_contract.py"], before["_contract.py"]
     assert after == before
-    for f in toml.iterdir():
-        assert (outdir / "dfns" / f.name).read_bytes() == f.read_bytes()
 
 
 def test_no_dfns(tmp_path):
     (tmp_path / "src").mkdir()
     with pytest.raises(SyncError, match="No .dfn or .toml"):
-        _sync._store_dfns(tmp_path / "src", tmp_path / "dest")
+        sync(tmp_path / "src", mf6_version="6.9.0", outdir=tmp_path / "out")
 
 
 def test_contract_records_commit(dfn_path, outdir, monkeypatch):
