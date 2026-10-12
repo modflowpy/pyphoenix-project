@@ -21,7 +21,7 @@ class Obs(Package):
         id_: Union[tuple[int, ...], int, str] = field(union=("cellid", "index", "string"))
         id2: Optional[Union[tuple[int, ...], int, str]] = field(
             default=None, union=("cellid", "index", "string"), optional=True
-        )
+        )  # noqa: E501
 
     @attrs.define
     class Output(Item):

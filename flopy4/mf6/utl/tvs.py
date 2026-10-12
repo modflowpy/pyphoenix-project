@@ -17,16 +17,17 @@ class Tvs(Package):
     @attrs.define
     class Ss(Item):
         _keyword: ClassVar[str] = "ss"
-        cellid: tuple = field(cellid=True)
         ss: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Sy(Item):
         _keyword: ClassVar[str] = "sy"
-        cellid: tuple = field(cellid=True)
         sy: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = Ss | Sy
+    @attrs.define
+    class StressPeriodData(Item):
+        cellid: tuple = field(cellid=True)
+        tvssetting: "Tvs.Ss | Tvs.Sy" = field()
 
     disable_storage_change_integration: bool = field(
         default=False,
@@ -43,7 +44,7 @@ class Tvs(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -54,3 +55,4 @@ class Tvs(Package):
 
 TvsSs = Tvs.Ss
 TvsSy = Tvs.Sy
+TvsStressPeriodData = Tvs.StressPeriodData

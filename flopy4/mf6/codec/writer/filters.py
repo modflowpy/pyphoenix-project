@@ -346,8 +346,8 @@ def dataset2list(value: xr.Dataset):
     Yield records (tuples) from an `xarray.Dataset`.
 
     If the first data variable is a string type, assume all are
-    string type. Then the dataset represents a keystring; yield
-    tuples of (name, *value). Otherwise, yield tuples: (*value)
+    string type. Then the dataset represents keyword settings;
+    yield tuples of (name, *value). Otherwise, yield tuples: (*value)
     if no spatial dimensions, or (*cellid, *value) when spatial
     dimensions are present.
     """

@@ -44,7 +44,7 @@ class Maw(Package):
         ngwfnodes: int = field()
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )
+        )  # noqa: E501
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
@@ -67,26 +67,22 @@ class Maw(Package):
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         status: str = field()
 
     @attrs.define
     class ConnectionStatus(Item):
         _keyword: ClassVar[str] = "connection_status"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         icon: int = field(index=True)
         connstatus: str = field()
 
     @attrs.define
     class Bottom(Item):
         _keyword: ClassVar[str] = "bottom"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         bottom: float = field()
 
     @attrs.define
     class FlowingWell(Item):
         _keyword: ClassVar[str] = "flowing_well"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         fwelev: float = field()
         fwcond: float = field()
         fwrlen: float = field()
@@ -94,54 +90,40 @@ class Maw(Package):
     @attrs.define
     class Rate(Item):
         _keyword: ClassVar[str] = "rate"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         rate: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class WellHead(Item):
         _keyword: ClassVar[str] = "well_head"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         well_head: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class HeadLimit(Item):
         _keyword: ClassVar[str] = "head_limit"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         head_limit: Union[Literal["OFF"], float] = field(union=("keyword", "double"))
 
     @attrs.define
     class Shutoff(Item):
         _keyword: ClassVar[str] = "shut_off"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         minrate: float = field()
         maxrate: float = field()
 
     @attrs.define
     class RateScaling(Item):
         _keyword: ClassVar[str] = "rate_scaling"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         pump_elevation: float = field()
         scaling_length: float = field()
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         auxname: str = field()
         auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = (
-        Status
-        | ConnectionStatus
-        | Bottom
-        | FlowingWell
-        | Rate
-        | WellHead
-        | HeadLimit
-        | Shutoff
-        | RateScaling
-        | Auxiliary
-    )
+    @attrs.define
+    class StressPeriodData(Item):
+        ifno: int = field(index=True, fk="packagedata.ifno")
+        mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = field()  # noqa: E501
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
@@ -276,7 +258,7 @@ class Maw(Package):
         default=None,
         block="angledata",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -298,3 +280,4 @@ MawHeadLimit = Maw.HeadLimit
 MawShutoff = Maw.Shutoff
 MawRateScaling = Maw.RateScaling
 MawAuxiliary = Maw.Auxiliary
+MawStressPeriodData = Maw.StressPeriodData

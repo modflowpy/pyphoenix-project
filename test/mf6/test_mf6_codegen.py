@@ -31,11 +31,11 @@ from flopy4.mf6.utils.codegen.filters import (
     can_expand_record,
     class_name,
     feature_id_column,
-    is_column_union,
     is_generatable,
     item_class,
     model_abbr,
     module_name,
+    needs_class,
     output_path,
     py_type,
     safe_name,
@@ -101,9 +101,9 @@ TRANSPORT_TIER = {
     "gwt-ist": ("Ist", "Package", "gwt"),
 }
 
-# Tier 1a: OC period keystring union — saverecord/printrecord arms become
-# real typed Save/Print classes composed into stress_period_data, the same
-# generic mechanism LAK/SFR/MAW use for their own period keystring settings.
+# Tier 1a: OC period union — saverecord/printrecord arms become real typed
+# Save/Print classes composed into stress_period_data, the same generic
+# mechanism LAK/SFR/MAW use for their own period settings' union arms.
 # Each tuple is (class_name, base_class, model_prefix).
 OC_TIER = {
     "gwt-oc": ("Oc", "Package", "gwt"),
@@ -594,21 +594,13 @@ class TestBlockPropertySpec:
                 f"ifno in {block} should be prefixed as {block}_ifno"
             )
 
-    def test_lak_outlets_period_collision_prefixed(self, lak_spec):
-        # invert/width/slope/rough appear as both outlets packagedata columns and
-        # period field keywords — static columns must take outlets_ prefix so period
-        # fields can always use the bare keyword name.
+    def test_lak_outlets_bare_names(self, lak_spec):
+        # outlets' columns keep their names, even those that are also period
+        # setting keywords (invert/width/slope/rough): period settings
+        # aren't package attributes, so nothing collides
         bp = next(b for b in lak_spec.block_properties if b.block_name == "outlets")
-        for col_name in ("invert", "width", "slope", "rough"):
-            assert bp.attr_name_map.get(col_name) == f"outlets_{col_name}", (
-                f"outlets.{col_name} should be prefixed as outlets_{col_name} "
-                "(collides with period field keyword)"
-            )
-        # outletno, lakein, lakeout, couttype are not period field names — bare names
-        for col_name in ("outletno", "lakein", "lakeout", "couttype"):
-            assert bp.attr_name_map.get(col_name) == col_name, (
-                f"outlets.{col_name} should use bare name (no period field conflict)"
-            )
+        for col_name in ("outletno", "lakein", "lakeout", "couttype", "invert", "width"):
+            assert bp.attr_name_map.get(col_name) == col_name
 
     def test_lak_connectiondata_cellid(self, lak_spec):
         bp = next(b for b in lak_spec.block_properties if b.block_name == "connectiondata")
@@ -1186,7 +1178,7 @@ def test_union_list_outside_period_roundtrip(tmp_path):
     """A list of unions gets the same arm classes and keyword dispatch in
     any block, not just the period block. No real DFN has one outside the
     period block yet, so a synthetic one."""
-    from modflow_devtools.dfns.schema import Block, Package, Union
+    from modflow_devtools.dfns.schema import Block, Package
     from modflow_devtools.dfns.schema import List as ListField
 
     from flopy4.mf6.codec.reader import loads
@@ -1365,19 +1357,22 @@ def test_oc_tier_generates_importable_files(tmp_path, all_dfns):
         # Verify the OC period arms (Save/Print, real typed classes) were generated
         arm_names = [ic.class_name for ic in spec.item_classes]
         assert {"Save", "Print"} <= set(arm_names), f"{dfn_name} should have Save/Print arm classes"
-        # ocsetting's own arms (All/First/Last/Frequency/Steps) must be built
-        # exactly once (shared by Save.ocsetting and Print.ocsetting, not
-        # duplicated as e.g. SaverecordAll/PrintrecordAll -- see
-        # make.py's _build_arm_specs_from_union nested_union_cache) and must
-        # NOT be folded into the top-level Save|Print dispatch union.
-        assert arm_names.count("All") == 1, f"{dfn_name}: ocsetting arms must not be duplicated"
+        # ocsetting's arm classes (Frequency/Steps; ALL/FIRST/LAST are words)
+        # must be built exactly once (shared by Save.ocsetting and
+        # Print.ocsetting, not duplicated as e.g. SaverecordFrequency -- see
+        # make.py's _union_arm_specs nested_union_cache) and must NOT be
+        # folded into the top-level Save|Print dispatch union.
+        assert "All" not in arm_names, f"{dfn_name}: ALL is a word, not a class"
+        assert arm_names.count("Frequency") == 1, (
+            f"{dfn_name}: ocsetting arms must not be duplicated"
+        )
         (period_union,) = [u for u in spec.item_unions if u.alias == "_StressPeriodDataItem"]
         top_level_names = set(period_union.members)
         assert top_level_names == {"Save", "Print"}, (
             f"{dfn_name}: only Save/Print may be top_level (dispatch union) arms"
         )
         nested_names = {ic.class_name for ic in spec.item_classes if not ic.top_level}
-        assert nested_names == {"All", "First", "Last", "Frequency", "Steps"}
+        assert nested_names == {"Frequency", "Steps"}
 
 
 def test_utl_tier_generates_importable_files(tmp_path, all_dfns):
@@ -1499,33 +1494,20 @@ def test_counted_array_column():
     assert disv.cell2d[0].icvert == (0, 1, 2, 3)
 
 
-def test_is_column_union():
-    """A union is one column if each arm is one value (OBS's id, LAK's
-    bedleak), and a keystring if its arms are line forms (MAW's mawsetting,
-    LAK's laksetting, whose arms lead with a lake number)."""
+def test_needs_class():
+    """A union arm types as a class if its keyword picks it: a record (LAK's
+    stage, led by a lake number) or a tagged value (MAW's status). A
+    keyword arm is a word, and an untagged value its own type (OBS's id,
+    LAK's bedleak)."""
     value = Double(name="value", tagged=False)
-    assert is_column_union(
-        Union(name="bedleak", arms={"none": Keyword(name="none"), "value": value})
-    )
-    obs_id = Union(
-        name="id",
-        arms={
-            "cellid": Array(name="cellid", dtype="integer", shape=["ncelldim"], tagged=False),
-            "boundname": String(name="boundname", tagged=False),
-        },
-    )
-    assert is_column_union(obs_id)
-    assert not is_column_union(
-        Union(
-            name="mawsetting",
-            arms={"status": String(name="status"), "bottom": Double(name="bottom")},
-        )
-    )
+    assert not needs_class(Keyword(name="none"))
+    assert not needs_class(value)
+    assert not needs_class(Array(name="cellid", dtype="integer", shape=["ncelldim"], tagged=False))
+    assert needs_class(String(name="status"))
     lakeno = Integer(name="lakeno", tagged=False)
-    stage = Record(
-        name="stage", fields={"lakeno": lakeno, "stage": Keyword(name="stage"), "v": value}
+    assert needs_class(
+        Record(name="stage", fields={"lakeno": lakeno, "stage": Keyword(name="stage"), "v": value})
     )
-    assert not is_column_union(Union(name="laksetting", arms={"stage": stage}))
 
 
 def test_number_or_word_column():
@@ -1553,14 +1535,14 @@ def test_number_or_word_from_tokens(bedleak):
     assert lower.bedleak == bedleak
 
 
-def test_number_or_word_in_keystring_arm():
+def test_number_or_word_in_union_arm():
     """MAW's HEAD_LIMIT takes OFF or a number."""
     from flopy4.mf6.gwf import Maw
 
-    off = Maw.HeadLimit.from_tokens([1, "head_limit", "off"])
-    assert (off.ifno, off.head_limit) == (0, "OFF")
-    limit = Maw.HeadLimit.from_tokens([1, "HEAD_LIMIT", 2.5])
-    assert limit.head_limit == 2.5
+    off = Maw.StressPeriodData.from_tokens([1, "head_limit", "off"])
+    assert (off.ifno, off.mawsetting) == (0, Maw.HeadLimit(head_limit="OFF"))
+    limit = Maw.StressPeriodData.from_tokens([1, "HEAD_LIMIT", 2.5])
+    assert limit.mawsetting.head_limit == 2.5
     assert limit.to_tokens() == (1, "HEAD_LIMIT", 2.5)
 
 

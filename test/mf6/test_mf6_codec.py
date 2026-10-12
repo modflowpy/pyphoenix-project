@@ -499,8 +499,8 @@ def test_ts_names_mismatch():
 
 def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
     """Writing checks that each name in a time-series column, aux and
-    keystring rows included, is a series the package's TS6 files define,
-    in any case, as MF6 needs."""
+    union arms included, is a series the package's TS6 files define, in
+    any case, as MF6 needs."""
     from flopy4.mf6.gwf import Chd, Maw
     from flopy4.mf6.utl import Ts
 
@@ -532,7 +532,7 @@ def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
     maw = Maw(
         packagedata=[(0, 0.1, -10.0, 5.0, "THIEM", 1)],
         connectiondata=[(0, 0, (0, 0, 0), 0.0, -10.0, 1.0, 0.2)],
-        stress_period_data={0: [Maw.Rate(ifno=0, rate="pumping")]},
+        stress_period_data={0: [Maw.StressPeriodData(ifno=0, mawsetting=Maw.Rate(rate="pumping"))]},
         filename=function_tmpdir / "gwf.maw",
     )
     with pytest.raises(ValueError, match=r"'pumping'.*none"):
@@ -712,7 +712,10 @@ def test_maw_round_trip():
             (1, 0, (0, 0, 1), 0.0, -10.0, 1.0, 0.2),
         ],
         stress_period_data={
-            0: [Maw.Rate(ifno=0, rate=-100.0), Maw.Status(ifno=1, status="INACTIVE")]
+            0: [
+                Maw.StressPeriodData(ifno=0, mawsetting=Maw.Rate(rate=-100.0)),
+                Maw.StressPeriodData(ifno=1, mawsetting=Maw.Status(status="INACTIVE")),
+            ]
         },
     )
     raw = loads(dumps(unstructure_component(maw)))
@@ -804,13 +807,13 @@ def test_sfr_signed_index_zero():
         Sfr.Connectiondata(ifno=0, ic=(0,))
 
 
-def test_sfr_diversion_keyword_after_row_key():
+def test_sfr_diversion_row():
     from flopy4.mf6.gwf import Sfr
 
-    # the keyword follows the row key (ifno) but precedes other index columns
-    div = Sfr.Diversion(ifno=0, idv=1, divflow=0.5)
-    assert div.to_tokens() == (1, "DIVERSION", 2, 0.5)
-    assert Sfr.Diversion.from_tokens([1, "diversion", 2, 0.5]) == div
+    # the row's ifno, then the setting: its keyword, then its own index
+    row = Sfr.StressPeriodData(ifno=0, sfrsetting=Sfr.Diversion(idv=1, divflow=0.5))
+    assert row.to_tokens() == (1, "DIVERSION", 2, 0.5)
+    assert Sfr.StressPeriodData.from_tokens([1, "diversion", 2, 0.5]) == row
 
 
 def test_sfr_unconnected_reach_round_trip():
@@ -1651,7 +1654,7 @@ def test_dumps_gwt_oc_wildcard():
 def test_dumps_prt_prp_release_setting():
     """prt-prp period release settings write correct MF6 keywords via stress_period_data.
 
-    PRP's `releasesetting` keystring union has no per-row index (unlike LAK/
+    PRP's `releasesetting` union has no per-row index (unlike LAK/
     LKE/SFR) -- the v1 DFN declares it a bare `recarray releasesetting` with
     no feature-id column, and dev3 confirms no arm carries a pk/fk field, so
     rows are typed per-arm classes: `Frequency` carries an Integer payload;
@@ -1704,8 +1707,8 @@ def test_prt_prp_period_roundtrip():
 
 
 def test_oc_ocsetting_typed_dispatch():
-    """OC's nested ocsetting union (Save/Print's own All/First/Last/
-    Frequency/Steps arms) dispatches to real typed instances, not a raw
+    """OC's ocsetting union (Save/Print's ALL/FIRST/LAST words and
+    Frequency/Steps arms) reads as a word or a typed instance, not a raw
     tuple, and survives a dump->load->structure_component cycle -- same
     coverage as test_prt_prp_period_roundtrip for the top-level case."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
@@ -1735,7 +1738,7 @@ def test_oc_ocsetting_typed_dispatch():
     assert save_row.ocsetting.steps == (1.0, 3.0, 5.0)
 
     print_row = next(r for r in rows if isinstance(r, Oc.Print))
-    assert isinstance(print_row.ocsetting, Oc.All)
+    assert print_row.ocsetting == "ALL"
 
 
 def test_oc_ocsetting_construct_item_positional():
@@ -1744,10 +1747,12 @@ def test_oc_ocsetting_construct_item_positional():
     from_tokens does."""
     from flopy4.mf6.gwf import Oc
 
-    oc = Oc(stress_period_data={0: [("SAVE", "HEAD", "ALL")]})
-    row = oc.stress_period_data[0][0]
-    assert isinstance(row, Oc.Save)
-    assert isinstance(row.ocsetting, Oc.All)
+    oc = Oc(stress_period_data={0: [("SAVE", "HEAD", "all"), ("PRINT", "BUDGET", "FREQUENCY", 2)]})
+    save, print_ = oc.stress_period_data[0]
+    assert isinstance(save, Oc.Save)
+    assert save.ocsetting == "ALL"
+    assert isinstance(print_.ocsetting, Oc.Frequency)
+    assert print_.ocsetting.frequency == 2
 
 
 # ---------------------------------------------------------------------------
@@ -2371,7 +2376,7 @@ def test_ssm_fileinput_children(tmp_path):
     assert isinstance(wel.spc, Spc) and wel.mixed
     assert isinstance(rch.spc, Spca)
     assert wel.spc.filename == Path("wel.spc")
-    assert [r.concentration for r in wel.spc.stress_period_data[0]] == [100.0]
+    assert [r.spcsetting.concentration for r in wel.spc.stress_period_data[0]] == [100.0]
     assert sorted(ssm._children) == ["fileinput0", "fileinput1"]
     assert wel.spc.parent is ssm
 
@@ -2402,8 +2407,8 @@ def test_sfr_period_cross_section_children(tmp_path, monkeypatch):
         )
     sfr = Sfr.load(tmp_path / "gwf.sfr", dims={"nlay": 1, "nrow": 1, "ncol": 1})
     a = sfr.crosssections[0].sfrtab
-    (b_row,) = sfr.stress_period_data[1]
-    (a_row,) = sfr.stress_period_data[2]
+    (b_row,) = (r.sfrsetting for r in sfr.stress_period_data[1])
+    (a_row,) = (r.sfrsetting for r in sfr.stress_period_data[2])
     assert isinstance(b_row.sfrtab, Sfrtab)
     assert b_row.sfrtab.filename == Path("b.tab")
     assert b_row.sfrtab.table[0].height == 2.0
@@ -2796,8 +2801,8 @@ def test_lkt_packagedata_double_aux_roundtrip():
     assert [r.boundname for r in pd] == ["mylake"]
 
 
-def test_lak_keystring_period_roundtrip():
-    """LAK keystring period data round-trips through dump→load→structure."""
+def test_lak_period_roundtrip():
+    """LAK period data round-trips through dump→load→structure."""
     from flopy4.mf6.codec.writer import dumps
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
@@ -2838,28 +2843,30 @@ def test_lak_keystring_period_roundtrip():
     # Period 0: 4 rows
     p0 = spd[0]
     assert len(p0) == 4
-    assert isinstance(p0[0], Lak.Status) and p0[0].lakeno == 0  # 0-based feature id
-    assert p0[0].status == "ACTIVE"
-    assert isinstance(p0[1], Lak.Rainfall) and p0[1].lakeno == 0
-    assert float(p0[1].rainfall) == pytest.approx(0.1)
-    assert isinstance(p0[2], Lak.Status) and p0[2].lakeno == 1
-    assert p0[2].status == "CONSTANT"
-    assert isinstance(p0[3], Lak.Stage) and p0[3].lakeno == 1
-    assert float(p0[3].stage) == pytest.approx(5.0)
+    assert (
+        isinstance(p0[0].laksetting, Lak.Status) and p0[0].laksetting.lakeno == 0
+    )  # 0-based feature id
+    assert p0[0].laksetting.status == "ACTIVE"
+    assert isinstance(p0[1].laksetting, Lak.Rainfall) and p0[1].laksetting.lakeno == 0
+    assert float(p0[1].laksetting.rainfall) == pytest.approx(0.1)
+    assert isinstance(p0[2].laksetting, Lak.Status) and p0[2].laksetting.lakeno == 1
+    assert p0[2].laksetting.status == "CONSTANT"
+    assert isinstance(p0[3].laksetting, Lak.Stage) and p0[3].laksetting.lakeno == 1
+    assert float(p0[3].laksetting.stage) == pytest.approx(5.0)
 
     # Period 1: 1 row
     p1 = spd[1]
     assert len(p1) == 1
-    assert isinstance(p1[0], Lak.Status) and p1[0].lakeno == 0
-    assert p1[0].status == "INACTIVE"
+    assert isinstance(p1[0].laksetting, Lak.Status) and p1[0].laksetting.lakeno == 0
+    assert p1[0].laksetting.status == "INACTIVE"
 
     # Period 2: 2 rows
     p2 = spd[2]
     assert len(p2) == 2
-    assert isinstance(p2[0], Lak.Status) and p2[0].lakeno == 0
-    assert p2[0].status == "ACTIVE"
-    assert isinstance(p2[1], Lak.Withdrawal) and p2[1].lakeno == 1
-    assert float(p2[1].withdrawal) == pytest.approx(100.0)
+    assert isinstance(p2[0].laksetting, Lak.Status) and p2[0].laksetting.lakeno == 0
+    assert p2[0].laksetting.status == "ACTIVE"
+    assert isinstance(p2[1].laksetting, Lak.Withdrawal) and p2[1].laksetting.lakeno == 1
+    assert float(p2[1].laksetting.withdrawal) == pytest.approx(100.0)
 
 
 # ---------------------------------------------------------------------------
@@ -3027,7 +3034,7 @@ def test_lkt_period_dumps():
 
 
 def test_lkt_period_roundtrip():
-    """LKT keystring period data round-trips through dump→load→structure."""
+    """LKT period data round-trips through dump→load→structure."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwt.lkt import Lkt
@@ -3054,17 +3061,17 @@ def test_lkt_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 3
-    assert isinstance(p0[0], Lkt.Status) and p0[0].ifno == 0
-    assert p0[0].status == "ACTIVE"
-    assert isinstance(p0[1], Lkt.Status) and p0[1].ifno == 1
-    assert p0[1].status == "CONSTANT"
-    assert isinstance(p0[2], Lkt.Concentration) and p0[2].ifno == 0
-    assert float(p0[2].concentration) == pytest.approx(10.0)
+    assert p0[0].ifno == 0 and isinstance(p0[0].laksetting, Lkt.Status)
+    assert p0[0].laksetting.status == "ACTIVE"
+    assert p0[1].ifno == 1 and isinstance(p0[1].laksetting, Lkt.Status)
+    assert p0[1].laksetting.status == "CONSTANT"
+    assert p0[2].ifno == 0 and isinstance(p0[2].laksetting, Lkt.Concentration)
+    assert float(p0[2].laksetting.concentration) == pytest.approx(10.0)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert isinstance(p1[0], Lkt.Status) and p1[0].ifno == 0
-    assert p1[0].status == "INACTIVE"
+    assert p1[0].ifno == 0 and isinstance(p1[0].laksetting, Lkt.Status)
+    assert p1[0].laksetting.status == "INACTIVE"
 
 
 def test_lkt_packagedata_roundtrip():
@@ -3138,7 +3145,7 @@ def test_lke_period_dumps():
 
 
 def test_lke_period_roundtrip():
-    """LKE keystring period data round-trips through dump→load→structure."""
+    """LKE period data round-trips through dump→load→structure."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.gwe.lke import Lke
@@ -3165,17 +3172,17 @@ def test_lke_period_roundtrip():
 
     p0 = spd[0]
     assert len(p0) == 3
-    assert isinstance(p0[0], Lke.Status) and p0[0].lakeno == 0
-    assert p0[0].status == "ACTIVE"
-    assert isinstance(p0[1], Lke.Status) and p0[1].lakeno == 1
-    assert p0[1].status == "CONSTANT"
-    assert isinstance(p0[2], Lke.Temperature) and p0[2].lakeno == 0
-    assert float(p0[2].temperature) == pytest.approx(18.5)
+    assert p0[0].lakeno == 0 and isinstance(p0[0].laksetting, Lke.Status)
+    assert p0[0].laksetting.status == "ACTIVE"
+    assert p0[1].lakeno == 1 and isinstance(p0[1].laksetting, Lke.Status)
+    assert p0[1].laksetting.status == "CONSTANT"
+    assert p0[2].lakeno == 0 and isinstance(p0[2].laksetting, Lke.Temperature)
+    assert float(p0[2].laksetting.temperature) == pytest.approx(18.5)
 
     p1 = spd[1]
     assert len(p1) == 1
-    assert isinstance(p1[0], Lke.Status) and p1[0].lakeno == 0
-    assert p1[0].status == "INACTIVE"
+    assert p1[0].lakeno == 0 and isinstance(p1[0].laksetting, Lke.Status)
+    assert p1[0].laksetting.status == "INACTIVE"
 
 
 def test_lke_packagedata_roundtrip():
@@ -3854,8 +3861,8 @@ def test_spc_round_trip(tmp_path):
     )
     spc = Spc.load(path)
     rows = spc.stress_period_data
-    assert [(r.bndno, r.concentration) for r in rows[0]] == [(0, 100.0), (1, TimeSeriesRef("myts"))]
-    assert [(r.bndno, r.concentration) for r in rows[2]] == [(0, 0.0)]
+    values = [[(r.bndno, r.spcsetting.concentration) for r in rows[k]] for k in (0, 2)]
+    assert values == [[(0, 100.0), (1, TimeSeriesRef("myts"))], [(0, 0.0)]]
     assert spc.maxbound == 2
 
     dumped = dumps(COMPONENT_CONVERTER.unstructure(spc))

@@ -105,9 +105,9 @@ class ItemClassSpec:
     tagged list's record), or one arm of a union (LAK's Stage/Rate/Status,
     OC's Saverecord/Printrecord).
 
-    ``top_level`` is False for an arm built by recursing into another
-    arm's own union-typed field (e.g. OC's ocsetting) -- still emitted as
-    a flat sibling class, but excluded from the outer union alias.
+    ``top_level`` is False for an arm of a union field (OC's ocsetting,
+    LKT's laksetting) -- still emitted as a flat sibling class, but
+    excluded from any list's union alias.
     """
 
     class_name: str
@@ -184,8 +184,8 @@ class ComponentSpec:
 
 # Column-schema-dict builders
 #
-# Both static list blocks and standard (non-keystring) period blocks are
-# List[Record] under dev3 -- including a real cellid Array field for period
+# Static list blocks and period blocks of records are List[Record] under
+# dev3 -- including a real cellid Array field for period
 # blocks, which the legacy schema had to synthesize. One function builds the
 # list[dict] "schema" (the intermediate format item_class/schema_class render)
 # for both cases; only the surrounding FieldSpec (type annotation, block=
@@ -194,7 +194,7 @@ class ComponentSpec:
 
 def _item_columns(
     columns: list[ColumnSpec],
-    nested_arm_classes: "dict[str, list[str]] | None" = None,
+    unions: "Mapping[str, tuple[list[str], list[str]]] | None" = None,
     children: "Mapping[str, list[str]] | None" = None,
 ) -> list[ItemColumn]:
     """Build the rendered columns of an Item class from ColumnSpecs.
@@ -206,12 +206,11 @@ def _item_columns(
     e.g. MIXED) are tagged bools. An array column's shape expression is
     emitted as-is, for the runtime to evaluate.
 
-    ``nested_arm_classes``, when given, maps a column name to sibling arm
-    class names already built for it (see ``_build_arm_specs_from_union``)
-    -- such a column is a nested union instead of the generic untyped-union
-    array below.
+    ``unions`` maps a union column's name to the arm classes already built
+    for it and its words (see ``_union_arm_specs``); any other union column
+    is one value, of any of its arms.
     """
-    nested_arm_classes = nested_arm_classes or {}
+    unions = unions or {}
     children = children or {}
     items: list[ItemColumn] = []
     pending_prefix: list[str] = []
@@ -279,7 +278,11 @@ def _item_columns(
             item = filters.attr_column(
                 name, "bool", {"tagged": True}, optional=True, default="False"
             )
-        elif filters.is_column_union(f):
+        elif isinstance(f, UnionField) and name in unions:
+            # Words and arm classes, the rest of the row (OC's ocsetting)
+            classes, words = unions[name]
+            item = filters.class_union_column(name, classes, words, optional=optional)
+        elif isinstance(f, UnionField):
             # One column, any of the arms (OBS's id: a cellid, an index or
             # a boundname), told apart when read (see Item.from_tokens).
             item = filters.union_column(
@@ -289,11 +292,7 @@ def _item_columns(
                 optional=optional,
                 time_series=ts,
             )
-        elif isinstance(f, UnionField) and name in nested_arm_classes:
-            item = filters.nested_union_column(name, nested_arm_classes[name], optional=optional)
-        elif isinstance(f, UnionField) or (
-            isinstance(f, Array) and not filters.is_fixed_length_array(f)
-        ):
+        elif isinstance(f, Array) and not filters.is_fixed_length_array(f):
             item = filters.array_column(name, None, dfn_type)
         else:
             item = filters.value_column(
@@ -488,29 +487,25 @@ def _build_list_item_specs(
     children: "Mapping[str, list[str]] | None" = None,
 ) -> tuple[list[ItemClassSpec], str, ItemUnionSpec | None]:
     """Build the Item class(es) for a list's elements, wherever the list is
-    (any block, repeating or not). Returns (classes, element type, union
-    alias or None):
+    (any block, repeating or not), mirroring the DFN's element. Returns
+    (classes, element type, union alias or None):
 
-    - a union item (OC's output, LAK's period settings): one class per arm,
-      dispatched by keyword, and a ``_<class_name>Item`` alias for the union
-    - a tagged (keyword-led) record item: one class whose leading keyword is
-      its ``_keyword``, built like a union arm
-    - an untagged record item (packagedata, CHD's stress_period_data): one
-      class of positional columns
+    - a union element (OC's output, LAK's period settings): one class per
+      arm, dispatched by keyword, and a ``_<class_name>Item`` alias for the
+      union
+    - a tagged (keyword-led) record element: one class whose leading
+      keyword is its ``_keyword``, built like a union arm
+    - an untagged record element (packagedata, CHD's stress_period_data,
+      LKT's ``ifno`` and ``laksetting``): one class of positional columns,
+      a union among them a field of its own (see _union_arm_specs)
 
     ``children`` maps the rows' child columns, by name, to the components
     they name (see _item_columns).
     """
-    union = filters.find_keystring_union(list_field)
-    if union is not None:
-        item = list_field.item
-        shared_cols: list[tuple[str, FieldV3]] = (
-            [(n, f) for n, f in item.fields.items() if f is not union]
-            if isinstance(item, Record)
-            else []
-        )
+    item = list_field.item
+    if isinstance(item, UnionField):
         specs = _build_arm_specs_from_union(
-            union, used_names, {}, shared_cols, name_hint=list_field.name, children=children
+            item, used_names, {}, name_hint=list_field.name, children=children
         )
         alias = f"_{class_name}Item"
         members = [s.class_name for s in specs if s.top_level]
@@ -518,47 +513,84 @@ def _build_list_item_specs(
     if list_field.tagged:
         specs = _build_arm_spec(
             list_field.name,
-            list_field.item,
+            item,
             used_names,
             {},
-            [],
             class_name=class_name,
         )
         return specs, specs[-1].class_name, None
-    schema = _item_columns(filters.list_columns(list_field), children=children)
+    fields = list(item.fields.items()) if isinstance(item, Record) else []
+    specs, unions = _union_arm_specs(fields, used_names, {}, children)
+    schema = _item_columns(filters.list_columns(list_field), unions, children)
     used_names.add(class_name)
-    spec = ItemClassSpec(class_name=class_name, keyword="", schema=schema)
-    return [spec], class_name, None
+    specs.append(ItemClassSpec(class_name=class_name, keyword="", schema=schema))
+    return specs, class_name, None
+
+
+def _union_arm_specs(
+    fields: "list[tuple[str, FieldV3]]",
+    used_names: set[str],
+    nested_union_cache: "dict[tuple[str, ...], list[str]]",
+    children: "Mapping[str, list[str]] | None" = None,
+) -> "tuple[list[ItemClassSpec], dict[str, tuple[list[str], list[str]]]]":
+    """Build the classes for the union fields among ``fields`` whose arms
+    need them (see filters.needs_class). Returns them, and each such
+    field's (arm classes, words) by name: OC's ocsetting is the words ALL,
+    FIRST and LAST, or a Frequency or Steps. A union of words and values
+    alone (LAK's bedleak) needs no classes and is left out.
+
+    `nested_union_cache` is keyed by a union's arm-name set, since DFN
+    parsing builds each Record's fields independently -- OC's
+    `saverecord.ocsetting` and `printrecord.ocsetting` are distinct `Union`
+    objects with identical arms, and without the cache the second would
+    rebuild and rename a duplicate set of classes instead of reusing the
+    first's.
+    """
+    specs: list[ItemClassSpec] = []
+    unions: dict[str, tuple[list[str], list[str]]] = {}
+    for field_name, fld in fields:
+        if not isinstance(fld, UnionField):
+            continue
+        arms = list(fld.arms.items())
+        if not any(filters.needs_class(a) for _, a in arms):
+            continue  # a value column (see _item_columns)
+        words = [a.name for _, a in arms if isinstance(a, KeywordField)]
+        values = [n for n, a in arms if not (isinstance(a, KeywordField) or filters.needs_class(a))]
+        if values:
+            raise ValueError(f"union {field_name!r}: untagged arms {values} beside record arms")
+        cache_key = tuple(sorted(fld.arms.keys()))
+        classes = nested_union_cache.get(cache_key)
+        if classes is None:
+            classes = []
+            for arm_name, arm in arms:
+                if filters.needs_class(arm):
+                    arm_specs = _build_arm_spec(
+                        arm_name,
+                        arm,
+                        used_names,
+                        nested_union_cache,
+                        name_hint=field_name,
+                        top_level=False,
+                        children=children,
+                    )
+                    specs.extend(arm_specs)
+                    classes.append(arm_specs[-1].class_name)
+            nested_union_cache[cache_key] = classes
+        unions[field_name] = (classes, words)
+    return specs, unions
 
 
 def _build_arm_specs_from_union(
     union: UnionField,
     used_names: set[str],
-    nested_union_cache: "dict[tuple[str, ...], list[ItemClassSpec]]",
-    shared_cols: "list[tuple[str, FieldV3]]" = [],
+    nested_union_cache: "dict[tuple[str, ...], list[str]]",
     *,
     name_hint: str = "",
-    top_level: bool = True,
     children: "Mapping[str, list[str]] | None" = None,
 ) -> list[ItemClassSpec]:
-    """Build one ItemClassSpec per arm of `union` (see _build_arm_spec).
-
-    Handles all three index shapes seen in the corpus generically, via a
-    shared prefix of columns prepended to every arm:
-    - OC-style: the List's item IS the union directly (no index at all).
-    - LAK-style: each arm embeds its own fk index (lakeno/outletno) as one
-      of its own fields -- no shared prefix needed, it falls out of the
-      arm's own fields.
-    - SFR/MAW-style: the union is a sibling of an outer index field (item
-      Record = {ifno, ...setting: Union}) -- shared by every arm.
-
-    `nested_union_cache` (shared across the whole call tree) is keyed by a
-    nested union's arm-name set, since DFN parsing builds each Record
-    arm's fields independently -- OC's `saverecord.ocsetting` and
-    `printrecord.ocsetting` are distinct `Union` objects with identical
-    arms, and without the cache the second occurrence would rebuild and
-    rename a duplicate set of classes instead of reusing the first's.
-    """
+    """Build one ItemClassSpec per arm of a list's union element (see
+    _build_arm_spec): OC's output, PRP's period settings, or LAK's, each
+    arm of which leads with its own lake or outlet number."""
     specs: list[ItemClassSpec] = []
     for arm_name, arm in union.arms.items():
         specs.extend(
@@ -567,9 +599,7 @@ def _build_arm_specs_from_union(
                 arm,
                 used_names,
                 nested_union_cache,
-                shared_cols,
                 name_hint=name_hint,
-                top_level=top_level,
                 children=children,
             )
         )
@@ -580,8 +610,7 @@ def _build_arm_spec(
     arm_name: str,
     arm: FieldV3,
     used_names: set[str],
-    nested_union_cache: "dict[tuple[str, ...], list[ItemClassSpec]]",
-    shared_cols: "list[tuple[str, FieldV3]]",
+    nested_union_cache: "dict[tuple[str, ...], list[str]]",
     *,
     name_hint: str = "",
     top_level: bool = True,
@@ -591,11 +620,9 @@ def _build_arm_spec(
     """Build the keyword-led Item class for one union arm, or for a tagged
     list's record item -- each line starts with (or, LAK-style, contains)
     a keyword naming it. Returns any classes built for unions nested in it
-    (OC's ocsetting, recursively exploded into its own typed sub-arms with
-    `top_level=False` -- the DFN schema doesn't cap union nesting depth),
-    then this one.
+    (OC's ocsetting, see _union_arm_specs, with `top_level=False`), then
+    this one.
     """
-    specs: list[ItemClassSpec] = []
     if isinstance(arm, Record):
         # The discriminating keyword isn't always the arm's first field --
         # LAK's auxiliaryrecord is (lakeno, auxiliary(kw), auxname, auxval),
@@ -630,26 +657,8 @@ def _build_arm_spec(
         keyword = "_".join(_strip_record_words(arm_name))
         rest = [(arm_name, arm)]
 
-    nested_arm_classes: dict[str, list[str]] = {}
-    for field_name, fld in rest:
-        if not isinstance(fld, UnionField) or filters.is_column_union(fld):
-            continue  # a column union is read as a column (see _item_columns)
-        cache_key = tuple(sorted(fld.arms.keys()))
-        cached = nested_union_cache.get(cache_key)
-        if cached is None:
-            cached = _build_arm_specs_from_union(
-                fld,
-                used_names,
-                nested_union_cache,
-                name_hint=field_name,
-                top_level=False,
-            )
-            nested_union_cache[cache_key] = cached
-            specs.extend(cached)
-        nested_arm_classes[field_name] = [s.class_name for s in cached]
-
-    cols = filters._fields_to_columns(list(shared_cols) + rest)
-    schema = _item_columns(cols, nested_arm_classes, children)
+    specs, unions = _union_arm_specs(rest, used_names, nested_union_cache, children)
+    schema = _item_columns(filters._fields_to_columns(rest), unions, children)
     if not class_name:
         class_name = pascal_name("_".join(_strip_record_words(arm_name)))
         if class_name in used_names:
@@ -813,34 +822,9 @@ def _build_record_class_specs(
     return nested_specs + [this_spec]
 
 
-def _period_keystring_names(component: Component) -> frozenset[str]:
-    """Names reserved by the period block's keystring keywords, if any.
-
-    LAK-style keystring period settings (STATUS, STAGE, RATE, INVERT, ...)
-    are consolidated into a single generic _stress_period_data field (see
-    build_component_spec) -- no Python attribute is literally named e.g.
-    "invert" for period data. But the same word is also a real static-block
-    column name in some packages (LAK's outlets.invert), and a bare "invert"
-    attr there would read ambiguously against the period keyword string of
-    the same name. Static columns colliding with a period keystring keyword
-    take a block-prefixed attr name instead (collision_names' `reserved`
-    param) -- reproduces the legacy behavior, now sourced from the real
-    Union.arms names instead of the extra_period_fields TOML override table
-    (removed: no longer needed now that arms are schema-native).
-    """
-    for block_name in filters.fill_forward_blocks(component):
-        for f in component.blocks[block_name].fields.values():
-            if filters.is_list_field(f):
-                union = filters.find_keystring_union(f)
-                if union is not None:
-                    return frozenset(name.lower() for name in union.arms)
-    return frozenset()
-
-
 def _build_block_property_specs(
     component: Component,
     *,
-    reserved_names: frozenset[str] = frozenset(),
     skip: frozenset[str] = frozenset(),
 ) -> tuple[list[BlockPropertySpec], set[str]]:
     """Compute BlockPropertySpec for all static (non-period) list blocks.
@@ -864,7 +848,7 @@ def _build_block_property_specs(
                 break
 
     col_schemas = {block: filters.list_columns(f) for block, f in list_fields_map.items()}
-    collisions = filters.collision_names(col_schemas, reserved=reserved_names)
+    collisions = filters.collision_names(col_schemas)
 
     # Resolve which DFN dimension scalar each block maps to: only through the
     # list's explicit shape (see filters.list_col_dim).
@@ -1164,6 +1148,17 @@ def _child_link(
     return link, targets
 
 
+def _element_unions(f: ListField) -> list[UnionField]:
+    """The unions in a list's element: the element itself (LAK's period
+    settings), or its fields (SFR's sfrsetting)."""
+    item = f.item
+    if isinstance(item, UnionField):
+        return [item]
+    if isinstance(item, Record):
+        return [u for u in item.fields.values() if isinstance(u, UnionField)]
+    return []
+
+
 def _column_children(
     component: Component, f: FieldV3, dfns: Mapping[str, Component] | None
 ) -> dict[str, list[str]]:
@@ -1173,8 +1168,10 @@ def _column_children(
     ``CROSS_SECTION TAB6 FILEIN <file>``, a utl-sfrtab), or nothing."""
     if not isinstance(f, ListField):
         return {}
-    if (union := filters.find_keystring_union(f)) is not None:
-        return _arm_column_children(component, f, union, dfns)
+    if unions := _element_unions(f):
+        return {
+            k: v for u in unions for k, v in _arm_column_children(component, f, u, dfns).items()
+        }
     if (found := _find_link(f)) is None:
         return {}
     path, link, file_only = found
@@ -1189,7 +1186,7 @@ def _column_children(
 def _arm_column_children(
     component: Component, f: ListField, union: UnionField, dfns: Mapping[str, Component] | None
 ) -> dict[str, list[str]]:
-    """A keystring list's file columns naming components, from its arms."""
+    """A list's file columns naming components, from a union's arms."""
     children = {}
     for arm in union.arms.values():
         for name, m in (arm.fields or {}).items() if isinstance(arm, Record) else ():
@@ -1419,11 +1416,7 @@ def build_component_spec(
     # Linked fields, by name, each replaced by a child field.
     links = {f.name: found for _, f in all_fields if (found := _child_link(component, f, dfns))}
     child_fields = frozenset(links)
-    block_properties, _bp_block_names = _build_block_property_specs(
-        component,
-        reserved_names=_period_keystring_names(component),
-        skip=child_fields,
-    )
+    block_properties, _bp_block_names = _build_block_property_specs(component, skip=child_fields)
     # DIMENSIONS fields counting a list's rows
     _linked_dims = {bp.dim_attr for bp in block_properties if bp.dim_is_dfn_declared}
 
@@ -1490,9 +1483,7 @@ def build_component_spec(
         # but still needs the same per-period, fill-forward dict[int, ...]
         # treatment as any other period field (the whole point of a period
         # block is that its contents can differ/repeat across BEGIN PERIOD
-        # blocks). Same single-column keystring shape as the LAK-style case
-        # above, just with exactly one column since there's nothing else in
-        # the block to key against.
+        # blocks). One column, since there's nothing else in the block.
         if block_name in _fill_forward_blocks and filters.is_scalar(f):
             item_classes.append(
                 ItemClassSpec(

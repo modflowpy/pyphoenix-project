@@ -127,8 +127,8 @@
    alternative_cell_averaging, via valid_as_union) also begins with its
    own name -- real files write
    "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC", not a bare "LOGARITHMIC" --
-   unlike a keystring (e.g. ocsetting's ALL/FIRST/LAST), where the chosen
-   value's own keyword is the whole field. #}
+   unlike a union of keywords (e.g. ocsetting's ALL/FIRST/LAST), where the
+   chosen value's own keyword is the whole field. #}
 {{ name }}: {% if tagged %}"{{ field.name }}"i {% endif %}({{ union_alternation(field_name, field) }}) [_remark] _NL
 
 {{ union_arms(field_name, field) }}

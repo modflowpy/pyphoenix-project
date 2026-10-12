@@ -25,10 +25,9 @@ import numpy as np
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
     """Resolve a bare sibling class name one level up from `cls` in
     `__qualname__`, where every generated flat-sibling class (composed
-    Records, keystring-union arms) lives regardless of DFN nesting depth.
-    No type check here -- callers (`_nested_class`, item.py's
-    `_nested_union_classes`) apply their own, against different base
-    classes.
+    Records, union arms) lives regardless of DFN nesting depth. No type
+    check here -- callers (`_nested_class`, item.py's `_union_arms`) apply
+    their own, against different base classes.
 
     Must resolve at runtime: a class body can't see sibling names from an
     enclosing scope, which is why the qualified string form

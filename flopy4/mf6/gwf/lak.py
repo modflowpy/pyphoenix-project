@@ -50,7 +50,7 @@ class Lak(Package):
         nlakeconn: int = field()
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )
+        )  # noqa: E501
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
@@ -160,21 +160,9 @@ class Lak(Package):
         auxname: str = field()
         auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = (
-        Status
-        | Stage
-        | Rainfall
-        | Evaporation
-        | Runoff
-        | Inflow
-        | Withdrawal
-        | Rate
-        | Invert
-        | Width
-        | Slope
-        | Rough
-        | Auxiliary
-    )
+    @attrs.define
+    class StressPeriodData(Item):
+        laksetting: "Lak.Status | Lak.Stage | Lak.Rainfall | Lak.Evaporation | Lak.Runoff | Lak.Inflow | Lak.Withdrawal | Lak.Rate | Lak.Invert | Lak.Width | Lak.Slope | Lak.Rough | Lak.Auxiliary" = field()  # noqa: E501
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,
@@ -325,7 +313,7 @@ class Lak(Package):
         block="outlets",
         dim="noutlets",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -351,3 +339,4 @@ LakWidth = Lak.Width
 LakSlope = Lak.Slope
 LakRough = Lak.Rough
 LakAuxiliary = Lak.Auxiliary
+LakStressPeriodData = Lak.StressPeriodData

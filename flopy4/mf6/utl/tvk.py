@@ -17,22 +17,22 @@ class Tvk(Package):
     @attrs.define
     class K(Item):
         _keyword: ClassVar[str] = "k"
-        cellid: tuple = field(cellid=True)
         k: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class K22(Item):
         _keyword: ClassVar[str] = "k22"
-        cellid: tuple = field(cellid=True)
         k22: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class K33(Item):
         _keyword: ClassVar[str] = "k33"
-        cellid: tuple = field(cellid=True)
         k33: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = K | K22 | K33
+    @attrs.define
+    class StressPeriodData(Item):
+        cellid: tuple = field(cellid=True)
+        tvksetting: "Tvk.K | Tvk.K22 | Tvk.K33" = field()
 
     print_input: bool = field(
         default=False,
@@ -43,7 +43,7 @@ class Tvk(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -55,3 +55,4 @@ class Tvk(Package):
 TvkK = Tvk.K
 TvkK22 = Tvk.K22
 TvkK33 = Tvk.K33
+TvkStressPeriodData = Tvk.StressPeriodData

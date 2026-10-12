@@ -19,16 +19,17 @@ class Spc(Package):
     @attrs.define
     class Concentration(Item):
         _keyword: ClassVar[str] = "concentration"
-        bndno: int = field(index=True, pk=True)
         concentration: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
-        bndno: int = field(index=True, pk=True)
         temperature: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = Concentration | Temperature
+    @attrs.define
+    class StressPeriodData(Item):
+        bndno: int = field(index=True, pk=True)
+        spcsetting: "Spc.Concentration | Spc.Temperature" = field()
 
     print_input: bool = field(
         default=False,
@@ -39,7 +40,7 @@ class Spc(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -61,3 +62,4 @@ class Spc(Package):
 
 SpcConcentration = Spc.Concentration
 SpcTemperature = Spc.Temperature
+SpcStressPeriodData = Spc.StressPeriodData

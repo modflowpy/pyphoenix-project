@@ -31,16 +31,16 @@ class Evt(Package):
         depth: Union[float, TimeSeriesRef] = field(time_series=True)
         pxdp: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
-        )
+        )  # noqa: E501
         petm: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("nseg-1",), time_series=True, optional=True
-        )
+        )  # noqa: E501
         petm0: Optional[Union[float, TimeSeriesRef]] = field(
             default=None, time_series=True, optional=True
-        )
+        )  # noqa: E501
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )
+        )  # noqa: E501
         boundname: Optional[str] = field(default=None, optional=True)
 
     fixed_cell: bool = field(
