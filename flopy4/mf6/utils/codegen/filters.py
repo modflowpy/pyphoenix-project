@@ -805,7 +805,7 @@ class ItemColumn:
             annotation = f'"{" | ".join(arms)}"'
         line = f"        {self.name}: {annotation} = {self.rhs}"
         # a string annotation can't wrap
-        return line + "  # noqa: E501" if len(line) > 100 else line
+        return line + "  # noqa: E501" if self.arm_classes and len(line) > 100 else line
 
 
 def _margs(meta: dict) -> str:

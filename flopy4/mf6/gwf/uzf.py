@@ -61,7 +61,7 @@ class Uzf(Package):
         rootact: Union[float, TimeSeriesRef] = field(time_series=True)
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )  # noqa: E501
+        )
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,

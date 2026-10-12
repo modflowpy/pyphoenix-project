@@ -42,7 +42,7 @@ class Lkt(Package):
         strt: float = field()
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )  # noqa: E501
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define

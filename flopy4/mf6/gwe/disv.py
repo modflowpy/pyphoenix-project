@@ -34,7 +34,7 @@ class Disv(DisvMethods, DimsProviderMethods, Package):
         ncvert: Optional[int] = field(default=None, optional=True)
         icvert: tuple[int, ...] = field(
             default=(), array=True, index=True, shape=("ncvert",), optional=True
-        )  # noqa: E501
+        )
 
     length_units: Optional[str] = field(
         default=None,

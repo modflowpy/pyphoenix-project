@@ -57,7 +57,7 @@ class Sfr(Package):
         ndv: int = field()
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )  # noqa: E501
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     @attrs.define
@@ -75,7 +75,7 @@ class Sfr(Package):
             shape=("packagedata.ncon(ifno)",),
             signed=True,
             optional=True,
-        )  # noqa: E501
+        )
 
     @attrs.define
     class Diversions(Item):

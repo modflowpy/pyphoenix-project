@@ -29,7 +29,7 @@ class Cnc(Package):
         conc: Union[float, TimeSeriesRef] = field(time_series=True)
         aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
-        )  # noqa: E501
+        )
         boundname: Optional[str] = field(default=None, optional=True)
 
     auxiliary: Optional[NDArray[np.str_]] = field(

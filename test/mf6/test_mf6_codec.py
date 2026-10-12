@@ -2843,30 +2843,28 @@ def test_lak_period_roundtrip():
     # Period 0: 4 rows
     p0 = spd[0]
     assert len(p0) == 4
-    assert (
-        isinstance(p0[0].laksetting, Lak.Status) and p0[0].laksetting.lakeno == 0
-    )  # 0-based feature id
-    assert p0[0].laksetting.status == "ACTIVE"
-    assert isinstance(p0[1].laksetting, Lak.Rainfall) and p0[1].laksetting.lakeno == 0
-    assert float(p0[1].laksetting.rainfall) == pytest.approx(0.1)
-    assert isinstance(p0[2].laksetting, Lak.Status) and p0[2].laksetting.lakeno == 1
-    assert p0[2].laksetting.status == "CONSTANT"
-    assert isinstance(p0[3].laksetting, Lak.Stage) and p0[3].laksetting.lakeno == 1
-    assert float(p0[3].laksetting.stage) == pytest.approx(5.0)
+    assert isinstance(p0[0], Lak.Status) and p0[0].lakeno == 0  # 0-based feature id
+    assert p0[0].status == "ACTIVE"
+    assert isinstance(p0[1], Lak.Rainfall) and p0[1].lakeno == 0
+    assert float(p0[1].rainfall) == pytest.approx(0.1)
+    assert isinstance(p0[2], Lak.Status) and p0[2].lakeno == 1
+    assert p0[2].status == "CONSTANT"
+    assert isinstance(p0[3], Lak.Stage) and p0[3].lakeno == 1
+    assert float(p0[3].stage) == pytest.approx(5.0)
 
     # Period 1: 1 row
     p1 = spd[1]
     assert len(p1) == 1
-    assert isinstance(p1[0].laksetting, Lak.Status) and p1[0].laksetting.lakeno == 0
-    assert p1[0].laksetting.status == "INACTIVE"
+    assert isinstance(p1[0], Lak.Status) and p1[0].lakeno == 0
+    assert p1[0].status == "INACTIVE"
 
     # Period 2: 2 rows
     p2 = spd[2]
     assert len(p2) == 2
-    assert isinstance(p2[0].laksetting, Lak.Status) and p2[0].laksetting.lakeno == 0
-    assert p2[0].laksetting.status == "ACTIVE"
-    assert isinstance(p2[1].laksetting, Lak.Withdrawal) and p2[1].laksetting.lakeno == 1
-    assert float(p2[1].laksetting.withdrawal) == pytest.approx(100.0)
+    assert isinstance(p2[0], Lak.Status) and p2[0].lakeno == 0
+    assert p2[0].status == "ACTIVE"
+    assert isinstance(p2[1], Lak.Withdrawal) and p2[1].lakeno == 1
+    assert float(p2[1].withdrawal) == pytest.approx(100.0)
 
 
 # ---------------------------------------------------------------------------
