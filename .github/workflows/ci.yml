@@ -106,6 +106,10 @@ jobs:
       # sync failure fails the job; a models one doesn't yet, since the
       # mf6/example registry is missing its models.toml.
       - name: Sync devtools
+        # bash on Windows too: pwsh exits with the models sync's code
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           pixi run mf dfns sync
           pixi run mf models sync || echo "::warning::models registry sync failed"
@@ -140,6 +144,10 @@ jobs:
       # sync failure fails the job; a models one doesn't yet, since the
       # mf6/example registry is missing its models.toml.
       - name: Sync devtools
+        # bash on Windows too: pwsh exits with the models sync's code
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           pixi run mf dfns sync
           pixi run mf models sync || echo "::warning::models registry sync failed"
