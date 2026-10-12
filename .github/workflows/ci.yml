@@ -102,9 +102,13 @@ jobs:
           environments: test${{ matrix.python }}
           activate-environment: true
 
-      # temporary. devtools 2.x will autosync, but 1.x needs opt-in.
+      # temporary. devtools 2.x will autosync, but 1.x needs opt-in. A DFN
+      # sync failure fails the job; a models one doesn't yet, since the
+      # mf6/example registry is missing its models.toml.
       - name: Sync devtools
-        run: pixi run mf sync
+        run: |
+          pixi run mf dfns sync
+          pixi run mf models sync || echo "::warning::models registry sync failed"
 
       - name: Show MF6 sync status
         run: pixi run flopy4 mf6 status
@@ -132,9 +136,13 @@ jobs:
           environments: test313
           activate-environment: true
 
-      # temporary. devtools 2.x will autosync, but 1.x needs opt-in.
+      # temporary. devtools 2.x will autosync, but 1.x needs opt-in. A DFN
+      # sync failure fails the job; a models one doesn't yet, since the
+      # mf6/example registry is missing its models.toml.
       - name: Sync devtools
-        run: pixi run mf sync
+        run: |
+          pixi run mf dfns sync
+          pixi run mf models sync || echo "::warning::models registry sync failed"
 
       - name: Sync classes and binary to the latest MF6 release
         env:
