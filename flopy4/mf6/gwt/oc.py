@@ -42,13 +42,13 @@ class Oc(Package):
     class Save(Item):
         _keyword: ClassVar[str] = "save"
         rtype: str = field()
-        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = field()
+        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = field(arms=True)
 
     @attrs.define
     class Print(Item):
         _keyword: ClassVar[str] = "print"
         rtype: str = field()
-        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = field()
+        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = field(arms=True)
 
     _StressPeriodDataItem = Save | Print
 

@@ -699,6 +699,22 @@ def test_record_field_set_after_construction():
         unstructure_component(npf)
 
 
+def test_union_field_takes_arm_values():
+    """A row's union field builds its arm from the arm's values, by keyword,
+    or takes one of its words; anything else raises."""
+    from flopy4.mf6.gwf import Maw, Oc
+
+    row = Maw.StressPeriodData(ifno=0, mawsetting=("status", "active"))
+    assert row.mawsetting == Maw.Status(status="active")
+    assert row.to_tokens() == (1, "STATUS", "active")
+    row.mawsetting = ("RATE", -1.0)
+    assert row.mawsetting == Maw.Rate(rate=-1.0)
+    assert Oc.Save(rtype="HEAD", ocsetting="all").ocsetting == "ALL"
+    assert Oc.Save(rtype="HEAD", ocsetting=("frequency", 2)).ocsetting == Oc.Frequency(2)
+    with pytest.raises(ValueError, match="no arm"):
+        Maw.StressPeriodData(ifno=0, mawsetting=("bogus", 1))
+
+
 def test_maw_round_trip():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component

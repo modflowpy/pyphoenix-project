@@ -804,8 +804,13 @@ class ItemColumn:
                 arms.insert(0, f"Literal[{', '.join(repr(w.upper()) for w in self.words)}]")
             annotation = f'"{" | ".join(arms)}"'
         line = f"        {self.name}: {annotation} = {self.rhs}"
-        # a string annotation can't wrap
-        return line + "  # noqa: E501" if self.arm_classes and len(line) > 100 else line
+        if self.arm_classes and len(line) > 100:
+            # a string annotation can't wrap, so wrap the call as ruff would,
+            # keeping the comment on the long line
+            args = self.rhs.removeprefix("field(").removesuffix(")")
+            first = f"        {self.name}: {annotation} = field(  # noqa: E501"
+            return f"{first}\n            {args}\n        )"
+        return line
 
 
 def _margs(meta: dict) -> str:
@@ -1033,7 +1038,7 @@ def class_union_column(
     return ItemColumn(
         name=name,
         annotation="",
-        rhs="field()",
+        rhs="field(arms=True)",
         optional=optional,
         arm_classes=tuple(arm_classes),
         words=tuple(words),

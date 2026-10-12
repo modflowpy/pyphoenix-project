@@ -123,7 +123,9 @@ class Maw(Package):
     @attrs.define
     class StressPeriodData(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = field()  # noqa: E501
+        mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = field(  # noqa: E501
+            arms=True
+        )
 
     auxiliary: Optional[NDArray[np.str_]] = field(
         default=None,

@@ -27,7 +27,7 @@ class Tvs(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
-        tvssetting: "Tvs.Ss | Tvs.Sy" = field()
+        tvssetting: "Tvs.Ss | Tvs.Sy" = field(arms=True)
 
     disable_storage_change_integration: bool = field(
         default=False,

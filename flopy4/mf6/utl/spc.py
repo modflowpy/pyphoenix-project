@@ -29,7 +29,7 @@ class Spc(Package):
     @attrs.define
     class StressPeriodData(Item):
         bndno: int = field(index=True, pk=True)
-        spcsetting: "Spc.Concentration | Spc.Temperature" = field()
+        spcsetting: "Spc.Concentration | Spc.Temperature" = field(arms=True)
 
     print_input: bool = field(
         default=False,

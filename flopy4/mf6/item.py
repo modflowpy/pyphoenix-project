@@ -170,6 +170,18 @@ def _union_field_arms(
     return _union_arms(cls, t) if t is not None else None  # type: ignore[arg-type]
 
 
+def to_union_arm(value: Any, self: Any, f: attrs.Attribute) -> Any:
+    """Convert a union field's value (OC's ocsetting, LKT's laksetting) to
+    one of its words or arm instances: an arm's values build it by its
+    keyword, ``("STATUS", "ACTIVE")`` a Status. Raises if no arm takes it."""
+    if value is None or (arms := _union_field_arms(type(self), f)) is None:
+        return value
+    values = list(value) if isinstance(value, (list, tuple)) else [value]
+    if (converted := _union_value(values, arms)) is None:
+        raise ValueError(f"{type(self).__name__}.{f.name}: no arm of {f.type} takes {value!r}")
+    return converted
+
+
 def _union_value(values: list, arms: "tuple[tuple[str, ...], tuple[type[Item], ...]]") -> Any:
     """A union field's value from the user-supplied values it spans: one of
     its words, an arm instance given as is, or an arm built from them by

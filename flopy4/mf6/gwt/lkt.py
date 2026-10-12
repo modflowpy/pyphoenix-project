@@ -84,7 +84,9 @@ class Lkt(Package):
     @attrs.define
     class StressPeriodData(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        laksetting: "Lkt.Status | Lkt.Concentration | Lkt.Rainfall | Lkt.Evaporation | Lkt.Runoff | Lkt.ExtInflow | Lkt.Auxiliary" = field()  # noqa: E501
+        laksetting: "Lkt.Status | Lkt.Concentration | Lkt.Rainfall | Lkt.Evaporation | Lkt.Runoff | Lkt.ExtInflow | Lkt.Auxiliary" = field(  # noqa: E501
+            arms=True
+        )
 
     flow_package_name: Optional[str] = field(
         default=None,

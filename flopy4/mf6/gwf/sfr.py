@@ -154,7 +154,9 @@ class Sfr(Package):
     @attrs.define
     class StressPeriodData(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        sfrsetting: "Sfr.Status | Sfr.Bedk | Sfr.Manning | Sfr.Stage | Sfr.Inflow | Sfr.Rainfall | Sfr.Evaporation | Sfr.Runoff | Sfr.Diversion | Sfr.UpstreamFraction | Sfr.CrossSection | Sfr.Auxiliary" = field()  # noqa: E501
+        sfrsetting: "Sfr.Status | Sfr.Bedk | Sfr.Manning | Sfr.Stage | Sfr.Inflow | Sfr.Rainfall | Sfr.Evaporation | Sfr.Runoff | Sfr.Diversion | Sfr.UpstreamFraction | Sfr.CrossSection | Sfr.Auxiliary" = field(  # noqa: E501
+            arms=True
+        )
 
     storage: bool = field(
         default=False,

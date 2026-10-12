@@ -86,7 +86,9 @@ class Lke(Package):
     @attrs.define
     class StressPeriodData(Item):
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        laksetting: "Lke.Status | Lke.Temperature | Lke.Rainfall | Lke.Evaporation | Lke.Runoff | Lke.ExtInflow | Lke.Auxiliary" = field()  # noqa: E501
+        laksetting: "Lke.Status | Lke.Temperature | Lke.Rainfall | Lke.Evaporation | Lke.Runoff | Lke.ExtInflow | Lke.Auxiliary" = field(  # noqa: E501
+            arms=True
+        )
 
     flow_package_name: Optional[str] = field(
         default=None,

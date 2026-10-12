@@ -32,7 +32,7 @@ class Tvk(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
-        tvksetting: "Tvk.K | Tvk.K22 | Tvk.K33" = field()
+        tvksetting: "Tvk.K | Tvk.K22 | Tvk.K33" = field(arms=True)
 
     print_input: bool = field(
         default=False,
