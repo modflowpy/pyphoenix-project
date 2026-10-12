@@ -58,8 +58,8 @@ class Lak(Package):
         ifno: int = field(index=True, fk="packagedata.ifno")
         iconn: int = field(index=True)
         cellid: tuple = field(cellid=True)
-        claktype: Union[float, str] = field()
-        bedleak: Union[float, str] = field()
+        claktype: str = field()
+        bedleak: str = field()
         belev: float = field()
         telev: float = field()
         connlen: float = field()
@@ -75,7 +75,7 @@ class Lak(Package):
         outletno: int = field(index=True, pk=True)
         lakein: int = field(index=True, fk="packagedata.ifno")
         lakeout: int = field(index=True, fk="packagedata.ifno")
-        couttype: Union[float, str] = field()
+        couttype: str = field()
         invert: Union[float, str] = field(time_series=True)
         width: Union[float, str] = field(time_series=True)
         rough: Union[float, str] = field(time_series=True)
@@ -85,7 +85,7 @@ class Lak(Package):
     class Status(Item):
         _keyword: ClassVar[str] = "status"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        status: Union[float, str] = field()
+        status: str = field()
 
     @attrs.define
     class Stage(Item):
@@ -157,7 +157,7 @@ class Lak(Package):
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         lakeno: int = field(index=True, fk="packagedata.ifno")
-        auxname: Union[float, str] = field()
+        auxname: str = field()
         auxval: Union[float, str] = field(time_series=True)
 
     _StressPeriodDataItem = (

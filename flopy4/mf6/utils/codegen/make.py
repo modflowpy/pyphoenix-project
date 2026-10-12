@@ -203,7 +203,7 @@ def _item_columns(
     SPC6) becomes its keyword. A file column ``children`` maps to the
     components it names (LAK's TAB6 file, a utl-laktab) holds them.
     is_row_keyword columns (optional keywords,
-    e.g. MIXED) are tagged strings. An array column's shape expression is
+    e.g. MIXED) are tagged bools. An array column's shape expression is
     emitted as-is, for the runtime to evaluate.
 
     ``nested_arm_classes``, when given, maps a column name to sibling arm
@@ -276,7 +276,9 @@ def _item_columns(
         elif name == "boundname":
             item = filters.attr_column(name, "str", {}, optional=True)
         elif col.is_row_keyword:
-            item = filters.attr_column(name, "str", {"tagged": True}, optional=True, time_series=ts)
+            item = filters.attr_column(
+                name, "bool", {"tagged": True}, optional=True, default="False"
+            )
         elif isinstance(f, UnionField) and not f.tagged:
             # One column, any of the arms (OBS's id: a cellid, an index or
             # a boundname), told apart when read (see Item.from_tokens).
@@ -298,7 +300,6 @@ def _item_columns(
                 dfn_type,
                 optional=optional,
                 time_series=ts,
-                object_dtype=isinstance(f, String),
             )
         items.append(item)
     return items

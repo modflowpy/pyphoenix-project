@@ -686,7 +686,7 @@ class Item(Record):
                     keyword_skipped = True
                 kw = f.name.upper()
                 if tok_idx < n and str(tokens[tok_idx]).upper() == kw:
-                    kwargs[f.name] = str(tokens[tok_idx])
+                    kwargs[f.name] = True
                     tok_idx += 1
                 continue
             present = budget_idx < n_opt_present

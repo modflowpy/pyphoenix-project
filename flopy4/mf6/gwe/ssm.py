@@ -16,15 +16,15 @@ class Ssm(Package):
 
     @attrs.define
     class Sources(Item):
-        pname: Union[float, str] = field()
-        srctype: Union[float, str] = field()
-        auxname: Union[float, str] = field()
+        pname: str = field()
+        srctype: str = field()
+        auxname: str = field()
 
     @attrs.define
     class Fileinput(Item):
-        pname: Union[float, str] = field()
+        pname: str = field()
         spc: Union[Spc, Spca] = child(keyword="spc6", direction="in", default=attrs.NOTHING)
-        mixed: Optional[str] = field(default=None, tagged=True, optional=True)
+        mixed: bool = field(default=False, tagged=True, optional=True)
 
     print_flows: bool = field(
         default=False,

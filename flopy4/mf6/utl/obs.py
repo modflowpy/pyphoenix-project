@@ -16,8 +16,8 @@ class Obs(Package):
 
     @attrs.define
     class Continuous(Item):
-        obsname: Union[float, str] = field()
-        obstype: Union[float, str] = field()
+        obsname: str = field()
+        obstype: str = field()
         id_: Union[tuple[int, ...], int, str] = field(union=("cellid", "index", "string"))
         id2: Optional[Union[tuple[int, ...], int, str]] = field(
             default=None, union=("cellid", "index", "string"), optional=True
@@ -26,7 +26,7 @@ class Obs(Package):
     @attrs.define
     class Output(Item):
         obs_output_file_name: Path = path(converter=Path, direction="out")
-        binary: Optional[str] = field(default=None, tagged=True, optional=True)
+        binary: bool = field(default=False, tagged=True, optional=True)
 
     @attrs.define(kw_only=True)
     class ContinuousBlock(Block):

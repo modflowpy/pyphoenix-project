@@ -59,7 +59,7 @@ class Csub(Package):
     class Packagedata(Item):
         icsubno: int = field(index=True, pk=True)
         cellid: tuple = field(cellid=True)
-        cdelay: Union[float, str] = field()
+        cdelay: str = field()
         pcs0: float = field()
         thick_frac: float = field()
         rnb: float = field()

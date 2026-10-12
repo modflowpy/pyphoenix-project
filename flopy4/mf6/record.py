@@ -87,6 +87,8 @@ def _coerce(token: Any, f: attrs.Attribute) -> Any:
         return int(float(str(token)))
     if t in (float, "float"):
         return float(token)
+    if t in (str, "str"):
+        return str(token)
     if t in (Path, "Path"):
         return Path(token)
     return token
@@ -133,7 +135,9 @@ def _is_instance(value: Any, f: attrs.Attribute) -> bool:
     if t in (float, "float"):
         return isinstance(value, (int, float, np.integer, np.floating))
     if t in (str, "str"):
-        return isinstance(value, str)
+        # A DFN string is any token, and some hold a number or a word (LAK's
+        # bedleak: a value or NONE).
+        return isinstance(value, (str, int, float, np.integer, np.floating))
     if t in (Path, "Path"):
         return isinstance(value, (str, PurePath))
     return True
