@@ -335,7 +335,7 @@ class TestFilters:
             value_column("head", time_series=True),
         ]
         result = item_class(schema, "StressPeriodData")
-        assert "head: Union[float, str] = field(time_series=True)" in result
+        assert "head: Union[float, TimeSeriesRef] = field(time_series=True)" in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs
@@ -1100,7 +1100,7 @@ def test_scalar_columns_stay_scalar(tmp_path, all_dfns):
     """Only a variable-length array column becomes a trailing-values tuple."""
     skip = {n for n in all_dfns if n != "gwf-wel"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert "q: Union[float, str] = field(time_series=True)" in spec.outpath.read_text()
+    assert "q: Union[float, TimeSeriesRef] = field(time_series=True)" in spec.outpath.read_text()
 
 
 @pytest.mark.parametrize(

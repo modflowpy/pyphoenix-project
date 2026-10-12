@@ -3,6 +3,7 @@ from typing import ClassVar, Optional, Union
 
 import attrs
 
+from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
@@ -19,13 +20,13 @@ class Spc(Package):
     class Concentration(Item):
         _keyword: ClassVar[str] = "concentration"
         bndno: int = field(index=True, pk=True)
-        concentration: Union[float, str] = field(time_series=True)
+        concentration: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
         bndno: int = field(index=True, pk=True)
-        temperature: Union[float, str] = field(time_series=True)
+        temperature: Union[float, TimeSeriesRef] = field(time_series=True)
 
     _StressPeriodDataItem = Concentration | Temperature
 

@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
@@ -42,7 +42,7 @@ class Lke(Package):
         strt: float = field()
         ktf: float = field()
         rbthcnd: float = field()
-        aux: tuple[Union[float, str], ...] = field(
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
         boundname: Optional[str] = field(default=None, optional=True)
@@ -57,38 +57,38 @@ class Lke(Package):
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        temperature: Union[float, str] = field(time_series=True)
+        temperature: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        rainfall: Union[float, str] = field(time_series=True)
+        rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        evaporation: Union[float, str] = field(time_series=True)
+        evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        runoff: Union[float, str] = field(time_series=True)
+        runoff: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class ExtInflow(Item):
         _keyword: ClassVar[str] = "ext-inflow"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
-        ext_inflow: Union[float, str] = field(time_series=True)
+        ext_inflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
         lakeno: int = field(index=True, fk="packagedata.lakeno")
         auxname: str = field()
-        auxval: Union[float, str] = field(time_series=True)
+        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
     _StressPeriodDataItem = (
         Status | Temperature | Rainfall | Evaporation | Runoff | ExtInflow | Auxiliary

@@ -18,7 +18,7 @@ except ImportError:
 # or out of date. Generated components load on first use (__getattr__).
 from flopy4.mf6 import solution, utils
 from flopy4.mf6._sync import SyncError, SyncResult, sync
-from flopy4.mf6._types import TimeArraySeriesRef
+from flopy4.mf6._types import TimeArraySeriesRef, TimeSeriesRef
 from flopy4.mf6.codec import dump as dump_mf6
 from flopy4.mf6.codec import load as load_mf6
 from flopy4.mf6.component import Component
@@ -99,6 +99,7 @@ __all__ = [
     "Tdis",
     "Simulation",
     "TimeArraySeriesRef",
+    "TimeSeriesRef",
     "MF6_VERSION",
     "DFN_SCHEMA_VERSION",
     "sync",

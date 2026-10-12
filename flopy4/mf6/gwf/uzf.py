@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
@@ -52,14 +52,14 @@ class Uzf(Package):
     @attrs.define
     class StressPeriodData(Item):
         ifno: int = field(index=True, fk="packagedata.ifno")
-        finf: Union[float, str] = field(time_series=True)
-        pet: Union[float, str] = field(time_series=True)
-        extdp: Union[float, str] = field(time_series=True)
-        extwc: Union[float, str] = field(time_series=True)
-        ha: Union[float, str] = field(time_series=True)
-        hroot: Union[float, str] = field(time_series=True)
-        rootact: Union[float, str] = field(time_series=True)
-        aux: tuple[Union[float, str], ...] = field(
+        finf: Union[float, TimeSeriesRef] = field(time_series=True)
+        pet: Union[float, TimeSeriesRef] = field(time_series=True)
+        extdp: Union[float, TimeSeriesRef] = field(time_series=True)
+        extwc: Union[float, TimeSeriesRef] = field(time_series=True)
+        ha: Union[float, TimeSeriesRef] = field(time_series=True)
+        hroot: Union[float, TimeSeriesRef] = field(time_series=True)
+        rootact: Union[float, TimeSeriesRef] = field(time_series=True)
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
 

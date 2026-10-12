@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from flopy4.mf6 import TimeSeriesRef
 from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
@@ -539,6 +540,53 @@ def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
     maw.ts.append(ts("pumping"))
     maw.write()
     assert "pumping" in (function_tmpdir / "gwf.maw").read_text()
+
+
+def test_ts_reference_typed(function_tmpdir, monkeypatch):
+    """A time-series column holds a name as a `TimeSeriesRef`: a plain
+    name converts to one (a numeric string to a float), on init and on
+    assignment, aux values included. It's written as the name, loads back
+    as a reference, and stays one through a DataFrame."""
+    from flopy4.mf6.gwf import Chd
+    from flopy4.mf6.utl import Ts
+
+    monkeypatch.chdir(function_tmpdir)
+    row = Chd.StressPeriodData(cellid=(0, 0, 0), head="HeadSeries", aux=["conc", "1.5", 2.0])
+    assert row.head == TimeSeriesRef("HeadSeries")
+    assert row.aux == (TimeSeriesRef("conc"), 1.5, 2.0)
+    row.aux = (2.0,)
+    assert row.aux == (2.0,)
+    row.head = "2.5"
+    assert row.head == 2.5
+    row.head = TimeSeriesRef("headseries")
+    assert row.head == TimeSeriesRef("headseries")
+
+    ts = Ts(
+        time_series_name=["headseries", "conc"],
+        interpolation_method=["linear", "linear"],
+        timeseries=[(0.0, (1.0, 2.0)), (10.0, (3.0, 4.0))],
+    )
+    chd = Chd(
+        auxiliary=["conc"],
+        boundnames=True,
+        stress_period_data={0: [row, ((0, 0, 1), 1.0, "conc", "edge")]},
+        ts=[ts],
+        filename=function_tmpdir / "gwf.chd",
+    )
+    rows = chd.stress_period_data[0]
+    assert rows[1].aux == (TimeSeriesRef("conc"),)
+    assert rows[1].boundname == "edge"
+    chd.write()
+    lines = [line.split() for line in (function_tmpdir / "gwf.chd").read_text().splitlines()]
+    assert ["1", "1", "1", "headseries", "2.0"] in lines
+    assert ["1", "1", "2", "1.0", "conc", "edge"] in lines
+    loaded = Chd.load(function_tmpdir / "gwf.chd")
+    assert loaded.stress_period_data[0] == rows
+
+    df = chd.to_dataframe()
+    assert df["head"].tolist() == [TimeSeriesRef("headseries"), 1.0]
+    chd.from_dataframe(df)
+    assert chd.stress_period_data[0] == rows
 
 
 def test_series_attributes_from_values():
@@ -3806,7 +3854,7 @@ def test_spc_round_trip(tmp_path):
     )
     spc = Spc.load(path)
     rows = spc.stress_period_data
-    assert [(r.bndno, r.concentration) for r in rows[0]] == [(0, 100.0), (1, "myts")]
+    assert [(r.bndno, r.concentration) for r in rows[0]] == [(0, 100.0), (1, TimeSeriesRef("myts"))]
     assert [(r.bndno, r.concentration) for r in rows[2]] == [(0, 0.0)]
     assert spc.maxbound == 2
 

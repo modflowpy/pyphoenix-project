@@ -6,7 +6,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field, path
@@ -50,12 +50,12 @@ class Sfr(Package):
         rgrd: float = field()
         rtp: float = field()
         rbth: float = field()
-        rhk: Union[float, str] = field(time_series=True)
-        man: Union[float, str] = field(time_series=True)
+        rhk: Union[float, TimeSeriesRef] = field(time_series=True)
+        man: Union[float, TimeSeriesRef] = field(time_series=True)
         ncon: int = field()
-        ustrf: Union[float, str] = field(time_series=True)
+        ustrf: Union[float, TimeSeriesRef] = field(time_series=True)
         ndv: int = field()
-        aux: tuple[Union[float, str], ...] = field(
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
         boundname: Optional[str] = field(default=None, optional=True)
@@ -99,56 +99,56 @@ class Sfr(Package):
     class Bedk(Item):
         _keyword: ClassVar[str] = "bedk"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        bedk: Union[float, str] = field(time_series=True)
+        bedk: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Manning(Item):
         _keyword: ClassVar[str] = "manning"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        manning: Union[float, str] = field(time_series=True)
+        manning: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Stage(Item):
         _keyword: ClassVar[str] = "stage"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        stage: Union[float, str] = field(time_series=True)
+        stage: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        inflow: Union[float, str] = field(time_series=True)
+        inflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        rainfall: Union[float, str] = field(time_series=True)
+        rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        evaporation: Union[float, str] = field(time_series=True)
+        evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        runoff: Union[float, str] = field(time_series=True)
+        runoff: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Diversion(Item):
         _keyword: ClassVar[str] = "diversion"
         ifno: int = field(index=True, fk="packagedata.ifno")
         idv: int = field(index=True)
-        divflow: Union[float, str] = field(time_series=True)
+        divflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class UpstreamFraction(Item):
         _keyword: ClassVar[str] = "upstream_fraction"
         ifno: int = field(index=True, fk="packagedata.ifno")
-        upstream_fraction: Union[float, str] = field(time_series=True)
+        upstream_fraction: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class CrossSection(Item):
@@ -161,7 +161,7 @@ class Sfr(Package):
         _keyword: ClassVar[str] = "auxiliary"
         ifno: int = field(index=True, fk="packagedata.ifno")
         auxname: str = field()
-        auxval: Union[float, str] = field(time_series=True)
+        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
     _StressPeriodDataItem = (
         Status

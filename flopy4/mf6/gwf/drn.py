@@ -5,7 +5,7 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.spec import child, field
@@ -27,9 +27,9 @@ class Drn(Package):
     @attrs.define
     class StressPeriodData(Item):
         cellid: tuple = field(cellid=True)
-        elev: Union[float, str] = field(time_series=True)
-        cond: Union[float, str] = field(time_series=True)
-        aux: tuple[Union[float, str], ...] = field(
+        elev: Union[float, TimeSeriesRef] = field(time_series=True)
+        cond: Union[float, TimeSeriesRef] = field(time_series=True)
+        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
             default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
         )
         boundname: Optional[str] = field(default=None, optional=True)
