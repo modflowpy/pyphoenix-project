@@ -611,10 +611,12 @@ def _build_arm_spec(
         if kw_idx is not None:
             keyword = arm_fields[kw_idx][0]
             rest = arm_fields[:kw_idx] + arm_fields[kw_idx + 1 :]
-            if kw_idx == 0 and len(rest) == 1:
-                # A keyword and one value reads like a tagged scalar arm
-                # (Rate's RATE <rate>), so name the value after the keyword
-                # too: MAW's HEAD_LIMIT <head_limit_value> is head_limit.
+            if kw_idx == 0 and len(rest) == 1 and not class_name:
+                # A union arm of a keyword and one value reads like a tagged
+                # scalar arm (Rate's RATE <rate>), so name the value after
+                # the keyword too: MAW's HEAD_LIMIT <head_limit_value> is
+                # head_limit. A tagged list's record (named by the caller)
+                # keeps its value's name.
                 rest = [(keyword, rest[0][1])]
         else:
             keyword = "_".join(_strip_record_words(arm_name))
