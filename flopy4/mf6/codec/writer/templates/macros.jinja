@@ -7,7 +7,7 @@
 {% elif type == 'record' %}
 {{ record(value) }}
 {% elif type == 'array' %}
-{{ array(name, value, how=value|array_how(context.use_netcdf)) }}
+{{ array(name, value, how=value|array_how(context.use_netcdf, context.array_format)) }}
 {% elif type == 'list' %}
 {{ list(value) }}
 {% endif %}
@@ -42,18 +42,33 @@
 {% elif how == "layered internal" %}
 {% for layer in value %}
 
-{{ inset }}INTERNAL
+{{ inset }}INTERNAL{{ value|iprn_option(loop.index0) }}
 {% for chunk in layer|array2chunks -%}
 {{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {%- endfor %}
 {% elif how == "internal" %}
-{{ inset }}INTERNAL
+{{ inset }}INTERNAL{{ value|iprn_option }}
 {% for chunk in value|array2chunks -%}
-{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
+{% if not loop.first %}{{ "\n" }}{% endif %}{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
 {%- endfor %}
 {% elif how == "external" %}
-OPEN/CLOSE {{ value|quote_if_needed }}
+{{ inset }}OPEN/CLOSE {{ value.attrs.open_close|quote_if_needed }}{{ value|binary_option }}{{ value|iprn_option }}
+{% elif how == "layered mixed" %}
+{% for layer in value %}
+{% set path = value.attrs.get("layer_open_close", {}).get(loop.index0) %}
+
+{% if path is not none %}
+{{ inset }}OPEN/CLOSE {{ path|quote_if_needed }}{{ value|binary_option(loop.index0) }}{{ value|iprn_option(loop.index0) }}
+{%- elif value|layer_is_constant(loop.index0, context.array_format) %}
+{{ inset }}CONSTANT {{ layer|array2const(context.float_precision) }}
+{%- else %}
+{{ inset }}INTERNAL{{ value|iprn_option(loop.index0) }}
+{% for chunk in layer|array2chunks -%}
+{{ (2 * inset) ~ chunk|array2string(context.float_precision)|indent(2 * inset|length) }}
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
 {% endif %}
 {% endif %}
 {% endmacro %}

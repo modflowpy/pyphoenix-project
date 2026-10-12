@@ -18,6 +18,10 @@ _JINJA_ENV.filters["block_end"] = writer_filters.block_end
 _JINJA_ENV.filters["array2const"] = writer_filters.array2const
 _JINJA_ENV.filters["array2chunks"] = writer_filters.array2chunks
 _JINJA_ENV.filters["array2string"] = writer_filters.array2string
+_JINJA_ENV.filters["iprn_option"] = writer_filters.iprn_option
+_JINJA_ENV.filters["is_constant"] = writer_filters.is_constant
+_JINJA_ENV.filters["layer_is_constant"] = writer_filters.layer_is_constant
+_JINJA_ENV.filters["binary_option"] = writer_filters.binary_option
 _JINJA_ENV.filters["data2list"] = writer_filters.data2list
 _JINJA_ENV.filters["data2lines"] = writer_filters.data2lines
 _JINJA_ENV.filters["quote_if_needed"] = writer_filters.quote_if_needed
@@ -28,8 +32,7 @@ def _get_print_options(context=None):
     """Get numpy print options from WriteContext."""
     from flopy4.mf6.write_context import WriteContext
 
-    if context is None:
-        context = WriteContext.default()
+    context = WriteContext.resolve(context)
     return context.to_numpy_printoptions()
 
 
@@ -70,8 +73,7 @@ def dumps(data, context=None) -> str:
     """
     from flopy4.mf6.write_context import WriteContext
 
-    if context is None:
-        context = WriteContext.default()
+    context = WriteContext.resolve(context)
 
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
     print_opts = _get_print_options(context)
@@ -96,8 +98,7 @@ def dump(data, fp: IO[str], context=None) -> None:
     """
     from flopy4.mf6.write_context import WriteContext
 
-    if context is None:
-        context = WriteContext.default()
+    context = WriteContext.resolve(context)
 
     template = _JINJA_ENV.get_template(_JINJA_TEMPLATE_NAME)
     iterator = template.generate(blocks=data, context=context)

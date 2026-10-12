@@ -27,6 +27,7 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
+from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
 from flopy4.utils import unwrap_optional
 
 
@@ -91,27 +92,26 @@ def _parse_rows(
 # kstp, kper, pertime") already decodes; MF6 has used one binary
 # 2D-array record format for both real and integer arrays since
 # MODFLOW-2005 (u2drel/u2dint), for output and OPEN/CLOSE (BINARY) input
-# alike -- the data portion follows immediately, NROW*NCOL values, real
-# arrays double-precision (matching MF6's own double-precision solver and
-# head-output convention) and integer arrays 4-byte.
+# alike -- the data portion follows immediately, real arrays
+# double-precision (matching MF6's own double-precision solver and
+# head-output convention) and integer arrays 4-byte. MF6 only logs the
+# header's NCOL/NROW/ILAY (`ArrayReaders.f90::read_binary_header`): it
+# reads as many values as the array holds, so a non-LAYERED 3-D array's
+# file holds every layer after one header.
 _BINARY_ARRAY_HEADER = struct.Struct("<iidd16siii")
 
 
 def _read_binary_array_values(path: Path, dtype) -> np.ndarray:
-    """Read one MF6 binary-array record (header + NROW*NCOL values) from
-    an OPEN/CLOSE (BINARY)-referenced file. See `_BINARY_ARRAY_HEADER`.
+    """Read an MF6 binary-array record (a header, then every value after
+    it, as MF6 does) from an OPEN/CLOSE (BINARY)-referenced file. See
+    `_BINARY_ARRAY_HEADER`.
     """
     with path.open("rb") as fh:
         header = fh.read(_BINARY_ARRAY_HEADER.size)
         if len(header) < _BINARY_ARRAY_HEADER.size:
             raise ValueError(f"{path}: too short for an MF6 binary-array header")
-        *_, ncol, nrow, _ilay = _BINARY_ARRAY_HEADER.unpack(header)
-        file_dtype = np.int32 if dtype == np.int64 else np.float64
-        values = np.fromfile(fh, dtype=file_dtype, count=nrow * ncol)
-    if values.size != nrow * ncol:
-        raise ValueError(
-            f"{path}: expected {nrow * ncol} values (NROW={nrow}, NCOL={ncol}), got {values.size}"
-        )
+        file_dtype = np.dtype("<i4" if dtype == np.int64 else "<f8")
+        values = np.fromfile(fh, dtype=file_dtype)
     return values.astype(dtype)
 
 
@@ -213,6 +213,58 @@ def _apply_factor(values: np.ndarray, vrow: list) -> np.ndarray:
     return values
 
 
+def _control_io(vrow: list, values: np.ndarray) -> ArrayIO:
+    """How a control record wrote its array, to write it back the same
+    way: its kind, as an `ArrayFormat`, and ``IPRN <n>``; an OPEN/CLOSE
+    record's file, as written (relative to the simulation directory), and
+    the hash of the `values` read from it."""
+    kind = str(vrow[0]).upper() if vrow else ""
+    if kind == "CONSTANT":
+        return ArrayIO(format="constant")
+    if kind not in ("INTERNAL", "OPEN/CLOSE"):
+        return ArrayIO()
+    tokens = [str(t) for t in vrow[1:]]
+    iprn = None
+    for j, tok in enumerate(tokens):
+        if tok.upper() == "IPRN" and j + 1 < len(tokens):
+            iprn = int(float(tokens[j + 1]))
+            break
+    if kind == "INTERNAL":
+        return ArrayIO(iprn=iprn, format="internal")
+    if not tokens:
+        return ArrayIO(iprn=iprn)
+    binary = any(t.upper() in ("BINARY", "(BINARY)") for t in tokens[1:])
+    return ArrayIO(
+        iprn=iprn,
+        path=Path(_strip_quotes(tokens[0])),
+        format="binary" if binary else "open/close",
+        hash=array_hash(values),
+    )
+
+
+def _record_array_io(
+    arrays: "dict | None", key: tuple, ios: "list[ArrayIO]", layered: bool = False
+) -> None:
+    """Record how an array's control records wrote it in `arrays`, by
+    `ArrayKey`: whether it's LAYERED, and a single record's settings for
+    the whole array; for a LAYERED one's, IPRN for the whole array if
+    every layer has the same, and each layer's other settings."""
+    if arrays is None or not ios:
+        return
+    whole = key[0] if len(key) == 1 else key
+    if not layered:
+        arrays[whole] = attrs.evolve(ios[0], layered=False)
+        return
+    iprns = {io.iprn for io in ios}
+    iprn = ios[0].iprn if len(iprns) == 1 else None
+    arrays[whole] = ArrayIO(iprn=iprn, layered=True)
+    if iprn is not None:
+        ios = [attrs.evolve(io, iprn=None) for io in ios]
+    for layer, io in enumerate(ios):
+        if io != ArrayIO():
+            arrays[(*key, layer)] = io
+
+
 def _read_control_record(
     rows: list, i: int, context: LoadContext, dtype, length: int
 ) -> "tuple[np.ndarray, int]":
@@ -266,13 +318,20 @@ def _griddata_flat_length(f, dims: dict, default: int) -> int:
     return default
 
 
-def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: LoadContext) -> dict:
+def _parse_array_block(
+    rows: list,
+    fields_by_name: dict,
+    dims: dict,
+    context: LoadContext,
+    arrays: "dict | None" = None,
+) -> dict:
     """Parse an array block's (GRIDDATA, DISU's CONNECTIONDATA) token rows
     into {field_name: np.ndarray}.
 
     Token rows alternate: [field_name, ?LAYERED] then one control record
     per layer (LAYERED) or a single one otherwise -- CONSTANT/INTERNAL/
-    OPEN-CLOSE, per `_read_control_record`.
+    OPEN-CLOSE, per `_read_control_record`. How each array was written
+    goes in `arrays`, per `_record_array_io`.
     """
     result: dict = {}
     nlay = dims.get("nlay", 1)
@@ -318,12 +377,16 @@ def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: Lo
             target = _griddata_flat_length(f, dims, nodes)
             record_len = min(ncpl, target) if target else ncpl
             layers = []
+            layer_ios = []
             while i < len(rows):
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                value, i = _read_control_record(rows, i, context, dtype, record_len)
+                value, j = _read_control_record(rows, i, context, dtype, record_len)
+                layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
+                i = j
+            _record_array_io(arrays, (f.name,), layer_ios, layered=True)
             if layers:
                 # A single-record LAYERED field (see above) is really a
                 # plain target-shaped array duplicated across nlay --
@@ -337,7 +400,9 @@ def _parse_array_block(rows: list, fields_by_name: dict, dims: dict, context: Lo
             if i >= len(rows):
                 break
             length = _griddata_flat_length(f, dims, nodes)
-            value, i = _read_control_record(rows, i, context, dtype, length)
+            value, j = _read_control_record(rows, i, context, dtype, length)
+            _record_array_io(arrays, (f.name,), [_control_io(rows[i], value)])
+            i = j
             result[f.name] = value
         if f.metadata.get("index") and f.name in result:
             result[f.name] = _from_file_index(result[f.name])
@@ -368,11 +433,16 @@ def _names(value: Any) -> list[str]:
 
 
 def _parse_readarray_period_block(
-    rows: list, ra_fields: dict, dims: dict, context: LoadContext
+    rows: list,
+    ra_fields: dict,
+    dims: dict,
+    context: LoadContext,
+    arrays: "dict | None" = None,
 ) -> "dict[str, np.ndarray | TimeArraySeriesRef]":
     """Arrays by the (lowercase) name they're written under: a field's
     name, or an auxiliary variable's, for its named array (see Pass 3b). A
-    time-array series reference gives the series' name."""
+    time-array series reference gives the series' name. How each array was
+    written goes in `arrays` by that name, per `_record_array_io`."""
     nlay = dims.get("nlay", 1)
     nodes = dims.get("nodes", 1)
     ncpl = nodes // nlay if nlay > 1 else nodes
@@ -433,12 +503,16 @@ def _parse_readarray_period_block(
 
         if is_layered:
             layers = []
+            layer_ios = []
             while i < len(rows):
                 vrow = rows[i]
                 if not vrow or str(vrow[0]).upper() not in ("CONSTANT", "INTERNAL", "OPEN/CLOSE"):
                     break
-                value, i = _read_control_record(rows, i, context, dtype, ncpl)
+                value, j = _read_control_record(rows, i, context, dtype, ncpl)
+                layer_ios.append(_control_io(vrow, value))
                 layers.append(value)
+                i = j
+            _record_array_io(arrays, (key,), layer_ios, layered=True)
             if layers:
                 if len(layers) < nlay:
                     layers = (layers * nlay)[:nlay]
@@ -447,7 +521,9 @@ def _parse_readarray_period_block(
             if i >= len(rows):
                 break
             size = nlay * ncpl if per_node else ncpl
-            value, i = _read_control_record(rows, i, context, dtype, size)
+            value, j = _read_control_record(rows, i, context, dtype, size)
+            _record_array_io(arrays, (key,), [_control_io(rows[i], value)])
+            i = j
             result[key] = np.asarray(value).reshape(nlay, ncpl) if per_node and nlay > 1 else value
         if f.metadata.get("index") and isinstance(arr := result.get(key), np.ndarray):
             result[key] = _from_file_index(arr)
@@ -863,6 +939,9 @@ def structure_component(
     if isinstance(getattr(cls, "maxbound", None), property):
         known_blocks.add("dimensions")  # computed maxbound, see unstructure.py
     kwargs: dict[str, Any] = {}
+    # how the file wrote each array, by `ArrayKey`, for the instance's
+    # write_context
+    array_ios: dict = {}
     for block_name, rows in raw_lower.items():
         if not rows:
             continue
@@ -1122,7 +1201,12 @@ def structure_component(
                             for fname in ra_fields:
                                 periods.setdefault(fname, {})[kper] = None
                         continue
-                    parsed = _parse_readarray_period_block(rows, lookup, dims, context)
+                    period_ios: dict = {}
+                    parsed = _parse_readarray_period_block(rows, lookup, dims, context, period_ios)
+                    for k, io in period_ios.items():
+                        name_, *layer = (k,) if isinstance(k, str) else k
+                        if name_ not in named:
+                            array_ios[(name_, kper, *layer)] = io
                     for key, arr in parsed.items():
                         if key in named:
                             f, aux_name = named[key]
@@ -1179,10 +1263,15 @@ def structure_component(
     if effective_dims:
         for block_name, block_fields in array_fields.items():
             if rows := raw_lower.get(block_name):
-                kwargs.update(_parse_array_block(rows, block_fields, effective_dims, context))
+                kwargs.update(
+                    _parse_array_block(rows, block_fields, effective_dims, context, array_ios)
+                )
 
     kwargs.update(binding_kwargs)
     if name is not None:
         kwargs["name"] = name
+    if array_ios:
+        # write the arrays back the way the file wrote them
+        kwargs["write_context"] = WriteContext(arrays=array_ios)
 
     return cls(**kwargs)

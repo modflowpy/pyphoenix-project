@@ -19,6 +19,7 @@ from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
+from flopy4.mf6.write_context import WriteContext
 
 
 def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
@@ -380,6 +381,53 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         for name, block in sorted(blocks.items(), key=block_sort_key)
         if block or name in write_if_empty_set
     }
+
+
+def annotate_arrays(data: dict[str, Any], context: WriteContext) -> dict[str, Any]:
+    """Copy each array's settings from `context.arrays` (see `ArrayKey`) onto
+    the DataArray `data` holds for it, as attrs the writer reads: `iprn`,
+    and `layer_iprn` for layers of a layered array whose IPRN differs from
+    the whole array's; `path`, `format`, `hash` and `layered`, and
+    `layer_path`, `layer_format` and `layer_hash` for layers given their
+    own (see `write_external_arrays` and `array_how`). A period block's
+    arrays are keyed by period."""
+    if not context.arrays:
+        return data
+    out: dict[str, Any] = {}
+    for block_name, block in data.items():
+        name, _, header = block_name.partition(" ")
+        kper = int(header) - 1 if name == "period" and header.isdigit() else None
+        if not isinstance(block, dict):
+            out[block_name] = block
+            continue
+        out[block_name] = block = dict(block)
+        for key, value in block.items():
+            if not isinstance(value, xr.DataArray):
+                continue
+            base = (key,) if kper is None else (key, kper)
+            io = context.array_io(*base)
+            attrs_: dict[str, Any] = {
+                name: getattr(io, name)
+                for name in ("iprn", "path", "format", "hash", "layered")
+                if getattr(io, name) is not None
+            }
+            if "nlay" in value.dims:
+                layers: dict[str, dict[int, Any]] = {}
+                for layer in range(value.sizes["nlay"]):
+                    layer_iprn = context.array_io(*base, layer).iprn
+                    if layer_iprn is not None and layer_iprn != io.iprn:
+                        layers.setdefault("layer_iprn", {})[layer] = layer_iprn
+                    # only a layer's own settings, not the whole array's
+                    own = context.arrays.get((*base, layer))
+                    for name in ("path", "format", "hash") if own is not None else ():
+                        if getattr(own, name) is not None:
+                            layers.setdefault(f"layer_{name}", {})[layer] = getattr(own, name)
+                attrs_.update(layers)
+            if attrs_:
+                value = value.copy(deep=False)
+                value.attrs = {**value.attrs, **attrs_}
+                block[key] = value
+    return out
 
 
 def _not_a_record(component: Component, name: str, rec: type[Record], value: Any) -> TypeError:

@@ -11,11 +11,18 @@ from numpy.typing import NDArray
 
 from flopy4.mf6._types import Scalar
 from flopy4.mf6.constants import FILL_DNODATA
+from flopy4.mf6.write_context import ArrayFormat, FloatPrecision
 
 _NUMBER_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 
 ArrayHow = Literal[
-    "constant", "internal", "external", "layered constant", "layered internal", "netcdf"
+    "constant",
+    "internal",
+    "external",
+    "layered constant",
+    "layered internal",
+    "layered mixed",
+    "netcdf",
 ]
 
 
@@ -36,43 +43,94 @@ def block_end(block_name: str) -> str:
     return name.upper()
 
 
-def array_how(value: xr.DataArray, netcdf: bool = False) -> ArrayHow:
+def array_how(
+    value: xr.DataArray, netcdf: bool = False, array_format: "ArrayFormat | None" = None
+) -> ArrayHow:
     """
-    Determine how an array should be represented in MF6 input.
-    Options are "constant", "internal", or "external". If the
-    array is dask-backed, skip the constant check (would trigger
-    compute) and route to internal — the writer streams it
+    Determine how an array should be represented in MF6 input: the
+    record(s) to write it with, per the attrs `annotate_arrays` and
+    `write_external_arrays` mark it with, and `array_format`, the
+    context's.
+
+    Unless its `ArrayIO.format` (or else `array_format`) is "internal",
+    an array whose values are all equal is CONSTANT; unless it's marked
+    `layered`, a layered array whose layers each are is LAYERED CONSTANT.
+    A dask-backed array skips the constant checks (they'd compute it) and
+    is INTERNAL, LAYERED for a layered one: the writer streams it
     chunk-by-chunk via array2chunks without full materialization.
-    For numpy arrays there is no materialization cost to check if
-    all values are the same, so return "constant" or "internal"
-    as appropriate.
     """
     # arrays of fields MF6 reads from NetCDF are marked by egress
     if netcdf and value.attrs.get("netcdf", False):
         return "netcdf"
-    if hasattr(value.data, "blocks"):
-        # Dask-backed: stream as internal, never materialize to check constant.
-        if "nlay" in value.dims:
-            return "layered internal"
-        return "internal"
-    if value.max() == value.min():
+    # arrays written to files of their own are marked by
+    # `write_external_arrays`
+    if "open_close" in value.attrs:
+        return "external"
+    layered = "nlay" in value.dims
+    if "layer_open_close" in value.attrs and layered:
+        return "layered mixed"
+    dask = hasattr(value.data, "blocks")
+    internal = (value.attrs.get("format") or array_format) == "internal"
+    as_layers = value.attrs.get("layered") if layered else False
+    if as_layers:
+        return "layered internal" if dask else "layered mixed"
+    if dask:
+        return "layered internal" if as_layers is None else "internal"
+    if not internal and value.max() == value.min():
         return "constant"
-    if "nlay" in value.dims:
-        layer_const = True
-        for layer in range(value.shape[0]):
-            val_layer = value.isel(nlay=layer)
-            if val_layer.max() != val_layer.min():
-                layer_const = False
-                break
-        if layer_const:
-            return "layered constant"
-        return "layered internal"
-    if value.ndim <= 2:
+    if as_layers is False:
+        if value.ndim > 3:
+            raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
         return "internal"
-    raise ValueError(f"Arrays with ndim > 3 are not supported, got ndim={value.ndim}")
+    if not internal and all(
+        value.isel(nlay=k).max() == value.isel(nlay=k).min() for k in range(value.shape[0])
+    ):
+        return "layered constant"
+    return "layered internal"
 
 
-def format_float(value: float, precision: int | None = None) -> str:
+def iprn_option(value: xr.DataArray, layer: int | None = None) -> str:
+    """An INTERNAL control record's `` IPRN <n>`` option for `value`, or
+    for one of its layers, from the `iprn`/`layer_iprn` attrs
+    `annotate_arrays` sets; empty if none is set."""
+    iprn = value.attrs.get("layer_iprn", {}).get(layer) if layer is not None else None
+    if iprn is None:
+        iprn = value.attrs.get("iprn")
+    return "" if iprn is None else f" IPRN {iprn}"
+
+
+def binary_option(value: xr.DataArray, layer: int | None = None) -> str:
+    """An OPEN/CLOSE control record's `` (BINARY)`` option for `value`, or
+    for one of its layers, if `write_external_arrays` wrote its file
+    binary; else empty."""
+    if layer is None:
+        binary = value.attrs.get("open_close_binary", False)
+    else:
+        binary = value.attrs.get("layer_open_close_binary", {}).get(layer, False)
+    return " (BINARY)" if binary else ""
+
+
+def layer_is_constant(
+    value: xr.DataArray, layer: int, array_format: "ArrayFormat | None" = None
+) -> bool:
+    """Whether to write a layer of layered `value` CONSTANT: if all its
+    values are equal, unless its `ArrayIO.format` (else the whole
+    array's, else `array_format`, the context's) is "internal"."""
+    fmt = value.attrs.get("layer_format", {}).get(layer) or value.attrs.get("format")
+    if (fmt or array_format) == "internal":
+        return False
+    return is_constant(value.isel(nlay=layer))
+
+
+def is_constant(value: xr.DataArray) -> bool:
+    """Whether every value of `value` is the same. False for a dask array,
+    which would have to be computed to tell."""
+    if hasattr(value.data, "blocks"):
+        return False
+    return bool(value.max() == value.min())
+
+
+def format_float(value: float, precision: "FloatPrecision | None" = None) -> str:
     """
     Format a float for MF6 input.
 
@@ -80,16 +138,17 @@ def format_float(value: float, precision: int | None = None) -> str:
     ----------
     value : float
         Value to format
-    precision : int, optional
-        Number of decimal places, in scientific notation. If None (the
-        default), use the shortest string that reads back as the same value.
+    precision : int or "lossless", optional
+        Number of decimal places, in scientific notation. If "lossless" or
+        None (the default), use the shortest string that reads back as the
+        same value.
     """
-    if precision is None:
+    if precision is None or precision == "lossless":
         return repr(float(value))
     return f"{value:.{precision}e}"
 
 
-def array2const(value: xr.DataArray, precision: int | None = None) -> Scalar:
+def array2const(value: xr.DataArray, precision: "FloatPrecision | None" = None) -> Scalar:
     """
     Convert array to constant scalar value.
 
@@ -97,9 +156,9 @@ def array2const(value: xr.DataArray, precision: int | None = None) -> Scalar:
     ----------
     value : xr.DataArray
         Array to convert
-    precision : int, optional
-        Number of decimal places for float output. If None (the default),
-        floats are written losslessly.
+    precision : int or "lossless", optional
+        Number of decimal places for float output. If "lossless" or None
+        (the default), floats are written losslessly.
     """
     if np.issubdtype(value.dtype, np.integer):
         return value.max().item()
@@ -149,12 +208,16 @@ def array2chunks(value: xr.DataArray, chunks: Mapping[Hashable, int] | None = No
             value = value.chunk(chunks)
         for chunk in value.data.blocks:
             yield np.squeeze(chunk.compute())
+    elif value.ndim == 3:
+        # regular 3D array, a chunk per layer
+        for layer in value.values:
+            yield np.squeeze(layer)
     else:
         # regular array, single chunk
         yield np.squeeze(value.values)
 
 
-def array2string(value: NDArray, precision: int | None = None) -> str:
+def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> str:
     """
     Convert an array to a string. The array can be 1D or 2D.
     If the array is 1D, it is converted to a 1-line string,
@@ -167,21 +230,22 @@ def array2string(value: NDArray, precision: int | None = None) -> str:
     ----------
     value : NDArray
         Array to convert
-    precision : int, optional
-        Number of decimal places for float output. If None (the default),
-        floats are written losslessly.
+    precision : int or "lossless", optional
+        Number of decimal places for float output. If "lossless" or None
+        (the default), floats are written losslessly.
     """
     buffer = StringIO()
     value = np.asarray(value)
     if value.ndim > 2:
         raise ValueError(f"Only 1D and 2D arrays are supported, got ndim={value.ndim}")
+    # a single value (squeezed by array2chunks) is a 1d array of one
+    value = np.atleast_1d(value)
     if value.ndim == 1:
         # add an axis to 1d arrays so np.savetxt writes elements on 1 line
         value = value[None]
-    value = np.atleast_1d(value)
 
     if np.issubdtype(value.dtype, np.floating):
-        if precision is None:
+        if precision is None or precision == "lossless":
             return "\n".join(" ".join(map(repr, row)) for row in value.tolist())
         format = f"%.{precision}e"
     elif np.issubdtype(value.dtype, np.integer):
