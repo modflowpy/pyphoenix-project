@@ -445,3 +445,70 @@ def test_ims_options_ignore_trailing_tokens(tmp_path):
     ims = Ims.load(p)
     assert ims.outer_maximum == 100
     assert ims.under_relaxation == "NONE"
+
+
+def test_dis_griddata_internal_factor(tmp_path):
+    """INTERNAL's FACTOR scales the values, same as OPEN/CLOSE's -- real
+    and integer, layered with a different FACTOR per layer, and not
+    layered."""
+    from flopy4.mf6.gwf.dis import Dis
+
+    dis_file = tmp_path / "model.dis"
+    dis_file.write_text(
+        textwrap.dedent("""\
+            BEGIN OPTIONS
+            END OPTIONS
+            BEGIN DIMENSIONS
+              NLAY 2
+              NROW 1
+              NCOL 3
+            END DIMENSIONS
+            BEGIN GRIDDATA
+              DELR
+                INTERNAL FACTOR 10.0
+                  1.0 2.0 3.0
+              DELC
+                CONSTANT 1.0
+              TOP
+                INTERNAL FACTOR 2.0 IPRN 1
+                  1.0 2.0 3.0
+              BOTM LAYERED
+                INTERNAL FACTOR -1.0
+                  1.0 1.0 1.0
+                INTERNAL FACTOR -2.0
+                  1.0 2.0 3.0
+              IDOMAIN
+                INTERNAL FACTOR 2
+                  1 0 1 1 1 0
+            END GRIDDATA
+        """)
+    )
+
+    dis = Dis.load(dis_file)
+    assert np.array_equal(np.asarray(dis.delr), [10.0, 20.0, 30.0])
+    assert np.array_equal(np.asarray(dis.top), [2.0, 4.0, 6.0])
+    assert np.array_equal(np.asarray(dis.botm), [-1.0, -1.0, -1.0, -2.0, -4.0, -6.0])
+    assert np.array_equal(np.asarray(dis.idomain), [2, 0, 2, 2, 2, 0])
+
+
+def test_rcha_period_internal_factor(tmp_path):
+    """A READARRAY period block's INTERNAL FACTOR scales the values."""
+    from flopy4.mf6.gwf.rcha import Rcha
+
+    rch_vals = " ".join(["1.0"] * 25)
+    rcha_file = tmp_path / "model.rcha"
+    rcha_file.write_text(
+        textwrap.dedent(f"""\
+            BEGIN OPTIONS
+              READASARRAYS
+            END OPTIONS
+            BEGIN PERIOD 1
+             RECHARGE
+              INTERNAL FACTOR 0.001
+                {rch_vals}
+            END PERIOD 1
+        """)
+    )
+
+    rcha = Rcha.load(rcha_file, dims=DIMS_1L_5X5)
+    assert np.allclose(rcha.recharge[0], 0.001)
