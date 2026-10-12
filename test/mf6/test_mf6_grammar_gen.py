@@ -446,7 +446,7 @@ def test_make_grammar_with_record_header(tmp_path):
     assert "block_index" not in content
 
 
-def test_make_grammar_prefixes_tagged_valid_strings(tmp_path):
+def test_make_grammar_names_tagged_valid_strings(tmp_path):
     """A tagged `valid` string is preceded by its name (NPF's
     ALTERNATIVE_CELL_AVERAGING LOGARITHMIC), an untagged one isn't (STO's
     STEADY-STATE); both read as a union of their words."""
