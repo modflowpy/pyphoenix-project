@@ -22,7 +22,7 @@ from pathlib import Path
 import attrs
 import numpy as np
 import pytest
-from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String
+from modflow_devtools.dfns.schema import Array, Double, Integer, Keyword, Record, String, Union
 
 from flopy4.mf6.component import FNAMES
 from flopy4.mf6.utils.codegen.filters import (
@@ -31,6 +31,7 @@ from flopy4.mf6.utils.codegen.filters import (
     can_expand_record,
     class_name,
     feature_id_column,
+    is_column_union,
     is_generatable,
     item_class,
     model_abbr,
@@ -1496,3 +1497,82 @@ def test_counted_array_column():
     )
     assert (disv.ncpl, disv.nvert) == (1, 4)
     assert disv.cell2d[0].icvert == (0, 1, 2, 3)
+
+
+def test_is_column_union():
+    """A union is one column if each arm is one value (OBS's id, LAK's
+    bedleak), and a keystring if its arms are line forms (MAW's mawsetting,
+    LAK's laksetting, whose arms lead with a lake number)."""
+    value = Double(name="value", tagged=False)
+    assert is_column_union(
+        Union(name="bedleak", arms={"none": Keyword(name="none"), "value": value})
+    )
+    obs_id = Union(
+        name="id",
+        arms={
+            "cellid": Array(name="cellid", dtype="integer", shape=["ncelldim"], tagged=False),
+            "boundname": String(name="boundname", tagged=False),
+        },
+    )
+    assert is_column_union(obs_id)
+    assert not is_column_union(
+        Union(
+            name="mawsetting",
+            arms={"status": String(name="status"), "bottom": Double(name="bottom")},
+        )
+    )
+    lakeno = Integer(name="lakeno", tagged=False)
+    stage = Record(
+        name="stage", fields={"lakeno": lakeno, "stage": Keyword(name="stage"), "v": value}
+    )
+    assert not is_column_union(Union(name="laksetting", arms={"stage": stage}))
+
+
+def test_number_or_word_column():
+    """A union column with a keyword arm types the word as a literal."""
+    from flopy4.mf6.utils.codegen.filters import union_column
+
+    col = union_column("bedleak", ("keyword", "double"), words=("none",))
+    assert col.annotation == 'Union[Literal["NONE"], float]'
+    assert col.uses_literal
+
+
+@pytest.mark.parametrize("bedleak", ["NONE", 0.1])
+def test_number_or_word_from_tokens(bedleak):
+    """LAK's bedleak, mid-row, is NONE (in any case) or a number."""
+    from flopy4.mf6.gwf import Lak
+
+    tokens = [1, 1, 1, 1, 1, "vertical", bedleak, 10.0, 20.0, 0.0, 0.0]
+    item = Lak.Connectiondata.from_tokens(tokens, ncelldim=3)
+    assert item.bedleak == bedleak
+    assert item.belev == 10.0
+    assert item.to_tokens() == tuple(tokens)
+    lower = Lak.Connectiondata.from_tokens(
+        [str(t).lower() if t == "NONE" else t for t in tokens], ncelldim=3
+    )
+    assert lower.bedleak == bedleak
+
+
+def test_number_or_word_in_keystring_arm():
+    """MAW's HEAD_LIMIT takes OFF or a number."""
+    from flopy4.mf6.gwf import Maw
+
+    off = Maw.HeadLimit.from_tokens([1, "head_limit", "off"])
+    assert (off.ifno, off.head_limit) == (0, "OFF")
+    limit = Maw.HeadLimit.from_tokens([1, "HEAD_LIMIT", 2.5])
+    assert limit.head_limit == 2.5
+    assert limit.to_tokens() == (1, "HEAD_LIMIT", 2.5)
+
+
+def test_number_or_word_validated():
+    """A number-or-word field takes its word or a number, and a string field
+    no longer takes a number."""
+    from flopy4.mf6.gwf import Lak
+    from flopy4.mf6.record import _is_instance
+
+    fields = attrs.fields_dict(Lak.Connectiondata)
+    assert _is_instance("NONE", fields["bedleak"])
+    assert _is_instance("none", fields["bedleak"])
+    assert _is_instance(0.1, fields["bedleak"])
+    assert not _is_instance("OFF", fields["bedleak"])
+    assert not _is_instance(1.0, fields["claktype"])

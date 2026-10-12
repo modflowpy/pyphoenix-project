@@ -637,7 +637,14 @@ class Item(Record):
             and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
         ]
         main_fields = [f for f in main_fields if f not in nested_union_fields]
-        union_fields = [f for f in main_fields if f.metadata.get("union")]
+        # Trailing columns of varying width (OBS's ids, see _read_unions). A
+        # union with a keyword arm is one token, wherever it falls, read like
+        # any other value (LAK's bedleak: a number or NONE, see _coerce).
+        union_fields = [
+            f
+            for f in main_fields
+            if (kinds := f.metadata.get("union")) is not None and "keyword" not in kinds
+        ]
         main_fields = [f for f in main_fields if f not in union_fields]
         array_fields = [
             f for f in main_fields if f.metadata.get("array") and not _dim_counted(cls, f)

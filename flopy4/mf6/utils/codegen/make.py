@@ -279,12 +279,13 @@ def _item_columns(
             item = filters.attr_column(
                 name, "bool", {"tagged": True}, optional=True, default="False"
             )
-        elif isinstance(f, UnionField) and not f.tagged:
+        elif filters.is_column_union(f):
             # One column, any of the arms (OBS's id: a cellid, an index or
             # a boundname), told apart when read (see Item.from_tokens).
             item = filters.union_column(
                 name,
                 tuple(_arm_kind(arm) for arm in f.arms.values()),
+                words=tuple(a.name for a in f.arms.values() if isinstance(a, KeywordField)),
                 optional=optional,
                 time_series=ts,
             )
@@ -306,7 +307,10 @@ def _item_columns(
 
 
 def _arm_kind(arm: FieldV3) -> str:
-    """An untagged union arm's kind: "cellid", "index", or its DFN type."""
+    """An untagged union arm's kind: "cellid", "index", or its DFN type. A
+    keyword arm is its own name, a literal word (LAK's bedleak: NONE)."""
+    if isinstance(arm, KeywordField):
+        return "keyword"
     if isinstance(arm, Array) and arm.cellid:
         return "cellid"
     if getattr(arm, "index", False):
@@ -607,6 +611,11 @@ def _build_arm_spec(
         if kw_idx is not None:
             keyword = arm_fields[kw_idx][0]
             rest = arm_fields[:kw_idx] + arm_fields[kw_idx + 1 :]
+            if kw_idx == 0 and len(rest) == 1:
+                # A keyword and one value reads like a tagged scalar arm
+                # (Rate's RATE <rate>), so name the value after the keyword
+                # too: MAW's HEAD_LIMIT <head_limit_value> is head_limit.
+                rest = [(keyword, rest[0][1])]
         else:
             keyword = "_".join(_strip_record_words(arm_name))
             rest = arm_fields
@@ -621,8 +630,8 @@ def _build_arm_spec(
 
     nested_arm_classes: dict[str, list[str]] = {}
     for field_name, fld in rest:
-        if not isinstance(fld, UnionField):
-            continue
+        if not isinstance(fld, UnionField) or filters.is_column_union(fld):
+            continue  # a column union is read as a column (see _item_columns)
         cache_key = tuple(sorted(fld.arms.keys()))
         cached = nested_union_cache.get(cache_key)
         if cached is None:
@@ -951,6 +960,8 @@ def _generated_imports(
         typing_parts.append("Optional")
     if has_union:
         typing_parts.append("Union")
+    if any(col.uses_literal for col in _all_schema_cols):
+        typing_parts.append("Literal")
     if typing_parts:
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
 

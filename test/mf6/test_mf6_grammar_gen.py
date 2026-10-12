@@ -444,3 +444,28 @@ def test_make_grammar_with_record_header(tmp_path):
     assert '!output__hdr: "fileout"i word [output__binary__kw]' in content
     assert 'output__binary__kw: "binary"i' in content
     assert "block_index" not in content
+
+
+def test_make_grammar_prefixes_tagged_valid_strings(tmp_path):
+    """A tagged `valid` string is preceded by its name (NPF's
+    ALTERNATIVE_CELL_AVERAGING LOGARITHMIC), an untagged one isn't (STO's
+    STEADY-STATE); both read as a union of their words."""
+    dfn = Package(
+        name="test-component",
+        blocks={
+            "options": Block(
+                name="options",
+                fields={
+                    "averaging": String(name="averaging", valid=["logarithmic", "amt-lmk"]),
+                    "storage": String(
+                        name="storage", tagged=False, valid=["steady-state", "transient"]
+                    ),
+                },
+            )
+        },
+    )
+    make_grammar(dfn, tmp_path)
+    content = (tmp_path / "test-component.lark").read_text()
+    assert '"averaging"i (' in content
+    assert '"storage"i' not in content
+    assert '"steady-state"i' in content

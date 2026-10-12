@@ -776,6 +776,11 @@ class ItemColumn:
         return "Union[" in self.annotation
 
     @property
+    def uses_literal(self) -> bool:
+        """Whether the module needs ``Literal`` imported."""
+        return "Literal[" in self.annotation
+
+    @property
     def uses_ts_ref(self) -> bool:
         """Whether the module needs ``TimeSeriesRef`` imported."""
         return "TimeSeriesRef" in self.annotation
@@ -890,11 +895,19 @@ def feature_id_column(
 
 
 def union_column(
-    name: str, arms: tuple[str, ...], *, optional: bool = False, time_series: bool = False
+    name: str,
+    arms: tuple[str, ...],
+    *,
+    words: tuple[str, ...] = (),
+    optional: bool = False,
+    time_series: bool = False,
 ) -> ItemColumn:
     """One column that is any of several arm kinds (OBS's id: a cellid, an
-    index or a boundname), told apart when read."""
-    types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in arms)
+    index or a boundname), told apart when read. A keyword arm is one of
+    ``words``, typed as a literal (LAK's bedleak: ``Literal["NONE"]``)."""
+    quoted = ", ".join('"' + w.upper() + '"' for w in words)
+    literal = f"Literal[{quoted}]"
+    types = dict.fromkeys(literal if arm == "keyword" else _UNION_ARM_PY[arm] for arm in arms)
     return attr_column(
         name,
         f"Union[{', '.join(types)}]",
@@ -1100,6 +1113,19 @@ class ColumnSpec:
     is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
 
 
+def is_column_union(f: FieldV3) -> bool:
+    """Whether a union is one column, any of its arms (OBS's id: a cellid,
+    an index or a boundname; LAK's bedleak: a number or NONE), rather than a
+    keystring whose arms are line forms. Each arm of a column is one value:
+    a keyword, or an untagged scalar or array. A keystring's arms are
+    records or tagged values, whose keyword picks the arm wherever it falls
+    (LAK's laksetting arms lead with a lake or outlet number)."""
+    return isinstance(f, UnionField) and all(
+        isinstance(a, KeywordField) or not (isinstance(a, Record) or a.tagged)
+        for a in f.arms.values()
+    )
+
+
 def find_keystring_union(list_field: ListField) -> UnionField | None:
     """Find the discriminating Union in a List field's per-row shape, if any.
 
@@ -1123,8 +1149,7 @@ def find_keystring_union(list_field: ListField) -> UnionField | None:
         return item
     if isinstance(item, Record):
         for f in item.fields.values():
-            # An untagged union (OBS's id) is one column, not a keystring.
-            if isinstance(f, UnionField) and f.tagged:
+            if isinstance(f, UnionField) and not is_column_union(f):
                 return f
     return None
 
