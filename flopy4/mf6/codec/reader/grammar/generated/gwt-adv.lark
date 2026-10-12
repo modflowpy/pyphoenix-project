@@ -21,15 +21,15 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block
+block: options__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-options_fields: ((scheme | ats_percel | open_close_redirect) _NL*)*
-scheme: "scheme"i (scheme_central | scheme_upstream | scheme_tvd | scheme_utvd) [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+options__fields: ((scheme__union | ats_percel__val | open_close_redirect) _NL*)*
+scheme__union: "scheme"i (scheme__central__kw | scheme__upstream__kw | scheme__tvd__kw | scheme__utvd__kw) [_remark] _NL
 
-scheme_central: "central"i
-scheme_upstream: "upstream"i
-scheme_tvd: "tvd"i
-scheme_utvd: "utvd"i
+!scheme__central__kw: "central"i
+!scheme__upstream__kw: "upstream"i
+!scheme__tvd__kw: "tvd"i
+!scheme__utvd__kw: "utvd"i
 
-ats_percel: "ats_percel"i double [_remark] _NL
+ats_percel__val: "ats_percel"i double [_remark] _NL

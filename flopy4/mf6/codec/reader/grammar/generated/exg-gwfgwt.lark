@@ -22,4 +22,3 @@
 
 start: _NL* (block _NL*)*
 block: "NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"
-

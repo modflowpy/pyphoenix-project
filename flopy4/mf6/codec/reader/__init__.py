@@ -28,7 +28,7 @@ def _trim_trailing_garbage(data: str) -> str:
     return data[: matches[-1].end()]
 
 
-def load(fp: IO[str], *, component: str | None = None, dfn_path: str | None = None) -> Any:
+def load(fp: IO[str], *, component: str | None = None) -> Any:
     """
     Load and parse an MF6 input file.
 
@@ -40,20 +40,16 @@ def load(fp: IO[str], *, component: str | None = None, dfn_path: str | None = No
         DFN name (e.g. ``"gwf-wel"``) of the file's package/component. If
         given, parses with that component's typed grammar/transformer
         instead of the generic basic grammar.
-    dfn_path :
-        Local DFN directory to resolve ``component`` against. Only used
-        when ``component`` is given; defaults to the DFNs stored with
-        the generated classes if omitted.
 
     Returns
     -------
     Any
         Parsed MF6 input file structure
     """
-    return loads(fp.read(), component=component, dfn_path=dfn_path)
+    return loads(fp.read(), component=component)
 
 
-def loads(data: str, *, component: str | None = None, dfn_path: str | None = None) -> Any:
+def loads(data: str, *, component: str | None = None) -> Any:
     """
     Parse MF6 input file content from string.
 
@@ -65,10 +61,6 @@ def loads(data: str, *, component: str | None = None, dfn_path: str | None = Non
         DFN name (e.g. ``"gwf-wel"``) of the file's package/component. If
         given, parses with that component's typed grammar/transformer
         instead of the generic basic grammar.
-    dfn_path :
-        Local DFN directory to resolve ``component`` against. Only used
-        when ``component`` is given; defaults to the DFNs stored with
-        the generated classes if omitted.
 
     Returns
     -------
@@ -76,7 +68,7 @@ def loads(data: str, *, component: str | None = None, dfn_path: str | None = Non
         Parsed MF6 input file structure
     """
     if component is not None:
-        return loads_typed(data, component, dfn_path=dfn_path)
+        return loads_typed(data, component)
     return loads_basic(data)
 
 
@@ -92,10 +84,10 @@ def loads_basic(data: str) -> Any:
     return BASIC_TRANSFORMER.transform(tree)
 
 
-def loads_typed(data: str, component: str, *, dfn_path: str | None = None) -> Any:
+def loads_typed(data: str, component: str) -> Any:
     """Parse MF6 input file content with ``component``'s typed grammar."""
     parser = get_typed_parser(component)
-    transformer = get_typed_transformer(component, dfn_path)
+    transformer = get_typed_transformer()
     try:
         tree = parser.parse(data)
     except LarkError:

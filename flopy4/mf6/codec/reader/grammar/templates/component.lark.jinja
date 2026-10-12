@@ -23,7 +23,7 @@
 
 {% set ns = namespace(alts=[]) -%}
 {% for block in blocks -%}
-{% set ns.alts = ns.alts + [block.name ~ '_block'] -%}
+{% set ns.alts = ns.alts + [rule(block.name, tags=['block'])] -%}
 {% endfor -%}
 {% set block_alts = ns.alts|join(' | ') -%}
 {# A `block:` rule with no alternatives (a component with zero blocks, e.g.
@@ -39,20 +39,23 @@ start: _NL* (block _NL*)*
 block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 
 {% for block in blocks -%}
-{{ m.block_def(block.name, block.has_index, block.header) }}
+{{ m.block_def(block.name, block.has_index, block.header, block.index_rule) }}
 {% if block.header -%}
-{{ m.nested_record(block.header, fields[block.header]) }}{{ m.record_keywords(block.header, fields[block.header]) }}
+{{ m.header_record(block.header, fields[block.header]) }}
 {% endif -%}
 {% endfor -%}
 {% if blocks|selectattr('has_index')|list -%}
 %import typed.block_index -> block_index
 {% endif -%}
+{% if blocks|selectattr('index_rule', 'equalto', 'double_index')|selectattr('has_index')|list -%}
+double_index: block_index
+{% endif -%}
 {% for block in blocks -%}
 {% if block.recarrays -%}
 {% set recarray_name = block.recarrays[0].name -%}
-{{ m.field_list(block.name, block.standalone_fields, recarray_name, block.redirect) }}
+{{ m.field_list(block.name, block.standalone_fields, block.rules, recarray_name, block.redirect) }}
 {% else -%}
-{{ m.field_list(block.name, block.standalone_fields, none, block.redirect) }}
+{{ m.field_list(block.name, block.standalone_fields, block.rules, none, block.redirect) }}
 {% endif -%}
 {% endfor -%}
 {% set generated_rules = [] -%}
@@ -61,16 +64,17 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {% if field_name not in generated_rules -%}
 {% set field = fields[field_name] -%}
 {% set field_type = field|field_type -%}
+{% set name = block.rules[field_name] -%}
 {% if field is dynamically_named_array -%}
-{{ m.dynamically_named_array_field(field_name) }}
+{{ m.dynamically_named_array_field(name) }}
 {% elif field.type == 'record' and field.children is not none -%}
-{{ m.record_field(field_name, field) }}
+{{ m.record_field(field_name, field, name) }}
 {% elif field.type == 'union' and field.children is not none -%}
-{{ m.union_field(field_name, field) }}
+{{ m.union_field(field_name, field, name) }}
 {% elif field.type == 'file' -%}
-{{ m.file_field(field_name, field) }}
+{{ m.file_field(name, field) }}
 {% else -%}
-{{ m.simple_field(field_name, field, field_type) }}
+{{ m.simple_field(name, field, field_type) }}
 {% endif -%}
 {% set _ = generated_rules.append(field_name) -%}
 {% endif -%}
@@ -85,7 +89,7 @@ block: {{ block_alts if blocks else '"NO_BLOCKS_DEFINED_FOR_THIS_COMPONENT"' }}
 {{ m.nested_union(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% elif child.type == 'record' and child.children is not none and child_name not in unions_generated -%}
-{{ m.nested_record(child_name, child) }}{{ m.record_keywords(child_name, child) }}
+{{ m.nested_record(child_name, child, rule(child_name, tags=['rec'])) }}{{ m.record_parts(child_name, child) }}
 {% set _ = unions_generated.append(child_name) -%}
 {% endif -%}
 {% endfor -%}

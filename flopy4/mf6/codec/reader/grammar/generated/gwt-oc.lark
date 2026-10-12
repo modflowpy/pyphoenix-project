@@ -21,24 +21,33 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | period_block
+block: options__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((budget_filerecord | budgetcsv_filerecord | concentration_filerecord | concentrationprintrecord | open_close_redirect) _NL*)*
-period_fields: ((saverecord | printrecord | open_close_redirect) _NL*)*
-budget_filerecord: "budget"i "fileout"i word [_remark] _NL
-budgetcsv_filerecord: "budgetcsv"i "fileout"i word [_remark] _NL
-concentration_filerecord: "concentration"i "fileout"i word [_remark] _NL
-concentrationprintrecord: "concentration"i "print_format"i formatrecord [_remark] _NL
-saverecord: "save"i word ocsetting [_remark] _NL
-printrecord: "print"i word ocsetting [_remark] _NL
-formatrecord: ["columns"i integer] ["width"i integer] ["digits"i integer] word
-ocsetting: ocsetting_all | ocsetting_first | ocsetting_last | ocsetting_frequency | ocsetting_steps
-ocsetting_all: "all"i
-ocsetting_first: "first"i
-ocsetting_last: "last"i
-ocsetting_frequency: "frequency"i integer
-ocsetting_steps: "steps"i integer+
+options__fields: ((budget_filerecord__rec | budgetcsv_filerecord__rec | concentration_filerecord__rec | concentrationprintrecord__rec | open_close_redirect) _NL*)*
+period__fields: ((saverecord__rec__elem | printrecord__rec__elem | open_close_redirect) _NL*)*
+budget_filerecord__rec: "budget"i budget_filerecord__budgetfile__val [_remark] _NL
+budget_filerecord__budgetfile__val: "fileout"i word
+budgetcsv_filerecord__rec: "budgetcsv"i budgetcsv_filerecord__budgetcsvfile__val [_remark] _NL
+budgetcsv_filerecord__budgetcsvfile__val: "fileout"i word
+concentration_filerecord__rec: "concentration"i concentration_filerecord__concentrationfile__val [_remark] _NL
+concentration_filerecord__concentrationfile__val: "fileout"i word
+concentrationprintrecord__rec: "concentration"i "print_format"i formatrecord__rec [_remark] _NL
+saverecord__rec__elem: "save"i saverecord__rtype__val ocsetting__union [_remark] _NL
+saverecord__rtype__val: word
+printrecord__rec__elem: "print"i printrecord__rtype__val ocsetting__union [_remark] _NL
+printrecord__rtype__val: word
+formatrecord__rec: [formatrecord__columns__val] [formatrecord__width__val] [formatrecord__digits__val] formatrecord__format__val
+formatrecord__columns__val: "columns"i integer
+formatrecord__width__val: "width"i integer
+formatrecord__digits__val: "digits"i integer
+formatrecord__format__val: word
+ocsetting__union: ocsetting__all__kw | ocsetting__first__kw | ocsetting__last__kw | ocsetting__frequency__val | ocsetting__steps__val
 
+!ocsetting__all__kw: "all"i
+!ocsetting__first__kw: "first"i
+!ocsetting__last__kw: "last"i
+ocsetting__frequency__val: "frequency"i integer
+ocsetting__steps__val: "steps"i integer+

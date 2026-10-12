@@ -21,11 +21,11 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block
+block: options__block | griddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((export_array_ascii | open_close_redirect) _NL*)*
-griddata_fields: ((strt | open_close_redirect) _NL*)*
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-strt: "strt"i [_remark] [_NL] array
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__fields: ((export_array_ascii__kw | open_close_redirect) _NL*)*
+griddata__fields: ((strt__val | open_close_redirect) _NL*)*
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+strt__val: "strt"i [_remark] [_NL] array

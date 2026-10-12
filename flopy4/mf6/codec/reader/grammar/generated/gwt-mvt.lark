@@ -21,12 +21,14 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block
+block: options__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-options_fields: ((print_input | print_flows | save_flows | budget_filerecord | budgetcsv_filerecord | open_close_redirect) _NL*)*
-print_input: "print_input"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-budget_filerecord: "budget"i "fileout"i word [_remark] _NL
-budgetcsv_filerecord: "budgetcsv"i "fileout"i word [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+options__fields: ((print_input__kw | print_flows__kw | save_flows__kw | budget_filerecord__rec | budgetcsv_filerecord__rec | open_close_redirect) _NL*)*
+print_input__kw: "print_input"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+budget_filerecord__rec: "budget"i budget_filerecord__budgetfile__val [_remark] _NL
+budget_filerecord__budgetfile__val: "fileout"i word
+budgetcsv_filerecord__rec: "budgetcsv"i budgetcsv_filerecord__budgetcsvfile__val [_remark] _NL
+budgetcsv_filerecord__budgetcsvfile__val: "fileout"i word

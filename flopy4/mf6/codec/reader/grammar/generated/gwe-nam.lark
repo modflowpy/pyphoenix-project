@@ -21,18 +21,21 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | packages_block
+block: options__block | packages__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-packages_block: "begin"i "packages"i [_remark] _NL _NL* packages_fields _NL* "end"i "packages"i
-options_fields: ((list | print_input | print_flows | save_flows | dependent_variable_scaling | nc_mesh2d_filerecord | nc_structured_filerecord | nc_filerecord | open_close_redirect) _NL*)*
-packages_fields: ((packagesdata | open_close_redirect) _NL*)*
-list: "list"i string
-print_input: "print_input"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-dependent_variable_scaling: "dependent_variable_scaling"i  [_remark] _NL
-nc_mesh2d_filerecord: "netcdf_mesh2d"i "fileout"i word [_remark] _NL
-nc_structured_filerecord: "netcdf_structured"i "fileout"i word [_remark] _NL
-nc_filerecord: "netcdf"i "filein"i word [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+packages__block: "begin"i "packages"i [_remark] _NL _NL* packages__fields _NL* "end"i "packages"i
+options__fields: ((list__val | print_input__kw | print_flows__kw | save_flows__kw | dependent_variable_scaling__kw | nc_mesh2d_filerecord__rec | nc_structured_filerecord__rec | nc_filerecord__rec | open_close_redirect) _NL*)*
+packages__fields: ((packagesdata | open_close_redirect) _NL*)*
+list__val: "list"i string
+print_input__kw: "print_input"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+dependent_variable_scaling__kw: "dependent_variable_scaling"i  [_remark] _NL
+nc_mesh2d_filerecord__rec: "netcdf_mesh2d"i nc_mesh2d_filerecord__ncmesh2dfile__val [_remark] _NL
+nc_mesh2d_filerecord__ncmesh2dfile__val: "fileout"i word
+nc_structured_filerecord__rec: "netcdf_structured"i nc_structured_filerecord__ncstructfile__val [_remark] _NL
+nc_structured_filerecord__ncstructfile__val: "fileout"i word
+nc_filerecord__rec: "netcdf"i nc_filerecord__netcdf_filename__val [_remark] _NL
+nc_filerecord__netcdf_filename__val: "filein"i word
 packagesdata: record+

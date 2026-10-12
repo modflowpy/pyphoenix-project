@@ -21,12 +21,12 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: dimensions_block | table_block
+block: dimensions__block | table__block
 
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-table_block: "begin"i "table"i [_remark] _NL _NL* table_fields _NL* "end"i "table"i
-dimensions_fields: ((nrow | ncol | open_close_redirect) _NL*)*
-table_fields: ((tabledata | open_close_redirect) _NL*)*
-nrow: "nrow"i integer [_remark] _NL
-ncol: "ncol"i integer [_remark] _NL
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+table__block: "begin"i "table"i [_remark] _NL _NL* table__fields _NL* "end"i "table"i
+dimensions__fields: ((nrow__val | ncol__val | open_close_redirect) _NL*)*
+table__fields: ((tabledata | open_close_redirect) _NL*)*
+nrow__val: "nrow"i integer [_remark] _NL
+ncol__val: "ncol"i integer [_remark] _NL
 tabledata: record+

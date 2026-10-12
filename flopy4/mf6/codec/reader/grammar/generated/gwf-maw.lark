@@ -21,42 +21,48 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | packagedata_block | connectiondata_block | angledata_block | period_block
+block: options__block | dimensions__block | packagedata__block | connectiondata__block | angledata__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
-connectiondata_block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata_fields _NL* "end"i "connectiondata"i
-angledata_block: "begin"i "angledata"i [_remark] _NL _NL* angledata_fields _NL* "end"i "angledata"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
+connectiondata__block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* "end"i "connectiondata"i
+angledata__block: "begin"i "angledata"i [_remark] _NL _NL* angledata__fields _NL* "end"i "angledata"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((auxiliary | boundnames | print_input | print_head | print_flows | save_flows | head_filerecord | budget_filerecord | budgetcsv_filerecord | no_well_storage | flow_correction | non_vertical_wells | flowing_wells | shutdown_theta | shutdown_kappa | mfrcsv_filerecord | ts_filerecord | obs_filerecord | mover | dev_peaceman_effective_radius | open_close_redirect) _NL*)*
-dimensions_fields: ((nmawwells | open_close_redirect) _NL*)*
-packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
-connectiondata_fields: ((connectiondatadata | open_close_redirect) _NL*)*
-angledata_fields: ((angledatadata | open_close_redirect) _NL*)*
-period_fields: ((stress_period_data | open_close_redirect) _NL*)*
-auxiliary: "auxiliary"i word+ [_remark] _NL
-boundnames: "boundnames"i  [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-print_head: "print_head"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-head_filerecord: "head"i "fileout"i word [_remark] _NL
-budget_filerecord: "budget"i "fileout"i word [_remark] _NL
-budgetcsv_filerecord: "budgetcsv"i "fileout"i word [_remark] _NL
-no_well_storage: "no_well_storage"i  [_remark] _NL
-flow_correction: "flow_correction"i  [_remark] _NL
-non_vertical_wells: "non_vertical_wells"i  [_remark] _NL
-flowing_wells: "flowing_wells"i  [_remark] _NL
-shutdown_theta: "shutdown_theta"i double [_remark] _NL
-shutdown_kappa: "shutdown_kappa"i double [_remark] _NL
-mfrcsv_filerecord: "maw_flow_reduce_csv"i "fileout"i word [_remark] _NL
-ts_filerecord: "ts6"i "filein"i word [_remark] _NL
-obs_filerecord: "obs6"i "filein"i word [_remark] _NL
-mover: "mover"i  [_remark] _NL
-dev_peaceman_effective_radius: "dev_peaceman_effective_radius"i  [_remark] _NL
-nmawwells: "nmawwells"i integer [_remark] _NL
+options__fields: ((auxiliary__val | boundnames__kw | print_input__kw | print_head__kw | print_flows__kw | save_flows__kw | head_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | no_well_storage__kw | flow_correction__kw | non_vertical_wells__kw | flowing_wells__kw | shutdown_theta__val | shutdown_kappa__val | mfrcsv_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | dev_peaceman_effective_radius__kw | open_close_redirect) _NL*)*
+dimensions__fields: ((nmawwells__val | open_close_redirect) _NL*)*
+packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+connectiondata__fields: ((connectiondatadata | open_close_redirect) _NL*)*
+angledata__fields: ((angledatadata | open_close_redirect) _NL*)*
+period__fields: ((stress_period_data | open_close_redirect) _NL*)*
+auxiliary__val: "auxiliary"i word+ [_remark] _NL
+boundnames__kw: "boundnames"i  [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+print_head__kw: "print_head"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+head_filerecord__rec: "head"i head_filerecord__headfile__val [_remark] _NL
+head_filerecord__headfile__val: "fileout"i word
+budget_filerecord__rec: "budget"i budget_filerecord__budgetfile__val [_remark] _NL
+budget_filerecord__budgetfile__val: "fileout"i word
+budgetcsv_filerecord__rec: "budgetcsv"i budgetcsv_filerecord__budgetcsvfile__val [_remark] _NL
+budgetcsv_filerecord__budgetcsvfile__val: "fileout"i word
+no_well_storage__kw: "no_well_storage"i  [_remark] _NL
+flow_correction__kw: "flow_correction"i  [_remark] _NL
+non_vertical_wells__kw: "non_vertical_wells"i  [_remark] _NL
+flowing_wells__kw: "flowing_wells"i  [_remark] _NL
+shutdown_theta__val: "shutdown_theta"i double [_remark] _NL
+shutdown_kappa__val: "shutdown_kappa"i double [_remark] _NL
+mfrcsv_filerecord__rec: "maw_flow_reduce_csv"i mfrcsv_filerecord__mfrcsvfile__val [_remark] _NL
+mfrcsv_filerecord__mfrcsvfile__val: "fileout"i word
+ts_filerecord__rec__elem: "ts6"i ts_filerecord__ts6_filename__val [_remark] _NL
+ts_filerecord__ts6_filename__val: "filein"i word
+obs_filerecord__rec: "obs6"i obs_filerecord__obs6_filename__val [_remark] _NL
+obs_filerecord__obs6_filename__val: "filein"i word
+mover__kw: "mover"i  [_remark] _NL
+dev_peaceman_effective_radius__kw: "dev_peaceman_effective_radius"i  [_remark] _NL
+nmawwells__val: "nmawwells"i integer [_remark] _NL
 packagedatadata: record+
 connectiondatadata: record+
 angledatadata: record+

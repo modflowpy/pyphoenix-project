@@ -21,35 +21,43 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block
+block: options__block | griddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((save_flows | budget_filerecord | budgetcsv_filerecord | sorption | first_order_decay | zero_order_decay | cim_filerecord | cimprintrecord | sorbate_filerecord | export_array_ascii | export_array_netcdf | open_close_redirect) _NL*)*
-griddata_fields: ((porosity | volfrac | zetaim | cim | decay | decay_sorbed | bulk_density | distcoef | sp2 | open_close_redirect) _NL*)*
-save_flows: "save_flows"i  [_remark] _NL
-budget_filerecord: "budget"i "fileout"i word [_remark] _NL
-budgetcsv_filerecord: "budgetcsv"i "fileout"i word [_remark] _NL
-sorption: "sorption"i (sorption_linear | sorption_freundlich | sorption_langmuir) [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__fields: ((save_flows__kw | budget_filerecord__rec | budgetcsv_filerecord__rec | sorption__union | first_order_decay__kw | zero_order_decay__kw | cim_filerecord__rec | cimprintrecord__rec | sorbate_filerecord__rec | export_array_ascii__kw | export_array_netcdf__kw | open_close_redirect) _NL*)*
+griddata__fields: ((porosity__val | volfrac__val | zetaim__val | cim__val | decay__val | decay_sorbed__val | bulk_density__val | distcoef__val | sp2__val | open_close_redirect) _NL*)*
+save_flows__kw: "save_flows"i  [_remark] _NL
+budget_filerecord__rec: "budget"i budget_filerecord__budgetfile__val [_remark] _NL
+budget_filerecord__budgetfile__val: "fileout"i word
+budgetcsv_filerecord__rec: "budgetcsv"i budgetcsv_filerecord__budgetcsvfile__val [_remark] _NL
+budgetcsv_filerecord__budgetcsvfile__val: "fileout"i word
+sorption__union: "sorption"i (sorption__linear__kw | sorption__freundlich__kw | sorption__langmuir__kw) [_remark] _NL
 
-sorption_linear: "linear"i
-sorption_freundlich: "freundlich"i
-sorption_langmuir: "langmuir"i
+!sorption__linear__kw: "linear"i
+!sorption__freundlich__kw: "freundlich"i
+!sorption__langmuir__kw: "langmuir"i
 
-first_order_decay: "first_order_decay"i  [_remark] _NL
-zero_order_decay: "zero_order_decay"i  [_remark] _NL
-cim_filerecord: "cim"i "fileout"i word [_remark] _NL
-cimprintrecord: "cim"i "print_format"i formatrecord [_remark] _NL
-sorbate_filerecord: "sorbate"i "fileout"i word [_remark] _NL
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
-porosity: "porosity"i [_remark] [_NL] array
-volfrac: "volfrac"i [_remark] [_NL] array
-zetaim: "zetaim"i [_remark] [_NL] array
-cim: "cim"i [_remark] [_NL] array
-decay: "decay"i [_remark] [_NL] array
-decay_sorbed: "decay_sorbed"i [_remark] [_NL] array
-bulk_density: "bulk_density"i [_remark] [_NL] array
-distcoef: "distcoef"i [_remark] [_NL] array
-sp2: "sp2"i [_remark] [_NL] array
-formatrecord: ["columns"i integer] ["width"i integer] ["digits"i integer] word
+first_order_decay__kw: "first_order_decay"i  [_remark] _NL
+zero_order_decay__kw: "zero_order_decay"i  [_remark] _NL
+cim_filerecord__rec: "cim"i cim_filerecord__cimfile__val [_remark] _NL
+cim_filerecord__cimfile__val: "fileout"i word
+cimprintrecord__rec: "cim"i "print_format"i formatrecord__rec [_remark] _NL
+sorbate_filerecord__rec: "sorbate"i sorbate_filerecord__sorbatefile__val [_remark] _NL
+sorbate_filerecord__sorbatefile__val: "fileout"i word
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+export_array_netcdf__kw: "export_array_netcdf"i  [_remark] _NL
+porosity__val: "porosity"i [_remark] [_NL] array
+volfrac__val: "volfrac"i [_remark] [_NL] array
+zetaim__val: "zetaim"i [_remark] [_NL] array
+cim__val: "cim"i [_remark] [_NL] array
+decay__val: "decay"i [_remark] [_NL] array
+decay_sorbed__val: "decay_sorbed"i [_remark] [_NL] array
+bulk_density__val: "bulk_density"i [_remark] [_NL] array
+distcoef__val: "distcoef"i [_remark] [_NL] array
+sp2__val: "sp2"i [_remark] [_NL] array
+formatrecord__rec: [formatrecord__columns__val] [formatrecord__width__val] [formatrecord__digits__val] formatrecord__format__val
+formatrecord__columns__val: "columns"i integer
+formatrecord__width__val: "width"i integer
+formatrecord__digits__val: "digits"i integer
+formatrecord__format__val: word

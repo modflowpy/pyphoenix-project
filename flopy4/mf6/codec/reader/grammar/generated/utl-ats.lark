@@ -21,11 +21,11 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: dimensions_block | perioddata_block
+block: dimensions__block | perioddata__block
 
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-perioddata_block: "begin"i "perioddata"i [_remark] _NL _NL* perioddata_fields _NL* "end"i "perioddata"i
-dimensions_fields: ((maxats | open_close_redirect) _NL*)*
-perioddata_fields: ((perioddatadata | open_close_redirect) _NL*)*
-maxats: "maxats"i integer [_remark] _NL
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+perioddata__block: "begin"i "perioddata"i [_remark] _NL _NL* perioddata__fields _NL* "end"i "perioddata"i
+dimensions__fields: ((maxats__val | open_close_redirect) _NL*)*
+perioddata__fields: ((perioddatadata | open_close_redirect) _NL*)*
+maxats__val: "maxats"i integer [_remark] _NL
 perioddatadata: record+

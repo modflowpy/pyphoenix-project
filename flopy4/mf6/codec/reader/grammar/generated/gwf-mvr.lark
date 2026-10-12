@@ -21,23 +21,25 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | packages_block | period_block
+block: options__block | dimensions__block | packages__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-packages_block: "begin"i "packages"i [_remark] _NL _NL* packages_fields _NL* "end"i "packages"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+packages__block: "begin"i "packages"i [_remark] _NL _NL* packages__fields _NL* "end"i "packages"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((print_input | print_flows | modelnames | budget_filerecord | budgetcsv_filerecord | open_close_redirect) _NL*)*
-dimensions_fields: ((maxmvr | maxpackages | open_close_redirect) _NL*)*
-packages_fields: ((packagesdata | open_close_redirect) _NL*)*
-period_fields: ((stress_period_data | open_close_redirect) _NL*)*
-print_input: "print_input"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-modelnames: "modelnames"i  [_remark] _NL
-budget_filerecord: "budget"i "fileout"i word [_remark] _NL
-budgetcsv_filerecord: "budgetcsv"i "fileout"i word [_remark] _NL
-maxmvr: "maxmvr"i integer [_remark] _NL
-maxpackages: "maxpackages"i integer [_remark] _NL
+options__fields: ((print_input__kw | print_flows__kw | modelnames__kw | budget_filerecord__rec | budgetcsv_filerecord__rec | open_close_redirect) _NL*)*
+dimensions__fields: ((maxmvr__val | maxpackages__val | open_close_redirect) _NL*)*
+packages__fields: ((packagesdata | open_close_redirect) _NL*)*
+period__fields: ((stress_period_data | open_close_redirect) _NL*)*
+print_input__kw: "print_input"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+modelnames__kw: "modelnames"i  [_remark] _NL
+budget_filerecord__rec: "budget"i budget_filerecord__budgetfile__val [_remark] _NL
+budget_filerecord__budgetfile__val: "fileout"i word
+budgetcsv_filerecord__rec: "budgetcsv"i budgetcsv_filerecord__budgetcsvfile__val [_remark] _NL
+budgetcsv_filerecord__budgetcsvfile__val: "fileout"i word
+maxmvr__val: "maxmvr"i integer [_remark] _NL
+maxpackages__val: "maxpackages"i integer [_remark] _NL
 packagesdata: record+
 stress_period_data: record+

@@ -10,44 +10,77 @@
    must never append a line ending itself -- that's what `nested_record`/
    `nested_union` are for, as opposed to `record_field`/`union_field`. #}
 
-{% macro record_field(field_name, field) -%}
-{{ nested_record(field_name, field) }} [_remark] _NL
-{{- record_keywords(field_name, field) }}
+{% macro record_field(field_name, field, name) -%}
+{{ nested_record(field_name, field, name) }} [_remark] _NL
+{{- record_parts(field_name, field) }}
 {%- endmacro %}
 
-{# A record's optional keywords as named rules, so the parse tree shows
-   whether each was given (an anonymous literal is dropped from it). #}
-{% macro record_keywords(field_name, field) -%}
-{% for child_name, child in field.children.items() if child.type == 'keyword' and child.optional %}
+{# A record names each of its parts with a rule of its own (see
+   grammar/names.py), so the parse tree shows which part each value is,
+   and whether an optional keyword was given (an anonymous literal is
+   dropped from it). A required keyword is just a literal. #}
+{% macro record_parts(field_name, field) -%}
+{% for child_name, child in field.children.items() if child.type not in ('union', 'record') and not (child.type == 'keyword' and not child.optional) %}
 
-{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {{ child|keyword_literal }}
+{{ rule(field_name, child_name, tags=[part_tag(child)]) }}: {{ part_body(child) }}
 {%- endfor %}
 {%- endmacro %}
 
-{% macro nested_record(field_name, field) -%}
-{{ field_name|to_rule_name }}: {% for child_name, child in field.children.items() -%}
+{# A record part's own tokens. A `tagged true` scalar part (e.g.
+   formatrecord's columns/width/digits, confirmed against the real DFN) is
+   preceded by its own keyword label in real files ("COLUMNS 15", not a
+   bare "15") -- unlike an untagged scalar (formatrecord's own `format`,
+   e.g. "GENERAL"). #}
+{% macro part_body(child) -%}
+{%- set child_type = child|record_child_type -%}
+{%- if child.type == 'keyword' -%}
+{{ child|keyword_literal }}
+{%- elif child.type == 'file' -%}
+"file{{ child.direction }}"i word
+{%- elif child.tagged -%}
+"{{ child.name }}"i {{ child_type }}
+{%- else -%}
+{{ child_type }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro nested_record(field_name, field, name) -%}
+{{ name }}: {% for child_name, child in field.children.items() -%}
+{%- if child.type == 'keyword' and not child.optional -%}
+{{ child|keyword_literal }}
+{%- elif child.type == 'union' -%}
+{{ rule(child_name, tags=['union']) }}
+{%- elif child.type == 'record' -%}
+{{ rule(child_name, tags=['rec']) }}
+{%- elif child.optional and child.type != 'file' -%}
+{# A record's optional keyword part (e.g. NPF's xt3doptions -- "xt3d
+   rhs", where "rhs" is `optional true`) is routinely omitted in real
+   files -- confirmed against a real fixture ("XT3D" alone, no trailing
+   "RHS"). So is an optional tagged scalar part: most fixtures checked for
+   sln-ims's rcloserecord never write the trailing STRICT/L2NORM_RCLOSE/
+   RELATIVE_RCLOSE option at all. #}
+[{{ rule(field_name, child_name, tags=[part_tag(child)]) }}]
+{%- else -%}
+{{ rule(field_name, child_name, tags=[part_tag(child)]) }}
+{%- endif -%}
+{%- if not loop.last %} {% endif -%}
+{%- endfor %}
+{%- endmacro %}
+
+{# A block's record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]")
+   keeps all its tokens (`!`): the transformer keys the block by the
+   header as written. An optional keyword is a rule of its own, so the
+   tree shows whether it was given. #}
+{% macro header_record(field_name, field) -%}
+!{{ rule(field_name, tags=['hdr']) }}: {% for child_name, child in field.children.items() -%}
 {%- set child_type = child|record_child_type -%}
 {%- if child.type == 'keyword' and child.optional -%}
-{# A record's optional Keyword child (e.g. NPF's xt3doptions -- "xt3d rhs",
-   where "rhs" is `optional true`) is routinely omitted in real files --
-   confirmed against a real fixture ("XT3D" alone, no trailing "RHS"). Its
-   rule comes from record_keywords. #}
-[{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}]
+[{{ rule(field_name, child_name, tags=['kw']) }}]
 {%- elif child.type == 'keyword' -%}
 {{ child|keyword_literal }}
-{%- elif child.type == 'union' or child.type == 'record' -%}
-{{ child_name|to_rule_name }}
 {%- elif child.type == 'file' -%}
 "file{{ child.direction }}"i word
 {%- elif child.tagged and child.optional -%}
-{# A `tagged true` scalar child (e.g. formatrecord's columns/width/digits,
-   confirmed against the real DFN) is preceded by its own keyword label
-   in real files ("COLUMNS 15", not a bare "15") -- unlike an untagged
-   scalar (formatrecord's own `format`, e.g. "GENERAL"). `optional true`
-   (confirmed for columns/width/digits, and for IMS's `rclose_option`
-   below) means real files routinely omit it entirely -- most fixtures
-   checked for sln-ims's rcloserecord never write the trailing STRICT/
-   L2NORM_RCLOSE/RELATIVE_RCLOSE option at all. #}
 ["{{ child.name }}"i {{ child_type }}]
 {%- elif child.tagged -%}
 "{{ child.name }}"i {{ child_type }}
@@ -58,9 +91,35 @@
 {%- endif -%}
 {%- if not loop.last %} {% endif -%}
 {%- endfor %}
+{% for child_name, child in field.children.items() if child.type == 'keyword' and child.optional %}
+
+{{ rule(field_name, child_name, tags=['kw']) }}: {{ child|keyword_literal }}
+{%- endfor %}
 {%- endmacro %}
 
-{% macro union_field(field_name, field) -%}
+{# A union arm's own tokens. A keyword arm keeps its token (`!`), whose
+   text is the arm read. #}
+{% macro union_arms(field_name, field) -%}
+{% for child_name, child in field.children.items() -%}
+{%- if child.type == 'keyword' -%}
+!{{ rule(field_name, child_name, tags=['kw']) }}: {{ child|keyword_literal }}
+{%- elif child.type == 'array' -%}
+{{ rule(field_name, child_name, tags=['val']) }}: "{{ child.name }}"i {{ child|field_type }}
+{%- else -%}
+{{ rule(field_name, child_name, tags=['val']) }}: "{{ child.name }}"i {{ child.type }}
+{%- endif %}
+
+{% endfor -%}
+{%- endmacro %}
+
+{% macro union_alternation(field_name, field) -%}
+{%- for child_name, child in field.children.items() -%}
+{{ rule(field_name, child_name, tags=['kw' if child.type == 'keyword' else 'val']) }}
+{%- if not loop.last %} | {% endif -%}
+{%- endfor -%}
+{%- endmacro %}
+
+{% macro union_field(field_name, field, name) -%}
 {# The alternation must be parenthesized before appending `[_remark] _NL` --
    `|` binds looser than concatenation, so an unparenthesized "A | B | C
    [_remark] _NL" only requires the line ending after the *last* arm. A
@@ -69,87 +128,64 @@
    real files write "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC", not a bare
    "LOGARITHMIC" -- unlike an untagged keystring (e.g. ocsetting's ALL/
    FIRST/LAST), where the chosen value's own keyword is the whole field. #}
-{{ field_name|to_rule_name }}: {% if field.tagged %}"{{ field.name }}"i ({% endif -%}
-{%- for child_name, child in field.children.items() -%}
-{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}
-{%- if not loop.last %} | {% endif -%}
-{%- endfor -%}
-{%- if field.tagged %}){% endif %} [_remark] _NL
+{{ name }}: {% if field.tagged %}"{{ field.name }}"i {% endif %}({{ union_alternation(field_name, field) }}) [_remark] _NL
 
-{% for child_name, child in field.children.items() -%}
-{{ field_name|to_rule_name }}_{{ child_name|to_rule_name }}: {% if child.type == 'keyword' -%}
-{{ child|keyword_literal }}
-{%- elif child.type == 'array' -%}
-"{{ child.name }}"i {{ child|field_type }}
-{%- else -%}
-"{{ child.name }}"i {{ child.type }}
-{%- endif %}
-
-{% endfor -%}
+{{ union_arms(field_name, field) }}
 {%- endmacro %}
 
-{% macro simple_field(field_name, field, field_type) -%}
+{% macro simple_field(name, field, field_type) -%}
 {%- if field_type == 'array' and not field.tagged -%}
-{{ field_name|to_rule_name }}: {{ field_type }}
+{{ name }}: {{ field_type }}
 {%- elif field_type == 'array' -%}
 {# Real files write an array field's name alone on its own line about as
    often as on the same line as its CONSTANT/INTERNAL/OPEN-CLOSE value
    (e.g. STO's "ss" -- confirmed directly against a real fixture) -- the
    line break between name and value is optional either way. #}
-{{ field_name|to_rule_name }}: "{{ field.name }}"i [_remark] [_NL] {{ field_type }}
+{{ name }}: "{{ field.name }}"i [_remark] [_NL] {{ field_type }}
 {%- else -%}
-{{ field_name|to_rule_name }}: {{ field|keyword_literal }} {{ field_type }}
+{{ name }}: {{ field|keyword_literal }} {{ field_type }}
 {%- if field_type != 'string' %} [_remark] _NL{% endif -%}
 {%- endif -%}
 {%- endmacro %}
 
-{% macro dynamically_named_array_field(field_name) -%}
+{% macro dynamically_named_array_field(name) -%}
 {# The name isn't known until the file is read (it's one of the AUXILIARY
    variables), so accept any word. The array's own rule ends the line. #}
-{{ field_name|to_rule_name }}: word [_remark] [_NL] array
+{{ name }}: word [_remark] [_NL] array
 {%- endmacro %}
 
-{% macro file_field(field_name, field) -%}
+{% macro file_field(name, field) -%}
 {# A name-file entry (mode_keyword false, e.g. sim-nam's "TDIS6 <file>")
    has no FILEIN/FILEOUT. #}
-{{ field_name|to_rule_name }}: "{{ field.name }}"i {% if field.mode_keyword %}"file{{ field.direction }}"i {% endif %}word [_remark] _NL
+{{ name }}: "{{ field.name }}"i {% if field.mode_keyword %}"file{{ field.direction }}"i {% endif %}word [_remark] _NL
 {%- endmacro %}
 
 {% macro nested_union(child_name, child) -%}
-{{ child_name|to_rule_name }}: {% for opt_name, opt in child.children.items() -%}
-{{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}
-{%- if not loop.last %} | {% endif -%}
-{%- endfor %}
+{{ rule(child_name, tags=['union']) }}: {{ union_alternation(child_name, child) }}
 
-{% for opt_name, opt in child.children.items() -%}
-{{ child_name|to_rule_name }}_{{ opt_name|to_rule_name }}: {% if opt.type == 'keyword' -%}
-{{ opt|keyword_literal }}
-{%- elif opt.type == 'array' -%}
-"{{ opt.name }}"i {{ opt|field_type }}
-{%- else -%}
-"{{ opt.name }}"i {{ opt.type }}
-{%- endif %}
-
-{% endfor -%}
+{{ union_arms(child_name, child) }}
 {%- endmacro %}
 
 {# Block definition macro. Newlines are significant (see the header note in
    component.lark.jinja), so the BEGIN line's own line ending must be
    consumed explicitly before the block's fields start, and a run of blank
    lines before END is tolerated defensively (mirrors basic.lark). #}
-{%- macro block_def(block_name, has_index, header=none) -%}
+{%- macro block_def(block_name, has_index, header=none, index_rule='block_index') -%}
+{%- set block_rule = rule(block_name, tags=['block']) -%}
+{%- set fields_rule = rule(block_name, tags=['fields']) -%}
 {%- if header -%}
 {# A record header (OBS's "CONTINUOUS FILEOUT <file> [BINARY]"), which
    the END line may repeat. #}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i {{ header|to_rule_name }} [_remark] _NL _NL* {{ block_name }}_fields _NL* "end"i "{{ block_name }}"i [{{ header|to_rule_name }}]
+{%- set header_rule = rule(header, tags=['hdr']) -%}
+{{ block_rule }}: "begin"i "{{ block_name }}"i {{ header_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* "end"i "{{ block_name }}"i [{{ header_rule }}]
 {%- elif has_index -%}
 {# Real corpus files overwhelmingly close an indexed block as bare
    "END <name>", not repeating the index -- confirmed ~91% (1503/1651)
    across a random corpus sample. The trailing index is still accepted
    when present (the remaining ~9%). #}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i block_index [_remark] _NL _NL* {{ block_name }}_fields _NL* "end"i "{{ block_name }}"i [block_index]
+{{ block_rule }}: "begin"i "{{ block_name }}"i {{ index_rule }} [_remark] _NL _NL* {{ fields_rule }} _NL* "end"i "{{ block_name }}"i [{{ index_rule }}]
 {%- else -%}
-{{ block_name }}_block: "begin"i "{{ block_name }}"i [_remark] _NL _NL* {{ block_name }}_fields _NL* "end"i "{{ block_name }}"i
+{{ block_rule }}: "begin"i "{{ block_name }}"i [_remark] _NL _NL* {{ fields_rule }} _NL* "end"i "{{ block_name }}"i
 {%- endif -%}
 {%- endmacro %}
 
@@ -169,13 +205,16 @@
    alternative is accepted structurally here and simply dropped by the
    transformer (see `__default__`'s tuple-only field collection), same
    disposition as the AUXILIARY dynamic-name fallback. #}
-{%- macro field_list(block_name, fields, recarray_name, redirect=true) -%}
-{%- set alts = fields|map('to_rule_name')|list -%}
+{%- macro field_list(block_name, fields, rules, recarray_name, redirect=true) -%}
+{%- set alts = [] -%}
+{%- for f in fields -%}
+{%- set _ = alts.append(rules[f]) -%}
+{%- endfor -%}
 {%- if recarray_name -%}
 {%- set _ = alts.append(recarray_name) -%}
 {%- endif -%}
 {%- if redirect -%}
 {%- set _ = alts.append('open_close_redirect') -%}
 {%- endif -%}
-{{ block_name }}_fields: (({{ alts|join(' | ') }}) _NL*)*
+{{ rule(block_name, tags=['fields']) }}: (({{ alts|join(' | ') }}) _NL*)*
 {%- endmacro %}

@@ -21,27 +21,28 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block
+block: options__block | griddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((save_flows | first_order_decay | zero_order_decay | sorption | sorbate_filerecord | export_array_ascii | export_array_netcdf | open_close_redirect) _NL*)*
-griddata_fields: ((porosity | decay | decay_sorbed | bulk_density | distcoef | sp2 | open_close_redirect) _NL*)*
-save_flows: "save_flows"i  [_remark] _NL
-first_order_decay: "first_order_decay"i  [_remark] _NL
-zero_order_decay: "zero_order_decay"i  [_remark] _NL
-sorption: "sorption"i (sorption_linear | sorption_freundlich | sorption_langmuir) [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__fields: ((save_flows__kw | first_order_decay__kw | zero_order_decay__kw | sorption__union | sorbate_filerecord__rec | export_array_ascii__kw | export_array_netcdf__kw | open_close_redirect) _NL*)*
+griddata__fields: ((porosity__val | decay__val | decay_sorbed__val | bulk_density__val | distcoef__val | sp2__val | open_close_redirect) _NL*)*
+save_flows__kw: "save_flows"i  [_remark] _NL
+first_order_decay__kw: "first_order_decay"i  [_remark] _NL
+zero_order_decay__kw: "zero_order_decay"i  [_remark] _NL
+sorption__union: "sorption"i (sorption__linear__kw | sorption__freundlich__kw | sorption__langmuir__kw) [_remark] _NL
 
-sorption_linear: "linear"i
-sorption_freundlich: "freundlich"i
-sorption_langmuir: "langmuir"i
+!sorption__linear__kw: "linear"i
+!sorption__freundlich__kw: "freundlich"i
+!sorption__langmuir__kw: "langmuir"i
 
-sorbate_filerecord: "sorbate"i "fileout"i word [_remark] _NL
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
-porosity: "porosity"i [_remark] [_NL] array
-decay: "decay"i [_remark] [_NL] array
-decay_sorbed: "decay_sorbed"i [_remark] [_NL] array
-bulk_density: "bulk_density"i [_remark] [_NL] array
-distcoef: "distcoef"i [_remark] [_NL] array
-sp2: "sp2"i [_remark] [_NL] array
+sorbate_filerecord__rec: "sorbate"i sorbate_filerecord__sorbatefile__val [_remark] _NL
+sorbate_filerecord__sorbatefile__val: "fileout"i word
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+export_array_netcdf__kw: "export_array_netcdf"i  [_remark] _NL
+porosity__val: "porosity"i [_remark] [_NL] array
+decay__val: "decay"i [_remark] [_NL] array
+decay_sorbed__val: "decay_sorbed"i [_remark] [_NL] array
+bulk_density__val: "bulk_density"i [_remark] [_NL] array
+distcoef__val: "distcoef"i [_remark] [_NL] array
+sp2__val: "sp2"i [_remark] [_NL] array

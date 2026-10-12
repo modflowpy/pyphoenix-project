@@ -21,42 +21,46 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block
+block: options__block | griddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((save_flows | print_flows | alternative_cell_averaging | thickstrt | cvoptions | perched | rewet_record | xt3doptions | highest_cell_saturation | save_specific_discharge | save_saturation | k22overk | k33overk | tvk_filerecord | export_array_ascii | export_array_netcdf | dev_no_newton | dev_omega | open_close_redirect) _NL*)*
-griddata_fields: ((icelltype | k | k22 | k33 | angle1 | angle2 | angle3 | wetdry | open_close_redirect) _NL*)*
-save_flows: "save_flows"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-alternative_cell_averaging: "alternative_cell_averaging"i (alternative_cell_averaging_logarithmic | alternative_cell_averaging_amt_lmk | alternative_cell_averaging_amt_hmk) [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__fields: ((save_flows__kw | print_flows__kw | alternative_cell_averaging__union | thickstrt__kw | cvoptions__rec | perched__kw | rewet_record__rec | xt3doptions__rec | highest_cell_saturation__kw | save_specific_discharge__kw | save_saturation__kw | k22overk__kw | k33overk__kw | tvk_filerecord__rec | export_array_ascii__kw | export_array_netcdf__kw | dev_no_newton__kw | dev_omega__val | open_close_redirect) _NL*)*
+griddata__fields: ((icelltype__val | k__val | k22__val | k33__val | angle1__val | angle2__val | angle3__val | wetdry__val | open_close_redirect) _NL*)*
+save_flows__kw: "save_flows"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+alternative_cell_averaging__union: "alternative_cell_averaging"i (alternative_cell_averaging__logarithmic__kw | alternative_cell_averaging__amt_lmk__kw | alternative_cell_averaging__amt_hmk__kw) [_remark] _NL
 
-alternative_cell_averaging_logarithmic: "logarithmic"i
-alternative_cell_averaging_amt_lmk: "amt-lmk"i
-alternative_cell_averaging_amt_hmk: "amt-hmk"i
+!alternative_cell_averaging__logarithmic__kw: "logarithmic"i
+!alternative_cell_averaging__amt_lmk__kw: "amt-lmk"i
+!alternative_cell_averaging__amt_hmk__kw: "amt-hmk"i
 
-thickstrt: "thickstrt"i  [_remark] _NL
-cvoptions: "variablecv"i [cvoptions_dewatered] [_remark] _NL
-cvoptions_dewatered: "dewatered"i
-perched: "perched"i  [_remark] _NL
-rewet_record: "rewet"i "wetfct"i double "iwetit"i integer "ihdwet"i integer [_remark] _NL
-xt3doptions: "xt3d"i [xt3doptions_rhs] [_remark] _NL
-xt3doptions_rhs: "rhs"i
-highest_cell_saturation: "highest_cell_saturation"i  [_remark] _NL
-save_specific_discharge: "save_specific_discharge"i  [_remark] _NL
-save_saturation: "save_saturation"i  [_remark] _NL
-k22overk: "k22overk"i  [_remark] _NL
-k33overk: "k33overk"i  [_remark] _NL
-tvk_filerecord: "tvk6"i "filein"i word [_remark] _NL
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-export_array_netcdf: "export_array_netcdf"i  [_remark] _NL
-dev_no_newton: "dev_no_newton"i  [_remark] _NL
-dev_omega: "dev_omega"i double [_remark] _NL
-icelltype: "icelltype"i [_remark] [_NL] array
-k: "k"i [_remark] [_NL] array
-k22: "k22"i [_remark] [_NL] array
-k33: "k33"i [_remark] [_NL] array
-angle1: "angle1"i [_remark] [_NL] array
-angle2: "angle2"i [_remark] [_NL] array
-angle3: "angle3"i [_remark] [_NL] array
-wetdry: "wetdry"i [_remark] [_NL] array
+thickstrt__kw: "thickstrt"i  [_remark] _NL
+cvoptions__rec: "variablecv"i [cvoptions__dewatered__kw] [_remark] _NL
+cvoptions__dewatered__kw: "dewatered"i
+perched__kw: "perched"i  [_remark] _NL
+rewet_record__rec: "rewet"i rewet_record__wetfct__val rewet_record__iwetit__val rewet_record__ihdwet__val [_remark] _NL
+rewet_record__wetfct__val: "wetfct"i double
+rewet_record__iwetit__val: "iwetit"i integer
+rewet_record__ihdwet__val: "ihdwet"i integer
+xt3doptions__rec: "xt3d"i [xt3doptions__rhs__kw] [_remark] _NL
+xt3doptions__rhs__kw: "rhs"i
+highest_cell_saturation__kw: "highest_cell_saturation"i  [_remark] _NL
+save_specific_discharge__kw: "save_specific_discharge"i  [_remark] _NL
+save_saturation__kw: "save_saturation"i  [_remark] _NL
+k22overk__kw: "k22overk"i  [_remark] _NL
+k33overk__kw: "k33overk"i  [_remark] _NL
+tvk_filerecord__rec: "tvk6"i tvk_filerecord__tvk6_filename__val [_remark] _NL
+tvk_filerecord__tvk6_filename__val: "filein"i word
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+export_array_netcdf__kw: "export_array_netcdf"i  [_remark] _NL
+dev_no_newton__kw: "dev_no_newton"i  [_remark] _NL
+dev_omega__val: "dev_omega"i double [_remark] _NL
+icelltype__val: "icelltype"i [_remark] [_NL] array
+k__val: "k"i [_remark] [_NL] array
+k22__val: "k22"i [_remark] [_NL] array
+k33__val: "k33"i [_remark] [_NL] array
+angle1__val: "angle1"i [_remark] [_NL] array
+angle2__val: "angle2"i [_remark] [_NL] array
+angle3__val: "angle3"i [_remark] [_NL] array
+wetdry__val: "wetdry"i [_remark] [_NL] array

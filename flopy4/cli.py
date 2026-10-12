@@ -89,7 +89,7 @@ def main() -> None:
     # flopy4 mf6 sync
     sync_p = mf6_sub.add_parser(
         "sync",
-        help="Sync flopy4.mf6 to an MF6 release: regenerate classes.",
+        help="Sync flopy4.mf6 to an MF6 release: regenerate classes and grammars.",
     )
     sync_p.add_argument(
         "release_id",

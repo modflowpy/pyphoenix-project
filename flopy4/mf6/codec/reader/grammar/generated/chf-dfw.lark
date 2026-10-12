@@ -21,20 +21,21 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | griddata_block
+block: options__block | griddata__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-griddata_block: "begin"i "griddata"i [_remark] _NL _NL* griddata_fields _NL* "end"i "griddata"i
-options_fields: ((central_in_space | length_conversion | time_conversion | save_flows | print_flows | save_velocity | obs_filerecord | export_array_ascii | dev_swr_conductance | open_close_redirect) _NL*)*
-griddata_fields: ((manningsn | idcxs | open_close_redirect) _NL*)*
-central_in_space: "central_in_space"i  [_remark] _NL
-length_conversion: "length_conversion"i double [_remark] _NL
-time_conversion: "time_conversion"i double [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_velocity: "save_velocity"i  [_remark] _NL
-obs_filerecord: "obs6"i "filein"i word [_remark] _NL
-export_array_ascii: "export_array_ascii"i  [_remark] _NL
-dev_swr_conductance: "dev_swr_conductance"i  [_remark] _NL
-manningsn: "manningsn"i [_remark] [_NL] array
-idcxs: "idcxs"i [_remark] [_NL] array
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+griddata__block: "begin"i "griddata"i [_remark] _NL _NL* griddata__fields _NL* "end"i "griddata"i
+options__fields: ((central_in_space__kw | length_conversion__val | time_conversion__val | save_flows__kw | print_flows__kw | save_velocity__kw | obs_filerecord__rec | export_array_ascii__kw | dev_swr_conductance__kw | open_close_redirect) _NL*)*
+griddata__fields: ((manningsn__val | idcxs__val | open_close_redirect) _NL*)*
+central_in_space__kw: "central_in_space"i  [_remark] _NL
+length_conversion__val: "length_conversion"i double [_remark] _NL
+time_conversion__val: "time_conversion"i double [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_velocity__kw: "save_velocity"i  [_remark] _NL
+obs_filerecord__rec: "obs6"i obs_filerecord__obs6_filename__val [_remark] _NL
+obs_filerecord__obs6_filename__val: "filein"i word
+export_array_ascii__kw: "export_array_ascii"i  [_remark] _NL
+dev_swr_conductance__kw: "dev_swr_conductance"i  [_remark] _NL
+manningsn__val: "manningsn"i [_remark] [_NL] array
+idcxs__val: "idcxs"i [_remark] [_NL] array

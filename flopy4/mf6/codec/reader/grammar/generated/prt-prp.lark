@@ -21,53 +21,55 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | packagedata_block | releasetimes_block | period_block
+block: options__block | dimensions__block | packagedata__block | releasetimes__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
-releasetimes_block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes_fields _NL* "end"i "releasetimes"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
+releasetimes__block: "begin"i "releasetimes"i [_remark] _NL _NL* releasetimes__fields _NL* "end"i "releasetimes"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((boundnames | print_input | dev_exit_solve_method | exit_solve_tolerance | local_z | extend_tracking | track_filerecord | trackcsv_filerecord | stoptime | stoptraveltime | stop_at_weak_sink | istopzone | drape | dry_tracking_method | dev_forceternary | release_time_tolerance | release_time_frequency | coordinate_check_method | dev_cycle_detection_window | open_close_redirect) _NL*)*
-dimensions_fields: ((nreleasepts | nreleasetimes | open_close_redirect) _NL*)*
-packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
-releasetimes_fields: ((releasetimesdata | open_close_redirect) _NL*)*
-period_fields: ((all | first | last | frequency | steps | open_close_redirect) _NL*)*
-boundnames: "boundnames"i  [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-dev_exit_solve_method: "dev_exit_solve_method"i integer [_remark] _NL
-exit_solve_tolerance: "exit_solve_tolerance"i double [_remark] _NL
-local_z: "local_z"i  [_remark] _NL
-extend_tracking: "extend_tracking"i  [_remark] _NL
-track_filerecord: "track"i "fileout"i word [_remark] _NL
-trackcsv_filerecord: "trackcsv"i "fileout"i word [_remark] _NL
-stoptime: "stoptime"i double [_remark] _NL
-stoptraveltime: "stoptraveltime"i double [_remark] _NL
-stop_at_weak_sink: "stop_at_weak_sink"i  [_remark] _NL
-istopzone: "istopzone"i integer [_remark] _NL
-drape: "drape"i  [_remark] _NL
-dry_tracking_method: "dry_tracking_method"i (dry_tracking_method_drop | dry_tracking_method_stop | dry_tracking_method_stay) [_remark] _NL
+options__fields: ((boundnames__kw | print_input__kw | dev_exit_solve_method__val | exit_solve_tolerance__val | local_z__kw | extend_tracking__kw | track_filerecord__rec | trackcsv_filerecord__rec | stoptime__val | stoptraveltime__val | stop_at_weak_sink__kw | istopzone__val | drape__kw | dry_tracking_method__union | dev_forceternary__kw | release_time_tolerance__val | release_time_frequency__val | coordinate_check_method__union | dev_cycle_detection_window__val | open_close_redirect) _NL*)*
+dimensions__fields: ((nreleasepts__val | nreleasetimes__val | open_close_redirect) _NL*)*
+packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+releasetimes__fields: ((releasetimesdata | open_close_redirect) _NL*)*
+period__fields: ((all__kw__elem | first__kw__elem | last__kw__elem | frequency__val__elem | steps__val__elem | open_close_redirect) _NL*)*
+boundnames__kw: "boundnames"i  [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+dev_exit_solve_method__val: "dev_exit_solve_method"i integer [_remark] _NL
+exit_solve_tolerance__val: "exit_solve_tolerance"i double [_remark] _NL
+local_z__kw: "local_z"i  [_remark] _NL
+extend_tracking__kw: "extend_tracking"i  [_remark] _NL
+track_filerecord__rec: "track"i track_filerecord__trackfile__val [_remark] _NL
+track_filerecord__trackfile__val: "fileout"i word
+trackcsv_filerecord__rec: "trackcsv"i trackcsv_filerecord__trackcsvfile__val [_remark] _NL
+trackcsv_filerecord__trackcsvfile__val: "fileout"i word
+stoptime__val: "stoptime"i double [_remark] _NL
+stoptraveltime__val: "stoptraveltime"i double [_remark] _NL
+stop_at_weak_sink__kw: "stop_at_weak_sink"i  [_remark] _NL
+istopzone__val: "istopzone"i integer [_remark] _NL
+drape__kw: "drape"i  [_remark] _NL
+dry_tracking_method__union: "dry_tracking_method"i (dry_tracking_method__drop__kw | dry_tracking_method__stop__kw | dry_tracking_method__stay__kw) [_remark] _NL
 
-dry_tracking_method_drop: "drop"i
-dry_tracking_method_stop: "stop"i
-dry_tracking_method_stay: "stay"i
+!dry_tracking_method__drop__kw: "drop"i
+!dry_tracking_method__stop__kw: "stop"i
+!dry_tracking_method__stay__kw: "stay"i
 
-dev_forceternary: "dev_forceternary"i  [_remark] _NL
-release_time_tolerance: "release_time_tolerance"i double [_remark] _NL
-release_time_frequency: "release_time_frequency"i double [_remark] _NL
-coordinate_check_method: "coordinate_check_method"i (coordinate_check_method_none | coordinate_check_method_eager) [_remark] _NL
+dev_forceternary__kw: "dev_forceternary"i  [_remark] _NL
+release_time_tolerance__val: "release_time_tolerance"i double [_remark] _NL
+release_time_frequency__val: "release_time_frequency"i double [_remark] _NL
+coordinate_check_method__union: "coordinate_check_method"i (coordinate_check_method__none__kw | coordinate_check_method__eager__kw) [_remark] _NL
 
-coordinate_check_method_none: "none"i
-coordinate_check_method_eager: "eager"i
+!coordinate_check_method__none__kw: "none"i
+!coordinate_check_method__eager__kw: "eager"i
 
-dev_cycle_detection_window: "dev_cycle_detection_window"i integer [_remark] _NL
-nreleasepts: "nreleasepts"i integer [_remark] _NL
-nreleasetimes: "nreleasetimes"i integer [_remark] _NL
-all: "all"i  [_remark] _NL
-first: "first"i  [_remark] _NL
-last: "last"i  [_remark] _NL
-frequency: "frequency"i integer [_remark] _NL
-steps: "steps"i integer+ [_remark] _NL
+dev_cycle_detection_window__val: "dev_cycle_detection_window"i integer [_remark] _NL
+nreleasepts__val: "nreleasepts"i integer [_remark] _NL
+nreleasetimes__val: "nreleasetimes"i integer [_remark] _NL
+all__kw__elem: "all"i  [_remark] _NL
+first__kw__elem: "first"i  [_remark] _NL
+last__kw__elem: "last"i  [_remark] _NL
+frequency__val__elem: "frequency"i integer [_remark] _NL
+steps__val__elem: "steps"i integer+ [_remark] _NL
 packagedatadata: record+
 releasetimesdata: record+

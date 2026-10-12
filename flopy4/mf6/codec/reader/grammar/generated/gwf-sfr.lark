@@ -21,50 +21,56 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | dimensions_block | packagedata_block | crosssections_block | connectiondata_block | diversions_block | initialstages_block | period_block
+block: options__block | dimensions__block | packagedata__block | crosssections__block | connectiondata__block | diversions__block | initialstages__block | period__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-dimensions_block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions_fields _NL* "end"i "dimensions"i
-packagedata_block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata_fields _NL* "end"i "packagedata"i
-crosssections_block: "begin"i "crosssections"i [_remark] _NL _NL* crosssections_fields _NL* "end"i "crosssections"i
-connectiondata_block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata_fields _NL* "end"i "connectiondata"i
-diversions_block: "begin"i "diversions"i [_remark] _NL _NL* diversions_fields _NL* "end"i "diversions"i
-initialstages_block: "begin"i "initialstages"i [_remark] _NL _NL* initialstages_fields _NL* "end"i "initialstages"i
-period_block: "begin"i "period"i block_index [_remark] _NL _NL* period_fields _NL* "end"i "period"i [block_index]
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
+packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
+crosssections__block: "begin"i "crosssections"i [_remark] _NL _NL* crosssections__fields _NL* "end"i "crosssections"i
+connectiondata__block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* "end"i "connectiondata"i
+diversions__block: "begin"i "diversions"i [_remark] _NL _NL* diversions__fields _NL* "end"i "diversions"i
+initialstages__block: "begin"i "initialstages"i [_remark] _NL _NL* initialstages__fields _NL* "end"i "initialstages"i
+period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
 %import typed.block_index -> block_index
-options_fields: ((storage | ats_courant | auxiliary | boundnames | print_input | print_stage | print_flows | save_flows | stage_filerecord | budget_filerecord | budgetcsv_filerecord | package_convergence_filerecord | ts_filerecord | obs_filerecord | mover | maximum_picard_iterations | maximum_iterations | maximum_depth_change | unit_conversion | length_conversion | time_conversion | dev_storage_weight | dev_no_check | dev_no_final_check | open_close_redirect) _NL*)*
-dimensions_fields: ((nreaches | open_close_redirect) _NL*)*
-packagedata_fields: ((packagedatadata | open_close_redirect) _NL*)*
-crosssections_fields: ((crosssectionsdata | open_close_redirect) _NL*)*
-connectiondata_fields: ((connectiondatadata | open_close_redirect) _NL*)*
-diversions_fields: ((diversionsdata | open_close_redirect) _NL*)*
-initialstages_fields: ((initialstagesdata | open_close_redirect) _NL*)*
-period_fields: ((stress_period_data | open_close_redirect) _NL*)*
-storage: "storage"i  [_remark] _NL
-ats_courant: "ats_courant"i double [_remark] _NL
-auxiliary: "auxiliary"i word+ [_remark] _NL
-boundnames: "boundnames"i  [_remark] _NL
-print_input: "print_input"i  [_remark] _NL
-print_stage: "print_stage"i  [_remark] _NL
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
-stage_filerecord: "stage"i "fileout"i word [_remark] _NL
-budget_filerecord: "budget"i "fileout"i word [_remark] _NL
-budgetcsv_filerecord: "budgetcsv"i "fileout"i word [_remark] _NL
-package_convergence_filerecord: "package_convergence"i "fileout"i word [_remark] _NL
-ts_filerecord: "ts6"i "filein"i word [_remark] _NL
-obs_filerecord: "obs6"i "filein"i word [_remark] _NL
-mover: "mover"i  [_remark] _NL
-maximum_picard_iterations: "maximum_picard_iterations"i integer [_remark] _NL
-maximum_iterations: "maximum_iterations"i integer [_remark] _NL
-maximum_depth_change: "maximum_depth_change"i double [_remark] _NL
-unit_conversion: "unit_conversion"i double [_remark] _NL
-length_conversion: "length_conversion"i double [_remark] _NL
-time_conversion: "time_conversion"i double [_remark] _NL
-dev_storage_weight: "dev_storage_weight"i double [_remark] _NL
-dev_no_check: "dev_no_check"i  [_remark] _NL
-dev_no_final_check: "dev_no_final_check"i  [_remark] _NL
-nreaches: "nreaches"i integer [_remark] _NL
+options__fields: ((storage__kw | ats_courant__val | auxiliary__val | boundnames__kw | print_input__kw | print_stage__kw | print_flows__kw | save_flows__kw | stage_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | package_convergence_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | maximum_picard_iterations__val | maximum_iterations__val | maximum_depth_change__val | unit_conversion__val | length_conversion__val | time_conversion__val | dev_storage_weight__val | dev_no_check__kw | dev_no_final_check__kw | open_close_redirect) _NL*)*
+dimensions__fields: ((nreaches__val | open_close_redirect) _NL*)*
+packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
+crosssections__fields: ((crosssectionsdata | open_close_redirect) _NL*)*
+connectiondata__fields: ((connectiondatadata | open_close_redirect) _NL*)*
+diversions__fields: ((diversionsdata | open_close_redirect) _NL*)*
+initialstages__fields: ((initialstagesdata | open_close_redirect) _NL*)*
+period__fields: ((stress_period_data | open_close_redirect) _NL*)*
+storage__kw: "storage"i  [_remark] _NL
+ats_courant__val: "ats_courant"i double [_remark] _NL
+auxiliary__val: "auxiliary"i word+ [_remark] _NL
+boundnames__kw: "boundnames"i  [_remark] _NL
+print_input__kw: "print_input"i  [_remark] _NL
+print_stage__kw: "print_stage"i  [_remark] _NL
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
+stage_filerecord__rec: "stage"i stage_filerecord__stagefile__val [_remark] _NL
+stage_filerecord__stagefile__val: "fileout"i word
+budget_filerecord__rec: "budget"i budget_filerecord__budgetfile__val [_remark] _NL
+budget_filerecord__budgetfile__val: "fileout"i word
+budgetcsv_filerecord__rec: "budgetcsv"i budgetcsv_filerecord__budgetcsvfile__val [_remark] _NL
+budgetcsv_filerecord__budgetcsvfile__val: "fileout"i word
+package_convergence_filerecord__rec: "package_convergence"i package_convergence_filerecord__package_convergence_filename__val [_remark] _NL
+package_convergence_filerecord__package_convergence_filename__val: "fileout"i word
+ts_filerecord__rec__elem: "ts6"i ts_filerecord__ts6_filename__val [_remark] _NL
+ts_filerecord__ts6_filename__val: "filein"i word
+obs_filerecord__rec: "obs6"i obs_filerecord__obs6_filename__val [_remark] _NL
+obs_filerecord__obs6_filename__val: "filein"i word
+mover__kw: "mover"i  [_remark] _NL
+maximum_picard_iterations__val: "maximum_picard_iterations"i integer [_remark] _NL
+maximum_iterations__val: "maximum_iterations"i integer [_remark] _NL
+maximum_depth_change__val: "maximum_depth_change"i double [_remark] _NL
+unit_conversion__val: "unit_conversion"i double [_remark] _NL
+length_conversion__val: "length_conversion"i double [_remark] _NL
+time_conversion__val: "time_conversion"i double [_remark] _NL
+dev_storage_weight__val: "dev_storage_weight"i double [_remark] _NL
+dev_no_check__kw: "dev_no_check"i  [_remark] _NL
+dev_no_final_check__kw: "dev_no_final_check"i  [_remark] _NL
+nreaches__val: "nreaches"i integer [_remark] _NL
 packagedatadata: record+
 crosssectionsdata: record+
 connectiondatadata: record+

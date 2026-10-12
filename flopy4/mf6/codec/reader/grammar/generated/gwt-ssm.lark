@@ -21,15 +21,15 @@
 %ignore COMMA
 
 start: _NL* (block _NL*)*
-block: options_block | sources_block | fileinput_block
+block: options__block | sources__block | fileinput__block
 
-options_block: "begin"i "options"i [_remark] _NL _NL* options_fields _NL* "end"i "options"i
-sources_block: "begin"i "sources"i [_remark] _NL _NL* sources_fields _NL* "end"i "sources"i
-fileinput_block: "begin"i "fileinput"i [_remark] _NL _NL* fileinput_fields _NL* "end"i "fileinput"i
-options_fields: ((print_flows | save_flows | open_close_redirect) _NL*)*
-sources_fields: ((sourcesdata | open_close_redirect) _NL*)*
-fileinput_fields: ((fileinputdata | open_close_redirect) _NL*)*
-print_flows: "print_flows"i  [_remark] _NL
-save_flows: "save_flows"i  [_remark] _NL
+options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
+sources__block: "begin"i "sources"i [_remark] _NL _NL* sources__fields _NL* "end"i "sources"i
+fileinput__block: "begin"i "fileinput"i [_remark] _NL _NL* fileinput__fields _NL* "end"i "fileinput"i
+options__fields: ((print_flows__kw | save_flows__kw | open_close_redirect) _NL*)*
+sources__fields: ((sourcesdata | open_close_redirect) _NL*)*
+fileinput__fields: ((fileinputdata | open_close_redirect) _NL*)*
+print_flows__kw: "print_flows"i  [_remark] _NL
+save_flows__kw: "save_flows"i  [_remark] _NL
 sourcesdata: record+
 fileinputdata: record+
