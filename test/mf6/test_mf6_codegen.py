@@ -418,8 +418,8 @@ def test_model_spec(all_dfns):
     assert types["fmi"] == "Optional[Fmi]"
     assert types["ist"] == "list[Ist]"
     assert types["api"] == "list[Api]"
-    # packages without a class yet are left out
-    assert not {"mwt", "sft", "uzt"} & set(types)
+    # mwt/sft/uzt now have classes, like every other gwt-nam child
+    assert {"mwt", "sft", "uzt"} <= set(types)
     assert "netcdf_input_file" in types
     assert "packages" not in types
     assert spec.exports[0] == "Gwt"

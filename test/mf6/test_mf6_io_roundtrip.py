@@ -15,9 +15,15 @@ import xarray as xr
 from modflow_devtools.models import copy_to
 
 from flopy4.mf6.component import Component
+from flopy4.mf6.gwe import Adv as GweAdv
+from flopy4.mf6.gwe import Dis as GweDis
+from flopy4.mf6.gwe import Est as GweEst
+from flopy4.mf6.gwe import Gwe, Mwe, Sfe, Uze
+from flopy4.mf6.gwe import Ic as GweIc
+from flopy4.mf6.gwe import Ssm as GweSsm
 from flopy4.mf6.gwf import Wel
 from flopy4.mf6.gwt import Dis as GwtDis
-from flopy4.mf6.gwt import Gwt, Sft
+from flopy4.mf6.gwt import Gwt, Mwt, Sft, Uzt
 from flopy4.mf6.gwt import Ic as GwtIc
 from flopy4.mf6.gwt import Mst as GwtMst
 from flopy4.mf6.gwt import Ssm as GwtSsm
@@ -314,9 +320,10 @@ def test_layered_open_close_griddata(tmp_path):
     assert np.array_equal(result["k"], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
 
 
-def test_gwt_sft_round_trips(tmp_path):
-    """SFT (and its mwt/uzt/gwe sfe/uze/mwe analogs, registered the same
-    way) round-trips load -> write -> reload."""
+@pytest.mark.parametrize("pkg_cls", [Sft, Mwt, Uzt])
+def test_gwt_transport_round_trips(tmp_path, pkg_cls):
+    """GWT's advanced transport packages (sft, mwt, uzt -- registered the
+    same way) round-trip load -> write -> reload."""
     gwt_name = "gwt1"
     sim = Simulation(
         tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
@@ -329,17 +336,59 @@ def test_gwt_sft_round_trips(tmp_path):
     GwtIc(parent=gwt, strt=0.0)
     GwtMst(parent=gwt, porosity=0.3)
     GwtSsm(parent=gwt)
-    sft = Sft(
+    pkg = pkg_cls(
         parent=gwt,
         dims={"nper": 1},
         boundnames=True,
         packagedata=[(0, 1.0, "reach1")],
         stress_period_data={0: [[0, "STATUS", "CONSTANT"], [0, "CONCENTRATION", 5.0]]},
-        name="SFT-1",
+        name=f"{pkg_cls.__name__.upper()}-1",
     )
 
     sim.write()
     reloaded = Simulation.load(tmp_path / "mfsim.nam")
+    field = pkg_cls.__name__.lower()
     diffs: list[str] = []
-    _diff(sft.packagedata, reloaded[gwt_name].sft[0].packagedata, "sft.packagedata", diffs)
+    _diff(pkg.packagedata, getattr(reloaded[gwt_name], field)[0].packagedata, field, diffs)
+    assert not diffs, "\n".join(diffs)
+
+
+@pytest.mark.parametrize(
+    "pkg_cls, row",
+    [
+        (Sfe, (0, 1.0, 0.1, 0.01, "reach1")),
+        (Uze, (0, 1.0, "reach1")),
+        (Mwe, (0, 1.0, 0.1, 0.1, "reach1")),
+    ],
+)
+def test_gwe_transport_round_trips(tmp_path, pkg_cls, row):
+    """GWE's advanced transport packages (sfe, uze, mwe -- registered the
+    same way) round-trip load -> write -> reload."""
+    gwe_name = "gwe1"
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
+        workspace=tmp_path,
+        name="sim1",
+        solutiongroup=[Ims(filename="gwe.ims", models=[gwe_name])],
+    )
+    dis = GweDis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwe = Gwe(parent=sim, dis=dis, name=gwe_name)
+    GweIc(parent=gwe, strt=0.0)
+    GweAdv(parent=gwe, scheme="UPSTREAM")
+    GweEst(parent=gwe, porosity=0.3, heat_capacity_solid=800.0, density_solid=2700.0)
+    GweSsm(parent=gwe)
+    pkg = pkg_cls(
+        parent=gwe,
+        dims={"nper": 1},
+        boundnames=True,
+        packagedata=[row],
+        stress_period_data={0: [[0, "STATUS", "CONSTANT"], [0, "TEMPERATURE", 20.0]]},
+        name=f"{pkg_cls.__name__.upper()}-1",
+    )
+
+    sim.write()
+    reloaded = Simulation.load(tmp_path / "mfsim.nam")
+    field = pkg_cls.__name__.lower()
+    diffs: list[str] = []
+    _diff(pkg.packagedata, getattr(reloaded[gwe_name], field)[0].packagedata, field, diffs)
     assert not diffs, "\n".join(diffs)
