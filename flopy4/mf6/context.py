@@ -4,13 +4,12 @@ from pathlib import Path
 import attrs
 
 from flopy4.mf6.component import Component
-from flopy4.mf6.spec import field
 from flopy4.utils import to_path
 
 
 @attrs.define(kw_only=True, slots=False)
 class Context(Component, ABC):
-    workspace: Path = field(default=None, converter=to_path)
+    workspace: Path = attrs.field(default=None, converter=to_path)
     """The directory the context's files are written to and read from.
     A model under a simulation has the simulation's (see
     `Model.workspace`)."""

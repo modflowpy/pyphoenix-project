@@ -24,7 +24,7 @@ from flopy4.mf6.write_context import WriteContext
 
 def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
     """A block-level file record's ``KEYWORD FILEIN|FILEOUT <path>`` row. The
-    keyword is the field's own ``_keyword`` metadata (see spec.path)."""
+    keyword is the field's own ``_keyword`` metadata (see spec.file)."""
     keyword = field.metadata.get("_keyword")
     if not keyword:
         raise ValueError(f"file field {field.name!r} has no _keyword metadata")

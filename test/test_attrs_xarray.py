@@ -19,7 +19,7 @@ from flopy4.attrs_xarray import (
     datatree_to_attrs,
 )
 from flopy4.mf6.gwf.dis import Dis
-from flopy4.mf6.spec import field as mf6_field
+from flopy4.mf6.spec import array
 from flopy4.mixins import DatasetConvertibleMixin, DataTreeConvertibleMixin
 from flopy4.protocols import DatasetConvertible, DataTreeConvertible
 
@@ -33,7 +33,7 @@ class Leaf(DatasetConvertibleMixin):
     # Deliberately not named "dims"/"parent"/"_parent" -- flopy4.attrs_xarray
     # always excludes those (see its module docstring); no real DFN field
     # uses them either.
-    values: Optional[np.ndarray] = mf6_field(default=None, shape=("nlay",))
+    values: Optional[np.ndarray] = array(default=None, shape=("nlay",))
 
 
 @define

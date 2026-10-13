@@ -4,8 +4,8 @@ Generic conversion between `attrs`-decorated classes and `xarray`
 
 Reads only two things per field: its own instance value (via `getattr`)
 and, for array values, the field's own `shape` metadata (a tuple of
-dimension-name strings -- the same convention `flopy4.mf6.spec.field()`/
-`array()` already tag leaf DFN packages with).
+dimension-name strings -- the same convention `flopy4.mf6.spec.array()`
+already tags leaf DFN packages with).
 
 Child detection (which fields hold nested attrs instances, as opposed to
 plain scalar/array leaf values) is done by inspecting instance *values*
