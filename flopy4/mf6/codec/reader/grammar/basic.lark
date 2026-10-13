@@ -13,11 +13,6 @@ line: ((TOKEN | QUOTED) ((TOKEN | QUOTED) | BEGIN | END)*)? _NL+
 // than the longest, so e.g. an ISO datetime `1997-07-16T19:20:30` lexed as
 // `1997` and `-07-16T19:20:30`.
 TOKEN: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
-// A quoted value (boundnames/obsnames/filenames may contain spaces).
-// Without this, TOKEN splits a multi-word quoted value at the space,
-// shifting every later column in the row. Priority over TOKEN so a
-// quoted single word still wins on a length tie.
-QUOTED.1: /'[^'\n]*'|"[^"\n]*"/
 COMMA: ","
 BEGIN: "begin"i
 END: "end"i
@@ -29,6 +24,7 @@ END: "end"i
 %import common.INT
 %import common.SH_COMMENT
 %import common._STRING_INNER
+%import typed.QUOTED
 
 %ignore WS_INLINE
 %ignore SH_COMMENT

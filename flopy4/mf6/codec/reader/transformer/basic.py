@@ -3,6 +3,7 @@ from typing import Any
 
 from lark import Token, Transformer
 
+from flopy4.mf6.codec.reader.transformer.typed import unquote
 from flopy4.utils import parse_number
 
 # A whole token that's a number, allowing Fortran `D` exponents (`1D-5`).
@@ -63,7 +64,7 @@ class BasicTransformer(Transformer):
 
     def QUOTED(self, token: Token) -> str:
         # Quoting forces string interpretation even if content looks numeric.
-        return str(token)[1:-1]
+        return unquote(token)
 
     def CNAME(self, token: Token) -> str:
         return str(token)

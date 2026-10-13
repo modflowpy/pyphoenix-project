@@ -4179,3 +4179,19 @@ def test_ts_from_series_invalid(data, kwargs, match):
 
     with pytest.raises(ValueError, match=match):
         Ts.from_series(data, **kwargs)
+
+
+def test_loads_basic_and_typed_agree_on_quoting():
+    """loads() (basic) and loads(component=...) (typed) tokenize bare,
+    single-quoted, and double-quoted multi-word values the same way."""
+    mf6_input = """
+BEGIN continuous FILEOUT x.csv
+  wc02 water-content 2 0.5
+  'wc 02' water-content 2 0.5
+  "wc 03" water-content 3 0.5
+  'wcbn 02' water-content 'uzf 002' 0.5
+END continuous
+"""
+    basic = loads(mf6_input)["continuous FILEOUT x.csv"]
+    typed = loads(mf6_input, component="utl-obs")["continuous FILEOUT x.csv"]
+    assert basic == typed["stress_period_data"][0].children
