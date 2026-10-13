@@ -11,6 +11,11 @@ def to_path(value: Any) -> Optional[Path]:
     return Path(value) if value else None
 
 
+def empty_if_none(value: Any) -> dict:
+    """A dict for None, else the value as is."""
+    return {} if value is None else value
+
+
 def parse_number(value: str) -> int | float:
     """Parse a string into int or float based on its content."""
     try:

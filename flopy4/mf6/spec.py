@@ -65,7 +65,8 @@ def _check_dim(instance, attribute, value):
 # Field functions, one per DFN field type (modflow_devtools.dfns.schema), each
 # taking that type's attributes. A field with a ``block`` is a component's;
 # one without is a field of a list item or record. Each records its type, and
-# its attributes that are set, in the field's metadata.
+# its attributes that are set, in the field's metadata. Fields that aren't the
+# DFN's (a component's name, its parent, how it's written) use `attrs.field`.
 
 
 class FieldKwargs(TypedDict, total=False):
@@ -179,14 +180,14 @@ def array(
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """An array, of the dimensions ``shape`` names: a component's grid array
-    (``("nlay", "nrow", "ncol")``), or an item's values (``("auxiliary",)``;
-    unsized, ``()``, the rest of the row). A ``cellid``'s shape starts with
-    ``ncelldim``, one cellid's components: ``("ncelldim",)`` is one cellid,
-    ``("ncelldim", "numalphaj")`` several.
+    (``("nlay", "nrow", "ncol")``), or an inline array, in a record or list
+    item (``("auxiliary",)``; unsized, ``()``, the rest of the line). A
+    ``cellid``'s shape starts with ``ncelldim``, one cellid's components:
+    ``("ncelldim",)`` is one cellid, ``("ncelldim", "numalphaj")`` several.
 
     Compares with `array_eq`, as numpy's elementwise ``==`` isn't a valid
-    ``__eq__`` result. An item's array counted by another of its fields
-    keeps that field in step when reassigned.
+    ``__eq__`` result. An inline array counted by another field of its
+    item keeps that field in step when reassigned.
     """
     shape = tuple(shape)
     counts = shape[1:] if cellid else shape

@@ -29,7 +29,7 @@ from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
-from flopy4.spec import array_shape
+from flopy4.spec import is_array
 from flopy4.utils import unwrap_optional
 
 
@@ -315,7 +315,7 @@ def _griddata_flat_length(f, dims: dict, default: int) -> int:
     back to `default` (the grid's total node count) when the field's
     declared shape dimension isn't resolvable from `dims`.
     """
-    shape_meta = array_shape(f)
+    shape_meta = f.metadata.get("shape")
     if shape_meta:
         dim_name = shape_meta[-1] if isinstance(shape_meta, (tuple, list)) else shape_meta
         if dim_name in dims:
@@ -503,7 +503,7 @@ def _parse_readarray_period_block(
         # `layered` flag just allows it); otherwise it covers the field's
         # whole shape, all nodes for a grid package
         is_layered = any(str(t).upper() == "LAYERED" for t in row[1:])
-        per_node = (array_shape(f) or ("",))[-1] == "nodes"
+        per_node = (f.metadata.get("shape") or ("",))[-1] == "nodes"
         dtype = np.int64 if is_int else np.float64
 
         if is_layered:
@@ -919,7 +919,7 @@ def structure_component(
     array_fields: dict[str, dict[str, Any]] = {}
     for f in all_fields.values():
         if (
-            array_shape(f)
+            is_array(f)
             and not f.metadata.get("fill_forward")
             and f.name not in repeating_array_fields
             and item_list_type(f.type) is None

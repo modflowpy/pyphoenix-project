@@ -20,7 +20,7 @@ from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 from flopy4.mf6.write_context import WriteContext
-from flopy4.spec import array_shape
+from flopy4.spec import is_array
 
 
 def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
@@ -293,41 +293,41 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
             blocks[block_name][f.name] = field_value
 
-        elif array_shape(f) and not isinstance(field_value, bool):
+        elif is_array(f) and meta.get("shape") and not isinstance(field_value, bool):
+            # a grid array; an inline one has no shape (AUXILIARY's names)
             if meta.get("index"):
                 field_value = _to_file_index(field_value)
-            if array_shape(f):
-                # shape a per-cell array like the grid: a layered one by
-                # layer, with an nlay dim to signal the writer to use
-                # layered format, and on a structured grid each layer
-                # (nrow, ncol), since MF6 reads such a layer a row per line
-                if hasattr(field_value, "reshape") and not isinstance(field_value, xr.DataArray):
-                    _get_dims = getattr(value, "get_dims", None)
-                    _dims_d = _get_dims() if _get_dims else {}
-                    _nlay = _dims_d.get("nlay", 0)
-                    _ncpl = _dims_d.get("ncpl", 0)
-                    _layer = (
-                        (_dims_d["nrow"], _dims_d["ncol"])
-                        if "nrow" in _dims_d and "ncol" in _dims_d
-                        else (_ncpl,)
+            # shape a per-cell array like the grid: a layered one by
+            # layer, with an nlay dim to signal the writer to use
+            # layered format, and on a structured grid each layer
+            # (nrow, ncol), since MF6 reads such a layer a row per line
+            if hasattr(field_value, "reshape") and not isinstance(field_value, xr.DataArray):
+                _get_dims = getattr(value, "get_dims", None)
+                _dims_d = _get_dims() if _get_dims else {}
+                _nlay = _dims_d.get("nlay", 0)
+                _ncpl = _dims_d.get("ncpl", 0)
+                _layer = (
+                    (_dims_d["nrow"], _dims_d["ncol"])
+                    if "nrow" in _dims_d and "ncol" in _dims_d
+                    else (_ncpl,)
+                )
+                _da = None
+                if (
+                    meta.get("layered")
+                    and _nlay > 1
+                    and _ncpl > 0
+                    and field_value.size == _nlay * _ncpl
+                ):
+                    _da = xr.DataArray(
+                        field_value.reshape(_nlay, *_layer),
+                        dims=("nlay", *(("nrow", "ncol") if len(_layer) > 1 else ("ncpl",))),
                     )
-                    _da = None
-                    if (
-                        meta.get("layered")
-                        and _nlay > 1
-                        and _ncpl > 0
-                        and field_value.size == _nlay * _ncpl
-                    ):
-                        _da = xr.DataArray(
-                            field_value.reshape(_nlay, *_layer),
-                            dims=("nlay", *(("nrow", "ncol") if len(_layer) > 1 else ("ncpl",))),
-                        )
-                    elif len(_layer) > 1 and _ncpl > 0 and field_value.size == _ncpl:
-                        _da = xr.DataArray(field_value.reshape(_layer), dims=("nrow", "ncol"))
-                    if _da is not None:
-                        blocks[block_name][f.name] = _mark_netcdf(_da, meta)
-                        continue
-                blocks[block_name][f.name] = _mark_netcdf(_wrap_array(field_value), meta)
+                elif len(_layer) > 1 and _ncpl > 0 and field_value.size == _ncpl:
+                    _da = xr.DataArray(field_value.reshape(_layer), dims=("nrow", "ncol"))
+                if _da is not None:
+                    blocks[block_name][f.name] = _mark_netcdf(_da, meta)
+                    continue
+            blocks[block_name][f.name] = _mark_netcdf(_wrap_array(field_value), meta)
 
         elif isinstance(field_value, np.ndarray) and field_value.dtype.kind == "U":
             # An inline string array (AUXILIARY's names): one line.

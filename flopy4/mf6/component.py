@@ -13,6 +13,7 @@ from flopy4.mf6.external import write_session
 from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
+from flopy4.utils import empty_if_none
 
 if TYPE_CHECKING:
     from flopy4.mf6.load_context import LoadContext
@@ -188,10 +189,6 @@ def _find_child_field(parent_cls: type, child_cls: type) -> "tuple[Any, str] | N
     return matches[0]
 
 
-def _to_dims(value: Any) -> dict:
-    return {} if value is None else value
-
-
 # kw_only=True necessary so we can define optional fields here
 # and required fields in subclasses. attrs complains otherwise
 @attrs.define(kw_only=True, slots=False)
@@ -253,7 +250,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
 
     dims: dict = attrs.field(
         default=attrs.Factory(dict),
-        converter=_to_dims,
+        converter=empty_if_none,
         repr=False,
         eq=False,
     )

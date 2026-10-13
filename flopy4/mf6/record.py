@@ -21,6 +21,8 @@ from typing import Any, Literal, Union, cast, get_args, get_origin
 import attrs
 import numpy as np
 
+from flopy4.spec import is_array
+
 
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
     """Resolve a bare sibling class name one level up from `cls` in
@@ -104,13 +106,8 @@ def _coerce(token: Any, f: attrs.Attribute) -> Any:
     return token
 
 
-def _is_array(f: attrs.Attribute) -> bool:
-    """Whether a field is an array: several values, held as a tuple."""
-    return f.metadata.get("type") == "array"
-
-
 def _elem_coerce(token: Any, f: attrs.Attribute) -> Any:
-    """Coerce one token to an array field's element type: ``X`` of
+    """Coerce one token to an inline array's element type: ``X`` of
     ``tuple[X, ...]`` or ``Optional[tuple[X, ...]]``."""
     t = f.type
     origin = get_origin(t)
@@ -231,7 +228,7 @@ class Record:
         kwargs: dict = {}
         if isinstance(value, Mapping):
             kwargs = dict(value)
-        elif len(fields) == 1 and _is_array(fields[0]):
+        elif len(fields) == 1 and is_array(fields[0]):
             args = (tuple(value) if isinstance(value, Iterable) else (value,),)
         elif isinstance(value, tuple):
             args = value
@@ -347,11 +344,11 @@ class Record:
         positional_queue = required_tagged + untagged
         remaining = [t for j, t in enumerate(tokens) if j not in consumed]
 
-        array_field = next((f for f in positional_queue if _is_array(f)), None)
+        array_field = next((f for f in positional_queue if is_array(f)), None)
         if array_field is not None:
             idx = positional_queue.index(array_field)
             assert idx == len(positional_queue) - 1, (
-                f"{cls.__name__}.{array_field.name}: an array field must be the last "
+                f"{cls.__name__}.{array_field.name}: an inline array must be the last "
                 "positional field -- it consumes all remaining tokens"
             )
             scalar_fields = positional_queue[:idx]

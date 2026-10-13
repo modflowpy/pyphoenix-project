@@ -119,7 +119,7 @@ def array_eq(a: Any, b: Any) -> bool:
     - ``None`` equals only ``None``; dicts (e.g. time-array series) are
       compared key by key.
     - Shape and dtype must match. NaNs at the same position compare equal.
-    - Tuples (a row's array fields) compare like arrays, but integers and
+    - Tuples (inline arrays) compare like arrays, but integers and
       floats by value: a row's ``(1, 2)`` equals the ``(1.0, 2.0)`` read
       back.
     - Dask arrays are never computed: they are equal only if shape, dtype,
@@ -147,7 +147,7 @@ def array_eq(a: Any, b: Any) -> bool:
             and a.chunks == b.chunks
             and a.name == b.name
         )
-    # a row's array is a tuple, of ints or floats as given or read
+    # an inline array is a tuple, of ints or floats as given or read
     numeric = not (isinstance(a, np.ndarray) and isinstance(b, np.ndarray))
     try:
         a, b = np.asarray(a), np.asarray(b)
