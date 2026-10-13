@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import child, double, integer, list_, string
 from flopy4.mf6.tdis_methods import TdisMethods
 from flopy4.mf6.utl.ats import Ats
 
@@ -19,32 +19,32 @@ class Tdis(TdisMethods, DimsProviderMethods, Package):
 
     @attrs.define
     class Perioddata(Item):
-        perlen: float = field()
-        nstp: int = field()
-        tsmult: float = field()
+        perlen: float = double()
+        nstp: int = integer()
+        tsmult: float = double()
 
-    time_units: Optional[str] = field(
+    time_units: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="time unit",
     )
-    start_date_time: Optional[str] = field(
+    start_date_time: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="starting date and time",
     )
     ats: Optional[Ats] = child(block="options", keyword="ats6", direction="in")
-    nper: Optional[int] = field(
+    nper: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of stress periods",
     )
-    perioddata: Optional[list[Perioddata]] = field(
+    perioddata: Optional[list[Perioddata]] = list_(
         default=((1.0, 1, 1.0),),
         block="perioddata",
-        dim="nper",
+        shape=("nper",),
     )  # type: ignore[assignment]
 
 

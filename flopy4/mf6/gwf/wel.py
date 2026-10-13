@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -28,57 +28,56 @@ class Wel(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = field(cellid=True)
-        q: Union[float, TimeSeriesRef] = field(time_series=True)
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        q: Union[float, TimeSeriesRef] = double(time_series=True)
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = field(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    auxmultname: Optional[str] = field(
+    auxmultname: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="name of auxiliary variable for multiplier",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save well flows to budget file",
     )
-    auto_flow_reduce: Optional[float] = field(
+    auto_flow_reduce: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="cell fractional thickness for reduced pumping",
     )
-    afrcsv_file: Optional[Path] = path(
+    afrcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -86,13 +85,13 @@ class Wel(Package):
         direction="out",
         keyword="auto_flow_reduce_csv",
     )
-    flow_reduction_length: bool = field(
+    flow_reduction_length: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="flow reduction length keyword",
     )
-    auto_flow_reduce_auxname: Optional[str] = field(
+    auto_flow_reduce_auxname: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
@@ -102,12 +101,12 @@ class Wel(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

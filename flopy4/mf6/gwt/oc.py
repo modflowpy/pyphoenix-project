@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import array, file, integer, list_, record, string, union
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -31,28 +31,28 @@ class Oc(Package):
     @attrs.define
     class Frequency(Item):
         _keyword: ClassVar[str] = "frequency"
-        frequency: int = field()
+        frequency: int = integer()
 
     @attrs.define
     class Steps(Item):
         _keyword: ClassVar[str] = "steps"
-        steps: tuple[int, ...] = field(default=(), array=True)
+        steps: tuple[int, ...] = array(default=())
 
     @attrs.define
     class Save(Item):
         _keyword: ClassVar[str] = "save"
-        rtype: str = field()
-        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = field(arms=True)
+        rtype: str = string()
+        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = union()
 
     @attrs.define
     class Print(Item):
         _keyword: ClassVar[str] = "print"
-        rtype: str = field()
-        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = field(arms=True)
+        rtype: str = string()
+        ocsetting: "Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps" = union()
 
     _StressPeriodDataItem = Save | Print
 
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -60,7 +60,7 @@ class Oc(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -68,7 +68,7 @@ class Oc(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    concentration_file: Optional[Path] = path(
+    concentration_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -76,12 +76,12 @@ class Oc(Package):
         direction="out",
         keyword="concentration",
     )
-    concentrationprint: Optional[Concentrationprint] = field(
+    concentrationprint: Optional[Concentrationprint] = record(
         default=None,
         converter=Concentrationprint.convert,
         block="options",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

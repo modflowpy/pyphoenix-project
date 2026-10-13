@@ -22,6 +22,7 @@ from flopy4.mf6.item import (
     item_list_type,
     item_list_words,
     package_sized_fields,
+    shape_dim,
     union_value,
 )
 from flopy4.mf6.load_context import LoadContext
@@ -223,7 +224,7 @@ class Package(Component, ABC):
             if not (rows := self.__dict__.get(f.name)):
                 continue
             for col in item_cls.fields():
-                shape = col.metadata.get("shape", ("",))[0]
+                shape = shape_dim(col) or ""
                 if "(" not in shape:  # not a row lookup
                     continue
                 looked_up: list[str] = []
@@ -342,7 +343,7 @@ class Package(Component, ABC):
             return dim_lookup(values, name)
 
         for f in package_sized_fields(item_cls):
-            shape = f.metadata["shape"][0]
+            shape = shape_dim(f) or ""
             lengths = {len(v) for r in rows if (v := getattr(r, f.name))}
             if len(lengths) > 1:
                 raise ValueError(f"{f.name} lengths differ across rows: {sorted(lengths)}")

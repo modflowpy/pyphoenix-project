@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike, TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -57,108 +57,108 @@ class Csub(Package):
 
     @attrs.define
     class Packagedata(Item):
-        icsubno: int = field(index=True, pk=True)
-        cellid: tuple = field(cellid=True)
-        cdelay: str = field()
-        pcs0: float = field()
-        thick_frac: float = field()
-        rnb: float = field()
-        ssv_cc: float = field()
-        sse_cr: float = field()
-        theta: float = field()
-        kv: float = field()
-        h0: float = field()
-        boundname: Optional[str] = field(default=None, optional=True)
+        icsubno: int = integer(index=True, pk=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cdelay: str = string()
+        pcs0: float = double()
+        thick_frac: float = double()
+        rnb: float = double()
+        ssv_cc: float = double()
+        sse_cr: float = double()
+        theta: float = double()
+        kv: float = double()
+        h0: float = double()
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = field(cellid=True)
-        sig0: Union[float, TimeSeriesRef] = field(time_series=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        sig0: Union[float, TimeSeriesRef] = double(time_series=True)
 
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to save CSUB flows",
     )
-    gammaw: Optional[float] = field(
+    gammaw: Optional[float] = double(
         default=9806.65,
         block="options",
         optional=True,
         longname="unit weight of water",
     )
-    beta: Optional[float] = field(
+    beta: Optional[float] = double(
         default=4.6512e-10,
         block="options",
         optional=True,
         longname="compressibility of water",
     )
-    elastic_inelastic_smoothing: bool = field(
+    elastic_inelastic_smoothing: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="elastic to inelastic smoothing",
     )
-    strict_effective_stress: bool = field(
+    strict_effective_stress: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="terminate on negative effective stress",
     )
-    head_based: bool = field(
+    head_based: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate the head-based formulation will be used",
     )
-    initial_preconsolidation_head: bool = field(
+    initial_preconsolidation_head: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate that preconsolidation heads will be specified",
     )
-    ndelaycells: Optional[int] = field(
+    ndelaycells: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="number of interbed cell nodes",
     )
-    compression_indices: bool = field(
+    compression_indices: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate CR and CC are read instead of SSE and SSV",
     )
-    update_material_properties: bool = field(
+    update_material_properties: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate material properties can change during the simulations",
     )
-    cell_fraction: bool = field(
+    cell_fraction: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate cell fraction interbed thickness",
     )
-    specified_initial_interbed_state: bool = field(
+    specified_initial_interbed_state: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate that absolute initial states will be specified",
     )
-    specified_initial_preconsolidation_stress: bool = field(
+    specified_initial_preconsolidation_stress: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -167,13 +167,13 @@ class Csub(Package):
             "specified"
         ),
     )
-    specified_initial_delay_head: bool = field(
+    specified_initial_delay_head: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate that absolute initial delay bed heads will be specified",
     )
-    effective_stress_lag: bool = field(
+    effective_stress_lag: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -182,7 +182,7 @@ class Csub(Package):
             "stress from the previous time step"
         ),
     )
-    strainib_file: Optional[Path] = path(
+    strainib_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -190,7 +190,7 @@ class Csub(Package):
         direction="out",
         keyword="strain_csv_interbed",
     )
-    straincg_file: Optional[Path] = path(
+    straincg_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -198,7 +198,7 @@ class Csub(Package):
         direction="out",
         keyword="strain_csv_coarse",
     )
-    compaction_file: Optional[Path] = path(
+    compaction_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -206,7 +206,7 @@ class Csub(Package):
         direction="out",
         keyword="compaction",
     )
-    compaction_elastic_file: Optional[Path] = path(
+    compaction_elastic_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -214,7 +214,7 @@ class Csub(Package):
         direction="out",
         keyword="compaction_elastic",
     )
-    compaction_inelastic_file: Optional[Path] = path(
+    compaction_inelastic_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -222,7 +222,7 @@ class Csub(Package):
         direction="out",
         keyword="compaction_inelastic",
     )
-    compaction_interbed_file: Optional[Path] = path(
+    compaction_interbed_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -230,7 +230,7 @@ class Csub(Package):
         direction="out",
         keyword="compaction_interbed",
     )
-    compaction_coarse_file: Optional[Path] = path(
+    compaction_coarse_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -238,7 +238,7 @@ class Csub(Package):
         direction="out",
         keyword="compaction_coarse",
     )
-    zdisplacement_file: Optional[Path] = path(
+    zdisplacement_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -246,7 +246,7 @@ class Csub(Package):
         direction="out",
         keyword="zdisplacement",
     )
-    package_convergence_file: Optional[Path] = path(
+    package_convergence_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -258,18 +258,18 @@ class Csub(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    ninterbeds: Optional[int] = field(
+    ninterbeds: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of CSUB interbed systems",
     )
-    maxsig0: Optional[int] = field(
+    maxsig0: Optional[int] = integer(
         default=None,
         block="dimensions",
         optional=True,
         longname="maximum number of stress offset cells",
     )
-    cg_ske_cr: FloatArrayLike = field(
+    cg_ske_cr: FloatArrayLike = array(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
@@ -277,7 +277,7 @@ class Csub(Package):
         netcdf=True,
         longname="elastic coarse specific storage",
     )  # type: ignore[assignment]
-    cg_theta: FloatArrayLike = field(
+    cg_theta: FloatArrayLike = array(
         default=0.2,
         block="griddata",
         shape=("nodes",),
@@ -285,7 +285,7 @@ class Csub(Package):
         netcdf=True,
         longname="initial coarse-grained material porosity",
     )  # type: ignore[assignment]
-    sgm: Optional[FloatArrayLike] = field(
+    sgm: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -294,7 +294,7 @@ class Csub(Package):
         optional=True,
         longname="specific gravity of moist sediments",
     )
-    sgs: Optional[FloatArrayLike] = field(
+    sgs: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -303,18 +303,18 @@ class Csub(Package):
         optional=True,
         longname="specific gravity of saturated sediments",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="ninterbeds",
+        shape=("ninterbeds",),
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
         fill_forward=True,
-        dim="<=maxsig0",
+        shape=("<=maxsig0",),
     )
 
 

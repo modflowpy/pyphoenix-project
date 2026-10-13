@@ -5,38 +5,38 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, keyword
 
 
 @attrs.define(kw_only=True, slots=False)
 class Dsp(Package):
     dfn_name: ClassVar[str] = "gwt-dsp"
 
-    xt3d_off: bool = field(
+    xt3d_off: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="deactivate xt3d",
     )
-    xt3d_rhs: bool = field(
+    xt3d_rhs: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="xt3d on right-hand side",
     )
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    diffc: Optional[FloatArrayLike] = field(
+    diffc: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -45,7 +45,7 @@ class Dsp(Package):
         optional=True,
         longname="effective molecular diffusion coefficient",
     )
-    alh: Optional[FloatArrayLike] = field(
+    alh: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -54,7 +54,7 @@ class Dsp(Package):
         optional=True,
         longname="longitudinal dispersivity in horizontal direction",
     )
-    alv: Optional[FloatArrayLike] = field(
+    alv: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -63,7 +63,7 @@ class Dsp(Package):
         optional=True,
         longname="longitudinal dispersivity in vertical direction",
     )
-    ath1: Optional[FloatArrayLike] = field(
+    ath1: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -72,7 +72,7 @@ class Dsp(Package):
         optional=True,
         longname="transverse dispersivity in horizontal direction",
     )
-    ath2: Optional[FloatArrayLike] = field(
+    ath2: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -81,7 +81,7 @@ class Dsp(Package):
         optional=True,
         longname="transverse dispersivity in horizontal direction",
     )
-    atv: Optional[FloatArrayLike] = field(
+    atv: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),

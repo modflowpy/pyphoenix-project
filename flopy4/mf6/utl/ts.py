@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, double, list_, record
 from flopy4.mf6.utl.ts_methods import TsMethods
 
 
@@ -44,35 +44,35 @@ class Ts(TsMethods, Package):
 
     @attrs.define
     class Timeseries(Item):
-        ts_time: float = field()
-        ts_array: tuple[float, ...] = field(array=True, shape=("time_series_names",))
+        ts_time: float = double()
+        ts_array: tuple[float, ...] = array(shape=("time_series_names",))
 
-    time_series_name: Optional[TimeSeriesName] = field(
+    time_series_name: Optional[TimeSeriesName] = record(
         default=None,
         converter=TimeSeriesName.convert,
         block="attributes",
     )
-    interpolation_method: Optional[InterpolationMethod] = field(
+    interpolation_method: Optional[InterpolationMethod] = record(
         default=None,
         converter=InterpolationMethod.convert,
         block="attributes",
     )
-    interpolation_methodrecord_single: Optional[InterpolationMethodrecordSingle] = field(
+    interpolation_methodrecord_single: Optional[InterpolationMethodrecordSingle] = record(
         default=None,
         converter=InterpolationMethodrecordSingle.convert,
         block="attributes",
     )
-    sfac: Optional[Sfac] = field(
+    sfac: Optional[Sfac] = record(
         default=None,
         converter=Sfac.convert,
         block="attributes",
     )
-    sfacrecord_single: Optional[SfacrecordSingle] = field(
+    sfacrecord_single: Optional[SfacrecordSingle] = record(
         default=None,
         converter=SfacrecordSingle.convert,
         block="attributes",
     )
-    timeseries: Optional[list[Timeseries]] = field(
+    timeseries: Optional[list[Timeseries]] = list_(
         default=None,
         block="timeseries",
         write_if_empty=True,

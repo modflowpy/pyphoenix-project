@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import array, child, double, keyword, list_, union
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -17,24 +17,24 @@ class Tvk(Package):
     @attrs.define
     class K(Item):
         _keyword: ClassVar[str] = "k"
-        k: Union[float, TimeSeriesRef] = field(time_series=True)
+        k: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class K22(Item):
         _keyword: ClassVar[str] = "k22"
-        k22: Union[float, TimeSeriesRef] = field(time_series=True)
+        k22: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class K33(Item):
         _keyword: ClassVar[str] = "k33"
-        k33: Union[float, TimeSeriesRef] = field(time_series=True)
+        k33: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = field(cellid=True)
-        tvksetting: "Tvk.K | Tvk.K22 | Tvk.K33" = field(arms=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        tvksetting: "Tvk.K | Tvk.K22 | Tvk.K33" = union()
 
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -43,7 +43,7 @@ class Tvk(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

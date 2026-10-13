@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -14,16 +14,16 @@ class Hpc(Package):
 
     @attrs.define
     class Partitions(Item):
-        mname: str = field()
-        mrank: int = field()
+        mname: str = string()
+        mrank: int = integer()
 
-    print_table: bool = field(
+    print_table: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="model print table to listing file",
     )
-    partitions: Optional[list[Partitions]] = field(
+    partitions: Optional[list[Partitions]] = list_(
         default=None,
         block="partitions",
     )

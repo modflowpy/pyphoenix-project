@@ -6,7 +6,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -17,64 +17,64 @@ class Prp(Package):
 
     @attrs.define
     class Packagedata(Item):
-        irptno: int = field(index=True, pk=True)
-        cellid: tuple = field(cellid=True)
-        xrpt: float = field()
-        yrpt: float = field()
-        zrpt: float = field()
-        boundname: Optional[str] = field(default=None, optional=True)
+        irptno: int = integer(index=True, pk=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        xrpt: float = double()
+        yrpt: float = double()
+        zrpt: float = double()
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Releasetimes(Item):
-        time: float = field()
+        time: float = double()
 
     @attrs.define
     class Frequency(Item):
         _keyword: ClassVar[str] = "frequency"
-        frequency: int = field()
+        frequency: int = integer()
 
     @attrs.define
     class Steps(Item):
         _keyword: ClassVar[str] = "steps"
-        steps: tuple[int, ...] = field(default=(), array=True)
+        steps: tuple[int, ...] = array(default=())
 
     @attrs.define
     class Fraction(Item):
         _keyword: ClassVar[str] = "fraction"
-        fraction: tuple[float, ...] = field(default=(), array=True)
+        fraction: tuple[float, ...] = array(default=())
 
     _StressPeriodDataItem = Literal["ALL", "FIRST", "LAST"] | Frequency | Steps | Fraction
 
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    exit_solve_tolerance: Optional[float] = field(
+    exit_solve_tolerance: Optional[float] = double(
         default=1e-05,
         block="options",
         optional=True,
         longname="exit solve tolerance",
     )
-    local_z: bool = field(
+    local_z: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="whether to use local z coordinates",
     )
-    extend_tracking: bool = field(
+    extend_tracking: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="whether to extend tracking beyond the end of the simulation",
     )
-    track_file: Optional[Path] = path(
+    track_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -82,7 +82,7 @@ class Prp(Package):
         direction="out",
         keyword="track",
     )
-    trackcsv_file: Optional[Path] = path(
+    trackcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -90,81 +90,81 @@ class Prp(Package):
         direction="out",
         keyword="trackcsv",
     )
-    stoptime: Optional[float] = field(
+    stoptime: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="stop time",
     )
-    stoptraveltime: Optional[float] = field(
+    stoptraveltime: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="stop travel time",
     )
-    stop_at_weak_sink: bool = field(
+    stop_at_weak_sink: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="stop at weak sink",
     )
-    istopzone: Optional[int] = field(
+    istopzone: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="stop zone number",
     )
-    drape: bool = field(
+    drape: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="drape",
     )
-    dry_tracking_method: Optional[str] = field(
+    dry_tracking_method: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="what to do in dry-but-active cells",
     )
-    release_time_tolerance: Optional[float] = field(
+    release_time_tolerance: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="release time coincidence tolerance",
     )
-    release_time_frequency: Optional[float] = field(
+    release_time_frequency: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="release time frequency",
     )
-    coordinate_check_method: Optional[str] = field(
+    coordinate_check_method: Optional[str] = string(
         default="eager",
         block="options",
         optional=True,
         longname="coordinate checking method",
     )
-    nreleasepts: Optional[int] = field(
+    nreleasepts: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of particle release points",
     )
-    nreleasetimes: Optional[int] = field(
+    nreleasetimes: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of particle release times",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nreleasepts",
+        shape=("nreleasepts",),
     )
-    releasetimes: Optional[list[Releasetimes]] = field(
+    releasetimes: Optional[list[Releasetimes]] = list_(
         default=None,
         block="releasetimes",
-        dim="nreleasetimes",
+        shape=("nreleasetimes",),
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

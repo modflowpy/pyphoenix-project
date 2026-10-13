@@ -545,8 +545,28 @@ def _default_repr(f: FieldV3) -> str:
 # Field call strings
 
 
+def field_function(f: FieldV3) -> str:
+    """The field function (flopy4.mf6.spec) for a component's field: the
+    one for its DFN type. A file record is its file."""
+    if is_file_record(f) or is_file_list(f):
+        return "file"
+    for cls, fn in (
+        (KeywordField, "keyword"),
+        (String, "string"),
+        (Integer, "integer"),
+        (Double, "double"),
+        (Array, "array"),
+        (ListField, "list_"),
+        (Record, "record"),
+        (UnionField, "union"),
+    ):
+        if isinstance(f, cls):
+            return fn
+    raise TypeError(f"{f.name!r}: no field function for {type(f).__name__}")
+
+
 def field_metadata(f: FieldV3, block_name: str) -> dict:
-    """Build the ``field()``/``path()`` spec-call kwargs for a field.
+    """Build the field function's kwargs for a field (see field_function).
 
     These calls carry passive metadata (shape, block, etc.) read by the
     codec and conversion methods at call time, rather than any structure
@@ -573,7 +593,7 @@ def field_metadata(f: FieldV3, block_name: str) -> dict:
         # The record's trigger keyword (e.g. "ts6" in "TS6 FILEIN <file>")
         # isn't recoverable from the py name (ts_filerecord → ts_file), so
         # carry it explicitly -- stored as _keyword metadata, the same
-        # convention as a Record class's own _keyword (see spec.path).
+        # convention as a Record class's own _keyword (see spec.file).
         keywords = [c.name for c in f.fields.values() if isinstance(c, KeywordField)]
         if len(keywords) != 1:
             raise ValueError(f"file record {f.name!r}: expected one keyword, got {keywords}")
@@ -602,7 +622,7 @@ def _dq(v) -> str:
 
 
 def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
-    """Render one field()/path() kwarg line, wrapping long string values across
+    """Render one field function kwarg line, wrapping long string values across
     adjacent literals (standard Python string concatenation) so the line
     respects the 100-char limit -- ruff/black can't split a string literal
     on their own, so long DFN longname text needs this done explicitly.
@@ -633,7 +653,7 @@ def _wrap_kwarg_line(k: str, v, indent: int = 8) -> str:
 
 
 def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
-    """Return the field()/path() spec call string for a field.
+    """Return the field function call string for a field (see field_function).
 
     Emits a multi-line call to comply with the 100-char line-length limit.
     Continuation lines are pre-indented for class body (8-space args,
@@ -651,7 +671,7 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
             kw["optional"] = True
         kw |= item_kw
         conv = field_converter(f, block_name)
-        lines = ["path(", "        default=None,", f"        converter={conv},"]
+        lines = ["file(", "        default=None,", f"        converter={conv},"]
         lines += [_wrap_kwarg_line(k, v) for k, v in kw.items()]
         lines.append("    )")
         return "\n".join(lines)
@@ -674,13 +694,9 @@ def field_call(f: FieldV3, block_name: str, linked_dim: bool = False) -> str:
     type_ignore = ""
     if (is_readarray(f) and default != "None") or (_str_default and _numeric_field):
         type_ignore = "  # type: ignore[assignment]"
-    fn = "path" if is_file_record(f) else "field"
-    lines = [f"{fn}(", f"        default={default},"]
+    lines = [f"{field_function(f)}(", f"        default={default},"]
     if conv := field_converter(f, block_name):
         lines.append(f"        converter={conv},")
-        if "to_array(" in conv:
-            # inline arrays have no shape for field() to key on
-            lines.append("        eq=ARRAY_EQ,")
     for k, v in kw.items():
         lines.append(_wrap_kwarg_line(k, v))
     lines.append(f"    ){type_ignore}")
@@ -735,6 +751,36 @@ _UNION_ARM_PY = {
 }
 
 
+# The field function (flopy4.mf6.spec) for a scalar of each DFN type.
+_DFN_FN: dict[str, str] = {
+    "double": "double",
+    "double precision": "double",
+    "integer": "integer",
+    "string": "string",
+    "keyword": "string",
+}
+
+# The field functions generated code calls (flopy4.mf6.spec).
+SPEC_FUNCTIONS = (
+    "keyword",
+    "string",
+    "integer",
+    "double",
+    "array",
+    "list_",
+    "union",
+    "record",
+    "file",
+    "child",
+)
+
+
+def spec_functions(code: str) -> set[str]:
+    """The field functions a piece of generated code calls."""
+    names = "|".join(SPEC_FUNCTIONS)
+    return set(re.findall(rf"(?<![\w.])({names})\(", code))
+
+
 _DFN_PY: dict[str, str] = {
     "double": "float",
     "double precision": "float",
@@ -769,8 +815,8 @@ class ItemColumn:
 
     @property
     def uses_path(self) -> bool:
-        """Whether the module needs ``Path`` and ``path`` imported."""
-        return "path(" in self.rhs
+        """Whether the module needs ``Path`` imported."""
+        return "Path" in self.annotation
 
     @property
     def uses_union(self) -> bool:
@@ -788,13 +834,9 @@ class ItemColumn:
         return "TimeSeriesRef" in self.annotation
 
     @property
-    def uses_child(self) -> bool:
-        return "child(" in self.rhs
-
-    @property
-    def uses_field(self) -> bool:
-        """Whether the module needs ``field`` imported."""
-        return "field(" in self.rhs
+    def spec_functions(self) -> set[str]:
+        """The field functions the module needs imported."""
+        return spec_functions(self.rhs)
 
     def line(self, package_class_name: str = "") -> str:
         annotation = self.annotation
@@ -807,8 +849,10 @@ class ItemColumn:
         if self.arm_classes and len(line) > 100:
             # a string annotation can't wrap, so wrap the call as ruff would,
             # keeping the comment on the long line
-            args = self.rhs.removeprefix("field(").removesuffix(")")
-            first = f"        {self.name}: {annotation} = field(  # noqa: E501"
+            fn, _, args = self.rhs.removesuffix(")").partition("(")
+            if not args:
+                return f"{line}  # noqa: E501"
+            first = f"        {self.name}: {annotation} = {fn}(  # noqa: E501"
             return f"{first}\n            {args}\n        )"
         return line
 
@@ -820,14 +864,17 @@ def _margs(meta: dict) -> str:
 def attr_column(
     name: str,
     py_type: str,
+    fn: str,
     meta: dict,
     *,
     optional: bool,
     time_series: bool = False,
     default: str = "None",
+    args: tuple[str, ...] = (),
     **kwargs,
 ) -> ItemColumn:
-    """The generic rendering: ``name: T = field(meta)``, or, when optional,
+    """The generic rendering: ``name: T = fn(*args, meta)``, ``fn`` the field
+    function for the DFN type (see `flopy4.mf6.spec`), or, when optional,
     ``Optional[T]`` with a ``None`` default (or ``T`` with ``default``)."""
     meta = dict(meta)
     if time_series:
@@ -840,22 +887,22 @@ def attr_column(
         # surf_rate_specified) when inferring a variable-width cellid's
         # element count from raw token counts.
         meta["optional"] = True
-    margs = _margs(meta)
+    positional = [_dq(a) for a in args]
     if optional:
         annotation = py_type if default != "None" else f"Optional[{py_type}]"
-        rhs = f"field(default={default}, {margs})" if meta else default
+        rhs = f"{fn}({', '.join([*positional, f'default={default}', _margs(meta)])})"
     else:
         annotation = py_type
-        # A bare annotation here is equivalent to field() at runtime (both
+        # A bare annotation here is equivalent to fn() at runtime (both
         # mean "no default") -- but mypy's attrs plugin doesn't recognize
-        # field() (a flopy4.mf6.spec wrapper, not attrs.field itself) as a
-        # field specifier, so it can't tell field()-declared columns above
-        # (e.g. pk=/cellid=) don't actually have a default either. Left
-        # bare, that misreading makes mypy treat *this* column as a
-        # "non-default attribute after a default attribute". Always going
-        # through field() keeps every column's mypy-visible shape
+        # the field functions (flopy4.mf6.spec wrappers, not attrs.field
+        # itself) as field specifiers, so it can't tell columns declared
+        # with them above (e.g. pk=/cellid=) don't actually have a default
+        # either. Left bare, that misreading makes mypy treat *this* column
+        # as a "non-default attribute after a default attribute". Always
+        # going through a function keeps every column's mypy-visible shape
         # consistent and side-steps the false positive.
-        rhs = f"field({margs})"
+        rhs = f"{fn}({', '.join([*positional, *([_margs(meta)] if meta else [])])})"
     return ItemColumn(
         name=name,
         annotation=annotation,
@@ -877,6 +924,7 @@ def value_column(
     return attr_column(
         name,
         py_type,
+        _DFN_FN.get(dfn_type, "double"),
         {},
         optional=optional,
         time_series=time_series,
@@ -899,6 +947,7 @@ def feature_id_column(
     return attr_column(
         name,
         "int",
+        "integer",
         meta,
         optional=optional,
         time_series=time_series,
@@ -922,7 +971,9 @@ def union_column(
     return attr_column(
         name,
         f"Union[{', '.join(types)}]",
-        {"union": arms},
+        "union",
+        {},
+        args=arms,
         optional=optional,
         time_series=time_series,
     )
@@ -952,7 +1003,7 @@ def array_column(
         return ItemColumn(
             name=name,
             annotation=f"tuple[{elem}, ...]" if elem else "tuple",
-            rhs="field(default=(), array=True)",
+            rhs="array(default=())",
             optional=True,
         )
     if cellid:
@@ -963,30 +1014,40 @@ def array_column(
         py_type = "tuple[Union[float, TimeSeriesRef], ...]"
     else:
         py_type = f"tuple[{_DFN_PY.get(dfn_type, 'float')}, ...]"
-    meta: dict = {"array": True}
+    meta: dict = {}
     if cellid:
+        # a cellid's first axis is ncelldim, its components
         meta["cellid"] = cellid
-    if index:
         meta["index"] = True
-    meta["shape"] = (shape,)
-    if signed:
-        meta["signed"] = True
+        meta["shape"] = ("ncelldim", shape)
+    else:
+        if index or signed:
+            meta["index"] = "signed" if signed else True
+        meta["shape"] = (shape,)
     return attr_column(
-        name, py_type, meta, optional=optional, time_series=time_series, default="()"
+        name, py_type, "array", meta, optional=optional, time_series=time_series, default="()"
     )
+
+
+def cellid_column(
+    name: str, cellid: Cellid, *, optional: bool = False, time_series: bool = False
+) -> ItemColumn:
+    """One cellid: an array of its ``ncelldim`` components."""
+    meta = {"cellid": cellid, "index": True, "shape": ("ncelldim",)}
+    return attr_column(name, "tuple", "array", meta, optional=optional, time_series=time_series)
 
 
 def file_column(
     name: str, direction: str, keyword: str | None = None, *, optional: bool = False
 ) -> ItemColumn:
-    """A path() field (e.g. LAK tables' "TAB6 FILEIN <file>")."""
+    """A file field (e.g. LAK tables' "TAB6 FILEIN <file>")."""
     keyword_kw = f", keyword={_dq(keyword)}" if keyword else ""
     if optional:
         return ItemColumn(
             name=name,
             annotation="Optional[Path]",
             rhs=(
-                "path(\n"
+                "file(\n"
                 f"            default=None, converter={converter('Optional[Path]')}, "
                 f'direction="{direction}"{keyword_kw}\n'
                 "        )"
@@ -996,7 +1057,7 @@ def file_column(
     return ItemColumn(
         name=name,
         annotation="Path",
-        rhs=f'path(converter=Path, direction="{direction}"{keyword_kw})',
+        rhs=f'file(converter=Path, direction="{direction}"{keyword_kw})',
     )
 
 
@@ -1038,7 +1099,7 @@ def class_union_column(
     return ItemColumn(
         name=name,
         annotation="",
-        rhs="field(arms=True)",
+        rhs="union()",
         optional=optional,
         arm_classes=tuple(arm_classes),
         words=tuple(words),
@@ -1063,10 +1124,10 @@ def item_class(
     with arm classes -- it qualifies that field's forward-reference union
     annotation (``"Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | ..."``).
 
-    Produces a 4-space-indented ``@attrs.define`` class whose fields carry
-    real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
-    ``tagged=``, via ``field()``; ``direction=``/``keyword=`` for a file
-    column, via ``path()``) -- the class itself is the schema.
+    Produces a 4-space-indented ``@attrs.define`` class whose fields are
+    declared with the field function for their DFN type (``integer(index=True,
+    pk=True)``, ``array(shape=("auxiliary",))``, ``file(direction="in")``,
+    ...; see flopy4.mf6.spec) -- the class itself is the schema.
 
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.

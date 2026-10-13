@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.sfrtab import Sfrtab
 from flopy4.mf6.utl.ts import Ts
@@ -43,102 +43,97 @@ class Sfr(Package):
 
     @attrs.define
     class Packagedata(Item):
-        ifno: int = field(index=True, pk=True)
-        cellid: tuple = field(cellid=True)
-        rlen: float = field()
-        rwid: float = field()
-        rgrd: float = field()
-        rtp: float = field()
-        rbth: float = field()
-        rhk: Union[float, TimeSeriesRef] = field(time_series=True)
-        man: Union[float, TimeSeriesRef] = field(time_series=True)
-        ncon: int = field()
-        ustrf: Union[float, TimeSeriesRef] = field(time_series=True)
-        ndv: int = field()
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        ifno: int = integer(index=True, pk=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        rlen: float = double()
+        rwid: float = double()
+        rgrd: float = double()
+        rtp: float = double()
+        rbth: float = double()
+        rhk: Union[float, TimeSeriesRef] = double(time_series=True)
+        man: Union[float, TimeSeriesRef] = double(time_series=True)
+        ncon: int = integer()
+        ustrf: Union[float, TimeSeriesRef] = double(time_series=True)
+        ndv: int = integer()
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = field(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Crosssections(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
+        ifno: int = integer(index=True, fk="packagedata.ifno")
         sfrtab: Sfrtab = child(keyword="tab6", direction="in", default=attrs.NOTHING)
 
     @attrs.define
     class Connectiondata(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        ic: tuple[tuple[int, int], ...] = field(
-            default=(),
-            array=True,
-            index=True,
-            shape=("packagedata.ncon(ifno)",),
-            signed=True,
-            optional=True,
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        ic: tuple[tuple[int, int], ...] = array(
+            default=(), index="signed", shape=("packagedata.ncon(ifno)",), optional=True
         )
 
     @attrs.define
     class Diversions(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        idv: int = field(index=True)
-        iconr: int = field(index=True, fk="packagedata.ifno")
-        cprior: str = field()
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        idv: int = integer(index=True)
+        iconr: int = integer(index=True, fk="packagedata.ifno")
+        cprior: str = string()
 
     @attrs.define
     class Initialstages(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        initialstage: float = field()
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        initialstage: float = double()
 
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        status: str = field()
+        status: str = string()
 
     @attrs.define
     class Bedk(Item):
         _keyword: ClassVar[str] = "bedk"
-        bedk: Union[float, TimeSeriesRef] = field(time_series=True)
+        bedk: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Manning(Item):
         _keyword: ClassVar[str] = "manning"
-        manning: Union[float, TimeSeriesRef] = field(time_series=True)
+        manning: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Stage(Item):
         _keyword: ClassVar[str] = "stage"
-        stage: Union[float, TimeSeriesRef] = field(time_series=True)
+        stage: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
-        inflow: Union[float, TimeSeriesRef] = field(time_series=True)
+        inflow: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
-        rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
+        rainfall: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
-        evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
+        evaporation: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
-        runoff: Union[float, TimeSeriesRef] = field(time_series=True)
+        runoff: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Diversion(Item):
         _keyword: ClassVar[str] = "diversion"
-        idv: int = field(index=True)
-        divflow: Union[float, TimeSeriesRef] = field(time_series=True)
+        idv: int = integer(index=True)
+        divflow: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class UpstreamFraction(Item):
         _keyword: ClassVar[str] = "upstream_fraction"
-        upstream_fraction: Union[float, TimeSeriesRef] = field(time_series=True)
+        upstream_fraction: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class CrossSection(Item):
@@ -148,66 +143,63 @@ class Sfr(Package):
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        auxname: str = field()
-        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
+        auxname: str = string()
+        auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        sfrsetting: "Sfr.Status | Sfr.Bedk | Sfr.Manning | Sfr.Stage | Sfr.Inflow | Sfr.Rainfall | Sfr.Evaporation | Sfr.Runoff | Sfr.Diversion | Sfr.UpstreamFraction | Sfr.CrossSection | Sfr.Auxiliary" = field(  # noqa: E501
-            arms=True
-        )
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        sfrsetting: "Sfr.Status | Sfr.Bedk | Sfr.Manning | Sfr.Stage | Sfr.Inflow | Sfr.Rainfall | Sfr.Evaporation | Sfr.Runoff | Sfr.Diversion | Sfr.UpstreamFraction | Sfr.CrossSection | Sfr.Auxiliary" = union()  # noqa: E501
 
-    storage: bool = field(
+    storage: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate reach storage",
     )
-    ats_courant: Optional[float] = field(
+    ats_courant: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="target Courant number for adaptive time stepping",
     )
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_stage: bool = field(
+    print_stage: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated stages to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save stream reach flows to budget file",
     )
-    stage_file: Optional[Path] = path(
+    stage_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -215,7 +207,7 @@ class Sfr(Package):
         direction="out",
         keyword="stage",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -223,7 +215,7 @@ class Sfr(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -231,7 +223,7 @@ class Sfr(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    package_convergence_file: Optional[Path] = path(
+    package_convergence_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -243,76 +235,76 @@ class Sfr(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    maximum_picard_iterations: Optional[int] = field(
+    maximum_picard_iterations: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="SFR picard iterations",
     )
-    maximum_iterations: Optional[int] = field(
+    maximum_iterations: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="SFR Newton-Raphson iterations",
     )
-    maximum_depth_change: Optional[float] = field(
+    maximum_depth_change: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="depth closure tolerance",
     )
-    unit_conversion: Optional[float] = field(
+    unit_conversion: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="conversion factor",
     )
-    length_conversion: Optional[float] = field(
+    length_conversion: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="length conversion factor",
     )
-    time_conversion: Optional[float] = field(
+    time_conversion: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="time conversion factor",
     )
-    nreaches: Optional[int] = field(
+    nreaches: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="maximum number reaches",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nreaches",
+        shape=("nreaches",),
     )
-    crosssections: Optional[list[Crosssections]] = field(
+    crosssections: Optional[list[Crosssections]] = list_(
         default=None,
         block="crosssections",
     )
-    connectiondata: Optional[list[Connectiondata]] = field(
+    connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
-        dim="nreaches",
+        shape=("nreaches",),
     )
-    diversions: Optional[list[Diversions]] = field(
+    diversions: Optional[list[Diversions]] = list_(
         default=None,
         block="diversions",
     )
-    initialstages: Optional[list[Initialstages]] = field(
+    initialstages: Optional[list[Initialstages]] = list_(
         default=None,
         block="initialstages",
-        dim="nreaches",
+        shape=("nreaches",),
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

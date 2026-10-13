@@ -6,7 +6,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import double, file, integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,8 +19,8 @@ class Mvr(Package):
             "mname",
             "pname",
         )
-        pname: str = field()
-        mname: Optional[str] = field(default=None, optional=True)
+        pname: str = string()
+        mname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class StressPeriodData(Item):
@@ -34,34 +34,34 @@ class Mvr(Package):
             "mvrtype",
             "value",
         )
-        pname1: str = field()
-        id1: int = field(index=True)
-        pname2: str = field()
-        id2: int = field(index=True)
-        mvrtype: str = field()
-        value: float = field()
-        mname1: Optional[str] = field(default=None, optional=True)
-        mname2: Optional[str] = field(default=None, optional=True)
+        pname1: str = string()
+        id1: int = integer(index=True)
+        pname2: str = string()
+        id2: int = integer(index=True)
+        mvrtype: str = string()
+        value: float = double()
+        mname1: Optional[str] = string(default=None, optional=True)
+        mname2: Optional[str] = string(default=None, optional=True)
 
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    modelnames: bool = field(
+    modelnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="precede all package names with model names",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -69,7 +69,7 @@ class Mvr(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -77,22 +77,22 @@ class Mvr(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    maxmvr: Optional[int] = field(
+    maxmvr: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="maximum number of movers",
     )
-    maxpackages: Optional[int] = field(
+    maxpackages: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of packages to be used with the mover",
     )
-    packages: Optional[list[Packages]] = field(
+    packages: Optional[list[Packages]] = list_(
         default=None,
         block="packages",
-        dim="maxpackages",
+        shape=("maxpackages",),
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

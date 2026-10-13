@@ -7,7 +7,7 @@ import builtins
 import types
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Union, get_args, get_origin
+from typing import Any, Literal, TypedDict, Union, Unpack, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -25,6 +25,14 @@ from flopy4.mf6.item import to_union_arm
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
+
+# As in the DFN schema. An index is 1-based in the file, 0-based in memory;
+# a "signed" one's sign carries a meaning of its own (SFR's ic). A cellid
+# is in the grid of the component's own model, or of an exchange's first or
+# second ("1", "2").
+Index = bool | Literal["signed"]
+Cellid = bool | Literal["1", "2"]
+FileDirection = Literal[None, "in", "out"]
 
 
 def _recount(count: str):
@@ -52,6 +60,207 @@ def _check_dim(instance, attribute, value):
     if value is not None and check is not None:
         check(attribute.name, value)
     return value
+
+
+# Field functions, one per DFN field type (modflow_devtools.dfns.schema), each
+# taking that type's attributes. A field with a ``block`` is a component's;
+# one without is a field of a list item or record. Each records its type, and
+# its attributes that are set, in the field's metadata.
+
+
+class FieldKwargs(TypedDict, total=False):
+    """Arguments every field function takes: `attrs.field`'s, and the DFN's
+    for any field."""
+
+    default: Any
+    validator: Any
+    converter: Any
+    repr: bool
+    eq: Any
+    init: bool
+    metadata: dict
+    on_setattr: Any
+    alias: str | None
+    block: str | None
+    longname: str | None
+    optional: bool
+    netcdf: bool
+    tagged: bool
+
+
+def _pipe(*hooks):
+    """`on_setattr` hooks run in turn, skipping any None."""
+    return attrs.setters.pipe(*(h for h in hooks if h is not None))
+
+
+def _field(type_: str, kwargs: FieldKwargs, **attributes) -> Any:
+    """An `attrs.field` of DFN type ``type_``, its ``attributes`` (and the
+    common ones in ``kwargs``) in its metadata where set."""
+    metadata = dict(kwargs.get("metadata") or {})
+    metadata["type"] = type_
+    for key in ("block", "longname", "optional", "netcdf", "tagged"):
+        if kwargs.get(key):
+            metadata[key] = kwargs[key]  # type: ignore[literal-required]
+    metadata.update({k: v for k, v in attributes.items() if v not in (None, False, ())})
+    on_setattr = kwargs.get("on_setattr")
+    if kwargs.get("block") == "dimensions":
+        # check the dimension against the rows it counts when it is reassigned
+        on_setattr = _pipe(attrs.setters.convert, attrs.setters.validate, _check_dim, on_setattr)
+    return attrs.field(
+        default=kwargs.get("default", NOTHING),
+        validator=kwargs.get("validator"),
+        converter=kwargs.get("converter"),
+        repr=kwargs.get("repr", True),
+        eq=kwargs.get("eq", True),
+        init=kwargs.get("init", True),
+        on_setattr=on_setattr,
+        metadata=metadata,
+        alias=kwargs.get("alias"),
+    )
+
+
+def _ts_converter(kwargs: FieldKwargs, converter) -> None:
+    """A time series field of an item or record takes a series' name for a
+    value (see `to_ts_value`). A component's names a time-array series and
+    takes no converter."""
+    if kwargs.get("block") is None:
+        kwargs.setdefault("converter", converter)
+
+
+def keyword(**kwargs: Unpack[FieldKwargs]) -> Any:
+    """A keyword: a flag, present or not."""
+    kwargs["tagged"] = True
+    return _field("keyword", kwargs)
+
+
+def string(
+    *,
+    time_series: bool = False,
+    pk: bool = False,
+    fk: str | None = None,
+    **kwargs: Unpack[FieldKwargs],
+) -> Any:
+    """A string. A time series one may name a time series instead."""
+    if time_series:
+        _ts_converter(kwargs, to_ts_value)
+    return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk)
+
+
+def integer(
+    *,
+    index: Index = False,
+    pk: bool = False,
+    fk: str | None = None,
+    time_series: bool = False,
+    **kwargs: Unpack[FieldKwargs],
+) -> Any:
+    """An integer. An ``index`` is 1-based in the file, 0-based in memory."""
+    if time_series:
+        _ts_converter(kwargs, to_ts_value)
+    return _field("integer", kwargs, index=index, pk=pk, fk=fk, time_series=time_series)
+
+
+def double(*, time_series: bool = False, **kwargs: Unpack[FieldKwargs]) -> Any:
+    """A double. A time series one may name a time series instead."""
+    if time_series:
+        _ts_converter(kwargs, to_ts_value)
+    return _field("double", kwargs, time_series=time_series)
+
+
+def array(
+    *,
+    shape: tuple[str, ...] = (),
+    layered: bool = False,
+    index: Index = False,
+    fk: str | None = None,
+    cellid: Cellid = False,
+    time_series: bool = False,
+    fill_forward: bool = False,
+    **kwargs: Unpack[FieldKwargs],
+) -> Any:
+    """An array, of the dimensions ``shape`` names: a component's grid array
+    (``("nlay", "nrow", "ncol")``), or an item's values (``("auxiliary",)``;
+    unsized, ``()``, the rest of the row). A ``cellid``'s shape starts with
+    ``ncelldim``, one cellid's components: ``("ncelldim",)`` is one cellid,
+    ``("ncelldim", "numalphaj")`` several.
+
+    Compares with `array_eq`, as numpy's elementwise ``==`` isn't a valid
+    ``__eq__`` result. An item's array counted by another of its fields
+    keeps that field in step when reassigned.
+    """
+    shape = tuple(shape)
+    counts = shape[1:] if cellid else shape
+    kwargs.setdefault("eq", ARRAY_EQ)
+    if time_series:
+        _ts_converter(kwargs, to_ts_values)
+    if index == "signed":
+        kwargs.setdefault("converter", to_signed_indexes)
+    if kwargs.get("block") is None and len(counts) == 1:
+        # keep a field counting the array in step when it is reassigned
+        kwargs["on_setattr"] = _pipe(
+            attrs.setters.convert, _recount(counts[0]), kwargs.get("on_setattr")
+        )
+    return _field(
+        "array",
+        kwargs,
+        shape=shape,
+        layered=layered,
+        index=index,
+        fk=fk,
+        cellid=cellid,
+        time_series=time_series,
+        fill_forward=fill_forward,
+    )
+
+
+def list_(
+    *,
+    shape: tuple[str, ...] = (),
+    fill_forward: bool = False,
+    write_if_empty: bool = False,
+    **kwargs: Unpack[FieldKwargs],
+) -> Any:
+    """A list of items. Its ``shape``, if any, is the dimension counting its
+    rows, exact (``("nper",)``) or a bound (``("<=maxbound",)``). A
+    ``fill_forward`` list is given per period, each period's rows carrying
+    on until the next's. A ``write_if_empty`` one's block is written even
+    with no rows."""
+    if len(shape) > 1:
+        raise ValueError(f"a list has at most one dimension, got {shape!r}")
+    dim = shape[0] if shape else None
+    return _field("list", kwargs, dim=dim, fill_forward=fill_forward, write_if_empty=write_if_empty)
+
+
+def union(*kinds: str, **kwargs: Unpack[FieldKwargs]) -> Any:
+    """A value of any of several types. Given ``kinds``, it's one value of
+    any of them, told apart when read (OBS's id: ``"cellid"``, ``"index"`` or
+    ``"string"``; LAK's bedleak: ``"keyword"`` or ``"double"``). Without,
+    its arms are the classes and words its annotation names (OC's
+    ocsetting), and it builds its arm from the values given for it (see
+    `item.to_union_arm`)."""
+    if not kinds:
+        kwargs.setdefault(
+            "converter", attrs.Converter(to_union_arm, takes_self=True, takes_field=True)
+        )
+    return _field("union", kwargs, union=kinds)
+
+
+def record(**kwargs: Unpack[FieldKwargs]) -> Any:
+    """A record: several values on a line, held as a `Record`."""
+    return _field("record", kwargs)
+
+
+def file(
+    *,
+    direction: FileDirection = None,
+    keyword: str | None = None,
+    **kwargs: Unpack[FieldKwargs],
+) -> Any:
+    """A file path, read (``direction="in"``) or written (``"out"``). A
+    file record's ``keyword`` leads it: ``TS6 FILEIN <file>``."""
+    return _field(
+        "file", kwargs, direction=direction, _keyword=keyword.lower() if keyword else None
+    )
 
 
 def field(
@@ -185,9 +394,6 @@ def to_signed_indexes(values):
         else:
             pairs.append((abs(n) - 1, -1 if n < 0 else 1))
     return tuple(pairs)
-
-
-FileDirection = Literal[None, "in", "out"]
 
 
 def path(

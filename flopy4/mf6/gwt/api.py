@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import child, integer, keyword
 from flopy4.mf6.utl.obs import Obs
 
 
@@ -19,36 +19,36 @@ class Api(Package):
         "to-mvr": (("cellid",), ("string",)),
     }
 
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save api flows to budget file",
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    maxbound: Optional[int] = field(
+    maxbound: Optional[int] = integer(
         default=0,
         block="dimensions",
         longname="maximum number of user-defined api boundaries",

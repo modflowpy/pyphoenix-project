@@ -5,26 +5,26 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, keyword
 
 
 @attrs.define(kw_only=True, slots=False)
 class Ic(Package):
     dfn_name: ClassVar[str] = "gwe-ic"
 
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    strt: FloatArrayLike = field(
+    strt: FloatArrayLike = array(
         default=0.0,
         block="griddata",
         shape=("nodes",),

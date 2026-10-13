@@ -29,6 +29,7 @@ from flopy4.mf6.utils.codegen.filters import (
     array_column,
     attr_column,
     can_expand_record,
+    cellid_column,
     class_name,
     feature_id_column,
     is_generatable,
@@ -259,19 +260,19 @@ class TestFilters:
         assert item_class([], "StressPeriodData") == ""
 
     def test_item_class_static_block_no_aux(self):
-        # No sized column in the schema, no aux field. Real field()
-        # metadata (pk=/etc.) is the schema.
+        # No sized column in the schema, no aux field. The field functions'
+        # arguments (pk=/etc.) are the schema.
         schema = [
             feature_id_column("ifno", pk=True),
             value_column("strt"),
-            attr_column("boundname", "str", {}, optional=True),
+            attr_column("boundname", "str", "string", {}, optional=True),
         ]
         result = item_class(schema, "Packagedata")
         assert "@attrs.define" in result
         assert "class Packagedata(Item):" in result
-        assert "ifno: int = field(index=True, pk=True)" in result
+        assert "ifno: int = integer(index=True, pk=True)" in result
         assert "strt: float" in result
-        assert "boundname: Optional[str] = field(default=None, optional=True)" in result
+        assert "boundname: Optional[str] = string(default=None, optional=True)" in result
         assert "aux" not in result
 
     def test_item_class_feature_id_with_fk_uses_fk_metadata(self):
@@ -283,22 +284,22 @@ class TestFilters:
             feature_id_column("iconn", pk=True),
         ]
         result = item_class(schema, "Connectiondata")
-        assert 'ifno: int = field(index=True, fk="packagedata.ifno")' in result
-        assert "iconn: int = field(index=True, pk=True)" in result
+        assert 'ifno: int = integer(index=True, fk="packagedata.ifno")' in result
+        assert "iconn: int = integer(index=True, pk=True)" in result
 
     def test_item_class_sized_column(self):
         # A column sized by a package field (aux by auxiliary) is a tuple
         # with that shape, in DFN order before boundname.
         schema = [
-            attr_column("cellid", "tuple", {"cellid": True}, optional=False),
+            cellid_column("cellid", True),
             value_column("head"),
             array_column("aux", "auxiliary", optional=True),
-            attr_column("boundname", "str", {}, optional=True),
+            attr_column("boundname", "str", "string", {}, optional=True),
         ]
         result = item_class(schema, "StressPeriodData")
         assert (
-            'aux: tuple[float, ...] = field(default=(), array=True, shape=("auxiliary",), '
-            "optional=True)" in result
+            'aux: tuple[float, ...] = array(default=(), shape=("auxiliary",), optional=True)'
+            in result
         )
         assert result.index("aux:") < result.index("boundname:")
 
@@ -308,7 +309,7 @@ class TestFilters:
             feature_id_column("ifno"),
             value_column("strt"),
             value_column("nlakeconn", "integer"),
-            attr_column("boundname", "str", {}, optional=True),
+            attr_column("boundname", "str", "string", {}, optional=True),
         ]
         result = item_class(schema, "Packagedata")
         lines = [ln.strip() for ln in result.splitlines() if ":" in ln and "class" not in ln]
@@ -316,27 +317,26 @@ class TestFilters:
         assert names == ["ifno", "strt", "nlakeconn", "boundname"]
 
     def test_item_class_inline_keyword_optional(self):
-        # keyword column -> bool, tagged=True (a presence flag, like an
-        # option keyword).
+        # keyword column -> bool (a presence flag, like an option keyword).
         schema = [
             value_column("pname", "string"),
-            attr_column("mixed", "bool", {"tagged": True}, optional=True, default="False"),
+            attr_column("mixed", "bool", "keyword", {}, optional=True, default="False"),
         ]
         result = item_class(schema, "Fileinput")
-        assert "pname: str = field()" in result
-        assert "mixed: bool = field(default=False, tagged=True, optional=True)" in result
+        assert "pname: str = string()" in result
+        assert "mixed: bool = keyword(default=False, optional=True)" in result
 
     def test_item_class_cellid_metadata(self):
-        schema = [attr_column("cellid", "tuple", {"cellid": True}, optional=False)]
+        schema = [cellid_column("cellid", True)]
         result = item_class(schema, "StressPeriodData")
-        assert "cellid: tuple = field(cellid=True)" in result
+        assert 'cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))' in result
 
     def test_item_class_time_series_metadata(self):
         schema = [
             value_column("head", time_series=True),
         ]
         result = item_class(schema, "StressPeriodData")
-        assert "head: Union[float, TimeSeriesRef] = field(time_series=True)" in result
+        assert "head: Union[float, TimeSeriesRef] = double(time_series=True)" in result
 
 
 # Layer 2: ComponentSpec tests against real DFNs
@@ -1035,14 +1035,14 @@ def test_list_block_dim_and_default(tmp_path, all_dfns):
         for s in make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     }
     tdis = specs["sim-tdis"].outpath.read_text()
-    assert 'dim="nper"' in tdis
+    assert 'shape=("nper",)' in tdis
     assert "default=((1.0, 1, 1.0),)," in tdis
     ats = specs["utl-ats"].outpath.read_text()
-    assert 'dim="<=maxats"' in ats
+    assert 'shape=("<=maxats",)' in ats
     maw = build_component_spec(all_dfns["gwf-maw"], root=Path("/fake"))
     linked = {bp.block_name for bp in maw.block_properties if bp.dim_is_dfn_declared}
     assert linked == {"packagedata"}
-    assert specs["gwf-maw"].outpath.read_text().count('dim="nmawwells"') == 1
+    assert specs["gwf-maw"].outpath.read_text().count('shape=("nmawwells",)') == 1
 
 
 def test_list_col_dim_only_from_shape(all_dfns):
@@ -1071,7 +1071,7 @@ def test_bounded_array_arm_is_variadic(tmp_path, all_dfns, name):
     trailing-values tuple, not a fixed-length scalar column."""
     skip = {n for n in all_dfns if n != name}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert "steps: tuple[int, ...] = field(default=(), array=True)" in spec.outpath.read_text()
+    assert "steps: tuple[int, ...] = array(default=())" in spec.outpath.read_text()
 
 
 def test_union_list_keyword_arms_are_words(tmp_path, all_dfns):
@@ -1103,7 +1103,7 @@ def test_scalar_columns_stay_scalar(tmp_path, all_dfns):
     """Only a variable-length array column becomes a trailing-values tuple."""
     skip = {n for n in all_dfns if n != "gwf-wel"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
-    assert "q: Union[float, TimeSeriesRef] = field(time_series=True)" in spec.outpath.read_text()
+    assert "q: Union[float, TimeSeriesRef] = double(time_series=True)" in spec.outpath.read_text()
 
 
 @pytest.mark.parametrize(
@@ -1131,7 +1131,7 @@ def test_tagged_file_list_is_repeatable_field(tmp_path, all_dfns, monkeypatch):
     skip = {n for n in all_dfns if n != "gwf-chd"}
     (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
     text = spec.outpath.read_text()
-    assert "ts_file: Optional[list[Path]] = path(" in text
+    assert "ts_file: Optional[list[Path]] = file(" in text
     assert "converter=attrs.converters.optional(to_list(Path))," in text
 
 
@@ -1479,7 +1479,7 @@ def test_counted_array_column():
     from flopy4.mf6.gwf import Disv
 
     meta = attrs.fields_dict(Disv.Cell2d)["icvert"].metadata
-    assert meta["array"] and meta["index"] and meta["shape"] == ("ncvert",)
+    assert meta["type"] == "array" and meta["index"] and meta["shape"] == ("ncvert",)
 
     square = Disv.Cell2d.from_tokens([1, 0.5, 0.5, 4, 1, 2, 5, 4])
     assert square.icell2d == 0

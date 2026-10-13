@@ -9,7 +9,7 @@ from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.dis_methods import DisMethods
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, string
 from flopy4.mf6.utl.ncf import Ncf
 
 
@@ -19,19 +19,19 @@ class Dis(DisMethods, DimsProviderMethods, Package):
 
     shared_dims: ClassVar[tuple[str, ...]] = ("nlay", "nrow", "ncol", "ncpl", "nodes", "ncelldim")
 
-    length_units: Optional[str] = field(
+    length_units: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="model length units",
     )
-    nogrb: bool = field(
+    nogrb: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="do not write binary grid file",
     )
-    grb_file: Optional[Path] = path(
+    grb_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -39,84 +39,84 @@ class Dis(DisMethods, DimsProviderMethods, Package):
         direction="out",
         keyword="grb6",
     )
-    xorigin: Optional[float] = field(
+    xorigin: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="x-position of the model grid origin",
     )
-    yorigin: Optional[float] = field(
+    yorigin: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="y-position of the model grid origin",
     )
-    angrot: Optional[float] = field(
+    angrot: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="rotation angle",
     )
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    crs: Optional[str] = field(
+    crs: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="CRS user input string",
     )
     ncf: Optional[Ncf] = child(block="options", keyword="ncf6", direction="in")
-    nlay: Optional[int] = field(
+    nlay: Optional[int] = integer(
         default=1,
         block="dimensions",
         longname="number of layers",
     )
-    nrow: Optional[int] = field(
+    nrow: Optional[int] = integer(
         default=2,
         block="dimensions",
         longname="number of rows",
     )
-    ncol: Optional[int] = field(
+    ncol: Optional[int] = integer(
         default=2,
         block="dimensions",
         longname="number of columns",
     )
-    delr: FloatArrayLike = field(
+    delr: FloatArrayLike = array(
         default=1.0,
         block="griddata",
         shape=("ncol",),
         longname="spacing along a row",
     )  # type: ignore[assignment]
-    delc: FloatArrayLike = field(
+    delc: FloatArrayLike = array(
         default=1.0,
         block="griddata",
         shape=("nrow",),
         longname="spacing along a column",
     )  # type: ignore[assignment]
-    top: FloatArrayLike = field(
+    top: FloatArrayLike = array(
         default=1.0,
         block="griddata",
         shape=("ncpl",),
         longname="cell top elevation",
     )  # type: ignore[assignment]
-    botm: FloatArrayLike = field(
+    botm: FloatArrayLike = array(
         default=0.0,
         block="griddata",
         shape=("nodes",),
         layered=True,
         longname="cell bottom elevation",
     )  # type: ignore[assignment]
-    idomain: Optional[IntArrayLike] = field(
+    idomain: Optional[IntArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),

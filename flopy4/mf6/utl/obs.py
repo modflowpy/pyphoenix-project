@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6.block import Block
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import file, integer, keyword, list_, string, union
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -16,17 +16,17 @@ class Obs(Package):
 
     @attrs.define
     class Continuous(Item):
-        obsname: str = field()
-        obstype: str = field()
-        id_: Union[tuple[int, ...], int, str] = field(union=("cellid", "index", "string"))
-        id2: Optional[Union[tuple[int, ...], int, str]] = field(
-            default=None, union=("cellid", "index", "string"), optional=True
+        obsname: str = string()
+        obstype: str = string()
+        id_: Union[tuple[int, ...], int, str] = union("cellid", "index", "string")
+        id2: Optional[Union[tuple[int, ...], int, str]] = union(
+            "cellid", "index", "string", default=None, optional=True
         )
 
     @attrs.define
     class Output(Item):
-        obs_output_file_name: Path = path(converter=Path, direction="out")
-        binary: bool = field(default=False, tagged=True, optional=True)
+        obs_output_file_name: Path = file(converter=Path, direction="out")
+        binary: bool = keyword(default=False, optional=True)
 
     @attrs.define(kw_only=True)
     class ContinuousBlock(Block):
@@ -34,18 +34,18 @@ class Obs(Package):
         output: "Obs.Output" = attrs.field()
         continuous: "list[Obs.Continuous]" = attrs.field(factory=list)
 
-    digits: Optional[int] = field(
+    digits: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    continuous: Optional[list[ContinuousBlock]] = field(
+    continuous: Optional[list[ContinuousBlock]] = list_(
         default=None,
         block="continuous",
     )

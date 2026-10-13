@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import array, child, keyword, list_, string
 from flopy4.mf6.utl.tvs import Tvs
 
 
@@ -16,40 +16,40 @@ class Sto(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        storage: str = field()
+        storage: str = string()
 
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to save NPF flows",
     )
-    storagecoefficient: bool = field(
+    storagecoefficient: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate SS is read as storage coefficient",
     )
-    ss_confined_only: bool = field(
+    ss_confined_only: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate specific storage only applied under confined conditions",
     )
     tvs: Optional[Tvs] = child(block="options", keyword="tvs6", direction="in")
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    iconvert: IntArrayLike = field(
+    iconvert: IntArrayLike = array(
         default=0,
         block="griddata",
         shape=("nodes",),
@@ -57,7 +57,7 @@ class Sto(Package):
         netcdf=True,
         longname="convertible indicator",
     )  # type: ignore[assignment]
-    ss: FloatArrayLike = field(
+    ss: FloatArrayLike = array(
         default=1e-05,
         block="griddata",
         shape=("nodes",),
@@ -65,7 +65,7 @@ class Sto(Package):
         netcdf=True,
         longname="specific storage",
     )  # type: ignore[assignment]
-    sy: FloatArrayLike = field(
+    sy: FloatArrayLike = array(
         default=0.15,
         block="griddata",
         shape=("nodes",),
@@ -73,7 +73,7 @@ class Sto(Package):
         netcdf=True,
         longname="specific yield",
     )  # type: ignore[assignment]
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

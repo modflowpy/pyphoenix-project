@@ -6,7 +6,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import double, file, integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -15,25 +15,25 @@ class Buy(Package):
 
     @attrs.define
     class Packagedata(Item):
-        irhospec: int = field(index=True, pk=True)
-        drhodc: float = field()
-        crhoref: float = field()
-        modelname: str = field()
-        auxspeciesname: str = field()
+        irhospec: int = integer(index=True, pk=True)
+        drhodc: float = double()
+        crhoref: float = double()
+        modelname: str = string()
+        auxspeciesname: str = string()
 
-    hhformulation_rhs: bool = field(
+    hhformulation_rhs: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="hh formulation on right-hand side",
     )
-    denseref: Optional[float] = field(
+    denseref: Optional[float] = double(
         default=1000.0,
         block="options",
         optional=True,
         longname="reference density",
     )
-    density_file: Optional[Path] = path(
+    density_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -41,15 +41,15 @@ class Buy(Package):
         direction="out",
         keyword="density",
     )
-    nrhospecies: Optional[int] = field(
+    nrhospecies: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of species used in density equation of state",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nrhospecies",
+        shape=("nrhospecies",),
     )
 
 

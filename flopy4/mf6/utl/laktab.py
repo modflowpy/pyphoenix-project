@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import double, integer, list_
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -16,25 +16,25 @@ class Laktab(Package):
 
     @attrs.define
     class Table(Item):
-        stage: float = field()
-        volume: float = field()
-        sarea: float = field()
-        barea: Optional[float] = field(default=None, optional=True)
+        stage: float = double()
+        volume: float = double()
+        sarea: float = double()
+        barea: Optional[float] = double(default=None, optional=True)
 
-    nrow: Optional[int] = field(
+    nrow: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of table rows",
     )
-    ncol: Optional[int] = field(
+    ncol: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of table columns",
     )
-    table: Optional[list[Table]] = field(
+    table: Optional[list[Table]] = list_(
         default=None,
         block="table",
-        dim="nrow",
+        shape=("nrow",),
     )
 
 

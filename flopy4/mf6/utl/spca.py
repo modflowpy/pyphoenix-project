@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike, TimeArraySeriesRef
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import array, child, keyword
 from flopy4.mf6.utl.tas import Tas
 
 
@@ -15,12 +15,12 @@ class Spca(Package):
 
     multi_package: ClassVar[bool] = True
 
-    readasarrays: bool = field(
+    readasarrays: bool = keyword(
         default=True,
         block="options",
         longname="use array-based input",
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -29,7 +29,7 @@ class Spca(Package):
     tas: list[Tas] = child(
         block="options", keyword="tas6", direction="in", default=attrs.Factory(list)
     )
-    concentration: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = field(
+    concentration: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = array(
         default=None,
         block="period",
         shape=("ncpl",),
@@ -37,7 +37,7 @@ class Spca(Package):
         fill_forward=True,
         time_series=True,
     )
-    temperature: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = field(
+    temperature: Optional[dict[int, FloatArrayLike | TimeArraySeriesRef]] = array(
         default=None,
         block="period",
         shape=("ncpl",),

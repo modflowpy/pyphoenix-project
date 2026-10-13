@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -36,135 +36,132 @@ class Maw(Package):
 
     @attrs.define
     class Packagedata(Item):
-        ifno: int = field(index=True, pk=True)
-        radius: float = field()
-        bottom: float = field()
-        strt: Union[float, TimeSeriesRef] = field(time_series=True)
-        condeqn: str = field()
-        ngwfnodes: int = field()
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        ifno: int = integer(index=True, pk=True)
+        radius: float = double()
+        bottom: float = double()
+        strt: Union[float, TimeSeriesRef] = double(time_series=True)
+        condeqn: str = string()
+        ngwfnodes: int = integer()
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = field(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Connectiondata(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        icon: int = field(index=True)
-        cellid: tuple = field(cellid=True)
-        scrn_top: float = field()
-        scrn_bot: float = field()
-        hk_skin: float = field()
-        radius_skin: float = field()
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        icon: int = integer(index=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        scrn_top: float = double()
+        scrn_bot: float = double()
+        hk_skin: float = double()
+        radius_skin: float = double()
 
     @attrs.define
     class Angledata(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        icon: int = field(index=True)
-        angle: float = field()
-        conn_length: Optional[float] = field(default=None, optional=True)
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        icon: int = integer(index=True)
+        angle: float = double()
+        conn_length: Optional[float] = double(default=None, optional=True)
 
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        status: str = field()
+        status: str = string()
 
     @attrs.define
     class ConnectionStatus(Item):
         _keyword: ClassVar[str] = "connection_status"
-        icon: int = field(index=True)
-        connstatus: str = field()
+        icon: int = integer(index=True)
+        connstatus: str = string()
 
     @attrs.define
     class Bottom(Item):
         _keyword: ClassVar[str] = "bottom"
-        bottom: float = field()
+        bottom: float = double()
 
     @attrs.define
     class FlowingWell(Item):
         _keyword: ClassVar[str] = "flowing_well"
-        fwelev: float = field()
-        fwcond: float = field()
-        fwrlen: float = field()
+        fwelev: float = double()
+        fwcond: float = double()
+        fwrlen: float = double()
 
     @attrs.define
     class Rate(Item):
         _keyword: ClassVar[str] = "rate"
-        rate: Union[float, TimeSeriesRef] = field(time_series=True)
+        rate: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class WellHead(Item):
         _keyword: ClassVar[str] = "well_head"
-        well_head: Union[float, TimeSeriesRef] = field(time_series=True)
+        well_head: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class HeadLimit(Item):
         _keyword: ClassVar[str] = "head_limit"
-        head_limit: Union[Literal["OFF"], float] = field(union=("keyword", "double"))
+        head_limit: Union[Literal["OFF"], float] = union("keyword", "double")
 
     @attrs.define
     class Shutoff(Item):
         _keyword: ClassVar[str] = "shut_off"
-        minrate: float = field()
-        maxrate: float = field()
+        minrate: float = double()
+        maxrate: float = double()
 
     @attrs.define
     class RateScaling(Item):
         _keyword: ClassVar[str] = "rate_scaling"
-        pump_elevation: float = field()
-        scaling_length: float = field()
+        pump_elevation: float = double()
+        scaling_length: float = double()
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        auxname: str = field()
-        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
+        auxname: str = string()
+        auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = field(  # noqa: E501
-            arms=True
-        )
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        mawsetting: "Maw.Status | Maw.ConnectionStatus | Maw.Bottom | Maw.FlowingWell | Maw.Rate | Maw.WellHead | Maw.HeadLimit | Maw.Shutoff | Maw.RateScaling | Maw.Auxiliary" = union()  # noqa: E501
 
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_head: bool = field(
+    print_head: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated heads to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save well flows to budget file",
     )
-    head_file: Optional[Path] = path(
+    head_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -172,7 +169,7 @@ class Maw(Package):
         direction="out",
         keyword="head",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -180,7 +177,7 @@ class Maw(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -188,43 +185,43 @@ class Maw(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    no_well_storage: bool = field(
+    no_well_storage: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="deactivate well storage",
     )
-    flow_correction: bool = field(
+    flow_correction: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate flow correction",
     )
-    non_vertical_wells: bool = field(
+    non_vertical_wells: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate non-vertical well connections",
     )
-    flowing_wells: bool = field(
+    flowing_wells: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate flowing wells",
     )
-    shutdown_theta: Optional[float] = field(
+    shutdown_theta: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="shutdown theta",
     )
-    shutdown_kappa: Optional[float] = field(
+    shutdown_kappa: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="shutdown kappa",
     )
-    mfrcsv_file: Optional[Path] = path(
+    mfrcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -236,31 +233,31 @@ class Maw(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    nmawwells: Optional[int] = field(
+    nmawwells: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of MAW wells",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nmawwells",
+        shape=("nmawwells",),
     )
-    connectiondata: Optional[list[Connectiondata]] = field(
+    connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
         write_if_empty=True,
     )
-    angledata: Optional[list[Angledata]] = field(
+    angledata: Optional[list[Angledata]] = list_(
         default=None,
         block="angledata",
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

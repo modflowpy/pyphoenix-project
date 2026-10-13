@@ -208,7 +208,7 @@ def _item_columns(
 ) -> list[ItemColumn]:
     """Build the rendered columns of an Item class from ColumnSpecs.
 
-    File columns become path() fields; a preceding is_prefix column (e.g.
+    File columns become file() fields; a preceding is_prefix column (e.g.
     SPC6) becomes its keyword. A file column ``children`` maps to the
     components it names (LAK's TAB6 file, a utl-laktab) holds them.
     is_row_keyword columns (optional keywords,
@@ -274,19 +274,15 @@ def _item_columns(
                 time_series=ts,
             )
         elif col.is_cellid:
-            item = filters.attr_column(
-                name, "tuple", {"cellid": col.cellid}, optional=optional, time_series=ts
-            )
+            item = filters.cellid_column(name, col.cellid, optional=optional, time_series=ts)
         elif col.is_index:
             fk = getattr(f, "fk", None)
             pk = not fk and bool(getattr(f, "pk", False))
             item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
         elif name == "boundname":
-            item = filters.attr_column(name, "str", {}, optional=True)
+            item = filters.attr_column(name, "str", "string", {}, optional=True)
         elif col.is_row_keyword:
-            item = filters.attr_column(
-                name, "bool", {"tagged": True}, optional=True, default="False"
-            )
+            item = filters.attr_column(name, "bool", "keyword", {}, optional=True, default="False")
         elif isinstance(f, UnionField) and name in unions:
             # Words and arm classes, the rest of the row (OC's ocsetting)
             classes, words = unions[name]
@@ -454,21 +450,21 @@ def _expand_record_field(f: Record, block_name: str) -> tuple[list[FieldSpec], l
 
 
 def _ml_field(
+    fn: str,
     default: str = "None",
     metadata: dict | None = None,
     *,
-    fn: str = "field",
     alias: str | None = None,
     converter: str | None = None,
     repr_: bool = True,
     type_ignore: str | None = None,
 ) -> str:
-    """Multi-line field()/path() spec-call string for class-body spec_calls.
+    """Multi-line field function call string for class-body spec_calls.
 
     Produces continuation lines pre-indented at 8 spaces (args) and 4 spaces
     (closing paren) so the Jinja template can render it verbatim after
-    ``    {name}: {type} = ``. ``metadata`` here is the set of ``field()``/
-    ``path()`` kwargs (block, schema, fill_forward, ...), not a raw attrs
+    ``    {name}: {type} = ``. ``metadata`` here is the set of the field
+    function ``fn``'s kwargs (block, shape, fill_forward, ...), not a raw attrs
     metadata dict -- generated fields are plain attrs fields, so they go
     through the same passive-metadata constructors hand-written classes
     use for their scalar fields.
@@ -911,9 +907,7 @@ def _generated_imports(
     has_readarray_period: bool = False,
     needs_int_arraylike: bool = False,
     needs_float_arraylike: bool = False,
-    has_field_call: bool = False,
-    has_path_call: bool = False,
-    has_child_call: bool = False,
+    spec_functions: "set[str] | None" = None,
     item_classes: "list[ItemClassSpec] | None" = None,
     has_derived_dims: bool = False,
     has_optional_child: bool = False,
@@ -944,11 +938,6 @@ def _generated_imports(
     has_union = has_union_child or any(col.uses_union for col in _all_schema_cols)
     # File row columns become Path fields, not Union[float, str].
     has_row_path_cols = any(col.uses_path for col in _all_schema_cols)
-    # Row class fields with cellid=/pk=/fk=/tagged=/time_series= metadata use
-    # field(), same as any other generated field -- checked separately from
-    # has_field_call since these live inside item_class()'s rendered text, not
-    # in the package's own top-level field_specs.
-    _row_has_field_call = any(col.uses_field for col in _all_schema_cols)
 
     stdlib: list[str] = []
     if has_file_records or has_file_lists or has_row_path_cols:
@@ -988,13 +977,10 @@ def _generated_imports(
         flopy4.append("from flopy4.mf6.record import Record")
     if item_classes:
         flopy4.append("from flopy4.mf6.item import Item")
-    _spec_parts: list[str] = []
-    if has_field_call or _row_has_field_call:
-        _spec_parts.append("field")
-    if has_path_call or has_row_path_cols:
-        _spec_parts.append("path")
-    if has_child_call or any(col.uses_child for col in _all_schema_cols):
-        _spec_parts.append("child")
+    # The field functions the package's fields and its Item classes' call.
+    _spec_parts = sorted(
+        set(spec_functions or ()).union(*(col.spec_functions for col in _all_schema_cols))
+    )
     if _spec_parts:
         flopy4.append(f"from flopy4.mf6.spec import {', '.join(sorted(_spec_parts))}")
     _types_parts: list[str] = []
@@ -1004,8 +990,6 @@ def _generated_imports(
         _types_parts.append("FloatArrayLike")
     _converters = " ".join(c for b, f in generatable_fields if (c := filters.field_converter(f, b)))
     _types_parts += [fn for fn in ("to_array", "to_list") if f"{fn}(" in _converters]
-    if "to_array(" in _converters:
-        _types_parts.append("ARRAY_EQ")
     if any(col.uses_ts_ref for col in _all_schema_cols):
         _types_parts.append("TimeSeriesRef")
     if _types_parts:
@@ -1503,7 +1487,7 @@ def build_component_spec(
                 ItemClassSpec(
                     class_name="StressPeriodData",
                     keyword="",
-                    schema=[filters.attr_column(f.name, "str", {}, optional=False)],
+                    schema=[filters.attr_column(f.name, "str", "string", {}, optional=False)],
                 )
             )
             _period_item = "StressPeriodData"
@@ -1529,7 +1513,6 @@ def build_component_spec(
             if getattr(f, "shape", None):
                 _repeating_block_meta["shape"] = tuple(f.shape)
             if getattr(f, "tagged", True):
-                # field()'s tagged kwarg only ever records True.
                 _repeating_block_meta["tagged"] = True
             data_specs.append(
                 FieldSpec(
@@ -1538,7 +1521,7 @@ def build_component_spec(
                     type_annotation=(
                         f"Optional[dict[{_repeating_blocks[block_name]}, {_repeating_array_base}]]"
                     ),
-                    spec_call=_ml_field(metadata=_repeating_block_meta),
+                    spec_call=_ml_field("array", metadata=_repeating_block_meta),
                     generatable=True,
                 )
             )
@@ -1563,7 +1546,7 @@ def build_component_spec(
                     dfn_name=f.name,
                     py_name=filters.safe_name("_".join(py_words)),
                     type_annotation=f"Optional[list[{elem}]]",
-                    spec_call=_ml_field(metadata={"block": block_name}),
+                    spec_call=_ml_field("list_", metadata={"block": block_name}),
                     generatable=True,
                 )
             )
@@ -1577,6 +1560,7 @@ def build_component_spec(
             clean_name = filters.safe_name("_".join(_strip_record_words(f.name)))
             # plain values (a bool, the file's text, a tuple...) make the record
             inner_spec_call = _ml_field(
+                "record",
                 metadata={"block": block_name},
                 converter=f"{outer_spec.class_name}.convert",
             )
@@ -1646,7 +1630,7 @@ def build_component_spec(
         # The DIMENSIONS field counting this block's rows, in the DFN's shape
         # syntax: exact ("nper") or a bound ("<=maxats").
         if bp.dim_is_dfn_declared:
-            _meta["dim"] = f"{bp.dim_bound or ''}{bp.dim_attr}"
+            _meta["shape"] = (f"{bp.dim_bound or ''}{bp.dim_attr}",)
         # DFN default rows (TDIS's perioddata) are the field's real default.
         _default = repr(tuple(_list_field.default)) if _list_field.default else "None"
         # A block must still appear in the written file even with zero rows
@@ -1678,6 +1662,7 @@ def build_component_spec(
                 py_name=bp.block_name,
                 type_annotation=f"Optional[list[{_elem}]]",
                 spec_call=_ml_field(
+                    "list_",
                     _default,
                     metadata=_meta,
                     type_ignore="# type: ignore[assignment]" if _list_field.default else None,
@@ -1692,7 +1677,7 @@ def build_component_spec(
     # elements per period: the same element classes a list in any other
     # block gets, in a dict keyed by period.
     if _period_item is not None:
-        _spd_meta = {"block": _ff_block, "fill_forward": True}
+        _spd_meta: dict[str, Any] = {"block": _ff_block, "fill_forward": True}
         # The DIMENSIONS field bounding each period's rows, unless it's
         # computed (maxbound): HFB's "<=maxhfb".
         _ff_list = next(
@@ -1710,13 +1695,15 @@ def build_component_spec(
             and (_ff_dim := filters.list_col_dim(_ff_list, component))
             and not (_ff_dim == "maxbound" and _maxbound_is_computed)
         ):
-            _spd_meta["dim"] = f"{filters.list_dim_bound(_ff_list) or ''}{_ff_dim}"
+            _spd_meta["shape"] = (f"{filters.list_dim_bound(_ff_list) or ''}{_ff_dim}",)
         period_specs.append(
             FieldSpec(
                 dfn_name="_stress_period_data",
                 py_name="_stress_period_data",
                 type_annotation=f"Optional[dict[int, list[{_period_item}]]]",
-                spec_call=_ml_field(alias="stress_period_data", repr_=False, metadata=_spd_meta),
+                spec_call=_ml_field(
+                    "list_", alias="stress_period_data", repr_=False, metadata=_spd_meta
+                ),
                 generatable=True,
             )
         )
@@ -1755,7 +1742,7 @@ def build_component_spec(
                     dfn_name=_ra_f.name,
                     py_name=filters.safe_name(_ra_f.name),
                     type_annotation=f"Optional[dict[int, {_ra_base}]]",
-                    spec_call=_ml_field(metadata=_ra_meta),
+                    spec_call=_ml_field("array", metadata=_ra_meta),
                     generatable=True,
                 )
             )
@@ -1782,7 +1769,7 @@ def build_component_spec(
                 dfn_name=_lf.name,
                 py_name=filters.safe_name(_lf.name),
                 type_annotation=f"Optional[dict[int, dict[str, {_na_base}]]]",
-                spec_call=_ml_field(metadata=_na_meta),
+                spec_call=_ml_field("array", metadata=_na_meta),
                 generatable=True,
             )
         )
@@ -1830,12 +1817,8 @@ def build_component_spec(
     )
     _needs_int_arraylike = "integer" in _arraylike_types
     _needs_float_arraylike = bool(_arraylike_types - {"integer", None})
-    _has_field_call = any(
-        fs.generatable and fs.spec_call.startswith("field(") for fs in field_specs
-    )
-    _has_path_call = any(fs.generatable and fs.spec_call.startswith("path(") for fs in field_specs)
-    _has_child_call = any(
-        fs.generatable and fs.spec_call.startswith("child(") for fs in field_specs
+    _spec_functions = set().union(
+        *(filters.spec_functions(fs.spec_call) for fs in field_specs if fs.generatable)
     )
     imports = _generated_imports(
         generatable_field_objects,
@@ -1846,9 +1829,7 @@ def build_component_spec(
         has_inner_classes=has_inner_classes,
         needs_int_arraylike=_needs_int_arraylike,
         needs_float_arraylike=_needs_float_arraylike,
-        has_field_call=_has_field_call,
-        has_path_call=_has_path_call,
-        has_child_call=_has_child_call,
+        spec_functions=_spec_functions,
         has_readarray_period=bool(_readarray_period_fields),
         item_classes=item_classes,
         has_derived_dims=bool(_derived_dims),

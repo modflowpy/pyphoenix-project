@@ -11,7 +11,7 @@ from flopy4.mf6.prt.fmi import Fmi
 from flopy4.mf6.prt.mip import Mip
 from flopy4.mf6.prt.oc import Oc
 from flopy4.mf6.prt.prp import Prp
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import child, keyword, string
 
 __all__ = [
     "Prt",
@@ -28,25 +28,25 @@ __all__ = [
 class Prt(ModelMethods, Model):
     dfn_name: ClassVar[str] = "prt-nam"
 
-    list_: Optional[str] = field(
+    list_: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="name of listing file",
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,

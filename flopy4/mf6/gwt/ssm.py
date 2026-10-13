@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import child, keyword, list_, string
 from flopy4.mf6.utl.spc import Spc
 from flopy4.mf6.utl.spca import Spca
 
@@ -16,34 +16,34 @@ class Ssm(Package):
 
     @attrs.define
     class Sources(Item):
-        pname: str = field()
-        srctype: str = field()
-        auxname: str = field()
+        pname: str = string()
+        srctype: str = string()
+        auxname: str = string()
 
     @attrs.define
     class Fileinput(Item):
-        pname: str = field()
+        pname: str = string()
         spc: Union[Spc, Spca] = child(keyword="spc6", direction="in", default=attrs.NOTHING)
-        mixed: bool = field(default=False, tagged=True, optional=True)
+        mixed: bool = keyword(default=False, optional=True)
 
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save calculated flows to budget file",
     )
-    sources: Optional[list[Sources]] = field(
+    sources: Optional[list[Sources]] = list_(
         default=None,
         block="sources",
         write_if_empty=True,
     )
-    fileinput: Optional[list[Fileinput]] = field(
+    fileinput: Optional[list[Fileinput]] = list_(
         default=None,
         block="fileinput",
     )

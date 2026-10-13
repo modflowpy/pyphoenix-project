@@ -5,11 +5,11 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, to_array
+from flopy4.mf6._types import to_array
 from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.gwt.mvt import Mvt
 from flopy4.mf6.item import Item
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import array, child, double, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 
 
@@ -25,69 +25,68 @@ class Gwtgwt(Exchange):
 
     @attrs.define
     class Exchangedata(Item):
-        cellidm1: tuple = field(cellid="1")
-        cellidm2: tuple = field(cellid="2")
-        ihc: int = field()
-        cl1: float = field()
-        cl2: float = field()
-        hwva: float = field()
-        aux: tuple[float, ...] = field(default=(), array=True, shape=("auxiliary",), optional=True)
-        boundname: Optional[str] = field(default=None, optional=True)
+        cellidm1: tuple = array(cellid="1", index=True, shape=("ncelldim",))
+        cellidm2: tuple = array(cellid="2", index=True, shape=("ncelldim",))
+        ihc: int = integer()
+        cl1: float = double()
+        cl2: float = double()
+        hwva: float = double()
+        aux: tuple[float, ...] = array(default=(), shape=("auxiliary",), optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
-    gwfmodelname1: str = field(
+    gwfmodelname1: str = string(
         default=None,
         block="options",
         longname="keyword to specify name of first corresponding GWF Model",
     )
-    gwfmodelname2: str = field(
+    gwfmodelname2: str = string(
         default=None,
         block="options",
         longname="keyword to specify name of second corresponding GWF Model",
     )
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to print input to list file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to print gwfgwf flows to list file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to save GWFGWF flows",
     )
-    adv_scheme: Optional[str] = field(
+    adv_scheme: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="advective scheme",
     )
-    dsp_xt3d_off: bool = field(
+    dsp_xt3d_off: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="deactivate xt3d",
     )
-    dsp_xt3d_rhs: bool = field(
+    dsp_xt3d_rhs: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -95,15 +94,15 @@ class Gwtgwt(Exchange):
     )
     mvt: Optional[Mvt] = child(block="options", keyword="mvt6", direction="in")
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    nexg: Optional[int] = field(
+    nexg: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of exchanges",
     )
-    exchangedata: Optional[list[Exchangedata]] = field(
+    exchangedata: Optional[list[Exchangedata]] = list_(
         default=None,
         block="exchangedata",
-        dim="nexg",
+        shape=("nexg",),
     )
 
 

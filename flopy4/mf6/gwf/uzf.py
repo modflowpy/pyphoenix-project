@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -37,70 +37,69 @@ class Uzf(Package):
 
     @attrs.define
     class Packagedata(Item):
-        ifno: int = field(index=True, pk=True)
-        cellid: tuple = field(cellid=True)
-        landflag: int = field()
-        ivertcon: int = field(index=True, fk="packagedata.ifno")
-        surfdep: float = field()
-        vks: float = field()
-        thtr: float = field()
-        thts: float = field()
-        thti: float = field()
-        eps: float = field()
-        boundname: Optional[str] = field(default=None, optional=True)
+        ifno: int = integer(index=True, pk=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        landflag: int = integer()
+        ivertcon: int = integer(index=True, fk="packagedata.ifno")
+        surfdep: float = double()
+        vks: float = double()
+        thtr: float = double()
+        thts: float = double()
+        thti: float = double()
+        eps: float = double()
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        finf: Union[float, TimeSeriesRef] = field(time_series=True)
-        pet: Union[float, TimeSeriesRef] = field(time_series=True)
-        extdp: Union[float, TimeSeriesRef] = field(time_series=True)
-        extwc: Union[float, TimeSeriesRef] = field(time_series=True)
-        ha: Union[float, TimeSeriesRef] = field(time_series=True)
-        hroot: Union[float, TimeSeriesRef] = field(time_series=True)
-        rootact: Union[float, TimeSeriesRef] = field(time_series=True)
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        finf: Union[float, TimeSeriesRef] = string(time_series=True)
+        pet: Union[float, TimeSeriesRef] = string(time_series=True)
+        extdp: Union[float, TimeSeriesRef] = string(time_series=True)
+        extwc: Union[float, TimeSeriesRef] = string(time_series=True)
+        ha: Union[float, TimeSeriesRef] = string(time_series=True)
+        hroot: Union[float, TimeSeriesRef] = string(time_series=True)
+        rootact: Union[float, TimeSeriesRef] = string(time_series=True)
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
 
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    auxmultname: Optional[str] = field(
+    auxmultname: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="name of auxiliary variable for multiplier",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save well flows to budget file",
     )
-    wc_file: Optional[Path] = path(
+    wc_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -108,7 +107,7 @@ class Uzf(Package):
         direction="out",
         keyword="water_content",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -116,7 +115,7 @@ class Uzf(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -124,7 +123,7 @@ class Uzf(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    package_convergence_file: Optional[Path] = path(
+    package_convergence_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -136,67 +135,67 @@ class Uzf(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    simulate_et: bool = field(
+    simulate_et: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    linear_gwet: bool = field(
+    linear_gwet: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="use linear evapotranspiration",
     )
-    square_gwet: bool = field(
+    square_gwet: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="use square evapotranspiration",
     )
-    simulate_gwseep: bool = field(
+    simulate_gwseep: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate seepage",
     )
-    unsat_etwc: bool = field(
+    unsat_etwc: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="use PET for theta greater than extwc",
     )
-    unsat_etae: bool = field(
+    unsat_etae: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="use root potential",
     )
-    nuzfcells: Optional[int] = field(
+    nuzfcells: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of UZF cells",
     )
-    ntrailwaves: Optional[int] = field(
+    ntrailwaves: Optional[int] = integer(
         default=7,
         block="dimensions",
         longname="number of trailing waves",
     )
-    nwavesets: Optional[int] = field(
+    nwavesets: Optional[int] = integer(
         default=40,
         block="dimensions",
         longname="number of wave sets",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nuzfcells",
+        shape=("nuzfcells",),
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

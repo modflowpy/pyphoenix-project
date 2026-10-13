@@ -8,7 +8,7 @@ from flopy4.mf6.exchange import Exchange
 from flopy4.mf6.model import Model
 from flopy4.mf6.simulation_methods import SimulationMethods
 from flopy4.mf6.solution import Solution
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import child, integer, keyword, string
 from flopy4.mf6.tdis import Tdis
 from flopy4.mf6.utl.hpc import Hpc
 
@@ -17,37 +17,37 @@ from flopy4.mf6.utl.hpc import Hpc
 class Simulation(SimulationMethods, Context):
     dfn_name: ClassVar[str] = "sim-nam"
 
-    continue_: bool = field(
+    continue_: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="continue if not converged",
     )
-    nocheck: bool = field(
+    nocheck: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="turn off checking",
     )
-    memory_print_option: Optional[str] = field(
+    memory_print_option: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="memory print option",
     )
-    profile_option: Optional[str] = field(
+    profile_option: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="profiling option",
     )
-    maxerrors: Optional[int] = field(
+    maxerrors: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="maximum number of errors",
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -57,7 +57,7 @@ class Simulation(SimulationMethods, Context):
     tdis: Tdis = child(block="timing", keyword="tdis6", default=attrs.Factory(Tdis))
     models: list[Model] = child(block="models", default=attrs.Factory(list))
     exchanges: list[Exchange] = child(block="exchanges", default=attrs.Factory(list))
-    mxiter: Optional[int] = field(
+    mxiter: Optional[int] = integer(
         default=None,
         block="solutiongroup",
         optional=True,
