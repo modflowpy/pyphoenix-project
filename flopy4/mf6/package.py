@@ -18,10 +18,11 @@ from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
     construct_item,
-    construct_union_item,
     dim_lookup,
     item_list_type,
+    item_list_words,
     package_sized_fields,
+    union_value,
 )
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.period_arrays import (
@@ -153,9 +154,11 @@ class Package(Component, ABC):
             if raw is None:
                 continue
 
+            words = item_list_words(f.type)
             if f.metadata.get("fill_forward"):
                 coerced = {
-                    kper: self._coerce_item_list(rows, item_cls) for kper, rows in raw.items()
+                    kper: self._coerce_item_list(rows, item_cls, words)
+                    for kper, rows in raw.items()
                 }
                 object.__setattr__(self, f.name, coerced)
                 rows = [r for kper_rows in coerced.values() for r in kper_rows]
@@ -163,7 +166,7 @@ class Package(Component, ABC):
                     nrows = max((len(r) for r in coerced.values()), default=0)
                     self._set_dim_from_rows(dim, nrows, bound)
             else:
-                rows = self._coerce_item_list(raw, item_cls)
+                rows = self._coerce_item_list(raw, item_cls, words)
                 object.__setattr__(self, f.name, rows)
                 if dim:
                     self._set_dim_from_rows(dim, len(rows), bound)
@@ -353,7 +356,9 @@ class Package(Component, ABC):
                 raise ValueError(f"{shape}={declared} but {f.name} has {n} values")
 
     @staticmethod
-    def _coerce_item_list(data, item_cls: "type[Item] | tuple[type[Item], ...]") -> list:
+    def _coerce_item_list(
+        data, item_cls: "type[Item] | tuple[type[Item], ...]", words: tuple[str, ...] = ()
+    ) -> list:
         """Convert user-supplied list/dict data to a list of Item instances.
 
         For a plain (non-union) item_cls, accepts:
@@ -364,30 +369,24 @@ class Package(Component, ABC):
           - dict of lists              → column-oriented {col_name: [values]}
 
         For a union item_cls (a tuple of arm classes, e.g. OC's (OcSave,
-        OcPrint)): existing arm instances pass through;
+        OcPrint)): existing arm instances pass through, as do its
+        ``words`` (PRP's ALL), in any case;
         tuples/lists are dispatched to the right arm by their keyword token
         and built positionally (see flopy4.mf6.item.construct_union_item --
         NOT from_tokens, since these values are already Python-side, not
         raw 1-based/string file tokens); dicts are dispatched by a
-        "keyword" key. Ambiguous columnar dict-of-lists input isn't
-        supported (no single arm to build columns from).
+        "keyword" key. Raises on a row no arm takes. Ambiguous columnar
+        dict-of-lists input isn't supported (no single arm to build
+        columns from).
         """
         if isinstance(item_cls, tuple):
             items = []
             for row in data:
-                if isinstance(row, item_cls):
-                    items.append(row)
-                elif isinstance(row, dict):
-                    kw = str(row.get("keyword", "")).upper()
-                    arm = next(
-                        (c for c in item_cls if c.__dict__.get("_keyword", "").upper() == kw), None
-                    )
-                    if arm is not None:
-                        items.append(arm(**{k: v for k, v in row.items() if k != "keyword"}))
-                else:
-                    item = construct_union_item(row, item_cls)
-                    if item is not None:
-                        items.append(item)
+                item = _union_row(row, item_cls, words)
+                if item is None:
+                    names = [*words, *(c.__name__ for c in item_cls)]
+                    raise ValueError(f"no arm of {names} takes row {row!r}")
+                items.append(item)
             return items
         if isinstance(data, dict):
             n = len(next(iter(data.values()))) if data else 0
@@ -639,9 +638,13 @@ class Package(Component, ABC):
         _spd = self.__dict__.get("_stress_period_data")
         if not _spd:
             return pd.DataFrame()
+        union = isinstance(item_list_type(self._period_item_field().type), tuple)
         frames = []
         for kper in sorted(_spd):
-            df = pd.DataFrame([_row_dict(row) for row in _spd[kper]])
+            # object columns in a list of unions, whose arms leave each
+            # other's empty: else an int column with gaps would turn float
+            dtype = object if union else None
+            df = pd.DataFrame([_row_dict(row, keyword=union) for row in _spd[kper]], dtype=dtype)
             df.insert(0, "kper", kper)
             frames.append(df)
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -650,37 +653,35 @@ class Package(Component, ABC):
         """Set stress_period_data from a tidy DataFrame.
 
         The DataFrame must have a ``kper`` column and data columns matching
-        the period Item class's own fields (as produced by ``to_dataframe()``).
+        the period Item class's own fields (as produced by ``to_dataframe()``),
+        and, for a list of unions, a ``keyword`` column naming each row's arm.
         """
         if df.empty:
             self.__dict__["_stress_period_data"] = {}
             return
         if "kper" not in df.columns:
             raise ValueError("DataFrame must have a 'kper' column")
-        item_cls = self._period_item_cls()
-        if isinstance(item_cls, tuple):
-            raise ValueError(
-                f"{type(self).__name__}.from_dataframe() doesn't support a union period "
-                "field (multiple possible row shapes) -- construct arm instances directly."
-            )
+        f = self._period_item_field()
+        item_cls = item_list_type(f.type)
+        assert item_cls is not None
         spd: dict[int, list] = {}
         for kper, group in df.groupby("kper"):
             group = group.drop(columns=["kper"])
-            # A missing optional column (e.g. boundname) round-trips through
-            # pandas as NaN, not absent. Drop it so the Item class's own
-            # default applies rather than storing a float in a str field.
-            spd[int(kper)] = [
-                item_cls(**{k: v for k, v in row.items() if not (is_scalar(v) and pd.isna(v))})
+            # A missing optional column (e.g. boundname), or another arm's
+            # in a list of unions, round-trips through pandas as NaN, not
+            # absent. Drop it so the Item class's own default applies rather
+            # than storing a float in a str field.
+            records = [
+                {k: v for k, v in row.items() if not (is_scalar(v) and pd.isna(v))}
                 for row in group.to_dict("records")
             ]
+            spd[int(kper)] = self._coerce_item_list(records, item_cls, item_list_words(f.type))
         self.__dict__["_stress_period_data"] = spd
 
-    def _period_item_cls(self) -> "type[Item] | tuple[type[Item], ...]":
+    def _period_item_field(self) -> attrs.Attribute:
         for f in attrs.fields(type(self)):  # type: ignore[arg-type]
-            if f.metadata.get("fill_forward"):
-                item_cls = item_list_type(f.type)
-                if item_cls is not None:
-                    return item_cls
+            if f.metadata.get("fill_forward") and item_list_type(f.type) is not None:
+                return f
         raise ValueError(f"{type(self).__name__} has no period Item-list field")
 
     @property
@@ -802,15 +803,36 @@ class Package(Component, ABC):
         return super().to_xarray()  # type: ignore[return-value]
 
 
-def _row_dict(row: Any) -> dict[str, Any]:
+def _union_row(row: Any, arms: "tuple[type[Item], ...]", words: tuple[str, ...]) -> Any:
+    """A list of unions' row from user input (see Package._coerce_item_list),
+    as a union field's value is (see union_value), or None if no arm
+    takes it."""
+    if isinstance(row, dict):
+        kw = str(row.get("keyword", "")).upper()
+        if kw in words and len(row) == 1:
+            return kw
+        arm = next((c for c in arms if c.keyword().upper() == kw), None)
+        return arm(**{k: v for k, v in row.items() if k != "keyword"}) if arm else None
+    values = list(row) if isinstance(row, (list, tuple)) else [row]
+    return union_value(values, (words, arms))
+
+
+def _row_dict(row: Any, keyword: bool = False) -> dict[str, Any]:
     """A table row as a DataFrame record: `attrs.asdict`, except that
-    time-series references stay as they are (asdict would make each a
-    dict), so the frame round-trips through `from_dataframe`."""
-    record = attrs.asdict(row)
+    time-series references and union arms stay as they are (asdict would
+    make each a dict), so the frame round-trips through `from_dataframe`.
+    With `keyword`, a list of unions' row names its arm, or is its word
+    (PRP's ALL), in a "keyword" column."""
+    if isinstance(row, str):
+        return {"keyword": row}
+    record = {"keyword": type(row).keyword().upper()} if keyword else {}
+    record |= attrs.asdict(row)
     for f in attrs.fields(type(row)):
+        v = getattr(row, f.name)
         if f.metadata.get("time_series"):
-            v = getattr(row, f.name)
             record[f.name] = list(v) if isinstance(v, tuple) else v
+        elif isinstance(v, Item):
+            record[f.name] = v
     return record
 
 
@@ -819,6 +841,8 @@ def _ts_names(row: Any) -> list[str]:
     time-series columns, including in its nested union arms (not its
     child files, which check their own)."""
     names: list[str] = []
+    if isinstance(row, str):
+        return names
     for f in attrs.fields(type(row)):
         value = getattr(row, f.name)
         if f.metadata.get("time_series"):

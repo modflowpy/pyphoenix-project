@@ -87,8 +87,8 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
 {% endfor %}
 {% for union in spec.item_unions %}
     {{ union.alias }} = (
-{% for member in union.members %}
-        {{ member }}{{ " |" if not loop.last }}
+{% for arm in union.arms %}
+        {{ arm }}{{ " |" if not loop.last }}
 {% endfor %}
     )
 

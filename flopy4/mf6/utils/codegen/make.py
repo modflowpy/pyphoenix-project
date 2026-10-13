@@ -119,10 +119,19 @@ class ItemClassSpec:
 @dataclass
 class ItemUnionSpec:
     """A union list's element type alias (e.g. ``_StressPeriodDataItem =
-    Stage | Rate | ...``), keeping the field annotation short."""
+    Stage | Rate | ...``), keeping the field annotation short. Its keyword
+    arms are words, like a union field's (PRP's ``Literal['ALL', 'FIRST',
+    'LAST'] | Frequency | ...``)."""
 
     alias: str
     members: list[str]
+    words: list[str] = dc_field(default_factory=list)
+
+    @property
+    def arms(self) -> list[str]:
+        """The alias's ``|``-joined arms: its words, then its classes."""
+        literal = f"Literal[{', '.join(repr(w.upper()) for w in self.words)}]"
+        return ([literal] if self.words else []) + self.members
 
 
 @dataclass
@@ -492,7 +501,7 @@ def _build_list_item_specs(
 
     - a union element (OC's output, LAK's period settings): one class per
       arm, dispatched by keyword, and a ``_<class_name>Item`` alias for the
-      union
+      union, its keyword arms words (PRP's ALL, FIRST and LAST)
     - a tagged (keyword-led) record element: one class whose leading
       keyword is its ``_keyword``, built like a union arm
     - an untagged record element (packagedata, CHD's stress_period_data,
@@ -509,7 +518,8 @@ def _build_list_item_specs(
         )
         alias = f"_{class_name}Item"
         members = [s.class_name for s in specs if s.top_level]
-        return specs, alias, ItemUnionSpec(alias=alias, members=members)
+        words = [a.name for a in item.arms.values() if isinstance(a, KeywordField)]
+        return specs, alias, ItemUnionSpec(alias=alias, members=members, words=words)
     if list_field.tagged:
         specs = _build_arm_spec(
             list_field.name,
@@ -589,10 +599,13 @@ def _build_arm_specs_from_union(
     children: "Mapping[str, list[str]] | None" = None,
 ) -> list[ItemClassSpec]:
     """Build one ItemClassSpec per arm of a list's union element (see
-    _build_arm_spec): OC's output, PRP's period settings, or LAK's, each
-    arm of which leads with its own lake or outlet number."""
+    _build_arm_spec), but for its keyword arms, which are words: OC's
+    output, PRP's period settings, or LAK's, each arm of which leads with
+    its own lake or outlet number."""
     specs: list[ItemClassSpec] = []
     for arm_name, arm in union.arms.items():
+        if isinstance(arm, KeywordField):
+            continue
         specs.extend(
             _build_arm_spec(
                 arm_name,
@@ -905,6 +918,7 @@ def _generated_imports(
     has_derived_dims: bool = False,
     has_optional_child: bool = False,
     has_union_child: bool = False,
+    has_literal: bool = False,
     extra_imports: list[str] | None = None,
 ) -> dict[str, list[str]]:
     """Compute import lines for generated packages."""
@@ -946,7 +960,7 @@ def _generated_imports(
         typing_parts.append("Optional")
     if has_union:
         typing_parts.append("Union")
-    if any(col.uses_literal for col in _all_schema_cols):
+    if has_literal or any(col.uses_literal for col in _all_schema_cols):
         typing_parts.append("Literal")
     if typing_parts:
         stdlib.append(f"from typing import {', '.join(sorted(typing_parts))}")
@@ -1848,6 +1862,7 @@ def build_component_spec(
             fs.spec_call.startswith("child(") and "Union[" in fs.type_annotation
             for fs in field_specs
         ),
+        has_literal=any(u.words for u in item_unions),
         extra_imports=[
             *extra_imports,
             *(["from flopy4.mf6.block import Block"] if block_classes else []),

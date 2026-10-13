@@ -715,6 +715,30 @@ def test_union_field_takes_arm_values():
         Maw.StressPeriodData(ifno=0, mawsetting=("bogus", 1))
 
 
+def test_union_field_rows_from_dicts():
+    """A row with a union field (MAW's, LKT's) builds from a dict of its
+    columns, the union field given as its arm's values."""
+    from flopy4.mf6.gwf import Maw
+    from flopy4.mf6.gwt import Lkt
+
+    maw = Maw(
+        stress_period_data={
+            0: [
+                {"ifno": 0, "mawsetting": ("rate", -1.0)},
+                {"ifno": 1, "mawsetting": Maw.Status(status="INACTIVE")},
+            ]
+        }
+    )
+    assert maw.stress_period_data[0] == [
+        Maw.StressPeriodData(ifno=0, mawsetting=Maw.Rate(rate=-1.0)),
+        Maw.StressPeriodData(ifno=1, mawsetting=Maw.Status(status="INACTIVE")),
+    ]
+    lkt = Lkt(stress_period_data={0: [{"ifno": 0, "laksetting": ("concentration", 1.5)}]})
+    assert lkt.stress_period_data[0][0].laksetting == Lkt.Concentration(concentration=1.5)
+    with pytest.raises(ValueError, match="no arm"):
+        Maw(stress_period_data={0: [{"ifno": 0, "mawsetting": ("bogus", 1)}]})
+
+
 def test_maw_round_trip():
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
@@ -1692,34 +1716,40 @@ def test_dumps_prt_prp_release_setting():
 
 
 def test_prt_prp_period_roundtrip():
-    """PRT-PRP release settings survive a dump→load→structure_component cycle."""
+    """PRT-PRP release settings, words (ALL, FIRST, LAST) and arms alike,
+    survive a dump→load→structure_component cycle."""
     from flopy4.mf6.converter.egress.unstructure import unstructure_component
     from flopy4.mf6.converter.ingress.structure import structure_component
     from flopy4.mf6.prt.prp import Prp
 
     prp = Prp(
-        dims={"nper": 2},
+        dims={"nper": 3},
         stress_period_data={
-            0: [("FREQUENCY", 2)],
+            0: [("FREQUENCY", 2), "all"],
             1: [("FIRST",)],
+            2: [{"keyword": "last"}, Prp.Steps(steps=(1, 3))],
         },
     )
+    assert prp.stress_period_data == {
+        0: [Prp.Frequency(frequency=2), "ALL"],
+        1: ["FIRST"],
+        2: ["LAST", Prp.Steps(steps=(1, 3))],
+    }
     text = dumps(unstructure_component(prp))
-    raw = loads(text)
-    prp2 = structure_component(raw, Prp)
+    assert "BEGIN PERIOD 2\n FIRST\nEND PERIOD 2" in text
+    prp2 = structure_component(loads(text), Prp)
+    assert prp2.stress_period_data == prp.stress_period_data
 
-    spd = prp2.stress_period_data
-    assert spd is not None
-    assert 0 in spd and 1 in spd
 
-    p0 = spd[0]
-    assert len(p0) == 1
-    assert isinstance(p0[0], Prp.Frequency)
-    assert p0[0].frequency == 2
+def test_union_list_rejects_rows_no_arm_takes():
+    """A list of unions' row that's none of its words or arms raises,
+    rather than being dropped."""
+    from flopy4.mf6.prt.prp import Prp
 
-    p1 = spd[1]
-    assert len(p1) == 1
-    assert isinstance(p1[0], Prp.First)
+    with pytest.raises(ValueError, match="no arm"):
+        Prp(dims={"nper": 1}, stress_period_data={0: ["bogus"]})
+    with pytest.raises(ValueError, match="no arm"):
+        Prp(dims={"nper": 1}, stress_period_data={0: [("BOGUS", 1)]})
 
 
 def test_oc_ocsetting_typed_dispatch():

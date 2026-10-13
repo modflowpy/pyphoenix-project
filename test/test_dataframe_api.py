@@ -9,7 +9,8 @@ Stress-period packages (Chd, Drn, Wel, …) expose:
 import pandas as pd
 import pytest
 
-from flopy4.mf6.gwf import Chd, Drn, Wel
+from flopy4.mf6.gwf import Chd, Drn, Maw, Wel
+from flopy4.mf6.prt import Prp
 
 
 def test_chd_to_dataframe():
@@ -225,3 +226,35 @@ def test_from_dataframe_drops_missing_optional_columns():
     rows = chd.stress_period_data[0]
     assert rows[0].boundname == "a"
     assert rows[1].boundname is None
+
+
+def test_union_field_rows_round_trip():
+    """A row's union field (MAW's mawsetting) is a column of arm instances,
+    not of dicts, so the frame round-trips."""
+    maw = Maw(
+        stress_period_data={
+            0: [(0, "RATE", -1.0), (1, "STATUS", "INACTIVE")],
+            1: [(0, "RATE", -2.0)],
+        }
+    )
+    df = maw.to_dataframe()
+    assert list(df.columns) == ["kper", "ifno", "mawsetting"]
+    assert df["mawsetting"].iloc[0] == Maw.Rate(rate=-1.0)
+    maw2 = Maw()
+    maw2.from_dataframe(df)
+    assert maw2.stress_period_data == maw.stress_period_data
+
+
+def test_union_list_round_trip():
+    """A list of unions' rows (PRP's) name their arm, or are their word, in
+    a keyword column, and keep their ints though other arms leave gaps."""
+    prp = Prp(
+        dims={"nper": 2},
+        stress_period_data={0: [("FREQUENCY", 2), "ALL"], 1: [("STEPS", 1, 3)]},
+    )
+    df = prp.to_dataframe()
+    assert list(df["keyword"]) == ["FREQUENCY", "ALL", "STEPS"]
+    assert df["frequency"].iloc[0] == 2 and isinstance(df["frequency"].iloc[0], int)
+    prp2 = Prp(dims={"nper": 2})
+    prp2.from_dataframe(df)
+    assert prp2.stress_period_data == prp.stress_period_data
