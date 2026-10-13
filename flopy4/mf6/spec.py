@@ -227,8 +227,9 @@ def list_(
     with no rows."""
     if len(shape) > 1:
         raise ValueError(f"a list has at most one dimension, got {shape!r}")
-    dim = shape[0] if shape else None
-    return _field("list", kwargs, dim=dim, fill_forward=fill_forward, write_if_empty=write_if_empty)
+    return _field(
+        "list", kwargs, shape=shape, fill_forward=fill_forward, write_if_empty=write_if_empty
+    )
 
 
 def union(*kinds: str, **kwargs: Unpack[FieldKwargs]) -> Any:

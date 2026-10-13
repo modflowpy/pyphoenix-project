@@ -36,6 +36,7 @@ from flopy4.mf6.period_arrays import (
 )
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import array_shape, list_dim
 
 # DFN type -> numpy dtype, for broadcasting a scalar griddata default to a
 # full array.
@@ -146,7 +147,7 @@ class Package(Component, ABC):
             item_cls = item_list_type(f.type)
             if item_cls is None:
                 continue
-            bound, dim = split_bound(f.metadata["dim"]) if "dim" in f.metadata else (None, None)
+            bound, dim = split_bound(d) if (d := list_dim(f)) else (None, None)
             raw = self.__dict__.get(f.name)
             # Identity, not equality: only the default object itself (never
             # a user value, even an equal one) is repeated to fill `dim`.
@@ -181,9 +182,9 @@ class Package(Component, ABC):
         fields = attrs.fields(type(self))  # type: ignore[arg-type]
         names = {f.name for f in fields if f.metadata.get("block") == "dimensions"}
         for f in fields:
-            if not f.metadata.get("block") or "dim" not in f.metadata:
+            if not f.metadata.get("block") or (d := list_dim(f)) is None:
                 continue
-            bound, dim = split_bound(f.metadata["dim"])
+            bound, dim = split_bound(d)
             rows = self.__dict__.get(f.name)
             if dim not in names or rows is None or item_list_type(f.type) is None:
                 continue
@@ -274,7 +275,7 @@ class Package(Component, ABC):
                 continue
             # like griddata, each period's array has the field's flat DFN
             # shape: (nlay, nrow, ncol) to (nodes,)
-            flat = len(f.metadata.get("shape") or ()) == 1
+            flat = len(array_shape(f)) == 1
             integer = to_field_type(f.type) == "integer"
 
             def _normalize(a, kper):
@@ -422,7 +423,7 @@ class Package(Component, ABC):
                 continue
             if f.metadata.get("layered") and nlay and ncpl and val.shape == (nlay,):
                 val = np.repeat(val, ncpl).astype(dtype)
-            elif val.ndim > 1 and len(f.metadata.get("shape") or ()) == 1:
+            elif val.ndim > 1 and len(array_shape(f)) == 1:
                 val = val.ravel()
             self.__dict__[f.name] = val
 
@@ -438,7 +439,7 @@ class Package(Component, ABC):
         for f in fields:
             if f.metadata.get("block") != "griddata":
                 continue
-            shape_meta = f.metadata.get("shape")
+            shape_meta = array_shape(f)
             if not shape_meta:
                 continue
             val = self.__dict__.get(f.name)
@@ -759,7 +760,7 @@ class Package(Component, ABC):
         _d = self.resolve_dims("nlay", "nrow", "ncol", "ncpl", "nodes")
         _nlay = _d.get("nlay", 1)
         f = attrs.fields_dict(type(self))[field_name]  # type: ignore[arg-type]
-        if f.metadata.get("shape") == ("ncpl",) and not f.metadata.get("layered"):
+        if array_shape(f) == ("ncpl",) and not f.metadata.get("layered"):
             _nlay = 1  # one layer's worth (RCHA's recharge, DIS's top)
         _nrow = _d.get("nrow")
         _ncol = _d.get("ncol")

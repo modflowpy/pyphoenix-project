@@ -25,6 +25,7 @@ import attrs
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
+from flopy4.spec import array_shape
 
 
 def _cellid_field(cls: type) -> attrs.Attribute | None:
@@ -35,7 +36,7 @@ def _counts(f: attrs.Attribute) -> tuple[str, ...]:
     """The dimensions counting an array field's values in the row: its
     ``shape``, but a cellid's without the leading ``ncelldim`` (one cellid's
     components)."""
-    shape = tuple(f.metadata.get("shape") or ())
+    shape = array_shape(f)
     return shape[1:] if f.metadata.get("cellid") else shape
 
 

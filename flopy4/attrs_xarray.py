@@ -37,6 +37,7 @@ import attrs
 import numpy as np
 import xarray as xr
 
+from flopy4.spec import array_shape
 from flopy4.utils import unwrap_optional
 
 
@@ -91,7 +92,7 @@ def _leaf_fields_and_children(
 
 
 def _array_dims(field: attrs.Attribute, name: str, ndim: int) -> tuple:
-    shape_meta = field.metadata.get("shape")
+    shape_meta = array_shape(field)
     if shape_meta and len(shape_meta) == ndim:
         return tuple(shape_meta)
     return tuple(f"{name}_dim{i}" for i in range(ndim))
@@ -107,7 +108,7 @@ def _named_dim(field: attrs.Attribute) -> str | None:
 def _period_dim(field: attrs.Attribute) -> str | None:
     """For period arrays (WELG's q, RCHA's aux), ``{kper: array}``, the dim to
     stack the given periods along, labeled by period ("q_period")."""
-    periods = field.metadata.get("fill_forward") and field.metadata.get("shape")
+    periods = field.metadata.get("fill_forward") and array_shape(field)
     return f"{field.name}_period" if periods else None
 
 
@@ -210,7 +211,7 @@ def attrs_to_dataset(obj) -> xr.Dataset:
                 data_vars[name] = _period_dataarray(field, name, value)
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
-        elif field.metadata.get("shape") and isinstance(value, (list, tuple)):
+        elif array_shape(field) and isinstance(value, (list, tuple)):
             # A shape-tagged field whose value hasn't (yet) been coerced to
             # a real ndarray -- e.g. assigned directly post-construction,
             # bypassing whatever coercion __attrs_post_init__ normally does.

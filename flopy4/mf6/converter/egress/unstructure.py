@@ -20,6 +20,7 @@ from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
 from flopy4.mf6.spec import FileDirection, block_sort_key, blocks_dict, to_field_type
 from flopy4.mf6.write_context import WriteContext
+from flopy4.spec import array_shape
 
 
 def _path_to_tuple(field: attrs.Attribute, value: Path) -> tuple[str, ...]:
@@ -292,10 +293,10 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
             blocks[block_name][f.name] = field_value
 
-        elif meta.get("shape") and not isinstance(field_value, bool):
+        elif array_shape(f) and not isinstance(field_value, bool):
             if meta.get("index"):
                 field_value = _to_file_index(field_value)
-            if meta["shape"]:
+            if array_shape(f):
                 # shape a per-cell array like the grid: a layered one by
                 # layer, with an nlay dim to signal the writer to use
                 # layered format, and on a structured grid each layer

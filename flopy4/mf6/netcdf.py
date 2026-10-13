@@ -21,6 +21,7 @@ from flopy4.mf6.period_arrays import dense, split_tas
 from flopy4.mf6.spec import to_field_type
 from flopy4.mf6.utils.grid import StructuredGrid, VertexGrid
 from flopy4.mf6.utils.time import Time
+from flopy4.spec import array_shape
 from flopy4.version import __version__
 
 
@@ -110,7 +111,7 @@ class _PackageSpec:
                 # nper axis (see Package.period_array).
                 fill_forward = bool(f.metadata.get("fill_forward"))
                 is_layered = f.metadata.get("layered", False)
-                raw_shape = f.metadata.get("shape") or ("nodes",)
+                raw_shape = array_shape(f) or ("nodes",)
                 # normalize ncpl → nodes for layered fields only
                 if is_layered:
                     normalized = tuple("nodes" if d == "ncpl" else d for d in raw_shape)
@@ -290,7 +291,7 @@ class NetCDFModel(BaseModel, NetCDFInput):
                     _dtype = _PKG_DTYPE_MAP.get(to_field_type(f.type), np.float64)
                     arr = np.asarray(val, dtype=_dtype)
                     # Only broadcast scalars to full grid for nodes-shaped fields
-                    shape_meta = f.metadata.get("shape", ())
+                    shape_meta = array_shape(f)
                     if "nodes" in shape_meta and arr.size < _nodes:
                         arr = np.full(_nodes, arr.ravel()[0], dtype=_dtype)
                     p["params"].append({"name": f.name, "data": arr})
