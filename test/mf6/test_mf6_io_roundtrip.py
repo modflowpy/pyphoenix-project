@@ -16,7 +16,14 @@ from modflow_devtools.models import copy_to
 
 from flopy4.mf6.component import Component
 from flopy4.mf6.gwf import Wel
+from flopy4.mf6.gwt import Dis as GwtDis
+from flopy4.mf6.gwt import Gwt, Sft
+from flopy4.mf6.gwt import Ic as GwtIc
+from flopy4.mf6.gwt import Mst as GwtMst
+from flopy4.mf6.gwt import Ssm as GwtSsm
+from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
+from flopy4.mf6.utils.time import Time
 
 from .test_mf6_load_all_models import KNOWN_PASSING
 
@@ -305,3 +312,34 @@ def test_layered_open_close_griddata(tmp_path):
     context = LoadContext(workspace=tmp_path)
     result = _parse_array_block(rows, fields, {"nlay": 2, "nodes": 6}, context)
     assert np.array_equal(result["k"], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+
+
+def test_gwt_sft_round_trips(tmp_path):
+    """SFT (and its mwt/uzt/gwe sfe/uze/mwe analogs, registered the same
+    way) round-trips load -> write -> reload."""
+    gwt_name = "gwt1"
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
+        workspace=tmp_path,
+        name="sim1",
+        solutiongroup=[Ims(filename="gwt.ims", models=[gwt_name])],
+    )
+    dis = GwtDis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwt = Gwt(parent=sim, dis=dis, name=gwt_name)
+    GwtIc(parent=gwt, strt=0.0)
+    GwtMst(parent=gwt, porosity=0.3)
+    GwtSsm(parent=gwt)
+    sft = Sft(
+        parent=gwt,
+        dims={"nper": 1},
+        boundnames=True,
+        packagedata=[(0, 1.0, "reach1")],
+        stress_period_data={0: [[0, "STATUS", "CONSTANT"], [0, "CONCENTRATION", 5.0]]},
+        name="SFT-1",
+    )
+
+    sim.write()
+    reloaded = Simulation.load(tmp_path / "mfsim.nam")
+    diffs: list[str] = []
+    _diff(sft.packagedata, reloaded[gwt_name].sft[0].packagedata, "sft.packagedata", diffs)
+    assert not diffs, "\n".join(diffs)

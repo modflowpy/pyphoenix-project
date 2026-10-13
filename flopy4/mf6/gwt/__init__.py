@@ -17,9 +17,12 @@ from flopy4.mf6.gwt.ist import Ist
 from flopy4.mf6.gwt.lkt import Lkt
 from flopy4.mf6.gwt.mst import Mst
 from flopy4.mf6.gwt.mvt import Mvt
+from flopy4.mf6.gwt.mwt import Mwt
 from flopy4.mf6.gwt.oc import Oc
+from flopy4.mf6.gwt.sft import Sft
 from flopy4.mf6.gwt.src import Src
 from flopy4.mf6.gwt.ssm import Ssm
+from flopy4.mf6.gwt.uzt import Uzt
 from flopy4.mf6.model import Model
 from flopy4.mf6.model_methods import ModelMethods
 from flopy4.mf6.spec import child, field, path
@@ -40,9 +43,12 @@ __all__ = [
     "Lkt",
     "Mst",
     "Mvt",
+    "Mwt",
     "Oc",
+    "Sft",
     "Src",
     "Ssm",
+    "Uzt",
 ]
 
 
@@ -120,7 +126,10 @@ class Gwt(ModelMethods, Model):
     lkt: list[Lkt] = child(block="packages", default=attrs.Factory(list))
     mst: Optional[Mst] = child(block="packages")
     mvt: Optional[Mvt] = child(block="packages")
+    mwt: list[Mwt] = child(block="packages", default=attrs.Factory(list))
     oc: Optional[Oc] = child(block="packages")
+    sft: list[Sft] = child(block="packages", default=attrs.Factory(list))
     src: list[Src] = child(block="packages", default=attrs.Factory(list))
     ssm: Optional[Ssm] = child(block="packages")
+    uzt: list[Uzt] = child(block="packages", default=attrs.Factory(list))
     obs: Optional[Obs] = child(block="packages")

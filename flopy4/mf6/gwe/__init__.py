@@ -16,8 +16,11 @@ from flopy4.mf6.gwe.fmi import Fmi
 from flopy4.mf6.gwe.ic import Ic
 from flopy4.mf6.gwe.lke import Lke
 from flopy4.mf6.gwe.mve import Mve
+from flopy4.mf6.gwe.mwe import Mwe
 from flopy4.mf6.gwe.oc import Oc
+from flopy4.mf6.gwe.sfe import Sfe
 from flopy4.mf6.gwe.ssm import Ssm
+from flopy4.mf6.gwe.uze import Uze
 from flopy4.mf6.model import Model
 from flopy4.mf6.model_methods import ModelMethods
 from flopy4.mf6.spec import child, field, path
@@ -37,8 +40,11 @@ __all__ = [
     "Ic",
     "Lke",
     "Mve",
+    "Mwe",
     "Oc",
+    "Sfe",
     "Ssm",
+    "Uze",
 ]
 
 
@@ -115,6 +121,9 @@ class Gwe(ModelMethods, Model):
     ic: Optional[Ic] = child(block="packages")
     lke: list[Lke] = child(block="packages", default=attrs.Factory(list))
     mve: Optional[Mve] = child(block="packages")
+    mwe: list[Mwe] = child(block="packages", default=attrs.Factory(list))
     oc: Optional[Oc] = child(block="packages")
+    sfe: list[Sfe] = child(block="packages", default=attrs.Factory(list))
     ssm: Optional[Ssm] = child(block="packages")
+    uze: list[Uze] = child(block="packages", default=attrs.Factory(list))
     obs: Optional[Obs] = child(block="packages")
