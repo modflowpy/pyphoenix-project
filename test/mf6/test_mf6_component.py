@@ -2207,7 +2207,7 @@ def test_model_unmatched_package_warns(function_tmpdir):
     for yet, warns instead of vanishing."""
     _gwt_sim(function_tmpdir).write()
     nam = function_tmpdir / "gwt.nam"
-    nam.write_text(nam.read_text().replace("END PACKAGES", " MWT6 gwt.mwt mwt\nEND PACKAGES"))
+    nam.write_text(nam.read_text().replace("END PACKAGES", " ZZZ6 gwt.zzz zzz\nEND PACKAGES"))
 
-    with pytest.warns(UserWarning, match="MWT6"):
+    with pytest.warns(UserWarning, match="ZZZ6"):
         Simulation.load(function_tmpdir / "mfsim.nam")
