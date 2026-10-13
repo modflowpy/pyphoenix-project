@@ -1801,6 +1801,22 @@ def test_oc_ocsetting_construct_item_positional():
     assert print_.ocsetting.frequency == 2
 
 
+@pytest.mark.parametrize("boundname", [None, "b"])
+def test_construct_item_positional_trailing_boundname(boundname):
+    """A positional row's last value is its boundname, absent (None) or
+    not, rather than another value of the aux array before it."""
+    from flopy4.mf6.gwf import Evt, Wel
+
+    wel = Wel(stress_period_data={0: [((0, 0, 0), 1.0, (), boundname)]})
+    assert wel.stress_period_data[0][0] == Wel.StressPeriodData(
+        cellid=(0, 0, 0), q=1.0, boundname=boundname
+    )
+    row = ((0, 0, 0), 10.0, 0.001, 2.0, (0.3, 0.6), (0.7, 0.4), None, (), boundname)
+    evt = Evt(stress_period_data={0: [row]})
+    assert evt.stress_period_data[0][0].aux == ()
+    assert evt.stress_period_data[0][0].boundname == boundname
+
+
 # ---------------------------------------------------------------------------
 # OC period dict API coverage
 # ---------------------------------------------------------------------------
