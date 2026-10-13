@@ -1615,6 +1615,15 @@ def test_to_dataarray_standalone_structured():
     assert np.allclose(da.values, 1.5)
 
 
+def test_to_dataarray_standalone_vertex():
+    """A DISV array's dims are (layer, j), j the cell within its layer."""
+    dims = {"nlay": 2, "ncpl": 3, "nodes": 6}
+    npf = Npf(dims=dims, k=1.5)
+    da = npf.to_dataarray("k")
+    assert da.dims == ("layer", "j")
+    assert da.shape == (2, 3)
+
+
 def test_to_xarray_standalone_structured():
     """Npf.to_xarray() on a standalone package returns Dataset with all griddata fields."""
     dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}
