@@ -78,7 +78,7 @@ def test_disv_grid():
 def test_boundnames_are_a_coordinate():
     chd = Chd(
         boundnames=True,
-        stress_period_data={0: [((0, 0, 0), 1.0, (), "a"), ((0, 1, 1), 2.0)]},
+        stress_period_data={0: [((0, 0, 0), 1.0, (), "a"), ((0, 1, 1), 2.0, (), None)]},
         dims=DIMS,
     )
     ds = chd.to_xarray()
