@@ -177,7 +177,7 @@ class TypedTransformer(Transformer):
 
     def word(self, items: list[Token]) -> str:
         """Handle word token."""
-        return str(items[0])
+        return str(items[0]).strip("\"'")
 
     def integer(self, items: list[Any]) -> int:
         return int(items[0])

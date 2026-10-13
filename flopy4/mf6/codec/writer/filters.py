@@ -329,6 +329,21 @@ def data2list(value: list | tuple | dict | xr.Dataset | xr.DataArray):
         yield rec
 
 
+def _quote_row_value(x: Any) -> str:
+    """Quote a row value if it needs it to read back as one token
+    (whitespace, comma, or double-quote) -- otherwise as-is.
+
+    Unlike ``quote_if_needed`` (which leaves a space-containing *scalar
+    option* unquoted, since that may be a free keyword sequence like
+    'STEPS 1 5'), a row's fields are always single values, so whitespace
+    always needs quoting here.
+    """
+    if isinstance(x, str) and any(c in x for c in ' \t,"'):
+        quote = "'" if "'" not in x else '"'
+        return f"{quote}{x}{quote}"
+    return str(x)
+
+
 def data2lines(value: list | tuple | dict | xr.Dataset | xr.DataArray, inset: str = " ") -> str:
     """
     Pre-format list data rows to a single newline-joined string.
@@ -338,7 +353,7 @@ def data2lines(value: list | tuple | dict | xr.Dataset | xr.DataArray, inset: st
     Functionally equivalent to the list macro's ``{% for row %}{{ record(row) }}``
     loop but ~10x faster for large packages.
     """
-    return "\n".join(inset + " ".join(str(x) for x in row) for row in data2list(value))
+    return "\n".join(inset + " ".join(_quote_row_value(x) for x in row) for row in data2list(value))
 
 
 def dataset2list(value: xr.Dataset):

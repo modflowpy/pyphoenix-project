@@ -61,6 +61,10 @@ class BasicTransformer(Transformer):
             return parse_number(value.replace("d", "e").replace("D", "E"))
         return value
 
+    def QUOTED(self, token: Token) -> str:
+        # Quoting forces string interpretation even if content looks numeric.
+        return str(token)[1:-1]
+
     def CNAME(self, token: Token) -> str:
         return str(token)
 

@@ -38,7 +38,7 @@ _data_line: double+ [_remark] _NL
 record: token (token | _block_kw)* _NL
 _block_kw: "begin"i | "end"i
 token: number | word
-word: WORD_STR
+word: WORD_STR | SINGLE_QUOTED_STRING
 // Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
 // pure-digit string always lexes as a number where both could match --
 // confirmed necessary, not just tidiness: without it, a state that's
@@ -48,6 +48,11 @@ word: WORD_STR
 // the ambiguous digit token to WORD_STR in a state that has no action for
 // it at all -- a hard parse failure, not just a wrong parse.
 WORD_STR.-1: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+// A single-quoted multi-word value (boundnames/obsnames, e.g. `'wc 02'`).
+// Without this, WORD_STR splits it at the embedded space, shifting every
+// later column in the row. Longest-match already prefers this over
+// WORD_STR; ties go to it via its higher default priority over -1.
+SINGLE_QUOTED_STRING: /'[^'\n]*'/
 _token: word | number
 // Excludes "," (not just whitespace) so a remark can never out-length a
 // COMMA-separated data run with no surrounding spaces (confirmed against a
