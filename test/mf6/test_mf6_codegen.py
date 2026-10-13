@@ -1074,6 +1074,16 @@ def test_bounded_array_arm_is_variadic(tmp_path, all_dfns, name):
     assert "steps: tuple[int, ...] = field(default=(), array=True)" in spec.outpath.read_text()
 
 
+def test_union_list_keyword_arms_are_words(tmp_path, all_dfns):
+    """A list of unions' keyword arms (PRP's ALL, FIRST and LAST) are words
+    in its alias, as a union field's are, not classes."""
+    skip = {n for n in all_dfns if n != "prt-prp"}
+    (spec,) = make_modules(dfns=all_dfns, outdir=tmp_path, skip=skip, makedirs=True)
+    (union,) = spec.item_unions
+    assert union.arms == ["Literal['ALL', 'FIRST', 'LAST']", "Frequency", "Steps", "Fraction"]
+    assert "All" not in {ic.class_name for ic in spec.item_classes}
+
+
 @pytest.mark.parametrize(
     "field,fixed",
     [

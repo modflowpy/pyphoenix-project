@@ -19,7 +19,7 @@ import ast
 from collections.abc import Callable, Mapping
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, ClassVar, Union, cast, get_args, get_origin
+from typing import Any, ClassVar, Literal, Union, cast, get_args, get_origin
 
 import attrs
 
@@ -177,12 +177,12 @@ def to_union_arm(value: Any, self: Any, f: attrs.Attribute) -> Any:
     if value is None or (arms := _union_field_arms(type(self), f)) is None:
         return value
     values = list(value) if isinstance(value, (list, tuple)) else [value]
-    if (converted := _union_value(values, arms)) is None:
+    if (converted := union_value(values, arms)) is None:
         raise ValueError(f"{type(self).__name__}.{f.name}: no arm of {f.type} takes {value!r}")
     return converted
 
 
-def _union_value(values: list, arms: "tuple[tuple[str, ...], tuple[type[Item], ...]]") -> Any:
+def union_value(values: list, arms: "tuple[tuple[str, ...], tuple[type[Item], ...]]") -> Any:
     """A union field's value from the user-supplied values it spans: one of
     its words, an arm instance given as is, or an arm built from them by
     its keyword (see construct_union_item)."""
@@ -258,7 +258,7 @@ def construct_item(item_cls: type, values) -> "Item":
     if arms is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
         # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
         trailing = list(trailing[0])
-    tuple_vals = _union_value(trailing, arms) if arms is not None else tuple(trailing)
+    tuple_vals = union_value(trailing, arms) if arms is not None else tuple(trailing)
     if boundname_val is not None:
         return cast("Item", item_cls(*before, tuple_vals, boundname=boundname_val))
     return cast("Item", item_cls(*before, tuple_vals))
@@ -843,21 +843,34 @@ def _unwrap_item(item) -> "type[Item] | tuple[type[Item], ...] | None":
     return None
 
 
-def item_list_type(field_type) -> "type[Item] | tuple[type[Item], ...] | None":
-    """For Optional[list[C]] or Optional[dict[int, list[C]]], return C (or
-    the tuple of arm classes for a Union item type)."""
+def _list_elem(field_type) -> Any:
+    """For Optional[list[C]] or Optional[dict[int, list[C]]], C."""
     args = get_args(field_type)
     inner = next((a for a in args if a is not type(None)), None)
     if inner is None:
         return None
     origin = get_origin(inner)
     if origin is list:
-        return _unwrap_item(get_args(inner)[0])
+        return get_args(inner)[0]
     if origin is dict:
         _, val = get_args(inner)
         if get_origin(val) is list:
-            return _unwrap_item(get_args(val)[0])
+            return get_args(val)[0]
     return None
+
+
+def item_list_type(field_type) -> "type[Item] | tuple[type[Item], ...] | None":
+    """For Optional[list[C]] or Optional[dict[int, list[C]]], return C (or
+    the tuple of arm classes for a Union item type)."""
+    elem = _list_elem(field_type)
+    return None if elem is None else _unwrap_item(elem)
+
+
+def item_list_words(field_type) -> tuple[str, ...]:
+    """The words a list of unions' rows may be, besides its arm classes
+    (PRP's ALL, FIRST and LAST)."""
+    elem = _list_elem(field_type)
+    return tuple(w for a in get_args(elem) if get_origin(a) is Literal for w in get_args(a))
 
 
 def dispatch_union_item(item: list, arm_classes: "tuple[type[Item], ...]") -> "type[Item] | None":
@@ -897,19 +910,24 @@ def parse_union_items(
     items: list,
     arm_classes: "tuple[type[Item], ...]",
     *,
+    words: tuple[str, ...] = (),
     sizes: Mapping[str, int] | None = None,
     boundnames: bool = False,
     dims: "dict | None" = None,
     load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> list | None:
     """Parse raw token items into Item instances, dispatching each by
-    keyword (see dispatch_union_item); unmatched items are skipped.
-    ``load_child`` loads a child column's component (see from_tokens)."""
+    keyword (see dispatch_union_item), or into ``words`` (PRP's ``ALL``);
+    unmatched items are skipped. ``load_child`` loads a child column's
+    component (see from_tokens)."""
     if not items:
         return None
-    result = []
+    result: list = []
     for item in items:
         if not item:
+            continue
+        if len(item) == 1 and (word := str(item[0]).upper()) in words:
+            result.append(word)
             continue
         arm_cls = dispatch_union_item(item, arm_classes)
         if arm_cls is None:

@@ -133,10 +133,11 @@ def _period_dataarray(
     return _mark_netcdf(da, meta)
 
 
-def _rows_to_tuples(row_list: list) -> list[tuple]:
+def _rows_to_tuples(row_list: list) -> list:
     """Convert a list of Item instances to MF6 record tuples via each
-    Item's own to_tokens()."""
-    return [row.to_tokens() for row in row_list]
+    Item's own to_tokens(), and a list of unions' words (PRP's ALL) to
+    lines of their own."""
+    return [[row] if isinstance(row, str) else row.to_tokens() for row in row_list]
 
 
 def _wrap_array(value: Any) -> xr.DataArray:
@@ -247,11 +248,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 kper_int = _normalize_kper(kper)
                 if kper_int is None:
                     continue
-                rows = (
-                    _rows_to_tuples(row_list)
-                    if isinstance(row_list, list) and row_list and isinstance(row_list[0], Item)
-                    else []
-                )
+                rows = _rows_to_tuples(row_list) if isinstance(row_list, list) else []
                 spd_period.setdefault(kper_int, []).extend(rows)
             continue
 

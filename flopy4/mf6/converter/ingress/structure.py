@@ -19,6 +19,7 @@ from flopy4.mf6.item import (
     Item,
     dim_lookup,
     item_list_type,
+    item_list_words,
     parse_union_items,
     sized_by,
 )
@@ -54,15 +55,18 @@ def _parse_rows(
     union_arm: str = "cellid",
     union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
     load_child: Callable[[Any, str], Any] | None = None,
+    words: tuple[str, ...] = (),
 ) -> list | None:
-    """Parse lists of tokens (rows) into a list of Items, their cellids'
-    widths per the context (see `LoadContext.ncelldim`)."""
+    """Parse lists of tokens (rows) into a list of Items (or, in a list of
+    unions, its ``words``), their cellids' widths per the context (see
+    `LoadContext.ncelldim`)."""
     if not rows:
         return None
     if isinstance(item_cls, tuple):
         return parse_union_items(
             rows,
             item_cls,
+            words=words,
             sizes=sizes,
             boundnames=boundnames,
             dims=dict(context.dims),
@@ -1093,6 +1097,7 @@ def structure_component(
             union_arm=union_arm,
             union_forms=union_forms,
             load_child=load_child,
+            words=item_list_words(f.type),
         )
         if row_list is not None:
             init_key = f.alias if (f.alias and not f.alias.startswith("_")) else f.name
@@ -1153,6 +1158,7 @@ def structure_component(
                     union_arm=union_arm,
                     union_forms=union_forms,
                     load_child=load_child,
+                    words=item_list_words(period_field.type),
                 )
                 if row_list is not None:
                     spd[kper] = row_list
