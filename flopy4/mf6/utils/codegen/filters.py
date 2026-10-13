@@ -718,7 +718,7 @@ def python_repr(v) -> str:
 def pascal_name(name: str) -> str:
     """snake_case, hyphenated, or a plain lowercase word -> PascalCase, e.g.
     ``stress_period_data`` -> ``StressPeriodData``, ``packagedata`` ->
-    ``Packagedata``, ``ext-inflow`` (a real MF6 keystring keyword, LKT/LKE)
+    ``Packagedata``, ``ext-inflow`` (a real MF6 keyword, LKT/LKE)
     -> ``ExtInflow``. Only "_"/"-" split words -- the wire keyword itself
     (unlike the class name) keeps its original separator, since a hyphen is
     fine inside a Python string but not an identifier."""
@@ -755,8 +755,9 @@ class ItemColumn:
     and emits them.
 
     ``annotation`` and ``rhs`` render as ``name: annotation = rhs``. A
-    nested-union column sets ``arm_classes`` instead of ``annotation``, as
-    its forward-reference union needs the package class name.
+    union column with arm classes sets ``arm_classes`` (and any ``words``)
+    instead of ``annotation``, as its forward-reference union needs the
+    package class name.
     """
 
     name: str
@@ -764,6 +765,7 @@ class ItemColumn:
     rhs: str
     optional: bool = False  # declared after the required columns
     arm_classes: tuple[str, ...] = ()
+    words: tuple[str, ...] = ()
 
     @property
     def uses_path(self) -> bool:
@@ -774,6 +776,11 @@ class ItemColumn:
     def uses_union(self) -> bool:
         """Whether the module needs ``Union`` imported."""
         return "Union[" in self.annotation
+
+    @property
+    def uses_literal(self) -> bool:
+        """Whether the module needs ``Literal`` imported."""
+        return "Literal[" in self.annotation or bool(self.words)
 
     @property
     def uses_ts_ref(self) -> bool:
@@ -792,9 +799,18 @@ class ItemColumn:
     def line(self, package_class_name: str = "") -> str:
         annotation = self.annotation
         if self.arm_classes:
-            arms = " | ".join(f"{package_class_name}.{c}" for c in self.arm_classes)
-            annotation = f'"{arms}"'
-        return f"        {self.name}: {annotation} = {self.rhs}"
+            arms = [f"{package_class_name}.{c}" for c in self.arm_classes]
+            if self.words:
+                arms.insert(0, f"Literal[{', '.join(repr(w.upper()) for w in self.words)}]")
+            annotation = f'"{" | ".join(arms)}"'
+        line = f"        {self.name}: {annotation} = {self.rhs}"
+        if self.arm_classes and len(line) > 100:
+            # a string annotation can't wrap, so wrap the call as ruff would,
+            # keeping the comment on the long line
+            args = self.rhs.removeprefix("field(").removesuffix(")")
+            first = f"        {self.name}: {annotation} = field(  # noqa: E501"
+            return f"{first}\n            {args}\n        )"
+        return line
 
 
 def _margs(meta: dict) -> str:
@@ -890,11 +906,19 @@ def feature_id_column(
 
 
 def union_column(
-    name: str, arms: tuple[str, ...], *, optional: bool = False, time_series: bool = False
+    name: str,
+    arms: tuple[str, ...],
+    *,
+    words: tuple[str, ...] = (),
+    optional: bool = False,
+    time_series: bool = False,
 ) -> ItemColumn:
     """One column that is any of several arm kinds (OBS's id: a cellid, an
-    index or a boundname), told apart when read."""
-    types = dict.fromkeys(_UNION_ARM_PY[arm] for arm in arms)
+    index or a boundname), told apart when read. A keyword arm is one of
+    ``words``, typed as a literal (LAK's bedleak: ``Literal["NONE"]``)."""
+    quoted = ", ".join('"' + w.upper() + '"' for w in words)
+    literal = f"Literal[{quoted}]"
+    types = dict.fromkeys(literal if arm == "keyword" else _UNION_ARM_PY[arm] for arm in arms)
     return attr_column(
         name,
         f"Union[{', '.join(types)}]",
@@ -1004,17 +1028,20 @@ def child_column(
     )
 
 
-def nested_union_column(
-    name: str, arm_classes: list[str], *, optional: bool = False, time_series: bool = False
+def class_union_column(
+    name: str, arm_classes: list[str], words: list[str], *, optional: bool = False
 ) -> ItemColumn:
-    """A union nested inside this arm (OC's ocsetting), arms already built as
-    sibling classes (see make.py's _build_arm_specs_from_union)."""
+    """A union column some of whose arms are classes, already built as
+    siblings (see make.py's _union_arm_specs), and the rest words: OC's
+    ocsetting, ``"Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps"``.
+    It takes the rest of the row."""
     return ItemColumn(
         name=name,
         annotation="",
-        rhs="field()",
+        rhs="field(arms=True)",
         optional=optional,
         arm_classes=tuple(arm_classes),
+        words=tuple(words),
     )
 
 
@@ -1032,9 +1059,9 @@ def item_class(
         {{ block_schema | item_class("Packagedata") }}
         {{ arm_schema | item_class("Status", keyword="STATUS") }}
 
-    ``package_class_name`` (e.g. ``"Oc"``) is only needed for a nested-union
-    column -- it qualifies that field's forward-reference union annotation
-    (``"Oc.All | Oc.First | ..."``).
+    ``package_class_name`` (e.g. ``"Oc"``) is only needed for a union column
+    with arm classes -- it qualifies that field's forward-reference union
+    annotation (``"Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | ..."``).
 
     Produces a 4-space-indented ``@attrs.define`` class whose fields carry
     real metadata (``index=``/``pk=``/``fk=``/``cellid=``/``time_series=``/
@@ -1044,10 +1071,10 @@ def item_class(
     Required fields (no default) are declared before optional fields to
     satisfy attrs ordering constraints.
 
-    ``keyword``, when given, is one arm of a keystring-union period field
-    (e.g. LAK's STAGE/RATE/STATUS settings, OC's SAVE/PRINT records) --
-    emitted as ``_keyword`` so flopy4.mf6.item.dispatch_union_item can pick
-    the right arm class for a raw row by its leading token. An arm can be a
+    ``keyword``, when given, is one arm of a union (e.g. LAK's STAGE/RATE/
+    STATUS settings, OC's SAVE/PRINT records) -- emitted as ``_keyword`` so
+    flopy4.mf6.item.dispatch_union_item can pick the right arm class for a
+    raw row by its keyword token. An arm can be a
     bare keyword with no data of its own (e.g. PRP's releasesetting ALL/
     FIRST/LAST) -- schema_list is then empty, but the class itself (just
     _keyword) is still real and must still be emitted.
@@ -1100,40 +1127,19 @@ class ColumnSpec:
     is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
 
 
-def find_keystring_union(list_field: ListField) -> UnionField | None:
-    """Find the discriminating Union in a List field's per-row shape, if any.
-
-    Two real shapes seen in the corpus:
-    - OC-style: ``item`` is a Union directly (no Record wrapper) -- saverecord/
-      printrecord.
-    - LAK-style: ``item`` is a Record with exactly one field, itself a Union
-      (no separate index column -- each arm carries its own fk index, e.g.
-      LAK's ``lakeno``/``outletno``).
-    - LKE/LKT/SFR-style: ``item`` is a Record with an index column *and* a
-      sibling Union field (e.g. gwe-lke's ``{lakeno: Integer, laksetting:
-      Union}`` -- the index is a plain field here, not embedded per-arm).
-
-    Returns None for ordinary (non-keystring) list blocks -- packagedata,
-    connectiondata, standard period blocks (CHD/WEL/DRN-style) -- where
-    ``item`` is a Record with no Union field anywhere among its top-level
-    fields.
-    """
-    item = list_field.item
-    if isinstance(item, UnionField):
-        return item
-    if isinstance(item, Record):
-        for f in item.fields.values():
-            # An untagged union (OBS's id) is one column, not a keystring.
-            if isinstance(f, UnionField) and f.tagged:
-                return f
-    return None
+def needs_class(arm: FieldV3) -> bool:
+    """Whether a union arm types as a class of its own: a record, or a
+    tagged value (OC's ``FREQUENCY <n>``), whose keyword picks the arm. A
+    keyword arm is a literal word, and an untagged scalar or array its own
+    type (LAK's bedleak: NONE or a number)."""
+    return isinstance(arm, Record) or (not isinstance(arm, KeywordField) and arm.tagged)
 
 
 def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
     """Build ColumnSpecs from an ordered (name, field) sequence -- the shared
     core of list_columns (a List[Record]'s own item fields) and
-    make.py's keystring-union arm processing (a Union arm's fields, once its
-    own leading keyword, if any, is split off as the arm's _keyword).
+    make.py's union arm processing (a Union arm's fields, once its own
+    leading keyword, if any, is split off as the arm's _keyword).
 
     ``safe_name`` sanitizes the column name (e.g. LKT/LKE's hyphenated
     "ext-inflow" arm -> "ext_inflow") since it becomes a Python attribute
@@ -1169,13 +1175,8 @@ def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
 
 
 def list_columns(f: ListField) -> list[ColumnSpec]:
-    """Return the leaf column specs of a dev3 List[Record] field, in order.
-
-    Returns [] for keystring-shaped lists (see find_keystring_union) -- those
-    are handled separately (see make.py's keystring period handling).
-    """
-    if find_keystring_union(f) is not None:
-        return []
+    """Return the column specs of a dev3 List[Record] field, in order; []
+    for a list of unions (see make.py's _build_list_item_specs)."""
     item = f.item
     if not isinstance(item, Record):
         return []
@@ -1205,17 +1206,11 @@ def list_dim_bound(f: ListField) -> str | None:
     return split_bound(shape[0])[0] if len(shape) == 1 else None
 
 
-def collision_names(
-    block_schemas: dict[str, list[ColumnSpec]],
-    reserved: frozenset[str] = frozenset(),
-) -> set[str]:
-    """Column names that require block-prefixed Python attr names.
-
-    A name is a collision when it appears in more than one static list block,
-    OR when it appears in any block AND is reserved by a period field. The
-    latter ensures that static block attrs never shadow bare period field names.
-    Prefix columns are excluded since they produce no attr.
+def collision_names(block_schemas: dict[str, list[ColumnSpec]]) -> set[str]:
+    """Column names that require block-prefixed Python attr names: those
+    in more than one static list block. Prefix columns are excluded since
+    they produce no attr.
     """
     names = [col.name for cols in block_schemas.values() for col in cols if not col.is_prefix]
     counts = Counter(names)
-    return {name for name, count in counts.items() if count > 1 or name in reserved}
+    return {name for name, count in counts.items() if count > 1}

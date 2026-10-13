@@ -187,8 +187,8 @@ A top-level-template `blocks.jinja` iterates over blocks, calling field macros d
 - **Scalars**: keywords, integers, floats, strings
 - **Records**: tuples of values (e.g., file specifications, cell IDs with values)
 - **Arrays**: numeric arrays with control records (`CONSTANT`, `INTERNAL`, `OPEN/CLOSE`)
-- **Lists**: stress period data, either tabular or keystring format
-- **Keystrings**: option records with keyword-value pairs
+- **Lists**: stress period data, rows of records or unions of keyword-led settings
+- **Unions**: one of several alternatives, e.g. a keyword-led setting
 
 Custom Jinja filters in `flopy4.mf6.codec.writer.filters` implement field-specific logic.
 

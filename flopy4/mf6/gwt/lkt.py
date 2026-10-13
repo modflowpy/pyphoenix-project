@@ -48,49 +48,45 @@ class Lkt(Package):
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         status: str = field()
 
     @attrs.define
     class Concentration(Item):
         _keyword: ClassVar[str] = "concentration"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         concentration: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         runoff: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class ExtInflow(Item):
         _keyword: ClassVar[str] = "ext-inflow"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         ext_inflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         auxname: str = field()
         auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = (
-        Status | Concentration | Rainfall | Evaporation | Runoff | ExtInflow | Auxiliary
-    )
+    @attrs.define
+    class StressPeriodData(Item):
+        ifno: int = field(index=True, fk="packagedata.ifno")
+        laksetting: "Lkt.Status | Lkt.Concentration | Lkt.Rainfall | Lkt.Evaporation | Lkt.Runoff | Lkt.ExtInflow | Lkt.Auxiliary" = field(  # noqa: E501
+            arms=True
+        )
 
     flow_package_name: Optional[str] = field(
         default=None,
@@ -174,7 +170,7 @@ class Lkt(Package):
         block="packagedata",
         write_if_empty=True,
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -191,3 +187,4 @@ LktEvaporation = Lkt.Evaporation
 LktRunoff = Lkt.Runoff
 LktExtInflow = Lkt.ExtInflow
 LktAuxiliary = Lkt.Auxiliary
+LktStressPeriodData = Lkt.StressPeriodData

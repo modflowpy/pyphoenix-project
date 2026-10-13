@@ -9,12 +9,13 @@ sized column (``shape`` metadata, e.g. aux sized by the package's
 tagged field here is always a bare presence flag (e.g. LAK tables' MIXED) --
 unlike Record's tagged fields, which may carry a value.
 
-An Item class MAY declare ``_keyword: ClassVar[str]`` for the
-keystring-union-arm case (e.g. LAK/SFR/MAW/UZF period settings): several
-Item subclasses share one field (a Union of their types), each identified
-by its own leading keyword token (STATUS/STAGE/RATE/...).
+An Item class MAY declare ``_keyword: ClassVar[str]`` when it's one arm
+of a union (OC's Save/Print, LKT's Status/Concentration/...): several Item
+subclasses share one list or field (a Union of their types), each
+identified by its own keyword token (SAVE/PRINT, STATUS/CONCENTRATION/...).
 """
 
+import ast
 from collections.abc import Callable, Mapping
 from functools import lru_cache
 from pathlib import Path
@@ -131,23 +132,68 @@ def _has_boundname_field(cls: type) -> bool:
 
 
 @lru_cache(maxsize=None)
-def _nested_union_classes(cls: type, type_str: str) -> "tuple[type[Item], ...] | None":
-    """If a field's raw type annotation is a `` | ``-joined forward
-    reference to sibling Item classes (e.g. ``"Oc.All | Oc.First | ..."``,
-    see make.py's _build_arm_specs_from_union), return the tuple of
-    resolved classes; else None. Resolvability is itself the signal, same
-    as record.py's _nested_class.
+def _union_arms(
+    cls: type, type_str: str
+) -> "tuple[tuple[str, ...], tuple[type[Item], ...]] | None":
+    """If a field's raw type annotation is a `` | ``-joined union of words
+    and forward references to sibling Item classes (OC's ocsetting,
+    ``"Literal['ALL', 'FIRST', 'LAST'] | Oc.Frequency | Oc.Steps"``, see
+    make.py's _union_arm_specs), return its words and resolved classes;
+    else None. Resolvability is itself the signal, same as record.py's
+    _nested_class.
 
     Cached since to_tokens/from_tokens call this per field, often
     repeatedly while parsing many rows.
     """
-    names = [part.strip().rsplit(".", 1)[-1] for part in type_str.split(" | ")]
-    if len(names) < 2:
+    parts = type_str.split(" | ")
+    if len(parts) < 2:
         return None
-    resolved = [_resolve_sibling_class(cls, name) for name in names]
-    if any(not (isinstance(r, type) and issubclass(r, Item)) for r in resolved):
-        return None
-    return tuple(cast("list[type[Item]]", resolved))
+    words: list[str] = []
+    classes: list[type[Item]] = []
+    for part in parts:
+        if part.startswith("Literal[") and part.endswith("]"):
+            words.extend(ast.literal_eval(f"({part[len('Literal[') : -1]},)"))
+            continue
+        arm = _resolve_sibling_class(cls, part.rsplit(".", 1)[-1])
+        if not (isinstance(arm, type) and issubclass(arm, Item)):
+            return None
+        classes.append(arm)
+    return (tuple(words), tuple(classes)) if classes else None
+
+
+def _union_field_arms(
+    cls: type, f: attrs.Attribute
+) -> "tuple[tuple[str, ...], tuple[type[Item], ...]] | None":
+    """A field's words and arm classes, if it's a union with arm classes."""
+    t = _field_type_str(f)
+    # mypy false positive: type[Item] vs. Hashable (lru_cache arg)
+    return _union_arms(cls, t) if t is not None else None  # type: ignore[arg-type]
+
+
+def to_union_arm(value: Any, self: Any, f: attrs.Attribute) -> Any:
+    """Convert a union field's value (OC's ocsetting, LKT's laksetting) to
+    one of its words or arm instances: an arm's values build it by its
+    keyword, ``("STATUS", "ACTIVE")`` a Status. Raises if no arm takes it."""
+    if value is None or (arms := _union_field_arms(type(self), f)) is None:
+        return value
+    values = list(value) if isinstance(value, (list, tuple)) else [value]
+    if (converted := _union_value(values, arms)) is None:
+        raise ValueError(f"{type(self).__name__}.{f.name}: no arm of {f.type} takes {value!r}")
+    return converted
+
+
+def _union_value(values: list, arms: "tuple[tuple[str, ...], tuple[type[Item], ...]]") -> Any:
+    """A union field's value from the user-supplied values it spans: one of
+    its words, an arm instance given as is, or an arm built from them by
+    its keyword (see construct_union_item)."""
+    words, classes = arms
+    if len(values) == 1:
+        (value,) = values
+        if isinstance(value, classes):
+            return value
+        if isinstance(value, str) and value.upper() in words:
+            return value.upper()
+    return construct_union_item(values, classes)
 
 
 def _array_elem_type(f: attrs.Attribute) -> "type | None":
@@ -169,11 +215,12 @@ def _field_type_str(f: attrs.Attribute) -> "str | None":
 
 def construct_item(item_cls: type, values) -> "Item":
     """Build an Item from a flat positional tuple, e.g. ``(cellid, q, 35.0)``
-    for one aux variable, or ``("HEAD", "FREQUENCY", 2)`` for OC's Save
-    (rtype, ocsetting). Everything from the aux/array/nested-union field's
-    position onward collects into that one field's value, except a
-    trailing string when the class also has boundname (always declared
-    last) -- a string there unambiguously isn't a numeric aux value.
+    for one aux variable, ``("HEAD", "FREQUENCY", 2)`` for OC's Save
+    (rtype, ocsetting), or ``(0, "STATUS", "ACTIVE")`` for LKT's ifno and
+    laksetting. Everything from the aux/array/union field's position onward
+    collects into that one field's value, except a trailing string when the
+    class also has boundname (always declared last) -- a string there
+    unambiguously isn't a numeric aux value.
     """
     fields = cast(type[Record], item_cls).fields()
     tuple_idx = next(
@@ -182,30 +229,21 @@ def construct_item(item_cls: type, values) -> "Item":
             for i, f in enumerate(fields)
             if f in _tail_fields(item_cls)
             or (f.metadata.get("array") and not _dim_counted(item_cls, f))
-            or (
-                (t := _field_type_str(f)) is not None
-                and _nested_union_classes(item_cls, t) is not None
-            )
+            or _union_field_arms(item_cls, f) is not None
         ),
         None,
     )
     values = list(values)
     if tuple_idx is None:
         return cast("Item", item_cls(*values))
-    nested_field = fields[tuple_idx]
-    nested_field_type = _field_type_str(nested_field)
-    arm_classes = (
-        _nested_union_classes(item_cls, nested_field_type)
-        if nested_field_type is not None
-        else None
-    )
+    arms = _union_field_arms(item_cls, fields[tuple_idx])
     boundname_val = None
     if (
         fields
         and fields[-1].name == "boundname"
         and len(values) > tuple_idx
         and isinstance(values[-1], str)
-        and arm_classes is None
+        and arms is None
     ):
         boundname_val = values[-1]
         values = values[:-1]
@@ -217,12 +255,10 @@ def construct_item(item_cls: type, values) -> "Item":
             "Item",
             item_cls(*before, boundname=boundname_val) if boundname_val else item_cls(*before),
         )
-    if arm_classes is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
+    if arms is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
         # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
         trailing = list(trailing[0])
-    tuple_vals = (
-        construct_union_item(trailing, arm_classes) if arm_classes is not None else tuple(trailing)
-    )
+    tuple_vals = _union_value(trailing, arms) if arms is not None else tuple(trailing)
     if boundname_val is not None:
         return cast("Item", item_cls(*before, tuple_vals, boundname=boundname_val))
     return cast("Item", item_cls(*before, tuple_vals))
@@ -242,12 +278,25 @@ def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[
             continue
         if f in _tail_fields(cls) or f.name == "boundname":
             continue
-        if f.metadata.get("optional"):
+        if f.metadata.get("optional") or _union_field_arms(cls, f) is not None:
             continue
         n += count + (1 if f.metadata.get("_keyword") else 0)
         if f.metadata.get("direction"):
             n += 1
     return n, ncellids
+
+
+def _union_start(cls: type, row: list) -> "int | None":
+    """Where a row's union field begins: its first word or arm keyword
+    after the row's first token (TVK's ``1 2 3 K 1.0`` at K). None if the
+    class has no union field with arm classes, or the row has no such
+    token."""
+    for f in cast(type[Record], cls).fields():
+        if (arms := _union_field_arms(cls, f)) is not None:
+            words, classes = arms
+            keys = {*words, *(c.keyword().upper() for c in classes)}
+            return next((i for i, t in enumerate(row) if i and str(t).upper() in keys), None)
+    return None
 
 
 def ncelldim_from_dims(dims: "dict | None") -> "int | None":
@@ -289,6 +338,7 @@ def infer_ncelldim(
     first = next((r for r in items if r), None)
     if not first:
         return 0
+    first = first[: _union_start(item_cls, first)]
     n_fixed, ncellids = _n_fixed_tokens(item_cls, sizes)
     last = first[-1]
     has_bn = isinstance(last, str) and not _token_fits(last, float)
@@ -438,8 +488,8 @@ def _is_row_key(f: attrs.Attribute) -> bool:
 
 
 class Item(Record):
-    """Mixin for generated table-item types (plain items and keystring-union
-    arms alike -- see module docstring)."""
+    """Mixin for generated table-item types (plain items and union arms
+    alike -- see module docstring)."""
 
     # Column order, when it differs from the field order (see from_tokens).
     _columns: ClassVar[tuple[str, ...]] = ()
@@ -507,10 +557,12 @@ class Item(Record):
                 if val:
                     row.append(f.name.upper())
             elif isinstance(val, Record):
-                # Nested keystring-union field (OC's ocsetting) -- val is
-                # already the resolved arm instance and knows how to
+                # A union field's arm (OC's ocsetting, LKT's laksetting) --
+                # val is already the resolved arm instance and knows how to
                 # serialize itself.
                 row.extend(val.to_tokens())
+            elif _union_field_arms(cls, f) is not None:
+                row.append(str(val).upper())  # one of its words (OC's ALL)
             else:
                 if file_kw := f.metadata.get("_keyword"):
                     row.append(file_kw.upper())
@@ -629,15 +681,17 @@ class Item(Record):
             return w
 
         main_fields = [f for f in fields if f not in tail and f.name != "boundname"]
-        nested_union_fields = [
+        # Unions with arm classes, the rest of the row (OC's ocsetting)
+        class_union_fields = [f for f in main_fields if _union_field_arms(cls, f) is not None]
+        main_fields = [f for f in main_fields if f not in class_union_fields]
+        # Trailing columns of varying width (OBS's ids, see _read_unions). A
+        # union with a keyword arm is one token, wherever it falls, read like
+        # any other value (LAK's bedleak: a number or NONE, see _coerce).
+        union_fields = [
             f
             for f in main_fields
-            if (t := _field_type_str(f)) is not None
-            # mypy false positive: type[Item] vs. Hashable (lru_cache arg)
-            and _nested_union_classes(cls, t) is not None  # type: ignore[arg-type]
+            if (kinds := f.metadata.get("union")) is not None and "keyword" not in kinds
         ]
-        main_fields = [f for f in main_fields if f not in nested_union_fields]
-        union_fields = [f for f in main_fields if f.metadata.get("union")]
         main_fields = [f for f in main_fields if f not in union_fields]
         array_fields = [
             f for f in main_fields if f.metadata.get("array") and not _dim_counted(cls, f)
@@ -747,27 +801,23 @@ class Item(Record):
                         vals.append(tok)
                 tok_idx += 1
             kwargs[f.name] = tuple(vals)
-        elif nested_union_fields:
-            # Nested keystring-union field (OC's ocsetting) -- same span
-            # logic as array_fields above, but dispatches a typed arm
-            # instance instead of collecting a raw tuple.
+        elif class_union_fields:
+            # A union with arm classes (OC's ocsetting, LKT's laksetting) --
+            # same span logic as array_fields above, but one of its words,
+            # or a typed arm instance, instead of a raw tuple.
             if not keyword_skipped:
                 tok_idx += 1
                 keyword_skipped = True
-            f = nested_union_fields[0]
-            nested_field_type = _field_type_str(f)
-            assert nested_field_type is not None
-            arm_classes = _nested_union_classes(cls, nested_field_type)  # type: ignore[arg-type]
-            assert arm_classes is not None
+            f = class_union_fields[0]
+            words, arm_classes = cast(tuple, _union_field_arms(cls, f))
             end = n - (1 if has_bn_token else 0) - nsized
-            nested_tokens = list(tokens[tok_idx:end])
-            arm_cls = dispatch_union_item(nested_tokens, arm_classes)
-            if arm_cls is None:
-                raise ValueError(
-                    f"{cls.__name__}.{f.name}: no matching arm in {arm_classes} "
-                    f"for tokens {nested_tokens}"
-                )
-            kwargs[f.name] = arm_cls.from_tokens(nested_tokens)
+            span = list(tokens[tok_idx:end])
+            if len(span) == 1 and str(span[0]).upper() in words:
+                kwargs[f.name] = str(span[0]).upper()
+            elif (arm_cls := dispatch_union_item(span, arm_classes)) is not None:
+                kwargs[f.name] = arm_cls.from_tokens(span, sizes=sizes, load_child=load_child)
+            else:
+                raise ValueError(f"{cls.__name__}.{f.name}: no arm of {f.type} reads {span}")
             tok_idx = end
         elif not keyword_skipped:
             tok_idx += 1
@@ -783,7 +833,7 @@ class Item(Record):
 
 def _unwrap_item(item) -> "type[Item] | tuple[type[Item], ...] | None":
     """A single Item subclass, or the tuple of arm subclasses for a Union
-    (keystring-arm) item type."""
+    item type."""
     if isinstance(item, type) and issubclass(item, Item):
         return item
     origin = get_origin(item)
@@ -822,8 +872,8 @@ def dispatch_union_item(item: list, arm_classes: "tuple[type[Item], ...]") -> "t
 
 
 def construct_union_item(values, arm_classes: "tuple[type[Item], ...]") -> "Item | None":
-    """Build an Item from a flat user-supplied positional tuple for a
-    keystring-union field, e.g. ``(0, "STATUS", "ACTIVE")``.
+    """Build an Item from a flat user-supplied positional tuple for a union
+    arm, e.g. ``(0, "STATUS", "ACTIVE")`` for LAK's Status.
 
     Dispatches to the right arm by keyword token, same as dispatch_union_item,
     then drops that token and builds the rest positionally via construct_item

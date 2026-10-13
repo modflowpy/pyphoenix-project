@@ -21,6 +21,7 @@ from flopy4.mf6._types import (
     to_ts_value,
     to_ts_values,
 )
+from flopy4.mf6.item import to_union_arm
 from flopy4.spec import fields_dict as flopy_fields_dict
 
 FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
@@ -82,13 +83,16 @@ def field(
     array: bool = False,
     signed: bool = False,
     union: tuple[str, ...] | None = None,
+    arms: bool = False,
 ):
     """Define a field: always a plain ``attrs.field()``.
 
     A field with a ``shape`` holds an array, so unless ``eq`` is given it
     compares with `array_eq` (numpy's elementwise ``==`` isn't a valid
     ``__eq__`` result). An ``array`` column of a table row (`Item`) is a
-    tuple, compared as such; its ``shape`` is the dimension sizing it.
+    tuple, compared as such; its ``shape`` is the dimension sizing it. A
+    row's union of words and arm classes (``arms``) builds its arm from
+    the values given for it (see `item.to_union_arm`).
     """
     if eq is None:
         eq = ARRAY_EQ if shape and not array else True
@@ -148,6 +152,8 @@ def field(
     if signed:
         metadata["signed"] = True
         converter = converter or to_signed_indexes
+    if arms:
+        converter = converter or attrs.Converter(to_union_arm, takes_self=True, takes_field=True)
     return attrs.field(
         default=default,
         validator=validator,

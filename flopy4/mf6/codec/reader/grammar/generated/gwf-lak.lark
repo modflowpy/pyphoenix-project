@@ -37,7 +37,7 @@ packagedata__fields: ((packagedatadata | open_close_redirect) _NL*)*
 connectiondata__fields: ((connectiondatadata | open_close_redirect) _NL*)*
 tables__fields: ((tablesdata | open_close_redirect) _NL*)*
 outlets__fields: ((outletsdata | open_close_redirect) _NL*)*
-period__fields: ((stress_period_data | open_close_redirect) _NL*)*
+period__fields: ((status__rec__elem | stage__rec__elem | rainfall__rec__elem | evaporation__rec__elem | runoff__rec__elem | inflow__rec__elem | withdrawal__rec__elem | rate__rec__elem | invert__rec__elem | width__rec__elem | slope__rec__elem | rough__rec__elem | auxiliaryrecord__rec__elem | open_close_redirect) _NL*)*
 auxiliary__val: "auxiliary"i word+ [_remark] _NL
 boundnames__kw: "boundnames"i  [_remark] _NL
 print_input__kw: "print_input"i  [_remark] _NL
@@ -71,8 +71,47 @@ dev_no_final_check__kw: "dev_no_final_check"i  [_remark] _NL
 nlakes__val: "nlakes"i integer [_remark] _NL
 noutlets__val: "noutlets"i integer [_remark] _NL
 ntables__val: "ntables"i integer [_remark] _NL
+status__rec__elem: status__lakeno__val status__status__val [_remark] _NL
+status__lakeno__val: integer
+status__status__val: "status"i word
+stage__rec__elem: stage__lakeno__val stage__stage__val [_remark] _NL
+stage__lakeno__val: integer
+stage__stage__val: "stage"i double
+rainfall__rec__elem: rainfall__lakeno__val rainfall__rainfall__val [_remark] _NL
+rainfall__lakeno__val: integer
+rainfall__rainfall__val: "rainfall"i double
+evaporation__rec__elem: evaporation__lakeno__val evaporation__evaporation__val [_remark] _NL
+evaporation__lakeno__val: integer
+evaporation__evaporation__val: "evaporation"i double
+runoff__rec__elem: runoff__lakeno__val runoff__runoff__val [_remark] _NL
+runoff__lakeno__val: integer
+runoff__runoff__val: "runoff"i double
+inflow__rec__elem: inflow__lakeno__val inflow__inflow__val [_remark] _NL
+inflow__lakeno__val: integer
+inflow__inflow__val: "inflow"i double
+withdrawal__rec__elem: withdrawal__lakeno__val withdrawal__withdrawal__val [_remark] _NL
+withdrawal__lakeno__val: integer
+withdrawal__withdrawal__val: "withdrawal"i double
+rate__rec__elem: rate__outletno__val rate__rate__val [_remark] _NL
+rate__outletno__val: integer
+rate__rate__val: "rate"i double
+invert__rec__elem: invert__outletno__val invert__invert__val [_remark] _NL
+invert__outletno__val: integer
+invert__invert__val: "invert"i double
+width__rec__elem: width__outletno__val width__width__val [_remark] _NL
+width__outletno__val: integer
+width__width__val: "width"i double
+slope__rec__elem: slope__outletno__val slope__slope__val [_remark] _NL
+slope__outletno__val: integer
+slope__slope__val: "slope"i double
+rough__rec__elem: rough__outletno__val rough__rough__val [_remark] _NL
+rough__outletno__val: integer
+rough__rough__val: "rough"i double
+auxiliaryrecord__rec__elem: auxiliaryrecord__lakeno__val "auxiliary"i auxiliaryrecord__auxname__val auxiliaryrecord__auxval__val [_remark] _NL
+auxiliaryrecord__lakeno__val: integer
+auxiliaryrecord__auxname__val: word
+auxiliaryrecord__auxval__val: double
 packagedatadata: record+
 connectiondatadata: record+
 tablesdata: record+
 outletsdata: record+
-stress_period_data: record+

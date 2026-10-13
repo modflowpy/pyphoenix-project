@@ -363,8 +363,8 @@ class Package(Component, ABC):
           - list of dicts              → named columns
           - dict of lists              → column-oriented {col_name: [values]}
 
-        For a keystring-union item_cls (a tuple of arm classes, e.g. LAK's
-        (LakStatus, LakStage, ...)): existing arm instances pass through;
+        For a union item_cls (a tuple of arm classes, e.g. OC's (OcSave,
+        OcPrint)): existing arm instances pass through;
         tuples/lists are dispatched to the right arm by their keyword token
         and built positionally (see flopy4.mf6.item.construct_union_item --
         NOT from_tokens, since these values are already Python-side, not
@@ -660,8 +660,8 @@ class Package(Component, ABC):
         item_cls = self._period_item_cls()
         if isinstance(item_cls, tuple):
             raise ValueError(
-                f"{type(self).__name__}.from_dataframe() doesn't support a keystring-union "
-                "period field (multiple possible row shapes) -- construct arm instances directly."
+                f"{type(self).__name__}.from_dataframe() doesn't support a union period "
+                "field (multiple possible row shapes) -- construct arm instances directly."
             )
         spd: dict[int, list] = {}
         for kper, group in df.groupby("kper"):

@@ -92,91 +92,71 @@ class Sfr(Package):
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         status: str = field()
 
     @attrs.define
     class Bedk(Item):
         _keyword: ClassVar[str] = "bedk"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         bedk: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Manning(Item):
         _keyword: ClassVar[str] = "manning"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         manning: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Stage(Item):
         _keyword: ClassVar[str] = "stage"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         stage: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         inflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         runoff: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class Diversion(Item):
         _keyword: ClassVar[str] = "diversion"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         idv: int = field(index=True)
         divflow: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class UpstreamFraction(Item):
         _keyword: ClassVar[str] = "upstream_fraction"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         upstream_fraction: Union[float, TimeSeriesRef] = field(time_series=True)
 
     @attrs.define
     class CrossSection(Item):
         _keyword: ClassVar[str] = "cross_section"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         sfrtab: Sfrtab = child(keyword="tab6", direction="in", default=attrs.NOTHING)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        ifno: int = field(index=True, fk="packagedata.ifno")
         auxname: str = field()
         auxval: Union[float, TimeSeriesRef] = field(time_series=True)
 
-    _StressPeriodDataItem = (
-        Status
-        | Bedk
-        | Manning
-        | Stage
-        | Inflow
-        | Rainfall
-        | Evaporation
-        | Runoff
-        | Diversion
-        | UpstreamFraction
-        | CrossSection
-        | Auxiliary
-    )
+    @attrs.define
+    class StressPeriodData(Item):
+        ifno: int = field(index=True, fk="packagedata.ifno")
+        sfrsetting: "Sfr.Status | Sfr.Bedk | Sfr.Manning | Sfr.Stage | Sfr.Inflow | Sfr.Rainfall | Sfr.Evaporation | Sfr.Runoff | Sfr.Diversion | Sfr.UpstreamFraction | Sfr.CrossSection | Sfr.Auxiliary" = field(  # noqa: E501
+            arms=True
+        )
 
     storage: bool = field(
         default=False,
@@ -332,7 +312,7 @@ class Sfr(Package):
         block="initialstages",
         dim="nreaches",
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
         alias="stress_period_data",
         default=None,
         repr=False,
@@ -358,3 +338,4 @@ SfrDiversion = Sfr.Diversion
 SfrUpstreamFraction = Sfr.UpstreamFraction
 SfrCrossSection = Sfr.CrossSection
 SfrAuxiliary = Sfr.Auxiliary
+SfrStressPeriodData = Sfr.StressPeriodData

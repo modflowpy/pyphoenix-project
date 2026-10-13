@@ -137,11 +137,18 @@ def _resolve_child_name(
 
 
 def _row_children(row: Any) -> "list[Component]":
-    """The children in a list's row (LAK's ``ifno TAB6 FILEIN <file>``)."""
+    """The children in a list's row (LAK's ``ifno TAB6 FILEIN <file>``),
+    including in its union arm (SFR's ``CROSS_SECTION TAB6 FILEIN``)."""
     if isinstance(row, Component) or not attrs.has(type(row)):
         return []
-    children = (getattr(row, f.name) for f in fields(type(row)) if f.metadata.get("child"))
-    return [c for c in children if isinstance(c, Component)]
+    children = []
+    for f in fields(type(row)):
+        value = getattr(row, f.name)
+        if f.metadata.get("child"):
+            children += [value] if isinstance(value, Component) else []
+        elif attrs.has(type(value)):
+            children += _row_children(value)
+    return children
 
 
 def _period_row_children(value: Any) -> "list[Component]":

@@ -184,8 +184,9 @@ def test_tvk_child_kept(tmp_path):
     sim = Simulation.load(workspace / "mfsim.nam")
     tvk = sim["flow15"].npf.tvk
     rows = tvk.stress_period_data[0]
-    assert [(type(r).__name__, r.cellid) for r in rows] == [("K", (0, 0, 2)), ("K33", (0, 0, 3))]
-    assert (rows[0].k, rows[1].k33) == (5.0, 2.5)
+    settings = [(type(r.tvksetting).__name__, r.cellid) for r in rows]
+    assert settings == [("K", (0, 0, 2)), ("K33", (0, 0, 3))]
+    assert (rows[0].tvksetting.k, rows[1].tvksetting.k33) == (5.0, 2.5)
 
     out = tmp_path / "written"
     out.mkdir()
@@ -208,8 +209,9 @@ def test_tvs_child_kept(tmp_path):
     )
     sim = Simulation.load(workspace / "mfsim.nam")
     rows = sim["GWF_1"].sto.tvs.stress_period_data[1]
-    assert [(type(r).__name__, r.cellid) for r in rows] == [("Ss", (0, 0, 0)), ("Sy", (0, 0, 1))]
-    assert (rows[0].ss, rows[1].sy) == (2.0e-5, 0.1)
+    settings = [(type(r.tvssetting).__name__, r.cellid) for r in rows]
+    assert settings == [("Ss", (0, 0, 0)), ("Sy", (0, 0, 1))]
+    assert (rows[0].tvssetting.ss, rows[1].tvssetting.sy) == (2.0e-5, 0.1)
 
     out = tmp_path / "written"
     out.mkdir()

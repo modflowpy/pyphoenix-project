@@ -16,7 +16,7 @@ import types
 from collections.abc import Iterable, Mapping
 from functools import lru_cache
 from pathlib import Path, PurePath
-from typing import Any, Union, cast, get_args, get_origin
+from typing import Any, Literal, Union, cast, get_args, get_origin
 
 import attrs
 import numpy as np
@@ -25,10 +25,9 @@ import numpy as np
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
     """Resolve a bare sibling class name one level up from `cls` in
     `__qualname__`, where every generated flat-sibling class (composed
-    Records, keystring-union arms) lives regardless of DFN nesting depth.
-    No type check here -- callers (`_nested_class`, item.py's
-    `_nested_union_classes`) apply their own, against different base
-    classes.
+    Records, union arms) lives regardless of DFN nesting depth. No type
+    check here -- callers (`_nested_class`, item.py's `_union_arms`) apply
+    their own, against different base classes.
 
     Must resolve at runtime: a class body can't see sibling names from an
     enclosing scope, which is why the qualified string form
@@ -66,11 +65,18 @@ def _is_bool_field(f: attrs.Attribute) -> bool:
     return t in (bool, "bool")
 
 
+def _words(t: Any) -> tuple[str, ...]:
+    """The words a union type's ``Literal`` arms allow (LAK's bedleak: NONE)."""
+    return tuple(w for a in get_args(t) if get_origin(a) is Literal for w in get_args(a))
+
+
 def _coerce(token: Any, f: attrs.Attribute) -> Any:
     """Cast a raw token to a field's declared type (time_series falls back
     to the raw string if it isn't a float). Only Optional[X] (a single
     non-None union arm) is unwrapped -- a genuine multi-type union like
-    Union[float, str] is deliberately ambiguous and left as the raw token."""
+    Union[float, str] is deliberately ambiguous and left as the raw token --
+    but a word a ``Literal`` arm allows is tried first, matched in any case
+    (``Union[Literal["NONE"], float]``: NONE, or else a number)."""
     if f.metadata.get("time_series"):
         try:
             return float(token)
@@ -80,6 +86,10 @@ def _coerce(token: Any, f: attrs.Attribute) -> Any:
     origin = get_origin(t)
     if origin is types.UnionType or origin is Union:
         args = [a for a in get_args(t) if a is not type(None)]
+        if words := _words(t):
+            if (word := str(token).upper()) in words:
+                return word
+            args = [a for a in args if get_origin(a) is not Literal]
         if len(args) != 1:
             return token
         t = args[0]
@@ -121,11 +131,17 @@ def _list_elem_coerce(token: Any, f: attrs.Attribute) -> Any:
 
 def _is_instance(value: Any, f: attrs.Attribute) -> bool:
     """Whether a value fits a scalar field's declared type (bool, int,
-    float, str or Path); any other field takes anything."""
-    t: Any = f.type
+    float, str or Path, a ``Literal`` word, or a union of them); any other
+    field takes anything."""
+    return _fits(value, f.type)
+
+
+def _fits(value: Any, t: Any) -> bool:
     origin = get_origin(t)
     if origin is types.UnionType or origin is Union:
-        t = next((a for a in get_args(t) if a is not type(None)), t)
+        return any(_fits(value, a) for a in get_args(t) if a is not type(None))
+    if origin is Literal:
+        return isinstance(value, str) and value.upper() in get_args(t)
     if t in (bool, "bool"):
         return isinstance(value, (bool, np.bool_))
     if isinstance(value, (bool, np.bool_)):
@@ -135,9 +151,7 @@ def _is_instance(value: Any, f: attrs.Attribute) -> bool:
     if t in (float, "float"):
         return isinstance(value, (int, float, np.integer, np.floating))
     if t in (str, "str"):
-        # A DFN string is any token, and some hold a number or a word (LAK's
-        # bedleak: a value or NONE).
-        return isinstance(value, (str, int, float, np.integer, np.floating))
+        return isinstance(value, str)
     if t in (Path, "Path"):
         return isinstance(value, (str, PurePath))
     return True

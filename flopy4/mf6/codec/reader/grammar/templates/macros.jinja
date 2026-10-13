@@ -104,9 +104,9 @@
 {%- if child.type == 'keyword' -%}
 !{{ rule(field_name, child_name, tags=['kw']) }}: {{ child|keyword_literal }}
 {%- elif child.type == 'array' -%}
-{{ rule(field_name, child_name, tags=['val']) }}: "{{ child.name }}"i {{ child|field_type }}
+{{ rule(field_name, child_name, tags=['val']) }}: {% if child.tagged %}"{{ child.name }}"i {% endif %}{{ child|field_type }}
 {%- else -%}
-{{ rule(field_name, child_name, tags=['val']) }}: "{{ child.name }}"i {{ child.type }}
+{{ rule(field_name, child_name, tags=['val']) }}: {% if child.tagged %}"{{ child.name }}"i {% endif %}{{ child.type }}
 {%- endif %}
 
 {% endfor -%}
@@ -119,16 +119,17 @@
 {%- endfor -%}
 {%- endmacro %}
 
-{% macro union_field(field_name, field, name) -%}
+{% macro union_field(field_name, field, name, tagged=false) -%}
 {# The alternation must be parenthesized before appending `[_remark] _NL` --
    `|` binds looser than concatenation, so an unparenthesized "A | B | C
    [_remark] _NL" only requires the line ending after the *last* arm. A
-   `tagged true` union (e.g. NPF's alternative_cell_averaging, confirmed via
-   valid_as_union) additionally needs its own field-name keyword prefixed --
-   real files write "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC", not a bare
-   "LOGARITHMIC" -- unlike an untagged keystring (e.g. ocsetting's ALL/
-   FIRST/LAST), where the chosen value's own keyword is the whole field. #}
-{{ name }}: {% if field.tagged %}"{{ field.name }}"i {% endif %}({{ union_alternation(field_name, field) }}) [_remark] _NL
+   tagged `valid` scalar made a union (`tagged`, e.g. NPF's
+   alternative_cell_averaging, via valid_as_union) also begins with its
+   own name -- real files write
+   "ALTERNATIVE_CELL_AVERAGING LOGARITHMIC", not a bare "LOGARITHMIC" --
+   unlike a union of keywords (e.g. ocsetting's ALL/FIRST/LAST), where the
+   chosen value's own keyword is the whole field. #}
+{{ name }}: {% if tagged %}"{{ field.name }}"i {% endif %}({{ union_alternation(field_name, field) }}) [_remark] _NL
 
 {{ union_arms(field_name, field) }}
 {%- endmacro %}

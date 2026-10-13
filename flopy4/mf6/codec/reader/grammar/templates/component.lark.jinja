@@ -70,7 +70,7 @@ double_index: block_index
 {% elif field.type == 'record' and field.children is not none -%}
 {{ m.record_field(field_name, field, name) }}
 {% elif field.type == 'union' and field.children is not none -%}
-{{ m.union_field(field_name, field, name) }}
+{{ m.union_field(field_name, field, name, field_name in block.tagged_valid) }}
 {% elif field.type == 'file' -%}
 {{ m.file_field(name, field) }}
 {% else -%}

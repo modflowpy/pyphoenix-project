@@ -13,15 +13,13 @@ def valid_as_union(field: InputField) -> InputField:
     """Turn a ``valid=``-restricted scalar (e.g. STO's ``storage``, one of
     STEADY-STATE/TRANSIENT) into a keyword union with one arm per value, so
     it reuses the existing union grammar/dispatch instead of a second path.
+    A union never begins with its own name, so whether a tagged scalar's
+    name precedes the value is up to the caller (see ``union_field``).
     """
     valid = getattr(field, "valid", None)
     if not valid:
         return field
-    return Union(
-        name=field.name,
-        tagged=field.tagged,
-        arms={str(v): Keyword(name=str(v)) for v in valid},
-    )
+    return Union(name=field.name, arms={str(v): Keyword(name=str(v)) for v in valid})
 
 
 def keyword_literal(field: InputField) -> str:

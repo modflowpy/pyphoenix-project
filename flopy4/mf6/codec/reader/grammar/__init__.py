@@ -63,10 +63,16 @@ def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]
         standalone_fields = []
         # a list's element lines, each read into the list (see names.py)
         elements = set()
+        # tagged `valid` scalars, whose name precedes their value. The union
+        # valid_as_union makes of one is tagged by its keyword arms, so it
+        # can't say whether the scalar was.
+        tagged_valid = set()
 
         for field_name, field in block.fields.items():
             if field.removed:
                 continue
+            if field.tagged and getattr(field, "valid", None):
+                tagged_valid.add(field_name)
             field = filters.valid_as_union(field)
             if isinstance(field, List):
                 if isinstance(field.item, Union):
@@ -107,6 +113,7 @@ def _to_context(blocks: dict[str, Block]) -> tuple[list[dict], dict[str, object]
                 "header": header.name if isinstance(header, Record) else None,
                 "standalone_fields": standalone_fields,
                 "rules": rules,
+                "tagged_valid": tagged_valid,
                 "recarrays": recarrays,
                 "redirect": not bare_array,
             }
