@@ -118,8 +118,10 @@ def array_eq(a: Any, b: Any) -> bool:
 
     - ``None`` equals only ``None``; dicts (e.g. time-array series) are
       compared key by key.
-    - Shape and dtype must match, NaNs at the same position compare equal
-      (float and complex dtypes only).
+    - Shape and dtype must match. NaNs at the same position compare equal.
+    - Tuples (a row's array fields) compare like arrays, but integers and
+      floats by value: a row's ``(1, 2)`` equals the ``(1.0, 2.0)`` read
+      back.
     - Dask arrays are never computed: they are equal only if shape, dtype,
       chunks and graph name match. A dask array never equals a numpy array.
     """
@@ -145,10 +147,18 @@ def array_eq(a: Any, b: Any) -> bool:
             and a.chunks == b.chunks
             and a.name == b.name
         )
-    a, b = np.asarray(a), np.asarray(b)
-    if a.shape != b.shape or a.dtype != b.dtype:
+    # a row's array is a tuple, of ints or floats as given or read
+    numeric = not (isinstance(a, np.ndarray) and isinstance(b, np.ndarray))
+    try:
+        a, b = np.asarray(a), np.asarray(b)
+    except ValueError:
+        # ragged sequences, which aren't arrays
+        return bool(a == b)
+    if a.shape != b.shape:
         return False
-    return bool(np.array_equal(a, b, equal_nan=a.dtype.kind in "fc"))
+    if a.dtype != b.dtype and not (numeric and {a.dtype.kind, b.dtype.kind} <= set("iuf")):
+        return False
+    return bool(np.array_equal(a, b, equal_nan=a.dtype.kind in "fc" or b.dtype.kind in "fc"))
 
 
 ARRAY_EQ = attrs.cmp_using(eq=array_eq)
