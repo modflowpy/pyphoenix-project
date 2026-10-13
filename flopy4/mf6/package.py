@@ -16,7 +16,7 @@ from pandas.api.types import is_scalar
 from flopy4.mf6 import period_lists
 from flopy4.mf6._types import TimeArraySeriesRef, TimeSeriesRef
 from flopy4.mf6.component import Component
-from flopy4.mf6.constants import MF6
+from flopy4.mf6.constants import GRID_DIMS, MF6
 from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
@@ -859,13 +859,14 @@ class Package(Component, ABC):
         lead: tuple[int, ...] = () if nper is None else (nper,)
         if _nrow is not None and _ncol is not None:
             arr = arr.reshape(*lead, _nlay, _nrow, _ncol)
-            dims: tuple[str, ...] = ("layer", "row", "col")
+            width = 3
         elif _ncpl is not None:
             arr = arr.reshape(*lead, _nlay, _ncpl)
-            dims = ("layer", "cell")
+            width = 2
         else:
             arr = arr.reshape(*lead, -1)
-            dims = ("node",)
+            width = 1
+        dims = tuple(d for _, d in GRID_DIMS[width])
         if nper is not None:
             dims = ("per", *dims)
         da = xr.DataArray(arr, dims=dims, name=field_name)
@@ -897,14 +898,23 @@ class Package(Component, ABC):
         )
         return index_xy(da.assign_coords(projection=projection))
 
-    def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
+    def to_xarray(  # type: ignore[override]
+        self,
+        sparse: bool = False,
+        duplicates: "period_lists.Duplicates" = "raise",
+        grid: bool = False,
+    ) -> "xr.Dataset":
         """All set griddata (or period-array) fields as xr.Dataset.
 
-        Stays lazy if dask-backed. A list package's stress period data is
-        put on the grid, a variable per column (see
-        ``flopy4.mf6.period_lists``); ``to_dataframe()`` is its lossless
-        form. For packages with neither this falls through to
-        ``Component.to_xarray()``, which returns whatever
+        Stays lazy if dask-backed. A list package's stress period data is a
+        variable per column, dense along its rows' key: the grid for a
+        cellid, a feature dim (``nreaches``) for a feature number, or with
+        ``grid=True`` the grid through the feature's cell. ``sparse=True``
+        keeps every row, and is the only form of rows with no single key
+        (HFB, MVR). Two rows at one position in a period raise, unless
+        ``duplicates`` ("sum", "first", "last") merges them. See
+        ``flopy4.mf6.period_lists``. For packages with neither this falls
+        through to ``Component.to_xarray()``, which returns whatever
         ``attrs_to_dataset()`` finds -- empty for a package with no
         griddata fields of its own.
         """
@@ -924,13 +934,13 @@ class Package(Component, ABC):
                 return xr.Dataset(data_vars)
         spd = period_lists.period_list_field(type(self))
         if spd is not None and self.__dict__.get(spd.name) is not None:
-            return period_lists.to_dataset(self)
+            return period_lists.to_dataset(self, sparse=sparse, duplicates=duplicates, grid=grid)
         return super().to_xarray()  # type: ignore[return-value]
 
     def from_xarray(self, ds: xr.Dataset) -> None:
-        """Set stress_period_data from ``to_xarray()``'s grid form (see
-        ``flopy4.mf6.period_lists``). A period block is made where a period
-        differs from the one before."""
+        """Set stress_period_data from ``to_xarray()``'s dense or sparse
+        form (see ``flopy4.mf6.period_lists``). From the dense form a period
+        block is made where a period differs from the one before."""
         spd = period_lists.period_list_field(type(self))
         if spd is None:
             raise ValueError(f"{type(self).__name__} has no stress period data")
