@@ -93,7 +93,7 @@ class Gwf(GwfMethods, ModelMethods, Model):
     @attrs.define
     class Newtonoptions(Record):
         _keyword: ClassVar[str] = "newton"
-        under_relaxation: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        under_relaxation: Optional[bool] = keyword(default=None, optional=True)
 
     list_: Optional[str] = string(
         default=None,

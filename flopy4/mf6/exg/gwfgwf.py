@@ -28,7 +28,7 @@ class Gwfgwf(Exchange):
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"
-        dewatered: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        dewatered: Optional[bool] = keyword(default=None, optional=True)
 
     @attrs.define
     class Exchangedata(Item):

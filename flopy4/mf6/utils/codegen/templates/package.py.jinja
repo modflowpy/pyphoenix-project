@@ -58,17 +58,11 @@ class {{ spec.class_name }}({% for m in spec.mixins %}{{ m }}, {% endfor %}{{ sp
 {% endif %}
 {% for f in rec.fields %}
 {% if f.nested and f.optional %}
-        {{ f.py_name }}: "Optional[{{ spec.class_name }}.{{ f.type_annotation }}]" = attrs.field(default=None)
+        {{ f.py_name }}: "Optional[{{ spec.class_name }}.{{ f.type_annotation }}]" = {{ f.rhs }}
 {% elif f.nested %}
-        {{ f.py_name }}: "{{ spec.class_name }}.{{ f.type_annotation }}" = attrs.field()
-{% elif f.tagged and f.optional %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(default=None, metadata={"tagged": True})
-{% elif f.tagged %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(metadata={"tagged": True})
-{% elif f.optional %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field(default=None)
+        {{ f.py_name }}: "{{ spec.class_name }}.{{ f.type_annotation }}" = {{ f.rhs }}
 {% else %}
-        {{ f.py_name }}: {{ f.type_annotation }} = attrs.field()
+        {{ f.py_name }}: {{ f.type_annotation }} = {{ f.rhs }}
 {% endif %}
 {% endfor %}
 

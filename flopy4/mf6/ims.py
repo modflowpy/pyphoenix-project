@@ -18,13 +18,13 @@ class Ims(Solution):
     @attrs.define
     class NoPtc(Record):
         _keyword: ClassVar[str] = "no_ptc"
-        no_ptc_option: Optional[str] = attrs.field(default=None)
+        no_ptc_option: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Rclose(Record):
         _keyword: ClassVar[str] = "inner_rclose"
-        inner_rclose: float = attrs.field()
-        rclose_option: Optional[str] = attrs.field(default=None)
+        inner_rclose: float = double()
+        rclose_option: Optional[str] = string(default=None, optional=True)
 
     print_option: Optional[str] = string(
         default=None,

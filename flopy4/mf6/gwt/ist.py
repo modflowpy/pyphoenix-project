@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import array, file, keyword, record, string
+from flopy4.mf6.spec import array, file, integer, keyword, record, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,16 +19,16 @@ class Ist(Package):
     @attrs.define
     class Format(Record):
         _keyword: ClassVar[str] = ""
-        format_: str = attrs.field()
-        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        format_: str = string()
+        columns: Optional[int] = integer(default=None, tagged=True, optional=True)
+        width: Optional[int] = integer(default=None, tagged=True, optional=True)
+        digits: Optional[int] = integer(default=None, tagged=True, optional=True)
 
     @attrs.define
     class Cimprint(Record):
         _keyword: ClassVar[str] = "cim"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
-        formatrecord: "Ist.Format" = attrs.field()
+        formatrecord: "Ist.Format" = record()
 
     save_flows: bool = keyword(
         default=False,

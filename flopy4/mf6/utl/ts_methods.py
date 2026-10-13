@@ -59,7 +59,7 @@ class TsMethods:
         times = data.index.to_numpy(dtype=np.float64)
         values = data.to_numpy(dtype=np.float64)
         return cls(
-            time_series_name=cls.TimeSeriesName(time_series_names=names),
+            time_series_name=cls.TimeSeriesName(time_series_names=tuple(names)),
             timeseries=[
                 cls.Timeseries(ts_time=t, ts_array=tuple(row))
                 for t, row in zip(times.tolist(), values.tolist())
@@ -74,7 +74,7 @@ class TsMethods:
     def to_dataframe(self: "Ts") -> pd.DataFrame:  # type: ignore[misc]
         """The series as a DataFrame, its index the times and its columns
         the names (see `from_series`)."""
-        names: Optional[list[str]] = (
+        names: Optional[tuple[str, ...]] = (
             self.time_series_name.time_series_names if self.time_series_name else None
         )
         rows = self.timeseries or []

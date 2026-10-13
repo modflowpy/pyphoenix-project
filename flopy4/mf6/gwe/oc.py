@@ -17,16 +17,16 @@ class Oc(Package):
     @attrs.define
     class Format(Record):
         _keyword: ClassVar[str] = ""
-        format_: str = attrs.field()
-        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        format_: str = string()
+        columns: Optional[int] = integer(default=None, tagged=True, optional=True)
+        width: Optional[int] = integer(default=None, tagged=True, optional=True)
+        digits: Optional[int] = integer(default=None, tagged=True, optional=True)
 
     @attrs.define
     class Temperatureprint(Record):
         _keyword: ClassVar[str] = "temperature"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
-        formatrecord: "Oc.Format" = attrs.field()
+        formatrecord: "Oc.Format" = record()
 
     @attrs.define
     class Frequency(Item):

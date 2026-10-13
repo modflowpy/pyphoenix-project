@@ -476,8 +476,8 @@ def test_ts_round_trip():
     from flopy4.mf6.utl import Ts
 
     ts = Ts(
-        time_series_name=Ts.TimeSeriesName(time_series_names=["a", "b"]),
-        interpolation_method=Ts.InterpolationMethod(interpolation_method=["linear", "stepwise"]),
+        time_series_name=Ts.TimeSeriesName(time_series_names=("a", "b")),
+        interpolation_method=Ts.InterpolationMethod(interpolation_method=("linear", "stepwise")),
         timeseries=[(0.0, (1.0, 2.0)), (10.0, (3.0, 4.0))],
     )
     raw = loads(dumps(unstructure_component(ts)))
@@ -492,7 +492,7 @@ def test_ts_names_mismatch():
 
     with pytest.raises(ValueError, match="time_series_names=1 but ts_array has 2 values"):
         Ts(
-            time_series_name=Ts.TimeSeriesName(time_series_names=["a"]),
+            time_series_name=Ts.TimeSeriesName(time_series_names=("a",)),
             timeseries=[(0.0, (1.0, 2.0))],
         )
 
@@ -508,8 +508,8 @@ def test_ts_reference_must_name_a_series(function_tmpdir, monkeypatch):
 
     def ts(name):
         return Ts(
-            time_series_name=Ts.TimeSeriesName(time_series_names=[name]),
-            interpolation_method=Ts.InterpolationMethod(interpolation_method=["linear"]),
+            time_series_name=Ts.TimeSeriesName(time_series_names=(name,)),
+            interpolation_method=Ts.InterpolationMethod(interpolation_method=("linear",)),
             timeseries=[(0.0, (1.0,)), (10.0, (2.0,))],
         )
 
@@ -602,9 +602,9 @@ def test_series_attributes_from_values():
         sfacrecord_single=2.0,
         timeseries=[(0.0, (1.0, 2.0))],
     )
-    assert ts.time_series_name == Ts.TimeSeriesName(time_series_names=["a", "b"])
+    assert ts.time_series_name == Ts.TimeSeriesName(time_series_names=("a", "b"))
     assert ts.sfacrecord_single == Ts.SfacrecordSingle(sfacval=2.0)
-    assert Ts(sfac=(1.0, 2.0)).sfac == Ts.Sfac(sfacval=[1.0, 2.0])
+    assert Ts(sfac=(1.0, 2.0)).sfac == Ts.Sfac(sfacval=(1.0, 2.0))
     raw = loads(dumps(unstructure_component(ts)))
     assert raw["ATTRIBUTES"] == [
         ["NAMES", "a", "b"],
@@ -614,7 +614,7 @@ def test_series_attributes_from_values():
     Chd(stress_period_data={0: [((0, 0, 0), "a")]}, ts=[ts])._check_ts_refs()
 
     tas = Tas(time_series_name="rch", interpolation_method="linear", tas_array={0.0: [1.0]})
-    assert tas.time_series_name == Tas.TimeSeriesName(time_series_name=["rch"])
+    assert tas.time_series_name == Tas.TimeSeriesName(time_series_name=("rch",))
     assert tas.interpolation_method == Tas.InterpolationMethod(interpolation_method="linear")
     Rcha(recharge={0: "rch"}, tas=[tas])._check_tas_refs()
 
@@ -1531,9 +1531,9 @@ def test_dumps_tas_inner_classes():
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name=["my_ts"]),
+        time_series_name=Tas.TimeSeriesName(time_series_name=("my_ts",)),
         interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
-        sfac=Tas.Sfac(sfacval=[1.5]),
+        sfac=Tas.Sfac(sfacval=(1.5,)),
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
@@ -1554,8 +1554,8 @@ def test_dumps_tas_inner_classes_multi_value():
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name=["ts1", "ts2"]),
-        sfac=Tas.Sfac(sfacval=[1.5, 2.0]),
+        time_series_name=Tas.TimeSeriesName(time_series_name=("ts1", "ts2")),
+        sfac=Tas.Sfac(sfacval=(1.5, 2.0)),
     )
 
     unstructured = COMPONENT_CONVERTER.unstructure(tas)
@@ -1574,14 +1574,14 @@ def test_load_tas_inner_classes_name_collision():
     from flopy4.mf6.utl.tas import Tas
 
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name=["ts1", "ts2"]),
-        sfac=Tas.Sfac(sfacval=[1.5, 2.0]),
+        time_series_name=Tas.TimeSeriesName(time_series_name=("ts1", "ts2")),
+        sfac=Tas.Sfac(sfacval=(1.5, 2.0)),
     )
     dumped = dumps(COMPONENT_CONVERTER.unstructure(tas))
     structured = structure_component(loads(dumped), Tas)
     assert structured.name == "tas"  # not clobbered by the "NAME ts1 ts2" row
-    assert structured.time_series_name.time_series_name == ["ts1", "ts2"]
-    assert structured.sfac.sfacval == [1.5, 2.0]
+    assert structured.time_series_name.time_series_name == ("ts1", "ts2")
+    assert structured.sfac.sfacval == (1.5, 2.0)
 
 
 def test_tas_array_roundtrip():
@@ -2283,7 +2283,7 @@ def test_file_records_roundtrip(tmp_path):
     )
     assert all(isinstance(ts, Ts) for ts in wel.ts)
     assert [ts.filename for ts in wel.ts] == [Path("a.ts"), Path("b.ts")]
-    assert [ts.time_series_name.time_series_names for ts in wel.ts] == [["a"], ["b"]]
+    assert [ts.time_series_name.time_series_names for ts in wel.ts] == [("a",), ("b",)]
     lines = [line.strip() for line in dumps(unstructure_component(wel)).splitlines()]
     ts_lines = [line for line in lines if line.startswith("TS6")]
     assert ts_lines == ["TS6 FILEIN a.ts", "TS6 FILEIN b.ts"]
@@ -3839,7 +3839,7 @@ def test_bang_comment_and_block_keyword_remarks():
 
 
 @pytest.mark.parametrize(
-    "line,single,multi", [("SFAC 1.5", 1.5, None), ("SFACS 2.0 3.0", None, [2.0, 3.0])]
+    "line,single,multi", [("SFAC 1.5", 1.5, None), ("SFACS 2.0 3.0", None, (2.0, 3.0))]
 )
 def test_ts_sfac_load(tmp_path, line, single, multi):
     """SFAC and SFACS load into their own records, and a loaded Ts keeps
@@ -3867,7 +3867,7 @@ def test_ts_names_alias_load(tmp_path, keyword):
         f"BEGIN ATTRIBUTES\n  {keyword} a b\n  METHODS linear linear\nEND ATTRIBUTES\n"
         "BEGIN TIMESERIES\n  0.0 1.0 2.0\nEND TIMESERIES\n"
     )
-    assert Ts.load(path).time_series_name.time_series_names == ["a", "b"]
+    assert Ts.load(path).time_series_name.time_series_names == ("a", "b")
 
 
 def test_ats_hpc_children_load_and_write(tmp_path):
@@ -4143,7 +4143,7 @@ def test_ts_from_series():
 
     df = pd.DataFrame({"stage": [10.0, 12.5], "inflow": [1.0, 2.0]}, index=[10.0, 0.0])
     ts = Ts.from_series(df, method={"stage": "linear", "inflow": "stepwise"}, sfac=2.0)
-    assert ts.time_series_name.time_series_names == ["stage", "inflow"]
+    assert ts.time_series_name.time_series_names == ("stage", "inflow")
     assert [r.ts_time for r in ts.timeseries] == [0.0, 10.0]
     raw = loads(dumps(unstructure_component(ts)))
     assert raw["ATTRIBUTES"] == [

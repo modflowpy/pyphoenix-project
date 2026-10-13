@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import array, double, list_, record
+from flopy4.mf6.spec import array, double, list_, record, string
 from flopy4.mf6.utl.ts_methods import TsMethods
 
 
@@ -20,27 +20,27 @@ class Ts(TsMethods, Package):
     class TimeSeriesName(Record):
         _keyword: ClassVar[str] = "names"
         _aliases: ClassVar[tuple[str, ...]] = ("name",)
-        time_series_names: list[str] = attrs.field()
+        time_series_names: tuple[str, ...] = array()
 
     @attrs.define
     class InterpolationMethod(Record):
         _keyword: ClassVar[str] = "methods"
-        interpolation_method: list[str] = attrs.field()
+        interpolation_method: tuple[str, ...] = array(shape=("time_series_names",))
 
     @attrs.define
     class InterpolationMethodrecordSingle(Record):
         _keyword: ClassVar[str] = "method"
-        interpolation_method_single: str = attrs.field()
+        interpolation_method_single: str = string()
 
     @attrs.define
     class Sfac(Record):
         _keyword: ClassVar[str] = "sfacs"
-        sfacval: list[float] = attrs.field()
+        sfacval: tuple[float, ...] = array(shape=("time_series_names",))
 
     @attrs.define
     class SfacrecordSingle(Record):
         _keyword: ClassVar[str] = "sfac"
-        sfacval: float = attrs.field()
+        sfacval: float = double()
 
     @attrs.define
     class Timeseries(Item):

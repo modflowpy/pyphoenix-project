@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import array, child, keyword, record, string
+from flopy4.mf6.spec import array, child, double, integer, keyword, record, string
 from flopy4.mf6.utl.tvk import Tvk
 
 
@@ -17,19 +17,19 @@ class Npf(Package):
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"
-        dewatered: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        dewatered: Optional[bool] = keyword(default=None, optional=True)
 
     @attrs.define
     class Rewet(Record):
         _keyword: ClassVar[str] = "rewet"
-        wetfct: float = attrs.field(metadata={"tagged": True})
-        iwetit: int = attrs.field(metadata={"tagged": True})
-        ihdwet: int = attrs.field(metadata={"tagged": True})
+        wetfct: float = double(tagged=True)
+        iwetit: int = integer(tagged=True)
+        ihdwet: int = integer(tagged=True)
 
     @attrs.define
     class Xt3doptions(Record):
         _keyword: ClassVar[str] = "xt3d"
-        rhs: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        rhs: Optional[bool] = keyword(default=None, optional=True)
 
     save_flows: bool = keyword(
         default=False,

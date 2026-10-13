@@ -63,7 +63,7 @@ class InnerClassFieldSpec:
 
     py_name: str
     type_annotation: str
-    tagged: bool
+    rhs: str  # the field function call, e.g. 'keyword(default=None, optional=True)'
     optional: bool
     nested: bool = False  # composes another generated Record class, see below
 
@@ -716,7 +716,9 @@ def _build_record_class_specs(
 
     Required keyword children after the trigger are treated as fixed tokens
     (always emitted, not user-facing fields) stored in ``_extra_tokens``.
-    Optional keyword children become Optional[bool] fields.
+    Optional keyword children become Optional[bool] fields. Each field is
+    declared with the field function for its DFN type, as an Item's
+    columns are; an array is a tuple.
 
     A child that's itself a Record composes as its own class (recursing
     here) rather than flattening its fields into this one: the field gets a
@@ -754,57 +756,49 @@ def _build_record_class_specs(
         is_optional = child.optional
         # a child whose tag is the trigger token is written after it, untagged
         tagged = getattr(child, "tagged", False) and child.name != kw
+        name = filters.safe_name(child.name)
 
         if isinstance(child, Record):
             child_specs = _build_record_class_specs(child, dfn_name, used_names, parent_hint=f.name)
             nested_specs.extend(child_specs)
             inner_fields.append(
                 InnerClassFieldSpec(
-                    py_name=filters.safe_name(child.name),
+                    py_name=name,
                     type_annotation=child_specs[-1].class_name,  # bare; template qualifies it
-                    tagged=False,
+                    rhs="record(default=None, optional=True)" if is_optional else "record()",
                     optional=is_optional,
                     nested=True,
                 )
             )
-        elif isinstance(child, KeywordField):
+            return
+        if isinstance(child, KeywordField):
             if not is_optional:
                 # Required keyword: always emitted as a fixed syntax token.
                 extra_tokens.append(child.name.upper())
-            else:
-                # Optional keyword: user chooses whether to set it.
-                inner_fields.append(
-                    InnerClassFieldSpec(
-                        py_name=filters.safe_name(child.name),
-                        type_annotation="Optional[bool]",
-                        tagged=tagged,
-                        optional=True,
-                    )
-                )
+                return
+            # Optional keyword: user chooses whether to set it.
+            col = filters.attr_column(name, "bool", "keyword", {}, optional=True)
         elif isinstance(child, Array):
             # Array nested in a record is always inline -- see is_record_list_field.
             elem_type = _RECORD_LIST_CHILD_PY_TYPES.get(child.dtype, "str")
-            base_type = f"list[{elem_type}]"
-            type_annotation = f"Optional[{base_type}]" if is_optional else base_type
-            inner_fields.append(
-                InnerClassFieldSpec(
-                    py_name=filters.safe_name(child.name),
-                    type_annotation=type_annotation,
-                    tagged=tagged,
-                    optional=is_optional,
-                )
+            meta: dict = {"shape": tuple(shape)} if (shape := getattr(child, "shape", None)) else {}
+            col = filters.attr_column(
+                name, f"tuple[{elem_type}, ...]", "array", meta, optional=is_optional
             )
         else:
             base_type = filters._SCALAR_PY_TYPES.get(type(child), "Any")
-            type_annotation = f"Optional[{base_type}]" if is_optional else base_type
-            inner_fields.append(
-                InnerClassFieldSpec(
-                    py_name=filters.safe_name(child.name),
-                    type_annotation=type_annotation,
-                    tagged=tagged,
-                    optional=is_optional,
-                )
+            meta = {"tagged": True} if tagged else {}
+            col = filters.attr_column(
+                name, base_type, filters.field_function(child), meta, optional=is_optional
             )
+        inner_fields.append(
+            InnerClassFieldSpec(
+                py_name=name,
+                type_annotation=col.annotation,
+                rhs=col.rhs,
+                optional=is_optional,
+            )
+        )
 
     for child in data_children:
         _process_child(child)
@@ -1818,7 +1812,8 @@ def build_component_spec(
     _needs_int_arraylike = "integer" in _arraylike_types
     _needs_float_arraylike = bool(_arraylike_types - {"integer", None})
     _spec_functions = set().union(
-        *(filters.spec_functions(fs.spec_call) for fs in field_specs if fs.generatable)
+        *(filters.spec_functions(fs.spec_call) for fs in field_specs if fs.generatable),
+        *(filters.spec_functions(f.rhs) for rec in inner_class_specs for f in rec.fields),
     )
     imports = _generated_imports(
         generatable_field_objects,

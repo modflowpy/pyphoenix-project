@@ -2889,7 +2889,7 @@ def test_rcha_tas_reference_netcdf(function_tmpdir):
     head[0, 0] = 10.0
     Chdg(parent=gwf, head=head)
     tas = Tas(
-        time_series_name=Tas.TimeSeriesName(time_series_name=["rch"]),
+        time_series_name=Tas.TimeSeriesName(time_series_name=("rch",)),
         interpolation_method=Tas.InterpolationMethod(interpolation_method="stepwise"),
         tas_array={0.0: np.full(ncol, 1e-3), 2.0: np.full(ncol, 1e-3)},
     )
