@@ -194,7 +194,8 @@ OPEN/CLOSE "some.file"
     assert str(external.data) == "external"
     filename = external.children[0]
     assert str(filename.data) == "filename"
-    assert str(filename.children[0]) == '"some.file"'
+    # there's an intermediate "word", same as the unquoted case
+    assert str(filename.children[0].children[0]) == '"some.file"'
 
 
 def test_transform_internal_array():

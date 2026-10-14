@@ -19,7 +19,7 @@
 {% endmacro %}
 
 {% macro record(value) %}
-{{ inset ~ value|join(" ") -}}
+{{ inset ~ value|map("quote_if_needed")|join(" ") -}}
 {% endmacro %}
 
 {% macro list(value) -%}

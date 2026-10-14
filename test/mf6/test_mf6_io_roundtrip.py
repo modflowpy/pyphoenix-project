@@ -21,7 +21,7 @@ from flopy4.mf6.gwe import Est as GweEst
 from flopy4.mf6.gwe import Gwe, Mwe, Sfe, Uze
 from flopy4.mf6.gwe import Ic as GweIc
 from flopy4.mf6.gwe import Ssm as GweSsm
-from flopy4.mf6.gwf import Wel
+from flopy4.mf6.gwf import Dis, Ghb, Gwf, Ic, Npf, Oc, Wel
 from flopy4.mf6.gwt import Dis as GwtDis
 from flopy4.mf6.gwt import Gwt, Mwt, Sft, Uzt
 from flopy4.mf6.gwt import Ic as GwtIc
@@ -30,6 +30,7 @@ from flopy4.mf6.gwt import Ssm as GwtSsm
 from flopy4.mf6.ims import Ims
 from flopy4.mf6.simulation import Simulation
 from flopy4.mf6.utils.time import Time
+from flopy4.mf6.utl.obs import Obs
 
 from .test_mf6_load_all_models import KNOWN_PASSING
 
@@ -392,3 +393,43 @@ def test_gwe_transport_round_trips(tmp_path, pkg_cls, row):
     diffs: list[str] = []
     _diff(pkg.packagedata, getattr(reloaded[gwe_name], field)[0].packagedata, field, diffs)
     assert not diffs, "\n".join(diffs)
+
+
+def test_quoted_multiword_boundname_and_obsname_round_trips(tmp_path):
+    """A multi-word boundname and its obsname/id survive load -> write ->
+    reload as one token, not split at the embedded space."""
+    gwf_name = "gwf1"
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
+        workspace=tmp_path,
+        name="sim1",
+        solutiongroup=[Ims(filename="gwf.ims", models=[gwf_name])],
+    )
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name, save_flows=True)
+    Ic(parent=gwf, strt=0.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(parent=gwf, head_file=f"{gwf_name}.hds", budget_file=f"{gwf_name}.cbc")
+    ghb = Ghb(
+        parent=gwf,
+        boundnames=True,
+        stress_period_data={0: [[(0, 0, 0), 1.0, 10.0, "my bound"]]},
+        name="GHB-1",
+    )
+    Obs(
+        parent=ghb,
+        continuous=[
+            Obs.ContinuousBlock(
+                output=Obs.Output(obs_output_file_name=f"{gwf_name}.ghb.obs.csv"),
+                continuous=[Obs.Continuous(obsname="my obs", obstype="GHB", id_="my bound")],
+            )
+        ],
+        name="obs",
+    )
+
+    sim.write()
+    reloaded = Simulation.load(tmp_path / "mfsim.nam")
+    rghb = reloaded[gwf_name].ghb[0]
+    assert rghb.stress_period_data[0][0].boundname == "my bound"
+    robs = rghb.obs.continuous[0].continuous[0]
+    assert (robs.obsname, robs.id_) == ("my obs", "my bound")

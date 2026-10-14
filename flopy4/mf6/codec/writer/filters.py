@@ -257,23 +257,22 @@ def array2string(value: NDArray, precision: "FloatPrecision | None" = None) -> s
     return buffer.getvalue().strip()
 
 
+_BARE_WORD = re.compile(r"[a-zA-Z0-9().\/:;<=>?@_~+\[\\-][a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]*")
+
+
 def quote_if_needed(value: Scalar) -> str:
-    """
-    Wrap a string in single quotes if it contains double-quotes.
-
-    WKT CRS strings (e.g. PROJCS["NAD83 / UTM zone 11N",...]) always
-    contain double-quotes and must be single-quoted for MF6 to parse them.
-    MF6 keyword sequences like 'STEPS 1 5' or 'all' are left as-is even
-    if they contain spaces, because they are not string literals.
-
-    Paths are written with POSIX separators so input files are portable
-    across platforms.
-    """
+    """Format a scalar as one MF6 token: paths as POSIX, strings quoted
+    if they wouldn't read back as a single word. Prefers single quotes,
+    falls back to double if the value has a single quote."""
     if isinstance(value, PurePath):
-        return value.as_posix()
-    if isinstance(value, str) and '"' in value:
+        value = value.as_posix()
+    if not isinstance(value, str) or _BARE_WORD.fullmatch(value):
+        return str(value)
+    if "'" not in value:
         return f"'{value}'"
-    return str(value)
+    if '"' not in value:
+        return f'"{value}"'
+    raise ValueError(f"MF6 can't represent a value with both quote types: {value!r}")
 
 
 def nonempty(value: NDArray | xr.DataArray) -> NDArray:
@@ -338,7 +337,7 @@ def data2lines(value: list | tuple | dict | xr.Dataset | xr.DataArray, inset: st
     Functionally equivalent to the list macro's ``{% for row %}{{ record(row) }}``
     loop but ~10x faster for large packages.
     """
-    return "\n".join(inset + " ".join(str(x) for x in row) for row in data2list(value))
+    return "\n".join(inset + " ".join(quote_if_needed(x) for x in row) for row in data2list(value))
 
 
 def dataset2list(value: xr.Dataset):

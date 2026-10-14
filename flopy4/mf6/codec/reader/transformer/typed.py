@@ -13,6 +13,12 @@ class _Element(tuple):
     """A (name, value) for one element of a list, which collects them."""
 
 
+def unquote(token: Token) -> str:
+    """Strip enclosing quotes from a quoted token, else return as-is."""
+    s = str(token)
+    return s[1:-1] if token.type.endswith("QUOTED") else s
+
+
 def _header_key(block_name: str, parts: list) -> str:
     """A block's key from its record header, as written (OBS's
     "continuous FILEOUT obs.csv BINARY"): keywords in upper case."""
@@ -160,24 +166,24 @@ class TypedTransformer(Transformer):
         return {"binary": True}
 
     def filename(self, items: list[Any]) -> Path:
-        return Path(items[0].strip("\"'"))
+        return Path(items[0])
 
     def string(self, items: list[Any]) -> str:
         # String can be either a token or a tree (word)
         value = items[0]
         if hasattr(value, "strip"):
-            return value.strip("\"'")
+            return value
         else:
             # It's a tree, extract the token value
             return str(value["children"][0]) if hasattr(value, "children") else str(value)
 
     def simple_string(self, items: list[Any]) -> str:
-        """Handle simple string (unquoted word or escaped string)."""
-        return str(items[0]).strip("\"'")
+        """Handle simple string (unquoted or quoted word)."""
+        return str(items[0])
 
     def word(self, items: list[Token]) -> str:
         """Handle word token."""
-        return str(items[0])
+        return unquote(items[0])
 
     def integer(self, items: list[Any]) -> int:
         return int(items[0])

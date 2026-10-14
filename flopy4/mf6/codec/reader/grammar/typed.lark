@@ -12,7 +12,7 @@ number: SIGNED_NUMBER | NUMBER
 // lexer takes a trailing header remark (MAW's legacy `begin period 1
 // steady-state`) as WORD_STR, which the header can't accept.
 block_index: SIGNED_NUMBER | NUMBER
-string: (ESCAPED_STRING | _token+) _NL
+string: _token+ _NL
 array: (single_array | layered_array)
 single_array: [netcdf] readarray
 layered_array: layered [netcdf] readarray+
@@ -30,7 +30,7 @@ timearrayseries: "timearrayseries"i word [_remark] _NL
 factor: "factor"i double
 iprn: "iprn"i integer
 binary: "(binary)"i
-filename: ESCAPED_STRING | word
+filename: word
 data: _data_line+
 _data_line: double+ [_remark] _NL
 // begin/end after a record's first token are a remark (test106's
@@ -38,7 +38,7 @@ _data_line: double+ [_remark] _NL
 record: token (token | _block_kw)* _NL
 _block_kw: "begin"i | "end"i
 token: number | word
-word: WORD_STR
+word: WORD_STR | QUOTED
 // Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
 // pure-digit string always lexes as a number where both could match --
 // confirmed necessary, not just tidiness: without it, a state that's
@@ -48,6 +48,11 @@ word: WORD_STR
 // the ambiguous digit token to WORD_STR in a state that has no action for
 // it at all -- a hard parse failure, not just a wrong parse.
 WORD_STR.-1: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+// A quoted value, which may contain spaces (boundnames, obsnames,
+// filenames). Either quote character, like MF6's urword; no escapes.
+// Priority 1 so it wins ties against WORD_STR (-1) here and TOKEN (0) in
+// basic.lark, which imports this terminal.
+QUOTED.1: /'[^'\n]*'|"[^"\n]*"/
 _token: word | number
 // Excludes "," (not just whitespace) so a remark can never out-length a
 // COMMA-separated data run with no surrounding spaces (confirmed against a
@@ -67,7 +72,6 @@ open_close_redirect: "open/close"i filename [_remark] _NL
 %import common.CNAME
 %import common.WORD
 %import common.SH_COMMENT
-%import common.ESCAPED_STRING
 
 COMMA: ","
 %ignore WS_INLINE

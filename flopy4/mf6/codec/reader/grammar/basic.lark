@@ -6,7 +6,7 @@ block_name: CNAME TOKEN*
 _list: line*
 // BEGIN/END only open and close a block at the start of a line; after a
 // line's first token they're data (test106's `0.0 ... begin SP 1` remark).
-line: (TOKEN (TOKEN | BEGIN | END)*)? _NL+
+line: ((TOKEN | QUOTED) ((TOKEN | QUOTED) | BEGIN | END)*)? _NL+
 // Every whitespace-delimited token lexes as one terminal, and the
 // transformer decides whether it's a number. Separate NUMBER and word
 // terminals overlap, and the lexer takes the first that matches rather
@@ -24,6 +24,7 @@ END: "end"i
 %import common.INT
 %import common.SH_COMMENT
 %import common._STRING_INNER
+%import typed.QUOTED
 
 %ignore WS_INLINE
 %ignore SH_COMMENT
