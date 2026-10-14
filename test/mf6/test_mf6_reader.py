@@ -845,6 +845,26 @@ def test_typed_loads_words_starting_with_begin_or_end():
     assert typed["stress_period_data"][0].children == loads(obs)["CONTINUOUS FILEOUT x.csv"]
 
 
+def test_typed_loads_bare_begin_or_end_word():
+    """A bare BEGIN/END where only a word fits is that word (a file named
+    `end`), not a block keyword."""
+    from flopy4.mf6.codec.reader import loads_typed
+
+    result = loads_typed("BEGIN options\n  ts6 filein end\nEND options\n", "gwf-chd")
+    assert result["options"]["ts_filerecord"] == [{"ts6_filename": "end"}]
+
+
+def test_typed_loads_bang_comment_after_number():
+    """A `!` comment ends a token, like `#`: a number right before one is
+    still a number."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+
+    ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0!note\nEND PERIOD\n"
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
+    assert rows == [[1, 1, 1, 1.0, 10.0]]
+    assert rows == loads(ghb)["PERIOD 1"]
+
+
 @pytest.mark.parametrize("component", ["gwf-maw", "gwf-wel"])
 def test_parse_block_header_remark(component):
     """A remark after a block's index (MAW's legacy `STEADY-STATE`) parses."""
