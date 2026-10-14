@@ -1817,6 +1817,15 @@ def test_construct_item_positional_trailing_boundname(boundname):
     assert evt.stress_period_data[0][0].boundname == boundname
 
 
+def test_construct_item_empty_string_boundname_with_omitted_aux():
+    """An empty-string boundname is kept, not treated as absent, even when
+    the aux array before it is omitted entirely."""
+    from flopy4.mf6.gwf import Wel
+
+    wel = Wel(stress_period_data={0: [((0, 0, 0), 1.0, "")]})
+    assert wel.stress_period_data[0][0].boundname == ""
+
+
 # ---------------------------------------------------------------------------
 # OC period dict API coverage
 # ---------------------------------------------------------------------------

@@ -254,7 +254,9 @@ def construct_item(item_cls: type, values) -> "Item":
         # omitted optional columns before it, e.g. EVT's petm0 before aux
         return cast(
             "Item",
-            item_cls(*before, boundname=boundname_val) if boundname_val else item_cls(*before),
+            item_cls(*before, boundname=boundname_val)
+            if boundname_val is not None
+            else item_cls(*before),
         )
     if arms is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
         # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
