@@ -33,10 +33,12 @@ binary: "(binary)"i
 filename: word
 data: _data_line+
 _data_line: double+ [_remark] _NL
-// begin/end after a record's first token are a remark (test106's
-// `0.0 ... begin SP 1`); dropped, like the literals they match.
-record: token (token | _block_kw)* _NL
-_block_kw: _BEGIN | _END
+// begin/end after a record's first token are words, as in basic.lark: MF6
+// only takes a line's first word as a block keyword, so later ones are data
+// (a boundname `end`, test106's `0.0 ... begin SP 1` remark). `!` keeps the
+// filtered-out keyword token so the transformer can return it as a word.
+record: token (token | block_kw_word)* _NL
+!block_kw_word: _BEGIN | _END
 // Whole tokens only, like the number terminals below. As "begin"i/"end"i
 // literals they outrank WORD_STR (-1) and matched a word's prefix, so a
 // boundname like `endpoint` lexed as a dropped `end` and then `point`.

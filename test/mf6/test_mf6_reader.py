@@ -854,6 +854,21 @@ def test_typed_loads_bare_begin_or_end_word():
     assert result["options"]["ts_filerecord"] == [{"ts6_filename": "end"}]
 
 
+def test_typed_loads_begin_or_end_after_row_start():
+    """A BEGIN/END after a row's first token is data, as in the basic
+    grammar and MF6: a boundname `end`, or test106's `begin SP 1` remark."""
+    from flopy4.mf6.codec.reader import loads, loads_typed
+
+    ghb = "BEGIN PERIOD 1\n  1 1 1 1.0 10.0 end\n  1 1 2 1.0 10.0 BEGIN\nEND PERIOD\n"
+    rows = loads_typed(ghb, "gwf-ghb")["period 1"]["stress_period_data"]
+    assert [r[-1] for r in rows] == ["end", "BEGIN"]
+    assert rows == loads(ghb)["PERIOD 1"]
+
+    ts = "BEGIN TIMESERIES\n  0.0 1.0 begin SP 1\n  1.0 2.0 end\nEND TIMESERIES\n"
+    typed = loads_typed(ts, "utl-ts")["timeseries"]["stress_period_data"][0].children
+    assert typed == [[0.0, 1.0, "begin", "SP", 1], [1.0, 2.0, "end"]]
+
+
 def test_typed_loads_bang_comment_after_number():
     """A `!` comment ends a token, like `#`: a number right before one is
     still a number."""
