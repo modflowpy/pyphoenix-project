@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,13 +25,13 @@
 start: _NL* (block _NL*)*
 block: options__block | dimensions__block | packagedata__block | connectiondata__block | tables__block | outlets__block | period__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-dimensions__block: "begin"i "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* "end"i "dimensions"i
-packagedata__block: "begin"i "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* "end"i "packagedata"i
-connectiondata__block: "begin"i "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* "end"i "connectiondata"i
-tables__block: "begin"i "tables"i [_remark] _NL _NL* tables__fields _NL* "end"i "tables"i
-outlets__block: "begin"i "outlets"i [_remark] _NL _NL* outlets__fields _NL* "end"i "outlets"i
-period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+dimensions__block: _BEGIN "dimensions"i [_remark] _NL _NL* dimensions__fields _NL* _END "dimensions"i
+packagedata__block: _BEGIN "packagedata"i [_remark] _NL _NL* packagedata__fields _NL* _END "packagedata"i
+connectiondata__block: _BEGIN "connectiondata"i [_remark] _NL _NL* connectiondata__fields _NL* _END "connectiondata"i
+tables__block: _BEGIN "tables"i [_remark] _NL _NL* tables__fields _NL* _END "tables"i
+outlets__block: _BEGIN "outlets"i [_remark] _NL _NL* outlets__fields _NL* _END "outlets"i
+period__block: _BEGIN "period"i block_index [_remark] _NL _NL* period__fields _NL* _END "period"i [block_index]
 %import typed.block_index -> block_index
 options__fields: ((auxiliary__val | boundnames__kw | print_input__kw | print_stage__kw | print_flows__kw | save_flows__kw | stage_filerecord__rec | budget_filerecord__rec | budgetcsv_filerecord__rec | package_convergence_filerecord__rec | ts_filerecord__rec__elem | obs_filerecord__rec | mover__kw | dev_force_legacy__kw | dev_force_legacy_lake__val | dev_groundwater_head_conductance__kw | dev_maximum_outlet_depth__val | surfdep__val | implicit__kw | maximum_iterations__val | maximum_stage_change__val | time_conversion__val | length_conversion__val | dev_no_final_check__kw | open_close_redirect) _NL*)*
 dimensions__fields: ((nlakes__val | noutlets__val | ntables__val | open_close_redirect) _NL*)*

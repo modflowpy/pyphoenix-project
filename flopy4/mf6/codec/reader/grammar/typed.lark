@@ -36,7 +36,13 @@ _data_line: double+ [_remark] _NL
 // begin/end after a record's first token are a remark (test106's
 // `0.0 ... begin SP 1`); dropped, like the literals they match.
 record: token (token | _block_kw)* _NL
-_block_kw: "begin"i | "end"i
+_block_kw: _BEGIN | _END
+// Whole tokens only, like the number terminals below. As "begin"i/"end"i
+// literals they outrank WORD_STR (-1) and matched a word's prefix, so a
+// boundname like `endpoint` lexed as a dropped `end` and then `point`.
+// The generated grammars' block rules import these too.
+_BEGIN: /begin(?![^\s,#])/i
+_END: /end(?![^\s,#])/i
 token: number | word
 word: WORD_STR | QUOTED
 // Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
@@ -47,7 +53,7 @@ word: WORD_STR | QUOTED
 // its LALR states merged, and the contextual lexer then sometimes resolves
 // the ambiguous digit token to WORD_STR in a state that has no action for
 // it at all -- a hard parse failure, not just a wrong parse.
-WORD_STR.-1: /(?!(?i:begin|end))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+WORD_STR.-1: /(?!(?i:begin|end)(?![^\s,#]))[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 // A quoted value, which may contain spaces (boundnames, obsnames,
 // filenames). Either quote character, like MF6's urword; no escapes.
 // Priority 1 so it wins ties against WORD_STR (-1) here and TOKEN (0) in

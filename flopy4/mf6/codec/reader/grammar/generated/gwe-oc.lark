@@ -10,6 +10,8 @@
 %import typed.open_close_redirect -> open_close_redirect
 %import typed._NL -> _NL
 %import typed._remark -> _remark
+%import typed._BEGIN -> _BEGIN
+%import typed._END -> _END
 %import typed.COMMA -> COMMA
 %import common.WS_INLINE
 %import common.SH_COMMENT
@@ -23,8 +25,8 @@
 start: _NL* (block _NL*)*
 block: options__block | period__block
 
-options__block: "begin"i "options"i [_remark] _NL _NL* options__fields _NL* "end"i "options"i
-period__block: "begin"i "period"i block_index [_remark] _NL _NL* period__fields _NL* "end"i "period"i [block_index]
+options__block: _BEGIN "options"i [_remark] _NL _NL* options__fields _NL* _END "options"i
+period__block: _BEGIN "period"i block_index [_remark] _NL _NL* period__fields _NL* _END "period"i [block_index]
 %import typed.block_index -> block_index
 options__fields: ((budget_filerecord__rec | budgetcsv_filerecord__rec | temperature_filerecord__rec | temperatureprintrecord__rec | open_close_redirect) _NL*)*
 period__fields: ((saverecord__rec__elem | printrecord__rec__elem | open_close_redirect) _NL*)*
