@@ -61,27 +61,39 @@ class SimulationMethods:
         """
         from flopy4.mf6._compat import check_mf6_compatibility
 
+        if ncpus < 1:
+            raise ValueError(f"ncpus must be >= 1, got {ncpus}")
+
         with cd(self.workspace):
             check_mf6_compatibility(exe)
+            hostfile = None
             if ncpus > 1:
-                if not is_in_ci() and get_ostag() == "mac":
+                ostag = get_ostag()
+                if not is_in_ci() and ostag == "mac":
                     # mac's OpenMPI needs a hostfile to run more ranks than cores
-                    Path("localhost").write_text(f"localhost slots={ncpus}\n")
+                    hostfile = Path("localhost")
+                    hostfile.write_text(f"localhost slots={ncpus}\n")
                     launch_opts = ["--hostfile", "localhost"]
-                elif get_ostag() == "win64":
+                elif ostag in ("win64", "win32"):
                     launch_opts = []
                 else:
                     launch_opts = ["--oversubscribe"]
                 args = ["mpiexec", *launch_opts, "-np", str(ncpus), str(exe), "-p"]
             else:
                 args = [str(exe)]
-            out, err, ret = run_cmd(*args, verbose=verbose)
+            try:
+                out, err, ret = run_cmd(*args, verbose=verbose)
+            finally:
+                if hostfile is not None:
+                    hostfile.unlink(missing_ok=True)
             if ncpus > 1:
-                success = (out + err).lower().count("normal termination") == ncpus
+                normal = (out + err).lower().count("normal termination")
+                success = normal == ncpus
+                detail = f"{normal}/{ncpus} ranks reported normal termination"
             else:
                 success = ret == 0
+                detail = f"return code {ret}"
             if not success:
                 raise RuntimeError(
-                    f"Simulation {self.name}: {exe} failed with "
-                    f"return code {ret}, output:\n\n{out + err} "
+                    f"Simulation {self.name}: {exe} failed with {detail}, output:\n\n{out + err} "
                 )

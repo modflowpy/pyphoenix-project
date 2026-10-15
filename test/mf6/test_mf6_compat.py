@@ -170,19 +170,25 @@ def test_run_checks_exe(monkeypatch, tmp_path):
         ("mac", True, ["--oversubscribe"]),
         ("win64", False, []),
         ("win64", True, []),
+        ("win32", False, []),
+        ("win32", True, []),
     ],
 )
 def test_run_parallel_command(monkeypatch, tmp_path, ostag, in_ci, expected_opts):
-    """Simulation.run builds the right mpiexec invocation per platform."""
+    """Simulation.run builds the right mpiexec invocation per platform, and
+    cleans up the mac hostfile afterward."""
     from flopy4.mf6 import Simulation, simulation_methods
 
     monkeypatch.setattr(_compat, "check_mf6_compatibility", lambda exe: None)
     monkeypatch.setattr(simulation_methods, "get_ostag", lambda: ostag)
     monkeypatch.setattr(simulation_methods, "is_in_ci", lambda: in_ci)
     calls = []
+    hostfile_contents_during_run = []
 
     def fake_run_cmd(*args, verbose):
         calls.append(args)
+        hostfile = tmp_path / "localhost"
+        hostfile_contents_during_run.append(hostfile.read_text() if hostfile.exists() else None)
         return "normal termination\n" * 2, "", 0
 
     monkeypatch.setattr(simulation_methods, "run_cmd", fake_run_cmd)
@@ -190,12 +196,18 @@ def test_run_parallel_command(monkeypatch, tmp_path, ostag, in_ci, expected_opts
     sim.run(exe="bin/mf6", ncpus=2)
     assert calls == [("mpiexec", *expected_opts, "-np", "2", "bin/mf6", "-p")]
     if ostag == "mac" and not in_ci:
-        assert (tmp_path / "localhost").read_text() == "localhost slots=2\n"
+        assert hostfile_contents_during_run == ["localhost slots=2\n"]
+    else:
+        assert hostfile_contents_during_run == [None]
+    # the hostfile is cleaned up afterward, not left behind in the workspace
+    assert not (tmp_path / "localhost").exists()
 
 
 def test_run_parallel_requires_every_rank_to_succeed(monkeypatch, tmp_path):
     """A zero mpiexec return code isn't enough: every rank must report
-    normal termination, since mpiexec can return 0 even if a rank failed."""
+    normal termination, since mpiexec can return 0 even if a rank failed.
+    The failure message reports the rank count, not the (here misleadingly
+    successful-looking) mpiexec return code."""
     from flopy4.mf6 import Simulation, simulation_methods
 
     monkeypatch.setattr(_compat, "check_mf6_compatibility", lambda exe: None)
@@ -207,5 +219,28 @@ def test_run_parallel_requires_every_rank_to_succeed(monkeypatch, tmp_path):
         lambda *args, verbose: ("normal termination\n", "", 0),
     )
     sim = Simulation(name="sim", workspace=tmp_path)
-    with pytest.raises(RuntimeError, match="failed"):
+    with pytest.raises(RuntimeError, match=r"1/2 ranks reported normal termination"):
         sim.run(exe="bin/mf6", ncpus=2)
+
+
+def test_run_serial_failure_reports_return_code(monkeypatch, tmp_path):
+    """For ncpus=1, the failure message reports the plain return code,
+    since there's no per-rank count to report."""
+    from flopy4.mf6 import Simulation, simulation_methods
+
+    monkeypatch.setattr(_compat, "check_mf6_compatibility", lambda exe: None)
+    monkeypatch.setattr(simulation_methods, "run_cmd", lambda exe, verbose: ("", "", 1))
+    sim = Simulation(name="sim", workspace=tmp_path)
+    with pytest.raises(RuntimeError, match=r"return code 1"):
+        sim.run(exe="bin/mf6")
+
+
+@pytest.mark.parametrize("ncpus", [0, -1])
+def test_run_rejects_invalid_ncpus(tmp_path, ncpus):
+    """ncpus must be a positive integer; 0 or negative must not silently
+    fall back to a serial run."""
+    from flopy4.mf6 import Simulation
+
+    sim = Simulation(name="sim", workspace=tmp_path)
+    with pytest.raises(ValueError, match="ncpus must be >= 1"):
+        sim.run(exe="bin/mf6", ncpus=ncpus)
