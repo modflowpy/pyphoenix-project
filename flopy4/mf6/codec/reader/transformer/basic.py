@@ -10,6 +10,17 @@ from flopy4.utils import parse_number
 _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 
 
+class _Rows(list):
+    """A numeric run's rows, which its block splices in among its lines."""
+
+
+def _number(value: str) -> int | float:
+    """`parse_number` for a value the run's pattern took, `D`s already `E`."""
+    if "." in value or "e" in value or "E" in value:
+        return float(value)
+    return int(value)
+
+
 class BasicTransformer(Transformer):
     """
     Basic transformer for MF6 input files. Works only with the basic
@@ -36,7 +47,13 @@ class BasicTransformer(Transformer):
 
     def block(self, items: list[Any]) -> dict[str, Any]:
         # BEGIN name line... END name
-        return {items[1]: items[2:-2]}
+        lines: list[Any] = []
+        for item in items[2:-2]:
+            if isinstance(item, _Rows):
+                lines.extend(item)
+            else:
+                lines.append(item)
+        return {items[1]: lines}
 
     def block_name(self, items: list[Any]) -> str:
         # name plus its index (period/solutiongroup number, utl-tas's time),
@@ -61,6 +78,18 @@ class BasicTransformer(Transformer):
         if _NUMBER.fullmatch(value):
             return parse_number(value.replace("d", "e").replace("D", "E"))
         return value
+
+    def NUMERIC_RUN(self, token: Token) -> _Rows:
+        # Each line a row, as `line` reads it; blank and comment-only lines
+        # aren't rows. (A comment's text may change below -- it's skipped.)
+        text = str(token).replace(",", " ")
+        if "d" in text or "D" in text:
+            text = text.replace("d", "e").replace("D", "E")
+        rows = _Rows()
+        for line in text.split("\n"):
+            if (values := line.split()) and values[0][0] not in "#!":
+                rows.append([_number(v) for v in values])
+        return rows
 
     def QUOTED(self, token: Token) -> str:
         # Quoting forces string interpretation even if content looks numeric.

@@ -3,7 +3,7 @@ block: BEGIN block_name _NL _list END block_name [_NL+]
 // MF6 ignores anything after a block header's optional index (e.g. MAW's
 // legacy `begin period 1 steady-state`); the transformer drops it.
 block_name: CNAME TOKEN*
-_list: line*
+_list: (line | NUMERIC_RUN)*
 // BEGIN/END only open and close a block at the start of a line; after a
 // line's first token they're data (test106's `0.0 ... begin SP 1` remark).
 line: ((TOKEN | QUOTED) ((TOKEN | QUOTED) | BEGIN | END)*)? _NL+
@@ -14,6 +14,16 @@ line: ((TOKEN | QUOTED) ((TOKEN | QUOTED) | BEGIN | END)*)? _NL+
 // `1997` and `-07-16T19:20:30`.
 TOKEN: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 COMMA: ","
+// One or more consecutive lines of nothing but numbers, as one token: most
+// of a big file's values are in such lines (array data, all-numeric list
+// rows), and one token per value is most of the parse time. The transformer
+// converts the run in bulk. A value must be followed by a separator or the
+// line's end, so the run never takes part of a token (`1997-07-16T19:20:30`)
+// or part of a line -- a line it can't take whole (a word, a quoted value,
+// a comment) lexes as a `line`. Blank and comment-only lines after a line
+// of the run are part of it, as they're part of a `line`'s `_NL+`.
+// Its priority puts it ahead of TOKEN, where a line can start.
+NUMERIC_RUN.2: /(?:[ \t,]*+[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?(?:[ \t,]++[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][+-]?\d+)?)*+[ \t,]*+\r?\n(?:[ \t,]*+(?:[#!][^\n]*+)?\r?\n)*+)++/
 BEGIN: "begin"i
 END: "end"i
 
