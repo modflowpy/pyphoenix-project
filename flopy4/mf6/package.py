@@ -818,7 +818,25 @@ class Package(Component, ABC):
             dims = ("node",)
         if nper is not None:
             dims = ("per", *dims)
-        return xr.DataArray(arr, dims=dims, name=field_name)
+        da = xr.DataArray(arr, dims=dims, name=field_name)
+        return self._with_cell_centers(da)
+
+    def _with_cell_centers(self, da: xr.DataArray) -> xr.DataArray:
+        """Give an array its cell centres as x/y coordinates when its
+        model's discretization (or this package, if it's one) has them.
+        On a structured grid they're indexed, for `sel(x=..., y=...)`."""
+        from flopy4.mf6.utils.grid import cell_centers, index_xy
+
+        dis = self if hasattr(self, "to_grid") else getattr(self._parent, "dis", None)
+        coords = {
+            k: v
+            for k, v in cell_centers(dis).items()
+            if v[0] in da.dims and da.sizes[v[0]] == len(v[1])
+        }
+        if len(coords) < 2:
+            return da
+        da = da.assign_coords(coords)
+        return index_xy(da) if "col" in da.dims else da
 
     def to_xarray(self) -> "xr.Dataset":  # type: ignore[override]
         """All set griddata (or period-array) fields as xr.Dataset.

@@ -1635,6 +1635,66 @@ def test_to_dataarray_standalone_vertex():
     assert da.shape == (2, 3)
 
 
+def test_to_dataarray_cell_centers_structured():
+    """A package in a model gets its cell centres from the model's DIS as x
+    on col and y on row, indexed so it can be selected by them."""
+    gwf = Gwf(
+        dis=Dis(
+            nlay=2,
+            nrow=3,
+            ncol=4,
+            delr=10.0,
+            delc=[1.0, 2.0, 3.0],
+            xorigin=100.0,
+            yorigin=50.0,
+            top=1.0,
+            botm=[0.0, -1.0],
+        )
+    )
+    npf = Npf(parent=gwf, k=np.arange(24.0))
+    da = npf.to_dataarray("k")
+    assert da.dims == ("layer", "row", "col")
+    assert da.x.dims == ("col",)
+    assert da.y.dims == ("row",)
+    assert np.allclose(da.x, [105.0, 115.0, 125.0, 135.0])
+    assert np.allclose(da.y, [55.5, 54.0, 51.5])  # row 0 is the north edge
+    assert da.sel(x=116.0, y=51.0, method="nearest").values.tolist() == [9.0, 21.0]
+    assert "x" in gwf.dis.to_dataarray("botm").coords
+
+
+def test_to_dataarray_cell_centers_vertex():
+    """On a DISV grid, x and y are on the cell dim, from cell2d."""
+    gwf = Gwf(
+        dis=Disv(
+            nlay=1,
+            ncpl=2,
+            nvert=6,
+            xorigin=10.0,
+            top=1.0,
+            botm=[0.0],
+            vertices=[
+                Disv.Vertices(iv=i, xv=x, yv=y)
+                for i, (x, y) in enumerate([(0, 0), (0, 1), (1, 1), (1, 0), (2, 1), (2, 0)])
+            ],
+            cell2d=[
+                Disv.Cell2d(icell2d=0, xc=0.5, yc=0.5, icvert=(0, 1, 2, 3, 0)),
+                Disv.Cell2d(icell2d=1, xc=1.5, yc=0.5, icvert=(3, 2, 4, 5, 3)),
+            ],
+        )
+    )
+    da = gwf.dis.to_dataarray("botm")
+    assert da.dims == ("layer", "cell")
+    assert da.x.dims == ("cell",)
+    assert np.allclose(da.x, [10.5, 11.5])
+    assert np.allclose(da.y, [0.5, 0.5])
+
+
+def test_to_dataarray_standalone_has_no_cell_centers():
+    """Without a discretization there's no geometry, so no x/y."""
+    npf = Npf(dims={"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}, k=1.0)
+    assert "x" not in npf.to_dataarray("k").coords
+
+
 def test_to_xarray_standalone_structured():
     """Npf.to_xarray() on a standalone package returns Dataset with all griddata fields."""
     dims = {"nlay": 1, "nrow": 2, "ncol": 2, "nodes": 4}

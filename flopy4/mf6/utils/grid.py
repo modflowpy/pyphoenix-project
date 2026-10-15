@@ -1403,6 +1403,35 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     return coords
 
 
+def cell_centers(dis) -> dict[str, Any]:
+    """A discretization's cell centres in world coordinates: ``x`` on
+    ``col`` and ``y`` on ``row`` for DIS (from ``delr``/``delc``), ``x``
+    and ``y`` on the cells for DISV and DISU (from ``cell2d``). Empty if
+    the geometry isn't set, or if the grid is rotated (not yet supported)."""
+    if dis is None or getattr(dis, "angrot", None):
+        return {}
+    xorigin = getattr(dis, "xorigin", None) or 0.0
+    yorigin = getattr(dis, "yorigin", None) or 0.0
+    if hasattr(dis, "delr"):
+        if dis.delr is None or dis.delc is None:
+            return {}
+        delr = np.broadcast_to(np.asarray(dis.delr, dtype=np.float64), (dis.ncol,))
+        delc = np.broadcast_to(np.asarray(dis.delc, dtype=np.float64), (dis.nrow,))
+        # row 0 is the north edge
+        return {
+            "x": ("col", xorigin + np.cumsum(delr) - 0.5 * delr),
+            "y": ("row", yorigin + delc.sum() - np.cumsum(delc) + 0.5 * delc),
+        }
+    cell2d = getattr(dis, "cell2d", None)
+    if not cell2d:
+        return {}
+    dim = "cell" if hasattr(dis, "ncpl") else "node"
+    return {
+        "x": (dim, xorigin + np.array([c.xc for c in cell2d], dtype=np.float64)),
+        "y": (dim, yorigin + np.array([c.yc for c in cell2d], dtype=np.float64)),
+    }
+
+
 def index_xy(da: xr.DataArray) -> xr.DataArray:
     """Index a structured array's x and y coordinates, so it can be
     selected by them (``sel(x=..., method="nearest")``)."""
