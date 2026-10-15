@@ -49,10 +49,12 @@ from typing import Any, Literal, Optional, cast, get_args
 import attrs
 import numpy as np
 import xarray as xr
+from modflow_devtools.dfns.schema import split_bound
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.constants import FILL_DNODATA, FILL_INT64, GRID_DIMS
 from flopy4.mf6.item import Item, _union_field_arms, item_list_type, item_list_words
+from flopy4.spec import is_array
 
 Duplicates = Literal["raise", "sum", "first", "last"]
 Kind = Literal["float", "int", "object"]
@@ -84,7 +86,7 @@ def _kind(f: attrs.Attribute) -> Kind:
     if f.metadata.get("time_series"):
         return "float"
     t = f.type
-    if f.metadata.get("array"):
+    if is_array(f):
         t = next(iter(get_args(t)), None)
     if t is float:
         return "float"
@@ -107,7 +109,12 @@ def _dtype(kind: Kind) -> Any:
 
 
 def _is_key(f: attrs.Attribute) -> bool:
-    return bool(f.metadata.get("cellid") or f.metadata.get("fk") or f.metadata.get("pk"))
+    return _is_cellid(f) or bool(f.metadata.get("fk") or f.metadata.get("pk"))
+
+
+def _is_cellid(f: attrs.Attribute) -> bool:
+    """Whether a field is one cellid."""
+    return f.metadata.get("type") == "cellid"
 
 
 def _aux_names(pkg: Any) -> list[str]:
@@ -183,11 +190,11 @@ def _setting(fields: list[attrs.Attribute], key: attrs.Attribute, arm: Optional[
     columns = []
     for f in rest:
         shape = f.metadata.get("shape") or ()
-        if f.metadata.get("array") and shape == ("auxiliary",):
+        if is_array(f) and shape == ("auxiliary",):
             columns.append(_Column(f, _kind(f), aux=True))
-        elif f.metadata.get("array") and shape:
+        elif is_array(f) and shape:
             columns.append(_Column(f, _kind(f), size=str(shape[0])))
-        elif f.metadata.get("array"):
+        elif is_array(f):
             columns.append(_Column(f, "object"))  # unsized, as a tuple
         else:
             columns.append(_Column(f, _kind(f)))
@@ -272,7 +279,7 @@ def _key(pkg: Any, key: attrs.Attribute, grid: bool, width: Optional[int]) -> _K
     """A key's dims: the grid for a cellid, else the referenced table's
     sizing dim (or, with ``grid``, the grid through its cellid), else a dim
     named for the key."""
-    if key.metadata.get("cellid"):
+    if _is_cellid(key):
         if width is None:
             raise ValueError("no row gives a cellid, so the grid's shape is unknown")
         return _Key(*_grid(pkg, width), cell=True)
@@ -283,7 +290,7 @@ def _key(pkg: Any, key: attrs.Attribute, grid: bool, width: Optional[int]) -> _K
         cellids = (
             []
             if item is None or isinstance(item, tuple)
-            else [f for f in item.fields() if f.metadata.get("cellid")]
+            else [f for f in item.fields() if _is_cellid(f)]
         )
         if len(cellids) != 1:
             raise ValueError(f"{key.name} doesn't refer to a table with a cellid, so grid=True")
@@ -292,7 +299,8 @@ def _key(pkg: Any, key: attrs.Attribute, grid: bool, width: Optional[int]) -> _K
         cells = {getattr(r, column): tuple(getattr(r, cellids[0].name)) for r in rows}
         dims, sizes = _grid(pkg, len(next(iter(cells.values()))))
         return _Key(dims, sizes, cell=False, cells=cells)
-    dim = (target.metadata.get("dim") if target else None) or key.name
+    tshape = target.metadata.get("shape") if target else None
+    dim = (split_bound(tshape[0])[1] if tshape else None) or key.name
     size = pkg.resolve_dims(dim).get(dim) or len(rows)
     return _Key((dim,), [size], cell=False)
 
@@ -360,7 +368,7 @@ def to_dataset(
         for row in rows:
             setting, arm, value = layout.setting(row)
             if setting.key.name not in keys:
-                width = len(value) if setting.key.metadata.get("cellid") else None
+                width = len(value) if _is_cellid(setting.key) else None
                 keys[setting.key.name] = _key(pkg, setting.key, grid, width)
             key = keys[setting.key.name]
             at = key.position(value)
@@ -553,7 +561,7 @@ def _dense_keys(pkg: Any, ds: xr.Dataset, found: Found) -> dict[str, tuple[_Key,
         ndim = len(ds[name].dims) - 1 - len(_var_dims(s, c))
         key_dims = tuple(str(d) for d in ds[name].dims[-ndim:])
         width = next((w for w, g in GRID_DIMS.items() if tuple(d for _, d in g) == key_dims), None)
-        cell = bool(s.key.metadata.get("cellid"))
+        cell = _is_cellid(s.key)
         key = _key(pkg, s.key, not cell and width is not None, width if cell else None)
         back: Optional[dict] = None
         if key.cells is not None:
@@ -809,15 +817,15 @@ def _to_sparse(pkg: Any, periods: dict[int, list]) -> xr.Dataset:
             if v is None:
                 continue
             shape = f.metadata.get("shape") or ()
-            if f.metadata.get("cellid"):
+            if _is_cellid(f):
                 for name, x in zip(_cell_names(f, len(v)), v):
                     put(name, "int", True, i, int(x))
-            elif f.metadata.get("array") and shape == ("auxiliary",):
+            elif is_array(f) and shape == ("auxiliary",):
                 for name, x in zip(aux, v):
                     put(name, "float", False, i, x)
-            elif f.metadata.get("array") and shape and _kind(f) != "object":
+            elif is_array(f) and shape and _kind(f) != "object":
                 put(f.name, _kind(f), False, i, tuple(v), size=str(shape[0]))
-            elif f.metadata.get("array") or f.metadata.get("child") or isinstance(v, Item):
+            elif is_array(f) or f.metadata.get("child") or isinstance(v, Item):
                 put(f.name, "object", False, i, v)
             elif f.name == "boundname" or f.metadata.get("index") or _is_key(f):
                 put(f.name, _kind(f), True, i, v)
@@ -903,13 +911,13 @@ def _from_sparse(pkg: Any, ds: xr.Dataset) -> dict[int, list]:
             if arm_field is not None and f.name == arm_field.name:
                 continue
             shape = f.metadata.get("shape") or ()
-            if f.metadata.get("cellid"):
+            if _is_cellid(f):
                 for width in (3, 2, 1):
                     cell = [get(n, i) for n in _cell_names(f, width)]
                     if all(c is not None for c in cell):
                         out[f.name] = tuple(int(c) for c in cell)
                         break
-            elif f.metadata.get("array") and shape == ("auxiliary",):
+            elif is_array(f) and shape == ("auxiliary",):
                 vals = [get(n, i) for n in aux]
                 if any(v is not None for v in vals):
                     out[f.name] = tuple(vals)
