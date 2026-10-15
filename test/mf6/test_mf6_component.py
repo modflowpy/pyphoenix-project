@@ -1690,9 +1690,8 @@ def test_to_dataarray_cell_centers_vertex():
 
 
 def test_to_dataarray_cell_centers_structured_rotated():
-    """A rotated grid's rows and columns don't line up with x and y, so x
-    and y are both on (row, col), and not indexed. MF6 rotates the grid
-    counter-clockwise by angrot degrees about its origin."""
+    """A rotated grid's rows and columns don't line up with world x and y,
+    so its arrays have no x/y for now."""
     gwf = Gwf(
         dis=Dis(
             nlay=1,
@@ -1708,16 +1707,13 @@ def test_to_dataarray_cell_centers_structured_rotated():
         )
     )
     da = gwf.dis.to_dataarray("botm")
-    assert da.x.dims == ("row", "col")
-    assert da.y.dims == ("row", "col")
-    # model (x, y) goes to (xorigin - y, yorigin + x)
-    assert np.allclose(da.x, [[8.5, 8.5], [9.5, 9.5]])
-    assert np.allclose(da.y, [[20.5, 21.5], [20.5, 21.5]])
-    assert "x" not in da.indexes
+    assert da.dims == ("layer", "row", "col")
+    assert "x" not in da.coords and "y" not in da.coords
 
 
 def test_to_dataarray_cell_centers_vertex_rotated():
-    """A rotated DISV grid's cell centres are rotated about its origin."""
+    """A rotated DISV grid's cell centres are rotated counter-clockwise by
+    angrot degrees about its origin, as in MF6."""
     gwf = Gwf(
         dis=Disv(
             nlay=1,
@@ -1744,24 +1740,23 @@ def test_to_dataarray_cell_centers_vertex_rotated():
 
 
 def test_structured_grid_rotated():
-    """A rotated StructuredGrid's x and y are 2-D world coordinates, the
-    same as on package arrays and output (get_coords)."""
+    """A rotated StructuredGrid's x and y are in its own frame, zero at the
+    lower-left corner, as to_xarray() writes them; output from a rotated
+    grid has none (get_coords)."""
     from flopy4.adapters import StructuredGridWrapper
     from flopy4.mf6.utils.grid import get_coords
 
     kwargs = dict(nlay=1, nrow=2, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=[0.0])
     grid = StructuredGrid(xoff=10.0, yoff=20.0, angrot=90.0, **kwargs)
-    assert grid.dataset.x.dims == ("row", "col")
-    assert np.allclose(grid.dataset.x, [[8.5, 8.5], [9.5, 9.5]])
-    assert np.allclose(grid.dataset.y, [[20.5, 21.5], [20.5, 21.5]])
+    assert grid.dataset.x.dims == ("col",)
+    assert np.allclose(grid.dataset.x, [0.5, 1.5])
+    assert np.allclose(grid.dataset.y, [1.5, 0.5])
 
     wrapper = StructuredGridWrapper(
         nlay=1, nrow=2, ncol=2, delr=np.ones(2), delc=np.ones(2), xoff=10.0, yoff=20.0, angrot=90.0
     )
     coords = get_coords(wrapper)
-    assert coords["x"][0] == ("row", "col")
-    assert np.allclose(coords["x"][1], grid.dataset.x)
-    assert np.allclose(coords["y"][1], grid.dataset.y)
+    assert "x" not in coords and "y" not in coords
 
 
 def test_to_dataarray_standalone_has_no_cell_centers():

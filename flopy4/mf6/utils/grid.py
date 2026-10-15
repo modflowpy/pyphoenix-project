@@ -236,12 +236,13 @@ class StructuredGrid(LegacyStructuredGrid):
                 "y": ("row", np.arange(self.nrow, dtype=float)),
             }
         else:
+            # a rotated grid's x/y are in its own frame, zero at the
+            # lower-left corner, as to_xarray() writes them (and MF6 does)
             xy = structured_centers(
                 np.broadcast_to(np.asarray(legacy_delr, dtype=np.float64), (self.ncol,)),
                 np.broadcast_to(np.asarray(legacy_delc, dtype=np.float64), (self.nrow,)),
-                self._xoff,
-                self._yoff,
-                self.angrot,
+                None if self.angrot else self._xoff,
+                None if self.angrot else self._yoff,
             )
 
         # Compute z coordinates (cell centers in 3D)
@@ -1375,31 +1376,28 @@ def to_world(x, y, xorigin=None, yorigin=None, angrot=None) -> tuple[np.ndarray,
     return (xorigin or 0.0) + x, (yorigin or 0.0) + y
 
 
-def structured_centers(delr, delc, xorigin=None, yorigin=None, angrot=None) -> dict[str, Any]:
-    """A structured grid's cell centres in world coordinates: ``x`` on
-    ``col`` and ``y`` on ``row``, or, if the grid is rotated, both on
-    ``(row, col)``, since a rotated grid's rows and columns don't line
-    up with x and y."""
+def structured_centers(delr, delc, xorigin=None, yorigin=None) -> dict[str, Any]:
+    """An unrotated structured grid's cell centres: ``x`` on ``col`` and
+    ``y`` on ``row``, offset by the origin. Without an origin they're in
+    the grid's own frame, with the lower-left corner at zero."""
     delr = np.asarray(delr, dtype=np.float64)
     delc = np.asarray(delc, dtype=np.float64)
     x = np.cumsum(delr) - 0.5 * delr
     # row 0 is the north edge
     y = delc.sum() - np.cumsum(delc) + 0.5 * delc
-    if not angrot:
-        x, y = to_world(x, y, xorigin, yorigin)
-        return {"x": ("col", x), "y": ("row", y)}
-    xx, yy = np.meshgrid(x, y)
-    x, y = to_world(xx, yy, xorigin, yorigin, angrot)
-    return {"x": (("row", "col"), x), "y": (("row", "col"), y)}
+    x, y = to_world(x, y, xorigin, yorigin)
+    return {"x": ("col", x), "y": ("row", y)}
 
 
 def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
     """A structured grid's world coordinates, as for package arrays (see
-    ``structured_centers``), and its cell sizes as ``dx``/``dy``. No layer
+    ``cell_centers``), and its cell sizes as ``dx``/``dy``. No layer
     coordinate: a position is the index."""
     dx = np.broadcast_to(np.asarray(grid.delr, dtype=np.float64), (grid.ncol,))
     dy = np.broadcast_to(np.asarray(grid.delc, dtype=np.float64), (grid.nrow,))
-    coords: dict[str, Any] = structured_centers(dx, dy, grid.xoffset, grid.yoffset, grid.angrot)
+    coords: dict[str, Any] = (
+        {} if grid.angrot else structured_centers(dx, dy, grid.xoffset, grid.yoffset)
+    )
     if np.allclose(dx, dx[0]) and np.allclose(dy, dy[0]):
         coords["dx"] = np.array(float(dx[0]))
         coords["dy"] = np.array(-float(dy[0]))
@@ -1412,19 +1410,21 @@ def get_coords(grid: LegacyStructuredGrid) -> dict[str, Any]:
 def cell_centers(dis) -> dict[str, Any]:
     """A discretization's cell centres in world coordinates: from
     ``delr``/``delc`` for DIS (see ``structured_centers``), and on the
-    cells from ``cell2d`` for DISV and DISU. Empty if the geometry isn't
-    set."""
+    cells from ``cell2d`` for DISV and DISU, rotated by ``angrot`` about
+    the origin. Empty if the geometry isn't set, or for a rotated DIS: its
+    rows and columns don't line up with world x and y, so it has no 1-D
+    world coordinates to index."""
     if dis is None:
         return {}
     xorigin = getattr(dis, "xorigin", None)
     yorigin = getattr(dis, "yorigin", None)
     angrot = getattr(dis, "angrot", None)
     if hasattr(dis, "delr"):
-        if dis.delr is None or dis.delc is None:
+        if angrot or dis.delr is None or dis.delc is None:
             return {}
         delr = np.broadcast_to(np.asarray(dis.delr, dtype=np.float64), (dis.ncol,))
         delc = np.broadcast_to(np.asarray(dis.delc, dtype=np.float64), (dis.nrow,))
-        return structured_centers(delr, delc, xorigin, yorigin, angrot)
+        return structured_centers(delr, delc, xorigin, yorigin)
     cell2d = getattr(dis, "cell2d", None)
     if not cell2d:
         return {}
@@ -1436,9 +1436,9 @@ def cell_centers(dis) -> dict[str, Any]:
 def index_xy(obj):
     """Index a structured array's (or dataset's) x and y coordinates, so it
     can be selected by them (``sel(x=..., method="nearest")``). A rotated
-    grid's x and y are 2-D, and xarray can't index those, so they're left
-    as they are."""
-    if obj["x"].ndim != 1 or obj["y"].ndim != 1:
+    grid's arrays have none (see ``cell_centers``), so they're left as
+    they are."""
+    if "x" not in obj.coords or "y" not in obj.coords:
         return obj
     return obj.set_xindex("x", PandasIndex).set_xindex("y", PandasIndex)
 

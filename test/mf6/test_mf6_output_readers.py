@@ -267,18 +267,14 @@ def test_open_cbc_disv_flowja(disv_model_output):
 
 
 def test_open_hds_dis_rotated(function_tmpdir):
-    """A rotated grid's output has 2-D x/y world coordinates on (row, col),
-    the same as its input arrays."""
+    """A rotated grid's rows and columns don't line up with world x and y,
+    so its output has no x/y, the same as its input arrays."""
     paths = _dis_model_output(function_tmpdir, xorigin=100.0, yorigin=200.0, angrot=30.0)
     head = open_hds(paths["hds"], paths["grb"])
     botm = paths["gwf"].dis.to_dataarray("botm")
-    assert head.x.dims == head.y.dims == ("row", "col")
-    assert np.allclose(head.x, botm.x)
-    assert np.allclose(head.y, botm.y)
-    # cell (0, 0)'s centre is (5, 25) from the origin, rotated 30 degrees
-    t = np.deg2rad(30.0)
-    assert np.isclose(head.x[0, 0], 100.0 + 5 * np.cos(t) - 25 * np.sin(t))
-    assert np.isclose(head.y[0, 0], 200.0 + 5 * np.sin(t) + 25 * np.cos(t))
+    assert head.dims == ("time", "layer", "row", "col")
+    assert "x" not in head.coords and "y" not in head.coords
+    assert "x" not in botm.coords and "y" not in botm.coords
 
 
 def test_open_hds_disv_rotated(function_tmpdir):
