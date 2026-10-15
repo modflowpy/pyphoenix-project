@@ -1,5 +1,6 @@
 from abc import ABC
 from collections.abc import MutableMapping
+from functools import lru_cache
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
@@ -137,10 +138,34 @@ def _resolve_child_name(
     return f"{field_name}{i}"
 
 
+@lru_cache(maxsize=None)
+def _may_hold_children(cls: type) -> bool:
+    """Whether a row of ``cls`` may hold a child: it has a child column
+    (LAK's laktab), or a record or union arm that may (SFR's
+    CrossSection). Cached, so a list's rows needn't each be walked."""
+    from flopy4.mf6.item import _field_type_str, _union_field_arms
+    from flopy4.mf6.record import _nested_class, record_type
+
+    if not attrs.has(cls):
+        return False
+    for f in fields(cls):
+        if f.metadata.get("child"):
+            return True
+        if (t := _field_type_str(f)) is None:
+            nested = [c] if (c := record_type(f.type)) else []
+        elif (arms := _union_field_arms(cls, f)) is not None:
+            nested = list(arms[1])
+        else:
+            nested = [c] if (c := _nested_class(cls, t)) else []
+        if any(_may_hold_children(c) for c in nested):  # type: ignore[arg-type]  # lru_cache wants Hashable
+            return True
+    return False
+
+
 def _row_children(row: Any) -> "list[Component]":
     """The children in a list's row (LAK's ``ifno TAB6 FILEIN <file>``),
     including in its union arm (SFR's ``CROSS_SECTION TAB6 FILEIN``)."""
-    if isinstance(row, Component) or not attrs.has(type(row)):
+    if isinstance(row, Component) or not _may_hold_children(type(row)):  # type: ignore[arg-type]  # lru_cache wants Hashable
         return []
     children = []
     for f in fields(type(row)):

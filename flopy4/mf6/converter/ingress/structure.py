@@ -75,17 +75,13 @@ def _parse_rows(
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
         )
-    result = [
-        item_cls.from_tokens(
-            row,
-            row_context,
-            union_arm=union_arm,
-            union_forms=union_forms,
-            load_child=load_child,
-        )
-        for row in rows
-        if row
-    ]
+    result = item_cls.from_rows(
+        [row for row in rows if row],
+        row_context,
+        union_arm=union_arm,
+        union_forms=union_forms,
+        load_child=load_child,
+    )
     return result or None
 
 

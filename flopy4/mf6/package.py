@@ -428,7 +428,35 @@ class Package(Component, ABC):
         A row with a field an option turns on (a boundname) sets that
         option.
         """
-        context = self._row_context(item_cls)
+        if isinstance(data, list) and all(isinstance(row, item_cls) for row in data):
+            # Items already (as loaded): no context needed, which is costly
+            # to resolve per period
+            items = list(data)
+        else:
+            items = self._items_from(data, item_cls, words, self._row_context(item_cls))
+        fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
+
+        def unset(option: str) -> bool:
+            return option in fields and not getattr(self, option)
+
+        # only options not set yet: each check looks at every row
+        on = {
+            option
+            for name, option in conditional_fields(item_cls).items()
+            if unset(option) and any(getattr(item, name, None) is not None for item in items)
+        }
+        for option in on:
+            object.__setattr__(self, option, True)
+        return items
+
+    def _items_from(
+        self,
+        data,
+        item_cls: "type[Item] | tuple[type[Item], ...]",
+        words: tuple[str, ...],
+        context: RowContext,
+    ) -> list:
+        """The Items user-supplied data gives (see `_coerce_item_list`)."""
         if isinstance(item_cls, tuple):
             items = []
             for row in data:
@@ -449,15 +477,6 @@ class Package(Component, ABC):
                     items.append(item_cls(**row))
                 else:
                     items.append(item_cls.from_values(row, context))
-        on = {
-            option
-            for name, option in conditional_fields(item_cls).items()
-            if any(getattr(item, name, None) is not None for item in items)
-        }
-        fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
-        for option in on:
-            if option in fields and not getattr(self, option):
-                object.__setattr__(self, option, True)
         return items
 
     def _normalize_griddata(self, fields, dims: dict) -> None:

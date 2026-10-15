@@ -1970,6 +1970,28 @@ END PERIOD 1
     assert [(r.petm0, r.boundname) for r in rows] == [(0.5, None), (0.25, "well")]
 
 
+def test_rows_as_each_row_reads():
+    """A block's rows read together as each reads alone: those of a length
+    by the first's layout, and any that layout can't take (a cellid of
+    NONE, here as wide as a DISU node) by its own."""
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.item import RowContext
+
+    context = RowContext(ncelldim=1, sizes={"auxiliary": 0}, enabled=frozenset({"boundnames"}))
+    values = [10.0, 1.0, 0.001, 100.0, 1.0, "rhk", 0.03, 1, 1.0, 0]
+    rows = [
+        [1, 5, *values],
+        [2, "NONE", *values],
+        [3, 0, *values],
+        [4, 6, *values, "reach4"],
+        [5, "none", *values, "reach5"],
+    ]
+    items = Sfr.Packagedata.from_rows(rows, context)
+    assert items == [Sfr.Packagedata.from_tokens(row, context) for row in rows]
+    assert [item.cellid for item in items] == [(4,), None, None, (5,), None]
+    assert [item.boundname for item in items] == [None, None, None, "reach4", "reach5"]
+
+
 @pytest.mark.parametrize("boundname", [None, "b"])
 def test_row_positional_trailing_boundname(boundname):
     """A positional row's last value is its boundname, absent (None) or

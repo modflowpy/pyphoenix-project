@@ -17,7 +17,7 @@ identified by its own keyword token (SAVE/PRINT, STATUS/CONCENTRATION/...).
 
 import ast
 from collections.abc import Callable, Mapping
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Union, cast, get_args, get_origin
 
@@ -27,6 +27,7 @@ import numpy as np
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 from flopy4.spec import is_array
+from flopy4.utils import unwrap_optional
 
 
 def is_cellid(f: attrs.Attribute) -> bool:
@@ -84,9 +85,10 @@ def _sized_by_package(cls: type, f: attrs.Attribute) -> bool:
     return inline_dim(f) is not None and not _sized_by_field(cls, f) and not _sized_by_lookup(f)
 
 
+@lru_cache(maxsize=None)
 def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
     """Count field name -> the inline array it counts (cell2d's ncvert ->
-    icvert)."""
+    icvert). Cached, since each row checks it; don't modify it."""
     return {
         inline_dim(f): f  # type: ignore[misc]
         for f in cast(type[Record], cls).fields()
@@ -470,6 +472,13 @@ def _layout(
     """Split a row's values into its fields, by position, as MF6 does.
     An unknown width (no grid yet) is solved from the value count, and
     raises if more than one fits."""
+    out = _solve(cls, values, context, file=file)
+    return _convert(cls, out, context, file, union_arm, union_forms, load_child)
+
+
+def _solve(cls: type, values: list, context: RowContext, *, file: bool) -> dict[str, Any]:
+    """What each field takes of a row's values (see `_layout`): its kind of
+    value and the values, by field name."""
     n = len(values)
     slots = _slots(cls, file)
     gated = conditional_fields(cls)
@@ -625,7 +634,7 @@ def _layout(
         out = first(solve(surplus=True))
     if out is None:
         raise ValueError(f"{cls.__name__}: can't read a row from {values}")
-    return _convert(cls, out, context, file, union_arm, union_forms, load_child)
+    return out
 
 
 def _file_cellid(f: attrs.Attribute, tokens: list) -> tuple[int, ...] | None:
@@ -641,6 +650,94 @@ def _file_array(f: attrs.Attribute, tokens: list) -> tuple:
     if (elem := _array_elem_type(f)) is not None:
         return tuple(elem(float(str(t))) for t in tokens)
     return tuple(_float_or_str(t) for t in tokens)
+
+
+@lru_cache(maxsize=None)
+def _plannable(cls: type) -> bool:
+    """Whether a file row's layout depends only on how many values it has,
+    not what they are: it has no keyword, flag, count column or untagged
+    unions, and no column that reads a child or a union arm (see `_plan`)."""
+    for slot in _slots(cls, True):
+        if slot.kind not in ("value", "cellid", "sized", "rest"):
+            return False
+        if slot.kind == "value" and slot.field.metadata.get("child"):
+            return False
+        if slot.kind == "rest" and _union_field_arms(cls, slot.field) is not None:
+            return False
+    return True
+
+
+def _ts_value(token: Any) -> Any:
+    """A time series column's token, as `_coerce` reads it: a number, or
+    else a name."""
+    try:
+        return float(token)
+    except (ValueError, TypeError):
+        return str(token)
+
+
+@lru_cache(maxsize=None)
+def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
+    """A file token to a scalar field's value, as `_convert` reads it."""
+    if f.metadata.get("index"):
+        return lambda t: int(float(str(t))) - 1
+    if f.metadata.get("time_series"):
+        return _ts_value
+    t = unwrap_optional(f.type)
+    if t in (int, "int"):
+        return lambda v: int(float(str(v)))
+    if t in (float, "float"):
+        return float
+    return lambda v: _coerce(v, f)
+
+
+def _plan(
+    cls: type, values: list, context: RowContext
+) -> "Callable[[list], dict[str, Any] | None] | None":
+    """How to read the fields of a file row with as many values as
+    ``values``, which `_solve` lays out, if every such row's layout is the
+    same (see `_plannable`). The reader returns None for a row it can't
+    convert (a cellid of NONE), which `_layout` then reads."""
+    if not _plannable(cls):
+        return None
+    out = _solve(cls, values, context, file=True)
+    if any(took[0] == "none" for took in out.values()):
+        return None
+    readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
+    pos = 0
+    for slot in _slots(cls, True):
+        f = slot.field
+        if (took := out.get(f.name)) is None:
+            continue
+        if took[0] == "value":
+            w = 1 + bool(f.metadata.get("_keyword")) + bool(f.metadata.get("direction"))
+            readers.append((f.name, pos + w - 1, 0, _value_reader(f)))
+        else:
+            w = len(took[1])
+            read: Callable[[Any], Any]
+            if took[0] == "cellid":
+                read = partial(_file_cellid, f)
+            elif is_cellid(f):
+                cw = took[2] if len(took) > 2 else 1
+                read = partial(_file_cellids, f, cw)
+            else:
+                read = partial(_file_array, f)
+            readers.append((f.name, pos, pos + w, read))
+        pos += w
+    if "boundname" in out:
+        readers.append(("boundname", len(values) - 1, 0, str))
+
+    def read_row(row: list) -> "dict[str, Any] | None":
+        try:
+            return {name: read(row[a:b] if b else row[a]) for name, a, b, read in readers}
+        except (ValueError, TypeError):
+            return None
+
+    return read_row
+
+
+def _file_cellids(f: attrs.Attribute, width: int, tokens: list) -> tuple:
+    return tuple(_file_cellid(f, tokens[i : i + width]) for i in range(0, len(tokens), width))
 
 
 def _convert(
@@ -685,9 +782,10 @@ def _convert(
                 kwargs[name] = _coerce(raw, f)
         elif kind == "array":
             w = took[2] if len(took) > 2 else 1
-            if is_cellid(f):
-                cells = [raw[i : i + w] for i in range(0, len(raw), w)]
-                kwargs[name] = tuple(_file_cellid(f, c) if file else tuple(c) for c in cells)
+            if is_cellid(f) and file:
+                kwargs[name] = _file_cellids(f, w, raw)
+            elif is_cellid(f):
+                kwargs[name] = tuple(tuple(raw[i : i + w]) for i in range(0, len(raw), w))
             else:
                 kwargs[name] = _file_array(f, raw) if file else tuple(raw)
         elif kind == "rest":
@@ -727,8 +825,10 @@ class Item(Record):
     def __attrs_post_init__(self) -> None:
         """Fill each count field (cell2d's ncvert) from the array it counts,
         so an item compares equal whether it was built or loaded."""
+        if not (counted := _counted_fields(type(self))):  # type: ignore[arg-type]  # lru_cache wants Hashable
+            return
         columns = attrs.fields_dict(type(self))  # type: ignore[arg-type]
-        for count_name, array_field in _counted_fields(type(self)).items():
+        for count_name, array_field in counted.items():
             if count_name not in columns:
                 continue  # counted by a package dimension, not a column
             n = len(getattr(self, array_field.name))
@@ -753,7 +853,7 @@ class Item(Record):
         if cls._columns:
             fields = _in_columns(cls, fields)
         keyword = cls.keyword()
-        counted = _counted_fields(cls)
+        counted = _counted_fields(cls)  # type: ignore[arg-type]  # lru_cache wants Hashable
         row: list[Any] = []
         keyword_emitted = not keyword
         for f in fields:
@@ -861,6 +961,40 @@ class Item(Record):
             load_child=load_child,
         )
         return cls(**kwargs)
+
+    @classmethod
+    def from_rows(
+        cls,
+        rows: list,
+        context: RowContext | None = None,
+        *,
+        union_arm: str = "cellid",
+        union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
+        load_child: Callable[[attrs.Attribute, str], Any] | None = None,
+    ) -> "list[Item]":
+        """Items from a file block's rows, as `from_tokens` reads each. Rows
+        of a tabular list (as most are: each the same number of values, in
+        the same columns) are laid out once, by the first (see `_plan`)."""
+        context = context or RowContext()
+        plans: dict[int, Callable[[list], dict[str, Any] | None] | None] = {}
+        items = []
+        for tokens in rows:
+            values = tokens.split() if isinstance(tokens, str) else tokens
+            if (n := len(values)) not in plans:
+                plans[n] = _plan(cls, values, context)
+            if (plan := plans[n]) is not None and (kwargs := plan(values)) is not None:
+                items.append(cls(**kwargs))
+                continue
+            items.append(
+                cls.from_tokens(
+                    values,
+                    context,
+                    union_arm=union_arm,
+                    union_forms=union_forms,
+                    load_child=load_child,
+                )
+            )
+        return items
 
     @classmethod
     def from_values(cls, values: Any, context: RowContext | None = None) -> "Item":
