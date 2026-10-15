@@ -91,7 +91,7 @@ class BasicTransformer(Transformer):
                 rows.append([_number(v) for v in values])
         return rows
 
-    def QUOTED(self, token: Token) -> str:
+    def QUOTED_WORD(self, token: Token) -> str:
         # Quoting forces string interpretation even if content looks numeric.
         return unquote(token)
 

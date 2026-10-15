@@ -16,7 +16,7 @@ class _Element(tuple):
 def unquote(token: Token) -> str:
     """Strip enclosing quotes from a quoted token, else return as-is."""
     s = str(token)
-    return s[1:-1] if token.type.endswith("QUOTED") else s
+    return s[1:-1] if token.type.endswith("QUOTED_WORD") else s
 
 
 def _header_key(block_name: str, parts: list) -> str:

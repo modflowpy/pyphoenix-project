@@ -8,9 +8,9 @@ integer: SIGNED_INT | INT
 double: SIGNED_NUMBER | NUMBER
 number: SIGNED_NUMBER | NUMBER
 // A block header's period number (or utl-tas's time). Not `number`: its
-// reduce state merges with record rows' (see WORD_STR), so the contextual
+// reduce state merges with record rows' (see BARE_WORD), so the contextual
 // lexer takes a trailing header remark (MAW's legacy `begin period 1
-// steady-state`) as WORD_STR, which the header can't accept.
+// steady-state`) as BARE_WORD, which the header can't accept.
 block_index: SIGNED_NUMBER | NUMBER
 string: _token+ _NL
 array: (single_array | layered_array)
@@ -40,29 +40,29 @@ _data_line: double+ [_remark] _NL
 record: token (token | block_kw_word)* _NL
 !block_kw_word: _BEGIN | _END
 // Whole tokens only, like the number terminals below. As "begin"i/"end"i
-// literals they outrank WORD_STR (-1) and matched a word's prefix, so a
+// literals they outrank BARE_WORD (-1) and matched a word's prefix, so a
 // boundname like `endpoint` lexed as a dropped `end` and then `point`.
-// The generated grammars' block rules import these too. WORD_STR needn't
+// The generated grammars' block rules import these too. BARE_WORD needn't
 // exclude a bare begin/end: these outrank it wherever both are valid, and
 // anywhere else it's a word (e.g. a file named `end`).
 _BEGIN: /begin(?![^\s,#!])/i
 _END: /end(?![^\s,#!])/i
 token: number | word
-word: WORD_STR | QUOTED
+word: BARE_WORD | QUOTED_WORD
 // Lower priority than NUMBER/INT/SIGNED_NUMBER/SIGNED_INT (default 0) so a
 // pure-digit string always lexes as a number where both could match --
 // confirmed necessary, not just tidiness: without it, a state that's
 // legitimately reachable from both an `integer+`-repeating rule and an
 // unrelated rule ending in a bare `word` (e.g. OC's formatrecord) can get
 // its LALR states merged, and the contextual lexer then sometimes resolves
-// the ambiguous digit token to WORD_STR in a state that has no action for
+// the ambiguous digit token to BARE_WORD in a state that has no action for
 // it at all -- a hard parse failure, not just a wrong parse.
-WORD_STR.-1: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
+BARE_WORD.-1: /[a-zA-Z0-9'().\/:;<=>?@_~+\[\\-]+/
 // A quoted value, which may contain spaces (boundnames, obsnames,
 // filenames). Either quote character, like MF6's urword; no escapes.
-// Priority 1 so it wins ties against WORD_STR (-1) here and TOKEN (0) in
+// Priority 1 so it wins ties against BARE_WORD (-1) here and TOKEN (0) in
 // basic.lark, which imports this terminal.
-QUOTED.1: /'[^'\n]*'|"[^"\n]*"/
+QUOTED_WORD.1: /'[^'\n]*'|"[^"\n]*"/
 _token: word | number
 // Excludes "," (not just whitespace) so a remark can never out-length a
 // COMMA-separated data run with no surrounding spaces (confirmed against a
@@ -80,7 +80,6 @@ open_close_redirect: "open/close"i filename [_remark] _NL
 %import common.NEWLINE -> _NL
 %import common.WS_INLINE
 %import common.CNAME
-%import common.WORD
 %import common.SH_COMMENT
 
 COMMA: ","
