@@ -195,16 +195,10 @@ class StructuredGrid(LegacyStructuredGrid):
                 kwargs["delc"] = np.asarray(delc)
 
         super().__init__(*args, **kwargs)
-        self._dims_coords = {
-            "nlay": "k",
-            "nrow": "i",
-            "ncol": "j",
-            "nodes": "node",
-        }
+        # No layer/row/column index coordinates: a position along nlay,
+        # nrow or ncol is the index (isel), and k would clash with NPF's k.
+        # node stays, as the only thing on the nodes dim.
         self._coords = {
-            "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
-            "i": xr.DataArray(np.arange(self.nrow, dtype=int), dims=("nrow",)),
-            "j": xr.DataArray(np.arange(self.ncol, dtype=int), dims=("ncol",)),
             "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
         }
         self._coords.update(self._get_world_coords())
@@ -221,10 +215,6 @@ class StructuredGrid(LegacyStructuredGrid):
 
         self._dataset = (
             xr.Dataset(data_vars, coords=self._coords)
-            # TODO: alias k/i/j to lay(er)/row/col(umn)?
-            .set_xindex("k", PandasIndex)
-            .set_xindex("i", PandasIndex)
-            .set_xindex("j", PandasIndex)
             .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
@@ -326,13 +316,8 @@ class StructuredGrid(LegacyStructuredGrid):
         if self.__delc is None:
             return None
         dims = ("nrow",)
-        coord_name = self._dims_coords[dims[0]]
-        coords = {coord_name: self._coords[coord_name], "y": self._coords["y"]}
-        return (
-            xr.DataArray(super().delc, coords=coords, dims=dims)
-            .set_xindex(coord_name, PandasIndex)
-            .set_xindex("y", PandasIndex)
-        )
+        coords = {"y": self._coords["y"]}
+        return xr.DataArray(super().delc, coords=coords, dims=dims).set_xindex("y", PandasIndex)
 
     @property
     def delr(self):
@@ -342,13 +327,8 @@ class StructuredGrid(LegacyStructuredGrid):
         if self.__delr is None:
             return None
         dims = ("ncol",)
-        coord_name = self._dims_coords[dims[0]]
-        coords = {coord_name: self._coords[coord_name], "x": self._coords["x"]}
-        return (
-            xr.DataArray(super().delr, coords=coords, dims=dims)
-            .set_xindex(coord_name, PandasIndex)
-            .set_xindex("x", PandasIndex)
-        )
+        coords = {"x": self._coords["x"]}
+        return xr.DataArray(super().delr, coords=coords, dims=dims).set_xindex("x", PandasIndex)
 
     @property
     def delz(self):
@@ -364,18 +344,9 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_delz.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_delz
 
-        coord_names = (
-            self._dims_coords[dims[0]],
-            self._dims_coords[dims[1]],
-            self._dims_coords[dims[2]],
-        )
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
         return (
             xr.DataArray(legacy_delz, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
-            .set_xindex(coord_names[2], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
@@ -396,13 +367,9 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_top.shape != (self.nrow, self.ncol):
             return legacy_top
 
-        coord_names = (self._dims_coords[dims[0]], self._dims_coords[dims[1]])
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"]}
         return (
             xr.DataArray(legacy_top, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
         )
@@ -421,18 +388,9 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_botm.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_botm
 
-        coord_names = (
-            self._dims_coords[dims[0]],
-            self._dims_coords[dims[1]],
-            self._dims_coords[dims[2]],
-        )
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
         return (
             xr.DataArray(legacy_botm, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
-            .set_xindex(coord_names[2], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
@@ -452,18 +410,9 @@ class StructuredGrid(LegacyStructuredGrid):
         if legacy_idomain.shape != (self.nlay, self.nrow, self.ncol):
             return legacy_idomain
 
-        coord_names = (
-            self._dims_coords[dims[0]],
-            self._dims_coords[dims[1]],
-            self._dims_coords[dims[2]],
-        )
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
         return (
             xr.DataArray(legacy_idomain, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
-            .set_xindex(coord_names[2], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
@@ -995,14 +944,8 @@ class VertexGrid(LegacyVertexGrid):
             kwargs["vertices"] = [[iv[i], xv[i], yv[i]] for i in range(len(iv))]
 
         super().__init__(*args, **kwargs)
-        self._dims_coords = {
-            "nlay": "k",
-            "ncpl": "icpl",
-            "nodes": "node",
-        }
+        # As for StructuredGrid: no layer/cell index coordinates.
         self._coords = {
-            "k": xr.DataArray(np.arange(self.nlay, dtype=int), dims=("nlay",)),
-            "icpl": xr.DataArray(np.arange(self.ncpl, dtype=int), dims=("ncpl",)),
             "node": xr.DataArray(np.arange(self.nnodes, dtype=int), dims=("nodes",)),
         }
         self._coords.update(self._get_world_coords())
@@ -1019,9 +962,6 @@ class VertexGrid(LegacyVertexGrid):
 
         self._dataset = (
             xr.Dataset(data_vars, coords=self._coords)
-            # TODO: alias k/i/j to lay(er)/row/col(umn)?
-            .set_xindex("k", PandasIndex)
-            .set_xindex("icpl", PandasIndex)
             .set_xindex("node", PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
@@ -1119,16 +1059,9 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_delz.shape != (self.nlay, self.ncpl):
             return legacy_delz
 
-        coord_names = (
-            self._dims_coords[dims[0]],
-            self._dims_coords[dims[1]],
-        )
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
         return (
             xr.DataArray(legacy_delz, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
@@ -1149,12 +1082,9 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_top.shape != (self.ncpl,):
             return legacy_top
 
-        coord_name = self._dims_coords["ncpl"]  # "icpl"
-        coords = {coord_name: self._coords[coord_name]}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"]}
         return (
             xr.DataArray(legacy_top, coords=coords, dims=dims)
-            .set_xindex(coord_name, PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
         )
@@ -1173,16 +1103,9 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_botm.shape != (self.nlay, self.ncpl):
             return legacy_botm
 
-        coord_names = (
-            self._dims_coords[dims[0]],
-            self._dims_coords[dims[1]],
-        )
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
         return (
             xr.DataArray(legacy_botm, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
@@ -1202,16 +1125,9 @@ class VertexGrid(LegacyVertexGrid):
         if legacy_idomain.shape != (self.nlay, self.ncpl):
             return legacy_idomain
 
-        coord_names = (
-            self._dims_coords[dims[0]],
-            self._dims_coords[dims[1]],
-        )
-        coords = {coord_name: self._coords[coord_name] for coord_name in coord_names}
-        coords.update({"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]})
+        coords = {"x": self._coords["x"], "y": self._coords["y"], "z": self._coords["z"]}
         return (
             xr.DataArray(legacy_idomain, coords=coords, dims=dims)
-            .set_xindex(coord_names[0], PandasIndex)
-            .set_xindex(coord_names[1], PandasIndex)
             .set_xindex("x", PandasIndex)
             .set_xindex("y", PandasIndex)
             # z is 3D, not 1D, so don't set as index
