@@ -1616,11 +1616,11 @@ def test_to_dataarray_standalone_structured():
 
 
 def test_to_dataarray_standalone_vertex():
-    """A DISV array's dims are (layer, node), node the cell within its layer."""
+    """A DISV array's dims are (layer, cell), cell the cell within its layer."""
     dims = {"nlay": 2, "ncpl": 3, "nodes": 6}
     npf = Npf(dims=dims, k=1.5)
     da = npf.to_dataarray("k")
-    assert da.dims == ("layer", "node")
+    assert da.dims == ("layer", "cell")
     assert da.shape == (2, 3)
 
 

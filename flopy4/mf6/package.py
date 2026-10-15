@@ -812,7 +812,7 @@ class Package(Component, ABC):
             dims: tuple[str, ...] = ("layer", "row", "col")
         elif _ncpl is not None:
             arr = arr.reshape(*lead, _nlay, _ncpl)
-            dims = ("layer", "node")
+            dims = ("layer", "cell")
         else:
             arr = arr.reshape(*lead, -1)
             dims = ("node",)
