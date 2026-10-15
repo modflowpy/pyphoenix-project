@@ -1868,7 +1868,7 @@ def test_row_boundname_by_option(boundnames):
         (False, False, ["w"], None, None),
     ],
 )
-def test_row_option_column_or_boundname(boundnames, surf_rate, tokens, petm0, boundname):
+def test_row_conditional_field_or_boundname(boundnames, surf_rate, tokens, petm0, boundname):
     """EVT's petm0 is there if, and only if, SURF_RATE_SPECIFIED is set,
     and the boundname if BOUNDNAMES is, as MF6 reads them, whatever the
     tokens look like."""
@@ -1879,13 +1879,13 @@ def test_row_option_column_or_boundname(boundnames, surf_rate, tokens, petm0, bo
         ncelldim=3,
         sizes={"nseg-1": 0, "auxiliary": 0},
         boundnames=boundnames,
-        options=frozenset({"surf_rate_specified"} if surf_rate else ()),
+        enabled=frozenset({"surf_rate_specified"} if surf_rate else ()),
     )
     row = Evt.StressPeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, *tokens], context)
     assert (row.petm0, row.boundname) == (petm0, boundname)
 
 
-def test_row_option_column_sets_option():
+def test_row_conditional_field_sets_option():
     """A Python row with EVT's petm0 sets SURF_RATE_SPECIFIED, which MF6
     needs to read it; then a row's last value is its boundname."""
     from flopy4.mf6.gwf import Evt

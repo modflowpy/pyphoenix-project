@@ -127,8 +127,8 @@ def _has_boundname_field(cls: type) -> bool:
     return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
 
-def option_columns(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[str, str]:
-    """An item class's columns a package option turns on (the DFN's
+def conditional_fields(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[str, str]:
+    """An item class's fields a package option turns on (the DFN's
     ``when``), by name, to the option (EVT's petm0, by surf_rate_specified).
     MF6 reads one only if its option is set."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
@@ -393,14 +393,14 @@ class RowContext:
     exchange's models may be on different grids); None if not known.
     ``sizes`` gives the counts of the inline arrays the package sizes, by
     shape expression (aux, by ``auxiliary``); one not given isn't known.
-    ``boundnames`` is the package's option. ``options`` are the options
-    that turn columns on (see `option_columns`) the package has set; None
-    if not known."""
+    ``boundnames`` is the package's option. ``enabled`` are the options
+    that turn fields on (see `conditional_fields`) the package has set;
+    None if not known."""
 
     ncelldim: int | Mapping[str, int] | None = None
     sizes: Mapping[str, int] = attrs.field(factory=dict)
     boundnames: bool = False
-    options: frozenset[str] | None = None
+    enabled: frozenset[str] | None = None
 
     def cellid_width(self, f: attrs.Attribute) -> int | None:
         if isinstance(self.ncelldim, Mapping):
@@ -504,8 +504,8 @@ def _layout(
     The boundname is there if the package's ``boundnames`` option is set
     (and a value is left for it). For Python values with it unset, one
     value more than the row's fields take is the boundname, and the
-    package then sets the option. A column an option turns on (EVT's petm0)
-    is there if the package's ``options`` say, as MF6 reads it; for Python
+    package then sets the option. A field an option turns on (EVT's petm0)
+    is there if the package's ``enabled`` options say, as MF6 reads it; for Python
     values, or if they aren't known, if the values make room for it (the
     package then sets the option). A width that isn't known (no
     grid yet) is the one the values make room for, if only one does;
@@ -515,12 +515,12 @@ def _layout(
     n = len(values)
     slots = _slots(cls, file)
     has_boundname = _has_boundname_field(cls)
-    gated = option_columns(cls)
-    if context.options is None:
+    gated = conditional_fields(cls)
+    if context.enabled is None:
         off: frozenset[str] = frozenset()
         on: frozenset[str] = frozenset()
     else:
-        off = frozenset(name for name, o in gated.items() if o not in context.options)
+        off = frozenset(name for name, o in gated.items() if o not in context.enabled)
         on = frozenset(gated) - off
 
     def cellid_widths(f: attrs.Attribute, unknown: dict) -> list[tuple[int, dict]]:
@@ -535,15 +535,15 @@ def _layout(
         """Whether values are a field's values, not whole fields."""
         return file or not any(_is_seq(x) or isinstance(x, Record) for x in span)
 
-    def options(slot: _Slot, pos: int, end: int, out: dict, unknown: dict, by_option: bool):
+    def fits(slot: _Slot, pos: int, end: int, out: dict, unknown: dict, conditional: bool):
         """Each way the slot can take values from ``pos``: the position
-        after it, what it took, and the unknown widths it assumed. A column
-        an option turns on is there just if it's on, ``by_option``."""
+        after it, what it took, and the unknown widths it assumed. A field
+        an option turns on is there just if it's on, if ``conditional``."""
         f = slot.field
         left = end - pos
         v = values[pos] if left else None
         optional = f is not None and _may_be_absent(f)
-        if by_option and f is not None:
+        if conditional and f is not None:
             if f.name in off:
                 yield pos, None, unknown
                 return
@@ -625,7 +625,9 @@ def _layout(
         if cast(type[Item], cls)._columns and s.kind == "value" and _may_be_absent(s.field)
     ]
 
-    def walk(k: int, pos: int, end: int, out: dict, unknown: dict, surplus: bool, by_option: bool):
+    def walk(
+        k: int, pos: int, end: int, out: dict, unknown: dict, surplus: bool, conditional: bool
+    ):
         if k == len(slots):
             if len({name in out for name in together}) > 1:
                 return
@@ -633,16 +635,16 @@ def _layout(
                 yield out, unknown
             return
         slot = slots[k]
-        for pos2, took, unknown2 in options(slot, pos, end, out, unknown, by_option):
+        for pos2, took, unknown2 in fits(slot, pos, end, out, unknown, conditional):
             out2 = out if took is None else {**out, slot.field.name: took}
-            yield from walk(k + 1, pos2, end, out2, unknown2, surplus, by_option)
+            yield from walk(k + 1, pos2, end, out2, unknown2, surplus, conditional)
 
-    def solve(boundname: list[bool], surplus: bool = False, by_option: bool = True):
+    def solve(boundname: list[bool], surplus: bool = False, conditional: bool = True):
         for bn in boundname:
             end = n - bn
             if end < 0:
                 continue
-            for out, unknown in walk(0, 0, end, {}, {}, surplus, by_option):
+            for out, unknown in walk(0, 0, end, {}, {}, surplus, conditional):
                 yield ({**out, "boundname": ("bn", values[-1])} if bn else out), unknown
 
     fields = attrs.fields_dict(cls)  # type: ignore[arg-type]
@@ -673,9 +675,9 @@ def _layout(
     bn = [True, False] if has_boundname and context.boundnames else [False]
     out = first(solve(bn))
     if out is None and not file and (off or on):
-        out = first(solve(bn, by_option=False))
+        out = first(solve(bn, conditional=False))
     if out is None and not file and has_boundname and not context.boundnames:
-        out = first(solve([True])) or first(solve([True], by_option=False))
+        out = first(solve([True])) or first(solve([True], conditional=False))
     if out is None and file:
         out = first(solve(bn, surplus=True))
     if out is None:

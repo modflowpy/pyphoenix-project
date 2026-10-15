@@ -20,11 +20,11 @@ from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.item import (
     Item,
     RowContext,
+    conditional_fields,
     dim_lookup,
     inline_dim,
     item_list_type,
     item_list_words,
-    option_columns,
     package_sized_fields,
     sized_by,
     union_value,
@@ -376,7 +376,7 @@ class Package(Component, ABC):
         """What the layout of a row of ``item_cls`` given in Python depends
         on (see `Item.from_values`): the grid's ncelldim, if known (an
         exchange's two grids aren't, here), the sizes of the inline arrays
-        the package sizes, and its options that turn columns on (the
+        the package sizes, and its options that turn fields on (the
         boundnames, EVT's surf_rate_specified). A size the rows can
         set (EVT's nseg, GNC's numalphaj) is solved from them if unset;
         one they can't (aux's, by the names in ``auxiliary``) is 0."""
@@ -400,12 +400,12 @@ class Package(Component, ABC):
                 ncelldim = self.resolve_dims("ncelldim").get("ncelldim")
             except ValueError:
                 pass
-        options = frozenset(o for o in option_columns(item_cls).values() if values.get(o))
+        enabled = frozenset(o for o in conditional_fields(item_cls).values() if values.get(o))
         return RowContext(
             ncelldim=ncelldim,
             sizes=sizes,
             boundnames=bool(getattr(self, "boundnames", False)),
-            options=options,
+            enabled=enabled,
         )
 
     def _coerce_item_list(
@@ -432,7 +432,7 @@ class Package(Component, ABC):
         single arm to build columns from).
 
         A row with a boundname sets the package's boundnames option, which
-        MF6 needs to read it; one with a column an option turns on (EVT's
+        MF6 needs to read it; one with a field an option turns on (EVT's
         petm0) sets that option.
         """
         context = self._row_context(item_cls)
@@ -458,7 +458,7 @@ class Package(Component, ABC):
                     items.append(item_cls.from_values(row, context))
         on = {
             option
-            for name, option in option_columns(item_cls).items()
+            for name, option in conditional_fields(item_cls).items()
             if any(getattr(item, name, None) is not None for item in items)
         }
         if any(getattr(item, "boundname", None) for item in items):
