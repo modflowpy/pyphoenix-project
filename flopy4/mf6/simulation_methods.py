@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
-from modflow_devtools.misc import cd, run_cmd
+from modflow_devtools.misc import cd, get_ostag, is_in_ci, run_cmd
 
 from flopy4.mf6.utils.time import Time
 
@@ -45,18 +45,42 @@ class SimulationMethods:
         except Exception:
             return tree
 
-    def run(self: "Simulation", exe: str | PathLike = "mf6", verbose: bool = False) -> None:  # type: ignore[misc]
+    def run(  # type: ignore[misc]
+        self: "Simulation",
+        exe: str | PathLike = "mf6",
+        verbose: bool = False,
+        ncpus: int = 1,
+    ) -> None:
         """Run the simulation using the given executable.
 
         Warns first if the executable's version doesn't match the MF6
-        version flopy4.mf6 is synced to.
+        version flopy4.mf6 is synced to. With `ncpus` > 1, runs under MPI
+        (`mpiexec -np <ncpus> <exe> -p`) for a partitioned simulation; success
+        requires every rank to report normal termination, since mpiexec's own
+        return code doesn't reliably reflect a single rank's failure.
         """
         from flopy4.mf6._compat import check_mf6_compatibility
 
         with cd(self.workspace):
             check_mf6_compatibility(exe)
-            out, err, ret = run_cmd(exe, verbose=verbose)
-            if ret != 0:
+            if ncpus > 1:
+                if not is_in_ci() and get_ostag() == "mac":
+                    # mac's OpenMPI needs a hostfile to run more ranks than cores
+                    Path("localhost").write_text(f"localhost slots={ncpus}\n")
+                    launch_opts = ["--hostfile", "localhost"]
+                elif get_ostag() == "win64":
+                    launch_opts = []
+                else:
+                    launch_opts = ["--oversubscribe"]
+                args = ["mpiexec", *launch_opts, "-np", str(ncpus), str(exe), "-p"]
+            else:
+                args = [str(exe)]
+            out, err, ret = run_cmd(*args, verbose=verbose)
+            if ncpus > 1:
+                success = (out + err).lower().count("normal termination") == ncpus
+            else:
+                success = ret == 0
+            if not success:
                 raise RuntimeError(
                     f"Simulation {self.name}: {exe} failed with "
                     f"return code {ret}, output:\n\n{out + err} "

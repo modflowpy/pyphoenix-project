@@ -50,3 +50,8 @@ jobs:
         env:
           MF6_EXTENDED: "true"
         run: pixi run --environment ${{ matrix.env }} pytest test/test_examples.py -v -n auto
+
+      - name: Run parallel test
+        env:
+          MF6_EXTENDED: "true"
+        run: pixi run --environment ${{ matrix.env }} pytest test/mf6/test_mf6_parallel.py -v

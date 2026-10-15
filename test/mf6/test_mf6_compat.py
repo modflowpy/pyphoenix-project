@@ -159,3 +159,53 @@ def test_run_checks_exe(monkeypatch, tmp_path):
     sim = Simulation(name="sim", workspace=tmp_path)
     sim.run(exe="bin/mf6")
     assert checked == [("bin/mf6", os.path.realpath(tmp_path))]
+
+
+@pytest.mark.parametrize(
+    "ostag, in_ci, expected_opts",
+    [
+        ("linux", False, ["--oversubscribe"]),
+        ("linux", True, ["--oversubscribe"]),
+        ("mac", False, ["--hostfile", "localhost"]),
+        ("mac", True, ["--oversubscribe"]),
+        ("win64", False, []),
+        ("win64", True, []),
+    ],
+)
+def test_run_parallel_command(monkeypatch, tmp_path, ostag, in_ci, expected_opts):
+    """Simulation.run builds the right mpiexec invocation per platform."""
+    from flopy4.mf6 import Simulation, simulation_methods
+
+    monkeypatch.setattr(_compat, "check_mf6_compatibility", lambda exe: None)
+    monkeypatch.setattr(simulation_methods, "get_ostag", lambda: ostag)
+    monkeypatch.setattr(simulation_methods, "is_in_ci", lambda: in_ci)
+    calls = []
+
+    def fake_run_cmd(*args, verbose):
+        calls.append(args)
+        return "normal termination\n" * 2, "", 0
+
+    monkeypatch.setattr(simulation_methods, "run_cmd", fake_run_cmd)
+    sim = Simulation(name="sim", workspace=tmp_path)
+    sim.run(exe="bin/mf6", ncpus=2)
+    assert calls == [("mpiexec", *expected_opts, "-np", "2", "bin/mf6", "-p")]
+    if ostag == "mac" and not in_ci:
+        assert (tmp_path / "localhost").read_text() == "localhost slots=2\n"
+
+
+def test_run_parallel_requires_every_rank_to_succeed(monkeypatch, tmp_path):
+    """A zero mpiexec return code isn't enough: every rank must report
+    normal termination, since mpiexec can return 0 even if a rank failed."""
+    from flopy4.mf6 import Simulation, simulation_methods
+
+    monkeypatch.setattr(_compat, "check_mf6_compatibility", lambda exe: None)
+    monkeypatch.setattr(simulation_methods, "get_ostag", lambda: "linux")
+    monkeypatch.setattr(simulation_methods, "is_in_ci", lambda: True)
+    monkeypatch.setattr(
+        simulation_methods,
+        "run_cmd",
+        lambda *args, verbose: ("normal termination\n", "", 0),
+    )
+    sim = Simulation(name="sim", workspace=tmp_path)
+    with pytest.raises(RuntimeError, match="failed"):
+        sim.run(exe="bin/mf6", ncpus=2)
