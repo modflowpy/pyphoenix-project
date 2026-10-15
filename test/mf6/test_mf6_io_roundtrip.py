@@ -5,6 +5,7 @@ not caught by the round-trip tests.
 """
 
 import math
+import warnings
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -433,3 +434,43 @@ def test_quoted_multiword_boundname_and_obsname_round_trips(tmp_path):
     assert rghb.stress_period_data[0][0].boundname == "my bound"
     robs = rghb.obs.continuous[0].continuous[0]
     assert (robs.obsname, robs.id_) == ("my obs", "my bound")
+
+
+@pytest.mark.parametrize(
+    "boundname, warns",
+    [("5", True), ("1.50", True), ("1d0", True), ("b5", False), ("inf", False)],
+)
+def test_obs_id_naming_numeric_boundname_warns(tmp_path, boundname, warns):
+    """MF6 may read an observation's id that looks like a number as a
+    cell, not a boundname, so writing one warns."""
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
+        workspace=tmp_path,
+        name="sim1",
+        solutiongroup=[Ims(filename="gwf.ims", models=["gwf1"])],
+    )
+    dis = Dis(nlay=1, nrow=1, ncol=2, delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, dis=dis, name="gwf1", save_flows=True)
+    Ic(parent=gwf, strt=0.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    ghb = Ghb(
+        parent=gwf,
+        boundnames=True,
+        stress_period_data={0: [[(0, 0, 0), 1.0, 10.0, boundname]]},
+        name="GHB-1",
+    )
+    Obs(
+        parent=ghb,
+        continuous=[
+            Obs.ContinuousBlock(
+                output=Obs.Output(obs_output_file_name="gwf1.ghb.obs.csv"),
+                continuous=[Obs.Continuous(obsname="o", obstype="GHB", id_=boundname)],
+            )
+        ],
+        name="obs",
+    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        sim.write()
+    messages = [str(w.message) for w in caught if "MF6 may read as a cell" in str(w.message)]
+    assert len(messages) == warns

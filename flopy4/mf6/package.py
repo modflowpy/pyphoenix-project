@@ -1,4 +1,6 @@
 import operator
+import re
+import warnings
 from abc import ABC
 from pathlib import Path
 from typing import Any, Optional
@@ -59,6 +61,14 @@ _BOUND_OPS: dict = {
     ">": operator.gt,
     ">=": operator.ge,
 }
+
+
+_NUMBER = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([ed][+-]?\d+)?", re.IGNORECASE)
+
+
+def _reads_as_number(text: str) -> bool:
+    """Whether MF6 could read a word as a number (Fortran's 1.5d0 too)."""
+    return _NUMBER.fullmatch(text) is not None
 
 
 def _check_rows(dim: str, declared: int, nrows: int, bound: str | None) -> None:
@@ -525,6 +535,7 @@ class Package(Component, ABC):
         self._sync_dims()
         self._check_tas_refs()
         self._check_ts_refs()
+        self._check_obs_ids()
         self._name_file_children()
         super().write(format=format, context=context)
 
@@ -562,6 +573,32 @@ class Package(Component, ABC):
                                 f"{type(self).__name__}.{f.name.lstrip('_')}:{where} "
                                 f"names time series {name!r}, which no TS6 file "
                                 f"defines (defined: {sorted(defined) or 'none'})"
+                            )
+
+    def _check_obs_ids(self) -> None:
+        """Warn if an observation names a boundname that reads as a number,
+        which MF6 may read as a cell instead: on a grid whose cellids are
+        one number (DISU), another cell; on another grid, an error."""
+        boundnames = set()
+        for f in attrs.fields(type(self)):  # type: ignore[arg-type]
+            if item_list_type(f.type) is None:
+                continue
+            value = getattr(self, f.name)
+            for rows in (value if isinstance(value, dict) else {None: value}).values():
+                boundnames |= {b for row in rows or [] if (b := getattr(row, "boundname", None))}
+        numeric = {b.lower() for b in boundnames if _reads_as_number(b)}
+        if not numeric:
+            return
+        for obs in self._children_of("utl-obs"):
+            for block in obs.continuous or []:
+                for row in block.continuous:
+                    for id_ in (row.id_, row.id2):
+                        if isinstance(id_, str) and id_.lower() in numeric:
+                            warnings.warn(
+                                f"{type(self).__name__}: observation {row.obsname!r} names "
+                                f"boundname {id_!r}, which MF6 may read as a cell, not a "
+                                f"boundname; give the boundaries a name that isn't a number",
+                                stacklevel=3,
                             )
 
     def _series_names(self, dfn_name: str) -> set[str]:
