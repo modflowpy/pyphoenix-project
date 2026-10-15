@@ -384,15 +384,7 @@ def _is_row_key(f: attrs.Attribute) -> bool:
 
 @attrs.frozen
 class RowContext:
-    """What a row's layout depends on besides its own values: facts about
-    its package (see `Item.from_tokens`, `Item.from_values`).
-
-    ``ncelldim`` is the cellid width, or each cellid column's, by name (an
-    exchange's models may be on different grids); None if not known.
-    ``sizes`` gives the counts of the inline arrays the package sizes, by
-    shape expression (aux, by ``auxiliary``); one not given isn't known.
-    ``boundnames`` is the package's option. ``enabled`` are the set
-    options that turn fields on; None if not known."""
+    """What a row's layout depends on besides its own values."""
 
     ncelldim: int | Mapping[str, int] | None = None
     sizes: Mapping[str, int] = attrs.field(factory=dict)
@@ -407,8 +399,7 @@ class RowContext:
 
 @attrs.frozen
 class _Slot:
-    """A part of a row: a field, by how its width is known (see `_slots`),
-    an arm's keyword, or a row's untagged unions together."""
+    """A part of a row: a field, an arm's keyword, or untagged unions."""
 
     kind: str
     field: Any = None
@@ -433,10 +424,7 @@ def _kind(cls: type, f: attrs.Attribute) -> str:
 
 @lru_cache(maxsize=None)
 def _slots(cls: type, file: bool) -> tuple[_Slot, ...]:
-    """A row's slots, in column order: each field but the boundname, an
-    arm's keyword (in a file, before its first field that isn't a row key),
-    and its untagged unions together (OBS's id and id2), which their own
-    tokens split (see `_read_unions`)."""
+    """A row's slots, in column order."""
     fields = [f for f in cast(type[Record], cls).fields() if f.name != "boundname"]
     if cast(type[Item], cls)._columns:
         fields = _in_columns(cast(type[Item], cls), fields)
@@ -460,14 +448,12 @@ def _slots(cls: type, file: bool) -> tuple[_Slot, ...]:
 
 
 def _is_seq(v: Any) -> bool:
-    """Whether a Python value is a sequence (a list, tuple or 1D+ array),
-    not a string."""
+    """Whether a Python value is a sequence, not a string."""
     return isinstance(v, (list, tuple)) or (isinstance(v, np.ndarray) and v.ndim > 0)
 
 
 def _is_whole(v: Any) -> bool:
-    """Whether a Python value is a whole field, not one of its values: a
-    sequence, or None."""
+    """Whether a Python value is a whole field: a sequence, or None."""
     return v is None or _is_seq(v)
 
 
@@ -487,27 +473,8 @@ def _layout(
     load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> dict[str, Any]:
     """Split a row's values into its fields, by position, as MF6 does.
-
-    Each field takes its width: a scalar one value, a cellid its grid's
-    ncelldim, an inline array as many as its dims or sibling say, and a
-    last field whose width varies by row (self-sizing, sized by a lookup)
-    the rest. Untagged unions take as many as their own tokens say (see
-    `_read_unions`). No other value is looked at to decide what it is.
-
-    The values are file tokens (``file``), strings and 1-based, or Python
-    values, typed and 0-based, of which a sequence or None is a whole
-    field (a cellid, an array), so a row may be given flat or tupled.
-
-    The boundname is there if the package's ``boundnames`` option is set
-    (and a value is left for it). For Python values with it unset, one
-    value more than the row's fields take is the boundname, and the
-    package then sets the option. A field an option turns on (EVT's petm0)
-    is there if the option is enabled, or, if that isn't known, if the
-    values make room for it. A width that isn't known (no
-    grid yet) is the one the values make room for, if only one does;
-    otherwise this raises, asking for the field as a tuple. Like MF6, a
-    file row's extra tokens are ignored, if no layout uses them all.
-    """
+    An unknown width (no grid yet) is solved from the value count, and
+    raises if more than one fits."""
     n = len(values)
     slots = _slots(cls, file)
     has_boundname = _has_boundname_field(cls)
@@ -532,8 +499,7 @@ def _layout(
         return file or not any(_is_seq(x) or isinstance(x, Record) for x in span)
 
     def fits(slot: _Slot, pos: int, end: int, out: dict, unknown: dict, conditional: bool):
-        """Each way the slot can take values from ``pos``: the position
-        after it, what it took, and the unknown widths it assumed."""
+        """Each way the slot can take values from ``pos``."""
         f = slot.field
         left = end - pos
         v = values[pos] if left else None
@@ -612,8 +578,7 @@ def _layout(
         if optional:
             yield pos, None, unknown
 
-    # Optional columns before required ones (MVR's model names, in its
-    # column order) come together or not at all (MVR's MODELNAMES).
+    # MVR's model names are all there or none are
     together = [
         s.field.name
         for s in slots
@@ -651,9 +616,8 @@ def _layout(
         )
 
     def first(solutions) -> "dict | None":
-        """The first layout; or, if it assumed a width, the one with the
-        fewest optional fields (which MF6 reads only if an option says),
-        raising if another width fits as well."""
+        """The first layout, or, if it assumed a width, the one with the
+        fewest optional fields."""
         best = next(solutions, None)
         if best is None or not best[1]:
             return best and best[0]
@@ -704,8 +668,7 @@ def _convert(
     union_forms: Callable[[Mapping[str, Any]], Any] | None,
     load_child: Callable[[attrs.Attribute, str], Any] | None,
 ) -> dict[str, Any]:
-    """The fields' values from what each took of the row (see `_layout`):
-    file tokens to Python values, 1-based to 0-based."""
+    """The fields' values from what each took of the row."""
     fields = attrs.fields_dict(cls)  # type: ignore[arg-type]
     kwargs: dict[str, Any] = {}
     unions = None
@@ -761,7 +724,7 @@ def _convert(
             ncelldim = context.ncelldim if isinstance(context.ncelldim, int) else 0
             forms = union_forms(kwargs) if union_forms else None
             kwargs.update(_read_unions(list(group), raw, ncelldim, union_arm, forms))
-    # a whole value given for an array or cellid is as given, but a tuple
+    # arrays and cellids as tuples
     for name, v in kwargs.items():
         if _is_seq(v) and (is_array(fields[name]) or _is_one_cellid(fields[name])):
             kwargs[name] = tuple(x.item() if isinstance(x, np.generic) else x for x in v)
@@ -905,12 +868,7 @@ class Item(Record):
         union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
         load_child: Callable[[attrs.Attribute, str], Any] | None = None,
     ) -> "Item":
-        """An item from a file row's tokens, laid out by `_layout` given
-        its package's ``context``. ``union_arm`` is the arm untagged union
-        columns prefer for numbers, and ``union_forms`` gives the forms
-        they take given the row's other columns (see _read_unions).
-        ``load_child`` loads a child column's component from the file the
-        row names."""
+        """An item from a file row's tokens."""
         values = tokens.split() if isinstance(tokens, str) else list(tokens)
         kwargs = _layout(
             cls,
@@ -925,10 +883,8 @@ class Item(Record):
 
     @classmethod
     def from_values(cls, values: Any, context: RowContext | None = None) -> "Item":
-        """An item from a row of Python values, laid out by `_layout` given
-        its package's ``context``: ``((0, 0, 0), 1.0)`` or ``(0, 0, 0, 1.0)``
-        for CHD's cellid and head, ``("HEAD", "FREQUENCY", 2)`` for OC's
-        Save. Indexes and cellids are 0-based."""
+        """An item from a row of Python values, flat or tupled: CHD's
+        ``((0, 0, 0), 1.0)`` or ``(0, 0, 0, 1.0)``."""
         return cls(**_layout(cls, list(values), context or RowContext(), file=False))
 
 

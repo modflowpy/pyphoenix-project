@@ -43,12 +43,7 @@ class LoadContext:
         return self.workspace / path
 
     def ncelldim(self, item_cls: type[Item]) -> int | Mapping[str, int] | None:
-        """The width of `item_cls`'s cellids. Under an exchange, each
-        cellid column's, by name, from the grid of the model the column
-        refers to (its ``model`` metadata: ``"1"`` for ``exgmnamea``,
-        ``"2"`` for ``exgmnameb``, from the DFN). Otherwise from the dims,
-        if they say; else None, and each row's are solved from its width
-        (see `item._layout`)."""
+        """The width of `item_cls`'s cellids."""
         cellids = {f.name: f.metadata.get("model") for f in item_cls.fields() if is_cellid(f)}
         widths = self._exchange_widths()
         if cellids and widths and all(model in widths for model in cellids.values()):
