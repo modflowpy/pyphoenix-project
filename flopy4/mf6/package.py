@@ -374,12 +374,8 @@ class Package(Component, ABC):
                 raise ValueError(f"{shape}={declared} but {f.name} has {n} values")
 
     def _row_context(self, item_cls: "type[Item] | tuple[type[Item], ...]") -> RowContext:
-        """What the layout of a row of ``item_cls`` given in Python depends
-        on (see `Item.from_values`): the grid's ncelldim, if known (an
-        exchange's two grids aren't, here), the sizes of the inline arrays
-        the package sizes, and its enabled options. A size the rows can
-        set (EVT's nseg, GNC's numalphaj) is solved from them if unset;
-        one they can't (aux's, by the names in ``auxiliary``) is 0."""
+        """What the layout of a row of ``item_cls`` depends on (see
+        `Item.from_values`)."""
         fields = attrs.fields_dict(type(self))  # type: ignore[arg-type]
         values = {name: getattr(self, name) for name in fields}
 
@@ -415,10 +411,8 @@ class Package(Component, ABC):
 
         For a plain (non-union) item_cls, accepts:
           - list of item_cls instances → returned as-is
-          - list of tuples/lists       → positional, laid out by
-                                          `Item.from_values` in the
-                                          package's context (flat or
-                                          tupled cellids and arrays)
+          - list of tuples/lists       → positional (see
+                                          `Item.from_values`)
           - list of dicts              → named columns
           - dict of lists              → column-oriented {col_name: [values]}
 
@@ -432,7 +426,7 @@ class Package(Component, ABC):
         single arm to build columns from).
 
         A row with a boundname, or a field an option turns on, sets that
-        option, which MF6 needs to read it.
+        option.
         """
         context = self._row_context(item_cls)
         if isinstance(item_cls, tuple):

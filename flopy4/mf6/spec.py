@@ -121,6 +121,35 @@ def _field(type_: str, kwargs: FieldKwargs, **attributes) -> Any:
     )
 
 
+def _not_empty(instance, attribute, value):
+    """A validator rejecting an empty string."""
+    if isinstance(value, str) and value == "":
+        raise ValueError(f"{attribute.name} can't be an empty string")
+
+
+def _not_empty_file(value, field):
+    """`_not_empty` for a file, before it's converted: ``Path("")`` is ``.``."""
+    _not_empty(None, field, value)
+    return value
+
+
+def _empty_to_none(value):
+    """No value for an empty string, as for a trailing optional label."""
+    return None if isinstance(value, str) and value == "" else value
+
+
+def _validate(kwargs: FieldKwargs, validator) -> None:
+    """Add ``validator`` to any ``kwargs`` has."""
+    given = kwargs.get("validator")
+    kwargs["validator"] = validator if given is None else attrs.validators.and_(given, validator)
+
+
+def _convert_first(kwargs: FieldKwargs, converter) -> None:
+    """Run ``converter`` before any ``kwargs`` has."""
+    given = kwargs.get("converter")
+    kwargs["converter"] = converter if given is None else attrs.converters.pipe(converter, given)
+
+
 def _ts_converter(kwargs: FieldKwargs, converter) -> None:
     """A time series field of an item or record takes a series' name for a
     value (see `to_ts_value`). A component's names a time-array series and
@@ -140,11 +169,16 @@ def string(
     time_series: bool = False,
     pk: bool = False,
     fk: str | None = None,
+    empty_is_none: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
-    """A string. A time series one may name a time series instead."""
+    """A string. A time series one may name a time series instead. It can't
+    be empty, unless ``empty_is_none``, when an empty string is no value."""
     if time_series:
         _ts_converter(kwargs, to_ts_value)
+    if empty_is_none:
+        _convert_first(kwargs, _empty_to_none)
+    _validate(kwargs, _not_empty)
     return _field("string", kwargs, time_series=time_series, pk=pk, fk=fk)
 
 
@@ -264,6 +298,8 @@ def union(*kinds: str, **kwargs: Unpack[FieldKwargs]) -> Any:
         kwargs.setdefault(
             "converter", attrs.Converter(to_union_arm, takes_self=True, takes_field=True)
         )
+    elif "string" in kinds:
+        _validate(kwargs, _not_empty)
     return _field("union", kwargs, union=kinds)
 
 
@@ -279,7 +315,9 @@ def file(
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """A file path, read (``direction="in"``) or written (``"out"``). A
-    file record's ``keyword`` leads it: ``TS6 FILEIN <file>``."""
+    file record's ``keyword`` leads it: ``TS6 FILEIN <file>``. It can't be
+    empty."""
+    _convert_first(kwargs, attrs.Converter(_not_empty_file, takes_field=True))
     return _field(
         "file", kwargs, direction=direction, _keyword=keyword.lower() if keyword else None
     )

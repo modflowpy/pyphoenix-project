@@ -701,8 +701,9 @@ def _resolve_bindings(cls: type, raw_lower: dict, context: LoadContext) -> dict[
             # loaded child's own .name attribute; for Exchange/Solution
             # they're real semantic data (coupled model names / applicable
             # models), not a name to assign the loaded child itself.
+            # an empty pname is none
             pname = (
-                str(row[2])
+                str(row[2]) or None
                 if len(row) > 2 and not issubclass(target_cls, (Exchange, Solution))
                 else None
             )

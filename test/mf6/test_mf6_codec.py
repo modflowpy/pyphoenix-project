@@ -12,7 +12,9 @@ from flopy4.mf6 import TimeSeriesRef
 from flopy4.mf6.codec import dumps, loads, writer
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.converter import COMPONENT_CONVERTER
+from flopy4.mf6.gwf import Ghb, Oc
 from flopy4.mf6.load_context import LoadContext
+from flopy4.mf6.utl.obs import Obs
 
 
 def test_loads_dis_generic_simple():
@@ -1943,6 +1945,40 @@ def test_row_positional_trailing_boundname(boundname):
     evt = Evt(stress_period_data={0: [row]})
     assert evt.stress_period_data[0][0].aux == ()
     assert evt.stress_period_data[0][0].boundname == boundname
+
+
+def test_empty_boundname_is_none():
+    """An empty boundname is none, set directly or by a positional row with
+    or without its aux, so None is the only "no boundname"."""
+    from flopy4.mf6.gwf import Wel
+
+    assert Wel.StressPeriodData(cellid=(0, 0, 0), q=1.0, boundname="").boundname is None
+    wel = Wel(stress_period_data={0: [((0, 0, 0), 1.0, ""), ((0, 0, 1), 1.0, (), "")]})
+    assert [r.boundname for r in wel.stress_period_data[0]] == [None, None]
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: Obs.Continuous(obsname="", obstype="GHB", id_="b"),
+        lambda: Obs.Continuous(obsname="o", obstype="GHB", id_=""),
+        lambda: Ghb(auxmultname=""),
+        lambda: Oc(head_file=""),
+    ],
+    ids=["obsname", "obs-id", "auxmultname", "file"],
+)
+def test_empty_string_value_rejected(build):
+    """Other strings and files can't be empty: MF6 fails on one, or gives it
+    no meaning."""
+    with pytest.raises(ValueError, match="can't be an empty string"):
+        build()
+
+
+def test_quote_if_needed_rejects_empty_string():
+    from flopy4.mf6.codec.writer.filters import quote_if_needed
+
+    with pytest.raises(ValueError, match="empty string"):
+        quote_if_needed("")
 
 
 # ---------------------------------------------------------------------------

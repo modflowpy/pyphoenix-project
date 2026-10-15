@@ -474,3 +474,90 @@ def test_obs_id_naming_numeric_boundname_warns(tmp_path, boundname, warns):
         sim.write()
     messages = [str(w.message) for w in caught if "MF6 may read as a cell" in str(w.message)]
     assert len(messages) == warns
+
+
+def _ghb_sim(tmp_path, rows, *, auxiliary=None, obs=()):
+    """A one-row-of-cells GHB model with boundnames, and an OBS file of
+    (obsname, id) observations of it."""
+    gwf_name = "gwf1"
+    sim = Simulation(
+        tdis=Time(perlen=[1.0], nstp=[1], tsmult=[1.0], time_units="DAYS"),
+        workspace=tmp_path,
+        name="sim1",
+        solutiongroup=[Ims(filename="gwf.ims", models=[gwf_name])],
+    )
+    dis = Dis(nlay=1, nrow=1, ncol=len(rows), delr=1.0, delc=1.0, top=1.0, botm=0.0)
+    gwf = Gwf(parent=sim, dis=dis, name=gwf_name)
+    Ic(parent=gwf, strt=0.0)
+    Npf(parent=gwf, icelltype=0, k=1.0)
+    Oc(parent=gwf)
+    kwargs = {"auxiliary": auxiliary} if auxiliary else {}
+    ghb = Ghb(
+        parent=gwf,
+        boundnames=True,
+        stress_period_data={0: [[(0, 0, j), 1.0, 10.0, *row] for j, row in enumerate(rows)]},
+        name="GHB-1",
+        **kwargs,
+    )
+    if obs:
+        Obs(
+            parent=ghb,
+            continuous=[
+                Obs.ContinuousBlock(
+                    output=Obs.Output(obs_output_file_name=f"{gwf_name}.ghb.obs.csv"),
+                    continuous=[
+                        Obs.Continuous(obsname=name, obstype="GHB", id_=id_) for name, id_ in obs
+                    ],
+                )
+            ],
+            name="obs",
+        )
+    return sim, ghb
+
+
+def _reloaded_ghb(tmp_path):
+    return Simulation.load(tmp_path / "mfsim.nam")["gwf1"].ghb[0]
+
+
+@pytest.mark.parametrize("boundname", ["5", "end", "begin", "endpoint", None])
+@pytest.mark.parametrize("aux", [(), (3.0,)], ids=["no-aux", "aux"])
+def test_boundname_round_trips(tmp_path, boundname, aux):
+    """A boundname is whatever follows a row's other columns, as MF6 reads
+    it, so one that looks like a number or a block keyword survives write
+    -> reload as written."""
+    sim, ghb = _ghb_sim(tmp_path, [(aux, boundname), (aux, "b")], auxiliary=["x"] if aux else None)
+    sim.write()
+    rows = _reloaded_ghb(tmp_path).stress_period_data[0]
+    assert [(r.boundname, r.aux) for r in rows] == [(boundname, aux), ("b", aux)]
+
+
+def test_empty_boundname_is_none(tmp_path):
+    """An empty boundname is no boundname, however the row gives it."""
+    sim, ghb = _ghb_sim(tmp_path, [("",), ((), ""), ("b",)])
+    assert [r.boundname for r in ghb.stress_period_data[0]] == [None, None, "b"]
+    sim.write()
+    rows = _reloaded_ghb(tmp_path).stress_period_data[0]
+    assert [r.boundname for r in rows] == [None, None, "b"]
+
+
+def test_hand_written_boundnames_load(tmp_path):
+    """Boundnames in a file written elsewhere load by position, whatever
+    their text."""
+    sim, _ = _ghb_sim(tmp_path, [((3.0,), "b")] * 5, auxiliary=["x"])
+    sim.write()
+    ghb_file = next(tmp_path.glob("*.ghb"))
+    rows = """\
+  1 1 1 1.0 10.0 3.0 5
+  1 1 2 1.0 10.0 3.0 '1.50'
+  1 1 3 1.0 10.0 3.0 end
+  1 1 4 1.0 10.0 3.0 ''
+  1 1 5 1.0 10.0 3.0
+"""
+    text = ghb_file.read_text()
+    start = text.index("BEGIN PERIOD 1\n") + len("BEGIN PERIOD 1\n")
+    ghb_file.write_text(text[:start] + rows + text[text.index("END PERIOD") :])
+
+    rghb = _reloaded_ghb(tmp_path)
+    rows_back = rghb.stress_period_data[0]
+    assert [r.boundname for r in rows_back] == ["5", "1.50", "end", None, None]
+    assert all(r.aux == (3.0,) for r in rows_back)
