@@ -105,11 +105,11 @@ sim.run(verbose=True)
 # List-based period data (CHD, OC) is accessible directly via
 # `stress_period_data`, a `dict[kper, list[Item]]` of the rows given at
 # construction. Griddata arrays (DIS) are accessible via `to_dataarray()`,
-# which reshapes the flat stored array to dims named for the grid's sizes (nlay, nrow, ncol).
+# which reshapes the flat stored array to dims named for the grid's axes (layer, row, col).
 
 assert chd.stress_period_data[0][0].head == 1.0
 assert chd.stress_period_data[0][1].head == 0.0
-assert gwf.dis.to_dataarray("botm").isel(nlay=0, nrow=0, ncol=0) == 0.0
+assert gwf.dis.to_dataarray("botm").isel(layer=0, row=0, col=0) == 0.0
 assert gwf.oc.stress_period_data[0][0].rtype == "HEAD"
 assert gwf.oc.stress_period_data[0][0].ocsetting == "ALL"
 

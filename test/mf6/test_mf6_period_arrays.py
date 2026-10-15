@@ -170,7 +170,7 @@ def test_welg_xarray_round_trip_keeps_periods():
 def test_rcha_to_dataarray_carries_forward():
     rcha = Rcha(recharge={0: np.array([0.1, 0.2]), 2: np.array([0.3, 0.4])})
     da = rcha.to_dataarray("recharge")
-    assert da.dims == ("per", "nodes")
+    assert da.dims == ("per", "node")
     np.testing.assert_array_equal(da.values[1], [0.1, 0.2])
 
 
