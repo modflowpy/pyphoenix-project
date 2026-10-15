@@ -427,8 +427,8 @@ def test_gnc_round_trip(dims):
     gnc = Gnc(
         gncdata=[
             Gnc.Gncdata((0, 0, 1), (0, 0, 2), ((0, 1, 1), (0, 1, 2)), (0.25, 0.25)),
-            # a zero (dummy) cellid in the file is -1 in python
-            Gnc.Gncdata((0, 1, 1), (0, 1, 2), ((0, 0, 1), (-1, -1, -1)), (0.5, 0.0)),
+            # a dummy contributing cell, zeros in the file, is None
+            Gnc.Gncdata((0, 1, 1), (0, 1, 2), ((0, 0, 1), None), (0.5, 0.0)),
         ],
     )
     assert (gnc.numgnc, gnc.numalphaj) == (2, 2)
@@ -867,11 +867,21 @@ def test_sfr_unconnected_reach_round_trip():
         connectiondata=[(0, ((1, -1),)), (1, ((0, 1),))],
     )
     raw = loads(dumps(unstructure_component(sfr)))
-    assert raw["PACKAGEDATA"][1][1] == "NONE"
-    sfr2 = structure_component(
-        raw, Sfr, context=LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
-    )
+    # no cell is zeros, of the grid's width (here from the other row's)
+    assert raw["PACKAGEDATA"][1][1:4] == [0, 0, 0]
+    context = LoadContext(dims={"nlay": 1, "nrow": 1, "ncol": 1})
+    sfr2 = structure_component(raw, Sfr, context=context)
     assert sfr2.packagedata == sfr.packagedata
+    # MF6's deprecated NONE reads the same
+    raw["PACKAGEDATA"][1][1:4] = ["NONE"]
+    assert structure_component(raw, Sfr, context=context).packagedata == sfr.packagedata
+
+
+def test_cellid_no_cell_needs_allow_zero():
+    from flopy4.mf6.gwf import Chd
+
+    with pytest.raises(ValueError, match="no cellid given"):
+        Chd.StressPeriodData(None, 1.0).to_tokens()
 
 
 def test_loads_block_header_remark():

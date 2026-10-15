@@ -28,26 +28,40 @@ from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
 from flopy4.spec import is_array
 
 
+def is_cellid(f: attrs.Attribute) -> bool:
+    """Whether a field is a cellid, or an array of them (GNC's cellidsj)."""
+    return f.metadata.get("type") == "cellid" or f.metadata.get("dtype") == "cellid"
+
+
 def _cellid_field(cls: type) -> attrs.Attribute | None:
-    return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
+    return next((f for f in cast(type[Record], cls).fields() if is_cellid(f)), None)
 
 
 def inline_dim(f: attrs.Attribute) -> str | None:
     """The dimension counting an inline array's values, or None if it has
-    none (it takes the rest of the row). A cellid array's shape starts with
-    ``ncelldim``, one cellid's components; the dimension after it counts
-    cellids."""
+    none (it takes the rest of the row)."""
     shape = f.metadata.get("shape") or ()
-    counts = shape[1:] if f.metadata.get("cellid") else shape
-    return counts[0] if counts else None
+    return shape[0] if shape else None
 
 
 def _is_one_cellid(f: attrs.Attribute) -> bool:
-    """Whether a field is one cellid. The DFN declares it an array of its
-    ``ncelldim`` components, but in a row it is one value, of the grid's
-    width: unlike an unsized inline array, it doesn't take the rest of the
-    row, and it is written as NONE when unset."""
-    return bool(f.metadata.get("cellid")) and inline_dim(f) is None
+    """Whether a field is one cellid: one value in a row, of its grid's
+    width."""
+    return f.metadata.get("type") == "cellid"
+
+
+def cellid_widths(rows: "list[Item]") -> dict[str, int]:
+    """Each cellid column's width, by name, from the first of ``rows`` that
+    gives it a cell."""
+    widths: dict[str, int] = {}
+    for row in rows:
+        for f in type(row).fields():
+            if f.name in widths or not is_cellid(f) or (val := getattr(row, f.name)) is None:
+                continue
+            cells = [val] if _is_one_cellid(f) else val
+            if (cell := next((c for c in cells if c is not None), None)) is not None:
+                widths[f.name] = len(cell)
+    return widths
 
 
 def _signed(f: attrs.Attribute) -> bool:
@@ -291,7 +305,7 @@ def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[
     ncellids = 0
     for f in cls.fields():
         count = (_count(f, sizes) or 0) if _dim_counted(cls, f) else 1
-        if f.metadata.get("cellid"):
+        if is_cellid(f):
             ncellids += count
             continue
         if f in _tail_fields(cls) or f.name == "boundname":
@@ -502,7 +516,7 @@ def _is_row_key(f: attrs.Attribute) -> bool:
     """A pk/fk or cellid column identifying the row (e.g. SFR's ifno, TVK's
     cellid). These precede a union arm's _keyword; every other field follows
     it, including other index columns (`ifno DIVERSION idv divflow`)."""
-    return bool(f.metadata.get("pk") or f.metadata.get("fk") or f.metadata.get("cellid"))
+    return bool(f.metadata.get("pk") or f.metadata.get("fk") or is_cellid(f))
 
 
 class Item(Record):
@@ -528,9 +542,13 @@ class Item(Record):
                     f"but {array_field.name} has {n} values"
                 )
 
-    def to_tokens(self) -> tuple:
+    def to_tokens(self, *, ncelldim: int | Mapping[str, int] | None = None) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
         is emitted before the first non-row-key field. boundname last.
+        ``ncelldim`` is the cellid width, or each cellid column's, by name
+        (see from_tokens), needed only to write a cellid of no cell as
+        zeros; otherwise that of another of the row's cellids in the same
+        grid.
         """
         cls = type(self)
         fields = cls.fields()
@@ -551,16 +569,17 @@ class Item(Record):
                         f"{cls.__name__}.{f.name}={val} but {counted[f.name].name} has {n} values"
                     )
                 val = n
-            if val is None and not _is_one_cellid(f):
+            if val is None and not (_is_one_cellid(f) and f.metadata.get("allow_zero")):
+                if _is_one_cellid(f) and not f.metadata.get("optional"):
+                    raise ValueError(f"{cls.__name__}.{f.name}: no cellid given")
                 continue
             if not keyword_emitted and not _is_row_key(f):
                 row.append(keyword.upper())
                 keyword_emitted = True
             if _is_one_cellid(f):
-                # see from_tokens' cellid()
-                row.extend(["NONE"] if val is None else (int(c) + 1 for c in val))
-            elif f.metadata.get("cellid"):
-                row.extend(int(c) + 1 for cellid in val for c in cellid)
+                row.extend(self._cellid_tokens(f, val, ncelldim))
+            elif is_cellid(f):
+                row.extend(t for cell in val for t in self._cellid_tokens(f, cell, ncelldim))
             elif arms := f.metadata.get("union"):
                 row.extend(_union_tokens(val, arms))
             elif is_array(f) and _signed(f):
@@ -597,6 +616,35 @@ class Item(Record):
         if boundname:
             row.append(boundname)
         return tuple(row)
+
+    def _cellid_tokens(
+        self,
+        f: attrs.Attribute,
+        cell: tuple[int, ...] | None,
+        ncelldim: int | Mapping[str, int] | None,
+    ) -> list[int]:
+        """A cellid's tokens: its components 1-based, or, for no cell (None,
+        if it may ``allow_zero``), a zero for each of its grid's."""
+        if cell is not None:
+            return [int(c) + 1 for c in cell]
+        name = f"{type(self).__name__}.{f.name}"
+        if not f.metadata.get("allow_zero"):
+            raise ValueError(f"{name}: no cellid given")
+        width = ncelldim if isinstance(ncelldim, int) else (ncelldim or {}).get(f.name)
+        if not width:
+            # another cellid of the row, in the same grid
+            model = f.metadata.get("model")
+            cells = [
+                c
+                for g in type(self).fields()
+                if is_cellid(g) and g.metadata.get("model") == model
+                for v in [getattr(self, g.name)]
+                for c in (v if not _is_one_cellid(g) and v is not None else [v])
+            ]
+            width = next((len(c) for c in cells if c is not None), None)
+        if not width:
+            raise ValueError(f"{name}: no cell, but the grid's ncelldim is unknown")
+        return [0] * width
 
     @classmethod
     def from_tokens(  # type: ignore[override]
@@ -638,15 +686,18 @@ class Item(Record):
             return ncelldim if isinstance(ncelldim, int) else ncelldim[f.name]
 
         def cellid(f: attrs.Attribute) -> tuple[int, ...] | None:
+            """A cellid, or None for no cell (zeros) if it may allow_zero."""
             nonlocal tok_idx
-            # one NONE token, whatever ncelldim (e.g. an SFR reach with
-            # no aquifer connection)
-            if str(tokens[tok_idx]).upper() == "NONE":
+            allow_zero = f.metadata.get("allow_zero")
+            if allow_zero and str(tokens[tok_idx]).upper() == "NONE":
+                # MF6's deprecated form of no cell, one token (SFR's
+                # unconnected reach)
                 tok_idx += 1
                 return None
             w = cellid_width(f)
             tok_idx += w
-            return tuple(int(tokens[tok_idx - w + j]) - 1 for j in range(w))
+            cell = tuple(int(tokens[tok_idx - w + j]) - 1 for j in range(w))
+            return None if allow_zero and all(c == -1 for c in cell) else cell
 
         def consume(f: attrs.Attribute) -> None:
             nonlocal tok_idx, keyword_skipped
@@ -659,7 +710,7 @@ class Item(Record):
                     raise ValueError(f"{cls.__name__}.{f.name}: {inline_dim(f)} unknown")
                 if not count:
                     return
-                if f.metadata.get("cellid"):
+                if is_cellid(f):
                     kwargs[f.name] = tuple(cellid(f) for _ in range(count))
                     return
                 vals = tokens[tok_idx : tok_idx + count]
@@ -669,7 +720,7 @@ class Item(Record):
                 else:
                     kwargs[f.name] = tuple(_float_or_str(v) for v in vals)
                 return
-            if f.metadata.get("cellid"):
+            if is_cellid(f):
                 kwargs[f.name] = cellid(f)
                 return
             if f.metadata.get("index"):
@@ -728,7 +779,10 @@ class Item(Record):
         if columns:
             optional_fields = _in_columns(cls, optional_fields)
             fixed = (0 if keyword_skipped else 1) + sum(
-                cellid_width(f) if f.metadata.get("cellid") else width(f) for f in required_fields
+                cellid_width(f) * (width(f) if _dim_counted(cls, f) else 1)
+                if is_cellid(f)
+                else width(f)
+                for f in required_fields
             )
         else:
             for f in required_fields:

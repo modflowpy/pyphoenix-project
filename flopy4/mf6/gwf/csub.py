@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike, TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string
+from flopy4.mf6.spec import array, cellid_, child, double, file, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -58,7 +58,7 @@ class Csub(Package):
     @attrs.define
     class Packagedata(Item):
         icsubno: int = integer(index=True, pk=True)
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         cdelay: str = string()
         pcs0: float = double()
         thick_frac: float = double()
@@ -72,7 +72,7 @@ class Csub(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         sig0: Union[float, TimeSeriesRef] = double(time_series=True)
 
     boundnames: bool = keyword(

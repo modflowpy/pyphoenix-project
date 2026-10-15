@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, double, integer, keyword, list_, string
+from flopy4.mf6.spec import array, cellid_, child, double, integer, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -25,7 +25,7 @@ class Evt(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         surface: Union[float, TimeSeriesRef] = double(time_series=True)
         rate: Union[float, TimeSeriesRef] = double(time_series=True)
         depth: Union[float, TimeSeriesRef] = double(time_series=True)

@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, double, keyword, list_, union
+from flopy4.mf6.spec import cellid_, child, double, keyword, list_, union
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -26,7 +26,7 @@ class Tvs(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         tvssetting: "Tvs.Ss | Tvs.Sy" = union()
 
     disable_storage_change_integration: bool = keyword(

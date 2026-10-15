@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, double, integer, keyword, list_
+from flopy4.mf6.spec import cellid_, double, integer, keyword, list_
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -14,8 +14,8 @@ class Hfb(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid1: tuple = array(cellid=True, index=True, shape=("ncelldim",))
-        cellid2: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid1: tuple[int, ...] = cellid_()
+        cellid2: tuple[int, ...] = cellid_()
         hydchr: float = double()
 
     print_input: bool = keyword(

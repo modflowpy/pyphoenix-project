@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, double, file, keyword, list_, string
+from flopy4.mf6.spec import array, cellid_, child, double, file, keyword, list_, string
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -28,7 +28,7 @@ class Wel(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         q: Union[float, TimeSeriesRef] = double(time_series=True)
         aux: tuple[Union[float, TimeSeriesRef], ...] = array(
             default=(), shape=("auxiliary",), time_series=True, optional=True
