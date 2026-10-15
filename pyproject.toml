@@ -179,8 +179,8 @@ cmd = "flopy4 mf6 status"
 description = "Show flopy4.mf6 sync status vs. discovered MF6 binary"
 
 [tool.pixi.feature.test.tasks]
-test = { cmd = "pytest -v -n auto", env = { MPLBACKEND = "Agg" } }
-smoke = { cmd = "pytest -v -n auto --smoke", env = { MPLBACKEND = "Agg" } }
+test = { cmd = "pytest -v -n auto --dist worksteal", env = { MPLBACKEND = "Agg" } }
+smoke = { cmd = "pytest -v -n auto --dist worksteal --smoke", env = { MPLBACKEND = "Agg" } }
 
 [tool.pixi.feature.lint.tasks]
 install = { cmd = "pre-commit install --install-hooks" }
