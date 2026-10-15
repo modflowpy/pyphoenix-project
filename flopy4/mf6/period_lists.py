@@ -30,8 +30,13 @@ Two rows at a position in a period raise; ``duplicates`` merges them
 ("sum", "first" or "last"), which loses rows. ``sparse=True`` keeps every
 row, an ``entry`` dim over all the periods' rows with each row's period,
 key and setting as coordinates, a cellid's by the grid's dims
-(``cellid_layer``, ``cellid_row``, ``cellid_col``). A package whose rows have no single key (HFB's
-two cellids, MVR, OC) has only the sparse form.
+(``cellid_layer``, ``cellid_row``, ``cellid_col``). An entry is one row,
+an ``Item``; the dim isn't ``row``, which is the grid's. A package whose
+rows have no single key (HFB's two cellids, MVR, OC) has only the sparse
+form.
+
+Get a variable with ``ds["head"]``, not ``ds.head``: a column named as a
+``Dataset`` method (CHD's ``head``) gives the method instead.
 
 ``from_dataset`` is the inverse of either. From the dense form it writes a
 period block where a period differs from the one before it, so periods

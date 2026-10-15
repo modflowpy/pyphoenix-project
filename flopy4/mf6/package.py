@@ -912,7 +912,8 @@ class Package(Component, ABC):
         ``grid=True`` the grid through the feature's cell. ``sparse=True``
         keeps every row, and is the only form of rows with no single key
         (HFB, MVR). Two rows at one position in a period raise, unless
-        ``duplicates`` ("sum", "first", "last") merges them. See
+        ``duplicates`` ("sum", "first", "last") merges them. Index a
+        variable, ``ds["head"]``: ``ds.head`` is ``Dataset.head()``. See
         ``flopy4.mf6.period_lists``. For packages with neither this falls
         through to ``Component.to_xarray()``, which returns whatever
         ``attrs_to_dataset()`` finds -- empty for a package with no
