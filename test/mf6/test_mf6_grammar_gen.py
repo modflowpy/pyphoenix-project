@@ -74,8 +74,8 @@ def test_make_grammar_with_multiple_blocks(tmp_path, simple_dfn):
 
     assert "options__block" in content
     assert "griddata__block" in content
-    assert 'begin"i "options"' in content.lower()
-    assert 'begin"i "griddata"' in content.lower()
+    assert '_BEGIN "options"i' in content
+    assert '_BEGIN "griddata"i' in content
     assert "strt" in content
     assert "array" in content.lower()
 
@@ -438,8 +438,8 @@ def test_make_grammar_with_record_header(tmp_path):
     make_grammar(dfn, tmp_path)
     content = (tmp_path / "test-header.lark").read_text()
     assert (
-        'continuous__block: "begin"i "continuous"i output__hdr [_remark] _NL _NL* '
-        'continuous__fields _NL* "end"i "continuous"i [output__hdr]'
+        'continuous__block: _BEGIN "continuous"i output__hdr [_remark] _NL _NL* '
+        'continuous__fields _NL* _END "continuous"i [output__hdr]'
     ) in content
     assert '!output__hdr: "fileout"i word [output__binary__kw]' in content
     assert 'output__binary__kw: "binary"i' in content
