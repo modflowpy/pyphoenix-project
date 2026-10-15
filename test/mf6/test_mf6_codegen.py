@@ -1481,11 +1481,11 @@ def test_aux_columns_follow_dfn():
 def test_sized_column_from_tokens():
     """A sized column takes as many tokens as its sizing field has values."""
     from flopy4.mf6.gwf import Wel
+    from flopy4.mf6.item import RowContext
 
     tokens = [1, 2, 3, -5.0, 0.1, 0.2, "well1"]
-    item = Wel.StressPeriodData.from_tokens(
-        tokens, ncelldim=3, sizes={"auxiliary": 2}, boundnames=True
-    )
+    context = RowContext(ncelldim=3, sizes={"auxiliary": 2}, boundnames=True)
+    item = Wel.StressPeriodData.from_tokens(tokens, context)
     assert item.cellid == (0, 1, 2)
     assert item.q == -5.0
     assert item.aux == (0.1, 0.2)
@@ -1571,14 +1571,15 @@ def test_number_or_word_column():
 def test_number_or_word_from_tokens(bedleak):
     """LAK's bedleak, mid-row, is NONE (in any case) or a number."""
     from flopy4.mf6.gwf import Lak
+    from flopy4.mf6.item import RowContext
 
     tokens = [1, 1, 1, 1, 1, "vertical", bedleak, 10.0, 20.0, 0.0, 0.0]
-    item = Lak.Connectiondata.from_tokens(tokens, ncelldim=3)
+    item = Lak.Connectiondata.from_tokens(tokens, RowContext(ncelldim=3))
     assert item.bedleak == bedleak
     assert item.belev == 10.0
     assert item.to_tokens() == tuple(tokens)
     lower = Lak.Connectiondata.from_tokens(
-        [str(t).lower() if t == "NONE" else t for t in tokens], ncelldim=3
+        [str(t).lower() if t == "NONE" else t for t in tokens], RowContext(ncelldim=3)
     )
     assert lower.bedleak == bedleak
 

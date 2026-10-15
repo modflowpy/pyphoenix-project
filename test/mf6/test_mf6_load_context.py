@@ -30,29 +30,31 @@ def test_resolve_without_workspace_raises():
 
 def test_ncelldim_from_dims():
     context = LoadContext(dims={"nlay": 1, "ncpl": 4, "nodes": 4})
-    assert context.ncelldim(Chd.StressPeriodData, [[1, 2, 3, 1.0]]) == 2
+    assert context.ncelldim(Chd.StressPeriodData) == 2
 
 
-def test_ncelldim_from_rows():
-    assert LoadContext().ncelldim(Chd.StressPeriodData, [[1, 2, 3, 1.0]]) == 3
+def test_ncelldim_unknown_solved_from_row():
+    """Without a grid, a row's cellid width is the one its length makes
+    room for (see item._layout)."""
+    assert LoadContext().ncelldim(Chd.StressPeriodData) is None
+    assert Chd.StressPeriodData.from_tokens([1, 2, 3, 1.0]).cellid == (0, 1, 2)
 
 
 def test_ncelldim_per_column_under_exchange():
     """Each cellid column takes its own model's grid width, whatever the
-    dims or the row length say."""
+    dims say."""
     context = LoadContext(dims={"nodes": 4}, exchange=(_model(3), _model(2)))
-    rows = [[1, 1, 2, 1, 1, 1, 0.5, 0.5, 1.0]]
-    assert context.ncelldim(Gwfgwf.Exchangedata, rows) == {"cellidm1": 3, "cellidm2": 2}
+    assert context.ncelldim(Gwfgwf.Exchangedata) == {"cellidm1": 3, "cellidm2": 2}
 
 
 def test_ncelldim_gnc_columns_under_exchange():
     """GNC's columns refer to models 1, 2 and 1, so position can't say."""
     context = LoadContext(exchange=(_model(3), _model(1)))
-    rows = [[1, 1, 1, 5, 1, 1, 2, 0.5]]
-    assert context.ncelldim(Gnc.Gncdata, rows) == {"cellidn": 3, "cellidm": 1, "cellidsj": 3}
+    assert context.ncelldim(Gnc.Gncdata) == {"cellidn": 3, "cellidm": 1, "cellidsj": 3}
 
 
-def test_ncelldim_under_exchange_without_dis_from_rows():
+def test_ncelldim_under_exchange_without_dis_solved_from_row():
     context = LoadContext(exchange=(_model(3), _model(None)))
-    rows = [[1, 1, 2, 1, 1, 1, 1, 0.5, 0.5, 1.0]]
-    assert context.ncelldim(Gwfgwf.Exchangedata, rows) == 3
+    assert context.ncelldim(Gwfgwf.Exchangedata) is None
+    row = Gwfgwf.Exchangedata.from_tokens([1, 1, 2, 1, 1, 1, 1, 0.5, 0.5, 1.0])
+    assert (row.cellidm1, row.cellidm2) == ((0, 0, 1), (0, 0, 0))

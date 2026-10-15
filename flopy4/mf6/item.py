@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Literal, Union, cast, get_args, get_origin
 
 import attrs
+import numpy as np
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
@@ -31,10 +32,6 @@ from flopy4.spec import is_array
 def is_cellid(f: attrs.Attribute) -> bool:
     """Whether a field is a cellid, or an array of them (GNC's cellidsj)."""
     return f.metadata.get("type") == "cellid" or f.metadata.get("dtype") == "cellid"
-
-
-def _cellid_field(cls: type) -> attrs.Attribute | None:
-    return next((f for f in cast(type[Record], cls).fields() if is_cellid(f)), None)
 
 
 def inline_dim(f: attrs.Attribute) -> str | None:
@@ -87,25 +84,6 @@ def _sized_by_package(cls: type, f: attrs.Attribute) -> bool:
     return inline_dim(f) is not None and not _sized_by_field(cls, f) and not _sized_by_lookup(f)
 
 
-def _tail_fields(cls: type) -> list[attrs.Attribute]:
-    """The optional fields sized by a package field that end the row (aux, by
-    ``auxiliary``), before any boundname. Optional untagged fields before them
-    have no marker token, so their width is reserved when inferring which are
-    present."""
-    fields = [f for f in cast(type[Record], cls).fields() if f.name != "boundname"]
-    tail: list[attrs.Attribute] = []
-    for f in reversed(fields):
-        if not (_sized_by_package(cls, f) and f.metadata.get("optional")):
-            break
-        tail.insert(0, f)
-    return tail
-
-
-def _size(cls: type, sizes: Mapping[str, int] | None) -> int:
-    """How many tokens the class's tail fields take."""
-    return sum(_count(f, sizes) or 0 for f in _tail_fields(cls))
-
-
 def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
     """Count field name -> the inline array it counts (cell2d's ncvert ->
     icvert)."""
@@ -114,19 +92,6 @@ def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
         for f in cast(type[Record], cls).fields()
         if _sized_by_field(cls, f)
     }
-
-
-def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
-    """An inline array counted by a package field or dimension rather than
-    another field of the record (GNC's cellidsj, by numalphaj; EVT's pxdp, by
-    nseg-1; aux, by auxiliary): fixed width, read in place."""
-    return _sized_by_package(cls, f)
-
-
-def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
-    """How many values a package-sized field takes, or None if its shape
-    isn't known. ``sizes`` maps shape expressions to their values."""
-    return (sizes or {}).get(inline_dim(f) or "")
 
 
 def _lookup(values: Mapping[str, Any], name: str) -> Any:
@@ -213,7 +178,11 @@ def to_union_arm(value: Any, self: Any, f: attrs.Attribute) -> Any:
     return converted
 
 
-def union_value(values: list, arms: "tuple[tuple[str, ...], tuple[type[Item], ...]]") -> Any:
+def union_value(
+    values: list,
+    arms: "tuple[tuple[str, ...], tuple[type[Item], ...]]",
+    context: "RowContext | None" = None,
+) -> Any:
     """A union field's value from the user-supplied values it spans: one of
     its words, an arm instance given as is, or an arm built from them by
     its keyword (see construct_union_item)."""
@@ -224,7 +193,7 @@ def union_value(values: list, arms: "tuple[tuple[str, ...], tuple[type[Item], ..
             return value
         if isinstance(value, str) and value.upper() in words:
             return value.upper()
-    return construct_union_item(values, classes)
+    return construct_union_item(values, classes, context)
 
 
 def _array_elem_type(f: attrs.Attribute) -> "type | None":
@@ -244,93 +213,6 @@ def _field_type_str(f: attrs.Attribute) -> "str | None":
     return t if isinstance(t, str) else None
 
 
-def construct_item(item_cls: type, values) -> "Item":
-    """Build an Item from a flat positional tuple, e.g. ``(cellid, q, 35.0)``
-    for one aux variable, ``("HEAD", "FREQUENCY", 2)`` for OC's Save
-    (rtype, ocsetting), or ``(0, "STATUS", "ACTIVE")`` for LKT's ifno and
-    laksetting. Everything from the aux/array/union field's position onward
-    collects into that one field's value, except a trailing string or None
-    when the class also has boundname (always declared last) -- a string
-    there unambiguously isn't a numeric aux value, and None is an absent
-    boundname.
-    """
-    fields = cast(type[Record], item_cls).fields()
-    tuple_idx = next(
-        (
-            i
-            for i, f in enumerate(fields)
-            if f in _tail_fields(item_cls)
-            or (is_array(f) and not _is_one_cellid(f) and not _dim_counted(item_cls, f))
-            or _union_field_arms(item_cls, f) is not None
-        ),
-        None,
-    )
-    values = list(values)
-    if tuple_idx is None:
-        return cast("Item", item_cls(*values))
-    arms = _union_field_arms(item_cls, fields[tuple_idx])
-    boundname_val = None
-    if (
-        fields
-        and fields[-1].name == "boundname"
-        and len(values) > tuple_idx
-        and (values[-1] is None or isinstance(values[-1], str))
-        and arms is None
-    ):
-        boundname_val = values[-1]
-        values = values[:-1]
-    before = values[:tuple_idx]
-    trailing = values[tuple_idx:]
-    if not trailing:
-        # omitted optional columns before it, e.g. EVT's petm0 before aux
-        return cast(
-            "Item",
-            item_cls(*before, boundname=boundname_val) if boundname_val else item_cls(*before),
-        )
-    if arms is None and len(trailing) == 1 and isinstance(trailing[0], (list, tuple)):
-        # The array given as one value, e.g. (0, 0.5, 0.5, 4, (0, 1, 4, 3)).
-        trailing = list(trailing[0])
-    tuple_vals = union_value(trailing, arms) if arms is not None else tuple(trailing)
-    if boundname_val is not None:
-        return cast("Item", item_cls(*before, tuple_vals, boundname=boundname_val))
-    return cast("Item", item_cls(*before, tuple_vals))
-
-
-def _n_fixed_tokens(cls: type, sizes: Mapping[str, int] | None = None) -> tuple[int, int]:
-    """Fixed (non-cellid/aux/boundname, non-optional) token slots, and the
-    number of cellids -- used to infer a variable-width cellid's element
-    count from total token length."""
-    cls = cast(type[Record], cls)
-    n = 1 if cls.keyword() else 0
-    ncellids = 0
-    for f in cls.fields():
-        count = (_count(f, sizes) or 0) if _dim_counted(cls, f) else 1
-        if is_cellid(f):
-            ncellids += count
-            continue
-        if f in _tail_fields(cls) or f.name == "boundname":
-            continue
-        if f.metadata.get("optional") or _union_field_arms(cls, f) is not None:
-            continue
-        n += count + (1 if f.metadata.get("_keyword") else 0)
-        if f.metadata.get("direction"):
-            n += 1
-    return n, ncellids
-
-
-def _union_start(cls: type, row: list) -> "int | None":
-    """Where a row's union field begins: its first word or arm keyword
-    after the row's first token (TVK's ``1 2 3 K 1.0`` at K). None if the
-    class has no union field with arm classes, or the row has no such
-    token."""
-    for f in cast(type[Record], cls).fields():
-        if (arms := _union_field_arms(cls, f)) is not None:
-            words, classes = arms
-            keys = {*words, *(c.keyword().upper() for c in classes)}
-            return next((i for i, t in enumerate(row) if i and str(t).upper() in keys), None)
-    return None
-
-
 def ncelldim_from_dims(dims: "dict | None") -> "int | None":
     """Cellid element count implied by grid dimensions -- 3 for a
     structured (DIS) grid, 2 for vertex (DISV), 1 for unstructured (DISU).
@@ -345,37 +227,6 @@ def ncelldim_from_dims(dims: "dict | None") -> "int | None":
     if "nodes" in dims:
         return 1
     return None
-
-
-def infer_ncelldim(
-    items: list[list],
-    item_cls: "type[Item]",
-    *,
-    sizes: Mapping[str, int] | None = None,
-    dims: "dict | None" = None,
-) -> int:
-    """Infer an Item class's cellid width, preferring grid dimensions
-    (unambiguous) when available. Falls back to counting the first
-    non-empty raw item's tokens -- total minus fixed columns minus sized
-    minus a trailing boundname -- when `dims` isn't supplied or doesn't
-    say; this heuristic overcounts if the row itself carries an extra
-    trailing token the current Item class doesn't model (e.g. a field
-    dropped from a newer DFN revision than the fixture predates)."""
-    if _cellid_field(item_cls) is None:
-        # A union column's cellid arm takes the grid's width, if known.
-        return (ncelldim_from_dims(dims) or 0) if _union_fields(item_cls) else 0
-    from_dims = ncelldim_from_dims(dims)
-    if from_dims is not None:
-        return from_dims
-    first = next((r for r in items if r), None)
-    if not first:
-        return 0
-    first = first[: _union_start(item_cls, first)]
-    n_fixed, ncellids = _n_fixed_tokens(item_cls, sizes)
-    last = first[-1]
-    has_bn = isinstance(last, str) and not _token_fits(last, float)
-    n_cell_tokens = len(first) - n_fixed - _size(item_cls, sizes) - (1 if has_bn else 0)
-    return max(1, n_cell_tokens // max(1, ncellids))
 
 
 def _float_or_str(token: Any) -> Any:
@@ -404,11 +255,6 @@ def _token_fits(token: Any, kind: type) -> bool:
         except ValueError:
             return False
     return False
-
-
-def _union_fields(cls: type) -> list[attrs.Attribute]:
-    """Untagged union columns (OBS's id/id2), each holding any of its arms."""
-    return [f for f in cast(type[Record], cls).fields() if f.metadata.get("union")]
 
 
 def _integral(token: Any) -> bool:
@@ -517,6 +363,374 @@ def _is_row_key(f: attrs.Attribute) -> bool:
     cellid). These precede a union arm's _keyword; every other field follows
     it, including other index columns (`ifno DIVERSION idv divflow`)."""
     return bool(f.metadata.get("pk") or f.metadata.get("fk") or is_cellid(f))
+
+
+@attrs.frozen
+class RowContext:
+    """What a row's layout depends on besides its own values: facts about
+    its package (see `Item.from_tokens`, `Item.from_values`).
+
+    ``ncelldim`` is the cellid width, or each cellid column's, by name (an
+    exchange's models may be on different grids); None if not known.
+    ``sizes`` gives the counts of the inline arrays the package sizes, by
+    shape expression (aux, by ``auxiliary``); one not given isn't known.
+    ``boundnames`` is the package's option."""
+
+    ncelldim: int | Mapping[str, int] | None = None
+    sizes: Mapping[str, int] = attrs.field(factory=dict)
+    boundnames: bool = False
+
+    def cellid_width(self, f: attrs.Attribute) -> int | None:
+        if isinstance(self.ncelldim, Mapping):
+            return self.ncelldim.get(f.name)
+        return self.ncelldim or None
+
+
+@attrs.frozen
+class _Slot:
+    """A part of a row: a field, by how its width is known (see `_slots`),
+    an arm's keyword, or a row's untagged unions together."""
+
+    kind: str
+    field: Any = None
+    group: tuple = ()
+
+
+def _kind(cls: type, f: attrs.Attribute) -> str:
+    if f.metadata.get("tagged"):
+        return "flag"  # a bare presence flag (LAK tables' MIXED)
+    if _is_one_cellid(f):
+        return "cellid"
+    if is_array(f):
+        if _sized_by_package(cls, f):
+            return "sized"  # aux, by auxiliary
+        if _sized_by_field(cls, f):
+            return "sibling"  # cell2d's icvert, by ncvert
+        return "rest"  # self-sizing, or sized by a lookup (SFR's ic)
+    if _union_field_arms(cls, f) is not None:
+        return "rest"  # OC's ocsetting
+    return "value"
+
+
+@lru_cache(maxsize=None)
+def _slots(cls: type, file: bool) -> tuple[_Slot, ...]:
+    """A row's slots, in column order: each field but the boundname, an
+    arm's keyword (in a file, before its first field that isn't a row key),
+    and its untagged unions together (OBS's id and id2), which their own
+    tokens split (see `_read_unions`)."""
+    fields = [f for f in cast(type[Record], cls).fields() if f.name != "boundname"]
+    if cast(type[Item], cls)._columns:
+        fields = _in_columns(cast(type[Item], cls), fields)
+    unions = tuple(
+        f for f in fields if (kinds := f.metadata.get("union")) and "keyword" not in kinds
+    )
+    slots = []
+    keyword = file and bool(cast(type[Record], cls).keyword())
+    for f in fields:
+        if keyword and not _is_row_key(f):
+            slots.append(_Slot("keyword"))
+            keyword = False
+        if f in unions:
+            if f is unions[0]:
+                slots.append(_Slot("unions", f, unions))
+        else:
+            slots.append(_Slot(_kind(cls, f), f))
+    if keyword:
+        slots.append(_Slot("keyword"))
+    return tuple(slots)
+
+
+def _is_seq(v: Any) -> bool:
+    """Whether a Python value is a sequence (a list, tuple or 1D+ array),
+    not a string."""
+    return isinstance(v, (list, tuple)) or (isinstance(v, np.ndarray) and v.ndim > 0)
+
+
+def _is_whole(v: Any) -> bool:
+    """Whether a Python value is a whole field, not one of its values: a
+    sequence, or None."""
+    return v is None or _is_seq(v)
+
+
+def _takes_sequence(f: attrs.Attribute) -> bool:
+    """Whether a value field holds a sequence: a union with a cellid arm."""
+    return "cellid" in (f.metadata.get("union") or ())
+
+
+def _layout(
+    cls: type,
+    values: list,
+    context: RowContext,
+    *,
+    file: bool,
+    union_arm: str = "cellid",
+    union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
+    load_child: Callable[[attrs.Attribute, str], Any] | None = None,
+) -> dict[str, Any]:
+    """Split a row's values into its fields, by position, as MF6 does.
+
+    Each field takes its width: a scalar one value, a cellid its grid's
+    ncelldim, an inline array as many as its dims or sibling say, and a
+    last field whose width varies by row (self-sizing, sized by a lookup)
+    the rest. Untagged unions take as many as their own tokens say (see
+    `_read_unions`). No other value is looked at to decide what it is.
+
+    The values are file tokens (``file``), strings and 1-based, or Python
+    values, typed and 0-based, of which a sequence or None is a whole
+    field (a cellid, an array), so a row may be given flat or tupled.
+
+    The boundname is there if the package's ``boundnames`` option is set
+    (and a value is left for it). For Python values with it unset, one
+    value more than the row's fields take is the boundname, and the
+    package then sets the option. An optional untagged field (EVT's petm0)
+    is there if the values make room for it. A width that isn't known (no
+    grid yet) is the one the values make room for, if only one does;
+    otherwise this raises, asking for the field as a tuple. Like MF6, a
+    file row's extra tokens are ignored, if no layout uses them all.
+    """
+    n = len(values)
+    slots = _slots(cls, file)
+    has_boundname = _has_boundname_field(cls)
+
+    def cellid_widths(f: attrs.Attribute, unknown: dict) -> list[tuple[int, dict]]:
+        if (w := context.cellid_width(f)) is not None:
+            return [(w, unknown)]
+        key = ("ncelldim", f.metadata.get("model"))
+        if key in unknown:
+            return [(unknown[key], unknown)]
+        return [(w, {**unknown, key: w}) for w in (3, 2, 1)]
+
+    def flat(span: list) -> bool:
+        """Whether values are a field's values, not whole fields."""
+        return file or not any(_is_seq(x) or isinstance(x, Record) for x in span)
+
+    def options(slot: _Slot, pos: int, end: int, out: dict, unknown: dict):
+        """Each way the slot can take values from ``pos``: the position
+        after it, what it took, and the unknown widths it assumed."""
+        f = slot.field
+        left = end - pos
+        v = values[pos] if left else None
+        optional = f is not None and f.metadata.get("optional")
+        if slot.kind == "keyword":
+            if left and str(v).upper() == cast(type[Record], cls).keyword().upper():
+                yield pos + 1, None, unknown
+            return
+        if slot.kind == "flag":
+            if file and left and str(v).upper() == f.name.upper():
+                yield pos + 1, ("flag", True), unknown
+            elif not file and left and (v is None or isinstance(v, bool)):
+                yield pos + 1, ("py", v), unknown
+            else:
+                yield pos, None, unknown
+            return
+        if slot.kind == "unions":
+            if file:
+                yield end, ("unions", values[pos:end], slot.group), unknown
+                return
+            required = sum(1 for g in slot.group if not g.metadata.get("optional"))
+            for m in range(min(len(slot.group), left), required - 1, -1):
+                yield pos + m, ("unions", values[pos : pos + m], slot.group), unknown
+            return
+        if not file and left and slot.kind != "value" and (_is_whole(v) or isinstance(v, Record)):
+            yield pos + 1, ("py", v), unknown  # the whole field
+            if optional:
+                yield pos, None, unknown
+            return
+        if slot.kind == "value":
+            w = (
+                1
+                if not file
+                else 1 + bool(f.metadata.get("_keyword")) + bool(f.metadata.get("direction"))
+            )
+            if left >= w and (file or not _is_seq(v) or _takes_sequence(f)):
+                yield pos + w, ("value", values[pos + w - 1]), unknown
+        elif slot.kind == "cellid":
+            if file and left and f.metadata.get("allow_zero") and str(v).upper() == "NONE":
+                yield pos + 1, ("none", None), unknown  # MF6's deprecated form
+            for w, unknown2 in cellid_widths(f, unknown):
+                if left >= w and flat(values[pos : pos + w]):
+                    yield pos + w, ("cellid", values[pos : pos + w]), unknown2
+        elif slot.kind in ("sized", "sibling"):
+            dim = inline_dim(f) or ""
+            if slot.kind == "sibling":
+                if (count := out.get(dim)) is None:
+                    yield end, ("array", values[pos:end]), unknown  # the rest
+                    return
+                counts = [(int(float(str(count[1]))), unknown)]
+            elif (count := context.sizes.get(dim)) is not None:
+                counts = [(count, unknown)]
+            elif file:
+                if not optional:
+                    raise ValueError(f"{cls.__name__}.{f.name}: {dim} unknown")
+                counts = [(0, unknown)]
+            elif ("size", dim) in unknown:
+                counts = [(unknown[("size", dim)], unknown)]
+            else:
+                counts = [(c, {**unknown, ("size", dim): c}) for c in range(left, -1, -1)]
+            for c, unknown2 in counts:
+                widths = cellid_widths(f, unknown2) if is_cellid(f) else [(1, unknown2)]
+                for w, unknown3 in widths:
+                    if left >= c * w and flat(span := values[pos : pos + c * w]):
+                        yield pos + c * w, ("array", span, w) if c else None, unknown3
+            return
+        elif slot.kind == "rest":
+            yield end, ("rest", values[pos:end]) if left else None, unknown
+            return
+        if optional:
+            yield pos, None, unknown
+
+    # Optional columns before required ones (MVR's model names, in its
+    # column order) come together or not at all (MVR's MODELNAMES).
+    together = [
+        s.field.name
+        for s in slots
+        if cast(type[Item], cls)._columns and s.kind == "value" and s.field.metadata.get("optional")
+    ]
+
+    def walk(k: int, pos: int, end: int, out: dict, unknown: dict, surplus: bool):
+        if k == len(slots):
+            if len({name in out for name in together}) > 1:
+                return
+            if pos == end or (surplus and pos < end):
+                yield out, unknown
+            return
+        slot = slots[k]
+        for pos2, took, unknown2 in options(slot, pos, end, out, unknown):
+            out2 = out if took is None else {**out, slot.field.name: took}
+            yield from walk(k + 1, pos2, end, out2, unknown2, surplus)
+
+    def solve(boundname: list[bool], surplus: bool = False):
+        for bn in boundname:
+            end = n - bn
+            if end < 0:
+                continue
+            for out, unknown in walk(0, 0, end, {}, {}, surplus):
+                yield ({**out, "boundname": ("bn", values[-1])} if bn else out), unknown
+
+    fields = attrs.fields_dict(cls)  # type: ignore[arg-type]
+
+    def optionals(out: dict) -> int:
+        """How many optional fields a layout has."""
+        return sum(
+            1
+            for k in out
+            if k == "boundname" or (k in fields and fields[k].metadata.get("optional"))
+        )
+
+    def first(solutions) -> "dict | None":
+        """The first layout; or, if it assumed a width, the one with the
+        fewest optional fields (which MF6 reads only if an option says),
+        raising if another width fits as well."""
+        best = next(solutions, None)
+        if best is None or not best[1]:
+            return best and best[0]
+        layouts = [best, *solutions]
+        fewest = min(optionals(out) for out, _ in layouts)
+        layouts = [(out, u) for out, u in layouts if optionals(out) == fewest]
+        if len({tuple(sorted(u.items(), key=str)) for _, u in layouts}) > 1:
+            raise ValueError(
+                f"{cls.__name__}: can't tell the widths of {values} without the grid or "
+                f"package; give each cellid and inline array as a tuple"
+            )
+        return layouts[0][0]
+
+    bn = [True, False] if has_boundname and context.boundnames else [False]
+    out = first(solve(bn))
+    if out is None and not file and has_boundname and not context.boundnames:
+        out = first(solve([True]))
+    if out is None and file:
+        out = first(solve(bn, surplus=True))
+    if out is None:
+        raise ValueError(f"{cls.__name__}: can't read a row from {values}")
+    return _convert(cls, out, context, file, union_arm, union_forms, load_child)
+
+
+def _file_cellid(f: attrs.Attribute, tokens: list) -> tuple[int, ...] | None:
+    cell = tuple(int(float(str(t))) - 1 for t in tokens)
+    return None if f.metadata.get("allow_zero") and all(c == -1 for c in cell) else cell
+
+
+def _file_array(f: attrs.Attribute, tokens: list) -> tuple:
+    if _signed(f):
+        return tuple(int(float(str(t))) for t in tokens)  # see spec.to_signed_indexes
+    if f.metadata.get("index"):
+        return tuple(int(float(str(t))) - 1 for t in tokens)
+    if (elem := _array_elem_type(f)) is not None:
+        return tuple(elem(float(str(t))) for t in tokens)
+    return tuple(_float_or_str(t) for t in tokens)
+
+
+def _convert(
+    cls: type,
+    out: dict,
+    context: RowContext,
+    file: bool,
+    union_arm: str,
+    union_forms: Callable[[Mapping[str, Any]], Any] | None,
+    load_child: Callable[[attrs.Attribute, str], Any] | None,
+) -> dict[str, Any]:
+    """The fields' values from what each took of the row (see `_layout`):
+    file tokens to Python values, 1-based to 0-based."""
+    fields = attrs.fields_dict(cls)  # type: ignore[arg-type]
+    kwargs: dict[str, Any] = {}
+    unions = None
+    for name, took in out.items():
+        f = fields[name]
+        kind, raw = took[0], took[1]
+        if kind == "unions":
+            unions = took  # read last: their forms depend on the other columns
+        elif kind == "py":
+            kwargs[name] = raw
+        elif kind in ("flag", "bn"):
+            if raw is not None:
+                kwargs[name] = raw if kind == "flag" else str(raw)
+        elif kind == "none":
+            kwargs[name] = None
+        elif kind == "cellid":
+            kwargs[name] = _file_cellid(f, raw) if file else tuple(raw)
+        elif kind == "value":
+            if not file:
+                kwargs[name] = raw
+            elif f.metadata.get("child"):
+                if load_child is None:
+                    raise ValueError(f"{cls.__name__}.{name}: no way to load {raw}")
+                kwargs[name] = load_child(f, str(raw))
+            elif f.metadata.get("index"):
+                kwargs[name] = int(float(str(raw))) - 1
+            else:
+                kwargs[name] = _coerce(raw, f)
+        elif kind == "array":
+            w = took[2] if len(took) > 2 else 1
+            if is_cellid(f):
+                cells = [raw[i : i + w] for i in range(0, len(raw), w)]
+                kwargs[name] = tuple(_file_cellid(f, c) if file else tuple(c) for c in cells)
+            else:
+                kwargs[name] = _file_array(f, raw) if file else tuple(raw)
+        elif kind == "rest":
+            arms = _union_field_arms(cls, f)
+            if arms is None:
+                kwargs[name] = _file_array(f, raw) if file else tuple(raw)
+            elif not file:
+                kwargs[name] = union_value(list(raw), arms)
+            elif len(raw) == 1 and str(raw[0]).upper() in arms[0]:
+                kwargs[name] = str(raw[0]).upper()
+            elif (arm := dispatch_union_item(raw, arms[1])) is not None:
+                kwargs[name] = arm.from_tokens(raw, context, load_child=load_child)
+            else:
+                raise ValueError(f"{cls.__name__}.{name}: no arm of {f.type} reads {raw}")
+    if unions is not None:
+        _, raw, group = unions
+        if not file:
+            kwargs.update({g.name: v for g, v in zip(group, raw) if v is not None})
+        else:
+            ncelldim = context.ncelldim if isinstance(context.ncelldim, int) else 0
+            forms = union_forms(kwargs) if union_forms else None
+            kwargs.update(_read_unions(list(group), raw, ncelldim, union_arm, forms))
+    # a whole value given for an array or cellid is as given, but a tuple
+    for name, v in kwargs.items():
+        if _is_seq(v) and (is_array(fields[name]) or _is_one_cellid(fields[name])):
+            kwargs[name] = tuple(x.item() if isinstance(x, np.generic) else x for x in v)
+    return kwargs
 
 
 class Item(Record):
@@ -649,260 +863,38 @@ class Item(Record):
     @classmethod
     def from_tokens(  # type: ignore[override]
         cls,
-        tokens: list,
+        tokens: "str | list",
+        context: RowContext | None = None,
         *,
-        ncelldim: int | Mapping[str, int] = 0,
-        sizes: Mapping[str, int] | None = None,
-        boundnames: bool = False,
         union_arm: str = "cellid",
         union_forms: Callable[[Mapping[str, Any]], Any] | None = None,
         load_child: Callable[[attrs.Attribute, str], Any] | None = None,
     ) -> "Item":
-        """Mirror of to_tokens. ``union_arm`` is the arm untagged union
+        """An item from a file row's tokens, laid out by `_layout` given
+        its package's ``context``. ``union_arm`` is the arm untagged union
         columns prefer for numbers, and ``union_forms`` gives the forms
         they take given the row's other columns (see _read_unions).
         ``load_child`` loads a child column's component from the file the
-        row names. ``ncelldim`` is the cellid width, or each cellid
-        column's, by name, when they differ (an exchange between models
-        on different grids).
-
-        Optional untagged columns (e.g. EVT's pxdp/petm/petm0) have no
-        marker token -- MF6 writes a whole trailing group or none, gated by
-        an unrelated OPTIONS flag -- so presence is inferred once from the
-        token budget left after reserving sized/boundname, not per-field.
-        Tagged optional fields self-identify by keyword and skip that budget.
-        """
-        fields = cls.fields()
-        keyword = cls.keyword()
-        keyword_skipped = not keyword
-        has_boundname = _has_boundname_field(cls) and boundnames
-        tail = _tail_fields(cls)
-        nsized = _size(cls, sizes)
-        kwargs: dict[str, Any] = {}
-        tok_idx = 0
-        n = len(tokens)
-
-        def cellid_width(f: attrs.Attribute) -> int:
-            return ncelldim if isinstance(ncelldim, int) else ncelldim[f.name]
-
-        def cellid(f: attrs.Attribute) -> tuple[int, ...] | None:
-            """A cellid, or None for no cell (zeros) if it may allow_zero."""
-            nonlocal tok_idx
-            allow_zero = f.metadata.get("allow_zero")
-            if allow_zero and str(tokens[tok_idx]).upper() == "NONE":
-                # MF6's deprecated form of no cell, one token (SFR's
-                # unconnected reach)
-                tok_idx += 1
-                return None
-            w = cellid_width(f)
-            tok_idx += w
-            cell = tuple(int(tokens[tok_idx - w + j]) - 1 for j in range(w))
-            return None if allow_zero and all(c == -1 for c in cell) else cell
-
-        def consume(f: attrs.Attribute) -> None:
-            nonlocal tok_idx, keyword_skipped
-            if not keyword_skipped and not _is_row_key(f):
-                tok_idx += 1
-                keyword_skipped = True
-            if _dim_counted(cls, f):
-                count = _count(f, sizes)
-                if count is None and not f.metadata.get("optional"):
-                    raise ValueError(f"{cls.__name__}.{f.name}: {inline_dim(f)} unknown")
-                if not count:
-                    return
-                if is_cellid(f):
-                    kwargs[f.name] = tuple(cellid(f) for _ in range(count))
-                    return
-                vals = tokens[tok_idx : tok_idx + count]
-                tok_idx += count
-                if f.metadata.get("index"):
-                    kwargs[f.name] = tuple(int(float(str(v))) - 1 for v in vals)
-                else:
-                    kwargs[f.name] = tuple(_float_or_str(v) for v in vals)
-                return
-            if is_cellid(f):
-                kwargs[f.name] = cellid(f)
-                return
-            if f.metadata.get("index"):
-                kwargs[f.name] = int(float(str(tokens[tok_idx]))) - 1
-                tok_idx += 1
-                return
-            if f.metadata.get("_keyword"):
-                tok_idx += 1
-            if f.metadata.get("direction"):
-                tok_idx += 1
-            if tok_idx >= n:
-                return
-            if f.metadata.get("child"):
-                if load_child is None:
-                    raise ValueError(f"{cls.__name__}.{f.name}: no way to load {tokens[tok_idx]}")
-                kwargs[f.name] = load_child(f, str(tokens[tok_idx]))
-            else:
-                kwargs[f.name] = _coerce(tokens[tok_idx], f)
-            tok_idx += 1
-
-        def width(f: attrs.Attribute) -> int:
-            if _dim_counted(cls, f):
-                return _count(f, sizes) or 0
-            w = 1 + (1 if f.metadata.get("_keyword") else 0)
-            if f.metadata.get("direction"):
-                w += 1
-            return w
-
-        main_fields = [f for f in fields if f not in tail and f.name != "boundname"]
-        # Unions with arm classes, the rest of the row (OC's ocsetting)
-        class_union_fields = [f for f in main_fields if _union_field_arms(cls, f) is not None]
-        main_fields = [f for f in main_fields if f not in class_union_fields]
-        # Trailing columns of varying width (OBS's ids, see _read_unions). A
-        # union with a keyword arm is one token, wherever it falls, read like
-        # any other value (LAK's bedleak: a number or NONE, see _coerce).
-        union_fields = [
-            f
-            for f in main_fields
-            if (kinds := f.metadata.get("union")) is not None and "keyword" not in kinds
-        ]
-        main_fields = [f for f in main_fields if f not in union_fields]
-        array_fields = [
-            f
-            for f in main_fields
-            if is_array(f) and not _is_one_cellid(f) and not _dim_counted(cls, f)
-        ]
-        main_fields = [f for f in main_fields if f not in array_fields]
-        required_fields = [f for f in main_fields if not f.metadata.get("optional")]
-        optional_fields = [f for f in main_fields if f.metadata.get("optional")]
-
-        # An optional column before a required one (MVR's "mname1 pname1
-        # id1 mname2 ...") means reading in column order, so the budget
-        # comes from the required columns' widths instead. Those optional
-        # columns come all together or not at all (MVR's MODELNAMES).
-        columns = cls._columns
-        if columns:
-            optional_fields = _in_columns(cls, optional_fields)
-            fixed = (0 if keyword_skipped else 1) + sum(
-                cellid_width(f) * (width(f) if _dim_counted(cls, f) else 1)
-                if is_cellid(f)
-                else width(f)
-                for f in required_fields
-            )
-        else:
-            for f in required_fields:
-                consume(f)
-            fixed = tok_idx
-
-        has_bn_token = False
-        if has_boundname and n > fixed:
-            last = tokens[-1]
-            has_bn_token = isinstance(last, str) and not _token_fits(last, float)
-        remaining = n - fixed - (1 if has_bn_token else 0) - nsized
-
-        budget_fields = [f for f in optional_fields if not f.metadata.get("tagged")]
-        n_opt_present = 0
-        used = 0
-        for f in budget_fields:
-            w = width(f)
-            if used + w > remaining:
-                break
-            used += w
-            n_opt_present += 1
-        if columns and n_opt_present < len(budget_fields):
-            n_opt_present = 0
-
-        budget_idx = 0
-        ordered = (
-            _in_columns(cls, required_fields + optional_fields) if columns else optional_fields
+        row names."""
+        values = tokens.split() if isinstance(tokens, str) else list(tokens)
+        kwargs = _layout(
+            cls,
+            values,
+            context or RowContext(),
+            file=True,
+            union_arm=union_arm,
+            union_forms=union_forms,
+            load_child=load_child,
         )
-        for f in ordered:
-            if not f.metadata.get("optional"):
-                consume(f)
-                continue
-            if f.metadata.get("tagged"):
-                if not keyword_skipped:
-                    tok_idx += 1
-                    keyword_skipped = True
-                kw = f.name.upper()
-                if tok_idx < n and str(tokens[tok_idx]).upper() == kw:
-                    kwargs[f.name] = True
-                    tok_idx += 1
-                continue
-            present = budget_idx < n_opt_present
-            budget_idx += 1
-            if present:
-                consume(f)
-
-        if union_fields:
-            # The last columns, of varying width (see _read_unions).
-            if not keyword_skipped:
-                tok_idx += 1
-                keyword_skipped = True
-            end = n - (1 if has_bn_token else 0) - nsized
-            forms = union_forms(kwargs) if union_forms else None
-            kwargs.update(
-                _read_unions(
-                    union_fields,
-                    tokens[tok_idx:end],
-                    ncelldim if isinstance(ncelldim, int) else 0,
-                    union_arm,
-                    forms,
-                )
-            )
-            tok_idx = end
-        elif array_fields:
-            # Consumes everything left up to sized/boundname's own reserved
-            # slots -- a keyword-plus-trailing-values setting (PRP's
-            # Steps.steps/Fraction's leaf field: "n1 n2 ..."), coerced
-            # numeric-or-string per token like aux (see below) since the
-            # arity and type aren't fixed.
-            if not keyword_skipped:
-                tok_idx += 1
-                keyword_skipped = True
-            f = array_fields[0]
-            end = n - (1 if has_bn_token else 0) - nsized
-            if (count := kwargs.get(inline_dim(f) or "")) is not None:
-                end = min(end, tok_idx + int(count))
-            vals: list[Any] = []
-            while tok_idx < end:
-                tok = tokens[tok_idx]
-                if _signed(f):
-                    vals.append(int(float(str(tok))))  # see spec.to_signed_indexes
-                elif f.metadata.get("index"):
-                    vals.append(int(float(str(tok))) - 1)
-                elif (elem := _array_elem_type(f)) is not None:
-                    vals.append(elem(float(str(tok))))
-                else:
-                    try:
-                        vals.append(float(tok))
-                    except (ValueError, TypeError):
-                        vals.append(tok)
-                tok_idx += 1
-            kwargs[f.name] = tuple(vals)
-        elif class_union_fields:
-            # A union with arm classes (OC's ocsetting, LKT's laksetting) --
-            # same span logic as array_fields above, but one of its words,
-            # or a typed arm instance, instead of a raw tuple.
-            if not keyword_skipped:
-                tok_idx += 1
-                keyword_skipped = True
-            f = class_union_fields[0]
-            words, arm_classes = cast(tuple, _union_field_arms(cls, f))
-            end = n - (1 if has_bn_token else 0) - nsized
-            span = list(tokens[tok_idx:end])
-            if len(span) == 1 and str(span[0]).upper() in words:
-                kwargs[f.name] = str(span[0]).upper()
-            elif (arm_cls := dispatch_union_item(span, arm_classes)) is not None:
-                kwargs[f.name] = arm_cls.from_tokens(span, sizes=sizes, load_child=load_child)
-            else:
-                raise ValueError(f"{cls.__name__}.{f.name}: no arm of {f.type} reads {span}")
-            tok_idx = end
-        elif not keyword_skipped:
-            tok_idx += 1
-
-        for f in tail:
-            consume(f)
-
-        if has_bn_token:
-            kwargs["boundname"] = str(tokens[-1])
-
         return cls(**kwargs)
+
+    @classmethod
+    def from_values(cls, values: Any, context: RowContext | None = None) -> "Item":
+        """An item from a row of Python values, laid out by `_layout` given
+        its package's ``context``: ``((0, 0, 0), 1.0)`` or ``(0, 0, 0, 1.0)``
+        for CHD's cellid and head, ``("HEAD", "FREQUENCY", 2)`` for OC's
+        Save. Indexes and cellids are 0-based."""
+        return cls(**_layout(cls, list(values), context or RowContext(), file=False))
 
 
 def _unwrap_item(item) -> "type[Item] | tuple[type[Item], ...] | None":
@@ -958,12 +950,14 @@ def dispatch_union_item(item: list, arm_classes: "tuple[type[Item], ...]") -> "t
     return None
 
 
-def construct_union_item(values, arm_classes: "tuple[type[Item], ...]") -> "Item | None":
+def construct_union_item(
+    values, arm_classes: "tuple[type[Item], ...]", context: "RowContext | None" = None
+) -> "Item | None":
     """Build an Item from a flat user-supplied positional tuple for a union
     arm, e.g. ``(0, "STATUS", "ACTIVE")`` for LAK's Status.
 
     Dispatches to the right arm by keyword token, same as dispatch_union_item,
-    then drops that token and builds the rest positionally via construct_item
+    then drops that token and builds the rest positionally via from_values
     -- unlike parse_union_items/from_tokens, the remaining values are already
     Python-side (a 0-based int, a real float, ...), not raw 1-based/string
     file tokens, so they must NOT go through from_tokens's index/type
@@ -977,7 +971,7 @@ def construct_union_item(values, arm_classes: "tuple[type[Item], ...]") -> "Item
     kw_idx = next((i for i, v in enumerate(values) if str(v).upper() == kw), None)
     if kw_idx is not None:
         values = values[:kw_idx] + values[kw_idx + 1 :]
-    return construct_item(arm_cls, values)
+    return arm_cls.from_values(values, context)
 
 
 def parse_union_items(
@@ -985,9 +979,7 @@ def parse_union_items(
     arm_classes: "tuple[type[Item], ...]",
     *,
     words: tuple[str, ...] = (),
-    sizes: Mapping[str, int] | None = None,
-    boundnames: bool = False,
-    dims: "dict | None" = None,
+    context: RowContext | None = None,
     load_child: Callable[[attrs.Attribute, str], Any] | None = None,
 ) -> list | None:
     """Parse raw token items into Item instances, dispatching each by
@@ -1006,14 +998,5 @@ def parse_union_items(
         arm_cls = dispatch_union_item(item, arm_classes)
         if arm_cls is None:
             continue
-        ncelldim = infer_ncelldim([item], arm_cls, sizes=sizes, dims=dims)
-        result.append(
-            arm_cls.from_tokens(
-                item,
-                ncelldim=ncelldim,
-                sizes=sizes,
-                boundnames=boundnames,
-                load_child=load_child,
-            )
-        )
+        result.append(arm_cls.from_tokens(item, context, load_child=load_child))
     return result or None

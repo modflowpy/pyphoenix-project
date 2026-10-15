@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import attrs
 
-from flopy4.mf6.item import Item, infer_ncelldim, is_cellid
+from flopy4.mf6.item import Item, is_cellid, ncelldim_from_dims
 
 if TYPE_CHECKING:
     from flopy4.mf6.model import Model
@@ -42,22 +42,18 @@ class LoadContext:
             raise ValueError(f"{path}: no workspace to resolve against")
         return self.workspace / path
 
-    def ncelldim(
-        self,
-        item_cls: type[Item],
-        rows: list,
-        sizes: Mapping[str, int] | None = None,
-    ) -> int | Mapping[str, int]:
-        """The width of `item_cls`'s cellids in `rows`. Under an exchange,
-        each cellid column's, by name, from the grid of the model the
-        column refers to (its ``model`` metadata: ``"1"`` for
-        ``exgmnamea``, ``"2"`` for ``exgmnameb``, from the DFN). Otherwise
-        from the dims if they say, else from the rows."""
+    def ncelldim(self, item_cls: type[Item]) -> int | Mapping[str, int] | None:
+        """The width of `item_cls`'s cellids. Under an exchange, each
+        cellid column's, by name, from the grid of the model the column
+        refers to (its ``model`` metadata: ``"1"`` for ``exgmnamea``,
+        ``"2"`` for ``exgmnameb``, from the DFN). Otherwise from the dims,
+        if they say; else None, and each row's are solved from its width
+        (see `item._layout`)."""
         cellids = {f.name: f.metadata.get("model") for f in item_cls.fields() if is_cellid(f)}
         widths = self._exchange_widths()
         if cellids and widths and all(model in widths for model in cellids.values()):
             return {name: widths[str(model)] for name, model in cellids.items()}
-        return infer_ncelldim(rows, item_cls, sizes=sizes, dims=dict(self.dims))
+        return ncelldim_from_dims(dict(self.dims))
 
     def _exchange_widths(self) -> dict[str, int] | None:
         """The cellid width of each model the exchange connects, keyed
