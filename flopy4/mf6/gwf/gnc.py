@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, integer, keyword, list_
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -14,43 +14,45 @@ class Gnc(Package):
 
     @attrs.define
     class Gncdata(Item):
-        cellidn: tuple = field(cellid="1")
-        cellidm: tuple = field(cellid="2")
-        cellidsj: tuple[tuple[int, ...], ...] = field(array=True, cellid="1", shape=("numalphaj",))
-        alphasj: tuple[float, ...] = field(array=True, shape=("numalphaj",))
+        cellidn: tuple = array(cellid="1", index=True, shape=("ncelldim",))
+        cellidm: tuple = array(cellid="2", index=True, shape=("ncelldim",))
+        cellidsj: tuple[tuple[int, ...], ...] = array(
+            cellid="1", index=True, shape=("ncelldim", "numalphaj")
+        )
+        alphasj: tuple[float, ...] = array(shape=("numalphaj",))
 
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print simulated flows to listing file",
     )
-    explicit: bool = field(
+    explicit: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="use explicit GNC formulation",
     )
-    numgnc: Optional[int] = field(
+    numgnc: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of ghost node corrections",
     )
-    numalphaj: Optional[int] = field(
+    numalphaj: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of contributing factors",
     )
-    gncdata: Optional[list[Gncdata]] = field(
+    gncdata: Optional[list[Gncdata]] = list_(
         default=None,
         block="gncdata",
-        dim="numgnc",
+        shape=("numgnc",),
     )
 
 

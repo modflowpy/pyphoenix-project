@@ -5,32 +5,32 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import file, keyword
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mvt(Package):
     dfn_name: ClassVar[str] = "gwt-mvt"
 
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save MVT flows to budget file",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -38,7 +38,7 @@ class Mvt(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",

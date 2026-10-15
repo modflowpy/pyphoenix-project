@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, integer, keyword, string
 from flopy4.mf6.utl.ncf_methods import NcfMethods
 
 
@@ -13,78 +13,78 @@ from flopy4.mf6.utl.ncf_methods import NcfMethods
 class Ncf(NcfMethods, Package):
     dfn_name: ClassVar[str] = "utl-ncf"
 
-    wkt: Optional[str] = field(
+    wkt: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="CRS well-known text (WKT1) string",
     )
-    crs_wkt: Optional[str] = field(
+    crs_wkt: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="CRS well-known text (WKT2) string",
     )
-    deflate: Optional[int] = field(
+    deflate: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="variable compression deflate level",
     )
-    shuffle: bool = field(
+    shuffle: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    chunk_time: Optional[int] = field(
+    chunk_time: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="chunking parameter for the time dimension",
     )
-    chunk_face: Optional[int] = field(
+    chunk_face: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="chunking parameter for the mesh face dimension",
     )
-    chunk_z: Optional[int] = field(
+    chunk_z: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="chunking parameter for the layer dimension",
     )
-    chunk_y: Optional[int] = field(
+    chunk_y: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="chunking parameter for structured y",
     )
-    chunk_x: Optional[int] = field(
+    chunk_x: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="chunking parameter for structured x",
     )
-    modflow6_attr_off: bool = field(
+    modflow6_attr_off: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    ncpl: Optional[int] = field(
+    ncpl: Optional[int] = integer(
         default=None,
         block="dimensions",
         optional=True,
         longname="number of cells in layer",
     )
-    latitude: Optional[FloatArrayLike] = field(
+    latitude: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("ncpl",),
         optional=True,
         longname="cell center latitude",
     )
-    longitude: Optional[FloatArrayLike] = field(
+    longitude: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("ncpl",),

@@ -258,7 +258,7 @@ def test_tas_reference_must_name_a_series(function_tmpdir, monkeypatch):
 
     def tas(name):
         return Tas(
-            time_series_name=Tas.TimeSeriesName(time_series_name=[name]),
+            time_series_name=Tas.TimeSeriesName(time_series_name=(name,)),
             interpolation_method=Tas.InterpolationMethod(interpolation_method="linear"),
             tas_array={0.0: np.array([0.1, 0.2]), 1.0: np.array([0.3, 0.4])},
         )

@@ -40,7 +40,7 @@ from flopy4.mf6.gwf_methods import GwfMethods
 from flopy4.mf6.model import Model
 from flopy4.mf6.model_methods import ModelMethods
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import child, file, keyword, record, string
 from flopy4.mf6.utl.obs import Obs
 
 __all__ = [
@@ -93,38 +93,38 @@ class Gwf(GwfMethods, ModelMethods, Model):
     @attrs.define
     class Newtonoptions(Record):
         _keyword: ClassVar[str] = "newton"
-        under_relaxation: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        under_relaxation: Optional[bool] = keyword(default=None, optional=True)
 
-    list_: Optional[str] = field(
+    list_: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="name of listing file",
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save flows for all packages to budget file",
     )
-    newtonoptions: Optional[Newtonoptions] = field(
+    newtonoptions: Optional[Newtonoptions] = record(
         default=None,
         converter=Newtonoptions.convert,
         block="options",
     )
-    netcdf_mesh2d_file: Optional[Path] = path(
+    netcdf_mesh2d_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -132,7 +132,7 @@ class Gwf(GwfMethods, ModelMethods, Model):
         direction="out",
         keyword="netcdf_mesh2d",
     )
-    netcdf_structured_file: Optional[Path] = path(
+    netcdf_structured_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -140,7 +140,7 @@ class Gwf(GwfMethods, ModelMethods, Model):
         direction="out",
         keyword="netcdf_structured",
     )
-    netcdf_input_file: Optional[Path] = path(
+    netcdf_input_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",

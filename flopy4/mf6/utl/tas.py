@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, record, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -18,34 +18,34 @@ class Tas(Package):
     @attrs.define
     class TimeSeriesName(Record):
         _keyword: ClassVar[str] = "name"
-        time_series_name: list[str] = attrs.field()
+        time_series_name: tuple[str, ...] = array()
 
     @attrs.define
     class InterpolationMethod(Record):
         _keyword: ClassVar[str] = "method"
-        interpolation_method: str = attrs.field()
+        interpolation_method: str = string()
 
     @attrs.define
     class Sfac(Record):
         _keyword: ClassVar[str] = "sfac"
-        sfacval: list[float] = attrs.field()
+        sfacval: tuple[float, ...] = array(shape=("time_series_name",))
 
-    time_series_name: Optional[TimeSeriesName] = field(
+    time_series_name: Optional[TimeSeriesName] = record(
         default=None,
         converter=TimeSeriesName.convert,
         block="attributes",
     )
-    interpolation_method: Optional[InterpolationMethod] = field(
+    interpolation_method: Optional[InterpolationMethod] = record(
         default=None,
         converter=InterpolationMethod.convert,
         block="attributes",
     )
-    sfac: Optional[Sfac] = field(
+    sfac: Optional[Sfac] = record(
         default=None,
         converter=Sfac.convert,
         block="attributes",
     )
-    tas_array: Optional[dict[float, FloatArrayLike]] = field(
+    tas_array: Optional[dict[float, FloatArrayLike]] = array(
         default=None,
         block="time",
         shape=("ncpl",),

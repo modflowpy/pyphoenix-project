@@ -6,38 +6,38 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import array, file, keyword, string
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mst(Package):
     dfn_name: ClassVar[str] = "gwt-mst"
 
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save calculated flows to budget file",
     )
-    first_order_decay: bool = field(
+    first_order_decay: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate first-order decay",
     )
-    zero_order_decay: bool = field(
+    zero_order_decay: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate zero-order decay",
     )
-    sorption: Optional[str] = field(
+    sorption: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="activate sorption",
     )
-    sorbate_file: Optional[Path] = path(
+    sorbate_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -45,19 +45,19 @@ class Mst(Package):
         direction="out",
         keyword="sorbate",
     )
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    porosity: FloatArrayLike = field(
+    porosity: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -65,7 +65,7 @@ class Mst(Package):
         netcdf=True,
         longname="porosity",
     )
-    decay: Optional[FloatArrayLike] = field(
+    decay: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -74,7 +74,7 @@ class Mst(Package):
         optional=True,
         longname="aqueous phase decay rate coefficient",
     )
-    decay_sorbed: Optional[FloatArrayLike] = field(
+    decay_sorbed: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -83,7 +83,7 @@ class Mst(Package):
         optional=True,
         longname="sorbed phase decay rate coefficient",
     )
-    bulk_density: Optional[FloatArrayLike] = field(
+    bulk_density: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -92,7 +92,7 @@ class Mst(Package):
         optional=True,
         longname="bulk density",
     )
-    distcoef: Optional[FloatArrayLike] = field(
+    distcoef: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -101,7 +101,7 @@ class Mst(Package):
         optional=True,
         longname="distribution coefficient",
     )
-    sp2: Optional[FloatArrayLike] = field(
+    sp2: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),

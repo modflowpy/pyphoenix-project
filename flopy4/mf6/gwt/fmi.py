@@ -6,7 +6,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import file, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -15,22 +15,22 @@ class Fmi(Package):
 
     @attrs.define
     class Packagedata(Item):
-        flowtype: str = field()
-        fname: Path = path(converter=Path, direction="in")
+        flowtype: str = string()
+        fname: Path = file(converter=Path, direction="in")
 
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save calculated flow imbalance correction to budget file",
     )
-    flow_imbalance_correction: bool = field(
+    flow_imbalance_correction: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="correct for flow imbalance",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
     )

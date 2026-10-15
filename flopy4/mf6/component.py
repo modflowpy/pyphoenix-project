@@ -10,9 +10,10 @@ from attrs import fields
 from flopy4.dimensions import DimensionResolverMixin
 from flopy4.mf6.constants import MF6
 from flopy4.mf6.external import write_session
-from flopy4.mf6.spec import field, fields_dict
+from flopy4.mf6.spec import fields_dict
 from flopy4.mf6.write_context import WriteContext
 from flopy4.uio import IO, Loader, Writer
+from flopy4.utils import empty_if_none
 
 if TYPE_CHECKING:
     from flopy4.mf6.load_context import LoadContext
@@ -208,11 +209,11 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     _load = IO(Loader)  # type: ignore
     _write = IO(Writer)  # type: ignore
 
-    filename: Optional[Path] = field(default=None, converter=attrs.converters.optional(Path))
+    filename: Optional[Path] = attrs.field(default=None, converter=attrs.converters.optional(Path))
     """The component's input file, relative to the workspace (a `str` is
     accepted and converted). Written to name files with POSIX separators."""
 
-    name: str = field(
+    name: str = attrs.field(
         default=attrs.Factory(lambda self: type(self).__name__.lower(), takes_self=True)
     )
     """The component's own identity/tag name. Computed per-instance from
@@ -223,7 +224,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     `_attach_to_parent_field()` when a component is attached as a named
     child; otherwise this default stands."""
 
-    _parent: Any = field(default=None, repr=False, eq=False)
+    _parent: Any = attrs.field(default=None, repr=False, eq=False)
     """Parent back-reference -- source of truth for "who is this
     component's parent", top-down (`Gwf(dis=Dis(...))`) and bottom-up
     (`Dis(parent=gwf)`) alike. Leading underscore triggers attrs' private-
@@ -238,7 +239,7 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     since a live `.parent` would otherwise be a reference cycle.
     """
 
-    write_context: Optional[WriteContext] = field(default=None, repr=False, eq=False)
+    write_context: Optional[WriteContext] = attrs.field(default=None, repr=False, eq=False)
     """How to write this component: whole-write settings, and settings
     for its own arrays, by field (see `WriteContext`). Loading sets it to
     reproduce how the file wrote its arrays; set it to None to drop that.
@@ -247,9 +248,9 @@ class Component(DimensionResolverMixin, ABC, MutableMapping):
     the ancestor's own fields). Not written to file, and left out of
     `to_dict()`."""
 
-    dims: dict = field(
+    dims: dict = attrs.field(
         default=attrs.Factory(dict),
-        converter=attrs.converters.default_if_none(factory=dict),
+        converter=empty_if_none,
         repr=False,
         eq=False,
     )

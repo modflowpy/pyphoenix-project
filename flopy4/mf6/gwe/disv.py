@@ -10,7 +10,7 @@ from flopy4.mf6.dims_provider_methods import DimsProviderMethods
 from flopy4.mf6.disv_methods import DisvMethods
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string
 from flopy4.mf6.utl.ncf import Ncf
 
 
@@ -22,33 +22,31 @@ class Disv(DisvMethods, DimsProviderMethods, Package):
 
     @attrs.define
     class Vertices(Item):
-        iv: int = field(index=True, pk=True)
-        xv: float = field()
-        yv: float = field()
+        iv: int = integer(index=True, pk=True)
+        xv: float = double()
+        yv: float = double()
 
     @attrs.define
     class Cell2d(Item):
-        icell2d: int = field(index=True, pk=True)
-        xc: float = field()
-        yc: float = field()
-        ncvert: Optional[int] = field(default=None, optional=True)
-        icvert: tuple[int, ...] = field(
-            default=(), array=True, index=True, shape=("ncvert",), optional=True
-        )
+        icell2d: int = integer(index=True, pk=True)
+        xc: float = double()
+        yc: float = double()
+        ncvert: Optional[int] = integer(default=None, optional=True)
+        icvert: tuple[int, ...] = array(default=(), index=True, shape=("ncvert",), optional=True)
 
-    length_units: Optional[str] = field(
+    length_units: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="model length units",
     )
-    nogrb: bool = field(
+    nogrb: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="do not write binary grid file",
     )
-    grb_file: Optional[Path] = path(
+    grb_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -56,66 +54,66 @@ class Disv(DisvMethods, DimsProviderMethods, Package):
         direction="out",
         keyword="grb6",
     )
-    xorigin: Optional[float] = field(
+    xorigin: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="x-position origin of the model grid coordinate system",
     )
-    yorigin: Optional[float] = field(
+    yorigin: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="y-position origin of the model grid coordinate system",
     )
-    angrot: Optional[float] = field(
+    angrot: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="rotation angle",
     )
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    crs: Optional[str] = field(
+    crs: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="CRS user input string",
     )
     ncf: Optional[Ncf] = child(block="options", keyword="ncf6", direction="in")
-    nlay: Optional[int] = field(
+    nlay: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of layers",
     )
-    ncpl: Optional[int] = field(
+    ncpl: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of cells per layer",
     )
-    nvert: Optional[int] = field(
+    nvert: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of vertices",
     )
-    top: FloatArrayLike = field(
+    top: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("ncpl",),
         netcdf=True,
         longname="model top elevation",
     )
-    botm: FloatArrayLike = field(
+    botm: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -123,7 +121,7 @@ class Disv(DisvMethods, DimsProviderMethods, Package):
         netcdf=True,
         longname="model bottom elevation",
     )
-    idomain: Optional[IntArrayLike] = field(
+    idomain: Optional[IntArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -132,15 +130,15 @@ class Disv(DisvMethods, DimsProviderMethods, Package):
         optional=True,
         longname="idomain existence array",
     )
-    vertices: Optional[list[Vertices]] = field(
+    vertices: Optional[list[Vertices]] = list_(
         default=None,
         block="vertices",
-        dim="nvert",
+        shape=("nvert",),
     )
-    cell2d: Optional[list[Cell2d]] = field(
+    cell2d: Optional[list[Cell2d]] = list_(
         default=None,
         block="cell2d",
-        dim="ncpl",
+        shape=("ncpl",),
     )
 
     nodes = DerivedDim("nlay * ncpl")

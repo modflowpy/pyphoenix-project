@@ -21,6 +21,8 @@ from typing import Any, Literal, Union, cast, get_args, get_origin
 import attrs
 import numpy as np
 
+from flopy4.spec import is_array
+
 
 def _resolve_sibling_class(cls: type, name: str) -> Any | None:
     """Resolve a bare sibling class name one level up from `cls` in
@@ -104,18 +106,9 @@ def _coerce(token: Any, f: attrs.Attribute) -> Any:
     return token
 
 
-def _is_list_field(f: attrs.Attribute) -> bool:
-    """True for ``list[X]`` or ``Optional[list[X]]``"""
-    t = f.type
-    origin = get_origin(t)
-    if origin is types.UnionType or origin is Union:
-        t = next((a for a in get_args(t) if a is not type(None)), t)
-        origin = get_origin(t)
-    return origin is list
-
-
-def _list_elem_coerce(token: Any, f: attrs.Attribute) -> Any:
-    """Coerce one token to a list field's declared element type."""
+def _elem_coerce(token: Any, f: attrs.Attribute) -> Any:
+    """Coerce one token to an inline array's element type: ``X`` of
+    ``tuple[X, ...]`` or ``Optional[tuple[X, ...]]``."""
     t = f.type
     origin = get_origin(t)
     if origin is types.UnionType or origin is Union:
@@ -209,8 +202,8 @@ class Record:
           ``(1.0, 1, 0)``);
         - a mapping, the record's values by name;
         - any other value, the first value, the rest being optional (IMS's
-          ``INNER_RCLOSE``: ``1e-4``; TS6's ``NAMES``: ``["a", "b"]``). A
-          list value can be given as one element.
+          ``INNER_RCLOSE``: ``1e-4``; TS6's ``NAMES``: ``("a", "b")``). An
+          array value can be given as one element, or as any iterable.
 
         A record made of one nested record (OC's ``HEAD PRINT_FORMAT``)
         also takes that record or its plain forms. Anything else raises
@@ -235,8 +228,8 @@ class Record:
         kwargs: dict = {}
         if isinstance(value, Mapping):
             kwargs = dict(value)
-        elif len(fields) == 1 and _is_list_field(fields[0]):
-            args = (list(value) if isinstance(value, Iterable) else [value],)
+        elif len(fields) == 1 and is_array(fields[0]):
+            args = (tuple(value) if isinstance(value, Iterable) else (value,),)
         elif isinstance(value, tuple):
             args = value
         elif isinstance(value, (list, np.ndarray)):
@@ -351,19 +344,19 @@ class Record:
         positional_queue = required_tagged + untagged
         remaining = [t for j, t in enumerate(tokens) if j not in consumed]
 
-        list_field = next((f for f in positional_queue if _is_list_field(f)), None)
-        if list_field is not None:
-            idx = positional_queue.index(list_field)
+        array_field = next((f for f in positional_queue if is_array(f)), None)
+        if array_field is not None:
+            idx = positional_queue.index(array_field)
             assert idx == len(positional_queue) - 1, (
-                f"{cls.__name__}.{list_field.name}: a list-typed record field must be "
-                "the last positional field -- it consumes all remaining tokens"
+                f"{cls.__name__}.{array_field.name}: an inline array must be the last "
+                "positional field -- it consumes all remaining tokens"
             )
             scalar_fields = positional_queue[:idx]
             for f, tok in zip(scalar_fields, remaining):
                 kwargs[f.name] = _coerce(tok, f)
-            kwargs[list_field.name] = [
-                _list_elem_coerce(tok, list_field) for tok in remaining[len(scalar_fields) :]
-            ]
+            kwargs[array_field.name] = tuple(
+                _elem_coerce(tok, array_field) for tok in remaining[len(scalar_fields) :]
+            )
         else:
             for f, tok in zip(positional_queue, remaining):
                 kwargs[f.name] = _coerce(tok, f)

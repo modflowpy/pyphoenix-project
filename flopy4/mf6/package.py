@@ -19,6 +19,7 @@ from flopy4.mf6.item import (
     Item,
     construct_item,
     dim_lookup,
+    inline_dim,
     item_list_type,
     item_list_words,
     package_sized_fields,
@@ -145,7 +146,8 @@ class Package(Component, ABC):
             item_cls = item_list_type(f.type)
             if item_cls is None:
                 continue
-            bound, dim = split_bound(f.metadata["dim"]) if "dim" in f.metadata else (None, None)
+            shape = f.metadata.get("shape")
+            bound, dim = split_bound(shape[0]) if shape else (None, None)
             raw = self.__dict__.get(f.name)
             # Identity, not equality: only the default object itself (never
             # a user value, even an equal one) is repeated to fill `dim`.
@@ -180,11 +182,13 @@ class Package(Component, ABC):
         fields = attrs.fields(type(self))  # type: ignore[arg-type]
         names = {f.name for f in fields if f.metadata.get("block") == "dimensions"}
         for f in fields:
-            if not f.metadata.get("block") or "dim" not in f.metadata:
+            if not f.metadata.get("block") or item_list_type(f.type) is None:
                 continue
-            bound, dim = split_bound(f.metadata["dim"])
+            if not (shape := f.metadata.get("shape")):
+                continue
+            bound, dim = split_bound(shape[0])
             rows = self.__dict__.get(f.name)
-            if dim not in names or rows is None or item_list_type(f.type) is None:
+            if dim not in names or rows is None:
                 continue
             if f.metadata.get("fill_forward"):
                 yield bound, dim, max((len(r) for r in rows.values()), default=0)
@@ -223,7 +227,7 @@ class Package(Component, ABC):
             if not (rows := self.__dict__.get(f.name)):
                 continue
             for col in item_cls.fields():
-                shape = col.metadata.get("shape", ("",))[0]
+                shape = inline_dim(col) or ""
                 if "(" not in shape:  # not a row lookup
                     continue
                 looked_up: list[str] = []
@@ -342,7 +346,7 @@ class Package(Component, ABC):
             return dim_lookup(values, name)
 
         for f in package_sized_fields(item_cls):
-            shape = f.metadata["shape"][0]
+            shape = inline_dim(f) or ""
             lengths = {len(v) for r in rows if (v := getattr(r, f.name))}
             if len(lengths) > 1:
                 raise ValueError(f"{f.name} lengths differ across rows: {sorted(lengths)}")

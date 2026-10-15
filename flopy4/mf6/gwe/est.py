@@ -5,50 +5,50 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, double, keyword
 
 
 @attrs.define(kw_only=True, slots=False)
 class Est(Package):
     dfn_name: ClassVar[str] = "gwe-est"
 
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save calculated flows to budget file",
     )
-    zero_order_decay_water: bool = field(
+    zero_order_decay_water: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate zero-order decay in aqueous phase",
     )
-    zero_order_decay_solid: bool = field(
+    zero_order_decay_solid: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate zero-order decay in solid phase",
     )
-    density_water: Optional[float] = field(
+    density_water: Optional[float] = double(
         default=1000.0,
         block="options",
         optional=True,
         longname="density of water",
     )
-    heat_capacity_water: Optional[float] = field(
+    heat_capacity_water: Optional[float] = double(
         default=4184.0,
         block="options",
         optional=True,
         longname="heat capacity of water",
     )
-    latent_heat_vaporization: Optional[float] = field(
+    latent_heat_vaporization: Optional[float] = double(
         default=2453500.0,
         block="options",
         optional=True,
         longname="latent heat of vaporization",
     )
-    porosity: FloatArrayLike = field(
+    porosity: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -56,7 +56,7 @@ class Est(Package):
         netcdf=True,
         longname="porosity",
     )
-    decay_water: Optional[FloatArrayLike] = field(
+    decay_water: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -65,7 +65,7 @@ class Est(Package):
         optional=True,
         longname="aqueous phase decay rate coefficient",
     )
-    decay_solid: Optional[FloatArrayLike] = field(
+    decay_solid: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -74,7 +74,7 @@ class Est(Package):
         optional=True,
         longname="solid phase decay rate coefficient",
     )
-    heat_capacity_solid: FloatArrayLike = field(
+    heat_capacity_solid: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -82,7 +82,7 @@ class Est(Package):
         netcdf=True,
         longname="heat capacity of the aquifer material",
     )
-    density_solid: FloatArrayLike = field(
+    density_solid: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),

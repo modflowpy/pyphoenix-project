@@ -3,9 +3,9 @@ connectiondata, period data, ...).
 
 Adds what Record doesn't need: index/pk/fk renumbering, cellid packing,
 sized/boundname trailing columns, and external parse context (ncelldim/sizes/
-boundnames -- facts about the surrounding list/package, not one row). A
-sized column (``shape`` metadata, e.g. aux sized by the package's
-``auxiliary``) holds as many values as the named package field has. A
+boundnames -- facts about the surrounding list/package, not one row). An
+inline array sized by the package (aux, by its ``auxiliary``) holds as many
+values as the named package field has. A
 tagged field here is always a bare presence flag (e.g. LAK tables' MIXED) --
 unlike Record's tagged fields, which may carry a value.
 
@@ -25,35 +25,52 @@ import attrs
 
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.record import Record, _coerce, _resolve_sibling_class
+from flopy4.spec import is_array
 
 
 def _cellid_field(cls: type) -> attrs.Attribute | None:
     return next((f for f in cast(type[Record], cls).fields() if f.metadata.get("cellid")), None)
 
 
-def _shape_dim(f: attrs.Attribute) -> str | None:
-    """The dimension an inline array field's ``shape`` names."""
-    shape = f.metadata.get("shape")
-    return shape[0] if shape else None
+def inline_dim(f: attrs.Attribute) -> str | None:
+    """The dimension counting an inline array's values, or None if it has
+    none (it takes the rest of the row). A cellid array's shape starts with
+    ``ncelldim``, one cellid's components; the dimension after it counts
+    cellids."""
+    shape = f.metadata.get("shape") or ()
+    counts = shape[1:] if f.metadata.get("cellid") else shape
+    return counts[0] if counts else None
+
+
+def _is_one_cellid(f: attrs.Attribute) -> bool:
+    """Whether a field is one cellid. The DFN declares it an array of its
+    ``ncelldim`` components, but in a row it is one value, of the grid's
+    width: unlike an unsized inline array, it doesn't take the rest of the
+    row, and it is written as NONE when unset."""
+    return bool(f.metadata.get("cellid")) and inline_dim(f) is None
+
+
+def _signed(f: attrs.Attribute) -> bool:
+    return f.metadata.get("index") == "signed"
 
 
 def _sized_by_field(cls: type, f: attrs.Attribute) -> bool:
-    """Whether another field of the record sizes the array field ``f`` (cell2d's
+    """Whether another field of the record sizes the inline array ``f`` (cell2d's
     icvert, by ncvert)."""
-    return _shape_dim(f) in attrs.fields_dict(cls)  # type: ignore[arg-type]
+    return inline_dim(f) in attrs.fields_dict(cls)  # type: ignore[arg-type]
 
 
 def _sized_by_lookup(f: attrs.Attribute) -> bool:
-    """Whether the array field ``f`` is sized by a field of the row another
+    """Whether the inline array ``f`` is sized by a field of the row another
     field refers to (SFR's ic, by packagedata.ncon(ifno)). A shape names a
     dim, which may be offset, or looks up a row: only a lookup has a call."""
-    return bool((dim := _shape_dim(f)) and "(" in dim)
+    return bool((dim := inline_dim(f)) and "(" in dim)
 
 
 def _sized_by_package(cls: type, f: attrs.Attribute) -> bool:
-    """Whether a package field or dimension sizes the array field ``f`` (aux,
+    """Whether a package field or dimension sizes the inline array ``f`` (aux,
     by auxiliary; GNC's cellidsj, by numalphaj; EVT's pxdp, by nseg-1)."""
-    return _shape_dim(f) is not None and not _sized_by_field(cls, f) and not _sized_by_lookup(f)
+    return inline_dim(f) is not None and not _sized_by_field(cls, f) and not _sized_by_lookup(f)
 
 
 def _tail_fields(cls: type) -> list[attrs.Attribute]:
@@ -76,17 +93,17 @@ def _size(cls: type, sizes: Mapping[str, int] | None) -> int:
 
 
 def _counted_fields(cls: type) -> dict[str, attrs.Attribute]:
-    """Count field name -> the array field it counts (cell2d's ncvert ->
+    """Count field name -> the inline array it counts (cell2d's ncvert ->
     icvert)."""
     return {
-        _shape_dim(f): f  # type: ignore[misc]
+        inline_dim(f): f  # type: ignore[misc]
         for f in cast(type[Record], cls).fields()
         if _sized_by_field(cls, f)
     }
 
 
 def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
-    """An array field counted by a package field or dimension rather than
+    """An inline array counted by a package field or dimension rather than
     another field of the record (GNC's cellidsj, by numalphaj; EVT's pxdp, by
     nseg-1; aux, by auxiliary): fixed width, read in place."""
     return _sized_by_package(cls, f)
@@ -95,7 +112,7 @@ def _dim_counted(cls: type, f: attrs.Attribute) -> bool:
 def _count(f: attrs.Attribute, sizes: Mapping[str, int] | None) -> int | None:
     """How many values a package-sized field takes, or None if its shape
     isn't known. ``sizes`` maps shape expressions to their values."""
-    return (sizes or {}).get(f.metadata["shape"][0])
+    return (sizes or {}).get(inline_dim(f) or "")
 
 
 def _lookup(values: Mapping[str, Any], name: str) -> Any:
@@ -117,14 +134,14 @@ def dim_lookup(values: Mapping[str, Any], name: str) -> Any:
 
 
 def package_sized_fields(cls: type) -> list[attrs.Attribute]:
-    """An item class's array fields sized by a package field or dimension."""
+    """An item class's inline arrays sized by a package field or dimension."""
     return [f for f in cast(type[Record], cls).fields() if _sized_by_package(cls, f)]
 
 
 def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
     """The shape expressions of an item class's columns sized by the package."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
-    return {f.metadata["shape"][0] for c in classes for f in package_sized_fields(c)}
+    return {inline_dim(f) or "" for c in classes for f in package_sized_fields(c)}
 
 
 def _has_boundname_field(cls: type) -> bool:
@@ -229,7 +246,7 @@ def construct_item(item_cls: type, values) -> "Item":
             i
             for i, f in enumerate(fields)
             if f in _tail_fields(item_cls)
-            or (f.metadata.get("array") and not _dim_counted(item_cls, f))
+            or (is_array(f) and not _is_one_cellid(f) and not _dim_counted(item_cls, f))
             or _union_field_arms(item_cls, f) is not None
         ),
         None,
@@ -534,25 +551,25 @@ class Item(Record):
                         f"{cls.__name__}.{f.name}={val} but {counted[f.name].name} has {n} values"
                     )
                 val = n
-            if val is None and not (f.metadata.get("cellid") and not f.metadata.get("array")):
+            if val is None and not _is_one_cellid(f):
                 continue
             if not keyword_emitted and not _is_row_key(f):
                 row.append(keyword.upper())
                 keyword_emitted = True
-            if f.metadata.get("cellid") and f.metadata.get("array"):
-                row.extend(int(c) + 1 for cellid in val for c in cellid)
-            elif f.metadata.get("cellid"):
+            if _is_one_cellid(f):
                 # see from_tokens' cellid()
                 row.extend(["NONE"] if val is None else (int(c) + 1 for c in val))
+            elif f.metadata.get("cellid"):
+                row.extend(int(c) + 1 for cellid in val for c in cellid)
             elif arms := f.metadata.get("union"):
                 row.extend(_union_tokens(val, arms))
-            elif f.metadata.get("array") and f.metadata.get("signed"):
+            elif is_array(f) and _signed(f):
                 row.extend((int(i) + 1) * sign for i, sign in val)
-            elif f.metadata.get("array") and f.metadata.get("index"):
+            elif is_array(f) and f.metadata.get("index"):
                 row.extend(int(v) + 1 for v in val)
             elif f.metadata.get("index"):
                 row.append(int(val) + 1)
-            elif f.metadata.get("array"):
+            elif is_array(f):
                 row.extend(_ts_token(v) for v in val)
             elif f.metadata.get("tagged"):
                 if val:
@@ -639,7 +656,7 @@ class Item(Record):
             if _dim_counted(cls, f):
                 count = _count(f, sizes)
                 if count is None and not f.metadata.get("optional"):
-                    raise ValueError(f"{cls.__name__}.{f.name}: {_shape_dim(f)} unknown")
+                    raise ValueError(f"{cls.__name__}.{f.name}: {inline_dim(f)} unknown")
                 if not count:
                     return
                 if f.metadata.get("cellid"):
@@ -695,7 +712,9 @@ class Item(Record):
         ]
         main_fields = [f for f in main_fields if f not in union_fields]
         array_fields = [
-            f for f in main_fields if f.metadata.get("array") and not _dim_counted(cls, f)
+            f
+            for f in main_fields
+            if is_array(f) and not _is_one_cellid(f) and not _dim_counted(cls, f)
         ]
         main_fields = [f for f in main_fields if f not in array_fields]
         required_fields = [f for f in main_fields if not f.metadata.get("optional")]
@@ -784,12 +803,12 @@ class Item(Record):
                 keyword_skipped = True
             f = array_fields[0]
             end = n - (1 if has_bn_token else 0) - nsized
-            if (count := kwargs.get(_shape_dim(f) or "")) is not None:
+            if (count := kwargs.get(inline_dim(f) or "")) is not None:
                 end = min(end, tok_idx + int(count))
             vals: list[Any] = []
             while tok_idx < end:
                 tok = tokens[tok_idx]
-                if f.metadata.get("signed"):
+                if _signed(f):
                     vals.append(int(float(str(tok))))  # see spec.to_signed_indexes
                 elif f.metadata.get("index"):
                     vals.append(int(float(str(tok))) - 1)

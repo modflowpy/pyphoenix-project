@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, double, integer, keyword, list_
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -14,28 +14,28 @@ class Hfb(Package):
 
     @attrs.define
     class StressPeriodData(Item):
-        cellid1: tuple = field(cellid=True)
-        cellid2: tuple = field(cellid=True)
-        hydchr: float = field()
+        cellid1: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid2: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        hydchr: float = double()
 
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="model print input to listing file",
     )
-    maxhfb: Optional[int] = field(
+    maxhfb: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="maximum number of barriers",
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,
         block="period",
         fill_forward=True,
-        dim="<=maxhfb",
+        shape=("<=maxhfb",),
     )
 
 

@@ -29,6 +29,7 @@ from flopy4.mf6.period_arrays import is_grid_package
 from flopy4.mf6.record import Record
 from flopy4.mf6.spec import repeating_array_key_type, to_field_type
 from flopy4.mf6.write_context import ArrayIO, WriteContext, array_hash
+from flopy4.spec import is_array
 from flopy4.utils import unwrap_optional
 
 
@@ -807,8 +808,8 @@ def structure_component(
     raw : dict
         Output of ``loads()`` — {BLOCK_NAME_UPPER: list_of_token_rows}.
     cls : type
-        The component class to instantiate. Fields are read via ``block``/
-        ``schema``/``oc_action`` metadata (see ``flopy4.mf6.spec.field``).
+        The component class to instantiate. Fields are read via their
+        ``block`` metadata (see ``flopy4.mf6.spec``).
     context : LoadContext, optional
         Where the file sits in the simulation: the workspace relative
         paths resolve against, the grid dims (e.g. {"nlay": 3, "nodes":
@@ -847,7 +848,7 @@ def structure_component(
             alias_map[f.alias] = f.name
 
     # Block-level file records ("TS6 FILEIN <file>") are keyed by their
-    # trigger keyword, the path field's _keyword metadata (see spec.path),
+    # trigger keyword, the path field's _keyword metadata (see spec.file),
     # not by the field's py name (ts_file).
     file_fields: dict[str, Any] = {
         f.metadata["_keyword"]: f for f in all_fields.values() if f.metadata.get("_keyword")
@@ -918,7 +919,7 @@ def structure_component(
     array_fields: dict[str, dict[str, Any]] = {}
     for f in all_fields.values():
         if (
-            f.metadata.get("shape")
+            is_array(f)
             and not f.metadata.get("fill_forward")
             and f.name not in repeating_array_fields
             and item_list_type(f.type) is None

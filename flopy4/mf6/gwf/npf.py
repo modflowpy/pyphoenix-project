@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import array, child, double, integer, keyword, record, string
 from flopy4.mf6.utl.tvk import Tvk
 
 
@@ -17,109 +17,109 @@ class Npf(Package):
     @attrs.define
     class Cvoptions(Record):
         _keyword: ClassVar[str] = "variablecv"
-        dewatered: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        dewatered: Optional[bool] = keyword(default=None, optional=True)
 
     @attrs.define
     class Rewet(Record):
         _keyword: ClassVar[str] = "rewet"
-        wetfct: float = attrs.field(metadata={"tagged": True})
-        iwetit: int = attrs.field(metadata={"tagged": True})
-        ihdwet: int = attrs.field(metadata={"tagged": True})
+        wetfct: float = double(tagged=True)
+        iwetit: int = integer(tagged=True)
+        ihdwet: int = integer(tagged=True)
 
     @attrs.define
     class Xt3doptions(Record):
         _keyword: ClassVar[str] = "xt3d"
-        rhs: Optional[bool] = attrs.field(default=None, metadata={"tagged": True})
+        rhs: Optional[bool] = keyword(default=None, optional=True)
 
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to save NPF flows",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to print NPF flows to listing file",
     )
-    alternative_cell_averaging: Optional[str] = field(
+    alternative_cell_averaging: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="conductance weighting option",
     )
-    thickstrt: bool = field(
+    thickstrt: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to activate THICKSTRT option",
     )
-    cvoptions: Optional[Cvoptions] = field(
+    cvoptions: Optional[Cvoptions] = record(
         default=None,
         converter=Cvoptions.convert,
         block="options",
     )
-    perched: bool = field(
+    perched: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to activate PERCHED option",
     )
-    rewet: Optional[Rewet] = field(
+    rewet: Optional[Rewet] = record(
         default=None,
         converter=Rewet.convert,
         block="options",
     )
-    xt3doptions: Optional[Xt3doptions] = field(
+    xt3doptions: Optional[Xt3doptions] = record(
         default=None,
         converter=Xt3doptions.convert,
         block="options",
     )
-    highest_cell_saturation: bool = field(
+    highest_cell_saturation: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to activate HIGHEST_CELL_SATURATION option",
     )
-    save_specific_discharge: bool = field(
+    save_specific_discharge: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to save specific discharge",
     )
-    save_saturation: bool = field(
+    save_saturation: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to save saturation",
     )
-    k22overk: bool = field(
+    k22overk: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate that specified K22 is a ratio",
     )
-    k33overk: bool = field(
+    k33overk: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="keyword to indicate that specified K33 is a ratio",
     )
     tvk: Optional[Tvk] = child(block="options", keyword="tvk6", direction="in")
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    icelltype: Optional[IntArrayLike] = field(
+    icelltype: Optional[IntArrayLike] = array(
         default=0,
         block="griddata",
         shape=("nodes",),
@@ -128,7 +128,7 @@ class Npf(Package):
         optional=True,
         longname="confined or convertible indicator",
     )  # type: ignore[assignment]
-    k: Optional[FloatArrayLike] = field(
+    k: Optional[FloatArrayLike] = array(
         default=1.0,
         block="griddata",
         shape=("nodes",),
@@ -137,7 +137,7 @@ class Npf(Package):
         optional=True,
         longname="hydraulic conductivity (L/T)",
     )  # type: ignore[assignment]
-    k22: Optional[FloatArrayLike] = field(
+    k22: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -146,7 +146,7 @@ class Npf(Package):
         optional=True,
         longname="hydraulic conductivity of second ellipsoid axis",
     )
-    k33: Optional[FloatArrayLike] = field(
+    k33: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -155,7 +155,7 @@ class Npf(Package):
         optional=True,
         longname="hydraulic conductivity of third ellipsoid axis (L/T)",
     )
-    angle1: Optional[FloatArrayLike] = field(
+    angle1: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -164,7 +164,7 @@ class Npf(Package):
         optional=True,
         longname="first anisotropy rotation angle (degrees)",
     )
-    angle2: Optional[FloatArrayLike] = field(
+    angle2: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -173,7 +173,7 @@ class Npf(Package):
         optional=True,
         longname="second anisotropy rotation angle (degrees)",
     )
-    angle3: Optional[FloatArrayLike] = field(
+    angle3: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -182,7 +182,7 @@ class Npf(Package):
         optional=True,
         longname="third anisotropy rotation angle (degrees)",
     )
-    wetdry: Optional[FloatArrayLike] = field(
+    wetdry: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),

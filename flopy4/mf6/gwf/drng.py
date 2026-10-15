@@ -5,9 +5,9 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, FloatArrayLike, to_array
+from flopy4.mf6._types import FloatArrayLike, to_array
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import array, child, integer, keyword, string
 from flopy4.mf6.utl.obs import Obs
 
 
@@ -22,68 +22,67 @@ class Drng(Package):
         "to-mvr": (("cellid",), ("string",)),
     }
 
-    readarraygrid: bool = field(
+    readarraygrid: bool = keyword(
         default=True,
         block="options",
         longname="use array-based grid input",
     )
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    auxmultname: Optional[str] = field(
+    auxmultname: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="name of auxiliary variable for multiplier",
     )
-    auxdepthname: Optional[str] = field(
+    auxdepthname: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="name of auxiliary variable for drainage depth",
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save DRNG flows to budget file",
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    maxbound: Optional[int] = field(
+    maxbound: Optional[int] = integer(
         default=None,
         block="dimensions",
         optional=True,
         longname="maximum number of drain cells in any stress period",
     )
-    elev: Optional[dict[int, FloatArrayLike | None]] = field(
+    elev: Optional[dict[int, FloatArrayLike | None]] = array(
         default=None,
         block="period",
         shape=("nodes",),
@@ -91,7 +90,7 @@ class Drng(Package):
         netcdf=True,
         fill_forward=True,
     )
-    cond: Optional[dict[int, FloatArrayLike | None]] = field(
+    cond: Optional[dict[int, FloatArrayLike | None]] = array(
         default=None,
         block="period",
         shape=("nodes",),
@@ -99,7 +98,7 @@ class Drng(Package):
         netcdf=True,
         fill_forward=True,
     )
-    aux: Optional[dict[int, dict[str, FloatArrayLike]]] = field(
+    aux: Optional[dict[int, dict[str, FloatArrayLike]]] = array(
         default=None,
         block="period",
         shape=("nodes",),

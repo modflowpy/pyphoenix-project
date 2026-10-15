@@ -12,3 +12,9 @@ def fields_dict(cls) -> dict[str, Attribute]:
     whose keys are field names. Each field is an `attrs.Attribute`.
     """
     return dict(attrs_fields_dict(cls))
+
+
+def is_array(f: Attribute) -> bool:
+    """Whether a field is an array (its DFN type, which the field functions
+    in `flopy4.mf6.spec` record in its metadata)."""
+    return f.metadata.get("type") == "array"

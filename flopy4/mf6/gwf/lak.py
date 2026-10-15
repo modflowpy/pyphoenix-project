@@ -6,10 +6,10 @@ import attrs
 import numpy as np
 from numpy.typing import NDArray
 
-from flopy4.mf6._types import ARRAY_EQ, TimeSeriesRef, to_array
+from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field, path
+from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
 from flopy4.mf6.utl.laktab import Laktab
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
@@ -45,120 +45,120 @@ class Lak(Package):
 
     @attrs.define
     class Packagedata(Item):
-        ifno: int = field(index=True, pk=True)
-        strt: float = field()
-        nlakeconn: int = field()
-        aux: tuple[Union[float, TimeSeriesRef], ...] = field(
-            default=(), array=True, shape=("auxiliary",), time_series=True, optional=True
+        ifno: int = integer(index=True, pk=True)
+        strt: float = double()
+        nlakeconn: int = integer()
+        aux: tuple[Union[float, TimeSeriesRef], ...] = array(
+            default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = field(default=None, optional=True)
+        boundname: Optional[str] = string(default=None, optional=True)
 
     @attrs.define
     class Connectiondata(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
-        iconn: int = field(index=True)
-        cellid: tuple = field(cellid=True)
-        claktype: str = field()
-        bedleak: Union[Literal["NONE"], float] = field(union=("keyword", "double"))
-        belev: float = field()
-        telev: float = field()
-        connlen: float = field()
-        connwidth: float = field()
+        ifno: int = integer(index=True, fk="packagedata.ifno")
+        iconn: int = integer(index=True)
+        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        claktype: str = string()
+        bedleak: Union[Literal["NONE"], float] = union("keyword", "double")
+        belev: float = double()
+        telev: float = double()
+        connlen: float = double()
+        connwidth: float = double()
 
     @attrs.define
     class Tables(Item):
-        ifno: int = field(index=True, fk="packagedata.ifno")
+        ifno: int = integer(index=True, fk="packagedata.ifno")
         laktab: Laktab = child(keyword="tab6", direction="in", default=attrs.NOTHING)
 
     @attrs.define
     class Outlets(Item):
-        outletno: int = field(index=True, pk=True)
-        lakein: int = field(index=True, fk="packagedata.ifno")
-        lakeout: int = field(index=True, fk="packagedata.ifno")
-        couttype: str = field()
-        invert: Union[float, TimeSeriesRef] = field(time_series=True)
-        width: Union[float, TimeSeriesRef] = field(time_series=True)
-        rough: Union[float, TimeSeriesRef] = field(time_series=True)
-        slope: Union[float, TimeSeriesRef] = field(time_series=True)
+        outletno: int = integer(index=True, pk=True)
+        lakein: int = integer(index=True, fk="packagedata.ifno")
+        lakeout: int = integer(index=True, fk="packagedata.ifno")
+        couttype: str = string()
+        invert: Union[float, TimeSeriesRef] = double(time_series=True)
+        width: Union[float, TimeSeriesRef] = double(time_series=True)
+        rough: Union[float, TimeSeriesRef] = double(time_series=True)
+        slope: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Status(Item):
         _keyword: ClassVar[str] = "status"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        status: str = field()
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        status: str = string()
 
     @attrs.define
     class Stage(Item):
         _keyword: ClassVar[str] = "stage"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        stage: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        stage: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Rainfall(Item):
         _keyword: ClassVar[str] = "rainfall"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        rainfall: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        rainfall: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Evaporation(Item):
         _keyword: ClassVar[str] = "evaporation"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        evaporation: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        evaporation: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Runoff(Item):
         _keyword: ClassVar[str] = "runoff"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        runoff: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        runoff: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Inflow(Item):
         _keyword: ClassVar[str] = "inflow"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        inflow: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        inflow: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Withdrawal(Item):
         _keyword: ClassVar[str] = "withdrawal"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        withdrawal: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        withdrawal: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Rate(Item):
         _keyword: ClassVar[str] = "rate"
-        outletno: int = field(index=True, fk="outlets.outletno")
-        rate: Union[float, TimeSeriesRef] = field(time_series=True)
+        outletno: int = integer(index=True, fk="outlets.outletno")
+        rate: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Invert(Item):
         _keyword: ClassVar[str] = "invert"
-        outletno: int = field(index=True, fk="outlets.outletno")
-        invert: Union[float, TimeSeriesRef] = field(time_series=True)
+        outletno: int = integer(index=True, fk="outlets.outletno")
+        invert: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Width(Item):
         _keyword: ClassVar[str] = "width"
-        outletno: int = field(index=True, fk="outlets.outletno")
-        width: Union[float, TimeSeriesRef] = field(time_series=True)
+        outletno: int = integer(index=True, fk="outlets.outletno")
+        width: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Slope(Item):
         _keyword: ClassVar[str] = "slope"
-        outletno: int = field(index=True, fk="outlets.outletno")
-        slope: Union[float, TimeSeriesRef] = field(time_series=True)
+        outletno: int = integer(index=True, fk="outlets.outletno")
+        slope: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Rough(Item):
         _keyword: ClassVar[str] = "rough"
-        outletno: int = field(index=True, fk="outlets.outletno")
-        rough: Union[float, TimeSeriesRef] = field(time_series=True)
+        outletno: int = integer(index=True, fk="outlets.outletno")
+        rough: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Auxiliary(Item):
         _keyword: ClassVar[str] = "auxiliary"
-        lakeno: int = field(index=True, fk="packagedata.ifno")
-        auxname: str = field()
-        auxval: Union[float, TimeSeriesRef] = field(time_series=True)
+        lakeno: int = integer(index=True, fk="packagedata.ifno")
+        auxname: str = string()
+        auxval: Union[float, TimeSeriesRef] = double(time_series=True)
 
     _StressPeriodDataItem = (
         Status
@@ -176,44 +176,43 @@ class Lak(Package):
         | Auxiliary
     )
 
-    auxiliary: Optional[NDArray[np.str_]] = field(
+    auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,
         converter=attrs.converters.optional(to_array(np.str_)),
-        eq=ARRAY_EQ,
         block="options",
         optional=True,
         longname="keyword to specify aux variables",
     )
-    boundnames: bool = field(
+    boundnames: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print input to listing file",
     )
-    print_stage: bool = field(
+    print_stage: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated stages to listing file",
     )
-    print_flows: bool = field(
+    print_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="print calculated flows to listing file",
     )
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save lake flows to budget file",
     )
-    stage_file: Optional[Path] = path(
+    stage_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -221,7 +220,7 @@ class Lak(Package):
         direction="out",
         keyword="stage",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -229,7 +228,7 @@ class Lak(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -237,7 +236,7 @@ class Lak(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    package_convergence_file: Optional[Path] = path(
+    package_convergence_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -249,83 +248,83 @@ class Lak(Package):
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
     obs: Optional[Obs] = child(block="options", keyword="obs6", direction="in")
-    mover: bool = field(
+    mover: bool = keyword(
         default=False,
         block="options",
         optional=True,
     )
-    surfdep: Optional[float] = field(
+    surfdep: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="surface depression depth",
     )
-    implicit: bool = field(
+    implicit: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="solve lake stage in the groundwater flow matrix",
     )
-    maximum_iterations: Optional[int] = field(
+    maximum_iterations: Optional[int] = integer(
         default=None,
         block="options",
         optional=True,
         longname="LAK Newton-Raphson iterations",
     )
-    maximum_stage_change: Optional[float] = field(
+    maximum_stage_change: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="stage closure tolerance",
     )
-    time_conversion: Optional[float] = field(
+    time_conversion: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="time conversion factor",
     )
-    length_conversion: Optional[float] = field(
+    length_conversion: Optional[float] = double(
         default=None,
         block="options",
         optional=True,
         longname="length conversion factor",
     )
-    nlakes: Optional[int] = field(
+    nlakes: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of lakes",
     )
-    noutlets: Optional[int] = field(
+    noutlets: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of outlets",
     )
-    ntables: Optional[int] = field(
+    ntables: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of tables",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nlakes",
+        shape=("nlakes",),
     )
-    connectiondata: Optional[list[Connectiondata]] = field(
+    connectiondata: Optional[list[Connectiondata]] = list_(
         default=None,
         block="connectiondata",
         write_if_empty=True,
     )
-    tables: Optional[list[Tables]] = field(
+    tables: Optional[list[Tables]] = list_(
         default=None,
         block="tables",
-        dim="ntables",
+        shape=("ntables",),
     )
-    outlets: Optional[list[Outlets]] = field(
+    outlets: Optional[list[Outlets]] = list_(
         default=None,
         block="outlets",
-        dim="noutlets",
+        shape=("noutlets",),
     )
-    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = field(
+    _stress_period_data: Optional[dict[int, list[_StressPeriodDataItem]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

@@ -4,20 +4,20 @@ from typing import ClassVar, Optional
 import attrs
 
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import double, string
 
 
 @attrs.define(kw_only=True, slots=False)
 class Adv(Package):
     dfn_name: ClassVar[str] = "gwt-adv"
 
-    scheme: Optional[str] = field(
+    scheme: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="advective scheme",
     )
-    ats_percel: Optional[float] = field(
+    ats_percel: Optional[float] = double(
         default=None,
         block="options",
         optional=True,

@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import double, integer, list_
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -14,22 +14,22 @@ class Ats(Package):
 
     @attrs.define
     class Perioddata(Item):
-        iperats: int = field(index=True, pk=True)
-        dt0: float = field()
-        dtmin: float = field()
-        dtmax: float = field()
-        dtadj: float = field()
-        dtfailadj: float = field()
+        iperats: int = integer(index=True, pk=True)
+        dt0: float = double()
+        dtmin: float = double()
+        dtmax: float = double()
+        dtadj: float = double()
+        dtfailadj: float = double()
 
-    maxats: Optional[int] = field(
+    maxats: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of ATS periods",
     )
-    perioddata: Optional[list[Perioddata]] = field(
+    perioddata: Optional[list[Perioddata]] = list_(
         default=None,
         block="perioddata",
-        dim="<=maxats",
+        shape=("<=maxats",),
     )
 
 

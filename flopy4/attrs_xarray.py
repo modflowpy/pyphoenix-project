@@ -4,8 +4,8 @@ Generic conversion between `attrs`-decorated classes and `xarray`
 
 Reads only two things per field: its own instance value (via `getattr`)
 and, for array values, the field's own `shape` metadata (a tuple of
-dimension-name strings -- the same convention `flopy4.mf6.spec.field()`/
-`array()` already tag leaf DFN packages with).
+dimension-name strings -- the same convention `flopy4.mf6.spec.array()`
+already tags leaf DFN packages with).
 
 Child detection (which fields hold nested attrs instances, as opposed to
 plain scalar/array leaf values) is done by inspecting instance *values*
@@ -37,6 +37,7 @@ import attrs
 import numpy as np
 import xarray as xr
 
+from flopy4.spec import is_array
 from flopy4.utils import unwrap_optional
 
 
@@ -107,7 +108,7 @@ def _named_dim(field: attrs.Attribute) -> str | None:
 def _period_dim(field: attrs.Attribute) -> str | None:
     """For period arrays (WELG's q, RCHA's aux), ``{kper: array}``, the dim to
     stack the given periods along, labeled by period ("q_period")."""
-    periods = field.metadata.get("fill_forward") and field.metadata.get("shape")
+    periods = field.metadata.get("fill_forward") and is_array(field)
     return f"{field.name}_period" if periods else None
 
 
@@ -210,7 +211,7 @@ def attrs_to_dataset(obj) -> xr.Dataset:
                 data_vars[name] = _period_dataarray(field, name, value)
         elif isinstance(value, np.ndarray):
             data_vars[name] = xr.DataArray(value, dims=_array_dims(field, name, value.ndim))
-        elif field.metadata.get("shape") and isinstance(value, (list, tuple)):
+        elif is_array(field) and field.metadata.get("shape") and isinstance(value, (list, tuple)):
             # A shape-tagged field whose value hasn't (yet) been coerced to
             # a real ndarray -- e.g. assigned directly post-construction,
             # bypassing whatever coercion __attrs_post_init__ normally does.

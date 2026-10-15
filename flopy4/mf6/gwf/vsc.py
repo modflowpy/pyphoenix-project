@@ -6,7 +6,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import double, file, integer, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -15,49 +15,49 @@ class Vsc(Package):
 
     @attrs.define
     class Packagedata(Item):
-        iviscspec: int = field(index=True, pk=True)
-        dviscdc: float = field()
-        cviscref: float = field()
-        modelname: str = field()
-        auxspeciesname: str = field()
+        iviscspec: int = integer(index=True, pk=True)
+        dviscdc: float = double()
+        cviscref: float = double()
+        modelname: str = string()
+        auxspeciesname: str = string()
 
-    viscref: Optional[float] = field(
+    viscref: Optional[float] = double(
         default=1.0,
         block="options",
         optional=True,
         longname="reference viscosity",
     )
-    temperature_species_name: Optional[str] = field(
+    temperature_species_name: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="auxspeciesname that corresponds to temperature",
     )
-    thermal_formulation: Optional[str] = field(
+    thermal_formulation: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="keyword to specify viscosity formulation for the temperature species",
     )
-    thermal_a2: Optional[float] = field(
+    thermal_a2: Optional[float] = double(
         default=10.0,
         block="options",
         optional=True,
         longname="coefficient used in nonlinear viscosity function",
     )
-    thermal_a3: Optional[float] = field(
+    thermal_a3: Optional[float] = double(
         default=248.37,
         block="options",
         optional=True,
         longname="coefficient used in nonlinear viscosity function",
     )
-    thermal_a4: Optional[float] = field(
+    thermal_a4: Optional[float] = double(
         default=133.15,
         block="options",
         optional=True,
         longname="coefficient used in nonlinear viscosity function",
     )
-    viscosity_file: Optional[Path] = path(
+    viscosity_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -65,15 +65,15 @@ class Vsc(Package):
         direction="out",
         keyword="viscosity",
     )
-    nviscspecies: Optional[int] = field(
+    nviscspecies: Optional[int] = integer(
         default=None,
         block="dimensions",
         longname="number of species used in viscosity equation of state",
     )
-    packagedata: Optional[list[Packagedata]] = field(
+    packagedata: Optional[list[Packagedata]] = list_(
         default=None,
         block="packagedata",
-        dim="nviscspecies",
+        shape=("nviscspecies",),
     )
 
 

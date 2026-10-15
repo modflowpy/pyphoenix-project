@@ -6,7 +6,7 @@ import attrs
 from flopy4.mf6._types import TimeSeriesRef
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import child, field
+from flopy4.mf6.spec import child, double, integer, keyword, list_, union
 from flopy4.mf6.utl.ts import Ts
 
 
@@ -19,19 +19,19 @@ class Spc(Package):
     @attrs.define
     class Concentration(Item):
         _keyword: ClassVar[str] = "concentration"
-        concentration: Union[float, TimeSeriesRef] = field(time_series=True)
+        concentration: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class Temperature(Item):
         _keyword: ClassVar[str] = "temperature"
-        temperature: Union[float, TimeSeriesRef] = field(time_series=True)
+        temperature: Union[float, TimeSeriesRef] = double(time_series=True)
 
     @attrs.define
     class StressPeriodData(Item):
-        bndno: int = field(index=True, pk=True)
-        spcsetting: "Spc.Concentration | Spc.Temperature" = field(arms=True)
+        bndno: int = integer(index=True, pk=True)
+        spcsetting: "Spc.Concentration | Spc.Temperature" = union()
 
-    print_input: bool = field(
+    print_input: bool = keyword(
         default=False,
         block="options",
         optional=True,
@@ -40,7 +40,7 @@ class Spc(Package):
     ts: list[Ts] = child(
         block="options", keyword="ts6", direction="in", default=attrs.Factory(list)
     )
-    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = field(
+    _stress_period_data: Optional[dict[int, list[StressPeriodData]]] = list_(
         alias="stress_period_data",
         default=None,
         repr=False,

@@ -1914,6 +1914,17 @@ def test_eq_array_dtype_and_shape_matter():
     assert not array_eq(np.ones((1, 3)), np.ones(3))
 
 
+def test_eq_row_array_ints_and_floats():
+    """A row's array is a tuple, of ints or floats as given or read: they
+    compare by value."""
+    from flopy4.mf6._types import array_eq
+
+    assert array_eq((1, 2), (1.0, 2.0))
+    assert not array_eq((1, 2), (1.0, 2.5))
+    assert array_eq(((0, 1), (0, 2)), ((0, 1), (0, 2)))
+    assert not array_eq((1, 2), (1, 2, 3))
+
+
 def test_eq_array_nan_equal():
     from flopy4.mf6._types import array_eq
 
@@ -1938,11 +1949,9 @@ def test_dims_none_is_empty():
 def test_eq_on_subclass_with_own_decorator():
     import attrs
 
-    from flopy4.mf6.spec import field
-
     @attrs.define(kw_only=True, slots=False)
     class MyDis(Dis):
-        extra: int = field(default=0)
+        extra: int = attrs.field(default=0)
 
     a = MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1)
     b = MyDis(nlay=1, nrow=1, ncol=2, top=1.0, botm=[0.0], idomain=1)

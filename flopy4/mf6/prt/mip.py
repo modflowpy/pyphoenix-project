@@ -5,27 +5,27 @@ import attrs
 
 from flopy4.mf6._types import FloatArrayLike, IntArrayLike
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import field
+from flopy4.mf6.spec import array, keyword
 
 
 @attrs.define(kw_only=True, slots=False)
 class Mip(Package):
     dfn_name: ClassVar[str] = "prt-mip"
 
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    porosity: FloatArrayLike = field(
+    porosity: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
         layered=True,
         longname="porosity",
     )
-    retfactor: Optional[FloatArrayLike] = field(
+    retfactor: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -33,7 +33,7 @@ class Mip(Package):
         optional=True,
         longname="retardation factor",
     )
-    izone: Optional[IntArrayLike] = field(
+    izone: Optional[IntArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),

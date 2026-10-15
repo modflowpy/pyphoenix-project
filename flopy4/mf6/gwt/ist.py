@@ -7,7 +7,7 @@ import attrs
 from flopy4.mf6._types import FloatArrayLike
 from flopy4.mf6.package import Package
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import field, path
+from flopy4.mf6.spec import array, file, integer, keyword, record, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -19,24 +19,24 @@ class Ist(Package):
     @attrs.define
     class Format(Record):
         _keyword: ClassVar[str] = ""
-        format_: str = attrs.field()
-        columns: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        width: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
-        digits: Optional[int] = attrs.field(default=None, metadata={"tagged": True})
+        format_: str = string()
+        columns: Optional[int] = integer(default=None, tagged=True, optional=True)
+        width: Optional[int] = integer(default=None, tagged=True, optional=True)
+        digits: Optional[int] = integer(default=None, tagged=True, optional=True)
 
     @attrs.define
     class Cimprint(Record):
         _keyword: ClassVar[str] = "cim"
         _extra_tokens: ClassVar[tuple[str, ...]] = ("PRINT_FORMAT",)
-        formatrecord: "Ist.Format" = attrs.field()
+        formatrecord: "Ist.Format" = record()
 
-    save_flows: bool = field(
+    save_flows: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="save calculated flows to budget file",
     )
-    budget_file: Optional[Path] = path(
+    budget_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -44,7 +44,7 @@ class Ist(Package):
         direction="out",
         keyword="budget",
     )
-    budgetcsv_file: Optional[Path] = path(
+    budgetcsv_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -52,25 +52,25 @@ class Ist(Package):
         direction="out",
         keyword="budgetcsv",
     )
-    sorption: Optional[str] = field(
+    sorption: Optional[str] = string(
         default=None,
         block="options",
         optional=True,
         longname="activate sorption",
     )
-    first_order_decay: bool = field(
+    first_order_decay: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate first-order decay",
     )
-    zero_order_decay: bool = field(
+    zero_order_decay: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="activate zero-order decay",
     )
-    cim_file: Optional[Path] = path(
+    cim_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -78,12 +78,12 @@ class Ist(Package):
         direction="out",
         keyword="cim",
     )
-    cimprint: Optional[Cimprint] = field(
+    cimprint: Optional[Cimprint] = record(
         default=None,
         converter=Cimprint.convert,
         block="options",
     )
-    sorbate_file: Optional[Path] = path(
+    sorbate_file: Optional[Path] = file(
         default=None,
         converter=attrs.converters.optional(Path),
         block="options",
@@ -91,19 +91,19 @@ class Ist(Package):
         direction="out",
         keyword="sorbate",
     )
-    export_array_ascii: bool = field(
+    export_array_ascii: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to layered ascii files.",
     )
-    export_array_netcdf: bool = field(
+    export_array_netcdf: bool = keyword(
         default=False,
         block="options",
         optional=True,
         longname="export array variables to netcdf output files.",
     )
-    porosity: FloatArrayLike = field(
+    porosity: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -111,7 +111,7 @@ class Ist(Package):
         netcdf=True,
         longname="porosity of the immobile domain",
     )
-    volfrac: FloatArrayLike = field(
+    volfrac: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -119,7 +119,7 @@ class Ist(Package):
         netcdf=True,
         longname="volume fraction of this immobile domain",
     )
-    zetaim: FloatArrayLike = field(
+    zetaim: FloatArrayLike = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -127,7 +127,7 @@ class Ist(Package):
         netcdf=True,
         longname="mass transfer rate coefficient between the mobile and immobile domains",
     )
-    cim: Optional[FloatArrayLike] = field(
+    cim: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -136,7 +136,7 @@ class Ist(Package):
         optional=True,
         longname="initial concentration of the immobile domain",
     )
-    decay: Optional[FloatArrayLike] = field(
+    decay: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -145,7 +145,7 @@ class Ist(Package):
         optional=True,
         longname="first rate coefficient",
     )
-    decay_sorbed: Optional[FloatArrayLike] = field(
+    decay_sorbed: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -154,7 +154,7 @@ class Ist(Package):
         optional=True,
         longname="second rate coefficient",
     )
-    bulk_density: Optional[FloatArrayLike] = field(
+    bulk_density: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -163,7 +163,7 @@ class Ist(Package):
         optional=True,
         longname="bulk density",
     )
-    distcoef: Optional[FloatArrayLike] = field(
+    distcoef: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
@@ -172,7 +172,7 @@ class Ist(Package):
         optional=True,
         longname="distribution coefficient",
     )
-    sp2: Optional[FloatArrayLike] = field(
+    sp2: Optional[FloatArrayLike] = array(
         default=None,
         block="griddata",
         shape=("nodes",),
