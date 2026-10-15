@@ -1610,9 +1610,18 @@ def test_to_dataarray_standalone_structured():
     npf = Npf(dims=dims, k=1.5, k33=0.15)
     da = npf.to_dataarray("k")
     assert isinstance(da, xr.DataArray)
-    assert da.dims == ("layer", "y", "x")
+    assert da.dims == ("nlay", "nrow", "ncol")
     assert da.shape == (2, 3, 4)
     assert np.allclose(da.values, 1.5)
+
+
+def test_to_dataarray_standalone_vertex():
+    """A DISV array's dims are (nlay, ncpl)."""
+    dims = {"nlay": 2, "ncpl": 3, "nodes": 6}
+    npf = Npf(dims=dims, k=1.5)
+    da = npf.to_dataarray("k")
+    assert da.dims == ("nlay", "ncpl")
+    assert da.shape == (2, 3)
 
 
 def test_to_xarray_standalone_structured():
@@ -1623,7 +1632,7 @@ def test_to_xarray_standalone_structured():
     assert isinstance(ds, xr.Dataset)
     assert "k" in ds
     assert "k33" in ds
-    assert ds.k.dims == ("layer", "y", "x")
+    assert ds.k.dims == ("nlay", "nrow", "ncol")
     assert ds.k.shape == (1, 2, 2)
     assert np.allclose(ds.k.values, 2.0)
 
@@ -1638,7 +1647,7 @@ def test_to_dataarray_lazy_dask():
     npf.k = k_dask
     da = npf.to_dataarray("k")
     assert isinstance(da.data, da_mod.Array), "to_dataarray must preserve dask Array"
-    assert da.dims == ("layer", "y", "x")
+    assert da.dims == ("nlay", "nrow", "ncol")
 
 
 def test_npf_to_xarray_via_parent_chain():
@@ -1658,7 +1667,7 @@ def test_npf_to_xarray_via_parent_chain():
     npf_ds = gwf.npf.to_xarray()
     assert isinstance(npf_ds, xr.Dataset)
     assert "k" in npf_ds, f"Expected 'k' in npf dataset, got: {list(npf_ds.data_vars)}"
-    assert npf_ds.k.dims == ("layer", "y", "x")
+    assert npf_ds.k.dims == ("nlay", "nrow", "ncol")
     assert npf_ds.k.shape == (1, 2, 2)
     assert np.allclose(npf_ds.k.values, 2.5)
 

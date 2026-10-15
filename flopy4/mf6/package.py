@@ -809,13 +809,13 @@ class Package(Component, ABC):
         lead: tuple[int, ...] = () if nper is None else (nper,)
         if _nrow is not None and _ncol is not None:
             arr = arr.reshape(*lead, _nlay, _nrow, _ncol)
-            dims: tuple[str, ...] = ("layer", "y", "x")
+            dims: tuple[str, ...] = ("nlay", "nrow", "ncol")
         elif _ncpl is not None:
             arr = arr.reshape(*lead, _nlay, _ncpl)
-            dims = ("layer", "face")
+            dims = ("nlay", "ncpl")
         else:
             arr = arr.reshape(*lead, -1)
-            dims = ("node",)
+            dims = ("nodes",)
         if nper is not None:
             dims = ("per", *dims)
         return xr.DataArray(arr, dims=dims, name=field_name)
