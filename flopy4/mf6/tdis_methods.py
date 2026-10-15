@@ -39,8 +39,9 @@ class TdisMethods:
             perioddata=list(zip(time.perlen, time.nstp, time.tsmult)),  # type: ignore[arg-type]
         )
 
-    def to_xarray(self: "Tdis"):  # type: ignore[misc]
-        """Return Tdis data as an xr.Dataset with kper coordinate."""
+    def to_xarray(self: "Tdis", *args, **kwargs):  # type: ignore[misc]
+        """Return Tdis data as an xr.Dataset with kper coordinate. Takes,
+        and ignores, `Package.to_xarray`'s options for list packages."""
         import pandas as pd
         import xarray as xr
 
