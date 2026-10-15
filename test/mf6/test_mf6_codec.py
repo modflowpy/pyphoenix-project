@@ -1992,6 +1992,57 @@ def test_rows_as_each_row_reads():
     assert [item.boundname for item in items] == [None, None, None, "reach4", "reach5"]
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1 5 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 7.5\n"
+        "2 6 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 -1\n",
+        # comment-only and blank lines, commas, `D` exponents
+        "# reaches\n1,5,1D1 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 7.5\n\n"
+        "  ! more\n2 6 10.0 1.0 1d-3 100.0 1.0 2 0.03 1 1.0 0 -1\n",
+        # a cellid of NONE, as zero
+        "1 0 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 7.5\n"
+        "2 6 10.0 1.0 0.001 100.0 1.0 2 0.03 1 1.0 0 -1\n",
+    ],
+)
+def test_table_as_rows_read(text):
+    """A block of only numbers reads by column as `from_rows` reads it."""
+    from flopy4.mf6.codec.reader.transformer.basic import NumberRows
+    from flopy4.mf6.gwf import Sfr
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_table
+
+    context = RowContext(ncelldim=1, sizes={"auxiliary": 1})
+    rows = NumberRows(text)
+    table = read_table(Sfr.Packagedata, rows.text, context)
+    assert table is not None and len(table) == 2
+    items = table.to_items()
+    assert items == Sfr.Packagedata.from_rows(list(rows), context)
+    assert [repr(item) for item in items] == [
+        repr(item) for item in Sfr.Packagedata.from_rows(list(rows), context)
+    ]
+
+
+@pytest.mark.parametrize(
+    "item_cls, text",
+    [
+        # rows of more than one length
+        ("Riv", "1 5 1.0 2.0 0.5\n1 6 1.0 2.0 0.5 3.0\n2 7 1.0 2.0 0.5 3.0 4.0\n"),
+        # a column of cellids (a row each)
+        ("Gnc", "1 2 3 0.5\n"),
+    ],
+)
+def test_table_declines(item_cls, text):
+    """Rows the columns can't hold are left to `from_rows`."""
+    from flopy4.mf6.gwf import Gnc, Riv
+    from flopy4.mf6.item import RowContext
+    from flopy4.mf6.item_table import read_table
+
+    cls = {"Riv": Riv.StressPeriodData, "Gnc": Gnc.Gncdata}[item_cls]
+    context = RowContext(ncelldim=1, sizes={"auxiliary": 0, "numalphaj": 1})
+    assert read_table(cls, text, context) is None
+
+
 @pytest.mark.parametrize("boundname", [None, "b"])
 def test_row_positional_trailing_boundname(boundname):
     """A positional row's last value is its boundname, absent (None) or

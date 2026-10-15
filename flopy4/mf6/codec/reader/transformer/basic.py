@@ -1,4 +1,5 @@
 import re
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 from lark import Token, Transformer
@@ -10,8 +11,58 @@ from flopy4.utils import parse_number
 _NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eEdD][+-]?\d+)?")
 
 
-class _Rows(list):
-    """NUMBER_LINES' rows, which `block` splices in among its other lines."""
+class NumberRows(Sequence):
+    """NUMBER_LINES' rows, each a list of numbers as `line` reads it, read
+    when first used. A block that's only these lines keeps them as such, so
+    its text can be read by column instead (see `item_table.read_table`);
+    `block` splices them in among any other lines."""
+
+    __slots__ = ("_text", "_rows")
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+        self._rows: list[list[int | float]] | None = None
+
+    @property
+    def text(self) -> str:
+        """The lines' text, commas as spaces and `D` exponents as `E`;
+        blank and comment-only lines included."""
+        text = self._text.replace(",", " ")
+        if "d" in text or "D" in text:
+            text = text.replace("d", "e").replace("D", "E")
+        return text
+
+    @property
+    def rows(self) -> list[list[int | float]]:
+        if self._rows is None:
+            # blank and comment-only lines aren't rows. (A comment's text
+            # may have changed in `text` -- it's skipped.)
+            self._rows = [
+                [_number(v) for v in values]
+                for line in self.text.split("\n")
+                if (values := line.split()) and values[0][0] not in "#!"
+            ]
+        return self._rows
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def __bool__(self) -> bool:
+        return True  # NUMBER_LINES has a numeric line (so no need to read them)
+
+    def __getitem__(self, i):  # type: ignore[override]
+        return self.rows[i]
+
+    def __iter__(self) -> Iterator[list[int | float]]:
+        return iter(self.rows)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, NumberRows):
+            other = other.rows
+        return self.rows == other
+
+    def __repr__(self) -> str:
+        return repr(self.rows)
 
 
 def _number(value: str) -> int | float:
@@ -47,10 +98,13 @@ class BasicTransformer(Transformer):
 
     def block(self, items: list[Any]) -> dict[str, Any]:
         # BEGIN name line... END name
+        body = items[2:-2]
+        if len(body) == 1 and isinstance(body[0], NumberRows):
+            return {items[1]: body[0]}
         lines: list[Any] = []
-        for item in items[2:-2]:
-            if isinstance(item, _Rows):
-                lines.extend(item)
+        for item in body:
+            if isinstance(item, NumberRows):
+                lines.extend(item.rows)
             else:
                 lines.append(item)
         return {items[1]: lines}
@@ -79,17 +133,8 @@ class BasicTransformer(Transformer):
             return parse_number(value.replace("d", "e").replace("D", "E"))
         return value
 
-    def NUMBER_LINES(self, token: Token) -> _Rows:
-        # Each line a row, as `line` reads it; blank and comment-only lines
-        # aren't rows. (A comment's text may change below -- it's skipped.)
-        text = str(token).replace(",", " ")
-        if "d" in text or "D" in text:
-            text = text.replace("d", "e").replace("D", "E")
-        rows = _Rows()
-        for line in text.split("\n"):
-            if (values := line.split()) and values[0][0] not in "#!":
-                rows.append([_number(v) for v in values])
-        return rows
+    def NUMBER_LINES(self, token: Token) -> NumberRows:
+        return NumberRows(str(token))
 
     def QUOTED_WORD(self, token: Token) -> str:
         # Quoting forces string interpretation even if content looks numeric.

@@ -14,6 +14,7 @@ from modflow_devtools.dfns import dim_value
 from flopy4.dimensions import DimensionProvider
 from flopy4.mf6._types import TimeArraySeriesRef
 from flopy4.mf6.block import block_list_type
+from flopy4.mf6.codec.reader.transformer.basic import NumberRows
 from flopy4.mf6.component import Component, get_ftype
 from flopy4.mf6.item import (
     Item,
@@ -26,6 +27,7 @@ from flopy4.mf6.item import (
     parse_union_items,
     sized_by,
 )
+from flopy4.mf6.item_table import read_table
 from flopy4.mf6.load_context import LoadContext
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_grid_package
@@ -75,6 +77,12 @@ def _parse_rows(
         return parse_union_items(
             rows, item_cls, words=words, context=row_context, load_child=load_child
         )
+    # a block of only numeric lines, read by column if its rows allow
+    if (
+        isinstance(rows, NumberRows)
+        and (table := read_table(item_cls, rows.text, row_context)) is not None
+    ):
+        return table.to_items() or None
     result = item_cls.from_rows(
         [row for row in rows if row],
         row_context,
@@ -164,6 +172,8 @@ def _resolve_open_close_rows(rows: list, context: LoadContext) -> list:
     row -- and returns the referenced file's rows in its place; otherwise
     returns `rows` unchanged.
     """
+    if isinstance(rows, NumberRows):
+        return rows  # all numbers (and counting them would read them)
     if len(rows) != 1 or not rows[0] or str(rows[0][0]).upper() != "OPEN/CLOSE":
         return rows
     row = rows[0]

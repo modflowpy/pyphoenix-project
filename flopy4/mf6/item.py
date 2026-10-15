@@ -691,19 +691,19 @@ def _value_reader(f: attrs.Attribute) -> Callable[[Any], Any]:
     return lambda v: _coerce(v, f)
 
 
-def _plan(
+def _positions(
     cls: type, values: list, context: RowContext
-) -> "Callable[[list], dict[str, Any] | None] | None":
-    """How to read the fields of a file row with as many values as
-    ``values``, which `_solve` lays out, if every such row's layout is the
-    same (see `_plannable`). The reader returns None for a row it can't
-    convert (a cellid of NONE), which `_layout` then reads."""
+) -> "list[tuple[attrs.Attribute | None, tuple, int, int]] | None":
+    """Where each field of a file row with as many values as ``values`` is,
+    which `_solve` lays out, if every such row's layout is the same (see
+    `_plannable`): the field, what it took, and its values' span (a scalar
+    at ``a``, with ``b`` 0). The boundname's field is None."""
     if not _plannable(cls):
         return None
     out = _solve(cls, values, context, file=True)
     if any(took[0] == "none" for took in out.values()):
         return None
-    readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
+    spans: list[tuple[attrs.Attribute | None, tuple, int, int]] = []
     pos = 0
     for slot in _slots(cls, True):
         f = slot.field
@@ -711,21 +711,41 @@ def _plan(
             continue
         if took[0] == "value":
             w = 1 + bool(f.metadata.get("_keyword")) + bool(f.metadata.get("direction"))
-            readers.append((f.name, pos + w - 1, 0, _value_reader(f)))
+            spans.append((f, took, pos + w - 1, 0))
         else:
             w = len(took[1])
-            read: Callable[[Any], Any]
-            if took[0] == "cellid":
-                read = partial(_file_cellid, f)
-            elif is_cellid(f):
-                cw = took[2] if len(took) > 2 else 1
-                read = partial(_file_cellids, f, cw)
-            else:
-                read = partial(_file_array, f)
-            readers.append((f.name, pos, pos + w, read))
+            spans.append((f, took, pos, pos + w))
         pos += w
     if "boundname" in out:
-        readers.append(("boundname", len(values) - 1, 0, str))
+        spans.append((None, out["boundname"], len(values) - 1, 0))
+    return spans
+
+
+def _plan(
+    cls: type, values: list, context: RowContext
+) -> "Callable[[list], dict[str, Any] | None] | None":
+    """How to read the fields of a file row with as many values as
+    ``values``, if every such row's layout is the same (see `_positions`).
+    The reader returns None for a row it can't convert (a cellid of NONE),
+    which `_layout` then reads."""
+    if (spans := _positions(cls, values, context)) is None:
+        return None
+    readers: list[tuple[str, int, int, Callable[[Any], Any]]] = []
+    for f, took, a, b in spans:
+        read: Callable[[Any], Any]
+        if f is None:
+            readers.append(("boundname", a, b, str))
+            continue
+        if took[0] == "value":
+            read = _value_reader(f)
+        elif took[0] == "cellid":
+            read = partial(_file_cellid, f)
+        elif is_cellid(f):
+            cw = took[2] if len(took) > 2 else 1
+            read = partial(_file_cellids, f, cw)
+        else:
+            read = partial(_file_array, f)
+        readers.append((f.name, a, b, read))
 
     def read_row(row: list) -> "dict[str, Any] | None":
         try:
