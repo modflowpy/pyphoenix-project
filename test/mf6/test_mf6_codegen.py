@@ -1484,7 +1484,7 @@ def test_sized_column_from_tokens():
     from flopy4.mf6.item import RowContext
 
     tokens = [1, 2, 3, -5.0, 0.1, 0.2, "well1"]
-    context = RowContext(ncelldim=3, sizes={"auxiliary": 2}, boundnames=True)
+    context = RowContext(ncelldim=3, sizes={"auxiliary": 2}, enabled=frozenset({"boundnames"}))
     item = Wel.StressPeriodData.from_tokens(tokens, context)
     assert item.cellid == (0, 1, 2)
     assert item.q == -5.0

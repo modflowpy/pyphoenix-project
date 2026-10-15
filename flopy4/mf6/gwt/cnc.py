@@ -30,7 +30,9 @@ class Cnc(Package):
         aux: tuple[Union[float, TimeSeriesRef], ...] = array(
             default=(), shape=("auxiliary",), time_series=True, optional=True
         )
-        boundname: Optional[str] = string(default=None, empty_is_none=True, optional=True)
+        boundname: Optional[str] = string(
+            default=None, empty_is_none=True, optional=True, when="boundnames"
+        )
 
     auxiliary: Optional[NDArray[np.str_]] = array(
         default=None,

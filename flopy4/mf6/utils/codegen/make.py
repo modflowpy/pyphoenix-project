@@ -285,7 +285,8 @@ def _item_columns(
             item = filters.feature_id_column(name, fk=fk, pk=pk, optional=optional, time_series=ts)
         elif _is_label(col, columns):
             meta = {"empty_is_none": True}
-            item = filters.attr_column(name, "str", "string", meta, optional=True)
+            item = filters.attr_column(name, "str", "string", meta, optional=True, when=when)
+            when = None
         elif col.is_row_keyword:
             item = filters.attr_column(name, "bool", "keyword", {}, optional=True, default="False")
         elif isinstance(f, UnionField) and name in unions:
@@ -313,7 +314,7 @@ def _item_columns(
                 when=when,
             )
             when = None
-        if when and name != "boundname":
+        if when:
             raise NotImplementedError(f"column {name!r}: when={when!r} on a non-scalar column")
         items.append(item)
     return items

@@ -2,8 +2,8 @@
 connectiondata, period data, ...).
 
 Adds what Record doesn't need: index/pk/fk renumbering, cellid packing,
-sized/boundname trailing columns, and external parse context (ncelldim/sizes/
-boundnames -- facts about the surrounding list/package, not one row). An
+sized trailing columns, and external parse context (ncelldim/sizes/
+enabled options -- facts about the surrounding list/package, not one row). An
 inline array sized by the package (aux, by its ``auxiliary``) holds as many
 values as the named package field has. A
 tagged field here is always a bare presence flag (e.g. LAK tables' MIXED) --
@@ -121,10 +121,6 @@ def sized_by(item_cls: "type[Item] | tuple[type[Item], ...]") -> set[str]:
     """The shape expressions of an item class's columns sized by the package."""
     classes = item_cls if isinstance(item_cls, tuple) else (item_cls,)
     return {inline_dim(f) or "" for c in classes for f in package_sized_fields(c)}
-
-
-def _has_boundname_field(cls: type) -> bool:
-    return any(f.name == "boundname" for f in cast(type[Record], cls).fields())
 
 
 def conditional_fields(item_cls: "type[Item] | tuple[type[Item], ...]") -> dict[str, str]:
@@ -388,7 +384,6 @@ class RowContext:
 
     ncelldim: int | Mapping[str, int] | None = None
     sizes: Mapping[str, int] = attrs.field(factory=dict)
-    boundnames: bool = False
     enabled: frozenset[str] | None = None
 
     def cellid_width(self, f: attrs.Attribute) -> int | None:
@@ -425,7 +420,7 @@ def _kind(cls: type, f: attrs.Attribute) -> str:
 @lru_cache(maxsize=None)
 def _slots(cls: type, file: bool) -> tuple[_Slot, ...]:
     """A row's slots, in column order."""
-    fields = [f for f in cast(type[Record], cls).fields() if f.name != "boundname"]
+    fields = list(cast(type[Record], cls).fields())
     if cast(type[Item], cls)._columns:
         fields = _in_columns(cast(type[Item], cls), fields)
     unions = tuple(
@@ -477,7 +472,6 @@ def _layout(
     raises if more than one fits."""
     n = len(values)
     slots = _slots(cls, file)
-    has_boundname = _has_boundname_field(cls)
     gated = conditional_fields(cls)
     if context.enabled is None:
         off: frozenset[str] = frozenset()
@@ -599,21 +593,14 @@ def _layout(
             out2 = out if took is None else {**out, slot.field.name: took}
             yield from walk(k + 1, pos2, end, out2, unknown2, surplus, conditional)
 
-    def solve(boundname: list[bool], surplus: bool = False, conditional: bool = True):
-        for bn in boundname:
-            end = n - bn
-            if end < 0:
-                continue
-            for out, unknown in walk(0, 0, end, {}, {}, surplus, conditional):
-                yield ({**out, "boundname": ("bn", values[-1])} if bn else out), unknown
+    def solve(surplus: bool = False, conditional: bool = True):
+        yield from walk(0, 0, n, {}, {}, surplus, conditional)
 
     fields = attrs.fields_dict(cls)  # type: ignore[arg-type]
 
     def optionals(out: dict) -> int:
         """How many optional fields a layout has."""
-        return sum(
-            1 for k in out if k == "boundname" or (k in fields and _may_be_absent(fields[k]))
-        )
+        return sum(1 for k in out if k in fields and _may_be_absent(fields[k]))
 
     def first(solutions) -> "dict | None":
         """The first layout, or, if it assumed a width, the one with the
@@ -631,14 +618,11 @@ def _layout(
             )
         return layouts[0][0]
 
-    bn = [True, False] if has_boundname and context.boundnames else [False]
-    out = first(solve(bn))
+    out = first(solve())
     if out is None and not file and (off or on):
-        out = first(solve(bn, conditional=False))
-    if out is None and not file and has_boundname and not context.boundnames:
-        out = first(solve([True])) or first(solve([True], conditional=False))
+        out = first(solve(conditional=False))
     if out is None and file:
-        out = first(solve(bn, surplus=True))
+        out = first(solve(surplus=True))
     if out is None:
         raise ValueError(f"{cls.__name__}: can't read a row from {values}")
     return _convert(cls, out, context, file, union_arm, union_forms, load_child)
@@ -679,16 +663,18 @@ def _convert(
             unions = took  # read last: their forms depend on the other columns
         elif kind == "py":
             kwargs[name] = raw
-        elif kind in ("flag", "bn"):
+        elif kind == "flag":
             if raw is not None:
-                kwargs[name] = raw if kind == "flag" else str(raw)
+                kwargs[name] = raw
         elif kind == "none":
             kwargs[name] = None
         elif kind == "cellid":
             kwargs[name] = _file_cellid(f, raw) if file else tuple(raw)
         elif kind == "value":
             if not file:
-                kwargs[name] = raw
+                # a string column's value as text (a boundname given as 5)
+                text = f.metadata.get("type") == "string" and isinstance(raw, (int, float))
+                kwargs[name] = str(raw) if text and not isinstance(raw, bool) else raw
             elif f.metadata.get("child"):
                 if load_child is None:
                     raise ValueError(f"{cls.__name__}.{name}: no way to load {raw}")
@@ -756,7 +742,7 @@ class Item(Record):
 
     def to_tokens(self, *, ncelldim: int | Mapping[str, int] | None = None) -> tuple:
         """index -> 1-based; cellid likewise per element. _keyword (if any)
-        is emitted before the first non-row-key field. boundname last.
+        is emitted before the first non-row-key field.
         ``ncelldim`` is the cellid width, or each cellid column's, by name
         (see from_tokens), needed only to write a cellid of no cell as
         zeros; otherwise that of another of the row's cellids in the same
@@ -771,8 +757,6 @@ class Item(Record):
         row: list[Any] = []
         keyword_emitted = not keyword
         for f in fields:
-            if f.name == "boundname":
-                continue
             val = getattr(self, f.name)
             if f.name in counted:
                 n = len(getattr(self, counted[f.name].name))
@@ -824,9 +808,6 @@ class Item(Record):
                 row.append(val.as_posix() if isinstance(val, Path) else _ts_token(val))
         if not keyword_emitted:
             row.append(keyword.upper())
-        boundname = getattr(self, "boundname", None)
-        if boundname:
-            row.append(boundname)
         return tuple(row)
 
     def _cellid_tokens(

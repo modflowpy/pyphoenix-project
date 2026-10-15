@@ -1889,7 +1889,7 @@ def test_row_boundname_by_option(boundnames):
     from flopy4.mf6.gwf import Wel
     from flopy4.mf6.item import RowContext
 
-    context = RowContext(ncelldim=3, boundnames=boundnames)
+    context = RowContext(ncelldim=3, enabled=frozenset({"boundnames"} if boundnames else ()))
     row = Wel.StressPeriodData.from_tokens([1, 1, 1, -5.0, 5], context)
     assert row.boundname == ("5" if boundnames else None)
 
@@ -1914,8 +1914,12 @@ def test_row_conditional_field_or_boundname(boundnames, surf_rate, tokens, petm0
     context = RowContext(
         ncelldim=3,
         sizes={"nseg-1": 0, "auxiliary": 0},
-        boundnames=boundnames,
-        enabled=frozenset({"surf_rate_specified"} if surf_rate else ()),
+        enabled=frozenset(
+            {
+                *(("boundnames",) if boundnames else ()),
+                *(("surf_rate_specified",) if surf_rate else ()),
+            }
+        ),
     )
     row = Evt.StressPeriodData.from_tokens([1, 1, 1, 10.0, 0.001, 2.0, *tokens], context)
     assert (row.petm0, row.boundname) == (petm0, boundname)
