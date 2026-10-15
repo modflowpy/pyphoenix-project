@@ -21,6 +21,7 @@ import jinja2
 from modflow_devtools.dfns import dim_input, split_bound
 from modflow_devtools.dfns.schema import (
     Array,
+    CellID,
     Component,
     Double,
     File,
@@ -194,7 +195,7 @@ class ComponentSpec:
 # Column-schema-dict builders
 #
 # Static list blocks and period blocks of records are List[Record] under
-# dev3 -- including a real cellid Array field for period
+# dev3 -- including a real cellid field for period
 # blocks, which the legacy schema had to synthesize. One function builds the
 # list[dict] "schema" (the intermediate format item_class/schema_class render)
 # for both cases; only the surrounding FieldSpec (type annotation, block=
@@ -267,14 +268,16 @@ def _item_columns(
                 name,
                 count,
                 dfn_type,
-                cellid=col.cellid,
-                index=col.is_index and not col.is_cellid,
+                cellid=col.is_cellid,
+                model=getattr(f, "model", None),
+                allow_zero=getattr(f, "allow_zero", False),
+                index=col.is_index,
                 signed=f.index == "signed",
                 optional=optional or name in counted_by,
                 time_series=ts,
             )
-        elif col.is_cellid:
-            item = filters.cellid_column(name, col.cellid, optional=optional, time_series=ts)
+        elif isinstance(f, CellID):
+            item = filters.cellid_column(name, f.model, allow_zero=f.allow_zero, optional=optional)
         elif col.is_index:
             fk = getattr(f, "fk", None)
             pk = not fk and bool(getattr(f, "pk", False))
@@ -315,7 +318,7 @@ def _arm_kind(arm: FieldV3) -> str:
     keyword arm is its own name, a literal word (LAK's bedleak: NONE)."""
     if isinstance(arm, KeywordField):
         return "keyword"
-    if isinstance(arm, Array) and arm.cellid:
+    if isinstance(arm, CellID):
         return "cellid"
     if getattr(arm, "index", False):
         return "index"
@@ -341,13 +344,12 @@ def _obs_forms(f: FieldV3) -> list[tuple[str, ...]]:
 
 def _array_shape(col: ColumnSpec) -> str | None:
     """The shape expression counting an inline array column's values, or None
-    for a column that isn't one (a cellid's first axis is ncelldim)."""
+    for a column that isn't one."""
     f = col.field
     if not isinstance(f, Array):
         return None
     shape = f.shape or []
-    counts = shape[1:] if col.is_cellid else shape
-    return counts[0] if len(counts) == 1 and split_bound(counts[0])[0] is None else None
+    return shape[0] if len(shape) == 1 and split_bound(shape[0])[0] is None else None
 
 
 def _dfn_type_str(f: FieldV3) -> str:
@@ -360,6 +362,8 @@ def _dfn_type_str(f: FieldV3) -> str:
         return "string"
     if isinstance(f, KeywordField):
         return "keyword"
+    if isinstance(f, CellID):
+        return "cellid"
     if isinstance(f, UnionField):
         # Unused for a nested-union column, which never consults dfn_type.
         return "object"

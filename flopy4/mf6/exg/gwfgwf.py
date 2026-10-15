@@ -11,7 +11,7 @@ from flopy4.mf6.gwf.gnc import Gnc
 from flopy4.mf6.gwf.mvr import Mvr
 from flopy4.mf6.item import Item
 from flopy4.mf6.record import Record
-from flopy4.mf6.spec import array, child, double, integer, keyword, list_, record, string
+from flopy4.mf6.spec import array, cellid_, child, double, integer, keyword, list_, record, string
 from flopy4.mf6.utl.obs import Obs
 
 
@@ -32,8 +32,8 @@ class Gwfgwf(Exchange):
 
     @attrs.define
     class Exchangedata(Item):
-        cellidm1: tuple = array(cellid="1", index=True, shape=("ncelldim",))
-        cellidm2: tuple = array(cellid="2", index=True, shape=("ncelldim",))
+        cellidm1: tuple[int, ...] = cellid_(model="1")
+        cellidm2: tuple[int, ...] = cellid_(model="2")
         ihc: int = integer()
         cl1: float = double()
         cl2: float = double()

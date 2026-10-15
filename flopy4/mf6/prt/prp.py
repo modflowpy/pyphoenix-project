@@ -6,7 +6,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, double, file, integer, keyword, list_, string
+from flopy4.mf6.spec import array, cellid_, double, file, integer, keyword, list_, string
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -18,7 +18,7 @@ class Prp(Package):
     @attrs.define
     class Packagedata(Item):
         irptno: int = integer(index=True, pk=True)
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         xrpt: float = double()
         yrpt: float = double()
         zrpt: float = double()

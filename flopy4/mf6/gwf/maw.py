@@ -9,7 +9,18 @@ from numpy.typing import NDArray
 from flopy4.mf6._types import TimeSeriesRef, to_array
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, child, double, file, integer, keyword, list_, string, union
+from flopy4.mf6.spec import (
+    array,
+    cellid_,
+    child,
+    double,
+    file,
+    integer,
+    keyword,
+    list_,
+    string,
+    union,
+)
 from flopy4.mf6.utl.obs import Obs
 from flopy4.mf6.utl.ts import Ts
 
@@ -51,7 +62,7 @@ class Maw(Package):
     class Connectiondata(Item):
         ifno: int = integer(index=True, fk="packagedata.ifno")
         icon: int = integer(index=True)
-        cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))
+        cellid: tuple[int, ...] = cellid_()
         scrn_top: float = double()
         scrn_bot: float = double()
         hk_skin: float = double()

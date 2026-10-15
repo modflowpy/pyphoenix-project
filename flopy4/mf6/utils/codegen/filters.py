@@ -23,7 +23,8 @@ from typing import TypeAlias
 
 from modflow_devtools.dfns.schema import (
     Array,
-    Cellid,
+    CellID,
+    CellModel,
     Component,
     Double,
     File,
@@ -766,6 +767,7 @@ SPEC_FUNCTIONS = (
     "string",
     "integer",
     "double",
+    "cellid_",
     "array",
     "list_",
     "union",
@@ -984,7 +986,9 @@ def array_column(
     shape: str | None,
     dfn_type: str = "double",
     *,
-    cellid: Cellid = False,
+    cellid: bool = False,
+    model: CellModel = None,
+    allow_zero: bool = False,
     index: bool = False,
     signed: bool = False,
     optional: bool = False,
@@ -1007,7 +1011,8 @@ def array_column(
             optional=True,
         )
     if cellid:
-        py_type = "tuple[tuple[int, ...], ...]"
+        elem = "Optional[tuple[int, ...]]" if allow_zero else "tuple[int, ...]"
+        py_type = f"tuple[{elem}, ...]"
     elif signed:
         py_type = "tuple[tuple[int, int], ...]"
     elif time_series:
@@ -1016,25 +1021,30 @@ def array_column(
         py_type = f"tuple[{_DFN_PY.get(dfn_type, 'float')}, ...]"
     meta: dict = {}
     if cellid:
-        # a cellid's first axis is ncelldim, its components
-        meta["cellid"] = cellid
-        meta["index"] = True
-        meta["shape"] = ("ncelldim", shape)
-    else:
-        if index or signed:
-            meta["index"] = "signed" if signed else True
-        meta["shape"] = (shape,)
+        meta["dtype"] = "cellid"
+        meta.update(_cellid_meta(model, allow_zero))
+    elif index or signed:
+        meta["index"] = "signed" if signed else True
+    meta["shape"] = (shape,)
     return attr_column(
         name, py_type, "array", meta, optional=optional, time_series=time_series, default="()"
     )
 
 
+def _cellid_meta(model: CellModel, allow_zero: bool) -> dict:
+    return {**({"model": model} if model else {}), **({"allow_zero": True} if allow_zero else {})}
+
+
 def cellid_column(
-    name: str, cellid: Cellid, *, optional: bool = False, time_series: bool = False
+    name: str, model: CellModel = None, *, allow_zero: bool = False, optional: bool = False
 ) -> ItemColumn:
-    """One cellid: an array of its ``ncelldim`` components."""
-    meta = {"cellid": cellid, "index": True, "shape": ("ncelldim",)}
-    return attr_column(name, "tuple", "array", meta, optional=optional, time_series=time_series)
+    """One cellid: a tuple of its components, or None for no cell if it may
+    ``allow_zero``."""
+    py_type = "tuple[int, ...]"
+    if allow_zero and not optional:
+        py_type = f"Optional[{py_type}]"
+    meta = _cellid_meta(model, allow_zero)
+    return attr_column(name, py_type, "cellid_", meta, optional=optional)
 
 
 def file_column(
@@ -1181,8 +1191,7 @@ class ColumnSpec:
 
     name: str
     field: FieldV3  # the underlying dev3 field, for shape/dtype/time_series/fk access
-    is_cellid: bool  # dev3 Array.cellid -- stored as object-dtype tuple attr
-    cellid: Cellid  # its value: True, or "1"/"2" for an exchange's models
+    is_cellid: bool  # a CellID, or an array of them (dtype "cellid")
     is_prefix: bool  # tagged non-optional keyword -- write-side token only, no attr
     is_row_keyword: bool  # optional keyword -- stored as bool attr
     is_index: bool  # dev3 Integer.index -- 0-based, written as 1-based (+1 at write time)
@@ -1216,8 +1225,8 @@ def _fields_to_columns(fields: "list[tuple[str, FieldV3]]") -> list[ColumnSpec]:
             ColumnSpec(
                 name=safe_name(col_name),
                 field=col,
-                is_cellid=isinstance(col, Array) and bool(col.cellid),
-                cellid=col.cellid if isinstance(col, Array) else False,
+                is_cellid=isinstance(col, CellID)
+                or (isinstance(col, Array) and col.dtype == "cellid"),
                 is_prefix=is_keyword and not is_optional,
                 is_row_keyword=is_keyword and is_optional,
                 # a feature id implies MF6's numeric 0-based-Python/1-based-

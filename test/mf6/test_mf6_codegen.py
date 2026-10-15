@@ -327,9 +327,23 @@ class TestFilters:
         assert "mixed: bool = keyword(default=False, optional=True)" in result
 
     def test_item_class_cellid_metadata(self):
-        schema = [cellid_column("cellid", True)]
+        schema = [
+            cellid_column("cellid"),
+            cellid_column("cellidm", "2"),
+            cellid_column("cellidz", allow_zero=True),
+        ]
         result = item_class(schema, "StressPeriodData")
-        assert 'cellid: tuple = array(cellid=True, index=True, shape=("ncelldim",))' in result
+        assert "cellid: tuple[int, ...] = cellid_()" in result
+        assert 'cellidm: tuple[int, ...] = cellid_(model="2")' in result
+        assert "cellidz: Optional[tuple[int, ...]] = cellid_(allow_zero=True)" in result
+
+    def test_item_class_cellid_array_metadata(self):
+        schema = [array_column("cellidsj", "numalphaj", cellid=True, model="1", allow_zero=True)]
+        (col,) = schema
+        assert col.annotation == "tuple[Optional[tuple[int, ...]], ...]"
+        assert col.rhs == (
+            'array(dtype="cellid", model="1", allow_zero=True, shape=("numalphaj",))'
+        )
 
     def test_item_class_time_series_metadata(self):
         schema = [
@@ -516,12 +530,12 @@ def test_lak_numeric_index_autodetects_cellid(all_dfns):
         ("exg-gwfgwf", "Exchangedata", {"cellidm1": "1", "cellidm2": "2"}),
         ("exg-gwtgwt", "Exchangedata", {"cellidm1": "1", "cellidm2": "2"}),
         ("gwf-gnc", "Gncdata", {"cellidn": "1", "cellidm": "2", "cellidsj": "1"}),
-        ("gwf-chd", "StressPeriodData", {"cellid": True}),
+        ("gwf-chd", "StressPeriodData", {"cellid": None}),
     ],
 )
 def test_cellid_model_from_dfn(all_dfns, name, item, expected):
     """Each cellid column says which model's grid it refers to, as the
-    DFN does: "1"/"2" for an exchange's first/second model, True for the
+    DFN does: "1"/"2" for an exchange's first/second model, nothing for the
     component's own."""
     if name not in all_dfns:
         pytest.skip(f"{name} not in DFN set")
@@ -529,7 +543,30 @@ def test_cellid_model_from_dfn(all_dfns, name, item, expected):
     schema = {ic.class_name: ic for ic in spec.item_classes}[item].schema
     rhs = {col.name: col.rhs for col in schema}
     for column, model in expected.items():
-        assert f"cellid={model!r}".replace("'", '"') in rhs[column]
+        if model is None:
+            assert "model=" not in rhs[column]
+        else:
+            assert f'model="{model}"' in rhs[column]
+
+
+@pytest.mark.parametrize(
+    "name,item,column",
+    [("gwf-sfr", "Packagedata", "cellid"), ("gwf-gnc", "Gncdata", "cellidsj")],
+)
+def test_cellid_allow_zero_from_dfn(all_dfns, name, item, column):
+    """A cellid that may refer to no cell, given as zeros, is None for it."""
+    if name not in all_dfns:
+        pytest.skip(f"{name} not in DFN set")
+    spec = build_component_spec(all_dfns[name], root=Path("/fake"))
+    col = next(
+        c
+        for ic in spec.item_classes
+        if ic.class_name == item
+        for c in ic.schema
+        if c.name == column
+    )
+    assert "allow_zero=True" in col.rhs
+    assert "Optional[tuple[int, ...]]" in col.annotation
 
 
 def test_mvr_list_fields_expanded_and_optional(all_dfns):

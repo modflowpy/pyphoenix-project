@@ -5,7 +5,7 @@ import attrs
 
 from flopy4.mf6.item import Item
 from flopy4.mf6.package import Package
-from flopy4.mf6.spec import array, integer, keyword, list_
+from flopy4.mf6.spec import array, cellid_, integer, keyword, list_
 
 
 @attrs.define(kw_only=True, slots=False)
@@ -14,10 +14,10 @@ class Gnc(Package):
 
     @attrs.define
     class Gncdata(Item):
-        cellidn: tuple = array(cellid="1", index=True, shape=("ncelldim",))
-        cellidm: tuple = array(cellid="2", index=True, shape=("ncelldim",))
-        cellidsj: tuple[tuple[int, ...], ...] = array(
-            cellid="1", index=True, shape=("ncelldim", "numalphaj")
+        cellidn: tuple[int, ...] = cellid_(model="1")
+        cellidm: tuple[int, ...] = cellid_(model="2")
+        cellidsj: tuple[Optional[tuple[int, ...]], ...] = array(
+            dtype="cellid", model="1", allow_zero=True, shape=("numalphaj",)
         )
         alphasj: tuple[float, ...] = array(shape=("numalphaj",))
 

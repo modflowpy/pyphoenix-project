@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import attrs
 
-from flopy4.mf6.item import Item, infer_ncelldim
+from flopy4.mf6.item import Item, infer_ncelldim, is_cellid
 
 if TYPE_CHECKING:
     from flopy4.mf6.model import Model
@@ -50,15 +50,13 @@ class LoadContext:
     ) -> int | Mapping[str, int]:
         """The width of `item_cls`'s cellids in `rows`. Under an exchange,
         each cellid column's, by name, from the grid of the model the
-        column refers to (its ``cellid`` metadata: ``"1"`` for
+        column refers to (its ``model`` metadata: ``"1"`` for
         ``exgmnamea``, ``"2"`` for ``exgmnameb``, from the DFN). Otherwise
         from the dims if they say, else from the rows."""
-        cellids = {
-            f.name: f.metadata["cellid"] for f in item_cls.fields() if f.metadata.get("cellid")
-        }
+        cellids = {f.name: f.metadata.get("model") for f in item_cls.fields() if is_cellid(f)}
         widths = self._exchange_widths()
         if cellids and widths and all(model in widths for model in cellids.values()):
-            return {name: widths[model] for name, model in cellids.items()}
+            return {name: widths[str(model)] for name, model in cellids.items()}
         return infer_ncelldim(rows, item_cls, sizes=sizes, dims=dict(self.dims))
 
     def _exchange_widths(self) -> dict[str, int] | None:

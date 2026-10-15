@@ -28,10 +28,10 @@ FieldType = Literal["keyword", "integer", "double", "string", "list", "record"]
 
 # As in the DFN schema. An index is 1-based in the file, 0-based in memory;
 # a "signed" one's sign carries a meaning of its own (SFR's ic). A cellid
-# is in the grid of the component's own model, or of an exchange's first or
-# second ("1", "2").
+# is in the grid of the component's own model (None), or of an exchange's
+# first or second ("1", "2").
 Index = bool | Literal["signed"]
-Cellid = bool | Literal["1", "2"]
+CellModel = Literal["1", "2"] | None
 FileDirection = Literal[None, "in", "out"]
 
 
@@ -168,47 +168,66 @@ def double(*, time_series: bool = False, **kwargs: Unpack[FieldKwargs]) -> Any:
     return _field("double", kwargs, time_series=time_series)
 
 
+def cellid_(
+    *, model: CellModel = None, allow_zero: bool = False, **kwargs: Unpack[FieldKwargs]
+) -> Any:
+    """A cellid: a grid cell, as a tuple of its components, 0-based (in
+    the file ``ncelldim`` 1-based integers). In the grid of the component's
+    own ``model``, or an exchange's first or second (``"1"``, ``"2"``).
+    One that may ``allow_zero`` is None for no cell (zeros in the file).
+
+    Named with a trailing underscore, like `list_`, as fields are often
+    named ``cellid``: one would shadow it for the fields after it."""
+    return _field("cellid", kwargs, model=model, allow_zero=allow_zero)
+
+
 def array(
     *,
     shape: tuple[str, ...] = (),
+    dtype: Literal["cellid"] | None = None,
     layered: bool = False,
     index: Index = False,
     fk: str | None = None,
-    cellid: Cellid = False,
+    model: CellModel = None,
+    allow_zero: bool = False,
     time_series: bool = False,
     fill_forward: bool = False,
     **kwargs: Unpack[FieldKwargs],
 ) -> Any:
     """An array, of the dimensions ``shape`` names: a component's grid array
     (``("nlay", "nrow", "ncol")``), or an inline array, in a record or list
-    item (``("auxiliary",)``; unsized, ``()``, the rest of the line). A
-    ``cellid``'s shape starts with ``ncelldim``, one cellid's components:
-    ``("ncelldim",)`` is one cellid, ``("ncelldim", "numalphaj")`` several.
+    item (``("auxiliary",)``; unsized, ``()``, the rest of the line). Its
+    element type is its annotation's, except an array of cellids, whose
+    ``dtype`` is ``"cellid"``, each element as `cellid_` with ``model`` and
+    ``allow_zero`` (GNC's cellidsj, ``("numalphaj",)``).
 
     Compares with `array_eq`, as numpy's elementwise ``==`` isn't a valid
     ``__eq__`` result. An inline array counted by another field of its
     item keeps that field in step when reassigned.
     """
     shape = tuple(shape)
-    counts = shape[1:] if cellid else shape
+    if dtype != "cellid" and (model or allow_zero):
+        raise ValueError("model and allow_zero are only for an array of cellids")
     kwargs.setdefault("eq", ARRAY_EQ)
     if time_series:
         _ts_converter(kwargs, to_ts_values)
     if index == "signed":
         kwargs.setdefault("converter", to_signed_indexes)
-    if kwargs.get("block") is None and len(counts) == 1:
+    if kwargs.get("block") is None and len(shape) == 1:
         # keep a field counting the array in step when it is reassigned
         kwargs["on_setattr"] = _pipe(
-            attrs.setters.convert, _recount(counts[0]), kwargs.get("on_setattr")
+            attrs.setters.convert, _recount(shape[0]), kwargs.get("on_setattr")
         )
     return _field(
         "array",
         kwargs,
         shape=shape,
+        dtype=dtype,
         layered=layered,
         index=index,
         fk=fk,
-        cellid=cellid,
+        model=model,
+        allow_zero=allow_zero,
         time_series=time_series,
         fill_forward=fill_forward,
     )

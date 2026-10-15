@@ -14,7 +14,7 @@ from flopy4.mf6.component import Component
 from flopy4.mf6.constants import FILL_DNODATA
 from flopy4.mf6.context import Context
 from flopy4.mf6.converter.binding import Binding
-from flopy4.mf6.item import Item, item_list_type
+from flopy4.mf6.item import Item, cellid_widths, item_list_type
 from flopy4.mf6.package import Package
 from flopy4.mf6.period_arrays import is_cleared, is_grid_package
 from flopy4.mf6.record import Record, record_type
@@ -134,11 +134,22 @@ def _period_dataarray(
     return _mark_netcdf(da, meta)
 
 
-def _rows_to_tuples(row_list: list) -> list:
+def _rows_to_tuples(row_list: list, ncelldim: int | None = None) -> list:
     """Convert a list of Item instances to MF6 record tuples via each
     Item's own to_tokens(), and a list of unions' words (PRP's ALL) to
-    lines of their own."""
-    return [[row] if isinstance(row, str) else row.to_tokens() for row in row_list]
+    lines of their own. ``ncelldim`` is the grid's, if known, to write a
+    cellid of no cell as zeros (see Item.to_tokens); else each cellid
+    column's, from the rows that give one."""
+    widths = ncelldim or cellid_widths([row for row in row_list if not isinstance(row, str)])
+    return [[row] if isinstance(row, str) else row.to_tokens(ncelldim=widths) for row in row_list]
+
+
+def _ncelldim(value: Package) -> int | None:
+    """The package's grid's ncelldim, or None if the grid isn't known."""
+    try:
+        return value.resolve_dims("ncelldim").get("ncelldim")
+    except ValueError:
+        return None
 
 
 def _wrap_array(value: Any) -> xr.DataArray:
@@ -199,6 +210,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
     stress_period: dict[int, set[str]] = {}
     nodata_period: dict[int, set[str]] = {}
     grid_dims = _grid_dims(value)
+    ncelldim = _ncelldim(value)
     grid = is_grid_package(cls)
     fill_forward_block: str | None = None
 
@@ -249,7 +261,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
                 kper_int = _normalize_kper(kper)
                 if kper_int is None:
                     continue
-                rows = _rows_to_tuples(row_list) if isinstance(row_list, list) else []
+                rows = _rows_to_tuples(row_list, ncelldim) if isinstance(row_list, list) else []
                 spd_period.setdefault(kper_int, []).extend(rows)
             continue
 
@@ -259,7 +271,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             _, list_name, _ = block_cls.parts()
             for block in field_value:
                 key = " ".join([block_name, *map(str, block.header_tokens())])
-                blocks[key] = {list_name: _rows_to_tuples(getattr(block, list_name))}
+                blocks[key] = {list_name: _rows_to_tuples(getattr(block, list_name), ncelldim)}
             continue
 
         if isinstance(field_value, dict):
@@ -288,7 +300,7 @@ def _unstructure_package(value: Package) -> dict[str, Any]:
             _put_child_file_records(blocks[block_name], f, field_value)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], Item):
-            blocks[block_name][f.name] = _rows_to_tuples(field_value)
+            blocks[block_name][f.name] = _rows_to_tuples(field_value, ncelldim)
 
         elif isinstance(field_value, list) and field_value and isinstance(field_value[0], tuple):
             blocks[block_name][f.name] = field_value
